@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
-import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
@@ -9,6 +8,8 @@ import Card from "metabase/components/Card";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import Popover from "metabase/components/Popover";
+
+import { Container } from "./EntityMenu.styled";
 
 const MENU_SHIFT_Y = 10;
 
@@ -39,11 +40,19 @@ class EntityMenu extends Component {
   render() {
     const preferReducedMotion = isReducedMotionPreferred();
 
-    const { items, triggerIcon, triggerProps, className, tooltip } = this.props;
+    const {
+      items,
+      triggerIcon,
+      triggerProps,
+      className,
+      tooltip,
+      trigger,
+    } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <div className={cx("relative", className)}>
+      <Container className={className} open={open}>
         <EntityMenuTrigger
+          trigger={trigger}
           icon={triggerIcon}
           onClick={this.toggleMenu}
           open={open}
@@ -144,7 +153,7 @@ class EntityMenu extends Component {
             }}
           </Motion>
         </Popover>
-      </div>
+      </Container>
     );
   }
 }

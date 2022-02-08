@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -8,7 +7,8 @@ import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatab
 import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
+import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
   database: PropTypes.object.isRequired,
@@ -29,7 +29,7 @@ const DatabaseEditAppSidebar = ({
   const deleteDatabaseModal = useRef();
 
   return (
-    <Box ml={[2, 3]} width={420}>
+    <SidebarRoot>
       <div className="Actions bg-light rounded p3">
         <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
@@ -103,7 +103,7 @@ const DatabaseEditAppSidebar = ({
           </ol>
         </div>
       </div>
-    </Box>
+    </SidebarRoot>
   );
 };
 

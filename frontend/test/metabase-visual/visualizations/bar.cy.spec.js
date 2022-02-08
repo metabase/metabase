@@ -4,8 +4,6 @@ describe("visual tests > visualizations > bar", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with stacked series", () => {
@@ -28,8 +26,6 @@ describe("visual tests > visualizations > bar", () => {
         "stackable.stack_type": "stacked",
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
@@ -54,8 +50,6 @@ describe("visual tests > visualizations > bar", () => {
         "stackable.stack_type": "stacked",
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

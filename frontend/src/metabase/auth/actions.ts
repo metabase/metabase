@@ -4,8 +4,14 @@ import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
-import { trackLogout, trackPasswordReset } from "./analytics";
+import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import {
+  trackLogin,
+  trackLoginGoogle,
+  trackLogout,
+  trackPasswordReset,
+} from "./analytics";
+import { LoginData } from "./types";
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createThunkAction(
@@ -18,11 +24,41 @@ export const refreshSession = createThunkAction(
   },
 );
 
+export const LOGIN = "metabase/auth/LOGIN";
+export const login = createThunkAction(
+  LOGIN,
+  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
+    await SessionApi.create(data);
+    trackLogin();
+
+    await dispatch(refreshSession());
+    dispatch(push(redirectUrl));
+  },
+);
+
+export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
+export const loginGoogle = createThunkAction(
+  LOGIN_GOOGLE,
+  (token: string, redirectUrl = "/") => async (dispatch: any) => {
+    try {
+      await SessionApi.createWithGoogleAuth({ token });
+      trackLoginGoogle();
+
+      await dispatch(refreshSession());
+      dispatch(push(redirectUrl));
+    } catch (error) {
+      await clearGoogleAuthCredentials();
+      throw error;
+    }
+  },
+);
+
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, () => {
   return async (dispatch: any) => {
     await deleteSession();
     await clearGoogleAuthCredentials();
+    await dispatch(clearCurrentUser());
     trackLogout();
 
     dispatch(push("/auth/login"));

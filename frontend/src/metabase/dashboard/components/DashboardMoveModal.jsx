@@ -4,7 +4,6 @@ import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 
-import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
@@ -13,6 +12,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ToastRoot } from "./DashboardMoveModal.styled";
 
 const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
@@ -48,10 +48,10 @@ class DashboardMoveModal extends React.Component {
 export default DashboardMoveModal;
 
 const DashboardMoveToast = ({ collectionId }) => (
-  <Flex align="center">
+  <ToastRoot>
     <Icon name="all" mr={1} color="white" />
     {jt`Dashboard moved to ${(
       <Collection.Link id={collectionId} ml={1} color={color("brand")} />
     )}`}
-  </Flex>
+  </ToastRoot>
 );

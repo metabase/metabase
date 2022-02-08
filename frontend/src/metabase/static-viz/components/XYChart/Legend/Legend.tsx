@@ -1,57 +1,63 @@
 import React from "react";
 import { Group } from "@visx/group";
 import { LegendItem } from "./LegendItem";
-
-type LegendItem = {
-  top: number;
-  label: string;
-  color: string;
-};
+import { LegendItemData } from "../utils";
 
 type LegendProps = {
-  legend: {
-    leftItems?: LegendItem[];
-    rightItems?: LegendItem[];
-    columnWidth: number;
-    maxTextWidth: number;
-  };
-  width: number;
+  leftColumn: LegendItemData[];
+  rightColumn: LegendItemData[];
   top: number;
-  left: number;
+  width: number;
+  padding: number;
+  lineHeight: number;
+  fontSize: number;
 };
 
-export const Legend = ({ legend, top, left, width }: LegendProps) => {
-  const { leftItems, rightItems, columnWidth, maxTextWidth } = legend;
+export const Legend = ({
+  leftColumn,
+  rightColumn,
+  top,
+  width,
+  padding,
+  lineHeight,
+  fontSize,
+}: LegendProps) => {
+  const columnWidth = width / 2;
+  const innerWidth = columnWidth - padding;
 
   return (
-    <Group left={left} top={top}>
+    <Group left={padding} top={top}>
       <Group>
-        {leftItems?.map(item => {
+        {leftColumn?.map((item, index) => {
           return (
             <LegendItem
-              key={item.label}
-              top={item.top}
+              left={padding}
+              key={index}
+              top={index * lineHeight}
               align="left"
-              width={columnWidth}
-              textWidth={maxTextWidth}
-              label={item.label}
+              width={rightColumn.length > 0 ? innerWidth : width}
+              label={item.name}
               color={item.color}
+              fontSize={fontSize}
+              lineHeight={lineHeight}
             />
           );
         })}
       </Group>
 
-      <Group left={width}>
-        {rightItems?.map(item => {
+      <Group left={columnWidth}>
+        {rightColumn?.map((item, index) => {
           return (
             <LegendItem
-              key={item.label}
-              top={item.top}
+              key={index}
+              top={index * lineHeight}
               align="right"
-              width={columnWidth}
-              textWidth={maxTextWidth}
-              label={item.label}
+              left={columnWidth - padding * 2}
+              width={leftColumn.length > 0 ? innerWidth : width}
+              label={item.name}
               color={item.color}
+              fontSize={fontSize}
+              lineHeight={lineHeight}
             />
           );
         })}

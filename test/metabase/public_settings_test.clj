@@ -206,8 +206,9 @@
         (is (= nil (public-settings/cloud-gateway-ips))))))
 
   (testing "Setting returns nil in self-hosted environments"
-    (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-    (http-fake/with-fake-routes-in-isolation
-      {{:address (public-settings/cloud-gateway-ips-url)}
-       (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
-      (is (= nil (public-settings/cloud-gateway-ips))))))
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+        (is (= nil (public-settings/cloud-gateway-ips)))))))

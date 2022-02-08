@@ -9,7 +9,7 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
   it("pagination should work (metabase#14636)", () => {
     // Really ugly way to bump up total number of tasks (but more realistic than using fixture, or stubbing)
     // Since this happens async, that number may vary but it should always be greater than 50 [1] and less than 100 [2]
-    // Note: each sync generates 6 tasks and we start with 12 tasks already for the testing sample dataset
+    // Note: each sync generates 6 tasks and we start with 12 tasks already for the testing sample database
     for (let i = 0; i < 13; i++) {
       cy.request("POST", "/api/database/1/sync_schema");
     }

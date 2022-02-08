@@ -1,7 +1,7 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
@@ -37,7 +37,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -50,7 +49,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)");
     });
   });
@@ -100,8 +98,9 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.findByText("19");
-      cy.findAllByText("20.0M");
+      cy.get(".value-labels")
+        .should("contain", "19")
+        .and("contain", "20.0M");
     });
   });
 });

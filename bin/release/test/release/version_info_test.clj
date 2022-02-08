@@ -36,7 +36,6 @@
                                                                     {:title title})
                                                                   (last (first test-versions))))]
         (c/set-version! (case edition :oss "0.39.0" "1.39.0"))
-        (c/set-force-latest-release?! false)
         (c/set-branch!  "testing")
         (c/set-edition! edition)
         (#'v-info/generate-version-info!)

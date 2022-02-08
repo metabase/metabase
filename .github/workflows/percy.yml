@@ -25,42 +25,11 @@ jobs:
       INTERACTIVE: false
     steps:
       - uses: actions/checkout@v2
-      - name: Prepare Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14.x
-      - name: Prepare JDK 8
-        uses: actions/setup-java@v2
-        with:
-          java-version: 8
-          distribution: 'temurin'
-      - name: Install Clojure CLI
-        run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
-          sudo bash ./linux-install-1.10.3.933.sh
-      - name: Check versions
-        run: |
-          echo "Node.js `node --version`"
-          echo "yarn `yarn --version`"
-          java -version
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
-      - name: Get yarn cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-      - name: Get node_modules cache
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-      - name: Get M2 cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
-
-      - run: yarn install --frozen-lockfile --prefer-offline
       - run: ./bin/build
 
       - name: Mark with the commit hash
@@ -82,30 +51,22 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v2
-      - name: Prepare Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14.x
-      - name: Prepare JDK 8
-        uses: actions/setup-java@v2
-        with:
-          java-version: 8
-          distribution: 'temurin'
-      - name: Install Clojure CLI
-        run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
-          sudo bash ./linux-install-1.10.3.933.sh
-      - name: Check versions
-        run: |
-          echo "Node.js `node --version`"
-          echo "yarn `yarn --version`"
-          java -version
-      - name: Get yarn cache
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Get Cypress cache
         uses: actions/cache@v2
         with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-      - run: yarn install --frozen-lockfile --prefer-offline
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+      - name: Ensure that Cypress is ready
+        run: |
+          yarn cypress install
+          yarn cypress cache path
+          yarn cypress cache list
+          yarn cypress verify
 
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
@@ -115,7 +76,8 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
-
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

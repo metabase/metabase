@@ -7,10 +7,10 @@ import {
   waitFor,
 } from "__support__/ui";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { ViewTitleHeader } from "./ViewHeader";
@@ -20,7 +20,7 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -47,7 +47,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "select * from orders",
     },
@@ -118,7 +118,7 @@ function setup({ question, isRunnable = true, settings, ...props } = {}) {
     />,
     {
       withRouter: true,
-      withSampleDataset: true,
+      withSampleDatabase: true,
     },
   );
 
@@ -452,6 +452,29 @@ describe("View Header | Saved GUI question", () => {
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("View Header | native question without write permissions on database (eg user without self serve data permissions)", () => {
+  let originalNativePermissions;
+  beforeEach(() => {
+    setupNative();
+    originalNativePermissions = SAMPLE_DATABASE.native_permissions;
+    SAMPLE_DATABASE.native_permissions = "none";
+  });
+
+  afterEach(() => {
+    SAMPLE_DATABASE.native_permissions = originalNativePermissions;
+  });
+
+  it("does not display question database", () => {
+    const { question } = setupNative();
+    const databaseName = question.database().displayName();
+    expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to explore query results", () => {
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 });
 

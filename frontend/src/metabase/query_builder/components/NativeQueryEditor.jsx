@@ -31,16 +31,14 @@ import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSideb
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
+import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./NativeQueryEditor/constants";
+import {
+  calcInitialEditorHeight,
+  getEditorLineHeight,
+  getMaxAutoSizeLines,
+} from "./NativeQueryEditor/utils";
 
 import "./NativeQueryEditor.css";
-
-const SCROLL_MARGIN = 8;
-const LINE_HEIGHT = 16;
-
-const MIN_HEIGHT_LINES = 13;
-
-const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
-const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
@@ -51,16 +49,9 @@ export default class NativeQueryEditor extends Component {
   constructor(props) {
     super(props);
 
-    const lines = Math.max(
-      Math.min(
-        this.maxAutoSizeLines(),
-        props.query?.lineCount() || this.maxAutoSizeLines(),
-      ),
-      MIN_HEIGHT_LINES,
-    );
-
+    const { query, viewHeight } = props;
     this.state = {
-      initialHeight: getEditorLineHeight(lines),
+      initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
     };
 
@@ -72,18 +63,9 @@ export default class NativeQueryEditor extends Component {
     this.resizeBox = React.createRef();
   }
 
-  maxAutoSizeLines() {
-    // This determines the max height that the editor *automatically* takes.
-    // - On load, long queries will be capped at this length
-    // - When loading an empty query, this is the height
-    // - When the editor grows during typing this is the max height
-    const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
-    const pixelHeight = this.props.viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
-    return Math.ceil(getLinesForHeight(pixelHeight));
-  }
-
   static defaultProps = {
     isOpen: false,
+    cancelQueryOnLeave: true,
   };
 
   UNSAFE_componentWillMount() {
@@ -177,7 +159,9 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    this.props.cancelQuery();
+    if (this.props.cancelQueryOnLeave) {
+      this.props.cancelQuery();
+    }
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
@@ -339,10 +323,10 @@ export default class NativeQueryEditor extends Component {
     const doc = this._editor.getSession().getDocument();
     const element = this.resizeBox.current;
     // set the newHeight based on the line count, but ensure it's within
-    // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
+    // [MIN_HEIGHT_LINES, getMaxAutoSizeLines()]
     const newHeight = getEditorLineHeight(
       Math.max(
-        Math.min(doc.getLength(), this.maxAutoSizeLines()),
+        Math.min(doc.getLength(), getMaxAutoSizeLines()),
         MIN_HEIGHT_LINES,
       ),
     );
@@ -408,6 +392,9 @@ export default class NativeQueryEditor extends Component {
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
       hasParametersList = true,
+      hasTopBar = true,
+      hasEditingSidebar = true,
+      resizableBoxProps = {},
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -420,32 +407,34 @@ export default class NativeQueryEditor extends Component {
 
     return (
       <div className="NativeQueryEditor bg-light full">
-        <div className="flex align-center" style={{ minHeight: 55 }}>
-          <DataSourceSelectors
-            isNativeEditorOpen={isNativeEditorOpen}
-            query={query}
-            readOnly={readOnly}
-            setDatabaseId={this.setDatabaseId}
-            setTableId={this.setTableId}
-          />
-          {hasParametersList && (
-            <SyncedParametersList
-              className="mt1"
-              parameters={parameters}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              isEditing
-              commitImmediately
-            />
-          )}
-          {query.hasWritePermission() && (
-            <VisibilityToggler
-              isOpen={isNativeEditorOpen}
+        {hasTopBar && (
+          <div className="flex align-center" style={{ minHeight: 55 }}>
+            <DataSourceSelectors
+              isNativeEditorOpen={isNativeEditorOpen}
+              query={query}
               readOnly={readOnly}
-              toggleEditor={this.toggleEditor}
+              setDatabaseId={this.setDatabaseId}
+              setTableId={this.setTableId}
             />
-          )}
-        </div>
+            {hasParametersList && (
+              <SyncedParametersList
+                className="mt1"
+                parameters={parameters}
+                setParameterValue={setParameterValue}
+                setParameterIndex={this.setParameterIndex}
+                isEditing
+                commitImmediately
+              />
+            )}
+            {query.hasWritePermission() && (
+              <VisibilityToggler
+                isOpen={isNativeEditorOpen}
+                readOnly={readOnly}
+                toggleEditor={this.toggleEditor}
+              />
+            )}
+          </div>
+        )}
         <ResizableBox
           ref={this.resizeBox}
           className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
@@ -453,11 +442,15 @@ export default class NativeQueryEditor extends Component {
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
           handle={dragHandle}
+          resizeHandles={["s"]}
+          {...resizableBoxProps}
           onResizeStop={(e, data) => {
             this.props.handleResize();
+            if (typeof resizableBoxProps?.onResizeStop === "function") {
+              resizableBoxProps.onResizeStop(e, data);
+            }
             this._editor.resize();
           }}
-          resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref={this.editor} />
 
@@ -482,7 +475,7 @@ export default class NativeQueryEditor extends Component {
               closeModal={this.props.closeSnippetModal}
             />
           )}
-          {!readOnly && (
+          {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
               {...this.props}

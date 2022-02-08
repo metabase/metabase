@@ -40,7 +40,7 @@ class MyNewPage extends React.Component {
       <div>
         <h1>{database.name}</h1>
       </div>
-    )	
+    )
   }
 }
 ```
@@ -64,7 +64,7 @@ class MyNewPage extends React.Component {
           }
         </Databases.Loader>
       </div>
-    )	
+    )
   }
 }
 ```
@@ -167,7 +167,7 @@ The schema for this object is defined in [`Form.jsx`](https://github.com/metabas
     { name: "a", type:  }
 ```
 
-`initial`, `normalize`, and `validate` properties can be provided at the top-level, or per-field. They can also be provided as props to the `<Form>` and `<FormField>` components For definitions can be provided 
+`initial`, `normalize`, and `validate` properties can be provided at the top-level, or per-field. They can also be provided as props to the `<Form>` and `<FormField>` components For definitions can be provided
 
 ### Custom Layout
 
@@ -310,7 +310,6 @@ class MyComponent extends React.Component {
 ```
 
 * For styling components we currently use a mix of `styled-components` and ["atomic" / "utility-first" CSS classes](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/css/core).
-* Prefer using `grid-styled`'s `Box` and `Flex` components over raw `div`.
 * Components should typically pass along their `className` prop to the root element of the component. It can be merged with additional classes using the `cx` function from the `classnames` package.
 * In order to make components more reusable, a component should only apply classes or styles to the root element of the component which affects the layout/styling of it's own content, but *not* the layout of itself within it's parent container. For example, it can include padding or the `flex` class, but it shouldn't include margin or `flex-full`, `full`, `absolute`, `spread`, etc. Those should be passed via `className` or `style` props by the consumer of the component, which knows how the component should be positioned within itself.
 * Avoid breaking JSX up into separate method calls within a single component. Prefer inlining JSX so that you can better see what the relation is of the JSX a `render` method returns to what is in the `state` or `props` of a component. By inlining JSX you'll also get a better sense of what parts should and should not be separate components.
@@ -429,7 +428,7 @@ isSearchable(): boolean {
   return this.isString();
 }
 
-// this is acceptable -- the implementer explains a not-obvious edge case of a third party library 
+// this is acceptable -- the implementer explains a not-obvious edge case of a third party library
 
 // foo-lib seems to return undefined/NaN occasionally, which breaks things
 if (isNaN(x) || isNaN(y)) {
@@ -589,7 +588,7 @@ In Metabase core, they are visually responsive: they appear above or below the e
 1. From home, click on `Ask a question`
 2. Click on `Custom question`
 3. 👀 The option picker next to `Pick your starting data` is a `<Popover />`.
-3. Choose `Sample Dataset`
+3. Choose `Sample Database`
 4. Choose any of the tables, for example `People`
 
 Here, clicking on the following will open `<Popover />` components:

@@ -2,7 +2,6 @@ import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { Box } from "grid-styled";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
@@ -12,6 +11,7 @@ import EmptyState from "metabase/components/EmptyState";
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,
+  SavedQuestionListEmptyState,
 } from "./SavedQuestionList.styled";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
@@ -38,9 +38,9 @@ function SavedQuestionList({
   collection,
 }) {
   const emptyState = (
-    <Box my="120px">
+    <SavedQuestionListEmptyState>
       <EmptyState message={t`Nothing here`} icon="all" />
-    </Box>
+    </SavedQuestionListEmptyState>
   );
 
   const isVirtualCollection = collection.id === PERSONAL_COLLECTIONS.id;
@@ -65,7 +65,7 @@ function SavedQuestionList({
                     size="small"
                     name={t.display_name}
                     icon={{
-                      name: isDatasets ? "dataset" : "table2",
+                      name: isDatasets ? "model" : "table2",
                       size: 16,
                     }}
                     onSelect={() => onSelect(t)}

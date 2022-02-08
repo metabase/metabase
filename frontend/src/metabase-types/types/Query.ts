@@ -47,7 +47,7 @@ export type DatetimeUnit =
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-export type TemplateTagType = "text" | "number" | "date" | "dimension";
+export type TemplateTagType = "card" | "text" | "number" | "date" | "dimension";
 
 export type TemplateTag = {
   id: TemplateTagId;
@@ -67,8 +67,13 @@ export type NativeQuery = {
   "template-tags": TemplateTags;
 };
 
+// "card__4" like syntax meaning a query is using card 4 as a data source
+type NestedQueryTableId = string;
+
+export type SourceTableId = TableId | NestedQueryTableId;
+
 export type StructuredQuery = {
-  "source-table"?: TableId;
+  "source-table"?: SourceTableId;
   "source-query"?: StructuredQuery;
   aggregation?: AggregationClause;
   breakout?: BreakoutClause;
@@ -303,3 +308,16 @@ export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
 export type FieldsClause = ConcreteField[];
+
+export type DependentTable = {
+  id: number | string;
+  type: "table";
+  foreignTables?: boolean;
+};
+
+export type DependentField = {
+  id: number;
+  type: "field";
+};
+
+export type DependentMetadataItem = DependentTable | DependentField;

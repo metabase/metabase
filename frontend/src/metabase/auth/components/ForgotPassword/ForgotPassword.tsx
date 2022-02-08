@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
 import AuthLayout from "../../containers/AuthLayout";
-import { EmailData, ViewType } from "./types";
+import { ForgotPasswordData } from "../../types";
 import {
   FormFooter,
   FormLink,
@@ -13,6 +13,8 @@ import {
   InfoLink,
   InfoMessage,
 } from "./ForgotPassword.styled";
+
+type ViewType = "form" | "disabled" | "success";
 
 export interface ForgotPasswordProps {
   canResetPassword: boolean;
@@ -65,7 +67,7 @@ const ForgotPasswordForm = ({
   }, [initialEmail]);
 
   const handleSubmit = useCallback(
-    async ({ email }: EmailData) => {
+    async ({ email }: ForgotPasswordData) => {
       await onSubmit(email);
     },
     [onSubmit],

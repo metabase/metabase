@@ -63,7 +63,7 @@
     (mt/with-temp Database [db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"^Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
            (qp/process-query {:database (:id db)
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
@@ -113,7 +113,7 @@
 (deftest timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
-           (jdbc/query (db.spec/h2 {:db "mem:test_db"})
+           (jdbc/query (db.spec/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest native-query-parameters-test
@@ -149,4 +149,4 @@
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))

@@ -1,7 +1,7 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -17,8 +17,6 @@ describe("visual tests > visualizations > row", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with formatted x-axis", () => {
@@ -32,8 +30,6 @@ describe("visual tests > visualizations > row", () => {
         },
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

@@ -32,7 +32,7 @@
                          (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
-       :content     [:table {:style (style/style {:margin-bottom   :8px
+       :content     [:table {:style (style/style {:margin-bottom   :2px
                                                   :border-collapse :collapse
                                                   :width           :100%})}
                      [:tbody
@@ -84,7 +84,13 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall :combo :funnel :area} display-type)
+        (#{:area
+           :bar
+           :combo
+           :funnel
+           :progress
+           :table
+           :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -100,16 +106,16 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        (and (= @col-sample-count 2)
-             (number-field? @col-2)
-             (= display-type :bar))
-        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
-
+        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
+        ;; upon which they're lines
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
              (not (#{:waterfall :pie :table :area} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
+
+        (= display-type :line)
+        (chart-type display-type "display-type is %s" display-type)
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
@@ -127,7 +133,7 @@
   [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
   (try
     (when error
-      (throw (ex-info (tru "Card has errors: {0}" error) results)))
+      (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
     (let [chart-type (or (detect-pulse-chart-type card dashcard data)
                          (when (is-attached? card)
                            :attached)
@@ -135,8 +141,13 @@
       (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
-      (body/render :error nil nil nil nil nil))))
+      (if (:card-error (ex-data e))
+        (do
+          (log/error e (trs "Pulse card query error"))
+          (body/render :card-error nil nil nil nil nil))
+        (do
+          (log/error e (trs "Pulse card render error"))
+          (body/render :render-error nil nil nil nil nil))))))
 
 (defn- card-href
   [card]

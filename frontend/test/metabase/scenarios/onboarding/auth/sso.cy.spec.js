@@ -41,7 +41,7 @@ describe("scenarios > auth > signin > SSO", () => {
       cy.findByLabelText("Email address");
       cy.findByLabelText("Password");
       cy.button("Sign in").should("be.disabled");
-      cy.findByText("Sign in with Google").should("not.exist");
+      cy.findByText("Sign in with Google");
     });
 
     it("should surface login errors with Google sign in enabled (metabase#16122)", () => {

@@ -4,10 +4,9 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
-import { Flex } from "grid-styled";
 
-import SelectButton from "metabase/components/SelectButton";
-import Select from "metabase/components/Select";
+import SelectButton from "metabase/core/components/SelectButton";
+import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -19,6 +18,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
+import { FieldMappingContainer } from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -263,7 +263,7 @@ export default class FieldRemapping extends React.Component {
 
     return (
       <div>
-        <Flex align="center">
+        <FieldMappingContainer>
           <Select
             value={mappingType}
             onChange={this.handleChangeMappingType}
@@ -279,7 +279,7 @@ export default class FieldRemapping extends React.Component {
               triggerElement={
                 <SelectButton
                   hasValue={hasFKMappingValue}
-                  className={cx("flex inline-block no-decoration", {
+                  className={cx({
                     "border-error": dismissedInitialFkTargetPopover,
                     "border-dark": !dismissedInitialFkTargetPopover,
                   })}
@@ -311,7 +311,7 @@ export default class FieldRemapping extends React.Component {
               <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
             ),
           ]}
-        </Flex>
+        </FieldMappingContainer>
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom && (
           <div className="mt3">

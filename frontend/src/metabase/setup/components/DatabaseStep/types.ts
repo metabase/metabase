@@ -5,14 +5,21 @@ export interface FormField {
 }
 
 export interface FormProps {
-  formFields: FormField[];
   Form: ComponentType;
   FormField: ComponentType<FormFieldProps>;
   FormFooter: ComponentType<FormFooterProps>;
+  formFields: FormField[];
+  values: FormValues;
+  onChangeField: (field: string, value: unknown) => void;
+}
+
+export interface FormValues {
+  engine?: string;
 }
 
 export interface FormFieldProps {
   name: string;
+  onChange?: (value?: string) => void;
 }
 
 export interface FormFooterProps {

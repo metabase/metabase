@@ -9,7 +9,7 @@ import { connect } from "react-redux";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -17,8 +17,8 @@ import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import Toggle from "metabase/components/Toggle";
-import Select, { Option } from "metabase/components/Select";
+import Toggle from "metabase/core/components/Toggle";
+import Select, { Option } from "metabase/core/components/Select";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
@@ -470,7 +470,7 @@ function DefaultParametersSection({
           name="info"
           className="text-medium ml1"
           size={12}
-          tooltip={t`You can customize filter values for each subscription with the Enterprise edition.`}
+          tooltip={t`You can customize filter values for each subscription with paid plans.`}
         />
       </Heading>
       <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>

@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 export const FormTitle = styled.div`
   color: ${color("text-dark")};
@@ -62,5 +62,10 @@ export const InfoMessage = styled.div`
 `;
 
 export const InfoLink = styled(Link)`
+  color: ${color("text-dark")};
   margin-top: 2.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;

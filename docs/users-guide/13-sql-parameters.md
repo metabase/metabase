@@ -74,7 +74,7 @@ You can include multiple variables in the query, and Metabase will add multiple 
 
 ### Optional clauses
 
-You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were now `WHERE` clause.
+You can make a clause optional in a query. For example, you can create an optional `WHERE` clause that contains a SQL variable, so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
 
 To make a clause optional in your native query, type `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If you input a value in the filter widget for the `variable`, then the entire clause is placed into the template; otherwise Metabase will ignore the clause.
 

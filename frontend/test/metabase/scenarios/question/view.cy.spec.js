@@ -4,9 +4,9 @@ import {
   popover,
   getAddDimensionButton,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > view", () => {
   beforeEach(() => {
@@ -16,10 +16,8 @@ describe("scenarios > question > view", () => {
 
   describe("summarize sidebar", () => {
     it("should summarize by category and show a bar chart", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
-      cy.wait("@dataset");
+
       cy.contains("Summarize").click();
       cy.contains("Category").click();
       cy.contains("Done").click();
@@ -76,7 +74,7 @@ describe("scenarios > question > view", () => {
     it("should filter a table", () => {
       openOrdersTable();
       cy.contains("Filter").click();
-      cy.contains("Vendor").click();
+      cy.contains("Vendor").click({ force: true });
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
         .type("A");
@@ -141,25 +139,6 @@ describe("scenarios > question > view", () => {
       cy.request("POST", "/api/dashboard/2/cards", {
         id: 2,
         cardId: 4,
-      });
-    });
-
-    it("should give everyone view permissions", () => {});
-
-    it("should show filters by list for Category without a search box", () => {
-      cy.visit("/question/4");
-
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
-      popover().within(() => {
-        cy.findByText("Doohickey");
-        cy.findByText("Gizmo");
-        cy.findByText("Gadget");
-        cy.findByText("Widget");
-
-        cy.findByPlaceholderText("Search the list").should("not.exist");
-        cy.findByPlaceholderText("Search by Category").should("not.exist");
       });
     });
 

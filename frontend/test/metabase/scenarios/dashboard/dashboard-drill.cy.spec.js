@@ -6,7 +6,7 @@ import {
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -15,7 +15,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
@@ -483,7 +483,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.server();
         cy.route(
           "POST",
-          `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+          `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
@@ -728,7 +728,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
           cy.intercept(
             "POST",
-            `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION2_ID}/query`,
+            `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION2_ID}/query`,
           ).as("secondCardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);

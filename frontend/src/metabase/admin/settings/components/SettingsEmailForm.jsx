@@ -2,9 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 import SettingsBatchForm from "./SettingsBatchForm";
@@ -17,6 +16,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../settings";
+import { EmailFormRoot } from "./SettingsEmailForm.styled";
 
 const SEND_TEST_BUTTON_STATES = {
   default: t`Send test email`,
@@ -77,7 +77,7 @@ export default class SettingsEmailForm extends Component {
     const { sendingEmail } = this.state;
 
     return (
-      <Flex justifyContent="space-between">
+      <EmailFormRoot>
         <SettingsBatchForm
           ref={form => (this._form = form && form.getWrappedInstance())}
           {...this.props}
@@ -108,7 +108,7 @@ export default class SettingsEmailForm extends Component {
         {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
-      </Flex>
+      </EmailFormRoot>
     );
   }
 }

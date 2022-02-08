@@ -1,13 +1,13 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > gauge chart", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept(`/api/dashboard/*/card/*/query`).as("cardQuery");
+    cy.intercept(`/api/dashboard/*/dashcard/*/card/*/query`).as("cardQuery");
   });
 
   it("should not rerender on gauge arc hover (metabase#15980)", () => {

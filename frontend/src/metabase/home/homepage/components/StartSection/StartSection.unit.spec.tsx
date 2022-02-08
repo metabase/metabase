@@ -1,14 +1,18 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Dashboard, Database, User } from "../../types";
+import {
+  createMockDashboard,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import StartSection from "./StartSection";
 
 describe("StartSection", () => {
   it("should show pinned dashboards", () => {
-    const user = getUser();
-    const databases = [getDatabase()];
-    const dashboards = [getDashboard({ name: "Our dashboard" })];
+    const user = createMockUser();
+    const databases = [createMockDatabase()];
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -26,9 +30,9 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for admins when there are no user databases", () => {
-    const user = getUser({ is_superuser: true });
-    const databases = [getDatabase({ is_sample: true })];
-    const dashboards = [getDashboard({ name: "Our dashboard" })];
+    const user = createMockUser({ is_superuser: true });
+    const databases = [createMockDatabase({ is_sample: true })];
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -46,8 +50,8 @@ describe("StartSection", () => {
   });
 
   it("should not show a banner for regular users when there are no user databases", () => {
-    const user = getUser();
-    const dashboards = [getDashboard({ name: "Our dashboard" })];
+    const user = createMockUser();
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -65,7 +69,7 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for admins when there are no pinned dashboards", () => {
-    const user = getUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
 
     render(
       <StartSection
@@ -82,7 +86,7 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for regular users when there are no pinned dashboards", () => {
-    const user = getUser();
+    const user = createMockUser();
 
     render(
       <StartSection
@@ -99,7 +103,7 @@ describe("StartSection", () => {
   });
 
   it("should not hide the section for admins when there is no content", () => {
-    const user = getUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
 
     render(
       <StartSection
@@ -115,7 +119,7 @@ describe("StartSection", () => {
   });
 
   it("should hide the section for regular users when there is no content", () => {
-    const user = getUser();
+    const user = createMockUser();
 
     render(
       <StartSection
@@ -130,8 +134,8 @@ describe("StartSection", () => {
   });
 
   it("should allow admins to hide the dashboard banner", () => {
-    const user = getUser({ is_superuser: true });
-    const databases = [getDatabase()];
+    const user = createMockUser({ is_superuser: true });
+    const databases = [createMockDatabase()];
     const onHidePinMessage = jest.fn();
 
     render(
@@ -149,8 +153,8 @@ describe("StartSection", () => {
   });
 
   it("should not allow regular users to hide the dashboard banner", () => {
-    const user = getUser();
-    const databases = [getDatabase()];
+    const user = createMockUser();
+    const databases = [createMockDatabase()];
     const onHidePinMessage = jest.fn();
 
     render(
@@ -165,28 +169,4 @@ describe("StartSection", () => {
 
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
-});
-
-const getUser = (opts?: Partial<User>): User => ({
-  id: 1,
-  first_name: "John",
-  is_superuser: false,
-  has_invited_second_user: false,
-  personal_collection_id: "personal",
-  ...opts,
-});
-
-const getDatabase = (opts?: Partial<Database>): Database => ({
-  id: 1,
-  name: "Our database",
-  engine: "postgres",
-  is_sample: false,
-  initial_sync_status: "complete",
-  ...opts,
-});
-
-const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
-  id: 1,
-  name: "Our dashboard",
-  ...opts,
 });

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { forwardRef } from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
@@ -48,9 +48,12 @@ function getWidgetComponent(formField) {
   return formField.type || FormInputWidget;
 }
 
-const FormWidget = ({ field, formField, ...props }) => {
+const FormWidget = forwardRef(function FormWidget(
+  { field, formField, ...props },
+  ref,
+) {
   const Widget = getWidgetComponent(formField);
-  return <Widget field={field} {...formField} {...props} />;
-};
+  return <Widget field={field} {...formField} {...props} ref={ref} />;
+});
 
 export default FormWidget;

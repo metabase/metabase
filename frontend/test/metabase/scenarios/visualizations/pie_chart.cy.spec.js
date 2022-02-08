@@ -1,7 +1,7 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -21,14 +21,11 @@ describe("scenarios > visualizations > pie chart", () => {
   });
 
   it("should render a pie chart (metabase#12506)", () => {
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
     });
 
-    cy.wait("@dataset");
     ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
   });
 });

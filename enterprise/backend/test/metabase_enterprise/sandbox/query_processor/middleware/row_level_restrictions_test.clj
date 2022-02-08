@@ -20,6 +20,7 @@
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.util :as u]
@@ -37,8 +38,14 @@
      (sql.qp/->honeysql (or driver/*driver* :h2) (Table (mt/id table-key)))))
 
   ([table-key field-key]
-   (mt/with-everything-store
-     (sql.qp/->honeysql (or driver/*driver* :h2) (Field (mt/id table-key field-key))))))
+   (let [field-id   (mt/id table-key field-key)
+         field-name (db/select-one-field :name Field :id field-id)]
+     (mt/with-everything-store
+       (sql.qp/->honeysql
+        (or driver/*driver* :h2)
+        [:field field-id {::add/source-table  (mt/id table-key)
+                          ::add/source-alias  field-name
+                          ::add/desired-alias field-name}])))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
@@ -141,6 +148,7 @@
                             {:source-query {:source-table $$users
                                             :joins        [{:source-table $$categories}]}}]})))))
 
+;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
   (mbql.u/replace m
     (_ :guard (every-pred map? :source-metadata))
@@ -148,8 +156,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (mt/with-everything-store
-        (mt/test-qp-middleware row-level-restrictions/apply-row-level-permissions (normalize/normalize query)))
-      :pre
+        (#'row-level-restrictions/apply-sandboxing (normalize/normalize query)))
       remove-metadata))
 
 (deftest middleware-test
@@ -159,37 +166,46 @@
                     :attributes {"user" 5, "price" 1}}
       (testing "Should add a filter for attributes-only GTAP"
         (is (= (mt/query checkins
-                 {:type       :query
-                  :query      {:source-query {:source-table $$checkins
-                                              :fields       [$id !default.$date $user_id $venue_id]
-                                              :filter       [:and
-                                                             [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
-                                                             [:=
-                                                              $user_id
-                                                              [:value 5 {:base_type         :type/Integer
-                                                                         :effective_type    :type/Integer
-                                                                         :coercion_strategy nil
-                                                                         :semantic_type     :type/FK
-                                                                         :database_type     "INTEGER"
-                                                                         :name              "USER_ID"}]]]
-                                              ::row-level-restrictions/gtap?        true}
-                               :joins        [{:source-query
-                                               {:source-table $$venues
-                                                :fields       [$venues.id $venues.name $venues.category_id
-                                                               $venues.latitude $venues.longitude $venues.price]
-                                                :filter       [:=
-                                                               $venues.price
-                                                               [:value 1 {:base_type         :type/Integer
-                                                                          :effective_type    :type/Integer
-                                                                          :coercion_strategy nil
-                                                                          :semantic_type     :type/Category
-                                                                          :database_type     "INTEGER"
-                                                                          :name              "PRICE"}]]
-                                                ::row-level-restrictions/gtap?        true}
-                                               :alias     "v"
-                                               :strategy  :left-join
-                                               :condition [:= $venue_id &v.venues.id]}]
-                               :aggregation  [[:count]]}})
+                 {:type  :query
+                  :query {:source-query {:source-table                  $$checkins
+                                         :fields                        [$id !default.$date $user_id $venue_id]
+                                         :filter                        [:and
+                                                                         [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
+                                                                         [:=
+                                                                          $user_id
+                                                                          [:value 5 {:base_type         :type/Integer
+                                                                                     :effective_type    :type/Integer
+                                                                                     :coercion_strategy nil
+                                                                                     :semantic_type     :type/FK
+                                                                                     :database_type     "INTEGER"
+                                                                                     :name              "USER_ID"}]]]
+                                         ::row-level-restrictions/gtap? true}
+                          :joins        [{:source-query
+                                          {:source-table                  $$venues
+                                           :fields                        [$venues.id $venues.name $venues.category_id
+                                                                           $venues.latitude $venues.longitude $venues.price]
+                                           :filter                        [:=
+                                                                           $venues.price
+                                                                           [:value 1 {:base_type         :type/Integer
+                                                                                      :effective_type    :type/Integer
+                                                                                      :coercion_strategy nil
+                                                                                      :semantic_type     :type/Category
+                                                                                      :database_type     "INTEGER"
+                                                                                      :name              "PRICE"}]]
+                                           ::row-level-restrictions/gtap? true}
+                                          :alias     "v"
+                                          :strategy  :left-join
+                                          :condition [:= $venue_id &v.venues.id]}]
+                          :aggregation  [[:count]]}
+
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                                                               :semantic_type :type/Quantity
+                                                               :name          "count"
+                                                               :display_name  "Count"
+                                                               :source        :aggregation
+                                                               :field_ref     [:aggregation 0]}]
+                  ::qp.perms/perms                           {:gtaps #{(perms/table-query-path (mt/id :checkins))
+                                                                       (perms/table-query-path (mt/id :venues))}}})
                (apply-row-level-permissions
                 (mt/mbql-query checkins
                   {:aggregation [[:count]]
@@ -202,13 +218,21 @@
       (mt/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
                       :attributes {"cat" 50}}
         (is (= (mt/query nil
-                 {:database   (mt/id)
-                  :type       :query
-                  :query      {:aggregation  [[:count]]
-                               :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
-                                                           "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
-                                                           "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
-                                              :params []}}})
+                 {:database (mt/id)
+                  :type     :query
+                  :query    {:aggregation  [[:count]]
+                             :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
+                                                         "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
+                                                         "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
+                                            :params []}}
+
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                                                               :semantic_type :type/Quantity
+                                                               :name          "count"
+                                                               :display_name  "Count"
+                                                               :source        :aggregation
+                                                               :field_ref     [:aggregation 0]}]
+                  ::qp.perms/perms                           {:gtaps #{(perms/adhoc-native-query-path (mt/id))}}})
                (apply-row-level-permissions
                 (mt/mbql-query venues
                   {:aggregation [[:count]]}))))))))
@@ -332,12 +356,12 @@
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery) (conj :bigquery)
-    true                             (disj :presto-jdbc)))
+    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
+    true                                       (disj :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks :bigquery
+    (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
      (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
                    "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                    "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
@@ -898,7 +922,7 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id))
+                            (dissoc col :field_ref :id :table_id :fk_field_id :options))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))

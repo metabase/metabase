@@ -9,20 +9,15 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
+import {
+  HeaderButton,
+  FilterHeaderContainer,
+  FilterHeaderButton,
+} from "./ViewHeader.styled";
 
 import { color } from "metabase/lib/colors";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
-
-const FilterButton = props => (
-  <ViewButton
-    medium
-    icon="filter"
-    color={color("filter")}
-    labelBreakpoint="sm"
-    {...props}
-  />
-);
 
 export default function QuestionFilters({
   className,
@@ -85,6 +80,74 @@ export default function QuestionFilters({
   );
 }
 
+export function FilterHeaderToggle({
+  className,
+  question,
+  onExpand,
+  expanded,
+  onCollapse,
+}) {
+  const query = question.query();
+  const filters = query.topLevelFilters();
+  if (filters.length === 0) {
+    return null;
+  }
+  return (
+    <div className={className}>
+      <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
+        <FilterHeaderButton
+          small
+          rounded
+          icon="filter"
+          onClick={expanded ? onCollapse : onExpand}
+          active={expanded}
+          data-testid="filters-visibility-control"
+        >
+          <span>{filters.length}</span>
+        </FilterHeaderButton>
+      </Tooltip>
+    </div>
+  );
+}
+
+export function FilterHeader({ className, question, expanded }) {
+  const query = question.query();
+  const filters = query.topLevelFilters();
+  if (filters.length === 0 || !expanded) {
+    return null;
+  }
+  return (
+    <FilterHeaderContainer className={className}>
+      <div className="flex flex-wrap align-center">
+        {filters.map((filter, index) => (
+          <PopoverWithTrigger
+            key={index}
+            triggerElement={
+              <FilterPill
+                onRemove={() => filter.remove().update(null, { run: true })}
+              >
+                {filter.displayName()}
+              </FilterPill>
+            }
+            triggerClasses="flex flex-no-shrink align-center mr1 mb1"
+            sizeToFit
+          >
+            <FilterPopover
+              isTopLevel
+              query={query}
+              filter={filter}
+              onChangeFilter={newFilter =>
+                newFilter.replace().update(null, { run: true })
+              }
+              className="scroll-y"
+            />
+          </PopoverWithTrigger>
+        ))}
+      </div>
+    </FilterHeaderContainer>
+  );
+}
+
 export function QuestionFilterWidget({
   isShowingFilterSidebar,
   onAddFilter,
@@ -92,13 +155,38 @@ export function QuestionFilterWidget({
   ...props
 }) {
   return (
-    <FilterButton
+    <HeaderButton
+      large
+      labelBreakpoint="sm"
+      color={color("filter")}
       onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
       active={isShowingFilterSidebar}
       {...props}
     >
       {t`Filter`}
-    </FilterButton>
+    </HeaderButton>
+  );
+}
+
+export function MobileQuestionFilterWidget({
+  isShowingFilterSidebar,
+  onAddFilter,
+  onCloseFilter,
+  ...props
+}) {
+  return (
+    <ViewButton
+      large
+      primary
+      color={color("filter")}
+      labelBreakpoint="sm"
+      icon="filter"
+      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
+      active={isShowingFilterSidebar}
+      {...props}
+    >
+      &nbsp;
+    </ViewButton>
   );
 }
 

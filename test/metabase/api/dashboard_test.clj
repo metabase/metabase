@@ -455,9 +455,10 @@
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
             ;; now make an API call to move collections. Should fail
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
-                                         {:collection_id (u/the-id new-collection)})))))))))
+            (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
+                                               {:collection_id (u/the-id new-collection)})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1056,7 +1057,7 @@
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
              (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))      )
+             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id
@@ -1366,7 +1367,7 @@
 
 (defn- add-query-params [url query-params]
   (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
-                                     (codec/form-encode {k v})))]
+                                         (codec/form-encode {k v})))]
     (cond-> url
       (seq query-params-str) (str "?" query-params-str))))
 
@@ -1504,8 +1505,8 @@
       (testing "GET /api/dashboard/:id/params/:param-key/values"
         (let-url [url (chain-filter-values-url dashboard "_ID_")]
           (is (= [[29 "20th Century Cafe"]
-                  [ 8 "25°"              ]
-                  [93 "33 Taps"          ]]
+                  [ 8 "25°"]
+                  [93 "33 Taps"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url)))))
         (let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
           (is (= [[55 "Dal Rae Restaurant"]
@@ -1597,8 +1598,8 @@
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashboard-card-query-url [dashboard-id card-id]
-  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+(defn- dashboard-card-query-url [dashboard-id card-id dashcard-id]
+  (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
 (defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
   {:database_id (s/eq (mt/id))
@@ -1608,13 +1609,13 @@
    s/Keyword    s/Any})
 
 (deftest dashboard-card-query-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/with-temp-copy-of-db
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card}]
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
         (letfn [(url [& {:keys [dashboard-id card-id]
                          :or   {dashboard-id dashboard-id
                                 card-id      card-id}}]
-                  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+                  (dashboard-card-query-url dashboard-id card-id dashcard-id))
                 (dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
                   {:database_id (s/eq (mt/id))
                    :row_count   (s/eq row-count)
@@ -1654,7 +1655,7 @@
 (deftest dashboard-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-      (let [url (dashboard-card-query-url dashboard-id card-id)]
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
         (testing "parameters"
           (testing "Should respect valid parameters"
             (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
@@ -1703,11 +1704,11 @@
     (streaming.test-util/parse-result export-format is)))
 
 (deftest dashboard-card-query-export-format-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format"
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
       (doseq [export-format [:csv :json :xlsx]]
         (testing (format "Export format = %s" export-format)
-          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id) (name export-format))]
+          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
             (is (= (streaming.test-util/process-query-basic-streaming
                     export-format
                     (mt/mbql-query venues {:filter [:= $price 4]}))
@@ -1718,16 +1719,17 @@
                                                                               :value 4}]))
                     export-format)))))))))
 
+(defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
+  (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
+
 (deftest dashboard-card-query-pivot-test
-  (testing "POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query"
+  (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (pivots/applicable-drivers)
       (mt/dataset sample-dataset
         (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                        Card          [card (pivots/pivot-card)]
-                        DashboardCard [_ {:dashboard_id dashboard-id, :card_id (u/the-id card)}]]
-          (let [result (mt/user-http-request :rasta :post 202 (format "dashboard/%d/card/pivot/%d/query"
-                                                                      dashboard-id
-                                                                      (u/the-id card)))
+                        Card          [{card-id :id} (pivots/pivot-card)]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+          (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
                   rows   (mt/rows result)]
               (is (= 1144 (:row_count result)))
               (is (= "completed" (:status result)))

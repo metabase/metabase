@@ -3,7 +3,6 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
@@ -47,31 +46,17 @@
   (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
-
-(defn- data-uri-svg? [url]
-  (re-matches data-uri-svg-regex url))
-
-(defn- themed-image-url
-  [url color]
-  (try
-    (let [base64 (second (re-matches data-uri-svg-regex url))
-          svg    (u/decode-base64 base64)
-          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
-      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-    (catch Throwable e
-      url)))
-
 (defn- logo-url []
-  (let [url   (public-settings/application-logo-url)
-        color (render.style/primary-color)]
+  (let [url (public-settings/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+
+      :else nil
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
       ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
-      true                              nil
-      (data-uri-svg? url)               (themed-image-url url color)
-      :else                             url)))
+      ;; (data-uri-svg? url)               (themed-image-url url color)
+      ;; :else                             url
+      )))
 
 (defn- icon-bundle
   [icon-name]
@@ -491,7 +476,7 @@
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
-  [{:keys [alert_above_goal alert_condition card creator] :as alert}]
+  [{:keys [alert_above_goal alert_condition] :as _alert}]
   (if (= "goal" alert_condition)
     (if (true? alert_above_goal)
       :meets
@@ -627,14 +612,14 @@
 
 (defn send-admin-unsubscribed-alert-email!
   "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
-  [alert user-added {:keys [first_name last_name] :as admin}]
+  [alert user-added {:keys [first_name last_name] :as _admin}]
   (let [admin-name (format "%s %s" first_name last_name)]
     (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
                  (assoc (common-alert-context alert) :adminName admin-name))))
 
 (defn send-you-were-added-alert-email!
   "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
-  [alert user-added {:keys [first_name last_name] :as admin-adder}]
+  [alert user-added {:keys [first_name last_name] :as _admin-adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
     (send-email! user-added subject added-template (common-alert-context alert alert-condition-text))))
 
@@ -642,12 +627,24 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [alert user {:keys [first_name last_name] :as archiver}]
+  [alert user {:keys [first_name last_name] :as _archiver}]
   (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [alert user {:keys [first_name last_name] :as archiver}]
+  [alert user {:keys [first_name last_name] :as _archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+
+(defn send-slack-token-error-emails!
+  "Email all admins when a Slack API call fails due to a revoked token or other auth error"
+  []
+  (email/send-message!
+   :subject (trs "Your Slack connection stopped working")
+   :recipients (all-admin-recipients)
+   :message-type :html
+   :message (stencil/render-file "metabase/email/slack_token_error.mustache"
+                                 (merge (common-context)
+                                        {:logoHeader  true
+                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))

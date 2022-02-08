@@ -19,6 +19,8 @@ import {
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
   getParametersMappedToDashcard,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { applyParameters } from "metabase/meta/Card";
 import {
@@ -55,6 +57,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
+  getDashboardParameterValuesSearchCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -129,6 +132,9 @@ export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
+
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -566,6 +572,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
           {
             uuid: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
             cardId: card.id,
             parameters: datasetQuery.parameters
               ? JSON.stringify(datasetQuery.parameters)
@@ -605,6 +612,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         maybeUsePivotEndpoint(endpoint, card)(
           {
             dashboardId: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
             cardId: card.id,
             parameters: datasetQuery.parameters,
             ignore_cache: ignoreCache,
@@ -972,7 +980,10 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         .setSettings(dashcard.card.visualization_settings)
         .lockDisplay();
     } else {
-      question = question.setCard(dashcard.card).setDashboardId(dashboard.id);
+      question = question.setCard(dashcard.card).setDashboardProps({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+      });
     }
 
     const parametersMappedToCard = getParametersMappedToDashcard(
@@ -1003,3 +1014,44 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 
   return dispatch(loadMetadataForQueries(queries));
 };
+
+export const fetchDashboardParameterValues = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  ({ dashboardId, parameter, parameters, query }) => async (
+    dispatch,
+    getState,
+  ) => {
+    const parameterValuesSearchCache = getDashboardParameterValuesSearchCache(
+      getState(),
+    );
+    const filteringParameterValues = getFilteringParameterValuesMap(
+      parameter,
+      parameters,
+    );
+    const cacheKey = getParameterValuesSearchKey({
+      dashboardId,
+      parameterId: parameter.id,
+      query,
+      filteringParameterValues,
+    });
+
+    if (parameterValuesSearchCache[cacheKey]) {
+      return;
+    }
+
+    const endpoint = query
+      ? DashboardApi.parameterSearch
+      : DashboardApi.parameterValues;
+    const results = await endpoint({
+      paramId: parameter.id,
+      dashId: dashboardId,
+      query,
+      ...filteringParameterValues,
+    });
+
+    return {
+      cacheKey,
+      results: results.map(result => [].concat(result)),
+    };
+  },
+);

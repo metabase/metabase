@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { Box } from "grid-styled";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -22,6 +21,7 @@ import {
   SavedQuestionPickerRoot,
   CollectionsContainer,
   BackButton,
+  TreeContainer,
 } from "./SavedQuestionPicker.styled";
 import { buildCollectionTree, findCollectionByName } from "./utils";
 
@@ -114,15 +114,15 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {isDatasets ? t`Datasets` : t`Saved Questions`}
+          {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
-        <Box my={1}>
+        <TreeContainer>
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
             selectedId={selectedCollection.id}
           />
-        </Box>
+        </TreeContainer>
       </CollectionsContainer>
       <SavedQuestionList
         isDatasets={isDatasets}

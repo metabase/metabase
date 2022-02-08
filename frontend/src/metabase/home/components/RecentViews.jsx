@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import SidebarSection from "./SidebarSection";
 import * as Urls from "metabase/lib/urls";
 
@@ -30,7 +30,7 @@ export default class RecentViews extends Component {
     } else if (model === "dashboard") {
       return "dashboard";
     } else if (model === "dataset") {
-      return "dataset";
+      return "model";
     } else if (model === "table") {
       return "database";
     } else {

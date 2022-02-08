@@ -14,7 +14,7 @@ describeWithToken("scenarios > admin > settings > SSO > JWT", () => {
       .closest("li")
       .within(() => {
         cy.findByText("Disabled")
-          .siblings("a")
+          .siblings("input")
           .click();
       });
     cy.findByText("Enabled");

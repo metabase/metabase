@@ -9,6 +9,7 @@ import {
   Series,
   ChartSettings,
   ChartStyle,
+  HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
@@ -27,10 +28,11 @@ import {
   calculateMargin,
   getXTicksDimensions,
   getXTickWidthLimit,
-  calculateLegendItems,
   calculateBounds,
   calculateYDomains,
   sortSeries,
+  getLegendColumns,
+  calculateStackedItems,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -45,11 +47,16 @@ export interface XYChartProps {
 export const XYChart = ({
   width,
   height,
-  series,
+  series: originalSeries,
   settings,
   style,
 }: XYChartProps) => {
-  series = sortSeries(series, settings.x.type);
+  let series: HydratedSeries[] = sortSeries(originalSeries, settings.x.type);
+
+  if (settings.stacking === "stack") {
+    series = calculateStackedItems(series);
+  }
+
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,
@@ -70,6 +77,7 @@ export const XYChart = ({
     yTickWidths.left,
     yTickWidths.right,
     xTicksDimensions.height,
+    xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
     !!settings.goal,
@@ -95,20 +103,16 @@ export const XYChart = ({
 
   const defaultYScale = yScaleLeft || yScaleRight;
 
-  const legendWidth = width - 2 * CHART_PADDING;
-  const legend = calculateLegendItems(
-    series,
-    legendWidth,
-    style.legend.lineHeight,
-    style.legend.fontSize,
-  );
+  const { leftColumn, rightColumn } = getLegendColumns(series);
+  const legendHeight =
+    Math.max(leftColumn.length, rightColumn.length) * style.legend.lineHeight;
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,
     xTicksDimensions.maxTextWidth,
     xScale.bandwidth,
   );
-  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 5;
+  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 4;
 
   const labelProps: Partial<TextProps> = {
     fontWeight: style.axes.labels.fontWeight,
@@ -125,8 +129,12 @@ export const XYChart = ({
     textAnchor: "end",
   };
 
+  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksHidden = settings.x.tick_display === "hide";
+  const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
+
   return (
-    <svg width={width} height={height + legend.height}>
+    <svg width={width} height={height + legendHeight}>
       <Group top={margin.top} left={xMin}>
         {defaultYScale && (
           <GridRows
@@ -150,6 +158,7 @@ export const XYChart = ({
           yScaleLeft={yScaleLeft}
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
+          areStacked={settings.stacking === "stack"}
         />
         <LineSeries
           series={lines}
@@ -206,34 +215,41 @@ export const XYChart = ({
 
       <AxisBottom
         scale={xScale.scale}
-        label={settings.labels.bottom}
+        label={areXTicksRotated ? undefined : settings.labels.bottom}
         top={yMin}
         left={xMin}
         numTicks={xTicksCount}
+        labelOffset={xLabelOffset}
         stroke={style.axes.color}
         tickStroke={style.axes.color}
+        hideTicks={settings.x.tick_display === "hide"}
         labelProps={labelProps}
         tickFormat={value =>
           formatXTick(value.valueOf(), settings.x.type, settings.x.format)
         }
-        tickComponent={props => (
-          <Text
-            {...getXTickProps(
-              props,
-              style.axes.ticks.fontSize,
-              xTickWidthLimit,
-              settings.x.tick_display === "rotate-45",
-            )}
-          />
-        )}
+        tickComponent={props =>
+          areXTicksHidden ? null : (
+            <Text
+              {...getXTickProps(
+                props,
+                style.axes.ticks.fontSize,
+                xTickWidthLimit,
+                areXTicksRotated,
+              )}
+            />
+          )
+        }
         tickLabelProps={() => tickProps}
       />
 
       <Legend
-        legend={legend}
-        left={CHART_PADDING}
+        leftColumn={leftColumn}
+        rightColumn={rightColumn}
+        padding={CHART_PADDING}
         top={height}
-        width={legendWidth}
+        width={width}
+        lineHeight={style.legend.lineHeight}
+        fontSize={style.legend.fontSize}
       />
     </svg>
   );

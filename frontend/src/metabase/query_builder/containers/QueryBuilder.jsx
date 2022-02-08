@@ -30,7 +30,7 @@ import {
   getUiControls,
   getParameters,
   getDatabaseFields,
-  getSampleDatasetId,
+  getSampleDatabaseId,
   getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
@@ -126,7 +126,7 @@ const mapStateToProps = (state, props) => {
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
-    sampleDatasetId: getSampleDatasetId(state),
+    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -249,11 +249,13 @@ export default class QueryBuilder extends Component {
     this.setRecentlySaved("created");
   };
 
-  handleSave = async card => {
+  handleSave = async (card, { rerunQuery = false } = {}) => {
     const { question, apiUpdateQuestion, updateUrl } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
-    await apiUpdateQuestion(questionWithUpdatedCard);
-    await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+    await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+    if (!rerunQuery) {
+      await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+    }
 
     if (this.props.fromUrl) {
       this.props.onChangeLocation(this.props.fromUrl);

@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc } from "icepick";
+import { assoc, dissoc, merge } from "icepick";
 
 import {
   RESET_QB,
@@ -37,6 +37,8 @@ import {
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
   CANCEL_DATASET_CHANGES,
+  SET_RESULTS_METADATA,
+  SET_METADATA_DIFF,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -67,7 +69,9 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  previousQueryBuilderMode: false,
   snippetCollectionId: null,
+  datasetEditorTab: "query", // "query" / "metadata"
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -90,7 +94,18 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
+      next: (
+        { queryBuilderMode: currentQBMode, ...state },
+        { payload: { queryBuilderMode: nextQBMode, ...payload } },
+      ) => ({
+        ...state,
+        ...payload,
+        queryBuilderMode: nextQBMode || currentQBMode,
+        previousQueryBuilderMode:
+          nextQBMode && currentQBMode !== nextQBMode
+            ? currentQBMode
+            : state.previousQueryBuilderMode,
+      }),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -221,11 +236,23 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: undefined,
     }),
-    [onCloseQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onCloseQuestionDetails]: (
+      state,
+      { payload: { closeOtherSidebars } = {} } = {},
+    ) => {
+      if (closeOtherSidebars) {
+        return {
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          questionDetailsTimelineDrawerState: undefined,
+        };
+      }
+      return {
+        ...state,
+        isShowingQuestionDetailsSidebar: false,
+        questionDetailsTimelineDrawerState: undefined,
+      };
+    },
     [onOpenQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -269,6 +296,7 @@ export const card = handleActions(
       next: (state, { payload: { card } }) => ({
         ...state,
         display: card.display,
+        result_metadata: card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -353,10 +381,46 @@ export const queryResults = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
+    [SET_RESULTS_METADATA]: {
+      next: (state, { payload: results_metadata }) => {
+        const [result] = state;
+        const { columns } = results_metadata;
+        return [
+          {
+            ...result,
+            data: {
+              ...result.data,
+              cols: columns,
+              results_metadata,
+            },
+          },
+        ];
+      },
+    },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
     [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
+);
+
+export const metadataDiff = handleActions(
+  {
+    [RESET_QB]: { next: () => ({}) },
+    [API_UPDATE_QUESTION]: { next: () => ({}) },
+    [SET_METADATA_DIFF]: {
+      next: (state, { payload }) => {
+        const { field_ref, changes } = payload;
+        return {
+          ...state,
+          [field_ref]: state[field_ref]
+            ? merge(state[field_ref], changes)
+            : changes,
+        };
+      },
+    },
+    [CANCEL_DATASET_CHANGES]: { next: () => ({}) },
+  },
+  {},
 );
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.

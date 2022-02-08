@@ -50,7 +50,7 @@
   (driver/with-driver (tx/driver)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (mt/id))
-      (:pre (mt/test-qp-middleware add-implicit-joins/add-implicit-joins query)))))
+      (add-implicit-joins/add-implicit-joins query))))
 
 (deftest basic-test
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"
@@ -415,3 +415,56 @@
                                  :source-table $$users
                                  :condition    [:= *user_id &u.users.id]}]
                  :limit        10})))))))
+
+(deftest dont-add-duplicate-fields-test
+  (testing "Don't add duplicate `:fields` to parent query if they are only different because of namespaced options"
+    (mt/dataset sample-dataset
+      (is (query= (mt/mbql-query orders
+                    {:source-query {:source-table $$orders
+                                    :joins        [{:source-table $$products
+                                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                    :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                                    :fields       :none
+                                                    :strategy     :left-join
+                                                    :fk-field-id  %product_id}]
+                                    :fields       [[:field
+                                                    %product_id
+                                                    {::namespaced true}]
+                                                   [:field
+                                                    %products.title
+                                                    {:source-field %product_id
+                                                     :join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                     ::namespaced  true}]]}
+                     :fields       [[:field %product_id {::namespaced true}]
+                                    [:field
+                                     %products.title
+                                     {:source-field %product_id
+                                      :join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                      ::namespaced  true}]]})
+                  (-> (mt/mbql-query orders
+                        {:source-query    {:source-table $$orders
+                                           :fields       [[:field
+                                                           %product_id
+                                                           {::namespaced true}]
+                                                          [:field
+                                                           %products.title
+                                                           {:source-field %product_id, ::namespaced true}]]}
+                         :source-metadata [{:base_type         :type/Text
+                                            :coercion_strategy nil
+                                            :display_name      "Product → Title"
+                                            :effective_type    :type/Text
+                                            :field_ref         $product_id->products.title
+                                            :fingerprint       nil
+                                            :id                93899
+                                            :name              "TITLE"
+                                            :parent_id         nil
+                                            :semantic_type     nil
+                                            :settings          nil
+                                            :source_alias      "PRODUCTS__via__PRODUCT_ID"
+                                            :table_id          $$products}]
+                         :fields          [[:field %product_id {::namespaced true}]
+                                           [:field
+                                            %products.title
+                                            {:source-field %product_id, ::namespaced true}]]})
+                      add-implicit-joins
+                      (m/dissoc-in [:query :source-metadata])))))))

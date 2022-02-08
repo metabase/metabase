@@ -6,7 +6,7 @@
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency :refer [Dependency]]
+            [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
             [metabase.models.params :as params]
@@ -91,7 +91,10 @@
   ([instance]
    (serialize-instance nil nil instance))
   ([_ _ instance]
-   (dissoc instance :created_at :updated_at :result_metadata)))
+   (cond-> (dissoc instance :created_at :updated_at)
+     ;; datasets should preserve edits to metadata
+     (not (:dataset instance))
+     (dissoc :result_metadata))))
 
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -177,7 +180,7 @@
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
-(defn- pre-insert [{query :dataset_query, :as card}]
+(defn- pre-insert [card]
   (u/prog1 card
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)

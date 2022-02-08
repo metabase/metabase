@@ -50,10 +50,12 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("2e")[0].message).toEqual("Missing exponent");
     expect(errors("3e+")[0].message).toEqual("Missing exponent");
     expect(errors("4E-")[0].message).toEqual("Missing exponent");
+    expect(errors("4E-")[0].len).toEqual(3);
   });
 
   it("should catch a lone decimal point", () => {
     expect(errors(".")[0].message).toEqual("Invalid character: .");
+    expect(errors(".")[0].len).toEqual(1);
   });
 
   it("should tokenize string literals", () => {
@@ -157,5 +159,6 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("!")[0].message).toEqual("Invalid character: !");
     expect(errors(" % @")[1].message).toEqual("Invalid character: @");
     expect(errors("    #")[0].pos).toEqual(4);
+    expect(errors("    #")[0].len).toEqual(1);
   });
 });

@@ -5,7 +5,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [taoensso.nippy :as nippy])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream EOFException FilterOutputStream InputStream OutputStream]
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
+            EOFException FilterOutputStream InputStream OutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]))
 
 (defn- max-bytes-output-stream ^OutputStream
@@ -38,7 +39,7 @@
   [in-chan out-chan ^ByteArrayOutputStream bos ^DataOutputStream os]
   (a/go
     (let [timeout-chan (a/timeout serialization-timeout-ms)
-          [val port]   (a/alts! [out-chan timeout-chan])]
+          [_val port]   (a/alts! [out-chan timeout-chan])]
       (when (= port timeout-chan)
         (a/>! out-chan (ex-info (tru "Serialization timed out after {0}." (u/format-milliseconds serialization-timeout-ms))
                                 {}))))
@@ -124,7 +125,7 @@
   [^InputStream is]
   (try
     (nippy/thaw-from-in! is)
-    (catch EOFException e
+    (catch EOFException _e
       ::eof)))
 
 (defn- reducible-rows
@@ -132,15 +133,18 @@
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (loop [acc init]
-        (if (reduced? acc)
-          acc
-          (let [row (thaw! is)]
-            (if (= ::eof row)
-              acc
-              (recur (rf acc row)))))))))
+        ;; NORMALLY we would be checking whether `acc` is `reduced?` here and stop reading from the database if it was,
+        ;; but since we currently store the final metadata at the very end of the database entry as a special pseudo-row
+        ;; we actually have to keep reading the whole thing until we get to that last result. Don't worry, the reducing
+        ;; functions can just throw out everything we don't need. See
+        ;; [[metabase.query-processor.middleware.cache/cache-version]] for a description of our caching format.
+        (let [row (thaw! is)]
+          (if (= row ::eof)
+            acc
+            (recur (rf acc row))))))))
 
 (defn do-reducible-deserialized-results
-  "Impl for `with-reducible-deserialized-results`."
+  "Impl for [[with-reducible-deserialized-results]]."
   [^InputStream is f]
   (with-open [is (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
     (let [metadata (thaw! is)]

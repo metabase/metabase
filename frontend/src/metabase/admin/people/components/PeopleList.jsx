@@ -10,7 +10,7 @@ import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
 import PaginationControls from "metabase/components/PaginationControls";

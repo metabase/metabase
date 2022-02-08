@@ -2,7 +2,7 @@ import styled from "styled-components";
 
 import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -64,7 +64,7 @@ export const ResultLink = styled(Link)`
     }
   }
 
-  ${Link} {
+  ${Link.Root} {
     text-underline-position: under;
     text-decoration: underline ${color("text-light")};
     text-decoration-style: dashed;
@@ -92,6 +92,11 @@ export const ResultLink = styled(Link)`
   .Icon-info {
     color: ${color("text-light")};
   }
+`;
+
+export const ResultLinkContent = styled.div`
+  display: flex;
+  align-items: start;
 `;
 
 export const Description = styled(Text)`

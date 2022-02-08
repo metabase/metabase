@@ -420,11 +420,12 @@
   (set/map-invert db->norm-param-ref-keys))
 
 (def ^:private db->norm-table-columns-keys
-  {:name     ::table-column-name
+  {:name      ::table-column-name
    ; for now, do not translate the value of this key (the field vector)
-   :fieldref ::table-column-field-ref
-   :fieldRef ::table-column-field-ref
-   :enabled  ::table-column-enabled})
+   :fieldref  ::table-column-field-ref
+   :field_ref ::table-column-field-ref
+   :fieldRef  ::table-column-field-ref
+   :enabled   ::table-column-enabled})
 
 (def ^:private norm->db-table-columns-keys
   (set/map-invert db->norm-table-columns-keys))
@@ -560,7 +561,7 @@
                  (let [k1 (parse-db-column-ref k)
                        v1 (db->norm-column-settings-entries v)]
                    (assoc m k1 v1))
-                 (catch #?(:clj Throwable :cljs js/Error) e
+                 (catch #?(:clj Throwable :cljs js/Error) _e
                    m)))
              {}
              settings))

@@ -123,7 +123,7 @@
   (log/info (trs "Marking tables as inactive:")
             (for [table old-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
-  (doseq [{schema :schema, table-name :name, :as table} old-tables]
+  (doseq [{schema :schema, table-name :name, :as _table} old-tables]
     (db/update-where! Table {:db_id  (u/the-id database)
                              :schema schema
                              :name   table-name

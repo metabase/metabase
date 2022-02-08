@@ -41,3 +41,7 @@ export const BackButton = styled.a`
     color: ${color("brand")};
   }
 `;
+
+export const TreeContainer = styled.div`
+  margin: 0.5rem 0;
+`;

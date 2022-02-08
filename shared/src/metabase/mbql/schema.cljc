@@ -75,15 +75,6 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-;; TODO -- rename to `TemporalUnit`
-(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
-  `DateTimeUnit` instead."
-  (s/named
-   (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-                   :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
-   "datetime-unit"))
-
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -258,12 +249,15 @@
 
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
 ;;
-;;    [:+ [:field 1 nil] [:field 2 nil]]`
+;;    [:+ [:field 1 nil] [:field 2 nil]]
+;;
+;; As of 0.42.0 `:expression` references can have an optional options map
 (defclause ^{:requires-features #{:expressions}} expression
-  expression-name helpers/NonBlankString)
+  expression-name helpers/NonBlankString
+  options         (optional (s/pred map? "map")))
 
 (def BinningStrategyName
-  "Schema for a valid value for the `strategy-name` param of a `binning-strategy` clause."
+  "Schema for a valid value for the `strategy-name` param of a [[field]] clause with `:binning` information."
   (s/enum :num-bins :bin-width :default))
 
 (defn- validate-bin-width [schema]
@@ -389,7 +383,7 @@
 (def ^:private Field*
   (one-of expression field))
 
-;; TODO -- consider renaming this FieldOrExpression,
+;; TODO -- consider renaming this FieldOrExpression
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   (s/recursive #'Field*))
@@ -408,7 +402,11 @@
 ;;
 ;; TODO - it would be nice if we could check that there's actually an aggregation with the corresponding index,
 ;; wouldn't it
-(defclause aggregation, aggregation-clause-index s/Int)
+;;
+;; As of 0.42.0 `:aggregation` references can have an optional options map.
+(defclause aggregation
+  aggregation-clause-index s/Int
+  options                  (optional (s/pred map? "map")))
 
 (def FieldOrAggregationReference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
@@ -812,6 +810,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
@@ -847,7 +846,8 @@
   {;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    (s/optional-key :name)         helpers/NonBlankString
    ;; user-facing display name for this aggregation instead of the default one
-   (s/optional-key :display-name) helpers/NonBlankString})
+   (s/optional-key :display-name) helpers/NonBlankString
+   s/Keyword                      s/Any})
 
 (defclause aggregation-options
   aggregation UnnamedAggregation
@@ -1082,11 +1082,17 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre helpers/IntGreaterThanZero source-table-card-id-regex))
 
+(def join-strategies
+  "Valid values of the `:strategy` key in a join map."
+  #{:left-join :right-join :inner-join :full-join})
+
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
-  (s/enum :left-join :right-join :inner-join :full-join))
+  (apply s/enum join-strategies))
+
+(declare Fields)
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
@@ -1142,7 +1148,7 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      [field])
+      (s/recursive #'Fields))
     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
@@ -1194,8 +1200,7 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (helpers/non-empty [Aggregation])
     (s/optional-key :breakout)     (helpers/non-empty [Field])
-    ;; TODO - expressions keys should be strings; fix this when we get a chance (#14647)
-    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
+    (s/optional-key :expressions)  {helpers/NonBlankString FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        helpers/IntGreaterThanOrEqualToZero
@@ -1515,7 +1520,6 @@
           :embedded-question
           :json-download
           :map-tiles
-          :metabot
           :public-dashboard
           :public-question
           :pulse
@@ -1536,16 +1540,14 @@
    (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :nested?)      (s/maybe s/Bool)
-
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe #?(:clj (Class/forName "[B")
-                                              :cljs s/Any))})
+   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+                                            :cljs s/Any))})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

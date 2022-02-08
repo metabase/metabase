@@ -11,10 +11,11 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
-            [metabase.db.env :as mdb.env]
+            [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as collection.graph]
+            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
@@ -79,20 +80,23 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [namespace]
-  {namespace (s/maybe su/NonBlankString)}
-  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as x}]
+  [exclude-archived namespace]
+  {exclude-archived (s/maybe su/BooleanString)
+   namespace        (s/maybe su/NonBlankString)}
+  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
-                               :card #{}}
-                              (db/reducible-query {:select [:collection_id :dataset]
+                               :card    #{}}
+                              (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
-                                                   :from [:report_card]
-                                                   :where [:= :archived false]}))]
+                                                   :from      [:report_card]
+                                                   :where     [:= :archived false]}))]
     (collection/collections->tree
      coll-type-ids
      (db/select Collection
                 {:where [:and
+                         (when exclude-archived
+                           [:= :archived false])
                          [:= :namespace namespace]
                          (collection/visible-collection-ids->honeysql-filter-clause
                           :id
@@ -187,7 +191,7 @@
     (dissoc row :description :display :authority_level :moderated_status)))
 
 (defmethod collection-children-query :snippet
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived?]}]
   {:select [:id :name [(hx/literal "snippet") :model]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
@@ -370,7 +374,7 @@
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
            (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= @mdb.env/db-type :postgres))
+             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
                                      [(hx/cast typpe nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
@@ -439,8 +443,8 @@
     [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
-  [collection models {:keys [collection-namespace sort-info] :as options}]
-  (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
+  [collection models {:keys [sort-info] :as options}]
+  (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)
@@ -474,7 +478,7 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
+   {:keys [models], :as options} :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))

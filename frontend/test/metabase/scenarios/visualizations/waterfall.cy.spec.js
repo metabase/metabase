@@ -5,9 +5,9 @@ import {
   openNativeEditor,
   visualize,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -139,9 +139,6 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -156,8 +153,6 @@ describe("scenarios > visualizations > waterfall", () => {
       },
       display: "line",
     });
-
-    cy.wait("@dataset");
 
     cy.findByText("Visualization").click();
     cy.findByTestId("Waterfall-button").click();

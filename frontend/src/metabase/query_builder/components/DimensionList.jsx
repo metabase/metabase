@@ -3,11 +3,10 @@ import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { DimensionPicker } from "./DimensionPicker";
@@ -173,21 +172,6 @@ export default class DimensionList extends Component {
     );
   }
 
-  renderItemWrapper = (itemContent, item) => {
-    if (item.dimension) {
-      const dimension = this._getDimensionFromItem(item);
-      if (dimension) {
-        return (
-          <DimensionInfoPopover dimension={dimension}>
-            {itemContent}
-          </DimensionInfoPopover>
-        );
-      }
-    }
-
-    return itemContent;
-  };
-
   _getDimensionFromItem(item) {
     const {
       enableSubDimensions,
@@ -251,7 +235,6 @@ export default class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        renderItemWrapper={this.renderItemWrapper}
         getItemClassName={() => "hover-parent hover--display"}
       />
     );

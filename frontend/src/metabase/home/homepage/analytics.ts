@@ -1,5 +1,5 @@
 import { trackStructEvent } from "metabase/lib/analytics";
-import { Database, Dashboard } from "./types";
+import { Database, Dashboard } from "metabase-types/api";
 
 export const trackCollectionClick = () => {
   trackStructEvent("Homepage", "Browse Items Clicked");

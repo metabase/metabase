@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 import cx from "classnames";
 

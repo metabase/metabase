@@ -239,10 +239,12 @@
                        :pivot-cols [1])]
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
-        (is (= (m/dissoc-in (pivot/run-pivot-query query)
-                            [:data :results_metadata :checksum])
-               (m/dissoc-in (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
-                            [:data :results_metadata :checksum]))))
+        (is (= (-> (pivot/run-pivot-query query)
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form]))
+               (-> (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form])))))
 
       (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
         ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle

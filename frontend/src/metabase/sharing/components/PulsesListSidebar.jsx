@@ -6,7 +6,6 @@ import cx from "classnames";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
@@ -19,6 +18,7 @@ import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
+import { SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -41,7 +41,7 @@ function _PulsesListSidebar({
       <div className="px4 pt3 flex justify-between align-center">
         <Subhead>{t`Subscriptions`}</Subhead>
 
-        <Flex align="center">
+        <SidebarActions>
           <Tooltip tooltip={t`Set up a new schedule`}>
             <Icon
               name="add"
@@ -58,7 +58,7 @@ function _PulsesListSidebar({
               onClick={onCancel}
             />
           </Tooltip>
-        </Flex>
+        </SidebarActions>
       </div>
       <div className="my2 mx4">
         {pulses.map(pulse => {
@@ -219,39 +219,49 @@ PulseDetails.propTypes = {
 };
 
 function friendlySchedule(channel) {
+  const {
+    channel_type,
+    details,
+    schedule_day,
+    schedule_frame,
+    schedule_hour,
+    schedule_type,
+  } = channel;
+
   let scheduleString = "";
-  if (channel.channel_type === "email") {
+
+  if (channel_type === "email") {
     scheduleString += t`Emailed `;
-  } else if (channel.channel_type === "slack") {
-    scheduleString += t`Sent to ` + channel.details.channel + " ";
+  } else if (channel_type === "slack") {
+    scheduleString += t`Sent to ` + details.channel + " ";
   } else {
     scheduleString += t`Sent `;
   }
 
-  switch (channel.schedule_type) {
+  switch (schedule_type) {
     case "hourly":
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
+      const ampm = formatHourAMPM(schedule_hour);
       scheduleString += t`daily at ${ampm}`;
       break;
     }
     case "weekly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
+      const ampm = formatHourAMPM(schedule_hour);
+      const day = formatDay(schedule_day);
       scheduleString += t`${day} at ${ampm}`;
       break;
     }
     case "monthly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
-      const frame = formatFrame(channel.schedule_frame);
+      const ampm = formatHourAMPM(schedule_hour);
+      const day = schedule_day ? formatDay(schedule_day) : "calendar day";
+      const frame = formatFrame(schedule_frame);
       scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
       break;
     }
     default:
-      scheduleString += channel.schedule_type;
+      scheduleString += schedule_type;
   }
 
   return scheduleString;

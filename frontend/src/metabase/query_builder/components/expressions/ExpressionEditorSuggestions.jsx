@@ -6,7 +6,6 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 import { ListItemStyled, UlStyled } from "./ExpressionEditorSuggestions.styled";
 
@@ -119,13 +118,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
               </ListItemStyled>
             );
 
-            return suggestion.dimension ? (
-              <DimensionInfoPopover key={key} dimension={suggestion.dimension}>
-                {listItem}
-              </DimensionInfoPopover>
-            ) : (
-              <React.Fragment key={key}>{listItem}</React.Fragment>
-            );
+            return <React.Fragment key={key}>{listItem}</React.Fragment>;
           })}
         </UlStyled>
       </Popover>

@@ -46,3 +46,28 @@ const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
 export const clearInbox = () => {
   return cy.request("DELETE", "http://localhost:80/email/all");
 };
+
+export const openEmailPage = emailSubject => {
+  cy.window().then(win => (win.location.href = "http://localhost"));
+  cy.findByText(emailSubject).click();
+
+  return cy.hash().then(path => {
+    const htmlPath = `http://localhost${path.slice(1)}/html`;
+    cy.window().then(win => (win.location.href = htmlPath));
+    cy.findByText(emailSubject);
+  });
+};
+
+export const sendSubscriptionsEmail = recipient => {
+  cy.icon("share").click();
+  cy.findByText("Dashboard subscriptions").click();
+
+  cy.findByText("Email it").click();
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .click()
+    .type(`${recipient}{enter}`)
+    .blur();
+
+  cy.button("Send email now").click();
+  cy.button("Email sent", 30000);
+};

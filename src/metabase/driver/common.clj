@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
@@ -117,12 +116,12 @@
   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
     :display-name (deferred-tru "SSH tunnel host")
-    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :helper-text  (deferred-tru "The hostname that you use to connect to SSH tunnels.")
     :placeholder  "hostname"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
@@ -154,7 +153,7 @@
    {:name         "tunnel-private-key"
     :display-name (deferred-tru "SSH private key to connect to the tunnel")
     :type         :string
-    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :placeholder  (deferred-tru "Paste the contents of an SSH private key here")
     :required     true
     :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"
@@ -186,7 +185,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
@@ -251,7 +250,7 @@
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
                     "\n"
-                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
+                    (str/join " - " ips))))})
 
 (def default-connection-info-fields
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
@@ -323,27 +322,25 @@
   :hierarchy #'driver/hierarchy)
 
 (defn ^:deprecated current-db-time
-  "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
-  `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
-  the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided.
+  "Implementation of [[metabase.driver/current-db-time]] using the [[current-db-time-native-query]] and
+  [[current-db-time-date-formatters]] multimethods defined above. Execute a native query for the current time, and
+  parse the results using the date formatters, preserving the timezone. To use this implementation, you must implement
+  the aforementioned multimethods; no default implementation is provided.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   ^org.joda.time.DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
-          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                            {:settings {:report-timezone report-tz}})
           time-str        (try
                             ;; need to initialize the store since we're calling `execute-reducible-query` directly
                             ;; instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}
-                                    reduce (fn [metadata reducible-rows]
+                                    reduce (fn [_metadata reducible-rows]
                                              (transduce
                                               identity
                                               (fn
@@ -354,8 +351,10 @@
                                 (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
                             (catch Exception e
                               (throw
-                               (Exception.
-                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+                               (ex-info (tru "Error querying database {0} for current time: {1}"
+                                             (pr-str (:name database)) (ex-message e))
+                                        {:driver driver, :query native-query}
+                                        e))))]
       (try
         (when time-str
           (first-successful-parse date-formatters time-str))
@@ -436,11 +435,19 @@
 (def ^:private days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
+(defn start-of-week->int
+  "Returns the int value for the current :start-of-week setting value, which ranges from 0 (:monday) to 6 (:sunday).
+  If the :start-of-week setting does not have a value, then `nil` is returned."
+  {:added "0.42.0"}
+  []
+  (when-let [v (setting/get-value-of-type :keyword :start-of-week)]
+    (.indexOf ^clojure.lang.PersistentVector days-of-week v)))
+
 (s/defn start-of-week-offset :- s/Int
   "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
-        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-value-of-type :keyword :start-of-week))
+        target-start-of-week (start-of-week->int)
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))

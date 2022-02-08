@@ -59,6 +59,6 @@ function openAlertForQuestion(id = 1) {
 function toggleChannel(channel) {
   cy.findByText(channel)
     .parent()
-    .find("a")
+    .find("input")
     .click();
 }

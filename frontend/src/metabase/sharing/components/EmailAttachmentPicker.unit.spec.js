@@ -22,7 +22,7 @@ describe("EmailAttachmentPicker", () => {
     it("should have a Toggle that is not toggled", () => {
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
-      expect(toggle).toHaveAttribute("aria-checked", "false");
+      expect(toggle).not.toBeChecked();
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {
@@ -67,7 +67,7 @@ describe("EmailAttachmentPicker", () => {
     it("should have a toggled Toggle", () => {
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
-      expect(toggle).toHaveAttribute("aria-checked", "true");
+      expect(toggle).toHaveProperty("checked", true);
     });
 
     it("should have selected the xlsv format", () => {

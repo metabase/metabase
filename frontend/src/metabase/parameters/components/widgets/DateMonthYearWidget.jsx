@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import YearPicker from "./YearPicker";
-import { Flex } from "grid-styled";
 
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
+import { MonthContainer, MonthList } from "./DateMonthYearWidget.styled";
 
 export default class DateMonthYearWidget extends React.Component {
   constructor(props, context) {
@@ -57,17 +57,17 @@ export default class DateMonthYearWidget extends React.Component {
             onChange={year => this.setState({ year: year })}
           />
         </div>
-        <Flex flexWrap="wrap" width="100%" p={1}>
+        <MonthList>
           {_.range(0, 12).map(m => (
-            <Flex key={m} width={1 / 3} align="center" justifyContent="center">
+            <MonthContainer key={m}>
               <Month
                 month={m}
                 selected={m === month}
                 onClick={() => this.setState({ month: m }, onClose)}
               />
-            </Flex>
+            </MonthContainer>
           ))}
-        </Flex>
+        </MonthList>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
 const created = ORDERS.CREATED_AT.dimension().mbql();
 const total = ORDERS.TOTAL.dimension().mbql();

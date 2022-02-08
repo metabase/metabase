@@ -153,7 +153,7 @@ export default class Activity extends Component {
           description.summary = (
             <span>
               {item.model === "dataset"
-                ? t`saved a dataset based on `
+                ? t`saved a model based on `
                 : t`saved a question about `}
               <Link
                 to={Urls.tableRowsQuery(item.database_id, item.table_id)}
@@ -168,14 +168,12 @@ export default class Activity extends Component {
           );
         } else {
           description.summary =
-            item.model === "dataset" ? t`saved a dataset` : t`saved a question`;
+            item.model === "dataset" ? t`saved a model` : t`saved a question`;
         }
         break;
       case "card-delete":
         description.summary =
-          item.model === "dataset"
-            ? t`deleted a dataset`
-            : t`deleted a question`;
+          item.model === "dataset" ? t`deleted a model` : t`deleted a question`;
         break;
       case "dashboard-create":
         description.summary = t`created a dashboard`;

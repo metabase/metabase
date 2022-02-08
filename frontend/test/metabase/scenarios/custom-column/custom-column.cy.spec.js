@@ -7,9 +7,9 @@ import {
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -355,38 +355,37 @@ describe("scenarios > question > custom column", () => {
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            [CC_NAME]: [
-              "case",
-              [
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              [CC_NAME]: [
+                "case",
                 [
-                  [">", ["field", ORDERS.DISCOUNT, null], 0],
-                  ["field", ORDERS.CREATED_AT, null],
+                  [
+                    [">", ["field", ORDERS.DISCOUNT, null], 0],
+                    ["field", ORDERS.CREATED_AT, null],
+                  ],
                 ],
+                {
+                  default: [
+                    "field",
+                    PRODUCTS.CREATED_AT,
+                    { "source-field": ORDERS.PRODUCT_ID },
+                  ],
+                },
               ],
-              {
-                default: [
-                  "field",
-                  PRODUCTS.CREATED_AT,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
-              },
-            ],
+            },
           },
+          database: 1,
         },
-        database: 1,
+        display: "table",
       },
-      display: "table",
-    });
-
-    cy.wait("@dataset").should(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
-    });
+      { callback: xhr => expect(xhr.response.body.error).not.to.exist },
+    );
 
     cy.findByText(CC_NAME);
     cy.contains("37.65");
@@ -434,32 +433,114 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("No discount");
   });
 
-  it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
+  it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type("case([Discount] >0, [Created At], [Product → Created At])")
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "MiscDate",
-      );
-      cy.button("Done").click();
+
+    enterCustomColumnDetails({
+      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      name: "MiscDate",
     });
+
+    cy.button("Done").click();
+
     cy.findByText("Filter").click();
     popover()
       .contains("MiscDate")
       .click();
     // The popover shows up with the default value selected - previous 30 days.
-    // Since we don't have any orders in the Sample Dataset for that period, we have to change it to the previous 30 years.
+    // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.button("Add filter").click();
 
-    visualize(response => {
-      expect(response.body.error).to.not.exist;
+    visualize(({ body }) => {
+      expect(body.error).to.not.exist;
     });
 
-    cy.findByText("MiscDate");
+    cy.findByText("MiscDate Previous 30 Years"); // Filter name
+    cy.findByText("MiscDate"); // Column name
+  });
+
+  it("should allow switching focus with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 2" });
+
+    // next focus: a link
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("contain", "link");
+    cy.focused()
+      .should("have.attr", "target")
+      .and("eq", "_blank");
+
+    // next focus: the textbox for the name
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "value")
+      .and("eq", "");
+    cy.focused()
+      .should("have.attr", "placeholder")
+      .and("eq", "Something nice and descriptive");
+
+    // Shift+Tab twice and we're back at the editor
+    cy.realPress(["Shift", "Tab"]);
+    cy.realPress(["Shift", "Tab"]);
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+  });
+
+  it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1+1" });
+
+    cy.realPress("Tab");
+    cy.realPress(["Shift", "Tab"]);
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    cy.findByDisplayValue("1 + 1").type("2");
+
+    // Fix needed will prevent display value from being `1 +2 1`.
+    // That's because the caret position after refocusing on textarea
+    // would still be after the 3rd character
+    cy.findByDisplayValue("1 + 12");
+  });
+
+  it("should allow choosing a suggestion with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "[" });
+
+    // Suggestion popover shows up and this select the first one ([Created At])
+    cy.realPress("Tab");
+
+    // Focus remains on the expression editor
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+
+    // Tab twice to focus on the name box
+    cy.realPress("Tab");
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "value")
+      .and("eq", "");
+    cy.focused()
+      .should("have.attr", "placeholder")
+      .and("eq", "Something nice and descriptive");
+
+    // Shift+Tab twice and we're back at the editor
+    cy.realPress(["Shift", "Tab"]);
+    cy.realPress(["Shift", "Tab"]);
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
   });
 });

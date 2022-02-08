@@ -4,7 +4,7 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { getIn, assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn, merge } from "icepick";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -27,6 +27,8 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
+import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 
@@ -52,6 +54,8 @@ import {
   getIsPreviewing,
   getTableForeignKeys,
   getQueryBuilderMode,
+  getPreviousQueryBuilderMode,
+  getDatasetEditorTab,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
   getNativeEditorCursorOffset,
@@ -60,7 +64,7 @@ import {
   getQueryResults,
   isBasedOnExistingQuestion,
 } from "./selectors";
-import { trackNewQuestionSaved } from "./tracking";
+import { trackNewQuestionSaved } from "./analytics";
 
 import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
@@ -68,7 +72,6 @@ import { parse as urlParse } from "url";
 import querystring from "querystring";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -83,17 +86,10 @@ import { setRequestUnloaded } from "metabase/redux/requests";
 import {
   getQueryBuilderModeFromLocation,
   getPathNameFromQueryBuilderMode,
-  isAdHocDatasetQuestion,
+  getNextTemplateTagVisibilityState,
 } from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
-
-const getTemplateTagWithoutSnippetsCount = question => {
-  const query = question.query();
-  return query instanceof NativeQuery
-    ? query.templateTagsWithoutSnippets().length
-    : 0;
-};
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -103,19 +99,23 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
 export const setQueryBuilderMode = (
   queryBuilderMode,
-  { shouldUpdateUrl = true } = {},
+  { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
 ) => async dispatch => {
   await dispatch(
     setUIControls({
       queryBuilderMode,
+      datasetEditorTab,
       isShowingChartSettingsSidebar: false,
     }),
   );
   if (shouldUpdateUrl) {
-    await dispatch(updateUrl(null, { queryBuilderMode }));
+    await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
   }
   if (queryBuilderMode === "notebook") {
     dispatch(cancelQuery());
+  }
+  if (queryBuilderMode === "dataset") {
+    dispatch(runQuestionQuery());
   }
 };
 
@@ -162,10 +162,16 @@ export const popState = createThunkAction(
         await dispatch(setCurrentState(location.state));
       }
     }
-    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+
+    const {
+      mode: queryBuilderModeFromURL,
+      ...uiControls
+    } = getQueryBuilderModeFromLocation(location);
+
     if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
         setQueryBuilderMode(queryBuilderModeFromURL, {
+          ...uiControls,
           shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
@@ -233,7 +239,13 @@ export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
     card,
-    { dirty, replaceState, preserveParameters = true, queryBuilderMode } = {},
+    {
+      dirty,
+      replaceState,
+      preserveParameters = true,
+      queryBuilderMode,
+      datasetEditorTab,
+    } = {},
   ) => (dispatch, getState) => {
     let question;
     if (!card) {
@@ -245,9 +257,10 @@ export const updateUrl = createThunkAction(
 
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
       dirty =
         !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+        (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
     }
 
     // prevent clobbering of hash when there are fake parameters on the question
@@ -258,6 +271,9 @@ export const updateUrl = createThunkAction(
 
     if (!queryBuilderMode) {
       queryBuilderMode = getQueryBuilderMode(getState());
+    }
+    if (!datasetEditorTab) {
+      datasetEditorTab = getDatasetEditorTab(getState());
     }
 
     const copy = cleanCopyCard(card);
@@ -276,6 +292,7 @@ export const updateUrl = createThunkAction(
       pathname: getPathNameFromQueryBuilderMode({
         pathname: urlParsed.pathname || "",
         queryBuilderMode,
+        datasetEditorTab,
       }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
@@ -289,8 +306,8 @@ export const updateUrl = createThunkAction(
     const isSameCard =
       currentState && currentState.serializedCard === newState.serializedCard;
     const isSameMode =
-      getQueryBuilderModeFromLocation(locationDescriptor) ===
-      getQueryBuilderModeFromLocation(window.location);
+      getQueryBuilderModeFromLocation(locationDescriptor).mode ===
+      getQueryBuilderModeFromLocation(window.location).mode;
 
     if (isSameCard && isSameURL) {
       return;
@@ -325,13 +342,22 @@ export const resetQB = createAction(RESET_QB);
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
+  dashcardId,
   cardId,
   parameters,
   metadata,
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
-    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+    if (
+      !hasMatchingParameters({
+        dashboard,
+        dashcardId,
+        cardId,
+        parameters,
+        metadata,
+      })
+    ) {
       dispatch(setErrorPage({ status: 403 }));
     }
   } catch (error) {
@@ -350,10 +376,16 @@ export const initializeQB = (location, params, queryParams) => {
 
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
+
+    const {
+      mode: queryBuilderMode,
+      ...otherUiControls
+    } = getQueryBuilderModeFromLocation(location);
     const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
-      queryBuilderMode: getQueryBuilderModeFromLocation(location),
+      queryBuilderMode,
+      ...otherUiControls,
     };
 
     // load up or initialize the card we'll be working on
@@ -399,10 +431,11 @@ export const initializeQB = (location, params, queryParams) => {
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard && deserializedCard.parameters) {
             const metadata = getMetadata(getState());
-            const { dashboardId, parameters } = deserializedCard;
+            const { dashboardId, dashcardId, parameters } = deserializedCard;
             verifyMatchingDashcardAndParameters({
               dispatch,
               dashboardId,
+              dashcardId,
               cardId,
               parameters,
               metadata,
@@ -410,6 +443,7 @@ export const initializeQB = (location, params, queryParams) => {
 
             card.parameters = parameters;
             card.dashboardId = dashboardId;
+            card.dashcardId = dashcardId;
           }
         } else if (card.original_card_id) {
           const deserializedCard = card;
@@ -425,10 +459,11 @@ export const initializeQB = (location, params, queryParams) => {
               })
             ) {
               const metadata = getMetadata(getState());
-              const { dashboardId, parameters } = deserializedCard;
+              const { dashboardId, dashcardId, parameters } = deserializedCard;
               verifyMatchingDashcardAndParameters({
                 dispatch,
                 dashboardId,
+                dashcardId,
                 cardId: card.id,
                 parameters,
                 metadata,
@@ -436,6 +471,7 @@ export const initializeQB = (location, params, queryParams) => {
 
               card.parameters = parameters;
               card.dashboardId = dashboardId;
+              card.dashcardId = dashcardId;
             }
           }
         }
@@ -492,7 +528,7 @@ export const initializeQB = (location, params, queryParams) => {
           card = null;
         }
 
-        if (!card.dataset && location.pathname.startsWith("/dataset")) {
+        if (!card.dataset && location.pathname.startsWith("/model")) {
           dispatch(
             setErrorPage({
               data: {
@@ -748,6 +784,26 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+  const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
+  const queryBuilderMode = getQueryBuilderMode(getState());
+  const datasetEditorTab = getDatasetEditorTab(getState());
+  const isEditingDatasetMetadata =
+    queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+  const wasJustEditingModel =
+    previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
+  const changedSettings = Object.keys(settings);
+  const isColumnWidthResetEvent =
+    changedSettings.length === 1 &&
+    changedSettings.includes("table.column_widths") &&
+    settings["table.column_widths"] === undefined;
+
+  if (
+    (isEditingDatasetMetadata || wasJustEditingModel) &&
+    isColumnWidthResetEvent
+  ) {
+    return;
+  }
+
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
       run: "auto",
@@ -959,6 +1015,7 @@ export const updateQuestion = (
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
         newQuestion = newQuestion.setDataset(false);
+        dispatch(onCloseQuestionDetails());
       }
     }
 
@@ -1016,10 +1073,7 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (
-      getQueryBuilderMode(getState()) === "notebook" &&
-      newQuestion.isNative()
-    ) {
+    if (mode === "notebook" && newQuestion.isNative()) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
@@ -1035,15 +1089,21 @@ export const updateQuestion = (
     }
 
     // See if the template tags editor should be shown/hidden
-    const oldTagCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
-    const newTagCount = getTemplateTagWithoutSnippetsCount(newQuestion);
-    if (newTagCount > oldTagCount) {
-      dispatch(setIsShowingTemplateTagsEditor(true));
-    } else if (
-      newTagCount === 0 &&
-      getIsShowingTemplateTagsEditor(getState())
-    ) {
-      dispatch(setIsShowingTemplateTagsEditor(false));
+    const isTemplateTagEditorVisible = getIsShowingTemplateTagsEditor(
+      getState(),
+    );
+    const nextTagEditorVisibilityState = getNextTemplateTagVisibilityState({
+      oldQuestion,
+      newQuestion,
+      isTemplateTagEditorVisible,
+      queryBuilderMode: mode,
+    });
+    if (nextTagEditorVisibilityState !== "deferToCurrentState") {
+      dispatch(
+        setIsShowingTemplateTagsEditor(
+          nextTagEditorVisibilityState === "visible",
+        ),
+      );
     }
 
     try {
@@ -1145,7 +1205,7 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
       // (it's necessary for datasets to behave like tables opened in simple mode)
       // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
       .reduxUpdate(dispatch, {
-        excludeDatasetQuery: isAdHocDatasetQuestion(question, originalQuestion),
+        excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
       });
 
     // reload the question alerts for the current question
@@ -1191,22 +1251,19 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-    // This ensures we still run the underlying query instead of a nested one if there are not extra clauses
-    // Otherwise, when turning a dataset into a saved question, some things can go wrong
-    // (like "join-aliases" will appear in field refs and some QB parts will behave as if we're running a completely different question)
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (isAdHocDatasetQuestion(question, originalQuestion)) {
-      question = originalQuestion;
-    }
-
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.card().id == null
       : true;
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+      const isAdHocModel =
+        question.isDataset() &&
+        isAdHocModelQuestion(question, originalQuestion);
+
+      dispatch(
+        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
+      );
     }
 
     if (getIsPreviewing(getState())) {
@@ -1285,7 +1342,14 @@ export const queryCompleted = (question, queryResults) => {
         .switchTableScalar(data);
     }
 
-    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
+    const card = question.card();
+    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
+    const resultsMetadata = data?.results_metadata?.columns;
+    if (isEditingModel && Array.isArray(resultsMetadata)) {
+      card.result_metadata = resultsMetadata;
+    }
+
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 
@@ -1512,6 +1576,10 @@ export const revertToRevision = createThunkAction(
   },
 );
 
+export const setDatasetEditorTab = datasetEditorTab => dispatch => {
+  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+};
+
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
 export const onCancelDatasetChanges = () => (dispatch, getState) => {
   const cardBeforeChanges = getOriginalCard(getState());
@@ -1528,7 +1596,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
   dispatch(
     addUndo({
-      message: t`This is a dataset now.`,
+      message: t`This is a model now.`,
       actions: [apiUpdateQuestion(question, { rerunQuery: true })],
     }),
   );
@@ -1545,4 +1613,40 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
       actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
     }),
   );
+};
+
+export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
+export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
+
+export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
+export const setMetadataDiff = createAction(SET_METADATA_DIFF);
+
+export const setFieldMetadata = ({ field_ref, changes }) => (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  const resultsMetadata = getResultsMetadata(getState());
+
+  const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
+    const compareExact =
+      !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
+    const isTargetField = isSameField(
+      field_ref,
+      fieldMetadata.field_ref,
+      compareExact,
+    );
+    return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
+  });
+
+  const nextResultsMetadata = {
+    ...resultsMetadata,
+    columns: nextColumnMetadata,
+  };
+
+  const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
+
+  dispatch(updateQuestion(nextQuestion));
+  dispatch(setMetadataDiff({ field_ref, changes }));
+  dispatch(setResultsMetadata(nextResultsMetadata));
 };

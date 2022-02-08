@@ -1,6 +1,7 @@
 import {
   restore,
   openPeopleTable,
+  openOrdersTable,
   openNativeEditor,
   popover,
   enterCustomColumnDetails,
@@ -11,12 +12,10 @@ describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.findByText("City").click();
 
@@ -24,11 +23,8 @@ describe("scenarios > visualizations > table", () => {
       cy.icon("gear").click();
     });
 
-    cy.findByText("Off").click();
+    cy.findByText("Link").click();
 
-    popover().within(() => {
-      cy.findByText("Link").click();
-    });
     // There is a lag caused by update of the table visualization which breaks Cypress typing.
     // Any field in the table will not be "actionable" (the whole table has an overlay with pointer-events set to none) so Cypress cannot click it.
     // Adding this line makes sure the table finished updating, and solves the typing issue.
@@ -53,7 +49,6 @@ describe("scenarios > visualizations > table", () => {
 
   it("should show field metadata in a popover when hovering over a table column header", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.icon("notebook").click();
     cy.findByTestId("fields-picker").click();
@@ -82,19 +77,29 @@ describe("scenarios > visualizations > table", () => {
       [
         "ID",
         () => {
+          // semantic type
+          cy.contains("Entity Key");
+          // description
           cy.contains("A unique identifier given to each user.");
         },
       ],
       [
         "City",
         () => {
+          // semantic type
+          cy.contains("City");
+          // description
           cy.contains("The city of the account’s billing address");
+          // fingerprint
           cy.findByText("1,966 distinct values");
         },
       ],
       [
         "State",
         () => {
+          // semantic type
+          cy.contains("State");
+          // fingerprint
           cy.findByText("49 distinct values");
           cy.contains("AK, AL, AR");
         },
@@ -102,6 +107,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "Birth Date",
         () => {
+          // semantic type
+          cy.contains("No special type");
+          // fingerprint
           cy.findByText("America/Los_Angeles");
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
@@ -110,6 +118,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "Latitude",
         () => {
+          // semantic type
+          cy.contains("Latitude");
+          // fingerprint
           cy.contains("39.88");
           cy.findByText("25.78");
           cy.findByText("70.64");
@@ -118,6 +129,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "CustomColumn",
         () => {
+          // semantic type
+          cy.contains("No special type");
+          // description
           cy.findByText("No description");
         },
       ],
@@ -127,7 +141,6 @@ describe("scenarios > visualizations > table", () => {
         .trigger("mouseenter");
 
       popover().within(() => {
-        cy.contains(column);
         test();
       });
 
@@ -150,8 +163,19 @@ describe("scenarios > visualizations > table", () => {
       .trigger("mouseenter");
 
     popover().within(() => {
-      cy.contains("Count");
+      cy.contains("No special type");
       cy.findByText("No description");
+    });
+  });
+
+  it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
+    openOrdersTable();
+
+    cy.findByText("Product ID").trigger("mouseenter");
+
+    popover().within(() => {
+      cy.contains("Foreign Key");
+      cy.contains("The product ID.");
     });
   });
 
@@ -163,14 +187,13 @@ describe("scenarios > visualizations > table", () => {
       .contains("CATEGORY")
       .trigger("mouseenter");
     popover().within(() => {
-      cy.contains("CATEGORY");
+      cy.contains("No special type");
       cy.findByText("No description");
     });
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.findByText("City").click();
     popover().within(() => {

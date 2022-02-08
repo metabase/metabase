@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
-import { Grid, GridItem } from "metabase/components/Grid";
+import { Grid } from "metabase/components/Grid";
 import BulkActionBar from "metabase/components/BulkActionBar";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
@@ -14,9 +13,17 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import {
+  ActionBarContent,
+  ActionBarText,
+  ActionControlsRoot,
+  ActionGridItem,
+  ActionGridItemContent,
+  ActionGridPlaceholder,
+} from "./BulkActions.styled";
 
 const BulkActionControls = ({ onArchive, onMove }) => (
-  <Box ml={1}>
+  <ActionControlsRoot>
     <Button
       ml={1}
       medium
@@ -31,7 +38,7 @@ const BulkActionControls = ({ onArchive, onMove }) => (
       onClick={onMove}
       data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
     >{t`Move`}</Button>
-  </Box>
+  </ActionControlsRoot>
 );
 
 const SelectionControls = ({
@@ -64,11 +71,11 @@ function BulkActions(props) {
     <BulkActionBar showing={selected.length > 0}>
       {/* NOTE: these padding and grid sizes must be carefully matched
                    to the main content above to ensure the bulk checkbox lines up */}
-      <Box px={[2, 4]} py={1}>
+      <ActionBarContent>
         <Grid>
-          <GridItem width={[1, 1 / 3]} />
-          <GridItem width={[1, 2 / 3]} px={[1, 2]}>
-            <Flex align="center" justify="center" px={2}>
+          <ActionGridPlaceholder />
+          <ActionGridItem>
+            <ActionGridItemContent>
               <SelectionControls {...props} />
               <BulkActionControls
                 onArchive={
@@ -80,17 +87,17 @@ function BulkActions(props) {
                     : null
                 }
               />
-              <Box ml="auto">
+              <ActionBarText>
                 {ngettext(
                   msgid`${selected.length} item selected`,
                   `${selected.length} items selected`,
                   selected.length,
                 )}
-              </Box>
-            </Flex>
-          </GridItem>
+              </ActionBarText>
+            </ActionGridItemContent>
+          </ActionGridItem>
         </Grid>
-      </Box>
+      </ActionBarContent>
       {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>
           <CollectionCopyEntityModal

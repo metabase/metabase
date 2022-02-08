@@ -1,3 +1,11 @@
+.expression-editor-textfield .ace_editor {
+  overflow: initial;
+}
+
+.expression-editor-textfield textarea {
+  min-height: 5px;
+}
+
 .expression-editor-textfield .ace_content * {
   font-family: monospace !important;
 }
@@ -26,4 +34,11 @@
 
 .expression-editor-textfield .ace_hidden-cursors .ace_cursor {
   opacity: 0;
+}
+
+.expression-editor-textfield .ace_content .error {
+  position: absolute;
+  border-bottom: 2px solid var(--color-error);
+  border-radius: 0px;
+  background-color: var(--color-error-background);
 }

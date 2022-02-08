@@ -7,10 +7,16 @@ version: 2.1
 executors:
   # CircleCI base Node + Headless browsers + Clojure CLI - big one
   # Maildev runs by default with all Cypress tests
-  clojure-and-node-and-browsers:
+
+  builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
+
+  tester:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
@@ -172,6 +178,7 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/spark:2.1.1
+    resource_class: large
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
@@ -449,7 +456,6 @@ commands:
         type: boolean
         default: false
     steps:
-      - attach-workspace
       - when:
           condition: << parameters.skip-when-no-change >>
           steps:
@@ -537,9 +543,10 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - checkout
+      - attach-workspace
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
@@ -601,31 +608,12 @@ jobs:
           paths:
             - metabase/metabase
 
-  check-migrations:
-    executor:
-      clojure-and-node-and-browsers
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .MIGRATIONS-CHECKSUM
-          find-args: resources/migrations -type f -name '*.yaml'
-      - create-checksum-file:
-          filename: .MIGRATIONS-LINTER-CHECKSUMS
-          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
-      - run-on-change:
-          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
-          steps:
-            - run:
-                name: Verify Liquibase Migrations
-                command: ./bin/lint-migrations-file.sh
-                no_output_timeout: 15m
-
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
 
   be-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -665,7 +653,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       before-steps:
         type: steps
         default: []
@@ -677,6 +665,12 @@ jobs:
       skip-when-no-change:
         type: boolean
         default: false
+      java-version:
+        type: string
+        default: ""
+      version:
+        type: string
+        default: ""
       <<: *Params
     executor: << parameters.e >>
     steps:
@@ -702,7 +696,7 @@ jobs:
                 edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - run-on-change:
@@ -718,7 +712,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       driver:
         type: string
       timeout:
@@ -737,6 +731,9 @@ jobs:
         type: string
         default: ""
       test-args:
+        type: string
+        default: ""
+      version:
         type: string
         default: ""
     executor: << parameters.e >>
@@ -760,52 +757,13 @@ jobs:
                 path: /home/circleci/metabase/metabase/target/junit
             - steps: << parameters.after-steps >>
 
-  test-build-scripts:
-    executor: clojure-and-node-and-browsers
-    steps:
-      - attach-workspace
-      - run-on-change:
-          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
-          steps:
-            - restore-be-deps-cache
-            - run:
-                name: Run metabuild-common build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-drivers build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run i18n script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-mb build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run release script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run Liquibase migrations linter tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
-                no_output_timeout: 15m
-
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
 ########################################################################################################################
 
   fe-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
@@ -826,18 +784,10 @@ jobs:
                   - /home/circleci/metabase/metabase/node_modules
                   - /home/circleci/.cache/Cypress
 
-  shared-tests-cljs:
-    executor: clojure-and-node-and-browsers
-    steps:
-      - run-yarn-command:
-          command-name: Run Cljs tests for shared/ code
-          command: run test-cljs
-          skip-when-no-change: true
-
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -877,7 +827,7 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -902,7 +852,7 @@ jobs:
   build-uberjar:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -954,7 +904,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: tester
       cypress-group:
         type: string
       source-folder:
@@ -1009,7 +959,7 @@ jobs:
 ########################################################################################################################
 
   snowplow-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - restore-snowplow-deps-cache
@@ -1047,40 +997,21 @@ workflows:
     jobs:
       - checkout
 
-      - check-migrations:
-          requires:
-            - checkout
-
       - be-deps:
           requires:
             - checkout
 
       - clojure:
-          name: be-tests-<< matrix.edition >>
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+              java-version: ["java-8", "java-11", "java-16"]
+          name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
-          e: java-8
+          e: << matrix.java-version >>
           clojure-args: -X:dev:ci:test
           skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-11-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-11
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - clojure:
-          name: be-tests-java-16-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-16
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-          <<: *Matrix
 
       - clojure:
           name: be-linter-cloverage
@@ -1096,69 +1027,61 @@ workflows:
           skip-when-no-change: true
 
       - test-driver:
-          name: be-tests-bigquery-ee
+          matrix:
+            parameters:
+              driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
+          name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-ee
-          driver: bigquery
+            - be-tests-java-8-ee
+          driver: << matrix.driver >>
 
       - test-driver:
-          name: be-tests-bigquery-cloud-sdk-ee
+          matrix:
+            parameters:
+              driver: ["sqlserver", "druid"]
+          name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-ee
-          driver: bigquery-cloud-sdk
+            - be-tests-java-8-ee
+          e: << matrix.driver >>
+          driver: << matrix.driver >>
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-tests-ee
-          driver: googleanalytics,bigquery,bigquery-cloud-sdk
+            - be-tests-java-8-ee
+          driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
                     metabase.driver.googleanalytics-test]"
 
       - test-driver:
-          name: be-tests-druid-ee
+          matrix:
+            parameters:
+              version: ["mongo-4-0", "mongo-latest"]
+          name: be-tests-<< matrix.version >>-ee
+          description: "(<< matrix.version >>)"
           requires:
-            - be-tests-ee
-          e: druid
-          driver: druid
-
-      - test-driver:
-          name: be-tests-googleanalytics-ee
-          requires:
-            - be-tests-ee
-          driver: googleanalytics
-
-      - test-driver:
-          name: be-tests-mongo-ee
-          description: "(Mongo 4.0)"
-          requires:
-            - be-tests-ee
-          e: mongo-4-0
+            - be-tests-java-8-ee
+          e: << matrix.version >>
           driver: mongo
 
       - test-driver:
-          name: be-tests-mongo-latest-ee
-          description: "(Mongo latest)"
+          matrix:
+            parameters:
+              version: ["mysql-5-7", "mariadb-10-2", "mariadb-latest"]
+          name: be-tests-<< matrix.version >>-ee
+          description: "(<< matrix.version >>)"
           requires:
-            - be-tests-ee
-          e: mongo-latest
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-ee
-          description: "(MySQL 5.7)"
-          requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e:
-            name: mysql-5-7
+            name: << matrix.version >>
           driver: mysql
 
       - test-driver:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -1176,27 +1099,9 @@ workflows:
             MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
-          name: be-tests-mariadb-ee
-          description: "(MariaDB 10.2)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-10-2
-          driver: mysql
-
-      - test-driver:
-          name: be-tests-mariadb-latest-ee
-          description: "(MariaDB latest)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mariadb-latest
-          driver: mysql
-
-      - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -1217,7 +1122,7 @@ workflows:
           name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: postgres-9-6
           driver: postgres
 
@@ -1225,7 +1130,7 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: postgres-latest
           driver: postgres
           extra-env: >-
@@ -1236,7 +1141,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: presto-186
           before-steps:
             - wait-for-port:
@@ -1246,7 +1151,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -1282,21 +1187,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -1304,32 +1209,15 @@ workflows:
           driver: sparksql
 
       - test-driver:
-          name: be-tests-sqlite-ee
-          requires:
-            - be-tests-ee
-          driver: sqlite
-
-      - test-driver:
-          name: be-tests-sqlserver-ee
-          requires:
-            - be-tests-ee
-          e: sqlserver
-          driver: sqlserver
-
-      - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
-
-      - test-build-scripts:
-          requires:
-            - be-deps
 
       - build-uberjar-drivers:
           name: build-uberjar-drivers-<< matrix.edition >>
@@ -1354,10 +1242,6 @@ workflows:
           requires:
             - checkout
 
-      - shared-tests-cljs:
-          requires:
-            - fe-deps
-
       - fe-tests-cypress:
           matrix:
             parameters:
@@ -1372,6 +1256,8 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "joins",
+                  "models",
                   "moderation",
                   "native",
                   "native-filters",
@@ -1395,14 +1281,12 @@ workflows:
             - wait-for-databases
 
       - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
           name: percy-visual-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
+          <<: *Matrix
 
       - snowplow-deps:
           requires:

@@ -13,11 +13,10 @@
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
-            [metabase.mbql.util :as mbql.u]
             [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
@@ -491,8 +490,7 @@
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qputil/query->remark driver outer-query)
          sql      (str "-- " remark "\n" sql)
-         max-rows (or (mbql.u/query->max-rows-limit outer-query)
-                      qp.i/absolute-max-results)]
+         max-rows (limit/determine-query-max-rows outer-query)]
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
@@ -501,7 +499,7 @@
                ^ResultSet rs (try
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
-                                 (throw (ex-info (tru "Error executing query")
+                                 (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                  {:sql sql, :params params, :type qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)

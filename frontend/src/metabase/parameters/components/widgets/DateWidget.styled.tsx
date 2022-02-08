@@ -2,7 +2,7 @@ import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import SpecificDatePicker from "metabase/query_builder/components/filters/pickers/SpecificDatePicker";
 
 export const Container = styled.div`

@@ -4,7 +4,7 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import { space } from "metabase/styled-components/theme";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 export const Container = styled.div`
   margin: ${space(1)} 0;

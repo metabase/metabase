@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
 export const Description = styled.p`

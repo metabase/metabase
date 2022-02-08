@@ -3,10 +3,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { Box, Flex } from "grid-styled";
-
 import ArchivedItem from "../../components/ArchivedItem";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";
@@ -17,6 +15,14 @@ import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  ArchiveBarContent,
+  ArchiveBarText,
+  ArchiveBody,
+  ArchiveEmptyState,
+  ArchiveHeader,
+  ArchiveRoot,
+} from "./ArchiveApp.styled";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -43,11 +49,11 @@ export default class ArchiveApp extends Component {
       onToggleSelected,
     } = this.props;
     return (
-      <Box mx={4}>
-        <Box mt={2} py={2}>
+      <ArchiveRoot>
+        <ArchiveHeader>
           <PageHeading>{t`Archive`}</PageHeading>
-        </Box>
-        <Box width={2 / 3} pb={4}>
+        </ArchiveHeader>
+        <ArchiveBody>
           <Card
             style={{
               height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
@@ -57,7 +63,7 @@ export default class ArchiveApp extends Component {
               <VirtualizedList
                 items={list}
                 rowHeight={ROW_HEIGHT}
-                renderItem={({ item, index }) => (
+                renderItem={({ item }) => (
                   <ArchivedItem
                     type={item.type}
                     name={item.getName()}
@@ -87,20 +93,20 @@ export default class ArchiveApp extends Component {
                 )}
               />
             ) : (
-              <Flex p={5} align="center" justify="center">
+              <ArchiveEmptyState>
                 <h2>{t`Items you archive will appear here.`}</h2>
-              </Flex>
+              </ArchiveEmptyState>
             )}
           </Card>
-        </Box>
+        </ArchiveBody>
         <BulkActionBar showing={selected.length > 0}>
-          <Flex align="center" py={2} px={4}>
+          <ArchiveBarContent>
             <SelectionControls {...this.props} />
             <BulkActionControls {...this.props} />
-            <Box ml="auto">{t`${selected.length} items selected`}</Box>
-          </Flex>
+            <ArchiveBarText>{t`${selected.length} items selected`}</ArchiveBarText>
+          </ArchiveBarContent>
         </BulkActionBar>
-      </Box>
+      </ArchiveRoot>
     );
   }
 }
@@ -134,12 +140,7 @@ const BulkActionControls = ({ selected, reload }) => (
   </span>
 );
 
-const SelectionControls = ({
-  selected,
-  deselected,
-  onSelectAll,
-  onSelectNone,
-}) =>
+const SelectionControls = ({ deselected, onSelectAll, onSelectNone }) =>
   deselected.length === 0 ? (
     <StackedCheckBox checked={true} onChange={onSelectNone} />
   ) : (

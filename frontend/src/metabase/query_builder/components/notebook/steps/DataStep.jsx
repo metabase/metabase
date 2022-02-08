@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { CollectionDatasetOrDataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
+import { isLocalField } from "metabase/lib/query/field_ref";
 
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {
@@ -76,30 +77,35 @@ export default connect(state => ({ databases: getDatabasesList(state) }))(
 
 const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
   const dimensions = query.tableDimensions();
+  const expressionDimensions = query.expressionDimensions();
   const selectedDimensions = query.columnDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
   const fields = query.fields();
 
   const handleSelectNone = () => {
-    query.setFields([dimensions[0].mbql()]).update(updateQuery);
+    query
+      .setFields([
+        dimensions[0].mbql(),
+        ...expressionDimensions.map(d => d.mbql()),
+      ])
+      .update(updateQuery);
   };
 
-  const handleToggleDimension = dimension =>
-    query
-      .setFields(
-        dimensions
-          .filter(d => {
-            if (d === dimension) {
-              return !selected.has(d.key());
-            } else {
-              return selected.has(d.key());
-            }
-          })
-          .map(d => d.mbql()),
-      )
-      .update(updateQuery);
+  const handleToggleDimension = dimension => {
+    const newFields = [...dimensions, ...expressionDimensions]
+      .filter(d => {
+        if (d === dimension) {
+          return !selected.has(d.key());
+        } else {
+          return selected.has(d.key());
+        }
+      })
+      .map(d => d.mbql());
 
-  const hasOneColumnSelected = fields.length === 1;
+    query.setFields(newFields).update(updateQuery);
+  };
+
+  const hasOneColumnSelected = fields.filter(isLocalField).length === 1;
 
   return (
     <FieldsPicker

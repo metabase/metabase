@@ -5,8 +5,8 @@ import { connect } from "react-redux";
 
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
-import Button from "metabase/components/Button";
-import Link from "metabase/components/Link";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import {
@@ -43,12 +43,12 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
           key="action"
           primary
           onClick={onConfirm}
-        >{t`Turn this into a dataset`}</Button>,
+        >{t`Turn this into a model`}</Button>,
       ]}
     >
       <FeatureOverviewContainer>
-        <DatasetImg src="app/img/dataset-illustration.svg" />
-        <DatasetTitle>{t`Datasets`}</DatasetTitle>
+        <DatasetImg src="app/img/model-illustration.svg" />
+        <DatasetTitle>{t`Models`}</DatasetTitle>
         <ul>
           <DatasetValueProp>
             {t`Let you update column descriptions and customize metadata to create

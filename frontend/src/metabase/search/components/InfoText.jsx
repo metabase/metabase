@@ -5,7 +5,7 @@ import { t, jt } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
@@ -32,7 +32,7 @@ export function InfoText({ result }) {
     case "card":
       return jt`Saved question in ${formatCollection(result.getCollection())}`;
     case "dataset":
-      return jt`Dataset in ${formatCollection(result.getCollection())}`;
+      return jt`Model in ${formatCollection(result.getCollection())}`;
     case "collection":
       return getCollectionInfoText(result.collection);
     case "database":

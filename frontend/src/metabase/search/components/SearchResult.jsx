@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
-import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
@@ -20,6 +18,7 @@ import {
   ContextText,
   ContextContainer,
   ResultSpinner,
+  ResultLinkContent,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -93,18 +92,23 @@ function Context({ context }) {
 export default function SearchResult({
   result,
   compact,
-  hasDescription,
+  hasDescription = true,
   onClick,
 }) {
   const active = isItemActive(result);
   const loading = isItemLoading(result);
 
-  const linkContent = wrapInPopover(
-    result,
-    <div>
-      <Flex align="start">
+  return (
+    <ResultLink
+      active={active}
+      compact={compact}
+      to={!onClick ? result.getUrl() : ""}
+      onClick={onClick ? () => onClick(result) : undefined}
+      data-testid="search-result-item"
+    >
+      <ResultLinkContent>
         <ItemIcon item={result} type={result.model} active={active} />
-        <Box>
+        <div>
           <TitleWrapper>
             <Title active={active} data-testid="search-result-item-name">
               {result.name}
@@ -121,22 +125,10 @@ export default function SearchResult({
             <Description>{result.description}</Description>
           )}
           <Score scores={result.scores} />
-        </Box>
+        </div>
         {loading && <ResultSpinner size={24} borderWidth={3} />}
-      </Flex>
+      </ResultLinkContent>
       {compact || <Context context={result.context} />}
-    </div>,
-  );
-
-  return (
-    <ResultLink
-      active={active}
-      compact={compact}
-      to={!onClick ? result.getUrl() : ""}
-      onClick={onClick ? () => onClick(result) : undefined}
-      data-testid="search-result-item"
-    >
-      {linkContent}
     </ResultLink>
   );
 }
@@ -157,22 +149,5 @@ const isItemLoading = result => {
       return !isSyncCompleted(result);
     default:
       return false;
-  }
-};
-
-const wrapInPopover = (result, content) => {
-  switch (result.model) {
-    case "table":
-      return (
-        <TableInfoPopover
-          placement="right-start"
-          offset={[-10, 22]}
-          tableId={result.table_id}
-        >
-          {content}
-        </TableInfoPopover>
-      );
-    default:
-      return content;
   }
 };

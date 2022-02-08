@@ -22,7 +22,6 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
@@ -375,39 +374,16 @@
                                                           {:dataset_query   query
                                                            :result_metadata metadata}))))))))))))
 
-(deftest saving-card-saves-query-metadata
-  (testing "Make sure when saving a Card the query metadata is saved (if correct)"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"}]
-            card-name (mt/random-name)]
-        (mt/with-temp Collection [collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
-            ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query card-name)
-                                                                 :collection_id      (u/the-id collection)
-                                                                 :result_metadata    metadata
-                                                                 :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
-            ;; now check the metadata that was saved in the DB
-            (is (= [{:base_type    :type/Integer
-                     :display_name "Count Chocula"
-                     :name         "count_chocula"}]
-                   (db/select-one-field :result_metadata Card :name card-name)))))))))
-
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (let [card        (card-with-name-and-query)
-            md-checksum (#'results-metadata/metadata-checksum [])]
+      (let [card        (card-with-name-and-query)]
         (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
                      (mt/user-http-request :rasta
                                            :post
                                            202
                                            "card"
-                                           (assoc card :result_metadata   []
-                                                       :metadata_checksum md-checksum))))))))
+                                           (assoc card :result_metadata []))))))))
 
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
@@ -445,52 +421,16 @@
                                                       (update-in [:type :type/Number :min] double)
                                                       (update-in [:type :type/Number :max] double)))))
 
-(deftest ints-returned-as-floating-point
-  (testing (str "When integer values are passed to the FE, they will be returned as floating point values. Our hashing "
-                "should ensure that integer and floating point values hash the same so we don't needlessly rerun the "
-                "query"))
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (let [metadata  [{:base_type    :type/Integer
-                      :display_name "Count Chocula"
-                      :name         "count_chocula"
-                      :fingerprint  {:global {:distinct-count 285},
-                                     :type   {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
-          card-name (mt/random-name)]
-      (mt/with-temp Collection [collection]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (mt/throw-if-called qp.async/result-metadata-for-query-async
-          (mt/with-model-cleanup [Card]
-            ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card"
-                                  (assoc (card-with-name-and-query card-name)
-                                         :collection_id      (u/the-id collection)
-                                         :result_metadata    (map fingerprint-integers->doubles metadata)
-                                         :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
-            (testing "check the metadata that was saved in the DB"
-              (is (= [{:base_type     :type/Integer
-                       :display_name  "Count Chocula"
-                       :name          "count_chocula"
-                       :fingerprint   {:global {:distinct-count 285},
-                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
-                     (db/select-one-field :result_metadata Card :name card-name))))))))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type     :type/BigInteger
-                        :display_name  "Count Chocula"
-                        :name          "count_chocula"
-                        :semantic_type :type/Quantity}]
-            card-name (mt/random-name)]
+      (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
             (mt/user-http-request :rasta :post 202 "card"
                                   (assoc (card-with-name-and-query card-name)
-                                         :collection_id      (u/the-id collection)
-                                         :result_metadata    metadata
-                                         ;; bad checksum
-                                         :metadata_checksum  "ABCDEF"))
+                                         :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
               (is (= [{:base_type     :type/BigInteger
                        :display_name  "Count"
@@ -500,14 +440,80 @@
                        :field_ref     [:aggregation 0]}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
+(deftest updating-card-updates-metadata
+  (let [query          (mt/mbql-query :venues {:fields [$id $name]})
+        modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+        norm           (comp str/upper-case :name)
+        to-native      (fn [q]
+                         {:database (:database q)
+                          :type     :native
+                          :native   (mt/compile q)})]
+    (testing "Updating query updates metadata"
+      (doseq [[query-type query modified-query] [["mbql"   query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                           :rasta :post 202
+                                           "card"
+                                           (card-with-name-and-query "card-name"
+                                                                     query))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              ;; simulate a user changing the query without rerunning the query
+              (mt/user-http-request
+               :rasta :put 202 (str "card/" card-id)
+               (assoc card :dataset_query modified-query))
+              (is (= ["ID" "NAME" "PRICE"]
+                     (map norm (db/select-one-field :result_metadata Card :id card-id)))))))))
+    (testing "Updating other parts but not query does not update the metadata"
+      (let [orig   qp.async/result-metadata-for-query-async
+            called (atom 0)]
+        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
+                                                                 (swap! called inc)
+                                                                 (orig q))]
+          (mt/with-model-cleanup [Card]
+            (let [card (mt/user-http-request :rasta :post 202 "card"
+                                             (card-with-name-and-query "card-name"
+                                                                       query))]
+              (is (= @called 1))
+              (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+              (mt/user-http-request
+               :rasta :put 202 (str "card/" (:id card))
+               (assoc card
+                      :description "a change that doesn't change the query"
+                      :name "compelling title"
+                      :cache_ttl 20000
+                      :display "table"
+                      :collection_position 1))
+              (is (= @called 1)))))))
+    (testing "Patching the card _without_ the query does not clear the metadata"
+      ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
+      (mt/with-model-cleanup [Card]
+        (let [card (mt/user-http-request :rasta :post 202 "card"
+                                         (card-with-name-and-query "card-name"
+                                                                   query))]
+          (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+          (let [updated (mt/user-http-request :rasta :put 202 (str "card/" (:id card))
+                                              {:description "I'm innocently updating the description"
+                                               :dataset true})]
+            (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))
+    (testing "You can update just the metadata"
+      (mt/with-model-cleanup [Card]
+        (let [card (mt/user-http-request :rasta :post 202 "card"
+                                         (card-with-name-and-query "card-name"
+                                                                   query))]
+          (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+          (let [new-metadata (map #(assoc % :display_name "UPDATED") (:result_metadata card))
+                updated (mt/user-http-request :rasta :put 202 (str "card/" (:id card))
+                                              {:result_metadata new-metadata})]
+            (is (= ["UPDATED" "UPDATED"]
+                   (map :display_name (:result_metadata updated))))))))))
+
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type     :type/Integer
-                        :display_name  "Count Chocula"
-                        :name          "count_chocula"
-                        :semantic_type :type/Quantity}]
-            card-name (mt/random-name)]
+      (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
@@ -518,14 +524,11 @@
                             (fn [driver stmt sql]
                               (reset! sql-result sql)
                               (orig driver stmt sql))]
-                ;; create a card with the metadata
                 (mt/user-http-request
                  :rasta :post 202 "card"
                  (assoc (card-with-name-and-query card-name)
                         :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
-                        :collection_id      (u/the-id collection)
-                        :result_metadata    metadata
-                        :metadata_checksum  "ABCDEF"))) ; bad checksum
+                        :collection_id      (u/the-id collection))))
               (testing "check the correct metadata was fetched and was saved in the DB"
                 (is (= [{:base_type     (count-base-type)
                          :effective_type (count-base-type)
@@ -599,6 +602,26 @@
                           :trace          [s/Any]
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest copy-card
+  (testing "POST /api/card/:id/copy"
+    (testing "Test that we can copy a Card"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [Card]
+            (let [card    (assoc (card-with-name-and-query (mt/random-name)
+                                                           (mbql-count-query (mt/id) (mt/id :venues)))
+                                 :collection_id (u/the-id collection))
+                  card    (mt/user-http-request :rasta :post 202 "card" card)
+                  newcard (mt/user-http-request :rasta :post 202 (format "card/%d/copy" (u/the-id card)))]
+              (is (= (:name newcard) (str "Copy of " (:name card))))
+              (is (= (:display newcard) (:display card)))
+              (is (not= (:id newcard) (:id card))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -752,44 +775,6 @@
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
                  (db/select-one-field :embedding_params Card :id (u/the-id card)))))))))
-
-(deftest make-sure-when-updating-a-card-the-query-metadata-is-saved--if-correct-
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"}]]
-    (mt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                              {:dataset_query     (mbql-count-query)
-                               :result_metadata   metadata
-                               :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
-        ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/Integer
-                 :display_name "Count Chocula"
-                 :name         "count_chocula"}]
-               (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
-
-(deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (let [metadata [{:base_type     :type/BigInteger
-                   :display_name  "Count Chocula"
-                   :name          "count_chocula"
-                   :semantic_type :type/Quantity}]]
-    (mt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                              {:dataset_query     (mbql-count-query)
-                               :result_metadata   metadata
-                               :metadata_checksum "ABC123"}) ; invalid checksum
-        ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type     :type/BigInteger
-                 :display_name  "Count"
-                 :name          "count"
-                 :semantic_type :type/Quantity
-                 :source        :aggregation
-                 :field_ref     [:aggregation 0]}]
-               (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp Card [card]
@@ -1434,9 +1419,10 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (mt/with-model-cleanup [Card]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "card"
-                                         (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
+            (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :rasta :post 403 "card"
+                                               (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
@@ -1905,4 +1891,49 @@
                      (->> (query! nested-id)
                           :data :results_metadata :columns
                           (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))))))))
+                          (map #(update % :semantic_type keyword)))))))))))
+  (testing "Cards preserve edits to metadata when query changes"
+    (let [query          (mt/mbql-query :venues {:fields [$id $name]})
+          modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+          norm           (comp str/upper-case :name)
+          to-native      (fn [q]
+                           {:database (:database q)
+                            :type     :native
+                            :native   (mt/compile q)})]
+      (doseq [[query-type query modified-query] [["mbql"   query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                           :rasta :post 202
+                                           "card"
+                                           (assoc (card-with-name-and-query "card-name"
+                                                                            query)
+                                                  :dataset true))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           (assoc card :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                             metadata)))
+                          :result_metadata (map :display_name))))
+              ;; simulate a user changing the query without rerunning the query
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           (assoc card
+                                  :dataset_query modified-query
+                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                        metadata)))
+                          :result_metadata
+                          (map (comp str/upper-case :display_name)))))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (map (comp str/upper-case :display_name)
+                          (db/select-one-field :result_metadata Card :id card-id))))
+              (testing "Even if you only send the new query and not existing metadata"
+                (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           {:dataset_query query})
+                          :result_metadata (map :display_name))))))))))))

@@ -3,9 +3,9 @@ import {
   visitQuestionAdhoc,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 /**
  * This question might seem a bit overwhelming at the first sight.
@@ -93,13 +93,10 @@ testCases.forEach(fileType => {
       // TODO: Please remove this line when issue gets fixed
       cy.skipOn(fileType === "csv");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       restore();
       cy.signInAsAdmin();
 
       visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
     });
 
     it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {

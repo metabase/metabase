@@ -3,9 +3,9 @@ import {
   visitQuestionAdhoc,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const query = { "source-table": ORDERS_ID, limit: 5 };
 
@@ -22,7 +22,6 @@ const testCases = ["csv", "xlsx"];
 describe("issue 18440", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
-    cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore();
     cy.signInAsAdmin();
@@ -38,7 +37,6 @@ describe("issue 18440", () => {
   testCases.forEach(fileType => {
     it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
 
       cy.findByText("Product ID");
       cy.findByText("Awesome Concrete Shoes");

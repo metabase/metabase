@@ -19,7 +19,16 @@
 (defn- implicitly-joined-fields [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
 
+;; TODO -- we should probably add some sort of short hash for any alias that gets truncated because of length, to make
+;; sure we have all unique aliases.
+;;
+;; TODO -- we should leverage [[mbql.u/unique-name-generator]] here to make sure all the names we generate are unique.
+;; What if someone has an explict join named `TABLE__via__SOME_COLUMN`? That would be a case of trying to intentionally
+;; break things, but it would still break.
 (defn- join-alias [dest-table-name source-fk-field-name]
+  ;; @howonlee mentioned this in #19659 but we should actually be looking at the number of *bytes* in the string, not
+  ;; the *length*, because most Databases are restricted by bytes, and CJK strings for example are a lot more bytes than
+  ;; they are characters
   (apply str (take 30 (str dest-table-name "__via__" source-fk-field-name))))
 
 (defn- fk-ids->join-infos
@@ -71,6 +80,9 @@
          (when source-query
            (visible-joins source-query)))))
 
+(defn- distinct-fields [fields]
+  (m/distinct-by mbql.u/remove-namespaced-options fields))
+
 (defn- add-join-alias-to-fields-with-source-field
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`."
   [form]
@@ -91,7 +103,7 @@
                                                    {:resolving  &match
                                                     :candidates fk-field-id->join-alias})))]
                 [:field id-or-name (assoc opts :join-alias join-alias)]))
-      (sequential? (:fields form)) (update :fields distinct))))
+      (sequential? (:fields form)) (update :fields distinct-fields))))
 
 (defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
@@ -109,7 +121,7 @@
     form
     (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
-                                                (distinct (concat existing-fields needed)))))))
+                                                (distinct-fields (concat existing-fields needed)))))))
 
 (defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
@@ -118,7 +130,7 @@
                                                         (reused-join-alias? join-alias)))]
                                   &match))]
     (update-in form [:source-query :fields] (fn [existing-fields]
-                                              (distinct
+                                              (distinct-fields
                                                (concat existing-fields referenced-fields))))))
 
 (defn- add-fields-to-source
@@ -169,22 +181,18 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-implicit-joins* [query]
-  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
-    (do
-      (when-not (driver/supports? driver/*driver* :foreign-keys)
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
-                 {:driver driver/*driver*
-                  :type   error-type/unsupported-feature})))
-      (update query :query resolve-implicit-joins))
-    query))
-
 (defn add-implicit-joins
   "Fetch and store any Tables other than the source Table referred to by `:field` clauses with `:source-field` in an
   MBQL query, and add a `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or
   equivalent) that need to be performed for these tables.
 
   This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
-  [qp]
-  (fn [query rff context]
-    (qp (add-implicit-joins* query) rff context)))
+  [query]
+  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
+    (do
+      (when-not (driver/supports? driver/*driver* :foreign-keys)
+        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+                        {:driver driver/*driver*
+                         :type   error-type/unsupported-feature})))
+      (update query :query resolve-implicit-joins))
+    query))

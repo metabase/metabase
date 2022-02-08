@@ -21,7 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -41,7 +41,7 @@
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -831,10 +831,10 @@
           (let [remapped (db/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
-                                          :name                    (:display_name original)
+                                          :name                    (format "%s [external remap]" (:display_name original))
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
-                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
           (let [values-map (if (sequential? remap)
@@ -843,12 +843,12 @@
                              remap)]
             (fn []
               (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (:display_name original)
+                                              :name     (format "%s [internal remap]" (:display_name original))
                                               :type     :internal}]
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)
                                               :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s"
+                (testing (format "With human readable values remapping %s -> %s\n"
                                  (describe-field original) (pr-str values-map))
                   (thunk)))))))))
    orig->remapped))
@@ -874,16 +874,23 @@
   "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
   \"internal\" remappings:
 
-    ;; FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+  FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+
     (with-column-remappings [reviews.product_id products.title]
       ...)
 
-    ;; human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n`
-    ;; values starting with 1 (for common cases where the column is an FK ID column)
+  Symbols are normally converted to [[metabase.test/id]] forms e.g.
+
+    reviews.product_id -> (mt/id :reviews :product_id)
+
+  human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n` values
+  starting with 1 (for common cases where the column is an FK ID column)
+
     (with-column-remappings [venues.category_id [\"My Cat 1\" \"My Cat 2\"]]
       ...)
 
-    ;; equivalent to:
+  equivalent to:
+
     (with-column-remappings [venues.category_id {1 \"My Cat 1\", 2 \"My Cat 2\"}]
       ...)
 

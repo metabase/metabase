@@ -6,20 +6,20 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
-import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/components/Link";
+import Icon from "metabase/components/Icon";
+import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { AdminNavbar } from "../components/AdminNavbar";
 
@@ -41,18 +41,21 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
+import {
+  EntityMenuContainer,
+  LogoIconContainer,
+  LogoLinkContainer,
+  NavRoot,
+  SearchBarContainer,
+  SearchBarContent,
+} from "./Navbar.styled";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// TODO
-const NavHover = {
-  backgroundColor: darken(color("nav")),
-  color: "white",
-};
-
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
@@ -114,16 +117,12 @@ export default class Navbar extends Component {
     const { hasDataAccess, hasNativeWrite } = this.props;
 
     return (
-      <Flex
+      <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
         className="Nav relative bg-brand text-white z3 flex-no-shrink"
-        align="center"
-        style={{ backgroundColor: color("nav") }}
-        py={1}
-        pr={2}
       >
-        <Flex style={{ minWidth: 64 }} align="center" justify="center">
+        <LogoLinkContainer>
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
@@ -132,107 +131,133 @@ export default class Navbar extends Component {
             mx={1}
             hover={{ backgroundColor: getDefaultSearchColor() }}
           >
-            <Flex
-              style={{ minWidth: 32, height: 32 }}
-              align="center"
-              justify="center"
-            >
+            <LogoIconContainer>
               <LogoIcon dark height={32} />
-            </Flex>
+            </LogoIconContainer>
           </Link>
-        </Flex>
-        <Flex className="flex-full z1" pr={2} align="center">
-          <Box width={1} style={{ maxWidth: 500 }}>
+        </LogoLinkContainer>
+        <SearchBarContainer>
+          <SearchBarContent>
             <SearchBar
               location={this.props.location}
               onChangeLocation={this.props.onChangeLocation}
             />
-          </Box>
-        </Flex>
-        <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
-          {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to={Urls.newQuestionFlow()}
-              p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;New Question`}
-            >
-              <Icon name="insight" size={18} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Ask a question`}</h4>
-            </Link>
-          )}
-          {hasDataAccess && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
-            >
-              <Link
-                to="browse"
-                className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Data Browse`}
-                tooltip={t`Browse data`}
-              >
-                <Icon name="table_spaced" size={14} p={"11px"} />
-              </Link>
-            </IconWrapper>
-          )}
+          </SearchBarContent>
+        </SearchBarContainer>
+        <EntityMenuContainer>
           <EntityMenu
-            tooltip={t`Create`}
             className="hide sm-show mr1"
-            triggerIcon="add"
-            triggerProps={{ hover: NavHover }}
+            trigger={
+              <Link
+                mr={1}
+                p={1}
+                hover={{
+                  backgroundColor: darken(color("brand")),
+                }}
+                className="flex align-center rounded transition-background"
+                data-metabase-event={`NavBar;Create Menu Click`}
+              >
+                <Icon name="add" size={14} />
+                <h4 className="hide sm-show ml1 text-nowrap">{t`New`}</h4>
+              </Link>
+            }
             items={[
+              ...(hasDataAccess
+                ? [
+                    {
+                      title: t`Question`,
+                      icon: `insight`,
+                      link: Urls.newQuestion({
+                        mode: "notebook",
+                        creationType: "custom_question",
+                      }),
+                      event: `NavBar;New Question Click;`,
+                    },
+                  ]
+                : []),
+              ...(hasNativeWrite
+                ? [
+                    {
+                      title: t`SQL query`,
+                      icon: `sql`,
+                      link: Urls.newQuestion({
+                        type: "native",
+                        creationType: "native_question",
+                      }),
+                      event: `NavBar;New SQL Query Click;`,
+                    },
+                  ]
+                : []),
               {
-                title: t`New dashboard`,
+                title: t`Dashboard`,
                 icon: `dashboard`,
                 action: () => this.setModal(MODAL_NEW_DASHBOARD),
                 event: `NavBar;New Dashboard Click;`,
               },
               {
-                title: t`New pulse`,
-                icon: `pulse`,
-                link: Urls.newPulse(),
-                event: `NavBar;New Pulse Click;`,
+                title: t`Collection`,
+                icon: `folder`,
+                action: () => this.setModal(MODAL_NEW_COLLECTION),
+                event: `NavBar;New Collection Click;`,
               },
             ]}
           />
-          {hasNativeWrite && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
+
+          {hasDataAccess && (
+            <Link
+              mr={[1, 2]}
+              to="browse"
+              p={1}
+              hover={{
+                backgroundColor: darken(color("brand")),
+              }}
+              className="flex align-center rounded transition-background"
+              data-metabase-event={`NavBar;Data Browse`}
             >
-              <Link
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center"
-                data-metabase-event={`NavBar;SQL`}
-                tooltip={t`Write SQL`}
-              >
-                <Icon size={18} p={"11px"} name="sql" />
-              </Link>
-            </IconWrapper>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+            </Link>
           )}
           <ProfileLink {...this.props} />
-        </Flex>
+        </EntityMenuContainer>
         {this.renderModal()}
-      </Flex>
+      </NavRoot>
     );
+  }
+
+  renderModalContent() {
+    const { modal } = this.state;
+    const { onChangeLocation } = this.props;
+
+    switch (modal) {
+      case MODAL_NEW_COLLECTION:
+        return (
+          <CollectionCreate
+            onClose={() => this.setState({ modal: null })}
+            onSaved={collection => {
+              this.setState({ modal: null });
+              onChangeLocation(Urls.collection(collection));
+            }}
+          />
+        );
+      case MODAL_NEW_DASHBOARD:
+        return (
+          <CreateDashboardModal
+            onClose={() => this.setState({ modal: null })}
+          />
+        );
+      default:
+        return null;
+    }
   }
 
   renderModal() {
     const { modal } = this.state;
+
     if (modal) {
       return (
         <Modal onClose={() => this.setState({ modal: null })}>
-          {modal === MODAL_NEW_DASHBOARD ? (
-            <CreateDashboardModal
-              createDashboard={this.props.createDashboard}
-              onClose={() => this.setState({ modal: null })}
-            />
-          ) : null}
+          {this.renderModalContent()}
         </Modal>
       );
     } else {

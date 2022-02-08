@@ -22,24 +22,28 @@ describe("parameters/utils/parameter-values", () => {
   beforeEach(() => {
     field1 = {
       id: 1,
+      table_id: 1,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
     };
     field2 = {
       id: 2,
+      table_id: 1,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
     };
     field3 = {
       id: 3,
+      table_id: 1,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
     };
     field4 = {
       id: 4,
+      table_id: 1,
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
@@ -54,6 +58,14 @@ describe("parameters/utils/parameter-values", () => {
         [field2.id]: field2,
         [field3.id]: field3,
         [field4.id]: field4,
+      },
+      table(id) {
+        return this.tables[id];
+      },
+      tables: {
+        1: {
+          id: 1,
+        },
       },
     };
 
@@ -575,6 +587,11 @@ describe("parameters/utils/parameter-values", () => {
           ),
         ).toEqual(getParameterValuesBySlug(parameters, parameterValues));
       });
+
+      it("should handle nullish parameters", () => {
+        expect(getParameterValuesBySlug(undefined, {})).toEqual({});
+        expect(getParameterValuesBySlug(null, {})).toEqual({});
+      });
     });
 
     describe("`preserveDefaultedParameters` === true", () => {
@@ -602,6 +619,28 @@ describe("parameters/utils/parameter-values", () => {
           [defaultedParameter.slug]: undefined,
           [defaultedParameterWithValue.slug]: defaultedParameterWithValue.value,
         });
+      });
+
+      it("should handle nullish parameters", () => {
+        expect(
+          getParameterValuesBySlug(
+            undefined,
+            {},
+            {
+              preserveDefaultedParameters: true,
+            },
+          ),
+        ).toEqual({});
+
+        expect(
+          getParameterValuesBySlug(
+            null,
+            {},
+            {
+              preserveDefaultedParameters: true,
+            },
+          ),
+        ).toEqual({});
       });
     });
   });

@@ -3,14 +3,20 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Box } from "grid-styled";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  HelpBody,
+  HelpLinks,
+  HelpRoot,
+  InfoBlockButton,
+  InfoBlockRoot,
+} from "./Help.styled";
 
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
@@ -75,12 +81,12 @@ const HelpLink = ({ title, description, link }) => (
 );
 
 const InfoBlock = ({ children }) => (
-  <Box p={2} className="bordered rounded bg-light relative">
-    <Box m={2} className="absolute top right text-brand-hover cursor-pointer">
+  <InfoBlockRoot className="bordered rounded bg-light relative">
+    <InfoBlockButton className="absolute top right text-brand-hover cursor-pointer">
       <CopyButton value={children} />
-    </Box>
+    </InfoBlockButton>
     <Code>{children}</Code>
-  </Box>
+  </InfoBlockRoot>
 );
 
 export default class Help extends Component {
@@ -101,9 +107,9 @@ export default class Help extends Component {
     const { details } = this.state;
     const detailString = JSON.stringify(details, null, 2);
     return (
-      <Box p={3}>
+      <HelpRoot>
         <AdminHeader title={t`Help`} className="mb2" />
-        <Box my={2} style={{ maxWidth: "468px" }}>
+        <HelpLinks>
           <ol>
             <HelpLink
               title={t`Metabase Documentation`}
@@ -128,9 +134,9 @@ export default class Help extends Component {
               />
             )}
           </ol>
-        </Box>
+        </HelpLinks>
 
-        <Box my={2}>
+        <HelpBody>
           <AdminHeader title={t`Diagnostic Info`} className="mb2" />
           <p>{t`Please include these details in support requests. Thank you!`}</p>
           <InfoBlock>{detailString}</InfoBlock>
@@ -142,8 +148,8 @@ export default class Help extends Component {
               link={UtilApi.connection_pool_details_url}
             />
           </ol>
-        </Box>
-      </Box>
+        </HelpBody>
+      </HelpRoot>
     );
   }
 }

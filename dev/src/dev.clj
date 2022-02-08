@@ -136,4 +136,4 @@
 (defn migrate!
   "Run migrations for the Metabase application database."
   []
-  (mdb.setup/migrate! (mdb.connection/jdbc-spec) :up))
+  (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))

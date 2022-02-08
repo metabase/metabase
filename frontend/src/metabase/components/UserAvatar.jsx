@@ -1,10 +1,10 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
 import { color, height, width } from "styled-system";
 
 import { color as brandColor } from "metabase/lib/colors";
 
-const Avatar = styled(Flex)`
+const Avatar = styled.div`
+  display: flex;
   justify-content: center;
   align-items: center;
   border-radius: 999px;

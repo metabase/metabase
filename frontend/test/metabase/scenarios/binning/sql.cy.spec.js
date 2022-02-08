@@ -1,5 +1,6 @@
 import {
   restore,
+  snapshot,
   visualize,
   changeBinningForDimension,
 } from "__support__/e2e/cypress";
@@ -13,12 +14,20 @@ const questionDetails = {
 };
 
 describe("scenarios > binning > from a saved sql question", () => {
+  before(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
+
+    snapshot("binningSql");
+  });
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore();
+    restore("binningSql");
     cy.signInAsAdmin();
-    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
   });
 
   context("via simple question", () => {
@@ -168,7 +177,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get("circle");
 
       // Open a popover with bucket options from the time series footer
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();

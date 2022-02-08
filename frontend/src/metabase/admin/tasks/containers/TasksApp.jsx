@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
 
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
@@ -9,8 +8,14 @@ import Task from "metabase/entities/tasks";
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
+import {
+  SectionControls,
+  SectionHeader,
+  SectionRoot,
+  SectionTitle,
+} from "./TasksApp.styled";
 
 // Please preserve the following 2 @ calls in this order.
 // Otherwise @Database.loadList overrides pagination props
@@ -36,9 +41,9 @@ class TasksApp extends React.Component {
       databaseByID[db.id] = db;
     }
     return (
-      <Box p={3}>
-        <Flex align="center">
-          <Flex align="center">
+      <SectionRoot>
+        <SectionHeader>
+          <SectionTitle>
             <AdminHeader title={t`Troubleshooting logs`} />
             <Tooltip
               tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
@@ -50,8 +55,8 @@ class TasksApp extends React.Component {
                 className="text-brand-hover cursor-pointer text-medium"
               />
             </Tooltip>
-          </Flex>
-          <Flex align="center" ml="auto">
+          </SectionTitle>
+          <SectionControls>
             <PaginationControls
               onPreviousPage={onPreviousPage}
               onNextPage={onNextPage}
@@ -59,8 +64,8 @@ class TasksApp extends React.Component {
               pageSize={pageSize}
               itemsLength={tasks.length}
             />
-          </Flex>
-        </Flex>
+          </SectionControls>
+        </SectionHeader>
 
         <table className="ContentTable mt2">
           <thead>
@@ -103,7 +108,7 @@ class TasksApp extends React.Component {
           // render 'children' so that the invididual task modals show up
           children
         }
-      </Box>
+      </SectionRoot>
     );
   }
 }

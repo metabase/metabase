@@ -27,6 +27,10 @@ export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`
   }
 `;
 
+export const FieldContainer = styled.div`
+  margin-right: ${props => (props.horizontal ? "1rem" : "")};
+`;
+
 export const InputContainer = styled.div`
   flex-shrink: 0;
   ${props =>

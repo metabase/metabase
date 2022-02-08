@@ -2,12 +2,16 @@
   "SQL JDBC impl for `describe-database`."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sync :as driver.s]
+            [metabase.driver.util :as driver.u]
+            [metabase.models :refer [Database]]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
@@ -22,9 +26,10 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defmethod i/syncable-schemas :sql-jdbc
-  [driver _ metadata]
+(defmethod i/filtered-syncable-schemas :sql-jdbc
+  [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (i/excluded-schemas driver)))
+            (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
 (defn simple-select-probe-query
@@ -60,10 +65,17 @@
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+    (log/tracef "Checking for SELECT privileges for %s with query %s"
+                (str (when table-schema
+                       (str (pr-str table-schema) \.))
+                     (pr-str table-name))
+                (pr-str sql-args))
     (try
       (execute-select-probe-query driver conn sql-args)
+      (log/trace "SELECT privileges confirmed")
       true
       (catch Throwable _
+        (log/trace "No SELECT privileges")
         false))))
 
 (defn- db-tables
@@ -88,7 +100,7 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver ^Connection conn & [db-name-or-nil]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (let [metadata (.getMetaData conn)]
     (eduction
@@ -96,23 +108,34 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
-     (i/syncable-schemas driver conn metadata))))
+     (i/filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod i/active-tables :sql-jdbc
-  [driver connection]
-  (fast-active-tables driver connection))
+  [driver connection schema-inclusion-filters schema-exclusion-filters]
+  (fast-active-tables driver connection nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver ^Connection conn & [db-name-or-nil]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (eduction
    (filter (let [excluded (i/excluded-schemas driver)]
              (fn [{table-schema :schema, table-name :name}]
                (and (not (contains? excluded table-schema))
+                    (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
                     (i/have-select-privilege? driver conn table-schema table-name)))))
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
+
+(defn- db-or-id-or-spec->database [db-or-id-or-spec]
+  (cond (instance? (class Database) db-or-id-or-spec)
+        db-or-id-or-spec
+
+        (int? db-or-id-or-spec)
+        (Database db-or-id-or-spec)
+
+        :else
+        nil))
 
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -122,4 +145,15 @@
              ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (into #{} (i/active-tables driver conn)))})
+             (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
+                   has-schema-filter-prop? (some? schema-filter-prop)
+                   default-active-tbl-fn   #(into #{} (i/active-tables driver conn nil nil))]
+               (if has-schema-filter-prop?
+                 (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
+                   (let [prop-nm                                 (:name schema-filter-prop)
+                         [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
+                                                                  prop-nm
+                                                                  database)]
+                     (into #{} (i/active-tables driver conn inclusion-patterns exclusion-patterns)))
+                   (default-active-tbl-fn))
+                 (default-active-tbl-fn))))})

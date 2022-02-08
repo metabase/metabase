@@ -65,7 +65,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card dashboard dashcard pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card dashboard dashcard pulse pulse-card fixture display], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -75,7 +75,8 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name card-name} card)]]
+                      Card          [{card-id :id} (merge {:name card-name
+                                                           :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
@@ -167,7 +168,7 @@
       (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment aside from dashboard icon"
     {:card (checkins-query-card {:aggregation nil, :limit 9})
 

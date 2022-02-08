@@ -27,7 +27,7 @@ const AGGREGATIONS = {
 
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
-  if (!column || column.source !== "fields" || value !== undefined) {
+  if (!column || value !== undefined) {
     // TODO Atte Keinänen 7/21/17: Does it slow down the drill-through option calculations remarkably
     // that I removed the `isSummable` condition from here and use `isCompatibleAggregator` method below instead?
     return [];

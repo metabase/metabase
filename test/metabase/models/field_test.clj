@@ -29,6 +29,7 @@
     (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           (re-pattern (format "Invalid Field %s %s" column unknown-type))
+           (re-pattern (format "Invalid value for Field column %s: %s is not a descendant of any of these types:"
+                               column unknown-type))
            (mt/with-temp Field [field {column unknown-type}]
              field))))))

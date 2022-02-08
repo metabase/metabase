@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -25,10 +25,13 @@ import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
-import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
+import QuestionFilters, {
+  FilterHeaderToggle,
+  FilterHeader,
+  QuestionFilterWidget,
+} from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
-import ViewSection from "./ViewSection";
 import {
   AdHocViewHeading,
   DatasetHeaderButtonContainer,
@@ -37,6 +40,7 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
+  ViewSubHeaderRoot,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -115,55 +119,47 @@ export function ViewTitleHeader(props) {
       .topLevelQuery()
       .hasAggregations();
 
-  const showFiltersInHeading = !isSummarized && !areFiltersExpanded;
-
   return (
-    <ViewHeaderContainer className={className} style={style}>
-      {isDataset ? (
-        <DatasetLeftSide
+    <>
+      <ViewHeaderContainer className={className} style={style}>
+        {isDataset ? (
+          <DatasetLeftSide {...props} />
+        ) : isSaved ? (
+          <SavedQuestionLeftSide {...props} lastEditInfo={lastEditInfo} />
+        ) : (
+          <AhHocQuestionLeftSide
+            {...props}
+            isNative={isNative}
+            isSummarized={isSummarized}
+          />
+        )}
+        <ViewTitleHeaderRightSide
           {...props}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
-      ) : isSaved ? (
-        <SavedQuestionLeftSide
-          {...props}
-          lastEditInfo={lastEditInfo}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
-      ) : (
-        <AhHocQuestionLeftSide
-          {...props}
+          isSaved={isSaved}
+          isDataset={isDataset}
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
-          showFiltersInHeading={showFiltersInHeading}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
         />
+      </ViewHeaderContainer>
+      {QuestionFilters.shouldRender(props) && (
+        <FilterHeader
+          {...props}
+          expanded={areFiltersExpanded}
+          question={question}
+        />
       )}
-      <ViewTitleHeaderRightSide
-        {...props}
-        isSaved={isSaved}
-        isDataset={isDataset}
-        isNative={isNative}
-        isSummarized={isSummarized}
-      />
-    </ViewHeaderContainer>
+    </>
   );
 }
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   lastEditInfo: PropTypes.object,
-  areFiltersExpanded: PropTypes.bool.isRequired,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
   onOpenQuestionHistory: PropTypes.func.isRequired,
@@ -172,16 +168,26 @@ SavedQuestionLeftSide.propTypes = {
 function SavedQuestionLeftSide(props) {
   const {
     question,
-    areFiltersExpanded,
     isObjectDetail,
     isShowingQuestionDetailsSidebar,
-    onExpandFilters,
-    onCollapseFilters,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
     lastEditInfo,
     onOpenQuestionHistory,
   } = props;
+
+  const onHeaderClick = useCallback(() => {
+    if (isShowingQuestionDetailsSidebar) {
+      onCloseQuestionDetails();
+    } else {
+      onOpenQuestionDetails({ closeOtherSidebars: true });
+    }
+  }, [
+    isShowingQuestionDetailsSidebar,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+  ]);
+
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
@@ -189,11 +195,7 @@ function SavedQuestionLeftSide(props) {
           <SavedQuestionHeaderButton
             question={question}
             isActive={isShowingQuestionDetailsSidebar}
-            onClick={
-              isShowingQuestionDetailsSidebar
-                ? onCloseQuestionDetails
-                : onOpenQuestionDetails
-            }
+            onClick={onHeaderClick}
           />
         </SavedQuestionHeaderButtonContainer>
         {lastEditInfo && (
@@ -217,15 +219,6 @@ function SavedQuestionLeftSide(props) {
             subHead
           />
         )}
-        {QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mb1"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderLeftSubHeading>
     </div>
   );
@@ -237,8 +230,6 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
-  areFiltersExpanded: PropTypes.bool,
-  showFiltersInHeading: PropTypes.bool,
   onExpandFilters: PropTypes.func.isRequired,
   onCollapseFilters: PropTypes.func.isRequired,
 };
@@ -250,10 +241,6 @@ function AhHocQuestionLeftSide(props) {
     isNative,
     isObjectDetail,
     isSummarized,
-    areFiltersExpanded,
-    showFiltersInHeading,
-    onExpandFilters,
-    onCollapseFilters,
   } = props;
   return (
     <div>
@@ -269,15 +256,6 @@ function AhHocQuestionLeftSide(props) {
             />
           )}
         </AdHocViewHeading>
-        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mr2"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
         {QuestionLineage.shouldRender(props) && (
           <QuestionLineage
             question={question}
@@ -295,15 +273,6 @@ function AhHocQuestionLeftSide(props) {
             data-metabase-event={`Question Data Source Click`}
           />
         )}
-        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className={cx("mb1", { ml2: isSummarized })}
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderLeftSubHeading>
     </div>
   );
@@ -311,11 +280,7 @@ function AhHocQuestionLeftSide(props) {
 
 DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  areFiltersExpanded: PropTypes.bool.isRequired,
-  showFiltersInHeading: PropTypes.bool.isRequired,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
 };
@@ -323,14 +288,23 @@ DatasetLeftSide.propTypes = {
 function DatasetLeftSide(props) {
   const {
     question,
-    areFiltersExpanded,
     isShowingQuestionDetailsSidebar,
-    showFiltersInHeading,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
-    onExpandFilters,
-    onCollapseFilters,
   } = props;
+
+  const onHeaderClick = useCallback(() => {
+    if (isShowingQuestionDetailsSidebar) {
+      onCloseQuestionDetails();
+    } else {
+      onOpenQuestionDetails({ closeOtherSidebars: true });
+    }
+  }, [
+    isShowingQuestionDetailsSidebar,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+  ]);
+
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
@@ -343,37 +317,13 @@ function DatasetLeftSide(props) {
                 <SavedQuestionHeaderButton
                   question={question}
                   isActive={isShowingQuestionDetailsSidebar}
-                  onClick={
-                    isShowingQuestionDetailsSidebar
-                      ? onCloseQuestionDetails
-                      : onOpenQuestionDetails
-                  }
+                  onClick={onHeaderClick}
                 />
               </DatasetHeaderButtonContainer>,
             ]}
           />
         </AdHocViewHeading>
-        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mr2"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
-      <ViewHeaderLeftSubHeading>
-        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mb1"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
-      </ViewHeaderLeftSubHeading>
     </div>
   );
 }
@@ -385,7 +335,7 @@ DatasetCollectionBadge.propTypes = {
 function DatasetCollectionBadge({ dataset }) {
   const { collection } = dataset.card();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="dataset">
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );
@@ -414,6 +364,9 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  areFiltersExpanded: PropTypes.bool,
+  onExpandFilters: PropTypes.func,
+  onCollapseFilters: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -440,10 +393,17 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
+    areFiltersExpanded,
+    onExpandFilters,
+    onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
+  const canRunAdhocQueries = !question.query().readOnly();
   const hasExploreResultsLink =
-    isNative && isSaved && MetabaseSettings.get("enable-nested-queries");
+    isNative &&
+    isSaved &&
+    canRunAdhocQueries &&
+    MetabaseSettings.get("enable-nested-queries");
 
   return (
     <div
@@ -462,6 +422,15 @@ function ViewTitleHeaderRightSide(props) {
         >
           {t`Save`}
         </SaveButton>
+      )}
+      {QuestionFilters.shouldRender(props) && (
+        <FilterHeaderToggle
+          className="ml2 mr1"
+          question={question}
+          expanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
+        />
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
@@ -507,7 +476,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {isRunnable && !isNativeEditorOpen && (
         <RunButtonWithTooltip
-          className={cx("text-brand-hover hide", {
+          className={cx("text-brand-hover text-dark hide", {
             "sm-show": !isShowingNotebook || isNative,
             "text-white-hover": isResultDirty,
           })}
@@ -575,14 +544,14 @@ export class ViewSubHeader extends React.Component {
     }
 
     return left.length > 0 || middle.length > 0 || right.length > 0 ? (
-      <ViewSection pt={1}>
+      <ViewSubHeaderRoot>
         <ButtonBar
           className="flex-full"
           left={left}
           center={middle}
           right={right}
         />
-      </ViewSection>
+      </ViewSubHeaderRoot>
     ) : null;
   }
 }

@@ -7,9 +7,9 @@ import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
 import { updateSlackSettings } from "../settings";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import _ from "underscore";
 import { t, jt } from "ttag";
@@ -210,7 +210,7 @@ export default class SettingsSlackForm extends Component {
           ? element.defaultValue
           : formData[element.key];
 
-      if (element.key === "slack-token") {
+      if (element.key === "slack-app-token") {
         return (
           <SettingsSetting
             key={element.key}

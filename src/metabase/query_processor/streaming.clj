@@ -34,13 +34,25 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
+(defn- validate-table-columms
+  "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
+  field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
+  Otherwise returns `table-columns`."
+  [table-columns cols]
+  (let [col-field-refs (set (remove nil? (map :field_ref cols)))
+        col-names      (set (remove nil? (map :name cols)))]
+    (when (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
+                                      (col-names (::mb.viz/table-column-name table-col))))
+                  table-columns)
+      table-columns)))
+
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
-  (let [table-columns'     (or table-columns
+  (let [table-columns'     (or (validate-table-columms table-columns cols)
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
                                (for [col cols]

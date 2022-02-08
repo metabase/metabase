@@ -1,15 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
-import { Database } from "../../types";
 
 describe("DatabaseStatusSmall", () => {
   it("should render in-progress status", () => {
     const databases = [
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "incomplete",
       }),
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -21,10 +21,10 @@ describe("DatabaseStatusSmall", () => {
 
   it("should render complete status", () => {
     const databases = [
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -36,10 +36,10 @@ describe("DatabaseStatusSmall", () => {
 
   it("should render error status", () => {
     const databases = [
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "aborted",
       }),
-      getDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -48,12 +48,4 @@ describe("DatabaseStatusSmall", () => {
 
     expect(screen.getByLabelText("Error syncing")).toBeInTheDocument();
   });
-});
-
-const getDatabase = (opts?: Partial<Database>): Database => ({
-  id: 1,
-  name: "Our database",
-  is_sample: false,
-  initial_sync_status: "complete",
-  ...opts,
 });

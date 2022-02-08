@@ -11,7 +11,7 @@ The Metabase application has two basic components:
 
 Both components are built and assembled together into a single jar file which runs the entire application.
 
-## 3rd party dependencies
+## Third-party dependencies
 
 Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
 
@@ -62,6 +62,20 @@ $ yarn build-watch
 
 Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
 
+We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
+
+```sh
+$ USE_ESLINT=true yarn build-hot
+```
+
+By default, these build processes rely on a memory cache. The build process with ESBuild loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
+
+```sh
+$ FS_CACHE=true yarn build-hot
+```
+
+When using `FS_CACHE=true` you may need to remove the `node_modules/.cache` directory to fix scenarios where the build may be improperly cached, and you must run `rm -rf node_modules/.cache` in order for the build to work correctly when alternating between open source and enterprise builds of the codebase.
+
 ## Frontend testing
 
 Run all unit and Cypress end-to-end tests with
@@ -71,6 +85,8 @@ yarn test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
+
+If you are using `FS_CACHE=true`, you can also use `FS_CACHE=true` with `yarn test`.
 
 ## Frontend debugging
 
@@ -175,7 +191,7 @@ instructions.
     clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 
     # Run the namespace checker
-    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 
     # Run clj-kondo
     clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn
@@ -218,7 +234,7 @@ For more details, please refer to the complete VS Code documentation on [Debuggi
 
 These instructions allow you to work on Metabase codebase on Windows, Linux, or macOS using [Visual Studio Code](https://code.visualstudio.com/), **without** manually installing the necessary dependencies. This is possible by leveraging Docker container and the Remote Containers extension from VS Code.
 
-For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers). The summary is as follows.
+For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers).
 
 Requirements:
 
@@ -245,11 +261,13 @@ Steps:
 2. Launch VS Code and open your cloned Metabase repository
 
 3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
-**Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
+   **Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
 
 4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
+
+See [here](dev-branch-docker.md) for more on running development branches of Metabase using Docker.
 
 ## Continuous integration
 

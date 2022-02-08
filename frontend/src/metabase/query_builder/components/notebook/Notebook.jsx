@@ -2,12 +2,11 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
-import { Box } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import NotebookSteps from "./NotebookSteps";
+import { NotebookRoot } from "./Notebook.styled";
 
 export default function Notebook({ className, ...props }) {
   const {
@@ -45,13 +44,13 @@ export default function Notebook({ className, ...props }) {
   }
 
   return (
-    <Box className={cx(className, "relative mb4")} px={[2, 3]}>
+    <NotebookRoot className={className}>
       <NotebookSteps {...props} />
       {hasVisualizeButton && isRunnable && (
         <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
-    </Box>
+    </NotebookRoot>
   );
 }

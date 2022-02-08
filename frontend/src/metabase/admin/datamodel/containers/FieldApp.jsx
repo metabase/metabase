@@ -16,7 +16,7 @@ import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -376,6 +376,7 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
         )
       }
       inheritedSettings={getGlobalSettingsForColumn(field)}
+      forcefullyShowHiddenSettings
     />
   </Section>
 );

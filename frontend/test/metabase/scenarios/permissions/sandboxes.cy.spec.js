@@ -12,7 +12,7 @@ import {
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -23,7 +23,7 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -482,10 +482,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.get(".cellData")
@@ -640,11 +638,10 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
+
         // Title of the first order for User ID = 1
         cy.findByText("Awesome Concrete Shoes");
       });
@@ -969,10 +966,9 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openOrdersTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openOrdersTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       cy.contains("37.65");
@@ -1026,10 +1022,9 @@ describeWithToken("formatting > sandboxes", () => {
       });
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openReviewsTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openReviewsTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       // Add positive assertion once this issue is fixed

@@ -232,18 +232,14 @@
             (is (= true
                    (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
-            (is (= "[Metabase] Password Reset Request"
-                   (-> @mt/inbox (get "rasta@metabase.com") first :subject))
-                "User should get a password reset email"))))
+            (is (mt/received-email-subject? :rasta #"Password Reset")))))
       (testing "We use `site-url` in the email"
         (let [my-url "abcdefghij"]
           (mt/with-temporary-setting-values [site-url my-url]
             (mt/with-fake-inbox
               (mt/user-http-request :rasta :post 204 "session/forgot_password"
                                     {:email (:username (mt/user->credentials :rasta))})
-              (let [rasta-emails (-> (mt/regex-email-bodies (re-pattern my-url))
-                                     (get (:username (mt/user->credentials :rasta))))]
-                (is (some #(get-in % [:body my-url]) rasta-emails)))))))
+              (is (mt/received-email-body? :rasta (re-pattern my-url)))))))
       (testing "test that email is required"
         (is (= {:errors {:email "value must be a valid email address."}}
                (mt/client :post 400 "session/forgot_password" {}))))

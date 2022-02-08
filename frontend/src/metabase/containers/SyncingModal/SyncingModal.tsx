@@ -5,7 +5,7 @@ import Settings from "metabase/lib/settings";
 import Databases from "metabase/entities/databases";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import SyncingModal from "metabase/components/SyncingModal";
-import { Database, DatabaseCandidate } from "./types";
+import { Database, DatabaseCandidate } from "metabase-types/api";
 
 interface DatabaseProps {
   databases: Database[];

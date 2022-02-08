@@ -9,7 +9,6 @@
             [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.test.mock.util :as mock.u]
             [metabase.test.sync :as sync-test]
             [metabase.test.util :as tu]
@@ -97,7 +96,7 @@
              (tu/throw-if-called fprint/fingerprinter
                (-> card
                    query-for-card
-                   (assoc-in [:query :fields] [[:field-id (mt/id :venues :longitude)]])
+                   (assoc-in [:query :fields] [[:field (mt/id :venues :longitude) nil]])
                    query->result-metadata
                    name->fingerprints))))))
 
@@ -109,7 +108,7 @@
 (defn- timeseries-dataset
   []
   (->> {:aggregation [[:count]]
-        :breakout    [[:datetime-field [:field-id (data/id :checkins :date)] :month]]}
+        :breakout    [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}
        (mt/run-mbql-query checkins)
        :data))
 

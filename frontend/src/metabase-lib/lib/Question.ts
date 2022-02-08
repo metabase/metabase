@@ -251,7 +251,7 @@ export default class Question {
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
   @memoize
-  query(): Query {
+  query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -860,8 +860,18 @@ export default class Question {
     );
   }
 
-  setDashboardId(dashboardId: number): Question {
-    return this.setCard(assoc(this.card(), "dashboardId", dashboardId));
+  setDashboardProps({
+    dashboardId,
+    dashcardId,
+  }:
+    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: undefined; dashcardId: undefined }): Question {
+    const card = chain(this.card())
+      .assoc("dashboardId", dashboardId)
+      .assoc("dashcardId", dashcardId)
+      .value();
+
+    return this.setCard(card);
   }
 
   description(): string | null | undefined {
@@ -990,11 +1000,9 @@ export default class Question {
 
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
-    const metadataChecksum = resultsMetadata && resultsMetadata.checksum;
     return this.setCard({
       ...this.card(),
       result_metadata: metadataColumns,
-      metadata_checksum: metadataChecksum,
     });
   }
 
@@ -1005,14 +1013,28 @@ export default class Question {
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
-  isEqual(other) {
+  isEqual(other, { compareResultsMetadata = true } = {}) {
     if (!other) {
       return false;
-    } else if (this.id() !== other.id()) {
+    }
+    if (this.id() !== other.id()) {
       return false;
-    } else if (!_.isEqual(this.card(), other.card())) {
+    }
+
+    const card = this.card();
+    const otherCard = other.card();
+    const areCardsEqual = compareResultsMetadata
+      ? _.isEqual(card, otherCard)
+      : _.isEqual(
+          _.omit(card, "result_metadata"),
+          _.omit(otherCard, "result_metadata"),
+        );
+
+    if (!areCardsEqual) {
       return false;
-    } else if (!_.isEqual(this.parameters(), other.parameters())) {
+    }
+
+    if (!_.isEqual(this.parameters(), other.parameters())) {
       return false;
     }
 
@@ -1048,10 +1070,12 @@ export default class Question {
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;
+      const dashcardId = this._card.dashcardId;
 
       const queryParams = {
         cardId: this.id(),
         dashboardId,
+        dashcardId,
         ignore_cache: ignoreCache,
         parameters,
       };
@@ -1167,7 +1191,10 @@ export default class Question {
         q &&
         new Question(q.card(), this.metadata())
           .setParameters([])
-          .setDashboardId(undefined)
+          .setDashboardProps({
+            dashboardId: undefined,
+            dashcardId: undefined,
+          })
       );
     });
     return a.isDirtyComparedTo(b);
@@ -1208,6 +1235,7 @@ export default class Question {
 
       ...(creationType ? { creationType } : {}),
       dashboardId: this._card.dashboardId,
+      dashcardId: this._card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }

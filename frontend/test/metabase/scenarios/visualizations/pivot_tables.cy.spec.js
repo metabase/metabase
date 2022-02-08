@@ -5,7 +5,7 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -15,7 +15,7 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
@@ -134,7 +134,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should be able to use binned numeric dimension as a grouping (metabase#14136)", () => {
-    // Sample dataset Orders > Count by Subtotal: Auto binned
+    // Sample database Orders > Count by Subtotal: Auto binned
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -259,7 +259,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("Show totals")
       .parent()
-      .find("a")
+      .find("input")
       .click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -289,7 +289,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("Show totals")
       .parent()
-      .find("a")
+      .find("input")
       .click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
@@ -436,10 +436,6 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should display an error message for native queries", () => {
-    cy.server();
-    // native queries should use the normal dataset endpoint even when set to pivot
-    cy.route("POST", `/api/dataset`).as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
@@ -450,7 +446,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     });
 
-    cy.wait("@dataset");
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
@@ -740,7 +735,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "line",
     });
 
-    cy.wait("@dataset");
     cy.findByText("Visualization").click();
     sidebar().within(() => {
       cy.findByText("Pivot Table")
@@ -821,8 +815,6 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should not show subtotals for flat tables", () => {
-    cy.intercept("POST", "api/dataset/pivot").as("createPivotedDataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -860,7 +852,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
-    cy.wait("@createPivotedDataset");
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
 });

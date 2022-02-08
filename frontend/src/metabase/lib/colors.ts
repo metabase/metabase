@@ -33,6 +33,7 @@ const colors: Record<string, string> = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
+  focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
 
@@ -192,6 +193,25 @@ export function lighten(
     .lighten(f)
     .string();
 }
+
+export type ColorMapping = (color: string) => string;
+const COLOR_MAPPINGS: Record<ColorName, Record<ColorName, ColorMapping>> = {
+  brand: {
+    brand: color => color,
+    "brand-light": color => lighten(color, 0.532),
+    focus: color => lighten(color, 0.7),
+  },
+};
+export const getColorMappings = (
+  colorName: ColorName,
+): Record<ColorName, ColorMapping> => {
+  if (colorName in COLOR_MAPPINGS) {
+    return COLOR_MAPPINGS[colorName];
+  } else {
+    return { [colorName]: color => color };
+  }
+};
+
 const PREFERRED_COLORS: Record<string, string[]> = {
   success: [
     "success",

@@ -79,13 +79,13 @@ Metabase will automatically update a question's display to make sure your data l
 
 You can change a question's visualization settings on a dashboard (to add a goal line, for example,) without affecting the original question. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
 
-![Visualization settings](images/dashboards/visualization-settings.png).
+![Visualization settings](images/dashboards/visualization-settings.png)
 
 ## Finding dashboards
 
-You can search for any dashboard (or question, collection, or pulse) by its title in the big search box at the top of Metabase.
+You can search for any dashboard (or question, model, collection, or pulse) by its title in the big search box at the top of Metabase.
 
-After a while, your team might accumulate a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click and drag a dashboard to the top, or click on the **...** menu and select **Pin this item**.
+After a while, your team might accumulate a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click on the **Pin icon** next to the dashboard you want to pin.
 
 ![Pinning a dashboard in a collection](images/dashboards/pinning-dashboard.png)
 
@@ -113,7 +113,7 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 ## Caching dashboards
 
-{% include plans-blockquote.html %}
+{% include plans-blockquote.html feature="Caching dashboards" %}
 
 If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the dashboard, Metabase can retrieve the stored results rather than query the database(s) again. For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
 

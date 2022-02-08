@@ -49,7 +49,7 @@
     (.write out (str \newline))
     (.flush out)
     true
-    (catch EofException e
+    (catch EofException _e
       (log/debug (u/format-color 'yellow (trs "connection closed, canceling request")))
       false)
     (catch Throwable e
@@ -199,5 +199,5 @@
                     :status 202))))
 
 ;; everthing in this namespace is deprecated!
-(doseq [[symb varr] (ns-interns *ns*)]
+(doseq [[_symb varr] (ns-interns *ns*)]
   (alter-meta! varr assoc :deprecated "0.35.0"))

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -11,11 +10,11 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
@@ -31,6 +30,13 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
+import {
+  ItemContent,
+  ItemDescription,
+  ListRoot,
+  SidebarHeader,
+  SidebarRoot,
+} from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
@@ -232,7 +238,7 @@ const RELATED_CONTENT = {
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <Box is="ol" my={1}>
+  <ListRoot>
     {Object.keys(suggestions).map((s, i) => (
       <li key={i} className="my2">
         <SuggestionSectionHeading>
@@ -249,7 +255,7 @@ const SuggestionsList = ({ suggestions, section }) => (
               mb={1}
             >
               <Card p={2} hoverable>
-                <Flex align="center">
+                <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
@@ -257,18 +263,18 @@ const SuggestionsList = ({ suggestions, section }) => (
                     size={22}
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <Box ml="auto" className="hover-child">
+                  <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
                       <Icon name="question" color={color("bg-dark")} />
                     </Tooltip>
-                  </Box>
-                </Flex>
+                  </ItemDescription>
+                </ItemContent>
               </Card>
             </Link>
           ))}
       </li>
     ))}
-  </Box>
+  </ListRoot>
 );
 
 const SuggestionSectionHeading = ({ children }) => (
@@ -284,12 +290,10 @@ const SuggestionSectionHeading = ({ children }) => (
   </h5>
 );
 const SuggestionsSidebar = ({ related }) => (
-  <Flex flexDirection="column" py={2} px={3}>
-    <Box is="h2" py={1}>
-      {t`More X-rays`}
-    </Box>
+  <SidebarRoot>
+    <SidebarHeader>{t`More X-rays`}</SidebarHeader>
     <SuggestionsList suggestions={related} />
-  </Flex>
+  </SidebarRoot>
 );
 
 export default AutomaticDashboardApp;

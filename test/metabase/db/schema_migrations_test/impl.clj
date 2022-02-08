@@ -13,7 +13,9 @@
             [clojure.tools.logging :as log]
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.conn]
+            [metabase.db.data-source :as mdb.data-source]
             [metabase.db.liquibase :as liquibase]
+            [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]
@@ -31,50 +33,52 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defn- random-schema-migrations-test-db-name []
+  (format "schema-migrations-test-db-%05d" (rand-int 100000)))
+
 (defmethod do-with-temp-empty-app-db* :default
   [driver f]
   (log/debugf "Creating empty %s app db..." driver)
-  (let [dbdef {:database-name     "schema-migrations-test-db"
+  (let [dbdef {:database-name     (random-schema-migrations-test-db-name)
                :table-definitions []}]
     (try
       (tx/create-db! driver dbdef)
       (let [connection-details (tx/dbdef->connection-details driver :db dbdef)
             jdbc-spec          (sql-jdbc.conn/connection-details->spec driver connection-details)]
-        (f jdbc-spec))
+        (f (mdb.test-util/->ClojureJDBCSpecDataSource jdbc-spec)))
       (finally
         (log/debugf "Destroying empty %s app db..." driver)
         (tx/destroy-db! driver dbdef)))))
 
 (defmethod do-with-temp-empty-app-db* :h2
-  [driver f]
+  [_driver f]
   (log/debug "Creating empty H2 app db...")
-  ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection
-  ;; closes because we're not setting a `DB_CLOSE_DELAY`
-  ;;
-  ;; don't use the usual implementation of `tx/dbdef->connection-details` because it creates a spec that only connects
-  ;; to with `USER=GUEST` which doesn't let us run DDL statements
-  (let [jdbc-spec {:subprotocol "h2", :subname "mem:schema-migrations-test-db", :classname "org.h2.Driver"}]
-    (f jdbc-spec)))
+  ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection closes
+  ;; because we're not setting a `DB_CLOSE_DELAY`
+  (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" (random-schema-migrations-test-db-name)))]
+    (f data-source)))
 
 (defn do-with-temp-empty-app-db
-  "The function invoked by `with-temp-empty-app-db` to execute a thunk `f` in a temporary, empty app DB. Use the macro
-  instead: `with-temp-empty-app-db`."
+  "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
+  macro instead: [[with-temp-empty-app-db]]."
   {:added "0.41.0"}
   [driver f]
   (do-with-temp-empty-app-db*
    driver
-   (fn [jdbc-spec]
-     (with-open [conn (jdbc/get-connection jdbc-spec)]
-       (binding [toucan.db/*db-connection* {:connection conn}
+   (fn [^javax.sql.DataSource data-source]
+     ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
+     ;; open
+     (with-open [conn (.getConnection data-source)]
+       (binding [toucan.db/*db-connection* {:datasource data-source}
                  toucan.db/*quoting-style* (mdb/quoting-style driver)
                  mdb.conn/*db-type*        driver
-                 mdb.conn/*jdbc-spec*      jdbc-spec]
+                 mdb.conn/*data-source*    data-source]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a
-  `java.sql.Connection` to the database. Toucan `*db-connection*` is also bound, which means Toucan functions like
-  `select` or `update!` will operate against this database.
+  [[java.sql.Connection]] to the database. [[toucan.db/*db-connection*]] is also bound, which means Toucan functions
+  like `select` or `update!` will operate against this database.
 
   Made public as of x.41."
   [[conn-binding db-type] & body]

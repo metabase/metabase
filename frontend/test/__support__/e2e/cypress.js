@@ -11,7 +11,6 @@ export const version = require("../../../../version.json");
 export * from "./helpers/e2e-setup-helpers";
 export * from "./helpers/e2e-ui-elements-helpers";
 export * from "./helpers/e2e-dashboard-helpers";
-export * from "./helpers/e2e-open-table-helpers";
 export * from "./helpers/e2e-database-metadata-helpers";
 export * from "./helpers/e2e-qa-databases-helpers";
 export * from "./helpers/e2e-ad-hoc-question-helpers";

@@ -1,6 +1,4 @@
 import styled, { css } from "styled-components";
-import { Box } from "grid-styled";
-
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
@@ -19,9 +17,10 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const Sidebar = styled(Box.withComponent("aside"))`
+export const Sidebar = styled.aside`
   bottom: 0;
   display: flex;
+  box-sizing: border-box;
   flex-direction: column;
   left: 0;
   overflow-x: hidden;
@@ -30,6 +29,7 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   position: fixed;
   top: 65px;
   width: 0;
+  background-color: ${color("white")};
 
   ${props =>
     props.shouldDisplayMobileSidebar &&

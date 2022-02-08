@@ -11,13 +11,6 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest quit-test
-  (testing "async-qp should properly handle `quit` exceptions"
-    (let [out-chan ((qp.reducible/async-qp (fn [query rff context]
-                                             (throw (qp.reducible/quit ::bye)))) {})]
-      (is (= ::bye
-             (metabase.test/wait-for-result out-chan))))))
-
 (defn- print-rows-rff [metadata]
   (fn
     ([] 0)

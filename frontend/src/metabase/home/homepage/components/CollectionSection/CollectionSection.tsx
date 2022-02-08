@@ -3,7 +3,7 @@ import { t } from "ttag";
 import CollectionList from "metabase/components/CollectionList";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-import { Collection, User } from "../../types";
+import { Collection, User } from "metabase-types/api";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   CollectionContent,

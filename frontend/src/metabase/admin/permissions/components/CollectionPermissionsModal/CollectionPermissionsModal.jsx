@@ -12,8 +12,8 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/components/Button";
-import Link from "metabase/components/Link";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import Groups from "metabase/entities/groups";
 
 import { PermissionsTable } from "../PermissionsTable";
@@ -21,6 +21,7 @@ import { permissionEditorPropTypes } from "../PermissionsEditor";
 import {
   getIsDirty,
   getCollectionsPermissionEditor,
+  collectionsQuery,
 } from "../../selectors/collection-permissions";
 import {
   initializeCollectionPermissions,
@@ -161,7 +162,7 @@ CollectionPermissionsModal.propTypes = propTypes;
 
 export default _.compose(
   Collections.loadList({
-    query: () => ({ tree: true }),
+    entityQuery: collectionsQuery,
   }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

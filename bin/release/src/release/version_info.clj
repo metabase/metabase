@@ -69,7 +69,7 @@
           latest-version (-> info :latest :version)]
       (u/announce "Latest version from %s is %s" (version-info-url) latest-version)
       (when-not (= latest-version (str "v" (c/version)))
-        (throw (ex-info "Latest version is %s; expected %s" latest-version (str "v" (c/version))
+        (throw (ex-info (format "Latest version is %s; expected %s" latest-version (str "v" (c/version)))
                         {:version-info info})))
       (u/announce (format "%s is valid." (version-info-filename))))))
 

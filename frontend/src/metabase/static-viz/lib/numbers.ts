@@ -20,7 +20,7 @@ const DEFAULT_OPTIONS = {
   suffix: "",
 };
 
-export const formatNumber = (number: number, options: NumberFormatOptions) => {
+export const formatNumber = (number: number, options?: NumberFormatOptions) => {
   const {
     number_style,
     currency,

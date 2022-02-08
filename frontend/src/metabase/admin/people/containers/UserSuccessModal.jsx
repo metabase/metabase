@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 import { t, jt } from "ttag";
 
 import { connect } from "react-redux";
@@ -10,10 +9,11 @@ import User from "metabase/entities/users";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-import Button from "metabase/components/Button";
-import Link from "metabase/components/Link";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
 @User.load({
   id: (state, props) => props.params.userId,
@@ -53,21 +53,21 @@ export default class UserSuccessModal extends React.Component {
 }
 
 const EmailSuccess = ({ user }) => (
-  <Box>{jt`We’ve sent an invite to ${(
+  <div>{jt`We’ve sent an invite to ${(
     <strong>{user.email}</strong>
-  )} with instructions to set their password.`}</Box>
+  )} with instructions to set their password.`}</div>
 );
 
 const PasswordSuccess = ({ user, temporaryPassword }) => (
-  <Box>
-    <Box pb={4}>
+  <div>
+    <PasswordSuccessMessage>
       {jt`We couldn’t send them an email invitation, so make sure to tell them to log in using ${(
         <strong>{user.email}</strong>
       )} and this password we’ve generated for them:`}
-    </Box>
+    </PasswordSuccessMessage>
 
     <PasswordReveal password={temporaryPassword} />
-    <Box
+    <div
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
       className="pt4 text-centered"
     >
@@ -76,6 +76,6 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
           Email Settings
         </Link>
       )} page.`}
-    </Box>
-  </Box>
+    </div>
+  </div>
 );

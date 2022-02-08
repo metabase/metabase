@@ -1,18 +1,18 @@
 import React from "react";
 import { jt, t } from "ttag";
 import Ellipsified from "metabase/components/Ellipsified";
-import ExternalLink from "metabase/components/ExternalLink";
-import Link from "metabase/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { Dashboard, Database, User } from "../../types";
+import { Dashboard, Database, User } from "metabase-types/api";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   BannerCloseIcon,
   BannerContent,
   BannerDescription,
   BannerIconContainer,
+  BannerLink,
   BannerModelIcon,
   BannerRoot,
   BannerTitle,
@@ -117,18 +117,19 @@ const DatabaseBanner = ({ user }: DatabaseBannerProps): JSX.Element => {
         <BannerTitle>{t`Connect your data to get the most out of Metabase`}</BannerTitle>
         <BannerDescription>
           {jt`If you need help, you can ${(
-            <ExternalLink href={userUrl}>{userLabel}</ExternalLink>
+            <ExternalLink key="user-link" href={userUrl}>
+              {userLabel}
+            </ExternalLink>
           )} or ${(
-            <ExternalLink href={docsUrl}>
+            <ExternalLink key="docs-link" href={docsUrl}>
               {t`check out our setup guides`}
             </ExternalLink>
           )}.`}
         </BannerDescription>
       </BannerContent>
-      <Link
-        className="Button Button--primary"
-        to={databaseUrl}
-      >{t`Add my data`}</Link>
+      <BannerLink className="Button Button--primary" to={databaseUrl}>
+        {t`Add my data`}
+      </BannerLink>
     </BannerRoot>
   );
 };
@@ -152,7 +153,7 @@ const DashboardBanner = ({
       <BannerContent>
         <BannerTitle>{t`Your teams’ most important dashboards go here`}</BannerTitle>
         <BannerDescription>{jt`Pin dashboards in ${(
-          <ExternalLink href={collectionUrl}>
+          <ExternalLink key="link" href={collectionUrl}>
             {ROOT_COLLECTION.name}
           </ExternalLink>
         )} to have them appear in this space for everyone.`}</BannerDescription>

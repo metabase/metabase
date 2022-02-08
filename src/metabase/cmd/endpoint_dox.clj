@@ -87,7 +87,7 @@
   []
   (for [ns-symb     u/metabase-namespace-symbols
         :when       (str/includes? (name ns-symb) "metabase.api")
-        [symb varr] (do (classloader/require ns-symb)
+        [_sym varr] (do (classloader/require ns-symb)
                         (sort (ns-interns ns-symb)))
         :when       (:is-endpoint? (meta varr))]
     (meta varr)))

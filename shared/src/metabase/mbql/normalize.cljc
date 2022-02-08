@@ -187,11 +187,11 @@
     (normalize-tokens ag-clause :ignore-path)))
 
 (defn- normalize-expressions-tokens
-  "For expressions, we don't want to normalize the name of the expression; keep that as is, but make it a keyword;
+  "For expressions, we don't want to normalize the name of the expression; keep that as is, and make it a string;
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(keyword expression-name)
+             [(mbql.u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens
@@ -392,7 +392,7 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts :as clause]]
+  [[_ id-or-name opts]]
   (if (is-clause? :field id-or-name)
     (let [[_ nested-id-or-name nested-opts] id-or-name]
       (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
@@ -703,7 +703,7 @@
       native          (update :native canonicalize-native-query)
       true            canonicalize-mbql-clauses)
     (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error canonicalizing query")
+      (throw (ex-info (i18n/tru "Error canonicalizing query: {0}" (ex-message e))
                       {:query query}
                       e)))))
 
@@ -822,7 +822,7 @@
       (try
         (normalize* query)
         (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error normalizing query")
+          (throw (ex-info (i18n/tru "Error normalizing query: {0}" (ex-message e))
                           {:query query}
                           e)))))))
 

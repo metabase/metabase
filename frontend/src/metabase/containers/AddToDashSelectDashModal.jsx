@@ -2,15 +2,15 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
+import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state) {
   return {
@@ -53,7 +53,11 @@ export default class AddToDashSelectDashModal extends Component {
       return (
         <ModalContent
           id="AddToDashSelectDashModal"
-          title={t`Add this question to a dashboard`}
+          title={
+            this.props.card.dataset
+              ? t`Add this model to a dashboard`
+              : t`Add this question to a dashboard`
+          }
           onClose={this.props.onClose}
         >
           <DashboardPicker onChange={this.onDashboardSelected} />
@@ -61,10 +65,10 @@ export default class AddToDashSelectDashModal extends Component {
             mt={1}
             onClick={() => this.setState({ shouldCreateDashboard: true })}
           >
-            <Flex align="center" className="text-brand" py={2}>
+            <LinkContent>
               <Icon name="add" mx={1} bordered />
               <h4>{t`Create a new dashboard`}</h4>
-            </Flex>
+            </LinkContent>
           </Link>
         </ModalContent>
       );

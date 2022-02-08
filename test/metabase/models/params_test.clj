@@ -15,12 +15,7 @@
                         [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
     (testing x
       (is (= expected
-             (params/wrap-field-id-if-needed x)))))
-  (testing "Should throw Exception if form is invalid"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Don't know how to wrap Field ID"
-         (params/wrap-field-id-if-needed nil)))))
+             (params/wrap-field-id-if-needed x))))))
 
 
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------

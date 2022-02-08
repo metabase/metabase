@@ -8,13 +8,13 @@ You can view your account settings by clicking on the **gears** icon in the uppe
 
 ## Account profile
 
-You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../faq/general/what-languages-can-be-used-with-metabase.md#currently-available-languages).
+You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../administration-guide/localization.md).
 
 ## Account password
 
 You can change your password here. Note that if your Metabase uses Single Sign-On (SSO), your administrator will have disabled this password section, as your identity provider will manage logins.
 
-If you're having trouble logging in, see our [How do I reset my password](../faq/using-metabase/how-do-i-reset-my-password.md).
+If you're having trouble logging in, see our [People can't log into Metabase](../troubleshooting-guide/cant-log-in.md).
 
 ## Account login history
 

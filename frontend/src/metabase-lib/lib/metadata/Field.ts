@@ -30,8 +30,9 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import Base from "./Base";
 import Dimension from "../Dimension";
+import Table from "./Table";
+import Base from "./Base";
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -42,6 +43,8 @@ import Dimension from "../Dimension";
 
 export default class Field extends Base {
   name: string;
+  semantic_type: string | null;
+  table?: Table;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
@@ -58,7 +61,11 @@ export default class Field extends Base {
     return path;
   }
 
-  displayName({ includeSchema, includeTable, includePath = true } = {}) {
+  displayName({
+    includeSchema = false,
+    includeTable,
+    includePath = true,
+  } = {}) {
     let displayName = "";
 
     if (includeTable && this.table) {
@@ -206,17 +213,17 @@ export default class Field extends Base {
     return getIconForField(this);
   }
 
-  dimension() {
+  reference() {
     if (Array.isArray(this.id)) {
       // if ID is an array, it's a MBQL field reference, typically "field"
-      return Dimension.parseMBQL(this.id, this.metadata, this.query);
+      return this.id;
     } else {
-      return Dimension.parseMBQL(
-        ["field", this.id, null],
-        this.metadata,
-        this.query,
-      );
+      return ["field", this.id, null];
     }
+  }
+
+  dimension() {
+    return Dimension.parseMBQL(this.reference(), this.metadata, this.query);
   }
 
   sourceField() {

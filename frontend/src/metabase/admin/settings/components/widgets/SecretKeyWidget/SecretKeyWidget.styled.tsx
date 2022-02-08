@@ -1,4 +1,4 @@
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import styled from "styled-components";
 
 export const SecretKeyWidgetRoot = styled.div`

@@ -431,7 +431,7 @@
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
-   :semantic_type             nil
+   :semantic_type            nil
    :default_dimension_option nil
    :dimension_options        []})
 
@@ -573,7 +573,9 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name                    "Category ID [internal remap]"
+                              :field_id                (mt/id :venues :category_id)
+                              :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -588,7 +590,9 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name                    "Category ID [internal remap]"
+                              :field_id                (mt/id :venues :category_id)
+                              :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -604,7 +608,7 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Category ID"
+                 :dimensions {:name                    "Category ID [external remap]"
                               :field_id                (mt/id :venues :category_id)
                               :human_readable_field_id (mt/id :categories :name)
                               :type                    "external"}}

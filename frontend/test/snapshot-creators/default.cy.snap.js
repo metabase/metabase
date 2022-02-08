@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDataset } from "__support__/e2e/cypress";
+import { snapshot, restore, withSampleDatabase } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const {
@@ -19,11 +19,11 @@ describe("snapshots", () => {
       updateSettings();
       addUsersAndGroups();
       createCollections();
-      withSampleDataset(SAMPLE_DATASET => {
-        createQuestionAndDashboard(SAMPLE_DATASET);
+      withSampleDatabase(SAMPLE_DATABASE => {
+        createQuestionAndDashboard(SAMPLE_DATABASE);
         cy.writeFile(
-          "frontend/test/__support__/e2e/cypress_sample_dataset.json",
-          SAMPLE_DATASET,
+          "frontend/test/__support__/e2e/cypress_sample_database.json",
+          SAMPLE_DATABASE,
         );
       });
 
@@ -61,7 +61,7 @@ describe("snapshots", () => {
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", "/api/database/1").then(response => {
       response.body.details.db =
-        "./resources/sample-dataset.db;USER=GUEST;PASSWORD=guest";
+        "./resources/sample-database.db;USER=GUEST;PASSWORD=guest";
       cy.request("PUT", "/api/database/1", response.body);
     });
   }

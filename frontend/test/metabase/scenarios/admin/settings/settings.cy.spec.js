@@ -7,9 +7,9 @@ import {
   setupMetabaseCloud,
   describeWithoutToken,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
@@ -124,11 +124,11 @@ describe("scenarios > admin > settings", () => {
     cy.contains("Site URL")
       .parent()
       .parent()
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("Redirect to HTTPS")
@@ -151,11 +151,11 @@ describe("scenarios > admin > settings", () => {
     cy.contains("Site URL")
       .parent()
       .parent()
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -173,7 +173,7 @@ describe("scenarios > admin > settings", () => {
 
     // check the new formatting in a question
     openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/).debug();
+    cy.contains(/^February 11, 2019, 21:40$/);
 
     // reset the formatting
     cy.visit("/admin/settings/localization");
@@ -197,10 +197,10 @@ describe("scenarios > admin > settings", () => {
 
     cy.contains("Date style")
       .closest("li")
-      .find(".AdminSelect")
+      .find("[data-testid='select-button']")
       .first()
       .click();
-    cy.findByText("2018/1/7").click();
+    cy.findByText("2018/1/7").click({ force: true });
     cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
@@ -215,7 +215,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
       .closest("li")
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
@@ -383,12 +383,13 @@ describe("scenarios > admin > settings", () => {
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
-      cy.contains("Answers sent right to your Slack");
-      cy.findByLabelText("Slack API Token")
-        .type("not-a-real-token")
-        .blur();
-      cy.findByText("Save changes").click();
-      cy.contains("Looks like we ran into some problems");
+
+      cy.findByText("Metabase on Slack");
+      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
+      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.button("Save changes").click();
+
+      cy.findByText(": invalid token");
     });
   });
 });

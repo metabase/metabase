@@ -4,7 +4,14 @@ import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import { FieldRow, Label, InfoIcon, InputContainer } from "./FormField.styled";
+import {
+  FieldRow,
+  Label,
+  InfoIcon,
+  InputContainer,
+  FieldContainer,
+} from "./FormField.styled";
+import { FormFieldDecription } from "./FormFieldDescription";
 
 const formFieldCommon = {
   title: PropTypes.string,
@@ -79,7 +86,7 @@ function FormField(props) {
   return (
     <div id={formFieldId} className={rootClassNames}>
       {(title || description) && (
-        <div>
+        <FieldContainer horizontal={horizontal}>
           <FieldRow>
             {title && (
               <Label
@@ -98,13 +105,13 @@ function FormField(props) {
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <div className="mb1">{description}</div>
+            <FormFieldDecription className="mb1" description={description} />
           )}
-        </div>
+        </FieldContainer>
       )}
       <InputContainer horizontal={horizontal}>{children}</InputContainer>
       {description && descriptionPosition === "bottom" && (
-        <div className="mt1">{description}</div>
+        <FormFieldDecription className="mt1" description={description} />
       )}
     </div>
   );

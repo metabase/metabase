@@ -28,18 +28,29 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class CollectionCreate extends Component {
+  handleClose = () => {
+    const { goBack, onClose } = this.props;
+    return onClose ? onClose() : goBack();
+  };
+
+  handleSaved = collection => {
+    const { goBack, onSaved } = this.props;
+    return onSaved ? onSaved(collection) : goBack();
+  };
+
   render() {
-    const { form, initialCollectionId, goBack } = this.props;
+    const { form, initialCollectionId } = this.props;
     return (
       <Collection.ModalForm
+        overwriteOnInitialValuesChange
         formName={FORM_NAME}
         form={form}
         collection={{
           parent_id: initialCollectionId,
           authority_level: REGULAR_COLLECTION.type,
         }}
-        onSaved={goBack}
-        onClose={goBack}
+        onSaved={this.handleSaved}
+        onClose={this.handleClose}
       />
     );
   }

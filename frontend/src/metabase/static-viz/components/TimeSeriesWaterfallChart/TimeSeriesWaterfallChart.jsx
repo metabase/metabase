@@ -59,7 +59,7 @@ const layout = {
     waterfallPositive: "#88BF4D",
     waterfallNegative: "#EF8C8C",
   },
-  numTicks: 5,
+  numTicks: 4,
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,

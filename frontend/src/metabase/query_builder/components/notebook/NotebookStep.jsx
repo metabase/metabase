@@ -10,11 +10,9 @@ import { color as c, lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
-
-import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
 
@@ -27,6 +25,14 @@ import BreakoutStep from "./steps/BreakoutStep";
 import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
+import {
+  StepActionsContainer,
+  StepBody,
+  StepContent,
+  StepHeader,
+  StepButtonContainer,
+  StepRoot,
+} from "./NotebookStep.styled";
 
 // TODO
 const STEP_UI = {
@@ -97,8 +103,6 @@ function getTestId(step) {
   return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
 }
 
-const CONTENT_WIDTH = [11 / 12, 8 / 12];
-
 export default class NotebookStep extends React.Component {
   state = {
     showPreview: false,
@@ -152,18 +156,11 @@ export default class NotebookStep extends React.Component {
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box
-          mb={[1, 2]}
-          pb={[1, 2]}
+        <StepRoot
           className="hover-parent hover--visibility"
           data-testid={getTestId(step)}
         >
-          <Flex
-            mb={1}
-            width={CONTENT_WIDTH}
-            className="text-bold"
-            style={{ color }}
-          >
+          <StepHeader color={color}>
             {title}
             <Icon
               name="close"
@@ -172,11 +169,11 @@ export default class NotebookStep extends React.Component {
               onClick={() => step.revert(step.query).update(updateQuery)}
               data-testid="remove-step"
             />
-          </Flex>
+          </StepHeader>
 
           {NotebookStepComponent && (
-            <Flex align="center">
-              <Box width={CONTENT_WIDTH}>
+            <StepBody>
+              <StepContent>
                 <NotebookStepComponent
                   color={color}
                   step={step}
@@ -184,8 +181,8 @@ export default class NotebookStep extends React.Component {
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
                 />
-              </Box>
-              <Box width={[1 / 12]}>
+              </StepContent>
+              <StepButtonContainer>
                 <ActionButton
                   ml={[1, 2]}
                   className={
@@ -196,8 +193,8 @@ export default class NotebookStep extends React.Component {
                   color={c("text-light")}
                   onClick={() => this.setState({ showPreview: true })}
                 />
-              </Box>
-            </Flex>
+              </StepButtonContainer>
+            </StepBody>
           )}
 
           {showPreview && canPreview && (
@@ -208,11 +205,11 @@ export default class NotebookStep extends React.Component {
           )}
 
           {actionButtons.length > 0 && (
-            <Box mt={1} data-testid="action-buttons">
+            <StepActionsContainer data-testid="action-buttons">
               {actionButtons}
-            </Box>
+            </StepActionsContainer>
           )}
-        </Box>
+        </StepRoot>
       </ExpandingContent>
     );
   }

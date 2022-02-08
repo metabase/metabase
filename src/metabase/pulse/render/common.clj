@@ -88,19 +88,37 @@
 (defn graphing-column-row-fns
   "Return a pair of `[get-x-axis get-y-axis]` functions that can be used to get the x-axis and y-axis values in a row,
   or columns, respectively."
-  [card {:keys [cols] :as data}]
+  [card data]
   [(or (ui-logic/x-axis-rowfn card data)
        first)
    (or (ui-logic/y-axis-rowfn card data)
        second)])
 
-(defn non-nil-rows
-  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
-  [x-axis-fn y-axis-fn rows]
-  (filter (every-pred x-axis-fn y-axis-fn) rows))
+(defn coerce-bignum-to-int
+  "Graal polyglot system (not the JS machine itself, the polyglot system)
+  is not happy with BigInts or BigDecimals.
+  For more information, this is the GraalVM issue, open a while
+  https://github.com/oracle/graal/issues/2737
+  Because of this unfortunately they all have to get smushed into normal ints and decimals in JS land."
+  [row]
+  (for [member row]
+    (cond
+      ;; this returns true for bigint only, not normal int or long
+      (instance? clojure.lang.BigInt member)
+      (int member)
 
-(defn non-nil-combo-rows
-  "Remove any rows that have a nil value for the entire row because
-  the row-function-generating functions themselves choke on nil values, for combo rowfuncs"
-  [rows]
-  (filter #(every? some? %) rows))
+      ;; this returns true for bigdec only, not actual normal decimals
+      ;; not the clearest clojure native function in the world
+      (decimal? member)
+      (double member)
+
+      :else
+      member)))
+
+(defn row-preprocess
+  "Preprocess rows.
+
+  - Removes any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`
+  - Normalizes bigints and bigdecs to ordinary sizes"
+  [x-axis-fn y-axis-fn rows]
+  (map coerce-bignum-to-int (filter (every-pred x-axis-fn y-axis-fn) rows)))

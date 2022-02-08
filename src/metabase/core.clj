@@ -10,7 +10,6 @@
             metabase.driver.mysql
             metabase.driver.postgres
             [metabase.events :as events]
-            [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -45,10 +44,9 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- -init-create-setup-token
-  "Create and set a new setup token and log it."
+(defn- print-setup-url
+  "Print the setup url during instance initialization."
   []
-  (setup/create-token!)                 ; we need this here to create the initial token
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
         setup-url (str "http://"
@@ -60,6 +58,12 @@
                                    "\n\n"
                                    setup-url
                                    "\n\n")))))
+
+(defn- create-setup-token-and-log-setup-url!
+  "Create and set a new setup token and log it."
+  []
+  (setup/create-token!)   ; we need this here to create the initial token
+  (print-setup-url))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
@@ -106,20 +110,17 @@
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
-      (-init-create-setup-token)
+      (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
 
-    ;; deal with our sample dataset as needed
+    ;; deal with our sample database as needed
     (if new-install?
-      ;; add the sample dataset DB for fresh installs
-      (sample-data/add-sample-dataset!)
+      ;; add the sample database DB for fresh installs
+      (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!))
-
-    ;; start the metabot thread
-    (metabot/start-metabot!))
+      (sample-data/update-sample-database-if-needed!)))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))

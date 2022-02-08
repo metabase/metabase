@@ -2,8 +2,10 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
             [metabase.models.interface :as i]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -37,7 +39,7 @@
   "Returns the value of the given `secret` as a String.  `secret` can be a Secret model object, or a
   secret-map (i.e. return value from `db-details-prop->secret-map`)."
   {:added "0.42.0"}
-  ^String [{:keys [value] :as secret}]
+  ^String [{:keys [value] :as _secret}]
   (cond (string? value)
         value
         (bytes? value)
@@ -76,7 +78,7 @@
                                (tru "File path for {0}" (-> (get secret-props connection-property-name)
                                                           :display-name)))
 
-                             true
+                             :else
                              (tru "Path"))]
           (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
                    {:file-path secret-val
@@ -159,12 +161,12 @@
        source) has changed, then inserts a new version with the given parameters.
    * if there is an existing latest Secret instance, but none of the aforementioned fields changed, then update it"
   {:added "0.42.0"}
-  [existing-id nm kind source value]
+  [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
                          (let [inserted (db/insert! Secret (cond-> {:version    v
                                                                     :name       nm
                                                                     :kind       kind
-                                                                    :source     source
+                                                                    :source     src
                                                                     :value      value
                                                                     :creator_id api/*current-user-id*}
                                                              id
@@ -172,14 +174,88 @@
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from db/insert!, hence we may need to
                            ;; manually select it here
-                           (or inserted (db/select-one Secret :id id :version v))))
+                           (db/select-one Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
-      (if (= (select-keys latest-version bump-version-keys) [kind source value])
+      (if (= (select-keys latest-version bump-version-keys) [kind src value])
         (db/update-where! Secret {:id existing-id :version (:version latest-version)}
                                  :name nm)
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
+
+(defn reduce-over-details-secret-values
+  "Reduces over the given `db-details` (a Database details map), for any secret type connection properties under the
+  given `driver`, using the given `reduce-fn`, and returns the accumulated result.
+
+  `reduce-fn` is the reduction fn (i.e. the first arg to [[clojure.core/reduce-kv]]), and is therefore expected to have
+  a 3-arity.  Its first param is the accumulated `db-details`, its 2nd param (a String) is the connection property
+  name, and the 3rd param (a map) is the connection property map itself (containing the `:name`, `:type`, etc.).  This
+  function will only be invoked with connection properties that are of the secret type.
+
+  In essence, this is a utility function to provide a generic mechanism for transforming db-details containing secret
+  values."
+  {:added "0.42.0"}
+  [driver db-details reduce-fn]
+  (let [conn-props-fn (get-method driver/connection-properties driver)]
+    (if (and (map? db-details) (fn? conn-props-fn))
+        (let [conn-props            (conn-props-fn driver)
+              conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
+          (reduce-kv reduce-fn db-details conn-secrets-by-name))
+        db-details)))
+
+(defn expand-inferred-secret-values
+  "Expand certain secret sub-properties in the `db-details`, depending on the secret type, for admin purposes.  This is
+  invoked as part of a KV reduction over secret type connection-properties, so `conn-prop-nm` (a String), and
+  `conn-prop` (a map containing the connection property definition) are also passed as parameters.
+
+  `secret-or-id?` is an optional param that, if passed, will be used to look up the derived secret values (to avoid a
+  redundant app DB query if the caller already has this; if a nil param value is passed, then the secret ID will be
+  looked up from the `:db-details` map at `conn-prop-nm`).
+
+  The keys/value pairs that may be added into `db-details`:
+
+   - <prop>-value - the secret value itself, in the case that the secret is a file-path type (as opposed to a value we
+                    store directly); the purpose of expanding this is to repopulate the file paths in the UI at the
+                    cost of \"exposing\" the file path (which itself shouldn't be too risky, especially since it will
+                    only be shown to admins); only populated for file type secret values
+   - <prop>-creator-id - the ID of the user who \"created\" the secret value for <prop> (i.e. the last person who
+                         updated it), for audit purposes; only populated for non-file type secret values
+   - <prop>-created-at - the timestamp of the last time the secret value for <prop> was changed or updated; only
+                         populated for non-file type secret values"
+  {:added "0.42.0"}
+  [db-details conn-prop-nm _conn-prop & [secret-or-id]]
+  (let [subprop (fn [prop-nm]
+                  (keyword (str conn-prop-nm prop-nm)))
+        secret* (cond (int? secret-or-id)
+                      (Secret secret-or-id)
+
+                      (instance? (class Secret) secret-or-id)
+                      secret-or-id
+
+                      true ; default; app DB look up from the ID in db-details
+                      (latest-for-id (get db-details (subprop "-id"))))
+        src     (:source secret*)]
+    ;; always populate the -source, -creator-id, and -created-at sub properties
+    (cond-> (assoc db-details (subprop "-source") src
+                              (subprop "-creator-id") (:creator_id secret*))
+
+      (some? (:created_at secret*))
+      (assoc (subprop "-created-at") (t/format :iso-offset-date-time (:created_at secret*)))
+
+      (= :file-path src) ; for file path sources only, populate the value
+      (assoc (subprop "-value") (value->string secret*)))))
+
+(defn admin-expand-db-details-inferred-secret-values
+  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving admin
+  requests (ex: to edit an existing database or view its current details).  This is to populate certain values that
+  shouldn't be stored in the details blob itself, but which can be derived from the details->secret association itself.
+  Refer to the docstring for [[expand-inferred-secret-values]] for full details."
+  {:added "0.42.0"}
+  [database]
+  (update database :details (fn [details]
+                              (reduce-over-details-secret-values (driver.u/database->driver database)
+                                                                 details
+                                                                 expand-inferred-secret-values))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 

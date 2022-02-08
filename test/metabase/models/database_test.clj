@@ -15,6 +15,7 @@
             [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -59,6 +60,7 @@
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
+        project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
         pg-db         (mdb/map->DatabaseInstance
                        {:description nil
@@ -85,9 +87,9 @@
                                       :dataset-id           "office_checkins"
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
-                                      :project-id           "metabase-bigquery-driver"}
+                                      :project-id           project-id}
                         :id          2
-                        :engine      :bigquery})]
+                        :engine      :bigquery-cloud-sdk})]
     (testing "sensitive fields are redacted when database details are encoded"
       (testing "details removed for non-admin users"
         (mw.session/with-current-user
@@ -99,7 +101,7 @@
           (is (= {"description" nil
                   "name"        "testbq"
                   "id"          2
-                  "engine"      "bigquery"}
+                  "engine"      "bigquery-cloud-sdk"}
                  (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
@@ -129,9 +131,9 @@
                                  "dataset-id"           "office_checkins"
                                  "service-account-json" "**MetabasePass**"
                                  "use-jvm-timezone"     false
-                                 "project-id"           "metabase-bigquery-driver"}
+                                 "project-id"           project-id}
                   "id"          2
-                  "engine"      "bigquery"}
+                  "engine"      "bigquery-cloud-sdk"}
                  (encode-decode bq-db))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
@@ -167,13 +169,14 @@
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
         (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
               check-db-fn (fn [{:keys [details] :as database} exp-secret]
-                            (is (not (contains? details :password-value)) "password-value was removed from details")
+                            (when (not= :file-path (:source exp-secret))
+                              (is (not (contains? details :password-value))
+                                  "password-value was removed from details when not a file-path"))
                             (is (some? (:password-created-at details)) "password-created-at was populated in details")
                             (is (= (mt/user->id :crowberto) (:password-creator-id details))
                                 "password-creator-id was populated in details")
-                            (is (= (if-let [src (:source exp-secret)]
-                                     (name src)
-                                     nil) (:password-source details))
+                            (is (= (some-> (:source exp-secret) name)
+                                   (:password-source details))
                                 "password-source matches the value from the secret")
                             (is (contains? details :password-id) "password-id was added to details")
                             (let [secret-id                                  (:password-id details)
@@ -212,3 +215,11 @@
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
                   (is (nil? (db/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+
+(driver/register! ::test, :abstract? true)
+
+(deftest preserve-driver-namespaces-test
+  (testing "Make sure databases preserve namespaced driver names"
+    (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
+      (is (= ::test
+             (db/select-one-field :engine Database :id db-id))))))
