@@ -418,9 +418,7 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
+      cy.intercept("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
 
       visitQuestionAdhoc({
         dataset_query: {
@@ -451,7 +449,6 @@ describe("scenarios > question > joined questions", () => {
         display: "line",
       });
 
-      cy.wait("@dataset");
       cy.get(".dot")
         .eq(2)
         .click({ force: true });

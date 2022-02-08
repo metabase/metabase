@@ -171,15 +171,13 @@
 
 (defn- print-diff [before after]
   (assert (not= before after))
-  (let [before                         (format-output before)
-        after                          (format-output after)
-        [only-in-before only-in-after] (data/diff before after)]
+  (let [[only-in-before only-in-after] (data/diff before after)]
     (when *print-full?*
       (println (u/pprint-to-str 'cyan (format-output after))))
     (when (seq only-in-before)
-      (println (u/colorize 'red (str "-\n" (u/pprint-to-str only-in-before)))))
+      (println (u/colorize 'red (str "-\n" (u/pprint-to-str (format-output only-in-before))))))
     (when (seq only-in-after)
-      (println (u/colorize 'green (str "+\n" (u/pprint-to-str only-in-after)))))))
+      (println (u/colorize 'green (str "+\n" (u/pprint-to-str (format-output only-in-after))))))))
 
 (defn- debug-query-changes [middleware-var middleware]
   (fn [next-middleware]

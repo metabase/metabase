@@ -334,32 +334,35 @@
                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest remapped-columns-test
-  (letfn [(testfn []
-            (do-test
-             "Remapped values are used in exports"
-             {:query {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :limit 1}}
+  (letfn [(testfn [remap-type]
+            (let [col-name (case remap-type
+                             :internal "Category ID [internal remap]"
+                             :external "Category ID [external remap]")]
+              (do-test
+               "Remapped values are used in exports"
+               {:query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)
+                                   :limit        1}}
 
-              :assertions {:csv (fn [results]
-                                  (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                          ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
-                                         (csv/read-csv results))))
+                :assertions {:csv (fn [results]
+                                    (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                            ["1" "Red Medicine" "Asian" "10.0646" "-165.374" "3"]]
+                                           (csv/read-csv results))))
 
-                           :json (fn [results]
-                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                           [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
-                                          (parse-json-results results))))
+                             :json (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             [1 "Red Medicine" "Asian" 10.0646 -165.374 3]]
+                                            (parse-json-results results))))
 
-                           :xlsx (fn [results]
-                                   (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                           [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
-                                          (xlsx-test/parse-xlsx-results results))))}}))]
+                             :xlsx (fn [results]
+                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
+                                             [1.0 "Red Medicine" "Asian" 10.0646 -165.374 3.0]]
+                                            (xlsx-test/parse-xlsx-results results))))}})))]
     (mt/with-column-remappings [venues.category_id categories.name]
-      (testfn))
+      (testfn :external))
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-      (testfn))))
+      (testfn :internal))))
 
 (deftest join-export-test
   (do-test

@@ -13,7 +13,6 @@ const BUTTON_VARIANTS = [
   "large",
   "round",
   "primary",
-  "secondary",
   "danger",
   "warning",
   "cancel",
@@ -40,7 +39,6 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   large?: boolean;
 
   primary?: boolean;
-  secondary?: boolean;
   success?: boolean;
   danger?: boolean;
   warning?: boolean;

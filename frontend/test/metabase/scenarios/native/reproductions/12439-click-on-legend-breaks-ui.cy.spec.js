@@ -20,13 +20,10 @@ const questionDetails = {
 
 describe("issue 12439", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
 
     visitQuestionAdhoc(questionDetails);
-    cy.wait("@dataset");
   });
 
   it("should allow clicking on a legend in a native question without breaking the UI (metabase#12439)", () => {
