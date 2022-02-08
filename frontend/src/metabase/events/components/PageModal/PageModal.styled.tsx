@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const ModalRoot = styled.div`
   display: block;
@@ -16,6 +17,11 @@ export const ModalTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.25rem;
   line-height: 1.5rem;
+`;
+
+export const ModalCloseButton = styled(IconButtonWrapper)`
+  flex: 0 0 auto;
+  color: ${color("text-light")};
 `;
 
 export const ModalBody = styled.div`
