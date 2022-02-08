@@ -288,6 +288,15 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
+export function timelines(root) {
+  const collectionUrl = collection(root);
+  return `${collectionUrl}/timelines`;
+}
+
+export function newTimeline(collection) {
+  return `${timelines(collection)}/new`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
