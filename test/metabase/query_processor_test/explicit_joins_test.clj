@@ -728,33 +728,43 @@
                         ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                        (mt/formatted-rows [str int str 2.0 str 2.0] results)))))))))))
 
-(defn- very-long-identifier [length]
-  (let [charrs (into []
-                     (comp cat
-                           (map char))
-                     [(range (int \a) (inc (int \z)))
-                      (range (int \A) (inc (int \Z)))
-                      (range (int \0) (inc (int \9)))
-                      [(int \_)]])]
-    (str/join (for [i (range length)]
-                (nth charrs (mod i (count charrs)))))))
+(def ^:private charsets
+  {:ascii   (into (vec (for [i (range 26)]
+                         (char (+ (int \A) i))))
+                  [\_])
+   :unicode (vec "가나다라마바사아자차카타파하")})
+
+(defn- very-long-identifier [charset length]
+  (str/join (for [i (range length)]
+              (nth charset (mod i (count charset))))))
 
 (deftest very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
-      (doseq [alias-length [100 300 1000]]
-        (testing (format "\nalias-length = %d" alias-length)
-          (let [join-alias (very-long-identifier alias-length)
+      (doseq [[charset-name charset] charsets
+              alias-length           [100 300 1000]]
+        (testing (format "\ncharset = %s\nalias-length = %d" charset-name alias-length)
+          (let [join-alias   (very-long-identifier charset alias-length)
+                join-alias-2 (str/join [join-alias "_2"])
                 query      (mt/mbql-query venues
                              {:joins    [{:source-table $$categories
                                           :alias        join-alias
                                           :condition    [:= $category_id [:field %categories.id {:join-alias join-alias}]]
+                                          :fields       :none}
+                                         ;; make sure we don't just truncate the alias names -- if REALLY LONG names
+                                         ;; differ just by some characters at the end that won't cut it
+                                         {:source-table $$categories
+                                          :alias        join-alias-2
+                                          :condition    [:= $category_id [:field %categories.id {:join-alias join-alias-2}]]
                                           :fields       :none}]
-                              :fields   [$id $name [:field %categories.name {:join-alias join-alias}]]
+                              :fields   [$id
+                                         $name
+                                         [:field %categories.name {:join-alias join-alias}]
+                                         [:field %categories.name {:join-alias join-alias-2}]]
                               :order-by [[:asc $id]]
                               :limit    2})]
             (mt/with-native-query-testing-context query
-              (is (= [[1 "Red Medicine"          "Asian"]
-                      [2 "Stout Burgers & Beers" "Burgers"]]
-                     (mt/formatted-rows [int str str]
+              (is (= [[1 "Red Medicine"          "Asian"  "Asian"]
+                      [2 "Stout Burgers & Beers" "Burger" "Burger"]]
+                     (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
