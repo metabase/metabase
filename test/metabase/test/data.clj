@@ -226,9 +226,10 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent 1}
   [dataset & body]
-  `(t/testing (colorize/magenta ~(if (symbol? dataset)
-                                   (format "using %s dataset" dataset)
-                                   "using inline dataset"))
+  `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
+                                        (format "using %s dataset" dataset)
+                                        "using inline dataset")
+                                      \newline))
      (impl/do-with-dataset ~(if (and (symbol? dataset)
                                      (not (get &env dataset)))
                               `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
