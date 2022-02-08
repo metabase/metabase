@@ -23,10 +23,6 @@ export const ButtonLink = styled(ExternalLink)`
   text-align: center;
 `;
 
-ButtonLink.defaultProps = {
-  className: "Button Button--primary",
-};
-
 export const CenteredRow = styled.div`
   display: flex;
   align-items: center;
