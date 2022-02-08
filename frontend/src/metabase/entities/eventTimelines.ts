@@ -4,7 +4,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 
 type UndoOpts = Record<string, unknown>;
 
-export const EventTimelines = createEntity({
+const EventTimelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
@@ -22,3 +22,5 @@ export const EventTimelines = createEntity({
       ),
   },
 });
+
+export default EventTimelines;
