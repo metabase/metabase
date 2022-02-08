@@ -183,8 +183,6 @@ describe("scenarios > binning > binning options", () => {
     it("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
 
-      cy.wait("@dataset");
-
       cy.findByText("Created At").click();
       cy.findByText("Distribution").click();
 
@@ -289,7 +287,6 @@ function chooseInitialBinningOptionForExplicitJoin({
 } = {}) {
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
-  cy.wait("@dataset");
   cy.findByTextEnsureVisible("Summarize").click();
 
   cy.findByTestId("sidebar-right").within(() => {
