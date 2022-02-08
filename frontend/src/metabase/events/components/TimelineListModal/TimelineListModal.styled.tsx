@@ -3,6 +3,13 @@ import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
+export const ModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0 2rem 2rem;
+`;
+
 export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;
