@@ -92,9 +92,9 @@
 
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
-  [{:keys [^DataSource datasource], :as spec} ^Properties pool-properties]
+  [{:keys [^DataSource datasource], :as spec} pool-properties]
   (if datasource
-    {:datasource (DataSources/pooledDataSource datasource pool-properties)}
+    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
     (connection-pool/connection-pool-spec spec pool-properties)))
 
 (defn- create-pool!
