@@ -139,9 +139,6 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -156,8 +153,6 @@ describe("scenarios > visualizations > waterfall", () => {
       },
       display: "line",
     });
-
-    cy.wait("@dataset");
 
     cy.findByText("Visualization").click();
     cy.findByTestId("Waterfall-button").click();
