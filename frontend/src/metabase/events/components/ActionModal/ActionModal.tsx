@@ -1,7 +1,6 @@
 import React, { ReactNode } from "react";
 import Icon from "metabase/components/Icon";
 import {
-  ModalBody,
   ModalCloseButton,
   ModalHeader,
   ModalRoot,
@@ -27,7 +26,7 @@ const ActionModal = ({
           <Icon name="close" />
         </ModalCloseButton>
       </ModalHeader>
-      <ModalBody>{children}</ModalBody>
+      {children}
     </ModalRoot>
   );
 };

@@ -9,7 +9,7 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem 2rem 0 2rem;
+  padding: 2rem;
 `;
 
 export const ModalTitle = styled.div`
@@ -23,8 +23,4 @@ export const ModalTitle = styled.div`
 export const ModalCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("text-light")};
-`;
-
-export const ModalBody = styled.div`
-  padding: 0 2rem 2rem 2rem;
 `;
