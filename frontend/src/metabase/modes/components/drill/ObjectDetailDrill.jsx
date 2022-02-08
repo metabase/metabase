@@ -42,7 +42,8 @@ export default ({ question, clicked }) => {
   if (
     !clicked?.column ||
     clicked?.value === undefined ||
-    !(isFK(clicked.column) || isPK(clicked.column))
+    !(isFK(clicked.column) || isPK(clicked.column)) ||
+    !question.query().isEditable()
   ) {
     return [];
   }
