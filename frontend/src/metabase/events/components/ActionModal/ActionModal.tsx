@@ -6,19 +6,19 @@ import {
   ModalHeader,
   ModalRoot,
   ModalTitle,
-} from "./EventModal.styled";
+} from "./ActionModal.styled";
 
-export interface EventModalProps {
+export interface ActionModalProps {
   title?: string;
   children?: ReactNode;
-  onClose?: () => ReactNode;
+  onClose?: () => void;
 }
 
-const EventModal = ({
+const ActionModal = ({
   title,
   children,
   onClose,
-}: EventModalProps): JSX.Element => {
+}: ActionModalProps): JSX.Element => {
   return (
     <ModalRoot>
       <ModalHeader>
@@ -32,4 +32,4 @@ const EventModal = ({
   );
 };
 
-export default EventModal;
+export default ActionModal;
