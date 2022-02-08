@@ -13,7 +13,6 @@
             [metabase.util.ssh :as ssh]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.DataSources
-           java.util.Properties
            javax.sql.DataSource))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
