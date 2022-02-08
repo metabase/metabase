@@ -1,5 +1,6 @@
 (ns metabase.query-processor-test.explicit-joins-test
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -8,9 +9,7 @@
             [metabase.query-processor-test.timezones-test :as timezones-test]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [clojure.string :as str]
-            [medley.core :as m]))
+            [metabase.test.data.interface :as tx]))
 
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -25,7 +24,7 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES source
+                 :left-join [CATEGORIES __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
