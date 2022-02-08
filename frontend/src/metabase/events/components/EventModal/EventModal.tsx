@@ -6,19 +6,19 @@ import {
   ModalHeader,
   ModalRoot,
   ModalTitle,
-} from "./PageModal.styled";
+} from "./EventModal.styled";
 
-export interface PageModalProps {
+export interface EventModalProps {
   title?: string;
   children?: ReactNode;
   onClose?: () => ReactNode;
 }
 
-const PageModal = ({
+const EventModal = ({
   title,
   children,
   onClose,
-}: PageModalProps): JSX.Element => {
+}: EventModalProps): JSX.Element => {
   return (
     <ModalRoot>
       <ModalHeader>
@@ -32,4 +32,4 @@ const PageModal = ({
   );
 };
 
-export default PageModal;
+export default EventModal;
