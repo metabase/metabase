@@ -39,7 +39,6 @@ export function QuestionSummarizeWidget({
   return (
     <HeaderButton
       large
-      secondary
       data-testid="toggle-summarize-sidebar-button"
       color={color("accent1")}
       labelBreakpoint="sm"

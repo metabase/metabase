@@ -17,8 +17,6 @@ describe("visual tests > visualizations > row", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with formatted x-axis", () => {
@@ -32,8 +30,6 @@ describe("visual tests > visualizations > row", () => {
         },
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

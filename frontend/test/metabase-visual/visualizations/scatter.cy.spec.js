@@ -23,8 +23,6 @@ describe("visual tests > visualizations > scatter", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with date dimension", () => {
@@ -36,8 +34,6 @@ describe("visual tests > visualizations > scatter", () => {
         "graph.metrics": ["count", "count_2"],
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
