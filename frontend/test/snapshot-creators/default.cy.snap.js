@@ -62,7 +62,6 @@ describe("snapshots", () => {
     cy.request("GET", "/api/database/1").then(response => {
       response.body.details.db =
         "./resources/sample-database.db;USER=GUEST;PASSWORD=guest";
-      response.body.force_sample = true;
       cy.request("PUT", "/api/database/1", response.body);
     });
   }

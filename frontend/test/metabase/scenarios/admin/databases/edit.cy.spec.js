@@ -118,7 +118,6 @@ describe("scenarios > admin > databases > edit", () => {
         details: {
           "let-user-control-scheduling": true,
         },
-        force_sample: true,
         engine: "h2",
       });
     });
