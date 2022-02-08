@@ -57,7 +57,7 @@ describe("issue 13960", () => {
 
         cy.intercept(
           "POST",
-          `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
         ).as("cardQuery");
 
         cy.visit(`/dashboard/${dashboard_id}`);

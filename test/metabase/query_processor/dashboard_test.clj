@@ -13,9 +13,11 @@
 ;; there are more tests in [[metabase.api.dashboard-test]]
 
 (deftest resolve-parameters-validation-test
-  (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card}]
+  (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
+                                                   {card-id :id}      :card
+                                                   {dashcard-id :id}  :dashcard}]
     (letfn [(resolve-params [params]
-              (#'qp.dashboard/resolve-params-for-query dashboard-id card-id params))]
+              (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params))]
       (testing "Valid parameters"
         (is (= [{:type   :category
                  :id     "_PRICE_"
@@ -33,13 +35,14 @@
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
              (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
 
-(defn- run-query-for-dashcard [dashboard-id card-id & options]
+(defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (apply qp.dashboard/run-query-for-dashcard-async
      :dashboard-id dashboard-id
      :card-id      card-id
+     :dashcard-id  dashcard-id
      :run          (fn [query info]
                      (qp/process-query (assoc query :async? false) info))
      options)))
@@ -60,11 +63,11 @@
                                                                  :id      "__X__"
                                                                  :type    :category
                                                                  :default 3}]}]
-                    DashboardCard [_ {:card_id            card-id
-                                      :dashboard_id       dashboard-id
-                                      :parameter_mappings [{:parameter_id "__X__"
-                                                            :card_id      card-id
-                                                            :target       [:variable [:template-tag "x"]]}]}]]
+                    DashboardCard [{dashcard-id :id} {:card_id            card-id
+                                                      :dashboard_id       dashboard-id
+                                                      :parameter_mappings [{:parameter_id "__X__"
+                                                                            :card_id      card-id
+                                                                            :target       [:variable [:template-tag "x"]]}]}]]
       (testing "param resolution code should include default values"
         (is (schema= [(s/one
                        {:type     (s/eq :category)
@@ -73,13 +76,13 @@
                         :target   (s/eq [:variable [:template-tag "x"]])
                         s/Keyword s/Any}
                        "parameter")]
-                     (#'qp.dashboard/resolve-params-for-query dashboard-id card-id nil))))
+                     (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id nil))))
       (testing "make sure it works end-to-end"
         (is (schema= {:status   (s/eq :completed)
                       :data     {:rows     (s/eq [[3]])
                                  s/Keyword s/Any}
                       s/Keyword s/Any}
-                     (run-query-for-dashcard dashboard-id card-id)))))))
+                     (run-query-for-dashcard dashboard-id card-id dashcard-id)))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
@@ -105,21 +108,21 @@
                                                                    :id      "abc123"
                                                                    :type    :string/=
                                                                    :default ["Widget"]}]}]
-                      DashboardCard [_ {:dashboard_id       dashboard-id
-                                        :card_id            card-id
-                                        :parameter_mappings [{:parameter_id "abc123"
-                                                              :card_id      card-id
-                                                              :target       [:dimension [:template-tag "filter"]]}]}]]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
+                                                        :card_id            card-id
+                                                        :parameter_mappings [{:parameter_id "abc123"
+                                                                              :card_id      card-id
+                                                                              :target       [:dimension [:template-tag "filter"]]}]}]]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
                  (mt/rows (qp.card-test/run-query-for-card card-id)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
-                 (mt/rows (run-query-for-dashcard dashboard-id card-id)))))
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
         (testing "Specifying a value should override both defaults."
           (is (= [["Doohickey"]]
                  (mt/rows (run-query-for-dashcard
-                           dashboard-id card-id
+                           dashboard-id card-id dashcard-id
                            :parameters [{:id    "abc123"
                                          :value ["Doohickey"]}])))))))))
 
@@ -142,20 +145,52 @@
                                                                    :id      "5791ff38"
                                                                    :type    :string/=
                                                                    :default "Bar"}]}]
-                      DashboardCard [_ {:dashboard_id       dashboard-id
-                                        :card_id            card-id
-                                        :parameter_mappings [{:parameter_id "5791ff38"
-                                                              :card_id      card-id
-                                                              :target       [:variable [:template-tag "filter"]]}]}]]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
+                                                        :card_id            card-id
+                                                        :parameter_mappings [{:parameter_id "5791ff38"
+                                                                              :card_id      card-id
+                                                                              :target       [:variable [:template-tag "filter"]]}]}]]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Foo"]]
                  (mt/rows (qp.card-test/run-query-for-card card-id)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Foo"]]
-                 (mt/rows (run-query-for-dashcard dashboard-id card-id)))))
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
         (testing "Specifying a value should override both defaults."
           (is (= [["Something Else"]]
                  (mt/rows (run-query-for-dashcard
-                           dashboard-id card-id
+                           dashboard-id card-id dashcard-id
                            :parameters [{:id    "5791ff38"
                                          :value ["Something Else"]}])))))))))
+
+(deftest do-not-apply-unconnected-filters-for-same-card-test
+  (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
+                "filters for the DashCard we're running a query for (#19494)")
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card      [{card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+                      Dashboard [{dashboard-id :id} {:parameters [{:name    "Category (DashCard 1)"
+                                                                   :slug    "category_1"
+                                                                   :id      "CATEGORY_1"
+                                                                   :type    :string/=
+                                                                   :default ["Doohickey"]}
+                                                                  {:name    "Category (DashCard 2)"
+                                                                   :slug    "category_2"
+                                                                   :id      "CATEGORY_2"
+                                                                   :type    :string/=
+                                                                   :default ["Gadget"]}]}]
+                      DashboardCard [{dashcard-1-id :id} {:card_id            card-id
+                                                          :dashboard_id       dashboard-id
+                                                          :parameter_mappings [{:parameter_id "CATEGORY_1"
+                                                                                :card_id      card-id
+                                                                                :target       [:dimension (mt/$ids $products.category)]}]}]
+                      DashboardCard [{dashcard-2-id :id} {:card_id            card-id
+                                                          :dashboard_id       dashboard-id
+                                                          :parameter_mappings [{:parameter_id "CATEGORY_2"
+                                                                                :card_id      card-id
+                                                                                :target       [:dimension (mt/$ids $products.category)]}]}]]
+        (testing "DashCard 1 (Category = Doohickey)"
+          (is (= [[42]]
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-1-id)))))
+        (testing "DashCard 2 (Category = Gadget)"
+          (is (= [[53]]
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id)))))))))

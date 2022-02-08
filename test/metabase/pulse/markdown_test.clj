@@ -40,6 +40,10 @@
     (is (= "foo\nbar" (mrkdwn "foo  \nbar")))
     (is (= "foo\nbar" (mrkdwn "foo\\\nbar"))))
 
+  (testing "Horizontal lines are created using box drawing characters"
+    (is (= "───────────────────" (mrkdwn "----")))
+    (is (= "text\n\n───────────────────\ntext" (mrkdwn "text\n\n----\ntext"))))
+
   (testing "Code blocks are preserved"
     (is (= "`code`"                (mrkdwn "`code`")))
     (is (= "```\ncode\nblock```"   (mrkdwn "    code\n    block")))

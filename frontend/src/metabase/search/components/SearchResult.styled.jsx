@@ -94,6 +94,11 @@ export const ResultLink = styled(Link)`
   }
 `;
 
+export const ResultLinkContent = styled.div`
+  display: flex;
+  align-items: start;
+`;
+
 export const Description = styled(Text)`
   padding-left: ${space(1)};
   margin-top: ${space(1)} !important;

@@ -932,13 +932,17 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.setDashboardId", () => {
-    it("should set a `dashboardId` property on the question's card", () => {
+  describe("Question.prototype.setDashboardProps", () => {
+    it("should set a `dashboardId` property and a `dashcardId` property on the question's card", () => {
       const question = new Question(card, metadata);
-      const questionWithDashboardId = question.setDashboardId(1);
+      const questionWithDashboardId = question.setDashboardProps({
+        dashboardId: 123,
+        dashcardId: 456,
+      });
 
       expect(question).not.toBe(questionWithDashboardId);
-      expect(questionWithDashboardId.card().dashboardId).toEqual(1);
+      expect(questionWithDashboardId.card().dashboardId).toEqual(123);
+      expect(questionWithDashboardId.card().dashcardId).toEqual(456);
     });
   });
 

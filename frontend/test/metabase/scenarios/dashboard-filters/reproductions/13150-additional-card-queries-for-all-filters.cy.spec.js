@@ -24,7 +24,9 @@ const [titleFilter, categoryFilter, vendorFilter] = parameters;
 describe("issue 13150", () => {
   beforeEach(() => {
     cy.server();
-    cy.route("POST", "/api/dashboard/*/card/*/query").as("cardQuery");
+    cy.route("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "cardQuery",
+    );
 
     restore();
     cy.signInAsAdmin();
