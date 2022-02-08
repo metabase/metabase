@@ -797,10 +797,10 @@
                          js-svg/categorical-waterfall)
         settings       (-> (->js-viz x-col y-col viz-settings)
                            (update-in [:colors] assoc
-                                      :waterfallTotal (:waterfall.total_color viz-settings)
-                                      :waterfallPositive (:waterfall.increase_color viz-settings)
-                                      :waterfallNegative (:waterfall.decrease_color viz-settings))
-                           (assoc :showTotal (:waterfall.show_total viz-settings)))
+                                      :waterfallTotal (or (:waterfall.total_color viz-settings) (nth colors 0))
+                                      :waterfallPositive (or (:waterfall.increase_color viz-settings) (nth colors 1))
+                                      :waterfallNegative (or (:waterfall.decrease_color viz-settings) (nth colors 2)))
+                           (assoc :showTotal (or (:waterfall.show_total viz-settings) true)))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
