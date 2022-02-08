@@ -200,8 +200,9 @@
         (seq source-query-remaps) (assoc ::remaps source-query-remaps)))))
 
 (s/defn ^:private add-fk-remaps :- QueryAndRemaps
-  "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
-  and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
+  "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by` and
+  `breakout` clauses as needed. Returns a map with `:query` (the updated query) and `:remaps` (a sequence
+  of [[ExternalRemappingDimension]] information maps)."
   [query]
   (let [query (walk/postwalk
                (fn [form]
