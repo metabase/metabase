@@ -10020,7 +10020,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: timestamp
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   constraints:
                     nullable: false
                   remarks: When the event happened
@@ -10037,6 +10037,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   type: varchar(255)
+                  remarks: Timezone to display the underlying UTC timestamp in for the client
               - column:
                   name: icon
                   type: varchar(128)
@@ -10068,7 +10069,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   remarks: The timestamp of when the event was modified
-                  name: modified_at
+                  name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
