@@ -117,8 +117,8 @@ describe("scenarios > admin > databases > edit", () => {
       cy.request("PUT", "/api/database/1", {
         details: {
           "let-user-control-scheduling": true,
-          force_sample: true,
         },
+        force_sample: true,
         engine: "h2",
       });
     });
