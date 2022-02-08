@@ -6,19 +6,34 @@ export function adhocQuestionHash(question) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
 }
 
-export function visitQuestionAdhoc(question, { callback } = {}) {
-  const [url, alias] = getInterceptDetails(question);
+/**
+ * Visit any valid query in an ad-hoc manner.
+ *
+ * @param {object} question
+ * @param {{callback: function, mode: (undefined|"notebook")}} config
+ */
+export function visitQuestionAdhoc(question, { callback, mode } = {}) {
+  const questionMode = mode === "notebook" ? "/notebook" : "";
+
+  const [url, alias] = getInterceptDetails(question, mode);
 
   cy.intercept(url).as(alias);
 
-  cy.visit("/question#" + adhocQuestionHash(question));
+  cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));
 
   cy.wait("@" + alias).then(xhr => {
     callback && callback(xhr);
   });
 }
 
-function getInterceptDetails(question) {
+function getInterceptDetails(question, mode) {
+  // When visiting notebook mode directly, we don't render any results to the page.
+  // Therefore, there is no `dataset` to wait for.
+  // But we need to make sure the schema for our database is loaded before we can proceed.
+  if (mode === "notebook") {
+    return ["/api/database/1/schema/PUBLIC", "publicSchema"];
+  }
+
   const {
     display,
     dataset_query: { type },
