@@ -14,6 +14,7 @@
             [metabase.db.schema-migrations-test.impl :as impl]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field Table]]
+            [metabase.models.interface :as mi]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -73,49 +74,53 @@
       (let [by-name  #(into {} (map (juxt :name identity)) %)
             db-id    (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
             table-id (db/simple-insert! Table {:name "Table", :db_id db-id, :created_at :%now, :updated_at :%now, :active true})]
-        ;; have to turn off field validation since the semantic types below are no longer valid but were up to 38
-        (with-redefs [isa? (constantly true)]
-          (db/insert-many! Field
-            [{:base_type     :type/Text
-              :semantic_type :type/Address
-              :name          "address"
-              :table_id      table-id
-              :database_type "VARCHAR"}
-             {:base_type     :type/Text
-              :semantic_type :type/ISO8601DateTimeString
-              :name          "iso-datetime"
-              :table_id      table-id
-              :database_type "VARCHAR"}
-             {:base_type     :type/Text
-              :semantic_type "timestamp_milliseconds"
-              :name          "iso-datetime-v0.20"
-              :table_id      table-id
-              :database_type "VARCHAR"}
-             {:base_type     :type/Text
-              :semantic_type :type/ISO8601DateString
-              :name          "iso-date"
-              :table_id      table-id
-              :database_type "VARCHAR"}
-             {:base_type     :type/Text
-              :semantic_type :type/ISO8601TimeString
-              :name          "iso-time"
-              :table_id      table-id
-              :database_type "VARCHAR"}
-             {:base_type     :type/Integer
-              :semantic_type :type/UNIXTimestampSeconds
-              :name          "unix-seconds"
-              :table_id      table-id
-              :database_type "INT"}
-             {:base_type     :type/Integer
-              :semantic_type :type/UNIXTimestampMilliseconds
-              :name          "unix-millis"
-              :table_id      table-id
-              :database_type "INT"}
-             {:base_type     :type/Integer
-              :semantic_type :type/UNIXTimestampMicroseconds
-              :name          "unix-micros"
-              :table_id      table-id
-              :database_type "INT"}]))
+        ;; Using [[db/simple-insert-many!]] instead of [[db/insert-many!]] so we don't run into the field type validation
+        ;; added in 38
+        (db/simple-insert-many! Field
+          (for [field [{:base_type     :type/Text
+                        :semantic_type :type/Address
+                        :name          "address"
+                        :table_id      table-id
+                        :database_type "VARCHAR"}
+                       {:base_type     :type/Text
+                        :semantic_type :type/ISO8601DateTimeString
+                        :name          "iso-datetime"
+                        :table_id      table-id
+                        :database_type "VARCHAR"}
+                       {:base_type     :type/Text
+                        :semantic_type "timestamp_milliseconds"
+                        :name          "iso-datetime-v0.20"
+                        :table_id      table-id
+                        :database_type "VARCHAR"}
+                       {:base_type     :type/Text
+                        :semantic_type :type/ISO8601DateString
+                        :name          "iso-date"
+                        :table_id      table-id
+                        :database_type "VARCHAR"}
+                       {:base_type     :type/Text
+                        :semantic_type :type/ISO8601TimeString
+                        :name          "iso-time"
+                        :table_id      table-id
+                        :database_type "VARCHAR"}
+                       {:base_type     :type/Integer
+                        :semantic_type :type/UNIXTimestampSeconds
+                        :name          "unix-seconds"
+                        :table_id      table-id
+                        :database_type "INT"}
+                       {:base_type     :type/Integer
+                        :semantic_type :type/UNIXTimestampMilliseconds
+                        :name          "unix-millis"
+                        :table_id      table-id
+                        :database_type "INT"}
+                       {:base_type     :type/Integer
+                        :semantic_type :type/UNIXTimestampMicroseconds
+                        :name          "unix-micros"
+                        :table_id      table-id
+                        :database_type "INT"}]]
+            (-> field
+                (update :base_type u/qualified-name)
+                (update :semantic_type u/qualified-name)
+                (assoc :created_at (mi/now), :updated_at (mi/now)))))
         (migrate!)
         (is (= (by-name
                 [{:base_type         :type/Text
