@@ -177,7 +177,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/spark:2.1.1
+      - image: metabase/spark:3.2.1
     resource_class: large
 
   vertica:

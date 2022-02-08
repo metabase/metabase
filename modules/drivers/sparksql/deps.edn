@@ -20,7 +20,7 @@
                  org.tukaani/xz]}
 
   org.apache.hive/hive-jdbc
-  {:mvn/version "1.2.2"
+  {:mvn/version "3.1.2"
    :exclusions  [commons-logging/commons-logging
                  org.apache.curator/curator-framework
                  org.codehaus.jackson/jackson-jaxrs
