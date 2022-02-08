@@ -10,6 +10,7 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${GAP_REM}rem;
+  margin-bottom: 1.5em;
 `;
 
 export const Grid = styled.div`
