@@ -24,7 +24,8 @@ export const createMockEvent = ({
 export const createMockEventTimeline = ({
   id = 1,
   collection_id = 1,
-  name = "Timeline Foo",
+  name = "Product launches",
+  description = "Dates when new releases have gone out",
   default_icon = "star",
   archived = false,
   events = [],
@@ -33,6 +34,7 @@ export const createMockEventTimeline = ({
   id,
   collection_id,
   name,
+  description,
   default_icon,
   archived,
   events,
