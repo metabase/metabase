@@ -1,22 +1,22 @@
 import React from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
-import forms from "metabase/entities/event-timelines/forms";
+import forms from "metabase/entities/events/forms";
 import ModalHeader from "../ModalHeader";
-import { ModalBody } from "./NewTimelineModal.styled";
+import { ModalBody } from "./NewEventModal.styled";
 
-export interface NewTimelineModalProps {
+export interface NewEventModalProps {
   onSubmit?: () => void;
   onCancel?: () => void;
 }
 
-const NewTimelineModal = ({
+const NewEventModal = ({
   onSubmit,
   onCancel,
-}: NewTimelineModalProps): JSX.Element => {
+}: NewEventModalProps): JSX.Element => {
   return (
     <div>
-      <ModalHeader title={t`New event timeline`} />
+      <ModalHeader title={t`New event`} />
       <ModalBody>
         <Form
           form={forms.collection}
@@ -29,4 +29,4 @@ const NewTimelineModal = ({
   );
 };
 
-export default NewTimelineModal;
+export default NewEventModal;
