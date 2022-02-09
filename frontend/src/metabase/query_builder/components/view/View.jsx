@@ -62,6 +62,7 @@ export default class View extends React.Component {
       aggregationPopoverTarget: e.target,
     });
   };
+
   handleEditSeries = (e, index) => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -69,10 +70,12 @@ export default class View extends React.Component {
       aggregationIndex: index,
     });
   };
+
   handleRemoveSeries = (e, index) => {
     const { query } = this.props;
     query.removeAggregation(index).update(null, { run: true });
   };
+
   handleEditBreakout = (e, index) => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -80,10 +83,35 @@ export default class View extends React.Component {
       breakoutIndex: index,
     });
   };
+
   handleClosePopover = () => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
     });
+  };
+
+  onChangeAggregation = aggregation => {
+    const { query } = this.props;
+    const { aggregationIndex } = this.state;
+    if (aggregationIndex != null) {
+      query
+        .updateAggregation(aggregationIndex, aggregation)
+        .update(null, { run: true });
+    } else {
+      query.aggregate(aggregation).update(null, { run: true });
+    }
+    this.handleClosePopover();
+  };
+
+  onChangeBreakout = breakout => {
+    const { query } = this.props;
+    const { breakoutIndex } = this.state;
+    if (breakoutIndex != null) {
+      query.updateBreakout(breakoutIndex, breakout).update(null, { run: true });
+    } else {
+      query.breakout(breakout).update(null, { run: true });
+    }
+    this.handleClosePopover();
   };
 
   render() {
@@ -319,16 +347,7 @@ export default class View extends React.Component {
                   ? query.aggregations()[aggregationIndex]
                   : 0
               }
-              onChangeAggregation={aggregation => {
-                if (aggregationIndex != null) {
-                  query
-                    .updateAggregation(aggregationIndex, aggregation)
-                    .update(null, { run: true });
-                } else {
-                  query.aggregate(aggregation).update(null, { run: true });
-                }
-                this.handleClosePopover();
-              }}
+              onChangeAggregation={this.onChangeAggregation}
               onClose={this.handleClosePopover}
             />
           </Popover>
@@ -344,16 +363,7 @@ export default class View extends React.Component {
               breakout={
                 breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0
               }
-              onChangeBreakout={breakout => {
-                if (breakoutIndex != null) {
-                  query
-                    .updateBreakout(breakoutIndex, breakout)
-                    .update(null, { run: true });
-                } else {
-                  query.breakout(breakout).update(null, { run: true });
-                }
-                this.handleClosePopover();
-              }}
+              onChangeBreakout={this.onChangeBreakout}
               onClose={this.handleClosePopover}
             />
           </Popover>
