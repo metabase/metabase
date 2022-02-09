@@ -25,7 +25,7 @@ export const newPulse = () => `/pulse/create`;
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
 
-export function question(card, hash = "", query = "") {
+export function question(card, { hash = "", query = "" } = {}) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
@@ -76,7 +76,7 @@ export function question(card, hash = "", query = "") {
 }
 
 export function serializedQuestion(card) {
-  return question(null, card);
+  return question(null, { hash: card });
 }
 
 export const extractQueryParams = query => {
@@ -163,7 +163,7 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
     query += `&segment=${segmentId}`;
   }
 
-  return question(null, query);
+  return question(null, { query });
 }
 
 function slugifyPersonalCollection(collection) {

@@ -931,17 +931,16 @@ export default class Question {
       !question.id() ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(
-        null,
-        question._serializeForUrl({
+      return Urls.question(null, {
+        hash: question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
           creationType,
         }),
         query,
-      );
+      });
     } else {
-      return Urls.question(question.card(), "", query);
+      return Urls.question(question.card(), { query });
     }
   }
 

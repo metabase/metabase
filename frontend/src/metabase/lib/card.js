@@ -97,10 +97,9 @@ export function deserializeCardFromUrl(serialized) {
 }
 
 export function urlForCardState(state, dirty) {
-  return Urls.question(
-    state.card,
-    state.serializedCard && dirty ? state.serializedCard : "",
-  );
+  return Urls.question(state.card, {
+    hash: state.serializedCard && dirty ? state.serializedCard : "",
+  });
 }
 
 export function cleanCopyCard(card) {
