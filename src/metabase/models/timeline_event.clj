@@ -1,22 +1,31 @@
 (ns metabase.models.timeline-event
-  (:require [metabase.util :as u]
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
 
+(defn- perms-objects-set
+  [event read-or-write]
+  (let [timeline (or (:timeline event)
+                     (db/select-one 'Timeline :id (:timeline_id event)))]
+    (i/perms-objects-set timeline read-or-write)))
+
 (u/strict-extend (class TimelineEvent)
   models/IModel
   (merge
    models/IModelDefaults
-   {:properties (constantly {:timestamped? true})})
+   ;; todo: add hydration keys??
+   {#_#_:hydration-keys (constantly [:timeline-event])
+    :properties (constantly {:timestamped? true})})
 
-  ;; todo: need correct the following to follow collection id of the timeline, the parent of the current timeline
-  ;; event
-
-  ;; i/IObjectPermissions
-  ;; perms/IObjectPermissionsForParentCollection
-  )
+  i/IObjectPermissions
+  (merge
+   i/IObjectPermissionsDefaults
+   {:perms-objects-set perms-objects-set
+    :can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 (defn hydrate-events
   "Efficiently hydrate the events for a timeline."
