@@ -8,8 +8,8 @@ import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
   timeline?: EventTimeline;
-  onSubmit?: (values: Partial<Event>) => void;
-  onCancel?: () => void;
+  onSubmit: (values: Partial<Event>) => void;
+  onCancel: () => void;
 }
 
 const NewEventModal = ({
