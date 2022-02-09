@@ -366,8 +366,9 @@ async function verifyMatchingDashcardAndParameters({
 }
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = (location, params, queryParams) => {
+export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
+    const queryParams = location.query;
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
