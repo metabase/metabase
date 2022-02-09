@@ -29,8 +29,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+            [toucan.models :as models]))
 
 ;;; # Migration Helpers
 
@@ -118,13 +117,6 @@
           :object   (perms/data-perms-path database-id)
           :group_id group-id)))))
 
-;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
-;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
-;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
-(defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
-  (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
-    (public-settings/site-url site-url)))
-
 ;; There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
 ;; specified. Other areas of the application expect that site-url will always include http/https. This migration
 ;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
@@ -178,7 +170,7 @@
 (defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
 
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
