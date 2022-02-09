@@ -7,9 +7,9 @@ import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
-  collection?: Collection;
+  collection: Collection;
   timeline?: EventTimeline;
-  onSubmit: (values: Partial<Event>, collection?: Collection) => void;
+  onSubmit: (values: Partial<Event>, collection: Collection) => void;
   onCancel: () => void;
 }
 

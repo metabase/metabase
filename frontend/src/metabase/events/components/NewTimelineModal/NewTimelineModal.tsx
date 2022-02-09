@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/event-timelines/forms";
@@ -8,7 +8,7 @@ import { ModalBody } from "./NewTimelineModal.styled";
 
 export interface NewTimelineModalProps {
   collection: Collection;
-  onSubmit: (values: Partial<EventTimeline>) => void;
+  onSubmit: (values: Partial<EventTimeline>, collection: Collection) => void;
   onCancel: () => void;
 }
 
@@ -21,6 +21,13 @@ const NewTimelineModal = ({
     return { collection_id: collection.id };
   }, [collection]);
 
+  const handleSubmit = useCallback(
+    async (values: Partial<EventTimeline>) => {
+      await onSubmit(values, collection);
+    },
+    [collection, onSubmit],
+  );
+
   return (
     <div>
       <ModalHeader title={t`New event timeline`} />
@@ -29,7 +36,7 @@ const NewTimelineModal = ({
           form={forms.collection}
           initialValues={initialValues}
           isModal={true}
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit}
           onClose={onCancel}
         />
       </ModalBody>
