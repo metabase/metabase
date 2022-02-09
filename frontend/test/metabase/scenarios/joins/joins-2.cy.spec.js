@@ -7,6 +7,7 @@ import {
   enterCustomColumnDetails,
   visitQuestionAdhoc,
   summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -94,10 +95,8 @@ describe("scenarios > question > joined questions", () => {
 
       visualize();
 
-      cy.contains("Showing first 2,000");
-
       cy.log("Attempt to filter on the joined table");
-      cy.contains("Filter").click();
+      filter();
       cy.contains("Email").click();
       cy.contains("People – Email");
       cy.findByPlaceholderText("Search by Email")

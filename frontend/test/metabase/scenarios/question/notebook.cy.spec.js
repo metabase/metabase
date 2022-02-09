@@ -10,6 +10,7 @@ import {
   visitQuestionAdhoc,
   visualize,
   summarize,
+  filter,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -132,7 +133,7 @@ describe("scenarios > question > notebook", () => {
 
   it("should process the updated expression when pressing Enter", () => {
     openProductsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "[Price] > 1" });
 
@@ -313,7 +314,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should work on custom filter", () => {
-      cy.findByText("Filter").click();
+      filter({ mode: "notebook" });
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });

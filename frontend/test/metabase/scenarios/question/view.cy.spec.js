@@ -5,6 +5,7 @@ import {
   getAddDimensionButton,
   summarize,
   sidebar,
+  filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -64,7 +65,7 @@ describe("scenarios > question > view", () => {
   describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
+      filter();
       cy.contains("Vendor").click({ force: true });
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
@@ -78,7 +79,7 @@ describe("scenarios > question > view", () => {
     // flaky test (#19454)
     it.skip("should show info popover for dimension in the filter list", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
+      filter();
 
       cy.contains("Name").trigger("mouseenter");
       popover().contains("Name");

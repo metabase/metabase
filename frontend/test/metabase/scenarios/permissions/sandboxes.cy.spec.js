@@ -10,6 +10,7 @@ import {
   setupSMTP,
   visualize,
   summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -140,7 +141,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
         popover().within(() => {
           cy.findByText("Total").click({ force: true });
         });

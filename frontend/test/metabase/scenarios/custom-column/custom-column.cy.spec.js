@@ -6,6 +6,7 @@ import {
   openOrdersTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
+  filter,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -444,7 +445,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .contains("MiscDate")
       .click();

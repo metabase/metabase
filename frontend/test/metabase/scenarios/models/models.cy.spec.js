@@ -9,6 +9,7 @@ import {
   mockSessionProperty,
   sidebar,
   summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -38,9 +39,7 @@ describe("scenarios > models", () => {
     turnIntoModel();
     assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("Discount");
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
@@ -88,9 +87,7 @@ describe("scenarios > models", () => {
     turnIntoModel();
     assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("DISCOUNT");
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
@@ -293,9 +290,7 @@ describe("scenarios > models", () => {
     it("can create a question by filtering and summarizing a model", () => {
       cy.visit("/question/1");
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Filter").click();
-      });
+      filter();
       selectDimensionOptionFromSidebar("Discount");
       cy.findByText("Equal to").click();
       selectFromDropdown("Not empty");
