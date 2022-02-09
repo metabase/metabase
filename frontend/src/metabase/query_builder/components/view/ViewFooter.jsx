@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -70,7 +70,10 @@ const ViewFooter = ({
   }
 
   return (
-    <ViewFooterRoot className={cx(className, "text-medium border-top")}>
+    <ViewFooterRoot
+      className={cx(className, "text-medium border-top")}
+      data-testid="view-footer"
+    >
       <ButtonBar
         className="flex-full"
         left={[

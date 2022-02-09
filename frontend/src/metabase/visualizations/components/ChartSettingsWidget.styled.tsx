@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon, { IconProps } from "metabase/components/Icon";
 
@@ -67,7 +68,7 @@ export const InfoIconContainer = styled.div`
   margin-left: 0.5em;
 `;
 
-export const InfoIcon = styled<IconProps & VariantProp>(Icon)`
+export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`

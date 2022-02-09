@@ -10,7 +10,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: ReactNode;
 }
 
-const Input = forwardRef(function Input(
+const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, error, fullWidth, helperText, ...rest }: InputProps,
   ref,
 ) {
@@ -34,7 +34,7 @@ const Input = forwardRef(function Input(
 
 const InputHelpContent = forwardRef(function InputHelpContent(props, ref: any) {
   return (
-    <InputIconContainer innerRef={ref}>
+    <InputIconContainer ref={ref}>
       <Icon name="info" />
     </InputIconContainer>
   );

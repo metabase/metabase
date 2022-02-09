@@ -56,9 +56,11 @@
   "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output
   for tests with stacktraces and error messages from tests that are supposed to fail.
 
-  DEPRECATED -- you don't need to do this anymore. Tests now have a default log level of `CRITICAL` which means error
+  DEPRECATED -- you don't need to do this anymore. Tests now have a default log level of `FATAL` which means error
   logging will be suppressed by default. This macro predates the current test logging levels. You can remove usages of
-  this macro."
+  this macro.
+
+  If you want to suppress log messages for REPL usage you can use [[with-log-level]] instead."
   {:style/indent 0}
   [& body]
   `(do-with-suppressed-output (fn [] ~@body)))

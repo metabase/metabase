@@ -6,7 +6,7 @@ import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";

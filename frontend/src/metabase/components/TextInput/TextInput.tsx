@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { ElementType, forwardRef } from "react";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
@@ -14,6 +14,7 @@ export type ColorScheme = "default" | "admin" | "transparent";
 export type Size = "sm" | "md";
 
 type TextInputProps = {
+  as?: ElementType<HTMLElement>;
   value?: string;
   placeholder?: string;
   onChange: (value: string) => void;
@@ -23,27 +24,28 @@ type TextInputProps = {
   autoFocus?: boolean;
   padding?: Size;
   borderRadius?: Size;
-  innerRef?: any;
+  ref?: any;
   invalid?: boolean;
 } & Omit<React.HTMLProps<HTMLInputElement>, "onChange">;
 
-function TextInput({
-  value = "",
-  className,
-  placeholder = t`Find...`,
-  onChange,
-  hasClearButton = false,
-  icon,
-  type = "text",
-  colorScheme = "default",
-  autoFocus = false,
-  padding = "md",
-  borderRadius = "md",
-  innerRef,
+export default forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
+  {
+    value = "",
+    className,
+    placeholder = t`Find...`,
+    onChange,
+    hasClearButton = false,
+    icon,
+    type = "text",
+    colorScheme = "default",
+    autoFocus = false,
+    padding = "md",
+    borderRadius = "md",
+    invalid,
+    ...rest
+  }: TextInputProps,
   ref,
-  invalid,
-  ...rest
-}: TextInputProps) {
+) {
   const handleClearClick = () => {
     onChange("");
   };
@@ -54,7 +56,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
-        innerRef={innerRef}
+        ref={ref}
         colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
@@ -76,10 +78,4 @@ function TextInput({
       )}
     </TextInputRoot>
   );
-}
-
-export default forwardRef<HTMLInputElement, TextInputProps>(
-  function TextInputForwardRef(props, ref) {
-    return <TextInput {...props} innerRef={ref} />;
-  },
-);
+});

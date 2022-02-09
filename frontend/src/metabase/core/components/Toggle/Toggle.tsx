@@ -30,7 +30,7 @@ const Toggle = forwardRef(function Toggle(
   return (
     <ToggleRoot
       {...rest}
-      innerRef={ref as any}
+      ref={ref}
       className={className}
       type="checkbox"
       role="switch"

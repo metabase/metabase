@@ -274,13 +274,11 @@ export default class Dashboard extends Component {
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
-                innerRef={element =>
-                  (this.parametersAndCardsContainerRef = element)
-                }
+                ref={element => (this.parametersAndCardsContainerRef = element)}
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
-                    innerRef={element => (this.parametersWidgetRef = element)}
+                    ref={element => (this.parametersWidgetRef = element)}
                     isSticky={isParametersWidgetSticky}
                   >
                     {parametersWidget}
