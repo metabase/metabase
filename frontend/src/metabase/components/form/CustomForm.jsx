@@ -297,13 +297,14 @@ export const CustomFormFooter = (
     onCancel,
     footerExtraButtons,
     fullWidth,
+    isModal,
   },
-  { isModal },
+  { isModal: isContextModal },
 ) => {
   return (
     <div
       className={cx("flex align-center", {
-        "flex-reverse": isModal,
+        "flex-reverse": isModal || isContextModal,
       })}
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
