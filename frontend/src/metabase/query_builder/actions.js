@@ -158,6 +158,22 @@ export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
     dispatch(cancelQuery());
+
+    const zoomedObjectId = getZoomedObjectId(getState());
+    if (zoomedObjectId) {
+      const { locationBeforeTransitions } = getState().routing;
+
+      const previouslyZoomedObjectId =
+        locationBeforeTransitions?.state?.objectId;
+
+      if (previouslyZoomedObjectId) {
+        dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
+      } else {
+        dispatch(resetRowZoom());
+      }
+      return;
+    }
+
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
