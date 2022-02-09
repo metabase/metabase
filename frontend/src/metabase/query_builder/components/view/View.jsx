@@ -110,6 +110,36 @@ export default class View extends React.Component {
     this.handleClosePopover();
   };
 
+  getLeftSidebar = () => {
+    const {
+      question,
+      isShowingChartSettingsSidebar,
+      isShowingChartTypeSidebar,
+      isShowingQuestionDetailsSidebar,
+      onOpenModal,
+      onCloseChartSettings,
+      onCloseChartType,
+    } = this.props;
+
+    if (isShowingChartSettingsSidebar) {
+      return (
+        <ChartSettingsSidebar {...this.props} onClose={onCloseChartSettings} />
+      );
+    }
+
+    if (isShowingChartTypeSidebar) {
+      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+    }
+
+    if (isShowingQuestionDetailsSidebar) {
+      return (
+        <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+      );
+    }
+
+    return null;
+  };
+
   render() {
     const {
       question,
@@ -123,17 +153,13 @@ export default class View extends React.Component {
       isShowingTemplateTagsEditor,
       isShowingDataReference,
       isShowingNewbModal,
-      isShowingChartTypeSidebar,
-      isShowingChartSettingsSidebar,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
       isShowingSnippetSidebar,
-      isShowingQuestionDetailsSidebar,
       queryBuilderMode,
       mode,
       fitClassNames,
       height,
-      onOpenModal,
     } = this.props;
     const {
       aggregationIndex,
@@ -185,17 +211,6 @@ export default class View extends React.Component {
     const onEditBreakout =
       topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
 
-    const leftSideBar = isShowingChartSettingsSidebar ? (
-      <ChartSettingsSidebar
-        {...this.props}
-        onClose={this.props.onCloseChartSettings}
-      />
-    ) : isShowingChartTypeSidebar ? (
-      <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
-    ) : isShowingQuestionDetailsSidebar ? (
-      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
-    ) : null;
-
     const rightSideBar =
       isStructured && isShowingSummarySidebar ? (
         <SummarizeSidebar
@@ -223,7 +238,8 @@ export default class View extends React.Component {
         />
       ) : null;
 
-    const isSidebarOpen = leftSideBar || rightSideBar;
+    const leftSidebar = this.getLeftSidebar();
+    const isSidebarOpen = leftSidebar || rightSideBar;
 
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
@@ -263,8 +279,8 @@ export default class View extends React.Component {
               />
             )}
 
-            <ViewSidebar side="left" isOpen={!!leftSideBar}>
-              {leftSideBar}
+            <ViewSidebar side="left" isOpen={!!leftSidebar}>
+              {leftSidebar}
             </ViewSidebar>
 
             <div
