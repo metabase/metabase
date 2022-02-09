@@ -368,14 +368,22 @@ const getZoomedObjectRowIndex = createSelector(
   },
 );
 
+const isZoomingRow = createSelector(
+  [getZoomedObjectId],
+  index => index != null,
+);
+
 export const getMode = createSelector(
   [getLastRunQuestion],
   question => question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults],
-  (mode, results) => {
+  [getMode, getQueryResults, isZoomingRow],
+  (mode, results, isZoomingSingleRow) => {
+    if (isZoomingSingleRow) {
+      return true;
+    }
     // It handles filtering by a manually set PK column that is not unique
     const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
     return mode?.name() === "object" && !hasMultipleRows;
