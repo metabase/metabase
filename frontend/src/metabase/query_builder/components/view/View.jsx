@@ -237,6 +237,68 @@ export default class View extends React.Component {
     );
   };
 
+  renderMain = ({ leftSidebar, rightSidebar }) => {
+    const { query, card, mode, isDirty, isLiveResizable, height } = this.props;
+
+    const queryMode = mode && mode.queryMode();
+    const ModeFooter = queryMode && queryMode.ModeFooter;
+    const isStructured = query instanceof StructuredQuery;
+    const isNative = query instanceof NativeQuery;
+
+    const topQuery = isStructured && query.topLevelQuery();
+
+    // only allow editing of series for structured queries
+    const onAddSeries = topQuery ? this.handleAddSeries : null;
+    const onEditSeries = topQuery ? this.handleEditSeries : null;
+    const onRemoveSeries =
+      topQuery && topQuery.hasAggregations() ? this.handleRemoveSeries : null;
+    const onEditBreakout =
+      topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
+
+    const isSidebarOpen = leftSidebar || rightSidebar;
+
+    return (
+      <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
+        {isNative ? (
+          <NativeQueryEditorContainer className="hide sm-show">
+            <NativeQueryEditor
+              {...this.props}
+              viewHeight={height}
+              isOpen={!card.dataset_query.native.query || isDirty}
+              datasetQuery={card && card.dataset_query}
+            />
+          </NativeQueryEditorContainer>
+        ) : (
+          <StyledSyncedParametersList
+            parameters={this.props.parameters}
+            setParameterValue={this.props.setParameterValue}
+            commitImmediately
+          />
+        )}
+
+        <ViewSubHeader {...this.props} />
+
+        <StyledDebouncedFrame enabled={!isLiveResizable}>
+          <QueryVisualization
+            {...this.props}
+            noHeader
+            className="spread"
+            onAddSeries={onAddSeries}
+            onEditSeries={onEditSeries}
+            onRemoveSeries={onRemoveSeries}
+            onEditBreakout={onEditBreakout}
+          />
+        </StyledDebouncedFrame>
+
+        {ModeFooter && (
+          <ModeFooter {...this.props} className="flex-no-shrink" />
+        )}
+
+        <ViewFooter {...this.props} className="flex-no-shrink" />
+      </QueryBuilderMain>
+    );
+  };
+
   renderAggregationPopover = () => {
     const { query } = this.props;
     const { aggregationPopoverTarget, aggregationIndex } = this.state;
@@ -281,14 +343,10 @@ export default class View extends React.Component {
     const {
       query,
       card,
-      isDirty,
-      isLiveResizable,
       databases,
       isShowingNewbModal,
       queryBuilderMode,
-      mode,
       fitClassNames,
-      height,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -296,10 +354,7 @@ export default class View extends React.Component {
       return <LoadingAndErrorWrapper className={fitClassNames} loading />;
     }
 
-    const queryMode = mode && mode.queryMode();
-    const ModeFooter = queryMode && queryMode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
-    const isNative = query instanceof NativeQuery;
 
     const isNewQuestion =
       isStructured && !query.sourceTableId() && !query.sourceQuery();
@@ -312,22 +367,11 @@ export default class View extends React.Component {
       return <DatasetEditor {...this.props} />;
     }
 
-    const topQuery = isStructured && query.topLevelQuery();
-
-    // only allow editing of series for structured queries
-    const onAddSeries = topQuery ? this.handleAddSeries : null;
-    const onEditSeries = topQuery ? this.handleEditSeries : null;
-    const onRemoveSeries =
-      topQuery && topQuery.hasAggregations() ? this.handleRemoveSeries : null;
-    const onEditBreakout =
-      topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
+    const isNotebookContainerOpen =
+      isNewQuestion || queryBuilderMode === "notebook";
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
-    const isSidebarOpen = leftSidebar || rightSidebar;
-
-    const isNotebookContainerOpen =
-      isNewQuestion || queryBuilderMode === "notebook";
 
     return (
       <div className={fitClassNames}>
@@ -340,50 +384,10 @@ export default class View extends React.Component {
                 {...this.props}
               />
             )}
-
             <ViewSidebar side="left" isOpen={!!leftSidebar}>
               {leftSidebar}
             </ViewSidebar>
-
-            <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
-              {isNative ? (
-                <NativeQueryEditorContainer className="hide sm-show">
-                  <NativeQueryEditor
-                    {...this.props}
-                    viewHeight={height}
-                    isOpen={!card.dataset_query.native.query || isDirty}
-                    datasetQuery={card && card.dataset_query}
-                  />
-                </NativeQueryEditorContainer>
-              ) : (
-                <StyledSyncedParametersList
-                  parameters={this.props.parameters}
-                  setParameterValue={this.props.setParameterValue}
-                  commitImmediately
-                />
-              )}
-
-              <ViewSubHeader {...this.props} />
-
-              <StyledDebouncedFrame enabled={!isLiveResizable}>
-                <QueryVisualization
-                  {...this.props}
-                  noHeader
-                  className="spread"
-                  onAddSeries={onAddSeries}
-                  onEditSeries={onEditSeries}
-                  onRemoveSeries={onRemoveSeries}
-                  onEditBreakout={onEditBreakout}
-                />
-              </StyledDebouncedFrame>
-
-              {ModeFooter && (
-                <ModeFooter {...this.props} className="flex-no-shrink" />
-              )}
-
-              <ViewFooter {...this.props} className="flex-no-shrink" />
-            </QueryBuilderMain>
-
+            {this.renderMain({ leftSidebar, rightSidebar })}
             <ViewSidebar side="right" isOpen={!!rightSidebar}>
               {rightSidebar}
             </ViewSidebar>
