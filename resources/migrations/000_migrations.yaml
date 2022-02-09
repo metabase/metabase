@@ -9987,7 +9987,7 @@ databaseChangeLog:
       comment: Added 0.43.0 - Events table
       changes:
         - createTable:
-            tableName: timeline_events
+            tableName: timeline_event
             remarks: Events table
             columns:
               - column:
