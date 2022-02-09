@@ -43,7 +43,7 @@
 
 (s/defn ^:private resolve-fields! :- (s/eq nil)
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
+  (qp.store/fetch-and-store-fields! (mbql.u/match-this-level joins [:field (id :guard integer?) _] id)))
 
 (s/defn ^:private resolve-tables! :- (s/eq nil)
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
@@ -145,28 +145,8 @@
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ^:deprecated maybe-resolve-source-table
-  "Resolve the `source-table` of any `source-query` inside a join.
-
-  TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
-  [{:keys [source-table], :as query}]
-  (qp.store/fetch-and-store-tables! [source-table])
-  query)
-
-(defn- resolve-joins-in-mbql-query-all-levels
-  [{:keys [joins source-query source-table], :as query}]
-  (cond-> query
-    (seq joins)
-    resolve-joins-in-mbql-query
-
-    source-table
-    maybe-resolve-source-table
-
-    source-query
-    (update :source-query resolve-joins-in-mbql-query-all-levels)))
-
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
-  [{inner-query :query, :as outer-query}]
-  (cond-> outer-query
-    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))
+  [{:keys [joins], :as query}]
+  (cond-> query
+    (seq joins) resolve-joins-in-mbql-query))

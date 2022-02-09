@@ -147,7 +147,7 @@
      [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]]))
 
 (defn- optimize-temporal-filters* [query]
-  (mbql.u/replace query
+  (mbql.u/replace-this-level query
     (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
     (or (when (can-optimize-filter? &match)
           (u/prog1 (optimize-filter &match)
@@ -184,17 +184,13 @@
 
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
-  [{query-type :type, :as query}]
-  (if (not= query-type :query)
-    query
-    ;; walk query, looking for inner-query forms that have a `:filter` key
-    (walk/postwalk
-     (fn [form]
-       (if-not (and (map? form) (seq (:filter form)))
-         form
-         ;; optimize the filters in this inner-query form.
-         (let [optimized (optimize-temporal-filters* form)]
-           ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
-           (cond-> optimized
-             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
-     query)))
+  [{:qp/keys [query-type], filter-clause :filter, :as query}]
+  (let [optimizeable? (and (= query-type :mbql)
+                           (seq filter-clause))]
+    (if-not optimizeable?
+      query
+      ;; optimize the filters in this inner-query form.
+      (let [optimized (optimize-temporal-filters* query)]
+        ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
+        (cond-> optimized
+          (not= optimized query) (update :filter mbql.u/combine-filter-clauses))))))

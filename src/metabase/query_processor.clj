@@ -62,7 +62,9 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [clojure.walk :as walk]
+            [clojure.set :as set]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -79,11 +81,11 @@
 
     (f query) -> query"
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'perms/remove-permissions-key
-   #'validate/validate-query
+  [#_#'perms/remove-permissions-key
+   #_#'validate/validate-query
    #'expand-macros/expand-macros
    #'resolve-referenced/resolve-referenced-card-resources
-   #'parameters/substitute-parameters
+   #_#'parameters/substitute-parameters
    #'resolve-source-table/resolve-source-tables
    #'bucket-datetime/auto-bucket-datetimes
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
@@ -100,7 +102,7 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
-   (resolve 'ee.sandbox.rows/apply-sandboxing)
+   #_(resolve 'ee.sandbox.rows/apply-sandboxing)
    #'cumulative-ags/rewrite-cumulative-aggregations
    #'pre-alias-ags/pre-alias-aggregations
    #'wrap-value-literals/wrap-value-literals
@@ -110,11 +112,7 @@
    #'limit/add-default-limit
    #'check-features/check-features])
 
-(defn- preprocess*
-  "All [[pre-processing-middleware]] combined into a single function. This still needs to be ran in the context
-  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
-  this with the [[around-middleware]]."
-  [query]
+(defn- preprocess-one-level [query]
   (reduce
    (fn [query middleware]
      (u/prog1 (cond-> query
@@ -122,6 +120,54 @@
        (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
    query
    pre-processing-middleware))
+
+(defn- preprocess-native [{:keys [middleware], :as query}]
+  (update query :native (fn [native-inner-query]
+                          (-> native-inner-query
+                              (set/rename-keys {:query :native})
+                              (assoc :qp/query-type :native, :qp/top-level? true, :qp/middleware middleware)
+                              preprocess-one-level
+                              (set/rename-keys {:native :query})
+                              (dissoc :qp/query-type :qp/top-level? :qp/middleware)))))
+
+(defn- preprocess-mbql* [{:keys [source-query joins], :as query} extra-keys]
+  (as-> query query
+    (cond-> query
+      source-query (update :source-query preprocess-mbql* (dissoc extra-keys :qp/top-level?)))
+    (cond-> query
+      joins (update :joins (fn [joins]
+                             (mapv (fn [{:keys [source-query], :as join}]
+                                     (cond-> join
+                                       source-query (update join :source-query preprocess-mbql* (dissoc extra-keys :qp/top-level?))))
+                                   joins))))
+    (-> query
+        (merge extra-keys {:qp/query-type (if (:native query) :native :mbql)})
+        preprocess-one-level
+        (dissoc :qp/query-type :qp/top-level? :qp/middleware))))
+
+(defn- preprocess-mbql [{:keys [middleware], :as query}]
+  (update query :query preprocess-mbql* {:qp/top-level? true, :qp/middleware middleware}))
+
+(def ^:private max-preprocessing-passes 100)
+
+(defn- preprocess*
+  "All [[pre-processing-middleware]] combined into a single function. This still needs to be ran in the context
+  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
+  this with the [[around-middleware]]."
+  ([query]
+   (preprocess* query max-preprocessing-passes))
+
+  ([{query-type :type, :as query} max-passes]
+   (println "max-passes:" max-passes) ; NOCOMMIT
+   (let [query' ((case query-type
+                   :query  preprocess-mbql
+                   :native preprocess-native) query)]
+     (cond
+       (= query query')  query
+       (pos? max-passes) (recur query' (dec max-passes))
+       :else             (throw (ex-info (tru "Too many passes! Not done preprocessing the query after {0} passes."
+                                              max-preprocessing-passes)
+                                         {:type error-type/qp}))))))
 
 (def ^:private compile-middleware
   "Middleware for query compilation. Happens after pre-processing. Has the form

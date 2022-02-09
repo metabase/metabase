@@ -208,7 +208,7 @@
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
   [{filters :filter, :as inner-query}]
   (let [field-id->filters (filter->field-map filters)]
-    (mbql.u/replace inner-query
+    (mbql.u/replace-this-level inner-query
       [:field _ (_ :guard :binning)]
       (try
         (update-binned-field inner-query field-id->filters &match)
@@ -219,7 +219,6 @@
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
-  [{query-type :type, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query update-binning-strategy-in-inner-query)))
+  [{:qp/keys [query-type], :as query}]
+  (cond-> query
+    (= query-type :mbql) update-binning-strategy-in-inner-query))

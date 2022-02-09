@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.config :as config]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
@@ -79,7 +78,7 @@
   (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
         field-name->field (merge (u/key-by :name source-metadata)
                                  (u/key-by (comp str/lower-case :name) source-metadata))]
-    (mbql.u/replace inner-query
+    (mbql.u/replace-this-level inner-query
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (_ :guard (constantly (some (set &parents) [:source-query :source-metadata])))
       &match
@@ -94,20 +93,17 @@
 (defn upgrade-field-literals
   "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
   the resulting query doesn't end up being broken."
-  [query]
-  (-> (walk/postwalk
-       (fn [form]
-         ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
-         ;; rather than an native one
-         (if (and (map? form)
-                  (:source-query form)
-                  (seq (:source-metadata form))
-                  ;; we probably shouldn't upgrade things at all if we have a source MBQL query whose source is a native
-                  ;; query at ANY level, since `[:field <name>]` might mean `source.<name>` or it might mean
-                  ;; `some_join.<name>`. But we'll probably break more things than we fix if turn off this middleware in
-                  ;; that case. See #19757 for more info
-                  (not (get-in form [:source-query :native])))
-           (upgrade-field-literals-one-level form)
-           form))
-       (resolve-fields/resolve-fields query))
-      resolve-fields/resolve-fields))
+  [{:keys [source-query source-metadata], :as query}]
+  ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
+  ;; rather than an native one
+  (let [upgrade? (and (map? query)
+                      source-query
+                      (seq source-metadata)
+                      ;; we probably shouldn't upgrade things at all if we have a source MBQL query whose source is a native
+                      ;; query at ANY level, since `[:field <name>]` might mean `source.<name>` or it might mean
+                      ;; `some_join.<name>`. But we'll probably break more things than we fix if turn off this middleware in
+                      ;; that case. See #19757 for more info
+                      (not (:native source-query)))]
+    (cond-> query
+      upgrade? upgrade-field-literals-one-level
+      true     resolve-fields/resolve-fields)))

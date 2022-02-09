@@ -20,7 +20,7 @@
 (defn- query->required-features [query]
   (into
    #{}
-   (mbql.u/match (:query query)
+   (mbql.u/match-this-level query
      :stddev
      :standard-deviation-aggregations
 
@@ -30,7 +30,7 @@
 
 (defn check-features
   "Middleware that checks that drivers support the `:features` required to use certain clauses, like `:stddev`."
-  [{query-type :type, :as query}]
+  [{:qp/keys [query-type], :as query}]
   (if-not (= query-type :query)
     query
     (u/prog1 query

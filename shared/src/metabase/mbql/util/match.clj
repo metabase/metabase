@@ -143,7 +143,7 @@
   Pattern-matching works almost exactly the way it does when using `core.match**` directly, with a few
   differences:
 
-  *  `mbql.util/match` returns a sequence of everything that matches, rather than the first match it finds
+  *  [[metabase.mbql.util/match]] returns a sequence of everything that matches, rather than the first match it finds
 
   *  patterns are automatically wrapped in vectors for you when appropriate
 
@@ -193,6 +193,15 @@
   ;; would like to discourage you from using directly.
   `(match* ~x ~patterns-and-results))
 
+(defmacro match-this-level
+  {:style/indent 1}
+  [x & patterns-and-results]
+  `(match ~x
+     ~'(_ :guard (constantly (#{:source-query :source-metadata} (last &parents))))
+     nil
+
+     ~@patterns-and-results))
+
 (defmacro match-one
   "Like `match` but returns a single match rather than a sequence of matches."
   {:style/indent 1}
@@ -234,6 +243,15 @@
   ;; as with `match` actual impl is in `match` namespace to discourage you from using the constituent functions and
   ;; macros that power this macro directly
   `(replace* ~x ~patterns-and-results))
+
+(defmacro replace-this-level
+  {:style/indent 1}
+  [x & patterns-and-results]
+  `(replace ~x
+     ~'(_ :guard (constantly (#{:source-query :source-metadata} (last &parents))))
+     ~'&match
+
+     ~@patterns-and-results))
 
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"

@@ -29,11 +29,7 @@
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
 
   ([inner-query form source-table & sources]
-   (mbql.u/replace form
-     ;; don't replace anything inside source metadata.
-     (_ :guard (constantly ((set &parents) :source-metadata)))
-     &match
-
+   (mbql.u/replace-this-level form
      ;; if we have entered a join map and don't have `join-source` info yet, determine that and recurse.
      (m :guard (every-pred map?
                            :condition
@@ -75,11 +71,4 @@
   This middleware performs a best-effort DWIM transformation, and isn't smart enough to fix every broken query out
   there. If the query cannot be fixed, this log a warning and move on. See #19612 for more information."
   [query]
-  (walk/postwalk
-   (fn [form]
-     (if (and (map? form)
-              ((some-fn :source-query :source-table) form)
-              (not (:condition form)))
-       (fix-bad-references* form)
-       form))
-   query))
+  (fix-bad-references* query))

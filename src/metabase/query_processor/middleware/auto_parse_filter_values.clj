@@ -32,7 +32,7 @@
 (defn auto-parse-filter-values
   "Automatically parse String filter clause values to the appropriate type."
   [query]
-  (mbql.u/replace-in query [:query]
+  (mbql.u/replace-this-level query
     [:value (v :guard string?) (info :guard (fn [{base-type :base_type}]
                                               (and base-type
                                                    (not (isa? base-type :type/Text)))))]

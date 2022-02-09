@@ -20,7 +20,7 @@
 ;;
 ;; TODO - I think we should just remove this entirely, it's not used consistently and it's more trouble than it's
 ;; worth. Just dial down the log level a bit where we're currently using this
-(def ^:dynamic ^Boolean *disable-qp-logging*
+(def ^:dynamic ^Boolean ^:deprecated *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."
   false)

@@ -6,7 +6,7 @@
   "Add `:temporal-unit` `:default` to any temporal `:field` clauses that don't already have a `:temporal-unit`. This
   makes things more consistent because code downstream can rely on the key being present."
   [query]
-  (mbql.u/replace-in query [:query]
+  (mbql.u/replace-this-level query
     [:field (_ :guard string?) (_ :guard (every-pred
                                           :base-type
                                           #(isa? (:base-type %) :type/Temporal)

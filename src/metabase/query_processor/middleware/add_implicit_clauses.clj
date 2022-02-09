@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -139,22 +138,12 @@
 
 (defn add-implicit-mbql-clauses
   "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."
-  [form]
-  (walk/postwalk
-   (fn [form]
-     ;; add implicit clauses to any 'inner query', except for joins themselves (we should still add implicit clauses
-     ;; like `:fields` to source queries *inside* joins)
-     (if (and (map? form)
-              ((some-fn :source-table :source-query) form)
-              (not (:condition form)))
-       (-> form add-implicit-breakout-order-by add-implicit-fields)
-       form))
-   form))
+  [query]
+  (-> query add-implicit-breakout-order-by add-implicit-fields))
 
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
-  [{query-type :type, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query add-implicit-mbql-clauses)))
+  [{:qp/keys [query-type], :as query}]
+  (cond-> query
+    (= query-type :mbql) add-implicit-mbql-clauses))

@@ -695,5 +695,7 @@
     [mbql.match
      match
      match-one
+     match-this-level
      replace
-     replace-in]))
+     replace-in
+     replace-this-level]))

@@ -1,10 +1,8 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
@@ -37,10 +35,9 @@
     ;; Otherwise we cannot determine the metadata automatically; usually, this is because the source query itself has
     ;; a native source query
     (do
-      (when-not qp.i/*disable-qp-logging*
-        (log/warn
-         (trs "Cannot infer `:source-metadata` for source query with native source query without source metadata.")
-         {:source-query source-query}))
+      (log/warn
+       (trs "Cannot infer `:source-metadata` for source query with native source query without source metadata.")
+       {:source-query source-query})
       nil)))
 
 (s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
@@ -97,14 +94,6 @@
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 
-(defn- maybe-add-source-metadata [x]
-  (if (and (map? x) (should-add-source-metadata? x))
-    (add-source-metadata x)
-    x))
-
-(defn- add-source-metadata-at-all-levels [inner-query]
-  (walk/postwalk maybe-add-source-metadata inner-query))
-
 (defn add-source-metadata-for-source-queries
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
@@ -113,7 +102,8 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (update query :query add-source-metadata-at-all-levels)))
+  [{:qp/keys [query-type], :as query}]
+  (cond-> query
+    (and (= query-type :mbql)
+         (should-add-source-metadata? query))
+    add-source-metadata))

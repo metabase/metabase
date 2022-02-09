@@ -117,7 +117,7 @@
                                     :database_type \"VARCHAR\",
                                     :name \"description\"}]]]"
   [mbql]
-  (mbql.u/replace mbql
+  (mbql.u/replace-this-level mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
@@ -138,19 +138,11 @@
     [:value x & _] x
     _              &match))
 
-(defn ^:private wrap-value-literals-in-mbql-query
-  [{:keys [source-query], :as inner-query} options]
-  (let [inner-query (cond-> inner-query
-                      source-query (update :source-query wrap-value-literals-in-mbql-query options))]
-    (wrap-value-literals-in-mbql inner-query)))
-
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
+  [{:qp/keys [query-type], :as query}]
+  (cond-> query
+    (= query-type :mbql) wrap-value-literals-in-mbql))

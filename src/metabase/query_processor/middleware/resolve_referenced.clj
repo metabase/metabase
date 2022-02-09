@@ -2,6 +2,7 @@
   (:require [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
             [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-tables]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
@@ -29,10 +30,10 @@
 
 (defn- check-query-database-id=
   [query database-id]
-  (when-not (= (:database query) database-id)
+  (when-not (= database-id (:id (qp.store/database)))
     (throw (ex-info (tru "Referenced query is from a different database")
                     {:referenced-query     query
-                     :expected-database-id database-id}))))
+                     :expected-database-id (:id (qp.store/database))}))))
 
 (s/defn ^:private resolve-referenced-card-resources* :- clojure.lang.IPersistentMap
   [query]

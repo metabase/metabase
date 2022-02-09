@@ -59,10 +59,9 @@
 
 (s/defn ^:private add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
-  [{:keys [source-query joins], :as form} :- InnerQuery]
-  ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
-  (let [source-table (primary-source-table-id form)
-        form         (mbql.u/replace (dissoc form :joins :source-query)
+  [query :- InnerQuery]
+  (let [source-table (primary-source-table-id query)
+        query        (mbql.u/replace-this-level query
                        ;; don't add `:join-alias` to anything that already has one
                        [:field _ (_ :guard :join-alias)]
                        &match
@@ -72,13 +71,9 @@
                         (field-id :guard (every-pred integer?
                                                      #(not= (:table_id (qp.store/field %)) source-table)))
                         _]
-                       (add-join-alias (qp.store/field field-id) form &match))
-        ;; add :joins and :source-query back which we removed above.
-        form (cond-> form
-               (seq joins)  (assoc :joins joins)
-               source-query (assoc :source-query source-query))]
+                       (add-join-alias (qp.store/field field-id) query &match))]
     ;; now deduplicate :fields clauses
-    (mbql.u/replace form
+    (mbql.u/replace-this-level query
       (m :guard (every-pred map? :fields))
       (update m :fields distinct))))
 
@@ -88,14 +83,10 @@
   (mbql.u/replace form
     (m :guard (every-pred map? (complement (s/checker InnerQuery))))
     (cond-> m
-      ;; recursively wrap stuff in nested joins or source queries in the form
-      (:source-query m)
-      (update :source-query add-join-alias-to-fields-if-needed)
-
       (seq (:joins m))
       (update :joins (partial mapv add-join-alias-to-fields-if-needed))
 
-      ;; now call `add-join-alias-to-fields-if-needed*` which actually does the wrapping.
+      ;; now call [[add-join-alias-to-fields-if-needed*]] which actually does the wrapping.
       true
       add-join-alias-to-fields-if-needed*)))
 

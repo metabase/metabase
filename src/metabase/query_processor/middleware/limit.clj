@@ -7,11 +7,10 @@
 
 ;;;; Pre-processing
 
-(defn- add-limit [max-rows {query-type :type, {original-limit :limit}, :query, :as query}]
+(defn- add-limit [max-rows {original-limit :limit, :as query}]
   (cond-> query
-    (and (= query-type :query)
-         (qputil/query-without-aggregations-or-limits? query))
-    (update :query assoc :limit max-rows, ::original-limit original-limit)))
+    (qputil/query-without-aggregations-or-limits? {:query query})
+    (assoc :limit max-rows, ::original-limit original-limit)))
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned.  This is the first non-nil value from (in decreasing
@@ -28,8 +27,11 @@
 
 (defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
-  [query]
-  (add-limit (determine-query-max-rows query) query))
+  [{:qp/keys [top-level? query-type], :as query}]
+  (cond->> query
+    (and top-level?
+         (= query-type :mbql))
+    (add-limit (determine-query-max-rows query))))
 
 
 ;;;; Post-processing

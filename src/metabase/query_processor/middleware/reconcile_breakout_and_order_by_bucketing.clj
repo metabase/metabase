@@ -38,7 +38,7 @@
             [schema.core :as s]))
 
 (s/defn ^:private reconcile-bucketing :- mbql.s/Query
-  [{{breakouts :breakout} :query, :as query}]
+  [{breakouts :breakout, :as query}]
   ;; Look for bucketed fields in the `breakout` clause and build a map of unbucketed reference -> bucketed reference,
   ;; like:
   ;;
@@ -52,7 +52,7 @@
                                                          [[:field id-or-name (not-empty (dissoc opts :temporal-unit :binning))]
                                                           &match])))]
     ;; rewrite order-by clauses as needed...
-    (-> (mbql.u/replace-in query [:query :order-by]
+    (-> (mbql.u/replace-in query [:order-by]
           ;; if order by is already bucketed, nothing to do
           [:field id-or-name (_ :guard (some-fn :temporal-unit :binning))]
           &match
@@ -66,7 +66,7 @@
             ;; if there's not, again nothing to do.
             &match))
         ;; now remove any duplicate order-by clauses we may have introduced, as those are illegal in MBQL 2000
-        (update-in [:query :order-by] (comp vec distinct)))))
+        (update-in [:order-by] (comp vec distinct)))))
 
 (defn reconcile-breakout-and-order-by-bucketing
   "Replace any unbucketed `:field` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
@@ -77,7 +77,7 @@
    ->
    {:query {:breakout [[:field 1 {:temporal-unit :day}]]
             :order-by [[:asc [:field 1 {:temporal-unit :day}]]]}}"
-  [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
+  [{breakouts :breakout, order-bys :order-by, :as query}]
   (if (or
        ;; if there's no breakouts bucketed by a datetime-field or binning-strategy...
        (empty? (mbql.u/match breakouts [:field _ (_ :guard (some-fn :temporal-unit :binning))]))

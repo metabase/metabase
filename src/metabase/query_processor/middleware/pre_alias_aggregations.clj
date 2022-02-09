@@ -15,22 +15,14 @@
    aggregations
    (mbql.u/pre-alias-and-uniquify-aggregations ag-name aggregations)))
 
-(defn pre-alias-aggregations-in-inner-query
+(defn pre-alias-aggregations-in-query
   "Make sure all aggregations have aliases, and all aliases are unique, in an 'inner' MBQL query."
-  [{:keys [aggregation source-query joins], :as inner-query}]
-  (cond-> inner-query
-    (seq aggregation)
-    (update :aggregation pre-alias-and-uniquify)
-
-    source-query
-    (update :source-query pre-alias-aggregations-in-inner-query)
-
-    joins
-    (update :joins (partial mapv pre-alias-aggregations-in-inner-query))))
+  [{:keys [aggregation], :as query}]
+  (cond-> query
+    (seq aggregation) (update :aggregation pre-alias-and-uniquify)))
 
 (defn pre-alias-aggregations
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (update query :query pre-alias-aggregations-in-inner-query)))
+  [{:qp/keys [query-type], :as query}]
+  (cond-> query
+    (= query-type :mbql) pre-alias-aggregations-in-query))
