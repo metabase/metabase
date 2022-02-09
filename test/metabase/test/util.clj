@@ -21,7 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -41,7 +41,7 @@
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -831,10 +831,10 @@
           (let [remapped (db/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
-                                          :name                    (:display_name original)
+                                          :name                    (format "%s [external remap]" (:display_name original))
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
-                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
           (let [values-map (if (sequential? remap)
@@ -843,12 +843,12 @@
                              remap)]
             (fn []
               (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (:display_name original)
+                                              :name     (format "%s [internal remap]" (:display_name original))
                                               :type     :internal}]
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)
                                               :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s"
+                (testing (format "With human readable values remapping %s -> %s\n"
                                  (describe-field original) (pr-str values-map))
                   (thunk)))))))))
    orig->remapped))

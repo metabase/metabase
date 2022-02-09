@@ -1,7 +1,5 @@
 import React from "react";
-import styled from "styled-components";
-
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import styled from "@emotion/styled";
 
 import TippyPopover from "./TippyPopover";
 
@@ -15,24 +13,24 @@ const Base = styled.div`
   justify-content: center;
 `;
 
-const PopoverBody = forwardRefToInnerRef(styled(Base)`
+const PopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
-`);
+`;
 
-const LazyPopoverBody = forwardRefToInnerRef(styled(Base)`
+const LazyPopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
   transition: opacity 1s;
   opacity: ${props => props.opacity};
-`);
+`;
 
-const PopoverTarget = forwardRefToInnerRef(styled(Base)`
+const PopoverTarget = styled(Base)`
   height: 100px;
   width: 100px;
-`);
+`;
 
 const content = <PopoverBody>popover body</PopoverBody>;
 const target = <PopoverTarget>popover target</PopoverTarget>;
@@ -52,6 +50,20 @@ function LazyContentExample() {
   }, [opacity]);
 
   return <LazyPopoverBody opacity={opacity}>popover content</LazyPopoverBody>;
+}
+
+function VisiblePropExample() {
+  const [visible, setVisible] = React.useState(true);
+  return (
+    <TippyPopover
+      visible={visible}
+      onHide={() => setVisible(false)}
+      placement="left-end"
+      content={content}
+    >
+      <div onClick={() => setVisible(true)}>{target}</div>
+    </TippyPopover>
+  );
 }
 
 export const examples = {
@@ -84,4 +96,5 @@ export const examples = {
       {target}
     </TippyPopover>
   ),
+  "control mode + handling of Esc press": <VisiblePropExample />,
 };

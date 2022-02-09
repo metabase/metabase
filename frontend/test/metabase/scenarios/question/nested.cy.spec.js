@@ -410,7 +410,7 @@ describe("scenarios > question > nested", () => {
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
     cy.icon("notebook").click();
-    cy.get("[class*=NotebookCellItem]")
+    cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
     popover().within(() => {

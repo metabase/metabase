@@ -3,6 +3,7 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
+  (:refer-clojure :exclude [compile])
   (:require clojure.data
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
@@ -21,6 +22,7 @@
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
@@ -63,6 +65,7 @@
   qp.test/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
+  test-runner.assert-exprs/keep-me
   test-users/keep-me
   tt/keep-me
   tu/keep-me
@@ -115,8 +118,7 @@
   authenticate
   build-url
   client
-  client-full-response
-  derecordize]
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -160,6 +162,9 @@
 
  [sql.qp-test-util
   with-native-query-testing-context]
+
+ [test-runner.assert-exprs
+  derecordize]
 
  [test-users
   fetch-user

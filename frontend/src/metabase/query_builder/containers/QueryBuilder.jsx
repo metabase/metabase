@@ -249,11 +249,13 @@ export default class QueryBuilder extends Component {
     this.setRecentlySaved("created");
   };
 
-  handleSave = async card => {
+  handleSave = async (card, { rerunQuery = false } = {}) => {
     const { question, apiUpdateQuestion, updateUrl } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
-    await apiUpdateQuestion(questionWithUpdatedCard);
-    await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+    await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+    if (!rerunQuery) {
+      await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+    }
 
     if (this.props.fromUrl) {
       this.props.onChangeLocation(this.props.fromUrl);

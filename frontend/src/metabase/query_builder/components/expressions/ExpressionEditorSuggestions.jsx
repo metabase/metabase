@@ -92,7 +92,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
         targetOffsetY={0}
         sizeToFit
       >
-        <UlStyled data-testid="expression-suggestions-list">
+        <UlStyled data-testid="expression-suggestions-list" className="pb1">
           {suggestions.map((suggestion, i) => {
             const isHighlighted = i === highlightedIndex;
             const { icon } = suggestion;
@@ -103,7 +103,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
               <ListItemStyled
                 onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                 isHighlighted={isHighlighted}
-                className="flex align-center"
+                className="flex align-center px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
               >
                 <Icon
                   name={icon}

@@ -41,7 +41,7 @@ describe("scenarios > question > filter", () => {
       // we've run into weird "name normalization" issue
       // where it displays "Product" locally, and "Products" in CI
       // also, we need to eliminate "Product ID" - that's why I used `$`
-      cy.contains(/products?$/i).click();
+      cy.contains(/products?$/i).click({ force: true });
     });
     cy.findByText("Category").click();
     cy.findByText("Is").click();
@@ -230,7 +230,7 @@ describe("scenarios > question > filter", () => {
   it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
-    cy.findByText("Created At").click();
+    cy.findByText("Created At").click({ force: true });
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
@@ -243,8 +243,6 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -265,7 +263,6 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.wait("@dataset");
     cy.findByText(/Created At > Product? → Created At/i).click();
 
     cy.contains(/\[Created At\] > \[Products? → Created At\]/);
@@ -487,6 +484,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
+
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -510,6 +508,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
+
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -522,7 +521,7 @@ describe("scenarios > question > filter", () => {
 
     // Via the GUI, create a filter with "include-current" option
     cy.findByText("Filter").click();
-    cy.findByText("Created At").click();
+    cy.findByText("Created At").click({ force: true });
     cy.get("input[type='text']").type("{selectall}{del}5");
     cy.contains("Include today").click();
     cy.findByText("Add filter").click();
@@ -541,8 +540,6 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -559,7 +556,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
-    cy.wait("@dataset");
+
     cy.findByText("wilma-muller");
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
@@ -714,6 +711,7 @@ describe("scenarios > question > filter", () => {
         type: "query",
       },
     });
+
     cy.get(".ScalarValue").contains("5");
     cy.findAllByRole("button")
       .contains("Filter")
@@ -766,6 +764,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "line",
     });
+
     assertOnLegendLabels();
     cy.get(".line").should("have.length", 3);
     cy.findByText("Save").click();
@@ -828,7 +827,7 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Filter").click();
       popover()
         .findByText("Total")
-        .click();
+        .click({ force: true });
       cy.findByPlaceholderText("Enter a number").type("123");
       cy.button("Add filter").click();
       cy.icon("add")

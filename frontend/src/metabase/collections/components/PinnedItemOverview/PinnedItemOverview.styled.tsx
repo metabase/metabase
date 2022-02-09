@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
@@ -10,6 +10,7 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${GAP_REM}rem;
+  margin-bottom: 1.5em;
 `;
 
 export const Grid = styled.div`

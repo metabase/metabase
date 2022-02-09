@@ -64,6 +64,9 @@ jobs:
         edition: [oss]
         folder:
           - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
           - "downloads"
           - "moderation"
           - "native"
@@ -74,18 +77,30 @@ jobs:
         ports:
           - "80:80"
           - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:
           - "5432:5432"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       mongo-sample:
         image: metabase/qa-databases:mongo-sample-4.0
         ports:
           - 27017:27017
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       mysql-sample:
         image: metabase/qa-databases:mysql-sample-8
         ports:
           - 3306:3306
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
     - name: Prepare front-end environment

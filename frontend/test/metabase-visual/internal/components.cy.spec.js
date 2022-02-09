@@ -7,9 +7,8 @@ describe("visual tests > internal > components", () => {
   });
 
   it("UserAvatar", () => {
-    cy.visit("/_internal");
-
-    cy.findByText("UserAvatar").click();
+    cy.visit("/_internal/components/useravatar");
+    cy.findByText("<UserAvatar />");
 
     cy.percySnapshot();
   });

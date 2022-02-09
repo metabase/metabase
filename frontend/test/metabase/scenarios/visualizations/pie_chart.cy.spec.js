@@ -21,14 +21,11 @@ describe("scenarios > visualizations > pie chart", () => {
   });
 
   it("should render a pie chart (metabase#12506)", () => {
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
     });
 
-    cy.wait("@dataset");
     ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
   });
 });

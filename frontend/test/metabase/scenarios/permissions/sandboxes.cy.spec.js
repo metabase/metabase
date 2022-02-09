@@ -141,7 +141,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.icon("notebook").click();
         cy.findByText("Filter").click();
         popover().within(() => {
-          cy.findByText("Total").click();
+          cy.findByText("Total").click({ force: true });
         });
         cy.findByText("Equal to").click();
         cy.findByText("Greater than").click();
@@ -482,10 +482,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.get(".cellData")
@@ -640,11 +638,10 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
+
         // Title of the first order for User ID = 1
         cy.findByText("Awesome Concrete Shoes");
       });
@@ -969,10 +966,9 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openOrdersTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openOrdersTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       cy.contains("37.65");
@@ -1026,10 +1022,9 @@ describeWithToken("formatting > sandboxes", () => {
       });
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openReviewsTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openReviewsTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       // Add positive assertion once this issue is fixed

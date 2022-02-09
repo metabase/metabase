@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { SelectList } from "metabase/components/select-list";
 
 export const EmptyStateContainer = styled.div`

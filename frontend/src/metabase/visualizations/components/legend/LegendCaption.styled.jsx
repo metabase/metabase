@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
@@ -23,9 +23,11 @@ export const LegendLabelIcon = styled(Icon)`
   padding-right: 0.25rem;
 `;
 
-export const LegendDescriptionIcon = styled(Icon).attrs({
-  name: "info",
-})`
+export const LegendDescriptionIcon = styled(Icon)`
   color: ${colors["text-medium"]};
   margin-left: 0.5rem;
 `;
+
+LegendDescriptionIcon.defaultProps = {
+  name: "info",
+};

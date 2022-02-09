@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { ClampedDiv } from "./ClampedText.styled";
 import { TextButton } from "metabase/components/Button.styled";
 
@@ -37,7 +37,7 @@ function ClampedText({ className, text, visibleLines }) {
   return (
     <div className={cx("clamped-text", className)}>
       <ClampedDiv
-        innerRef={clampedDiv}
+        ref={clampedDiv}
         visibleLines={isClamped ? visibleLines : undefined}
       >
         <div className="clamped-text--text" ref={innerDiv}>
