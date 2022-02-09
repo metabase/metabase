@@ -15,7 +15,11 @@ import {
 } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { inflect } from "inflection";
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import {
+  formatValue,
+  formatColumn,
+  singularize,
+} from "metabase/lib/formatting";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -25,6 +29,7 @@ import {
   viewNextObjectDetail,
 } from "metabase/query_builder/actions";
 import {
+  getQuestion,
   getTableMetadata,
   getTableForeignKeys,
   getTableForeignKeyReferences,
@@ -40,6 +45,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 const mapStateToProps = state => ({
+  question: getQuestion(state),
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
   tableForeignKeyReferences: getTableForeignKeyReferences(state),
@@ -305,14 +311,27 @@ export class ObjectDetail extends Component {
     }
   };
 
+  getObjectName = () => {
+    const { question, table } = this.props;
+    const tableObjectName = table && table.objectName();
+    if (tableObjectName) {
+      return tableObjectName;
+    }
+    const questionName = question && question.displayName();
+    if (questionName) {
+      return singularize(questionName);
+    }
+    return t`Unknown`;
+  };
+
   render() {
     const { data, zoomedRow, canZoomPreviousRow, canZoomNextRow } = this.props;
     if (!data) {
       return false;
     }
 
-    const tableName = table ? table.objectName() : t`Unknown`;
     const canZoom = !!zoomedRow;
+    const objectName = this.getObjectName();
 
     return (
       <div className="scroll-y pt2 px4">
@@ -320,7 +339,7 @@ export class ObjectDetail extends Component {
           <div className="Grid border-bottom relative">
             <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
               <div className="text-brand text-bold">
-                <span>{tableName}</span>
+                <span>{objectName}</span>
                 <h1>{this.getIdValue()}</h1>
               </div>
             </div>
@@ -329,7 +348,7 @@ export class ObjectDetail extends Component {
                 <Icon name="connections" size={17} />
                 <div className="ml2">
                   {jt`This ${(
-                    <span className="text-dark">{tableName}</span>
+                    <span className="text-dark">{objectName}</span>
                   )} is connected to:`}
                 </div>
               </div>
