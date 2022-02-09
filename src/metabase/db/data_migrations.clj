@@ -18,7 +18,6 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.humanization :as humanization]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
@@ -29,8 +28,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+            [toucan.models :as models]))
 
 ;;; # Migration Helpers
 
@@ -135,25 +133,6 @@
                  (not= stored-site-url defaulted-site-url))
         (setting/set! "site-url" stored-site-url)))))
 
-;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
-;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
-;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
-;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
-(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
-  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
-    (when (seq enable-advanced-humanization-str)
-      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
-      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
-      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
-      ;; invalid value. In that case, fail silently.
-      (u/ignore-exceptions
-        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
-                                              "advanced"
-                                              "simple"))))
-    ;; either way, delete the old value from the DB since we'll never be using it again.
-    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
-    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
-
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
 ;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
 ;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
@@ -178,7 +157,7 @@
 (defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
 
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
