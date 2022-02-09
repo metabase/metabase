@@ -203,6 +203,38 @@ export default class View extends React.Component {
       : this.getRightSidebarForNativeQuery();
   };
 
+  renderHeader = () => {
+    const { query } = this.props;
+    const isStructured = query instanceof StructuredQuery;
+
+    const isNewQuestion =
+      isStructured && !query.sourceTableId() && !query.sourceQuery();
+
+    return (
+      <Motion
+        defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
+        style={isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }}
+      >
+        {({ opacity }) => (
+          <div className="flex-no-shrink z3 bg-white relative">
+            <ViewTitleHeader
+              {...this.props}
+              style={{ opacity }}
+              py={1}
+              className="border-bottom"
+            />
+            {opacity < 1 && (
+              <NewQuestionHeader
+                className="spread"
+                style={{ opacity: 1 - opacity }}
+              />
+            )}
+          </div>
+        )}
+      </Motion>
+    );
+  };
+
   render() {
     const {
       query,
@@ -263,29 +295,7 @@ export default class View extends React.Component {
     return (
       <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
-          <Motion
-            defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
-            style={
-              isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
-            }
-          >
-            {({ opacity }) => (
-              <div className="flex-no-shrink z3 bg-white relative">
-                <ViewTitleHeader
-                  {...this.props}
-                  style={{ opacity }}
-                  py={1}
-                  className="border-bottom"
-                />
-                {opacity < 1 && (
-                  <NewQuestionHeader
-                    className="spread"
-                    style={{ opacity: 1 - opacity }}
-                  />
-                )}
-              </div>
-            )}
-          </Motion>
+          {this.renderHeader()}
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
