@@ -95,7 +95,8 @@
 (defn default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
-  {:timeout       query-timeout-ms
+  {::complete?    true
+   :timeout       query-timeout-ms
    :rff           default-rff
    :raisef        default-raisef
    :runf          default-runf

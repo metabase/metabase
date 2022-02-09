@@ -13,12 +13,13 @@
             [metabase.models.query :as query :refer [Query]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default  :as context.default]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.query-processor.middleware.cache.impl-test :as impl-test]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.server.middleware.session :as session]
@@ -31,6 +32,10 @@
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-log-level :fatal
+                        (thunk))))
 
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
@@ -52,7 +57,7 @@
       pretty/PrettyPrintable
       (pretty [_]
         (str "\n"
-             (metabase.util/pprint-to-str 'blue
+             (u/pprint-to-str 'blue
                (for [[hash {:keys [created]}] @store]
                  [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
@@ -64,7 +69,7 @@
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]
         (let [hex-hash (codecs/bytes->hex query-hash)]
-          (log/tracef "Fetch results for %s store: %s" hex-hash this)
+          (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
           (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
                                                                                (when (= hash hex-hash)
                                                                                  entry))
@@ -79,7 +84,7 @@
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
-          (log/tracef "Save results for %s --> store: %s" hex-hash this))
+          (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
 
       (purge-old-entries! [this max-age-seconds]
@@ -87,28 +92,28 @@
                        (into {} (filter (fn [[_ {:keys [created]}]]
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
-        (log/tracef "Purge old entries --> store: %s" this)
+        (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge)))))
 
 (defn do-with-mock-cache [f]
-  (mt/with-open-channels [save-chan  (a/chan 1)
-                          purge-chan (a/chan 1)]
+  (mt/with-open-channels [save-chan  (a/chan 10)
+                          purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [enable-query-caching  true
                                        query-caching-max-ttl 60
                                        query-caching-min-ttl 0]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
-        (let [orig (var-get #'cache/cache-results-async!)]
-          (with-redefs [cache/cache-results-async! (fn [hash out-chan]
-                                                     (a/go
-                                                       ;; if `save-results!` isn't going to get called because
-                                                       ;; `out-chan` isn't a byte array then forward the result to
-                                                       ;; `save-chan` so it always gets a value
-                                                       (let [result (a/<! out-chan)]
-                                                         (when-not (bytes? result)
-                                                           (a/>!! save-chan result))))
-                                                     (orig hash out-chan))]
+        (let [orig @#'cache/serialized-bytes]
+          (with-redefs [cache/serialized-bytes (fn []
+                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                 ;; gets a result and tests can finish
+                                                 (try
+                                                   (orig)
+                                                   (catch Throwable e
+                                                     (a/>!! save-chan e)
+                                                     (throw e))))]
             (f {:save-chan save-chan, :purge-chan purge-chan})))))))
 
 (defmacro with-mock-cache [[& bindings] & body]
@@ -123,27 +128,30 @@
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (:metadata
-   (mt/test-qp-middleware
-    cache/maybe-return-cached-results
-    (test-query query-kvs)
-    {}
-    [[:toucan      71]
-     [:bald-eagle  92]
-     [:hummingbird 11]
-     [:owl         10]
-     [:chicken     69]
-     [:robin       96]
-     [:osprey      72]
-     [:flamingo    70]]
-    {:timeout 2000
-     :run     (fn []
-                (Thread/sleep *query-execution-delay-ms*))})))
+  (let [qp       (qp.reducible/sync-qp
+                  (qp.reducible/async-qp
+                   (cache/maybe-return-cached-results qp.reducible/identity-qp)))
+        metadata {}
+        rows     [[:toucan      71]
+                  [:bald-eagle  92]
+                  [:hummingbird 11]
+                  [:owl         10]
+                  [:chicken     69]
+                  [:robin       96]
+                  [:osprey      72]
+                  [:flamingo    70]]
+        query    (test-query query-kvs)
+        context  {:timeout  2000
+                  :executef (fn [_driver _query _context respond]
+                              (Thread/sleep *query-execution-delay-ms*)
+                              (respond metadata rows))}]
+    (-> (qp query context)
+        (assoc :data {}))))
 
 (defn- run-query [& args]
   (let [result (apply run-query* args)]
-    (is (= :completed
-           (:status result)))
+    (is (partial= {:status :completed}
+                  result))
     (if (:cached result)
       :cached
       :not-cached)))
@@ -274,9 +282,8 @@
                      (some? input-stream))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
-          (mt/suppress-output
-            (is (= :not-cached
-                   (run-query)))))))))
+          (is (= :not-cached
+                 (run-query))))))))
 
 (deftest metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."
@@ -285,8 +292,6 @@
         (run-query)
         (mt/wait-for-result save-chan)
         (let [result (run-query*)]
-          (is (= true
-                 (:cached result)))
           (is (= {:data       {}
                   :cached     true
                   :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
