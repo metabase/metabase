@@ -1,25 +1,13 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";
 
-type Props = {
-  className?: string,
-  value: string,
-};
-type State = {
-  copied: boolean,
-};
-
 export default class CopyWidget extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       copied: false,
@@ -30,15 +18,15 @@ export default class CopyWidget extends Component {
     setTimeout(() => this.setState({ copied: false }), 2000);
   };
   render() {
-    const { value, className, ...props } = this.props;
+    const { value, className, style, ...props } = this.props;
     return (
-      <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
-        <CopyToClipboard text={value} onCopy={this.onCopy}>
-          <div className={className}>
+      <CopyToClipboard text={value} onCopy={this.onCopy}>
+        <div className={className} style={style} data-testid="copy-button">
+          <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
             <Icon name="copy" {...props} />
-          </div>
-        </CopyToClipboard>
-      </Tooltip>
+          </Tooltip>
+        </div>
+      </CopyToClipboard>
     );
   }
 }

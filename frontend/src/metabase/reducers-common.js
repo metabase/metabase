@@ -1,8 +1,4 @@
-/* @flow */
-
 // Reducers shared between "main" and "public" apps
-
-import auth from "metabase/auth/auth";
 
 /* ducks */
 import app from "metabase/redux/app";
@@ -18,7 +14,6 @@ import { currentUser } from "metabase/redux/user";
 export default {
   // global reducers
   app,
-  auth,
   currentUser,
   // "entities" framework needs control over "requests" state
   requests: enhanceRequestsReducer(requests),

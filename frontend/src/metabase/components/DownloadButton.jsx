@@ -1,23 +1,24 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Text from "metabase/components/Text";
+import Label from "metabase/components/type/Label";
+import { FormButton } from "./DownloadButton.styled";
 
 function colorForType(type) {
   switch (type) {
     case "csv":
-      return colors["accent7"];
+      return color("accent7");
     case "xlsx":
-      return colors["accent1"];
+      return color("accent1");
     case "json":
-      return colors["bg-dark"];
+      return color("bg-dark");
     default:
-      return colors["brand"];
+      return color("brand");
   }
 }
 
@@ -29,14 +30,11 @@ const DownloadButton = ({
   extensions,
   ...props
 }) => (
-  <Box>
+  <div>
     <form method={method} action={url}>
       {params && extractQueryParams(params).map(getInput)}
-      <Flex
-        is="button"
+      <FormButton
         className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
-        align="center"
-        px={1}
         onClick={e => {
           if (window.OSX) {
             // prevent form from being submitted normally
@@ -48,10 +46,10 @@ const DownloadButton = ({
         {...props}
       >
         <Icon name={children} size={32} mr={1} color={colorForType(children)} />
-        <Text className="text-bold">.{children}</Text>
-      </Flex>
+        <Label my={0}>.{children}</Label>
+      </FormButton>
     </form>
-  </Box>
+  </div>
 );
 
 const getInput = ([name, value]) => (

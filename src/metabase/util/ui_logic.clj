@@ -8,16 +8,15 @@
   (not= :aggregation (:source col)))
 
 (defn- summable-column?
-  "A summable column is any numeric column that isn't a special type like an FK or PK. It also excludes unix
-  timestamps that are numbers, but with a special type of DateTime"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/Number)
-           (isa? special_type :type/Number))
-       (not (isa? special_type :type/Special))
-       (not (isa? special_type :type/DateTime))))
+  "A summable column is any numeric column that isn't a relation type like an FK or PK. It also excludes unix
+  timestamps that are numbers, but with an effective type of `Temporal`."
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type}]
+  (and (isa? base-type :type/Number)
+       (not (isa? effective-type :type/Temporal))
+       (not (isa? semantic-type :Relation/*))))
 
 (defn- metric-column?
-  "A metric column is any non-breakout column that is summable (numeric that isn't a special type like an FK/PK/Unix
+  "A metric column is any non-breakout column that is summable (numeric that isn't a semantic type like an FK/PK/Unix
   timestamp)"
   [col]
   (and (not= :breakout (:source col))
@@ -27,7 +26,7 @@
   "For graphs with goals, this function returns the index of the default column that should be used to compare against
   the goal. This follows the frontend code getDefaultLineAreaBarColumns closely with a slight change (detailed in the
   code)"
-  [{graph-type :display :as card} {[col-1 col-2 col-3 :as all-cols] :cols :as result}]
+  [{graph-type :display :as _card} {[col-1 col-2 col-3 :as all-cols] :cols :as _result}]
   (let [cols-count (count all-cols)]
     (cond
       ;; Progress goals return a single row and column, compare that
@@ -60,9 +59,9 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [^String column-name {:keys [cols] :as result}]
+  [column-name {:keys [cols] :as _result}]
   (first (remove nil? (map-indexed (fn [idx column]
-                                     (when (.equalsIgnoreCase column-name (:name column))
+                                     (when (.equalsIgnoreCase (name column-name) (name (:name column)))
                                        idx))
                                    cols))))
 
@@ -83,6 +82,36 @@
   "This is used as the X-axis column in the UI"
   [card results]
   (graph-column-index :graph.dimensions card results))
+
+(defn mult-y-axis-rowfn
+  "This is used as the Y-axis column in the UI
+  when we have comboes, which have more than one y axis."
+  [card results]
+  (let [metrics     (some-> card
+                            (get-in [:visualization_settings :graph.metrics]))
+        col-indices (map #(column-name->index % results) metrics)]
+    (when (seq? col-indices)
+      (fn [row]
+        (let [res (vec (for [idx col-indices]
+                         (get row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
+
+(defn mult-x-axis-rowfn
+  "This is used as the X-axis column in the UI
+  when we have comboes, which have more than one x axis."
+  [card results]
+  (let [dimensions  (some-> card
+                            (get-in [:visualization_settings :graph.dimensions]))
+        col-indices (map #(column-name->index % results) dimensions)]
+    (when (seq? col-indices)
+      (fn [row]
+        (let [res (vec (for [idx col-indices]
+                         (get row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
 
 (defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come

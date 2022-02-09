@@ -1,11 +1,15 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
+import InputBlurChange from "metabase/components/InputBlurChange";
+
 const ChartSettingInput = ({ value, onChange, ...props }) => (
-  <input
+  <InputBlurChange
     {...props}
+    data-testid={props.id}
     className="input block full"
     value={value}
-    onChange={e => onChange(e.target.value)}
+    onBlurChange={e => onChange(e.target.value)}
   />
 );
 

@@ -1,23 +1,25 @@
-/* @flow */
-
 import { assocIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
-  canonicalCollectionId,
   getCollectionType,
+  normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import { POST, DELETE } from "metabase/lib/api";
+
+import forms from "./questions/forms";
 
 const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
+  nameOne: "question",
   path: "/api/card",
 
   api: {
@@ -26,18 +28,22 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id, model }, archived, opts) =>
       Questions.actions.update(
         { id },
         { archived },
-        undo(opts, "question", archived ? "archived" : "unarchived"),
+        undo(
+          opts,
+          model === "dataset" ? "model" : "question",
+          archived ? "archived" : "unarchived",
+        ),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: ({ id, model }, collection, opts) =>
       Questions.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "question", "moved"),
+        undo(opts, model === "dataset" ? "model" : "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
@@ -63,11 +69,11 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question.id),
-    getColor: () => colors["text-medium"],
-    getIcon: question =>
-      (require("metabase/visualizations").default.get(question.display) || {})
-        .iconName || "beaker",
+    getUrl: question => question && Urls.question(question),
+    getColor: () => color("text-medium"),
+    getCollection: question =>
+      question && normalizedCollection(question.collection),
+    getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -79,21 +85,11 @@ const Questions = createEntity({
     return state;
   },
 
-  form: {
-    fields: [
-      { name: "name" },
-      { name: "description", type: "text" },
-      {
-        name: "collection_id",
-        title: "Collection",
-        type: "collection",
-      },
-    ],
-  },
-
   // NOTE: keep in sync with src/metabase/api/card.clj
   writableProperties: [
     "name",
+    "cache_ttl",
+    "dataset",
     "dataset_query",
     "display",
     "description",
@@ -104,13 +100,27 @@ const Questions = createEntity({
     "collection_id",
     "collection_position",
     "result_metadata",
-    "metadata_checksum",
   ],
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
+
+  forms,
 });
+
+function getIcon(question) {
+  if (question.dataset || question.model === "dataset") {
+    return { name: "model" };
+  }
+  const visualization = require("metabase/visualizations").default.get(
+    question.display,
+  );
+  return {
+    name: visualization?.iconName ?? "beaker",
+    color: color("bg-dark"),
+  };
+}
 
 export default Questions;

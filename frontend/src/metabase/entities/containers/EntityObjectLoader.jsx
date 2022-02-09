@@ -1,60 +1,42 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
+import _ from "underscore";
 
 import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-export type Props = {
-  // Entity ID, such as a database ID
-  entityId: any,
-  // Entity type name (e.x. "databases", "questions", etc)
-  entityType: string,
-  // Reload the object when the component is mounted (or entityId changes)
-  reload?: boolean,
-  // Wrap the object in the a class that contains helper functions
-  wrapped?: boolean,
-  // List of required properties, if the object is loaded and they are all
-  // present don't bother loading as the object has been loaded by some other means
-  properties?: string[],
-  // Wrap the children in LoadingAndErrorWrapper to display loading and error states
-  // When true (default) the children render prop won't be called until loaded
-  loadingAndErrorWrapper: boolean,
-  // Children render prop
-  children: (props: RenderProps) => ?React$Element<any>,
-};
-
-export type RenderProps = {
-  // the loaded objecvt itself
-  object: ?any,
-  // data was loaded at least once
-  fetched: boolean,
-  // data is loaded and no pending requests
-  loaded: boolean,
-  //  request is pending
-  loading: boolean,
-  // error occured
-  error: ?any,
-  remove: () => Promise<void>,
-};
+// props that shouldn't be passed to children in order to properly stack
+const CONSUMED_PROPS = [
+  "entityType",
+  "entityId",
+  "entityAlias",
+  // "reload", // Masked by `reload` function. Should we rename that?
+  "wrapped",
+  "properties",
+  "loadingAndErrorWrapper",
+  "selectorName",
+];
 
 @entityType()
-@connect((state, { entityDef, entityId, ...props }) => {
-  if (typeof entityId === "function") {
-    entityId = entityId(state, props);
-  }
-  return {
-    entityId,
-    object: entityDef.selectors.getObject(state, { entityId }),
-    fetched: entityDef.selectors.getFetched(state, { entityId }),
-    loading: entityDef.selectors.getLoading(state, { entityId }),
-    error: entityDef.selectors.getError(state, { entityId }),
-  };
-})
+@connect(
+  (state, { entityDef, entityId, selectorName = "getObject", ...props }) => {
+    if (typeof entityId === "function") {
+      entityId = entityId(state, props);
+    }
+
+    return {
+      entityId,
+      object: entityDef.selectors[selectorName](state, { entityId }),
+      fetched: entityDef.selectors.getFetched(state, { entityId }),
+      loading: entityDef.selectors.getLoading(state, { entityId }),
+      error: entityDef.selectors.getError(state, { entityId }),
+    };
+  },
+)
 export default class EntityObjectLoader extends React.Component {
-  props: Props;
+  props;
 
   static defaultProps = {
     loadingAndErrorWrapper: true,
@@ -62,9 +44,9 @@ export default class EntityObjectLoader extends React.Component {
     wrapped: false,
   };
 
-  _getWrappedObject: ?(props: Props) => any;
+  _getWrappedObject;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this._getWrappedObject = createSelector(
@@ -78,17 +60,20 @@ export default class EntityObjectLoader extends React.Component {
     );
   }
 
-  componentWillMount() {
-    // $FlowFixMe: provided by @connect
+  UNSAFE_componentWillMount() {
     const { entityId, fetch } = this.props;
-    fetch(
-      { id: entityId },
-      { reload: this.props.reload, properties: this.props.properties },
-    );
+    if (entityId != null) {
+      fetch(
+        { id: entityId },
+        { reload: this.props.reload, properties: this.props.properties },
+      );
+    }
   }
-  componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.entityId !== this.props.entityId) {
-      // $FlowFixMe: provided by @connect
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    if (
+      nextProps.entityId !== this.props.entityId &&
+      nextProps.entityId != null
+    ) {
       nextProps.fetch(
         { id: nextProps.entityId },
         { reload: nextProps.reload, properties: nextProps.properties },
@@ -96,38 +81,44 @@ export default class EntityObjectLoader extends React.Component {
     }
   }
   renderChildren = () => {
-    // $FlowFixMe: provided by @connect
-    let { children, entityDef, wrapped, object, ...props } = this.props; // eslint-disable-line no-unused-vars
+    let {
+      children,
+      entityDef,
+      entityAlias,
+      wrapped,
+      object,
+      ...props
+    } = this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
-      // $FlowFixMe:
       object = this._getWrappedObject(this.props);
     }
 
-    // $FlowFixMe: missing loading/error
     return children({
-      ...props,
-      object: object,
+      ..._.omit(props, ...CONSUMED_PROPS),
+      object,
+      // alias the entities name:
+      [entityAlias || entityDef.nameOne]: object,
       reload: this.reload,
       remove: this.remove,
     });
   };
   render() {
-    // $FlowFixMe: provided by @connect
-    const { fetched, error, loadingAndErrorWrapper } = this.props;
+    const { entityId, fetched, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={!fetched}
+        loading={!fetched && entityId != null}
         error={error}
-        children={this.renderChildren}
-      />
+        noWrapper
+      >
+        {this.renderChildren}
+      </LoadingAndErrorWrapper>
     ) : (
       this.renderChildren()
     );
   }
 
   reload = () => {
-    // $FlowFixMe: provided by @connect
     return this.props.fetch(
       { id: this.props.entityId },
       { reload: true, properties: this.props.properties },
@@ -135,17 +126,21 @@ export default class EntityObjectLoader extends React.Component {
   };
 
   remove = () => {
-    // $FlowFixMe: provided by @connect
     return this.props.delete(this.props.object);
   };
 }
 
-export const entityObjectLoader = (eolProps: Props) =>
+export const entityObjectLoader = eolProps =>
   // eslint-disable-line react/display-name
-  (ComposedComponent: any) =>
+  ComposedComponent =>
     // eslint-disable-next-line react/display-name
-    (props: Props) => (
+    props => (
       <EntityObjectLoader {...props} {...eolProps}>
-        {childProps => <ComposedComponent {...props} {...childProps} />}
+        {childProps => (
+          <ComposedComponent
+            {..._.omit(props, ...CONSUMED_PROPS)}
+            {...childProps}
+          />
+        )}
       </EntityObjectLoader>
     );

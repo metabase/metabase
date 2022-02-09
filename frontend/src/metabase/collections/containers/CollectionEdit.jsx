@@ -1,31 +1,56 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 
-import CollectionForm from "metabase/containers/CollectionForm.jsx";
-import CollectionLoader from "metabase/containers/CollectionLoader.jsx";
+import * as Urls from "metabase/lib/urls";
+import Collection from "metabase/entities/collections";
+
+function mapStateToProps(state, props) {
+  return {
+    form: Collection.selectors.getForm(state, props),
+  };
+}
+
+function CollectionForm({ form, collection, onSave, onClose }) {
+  return (
+    <Collection.ModalForm
+      form={form}
+      collection={collection}
+      onSaved={onSave}
+      onClose={onClose}
+    />
+  );
+}
+
+const UpdateCollectionForm = connect(mapStateToProps)(CollectionForm);
 
 const mapDispatchToProps = {
   push,
   goBack,
 };
 
-@connect(null, mapDispatchToProps)
-export default class CollectionEdit extends Component {
+class CollectionEdit extends Component {
+  onSave = updatedCollection => {
+    const url = Urls.collection(updatedCollection);
+    this.props.push(url);
+  };
+
   render() {
+    const collectionId = Urls.extractCollectionId(this.props.params.slug);
     return (
-      <CollectionLoader collectionId={this.props.params.collectionId}>
-        {({ object, update }) => (
-          <CollectionForm
-            collection={object}
-            onSaved={({ id }) => {
-              this.props.push(`/collection/${id}`);
-            }}
+      <Collection.Loader id={collectionId}>
+        {({ collection, update }) => (
+          <UpdateCollectionForm
+            collection={collection}
+            onSave={this.onSave}
             onClose={this.props.goBack}
           />
         )}
-      </CollectionLoader>
+      </Collection.Loader>
     );
   }
 }
+
+export default connect(null, mapDispatchToProps)(CollectionEdit);

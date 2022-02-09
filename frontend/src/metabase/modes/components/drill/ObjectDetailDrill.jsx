@@ -1,0 +1,34 @@
+import { t } from "ttag";
+import { isFK, isPK } from "metabase/lib/schema_metadata";
+
+export default ({ question, clicked }) => {
+  if (
+    !clicked?.column ||
+    clicked?.value === undefined ||
+    !(isFK(clicked.column) || isPK(clicked.column))
+  ) {
+    return [];
+  }
+
+  let field = question.metadata().field(clicked.column.id);
+  if (!field) {
+    return [];
+  }
+
+  if (field.target) {
+    field = field.target;
+  }
+
+  return [
+    {
+      name: "object-detail",
+      section: "details",
+      title: t`View details`,
+      buttonType: "horizontal",
+      icon: "document",
+      default: true,
+      question: () =>
+        field ? question.drillPK(field, clicked.value) : question,
+    },
+  ];
+};

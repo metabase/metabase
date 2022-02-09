@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -eu
+
+POEDITOR_PROJECT_ID="200535"
+
+echo "Uploading metabase.pot to POEditor..."
+
+curl -X POST https://api.poeditor.com/v2/projects/upload \
+     -F api_token="${POEDITOR_API_TOKEN}" \
+     -F id="${POEDITOR_PROJECT_ID}" \
+     -F updating="terms" \
+     -F file=@"locales/metabase.pot"

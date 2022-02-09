@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# Test a variety of timezones with/without DST
+# https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+#
+# TZ                    UTC offset   UTC DST offset
+# =================================================
+# Etc/UTC                   +00:00           +00:00
+# Europe/London             +00:00           +01:00
+# America/Phoenix           −07:00           −07:00
+# America/Los_Angeles       −08:00           −07:00
+# Asia/Kathmandu            +05:45           +05:45
+# Asia/Hong_Kong            +08:00           +08:00
+
+
+DEFAULT_TIMEZONES="Etc/UTC Europe/London America/Los_Angeles America/Phoenix Asia/Kathmandu Asia/Hong_Kong"
+
+tzs=${TIMEZONES:-$DEFAULT_TIMEZONES}
+
+results=""
+passed=""
+failed=""
+
+for tz in $tzs; do
+  echo "Running unit tests in timezone $tz"
+  if TZ="$tz" METABASE_TEST_TIMEZONES="$tzs" yarn run test-timezones-unit; then
+    passed="$passed $tz"
+    results="$results \e[32m✓\e[0m $tz\n"
+  else
+    failed="$failed $tz"
+    results="$results \e[31m✕\e[0m $tz\n"
+  fi
+done
+
+echo "Timezone tests:"
+printf "$results"
+
+if [[ ! -z "$failed" ]]; then
+  exit 1
+fi

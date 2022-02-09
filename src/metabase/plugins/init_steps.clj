@@ -5,9 +5,8 @@
 
   The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require [clojure.tools.logging :as log]
-            [metabase.plugins
-             [classloader :as classloader]
-             [jdbc-proxy :as jdbc-proxy]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
@@ -19,12 +18,7 @@
 
 (defmethod do-init-step! :load-namespace [{nmspace :namespace}]
   (log/debug (u/format-color 'blue (trs "Loading plugin namespace {0}..." nmspace)))
-  ;; done for side-effects to ensure context classloader is the right one
-  (classloader/the-classloader)
-  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
-  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-  (binding [*use-context-classloader* true]
-    (require (symbol nmspace))))
+  (classloader/require (symbol nmspace)))
 
 (defmethod do-init-step! :register-jdbc-driver [{class-name :class}]
   (jdbc-proxy/create-and-register-proxy-driver! class-name))

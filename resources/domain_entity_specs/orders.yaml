@@ -1,0 +1,34 @@
+name: Transactions
+description: Transaction (orders) data
+required_attributes:
+  - field: Income
+  - field: CreationTimestamp
+optional_attributes:
+  - field: Discount
+  - field: Quantity
+  - field: Product
+metrics:
+  TotalIncome:
+    aggregation: [sum, [dimension, Income]]
+    name: Total income
+    description: Sum of income
+  AvgIncome:
+    aggregation: [avg, [dimensions, Income]]
+    name: Average income
+  AvgQuantity:
+    aggregation: [avg, [dimension, Quantity]]
+    name: Average quantity
+  TotalOrders:
+    aggregation: [count]
+    name: Total orders
+    description: Total number of orders
+  AvgDiscount:
+    aggregation: [/, [sum, [dimension, Discount], [sum, [dimension, Income]]]]
+    name: Average discount rate
+    description: Discount as % of total income
+segments:
+  Last30Days:
+    filter: [time-interval, [dimension, CreationTimestamp], -30, day]
+    name: Orders in the last 30 days
+breakout_dimensions:
+  - Product

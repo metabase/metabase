@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import colors from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 
 const SidebarSection = ({ title, icon, extra, children }) => (
   <div className="px2 pt1">
@@ -12,7 +13,7 @@ const SidebarSection = ({ title, icon, extra, children }) => (
     </div>
     <div
       className="rounded bg-white"
-      style={{ border: `1px solid ${colors["border"]}` }}
+      style={{ border: `1px solid ${color("border")}` }}
     >
       {children}
     </div>

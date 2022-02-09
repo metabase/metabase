@@ -1,19 +1,19 @@
 #! /usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-if [ "$1" == clean ]; then
-    rm -rf ~/.m2/repository/metabase-core
-    rm -rf ~/.m2/repository/metabase/*-driver
+# switch to project root directory if we're not already there
+script_directory=`dirname "${BASH_SOURCE[0]}"`
+cd "$script_directory/.."
 
-    rm -rf resources/modules
-    rm -rf target
+source "./bin/check-clojure-cli.sh"
+check_clojure_cli
 
-    for target in `find modules -name target -type d`; do
-        rm -rf "$target"
-    done
-fi
+source "./bin/clear-outdated-cpcaches.sh"
+clear_outdated_cpcaches
 
-for driver in `ls modules/drivers/ | perl -pe 's|/$||'`; do # strip trailing slashed if ls is set to include them
-    ./bin/build-driver.sh "$driver"
-done
+source "./bin/prep.sh"
+prep_deps
+
+cd bin/build-drivers
+clojure -M -m build-drivers $@

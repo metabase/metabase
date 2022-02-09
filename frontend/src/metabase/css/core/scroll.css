@@ -71,6 +71,7 @@
 .scroll-hide-all * {
   -ms-overflow-style: none; /* IE 10+ */
   overflow: -moz-scrollbars-none; /* Firefox */
+  scrollbar-width: none; /* Firefox */
 }
 .scroll-hide-all::-webkit-scrollbar,
 .scroll-hide-all *::-webkit-scrollbar {

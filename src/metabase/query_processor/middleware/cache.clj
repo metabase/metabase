@@ -7,107 +7,197 @@
 
   For all other queries, caching is skipped.
 
-  Various caching backends are defined in `metabase.query-processor.middleware.cache-backend` namespaces. The default
-  backend is `db`, which uses the application database; this value can be changed by setting the env var
-  `MB_QP_CACHE_BACKEND`.
-
-   Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache
-  backends themselves."
+  The default backend is `db`, which uses the application database; this value can be changed by setting the env var
+  `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
+  about how the cache backends themselves."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [util :as u]]
+            [java-time :as t]
+            [medley.core :as m]
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.middleware.cache-backend.db :as backend.db]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
+            [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.date :as du]))
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]])
+  (:import org.eclipse.jetty.io.EofException))
 
-(def ^:dynamic ^Boolean *ignore-cached-results*
-  "Should we force the query to run, ignoring cached results even if they're available?
-  Setting this to `true` will run the query again and will still save the updated results."
-  false)
+(comment backend.db/keep-me)
 
+(def ^:private cache-version
+  "Current serialization format version. Basically
 
-;;; ---------------------------------------------------- Backend -----------------------------------------------------
+    [initial-metadata row-1 row-2 ... row-n final-metadata]"
+  3)
 
-(def ^:private backend-instance
-  (atom nil))
-
-(defn- valid-backend? [instance] (extends? i/IQueryProcessorCacheBackend (class instance)))
-
-(defn- get-backend-instance-in-namespace
-  "Return a valid query cache backend `instance` in BACKEND-NS-SYMB, or throw an Exception if none exists."
-  ;; if for some reason the resolved var doesn't satisfy `IQueryProcessorCacheBackend` we'll reload the namespace
-  ;; it belongs to and try one more time.
-  ;; This fixes the issue in dev sessions where the interface namespace gets reloaded causing the cache implementation
-  ;; to no longer satisfy the protocol
-  ([backend-ns-symb]
-   (get-backend-instance-in-namespace backend-ns-symb :allow-reload))
-  ([backend-ns-symb allow-reload?]
-   (let [varr (ns-resolve backend-ns-symb 'instance)]
-     (cond
-       (not varr)             (throw (Exception. (str "No var named 'instance' found in namespace " backend-ns-symb)))
-       (valid-backend? @varr) @varr
-       allow-reload?          (do (require backend-ns-symb :reload)
-                                  (get-backend-instance-in-namespace backend-ns-symb false))
-       :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend"
-                                                         backend-ns-symb)))))))
-
-(defn- set-backend!
-  "Set the cache backend to the cache defined by the keyword BACKEND.
-
-   (This should be something like `:db`, `:redis`, or `:memcached`. See the
-   documentation in `metabase.query-processor.middleware.cache-backend.interface` for details on how this works.)"
-  ([]
-   (set-backend! (config/config-kw :mb-qp-cache-backend)))
-  ([backend]
-   (let [backend-ns-symb (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
-     (require backend-ns-symb)
-     (log/info "Using query processor cache backend:" (u/format-color 'blue backend) (u/emoji "💾"))
-     (reset! backend-instance (get-backend-instance-in-namespace backend-ns-symb)))))
+(def ^:dynamic *backend*
+  "Current cache backend. Dynamically rebindable primary for test purposes."
+  (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
 
+;;; ------------------------------------------------------ Save ------------------------------------------------------
 
-;;; ------------------------------------------------ Cache Operations ------------------------------------------------
+(defn- purge! [backend]
+  (try
+    (log/tracef "Purging cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
+    (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
+    (log/trace "Successfully purged old cache entries.")
+    :done
+    (catch Throwable e
+      (log/error e (trs "Error purging old cache entries: {0}" (ex-message e))))))
 
-(defn- cached-results [query-hash max-age-seconds]
-  (when-not *ignore-cached-results*
-    (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
-      (assert (du/is-temporal? (:updated_at results))
-        "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
-      (log/info "Returning cached results for query" (u/emoji "💾"))
-      (assoc results :cached true))))
+(defn- min-duration-ms
+  "Minimum duration it must take a query to complete in order for it to be eligible for caching."
+  []
+  (* (public-settings/query-caching-min-ttl) 1000))
 
-(defn- save-results!  [query-hash results]
-  (log/info "Caching results for next time for query" (u/emoji "💾"))
-  (i/save-results! @backend-instance query-hash results))
+(def ^:private ^:dynamic *in-fn*
+  "The `in-fn` provided by [[impl/do-with-serialization]]."
+  nil)
+
+(defn- add-object-to-cache!
+  "Add `object` (e.g. a result row or metadata) to the current cache entry."
+  [object]
+  (when *in-fn*
+    (*in-fn* object)))
+
+(def ^:private ^:dynamic *result-fn*
+  "The `result-fn` provided by [[impl/do-with-serialization]]."
+  nil)
+
+(defn- serialized-bytes []
+  (when *result-fn*
+    (*result-fn*)))
+
+(defn- cache-results!
+  "Save the final results of a query."
+  [query-hash]
+  (log/info (trs "Caching results for next time for query with hash {0}."
+                 (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
+  (try
+    (let [bytez (serialized-bytes)]
+      (if-not (instance? (Class/forName "[B") bytez)
+        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class bytez)))
+        (do
+          (log/trace "Got serialized bytes; saving to cache backend")
+          (i/save-results! *backend* query-hash bytez)
+          (log/debug "Successfully cached results for query.")
+          (purge! *backend*))))
+    :done
+    (catch Throwable e
+      (if (= (:type (ex-data e)) ::impl/max-bytes)
+        (log/debug e (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
+        (log/error e (trs "Error saving query results to cache: {0}" (ex-message e)))))))
+
+(defn- save-results-xform [start-time metadata query-hash rf]
+  (let [has-rows? (volatile! false)]
+    (add-object-to-cache! (assoc metadata
+                                 :cache-version cache-version
+                                 :last-ran      (t/zoned-date-time)))
+    (fn
+      ([] (rf))
+
+      ([result]
+       (add-object-to-cache! (if (map? result)
+                               (m/dissoc-in result [:data :rows])
+                               {}))
+       (let [duration-ms (- (System/currentTimeMillis) start-time)]
+         (log/info (trs "Query took {0} to run; minimum for cache eligibility is {1}"
+                        (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
+         (when (and @has-rows?
+                    (> duration-ms (min-duration-ms)))
+           (cache-results! query-hash)))
+       (rf result))
+
+      ([acc row]
+       (add-object-to-cache! row)
+       (vreset! has-rows? true)
+       (rf acc row)))))
+
+
+;;; ----------------------------------------------------- Fetch ------------------------------------------------------
+
+(defn- cached-results-rff
+  "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
+  the reduced value assuming it is a normal metadata map."
+  [rff]
+  (fn [{:keys [last-ran], :as metadata}]
+    (let [metadata       (dissoc metadata :last-ran :cache-version)
+          rf             (rff metadata)
+          final-metadata (volatile! nil)]
+      (fn
+        ([]
+         (rf))
+
+        ([result]
+         (let [normal-format? (and (map? (unreduced result))
+                                   (seq (get-in (unreduced result) [:data :cols])))
+               result*        (-> (if normal-format?
+                                    (merge-with merge @final-metadata (unreduced result))
+                                    (unreduced result))
+                                  (assoc :cached true, :updated_at last-ran))]
+           (rf (cond-> result*
+                 (reduced? result) reduced))))
+
+        ([acc row]
+         (if (map? row)
+           (vreset! final-metadata row)
+           (rf acc row)))))))
+
+(defn- maybe-reduce-cached-results
+  "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
+  [ignore-cache? query-hash max-age-seconds rff context]
+  (try
+    (or (when-not ignore-cache?
+          (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
+                      (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
+          (i/with-cached-results *backend* query-hash max-age-seconds [is]
+            (when is
+              (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
+                (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
+                (when (and (= (:cache-version metadata) cache-version)
+                           reducible-rows)
+                  (log/tracef "Reducing cached rows...")
+                  (context/reducef (cached-results-rff rff) context metadata reducible-rows)
+                  (log/tracef "All cached rows reduced")
+                  ::ok)))))
+        ::miss)
+    (catch EofException _
+      (log/debug (trs "Request is closed; no one to return cached results to"))
+      ::canceled)
+    (catch Throwable e
+      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
+                        (i/short-hex-hash query-hash) (ex-message e)))
+      ::miss)))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- is-cacheable? ^Boolean [{:keys [cache-ttl]}]
-  (boolean (and (public-settings/enable-query-caching)
-                cache-ttl)))
+(defn- run-query-with-cache
+  [qp {:keys [cache-ttl middleware], :as query} rff {:keys [reducef], :as context}]
+  ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
+  ;; because this is calculated after normalization, instead of before
+  (let [query-hash (qputil/query-hash query)
+        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
+    (when (= result ::miss)
+      (let [start-time-ms (System/currentTimeMillis)]
+        (log/trace "Running query and saving cached results (if eligible)...")
+        (let [reducef' (fn [rff context metadata rows]
+                         (impl/do-with-serialization
+                          (fn [in-fn result-fn]
+                            (binding [*in-fn*     in-fn
+                                      *result-fn* result-fn]
+                              (reducef rff context metadata rows)))))]
+          (qp query
+              (fn [metadata]
+                (save-results-xform start-time-ms metadata query-hash (rff metadata)))
+              (assoc context :reducef reducef')))))))
 
-(defn- save-results-if-successful! [query-hash results]
-  (when (= (:status results) :completed)
-    (save-results! query-hash results)))
-
-(defn- run-query-and-save-results-if-successful! [query-hash qp query]
-  (let [start-time-ms (System/currentTimeMillis)
-        results       (qp query)
-        total-time-ms (- (System/currentTimeMillis) start-time-ms)
-        min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
-    (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
-    (when (>= total-time-ms min-ttl-ms)
-      (save-results-if-successful! query-hash results))
-    results))
-
-(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query}]
-  ;; TODO - Query should already have a `info.hash`, shouldn't it?
-  (let [query-hash (qputil/query-hash query)]
-    (or (cached-results query-hash cache-ttl)
-        (run-query-and-save-results-if-successful! query-hash qp query))))
+(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]
+  (and (public-settings/enable-query-caching)
+       cache-ttl))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
@@ -122,13 +212,9 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn [query]
-    (if-not (is-cacheable? query)
-      (qp query)
-      ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
-      ;; it when the files get compiled, because that would give it the wrong version of the
-      ;; `IQueryProcessorCacheBackend` protocol
-      (do
-        (when-not @backend-instance
-          (set-backend!))
-        (run-query-with-cache qp query)))))
+  (fn maybe-return-cached-results* [query rff context]
+    (let [cacheable? (is-cacheable? query)]
+      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+      (if cacheable?
+        (run-query-with-cache qp query rff context)
+        (qp query rff context)))))

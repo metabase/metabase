@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentFieldSidebar from "./SegmentFieldSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail.jsx";
+import SegmentFieldSidebar from "./SegmentFieldSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -47,11 +47,11 @@ export default class SegmentFieldDetailContainer extends Component {
     await actions.wrappedFetchSegmentFields(this.props, this.props.segmentId);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }

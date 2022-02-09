@@ -1,0 +1,119 @@
+[
+  {
+    "json_field": {
+      "key_1": "value_jf_a",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_a",
+      "value_lf_b"
+    ],
+    "metas": {
+      "group_field": "value_gf_a"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_b",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_a",
+      "value_lf_b"
+    ],
+    "metas": {
+      "group_field": "value_gf_b"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_c",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_a",
+      "value_lf_b"
+    ],
+    "metas": {
+      "group_field": "value_gf_c"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_a",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_a"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_b",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_b"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_c",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_c"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_a",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_a"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_b",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_b"
+    }
+  },
+  {
+    "json_field": {
+      "key_1": "value_jf_c",
+      "key_2": "value_jf_z"
+    },
+    "list_field": [
+      "value_lf_c",
+      "value_lf_d"
+    ],
+    "metas": {
+      "group_field": "value_gf_c"
+    }
+  }
+]

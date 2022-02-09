@@ -1,0 +1,4 @@
+.w-full,
+:local(.w-full) {
+  width: 100%;
+}

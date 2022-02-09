@@ -1,16 +1,15 @@
 (ns metabase.setup
-  (:require [metabase.models.setting :refer [Setting defsetting]]
-            [toucan.db :as db]))
+  (:require [environ.core :as env]
+            [metabase.models.setting :as setting :refer [defsetting Setting]]
+            [metabase.models.user :refer [User]]
+            [toucan.db :as db])
+  (:import java.util.UUID))
 
-(defsetting ^:private setup-token
+(defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
-  :internal? true)
-
-(defn token-value
-  "Return the value of the setup token, if any."
-  []
-  (setup-token))
+  :visibility :public
+  :setter     :none)
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
@@ -24,10 +23,23 @@
   []
   ;; fetch the value directly from the DB; *do not* rely on cached value, in case a different instance came along and
   ;; already created it
-  (or (db/select-one-field :value Setting :key "setup-token")
-      (setup-token (str (java.util.UUID/randomUUID)))))
+  ;;
+  ;; TODO -- 95% sure we can just use [[setup-token]] directly now and not worry about manually fetching the env var
+  ;; value or setting DB values and the like
+  (or (when-let [mb-setup-token (env/env :mb-setup-token)]
+        (setting/set-value-of-type! :string :setup-token mb-setup-token))
+      (db/select-one-field :value Setting :key "setup-token")
+      (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
-(defn clear-token!
-  "Clear the setup token if it exists and reset it to `nil`."
-  []
-  (setup-token nil))
+(defsetting has-user-setup
+  "A value that is true iff the metabase instance has one or more users registered."
+  :visibility :public
+  :type       :boolean
+  :setter     :none
+  ;; Once a User is created it's impossible for this to ever become falsey -- deleting the last User is disallowed.
+  ;; After this returns true once the result is cached and it will continue to return true forever without any
+  ;; additional DB hits.
+  :getter     (fn []
+                (let [user-exists? (atom false)]
+                  (or @user-exists?
+                      (reset! user-exists? (db/exists? User))))))

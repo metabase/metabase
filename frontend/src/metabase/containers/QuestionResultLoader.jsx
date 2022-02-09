@@ -1,32 +1,13 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
 
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { RawSeries } from "metabase/meta/types/Visualization";
-
-import Question from "metabase-lib/lib/Question";
-
-export type ChildProps = {
-  loading: boolean,
-  error: ?any,
-  results: ?(Dataset[]),
-  result: ?Dataset,
-  rawSeries: ?RawSeries,
-  cancel: () => void,
-  reload: () => void,
-};
-
-type Props = {
-  question: ?Question,
-  children?: (props: ChildProps) => React$Element<any>,
-};
-
-type State = {
-  results: ?(Dataset[]),
-  loading: boolean,
-  error: ?any,
+const propTypes = {
+  question: PropTypes.object,
+  children: PropTypes.func,
+  onLoad: PropTypes.func,
+  keepPreviousWhileLoading: PropTypes.bool,
 };
 
 /*
@@ -48,34 +29,28 @@ type State = {
  *
  */
 export class QuestionResultLoader extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     results: null,
     loading: false,
     error: null,
   };
 
-  _cancelDeferred: ?() => void;
+  UNSAFE_componentWillMount = () => {
+    this._reload();
+  };
 
-  componentWillMount() {
-    this._loadResult(this.props.question);
-  }
-
-  componentWillReceiveProps(nextProps: Props) {
-    // if the question is different, we need to do a fresh load, check the
-    // difference by comparing the URL we'd generate for the question
-    if (
-      (nextProps.question && nextProps.question.getUrl()) !==
-      (this.props.question && this.props.question.getUrl())
-    ) {
-      this._loadResult(nextProps.question);
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    const { question, onLoad, keepPreviousWhileLoading } = nextProps;
+    // if the question is different, we need to do a fresh load
+    if (question && !question.isEqual(this.props.question)) {
+      this._loadResult(question, onLoad, keepPreviousWhileLoading);
     }
   }
 
   /*
    * load the result by calling question.apiGetResults
    */
-  async _loadResult(question: ?Question) {
+  async _loadResult(question, onLoad, keepPreviousWhileLoading) {
     // we need to have a question for anything to happen
     if (question) {
       try {
@@ -83,15 +58,24 @@ export class QuestionResultLoader extends React.Component {
         this._cancelDeferred = defer();
 
         // begin the request, set cancel in state so the query can be canceled
-        this.setState({ loading: true, results: null, error: null });
+        this.setState(prev => ({
+          loading: true,
+          results: keepPreviousWhileLoading ? prev.results : null,
+          error: null,
+        }));
 
         // call apiGetResults and pass our cancel to allow for cancelation
-        const results: Dataset[] = await question.apiGetResults({
+        const results = await question.apiGetResults({
           cancelDeferred: this._cancelDeferred,
         });
 
         // setState with our result, remove our cancel since we've finished
         this.setState({ loading: false, results });
+
+        // handle onLoad prop
+        if (onLoad) {
+          setTimeout(() => onLoad && onLoad(results));
+        }
       } catch (error) {
         this.setState({ loading: false, error });
       }
@@ -107,7 +91,8 @@ export class QuestionResultLoader extends React.Component {
    * load again
    */
   _reload = () => {
-    this._loadResult(this.props.question);
+    const { question, onLoad, keepPreviousWhileLoading } = this.props;
+    this._loadResult(question, onLoad, keepPreviousWhileLoading);
   };
 
   /*
@@ -147,5 +132,11 @@ export class QuestionResultLoader extends React.Component {
     );
   }
 }
+
+QuestionResultLoader.defaultProps = {
+  keepPreviousWhileLoading: false,
+};
+
+QuestionResultLoader.propTypes = propTypes;
 
 export default QuestionResultLoader;

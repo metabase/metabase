@@ -1,7 +1,6 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -16,22 +15,10 @@ import d3 from "d3";
 
 import L from "leaflet";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-
-type Props = VisualizationProps;
-
-type State = {
-  lat: ?number,
-  lng: ?number,
-  min: ?number,
-  max: ?number,
-  binHeight: ?number,
-  binWidth: ?number,
-  zoom: ?number,
-  points: L.Point[],
-  bounds: L.Bounds,
-  filtering: boolean,
-};
+const WORLD_BOUNDS = [
+  [-90, -180],
+  [90, 180],
+];
 
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
@@ -41,9 +28,6 @@ const MAP_COMPONENTS_BY_TYPE = {
 };
 
 export default class PinMap extends Component {
-  props: Props;
-  state: State;
-
   static uiName = t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";
@@ -52,16 +36,20 @@ export default class PinMap extends Component {
     return hasLatitudeAndLongitudeColumns(cols);
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!hasLatitudeAndLongitudeColumns(cols)) {
       throw new LatitudeLongitudeError();
     }
   }
 
-  state: State;
-  _map: ?(LeafletMarkerPinMap | LeafletTilePinMap) = null;
+  state;
+  _map = null;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       lat: null,
@@ -72,7 +60,7 @@ export default class PinMap extends Component {
     };
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     const SETTINGS_KEYS = [
       "map.latitude_column",
       "map.longitude_column",
@@ -90,7 +78,7 @@ export default class PinMap extends Component {
   }
 
   updateSettings = () => {
-    let newSettings = {};
+    const newSettings = {};
     if (this.state.lat != null) {
       newSettings["map.center_latitude"] = this.state.lat;
     }
@@ -104,16 +92,24 @@ export default class PinMap extends Component {
     this.setState({ lat: null, lng: null, zoom: null });
   };
 
-  onMapCenterChange = (lat: number, lng: number) => {
+  onMapCenterChange = (lat, lng) => {
     this.setState({ lat, lng });
   };
 
-  onMapZoomChange = (zoom: number) => {
+  onMapZoomChange = zoom => {
     this.setState({ zoom });
   };
 
-  _getPoints(props: Props) {
-    const { settings, series: [{ data: { cols, rows } }] } = props;
+  _getPoints(props) {
+    const {
+      settings,
+      series: [
+        {
+          data: { cols, rows },
+        },
+      ],
+      onUpdateWarnings,
+    } = props;
     const latitudeIndex = _.findIndex(
       cols,
       col => col.name === settings["map.latitude_column"],
@@ -127,13 +123,29 @@ export default class PinMap extends Component {
       col => col.name === settings["map.metric_column"],
     );
 
-    const points = rows.map(row => [
+    const allPoints = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
     ]);
 
-    const bounds = L.latLngBounds(points);
+    // only use points with numeric coordinates & metric
+    const points = allPoints.filter(
+      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
+    );
+
+    const warnings = [];
+    const filteredRows = allPoints.length - points.length;
+    if (filteredRows > 0) {
+      warnings.push(
+        t`We filtered out ${filteredRows} row(s) containing null values.`,
+      );
+    }
+    if (onUpdateWarnings && warnings) {
+      onUpdateWarnings(warnings);
+    }
+
+    const bounds = L.latLngBounds(points.length > 0 ? points : WORLD_BOUNDS);
 
     const min = d3.min(points, point => point[2]);
     const max = d3.max(points, point => point[2]);
@@ -159,7 +171,7 @@ export default class PinMap extends Component {
 
   render() {
     const { className, settings, isEditing, isDashboard } = this.props;
-    let { lat, lng, zoom } = this.state;
+    const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];

@@ -1,63 +1,51 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
-import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Tooltip from "metabase/components/Tooltip";
+import { withRouter } from "react-router";
 
-import { archiveQuestion } from "metabase/query_builder/actions";
+import { t } from "ttag";
 
-const mapStateToProps = () => ({});
+import ArchiveModal from "metabase/components/ArchiveModal";
+
+import * as Urls from "metabase/lib/urls";
+import Questions from "metabase/entities/questions";
 
 const mapDispatchToProps = {
-  archiveQuestion,
+  archive: id => Questions.actions.setArchived({ id }, true),
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
 class ArchiveQuestionModal extends Component {
-  onArchive = async () => {
-    try {
-      await this.props.archiveQuestion();
-      this.onClose();
-    } catch (error) {
-      console.error(error);
-      this.setState({ error });
-    }
-  };
+  onArchive = () => {
+    const { question, archive, router } = this.props;
 
-  onClose = () => {
-    if (this.refs.archiveModal) {
-      this.refs.archiveModal.close();
-    }
+    const card = question.card();
+    archive(card.id);
+    router.push(Urls.collection(card.collection));
   };
 
   render() {
+    const { onClose, question } = this.props;
+
+    const isModel = question.isDataset();
+
+    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
+
+    const message = isModel
+      ? t`This model will be removed from any dashboards or pulses using it.`
+      : t`This question will be removed from any dashboards or pulses using it.`;
+
     return (
-      <ModalWithTrigger
-        ref="archiveModal"
-        triggerElement={
-          <Tooltip key="archive" tooltip={t`Archive`}>
-            <span className="text-brand-hover">
-              <Icon name="archive" size={16} />
-            </span>
-          </Tooltip>
-        }
-        title={t`Archive this question?`}
-        footer={[
-          <Button key="cancel" onClick={this.onClose}>{t`Cancel`}</Button>,
-          <Button
-            key="archive"
-            warning
-            onClick={this.onArchive}
-          >{t`Archive`}</Button>,
-        ]}
-      >
-        <div
-        >{t`This question will be removed from any dashboards or pulses using it.`}</div>
-      </ModalWithTrigger>
+      <ArchiveModal
+        title={title}
+        message={message}
+        onArchive={this.onArchive}
+        onClose={onClose}
+      />
     );
   }
 }
 
-export default ArchiveQuestionModal;
+export default connect(
+  null,
+  mapDispatchToProps,
+)(withRouter(ArchiveQuestionModal));

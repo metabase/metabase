@@ -1,19 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select";
-import { pluralize, capitalize } from "humanize-plus";
-
-type DateUnitSelectorProps = {
-  value: RelativeDatetimeUnit,
-  onChange: (value: RelativeDatetimeUnit) => void,
-  open: boolean,
-  intervals?: number,
-  togglePicker: () => void,
-  formatter: (value: ?number) => ?number,
-  periods: RelativeDatetimeUnit[],
-};
+import Select, { Option } from "metabase/core/components/Select";
+import { formatBucketing } from "metabase/lib/query_time";
 
 const DateUnitSelector = ({
+  className,
   open,
   value,
   onChange,
@@ -21,8 +13,9 @@ const DateUnitSelector = ({
   intervals,
   formatter,
   periods,
-}: DateUnitSelectorProps) => (
+}) => (
   <Select
+    className={className}
     value={value}
     onChange={e => onChange(e.target.value)}
     width={150}
@@ -30,7 +23,7 @@ const DateUnitSelector = ({
   >
     {periods.map(period => (
       <Option value={period} key={period}>
-        {capitalize(pluralize(formatter(intervals) || 1, period))}
+        {formatBucketing(period, formatter(intervals) || 1)}
       </Option>
     ))}
   </Select>

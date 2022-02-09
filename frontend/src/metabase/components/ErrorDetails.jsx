@@ -1,5 +1,6 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class ErrorDetails extends React.Component {
@@ -32,8 +33,8 @@ export default class ErrorDetails extends React.Component {
             {typeof details === "string"
               ? details
               : typeof details.message === "string"
-                ? details.message
-                : String(details)}
+              ? details.message
+              : String(details)}
           </div>
         </div>
       </div>

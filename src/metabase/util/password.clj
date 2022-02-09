@@ -1,10 +1,10 @@
 (ns metabase.util.password
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require [cemerick.friend.credentials :as creds]
-            [metabase
-             [config :as config]
-             [util :as u]]))
-
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [metabase.config :as config]
+            [metabase.util :as u]))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
@@ -49,17 +49,41 @@
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
-(def active-password-complexity
+(defn active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
+  []
   (merge (complexity->char-type->min (config/config-kw :mb-password-complexity))
          ;; Setting MB_PASSWORD_LENGTH overrides the default :total for a given password complexity class
          (when-let [min-len (config/config-int :mb-password-length)]
            {:total min-len})))
 
-(def ^{:arglists '([password])} is-complex?
+(defn- is-complex?
   "Check if a given password meets complexity standards for the application."
-  (partial password-has-char-counts? active-password-complexity))
+  [password]
+  (password-has-char-counts? (active-password-complexity) password))
 
+(def ^java.net.URL common-passwords-url
+  "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
+  Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
+  (io/resource "common_passwords.txt"))
+
+(defn- is-uncommon?
+  "Check if a given password is not present in the common passwords set. Case-insensitive search since
+  the list only contains lower-case passwords."
+  [password]
+  (with-open [is (.openStream common-passwords-url)
+              reader (java.io.BufferedReader. (java.io.InputStreamReader. is))]
+    (not-any?
+      (partial = (str/lower-case password))
+      (iterator-seq (.. reader lines iterator)))))
+
+(defn is-valid?
+  "Check that a password both meets complexity standards, and is not present in the common passwords list.
+  Common password list is ignored if minimum password complexity is set to :weak"
+  [password]
+  (and (is-complex? password)
+       (or (= (config/config-kw :mb-password-complexity) :weak)
+           (is-uncommon? password))))
 
 (defn verify-password
   "Verify if a given unhashed password + salt matches the supplied hashed-password. Returns `true` if matched, `false`

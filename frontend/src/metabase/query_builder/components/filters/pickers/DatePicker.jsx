@@ -1,8 +1,7 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
@@ -13,39 +12,46 @@ import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
-import Query from "metabase/lib/query";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
-import type {
-  FieldFilter,
-  TimeIntervalFilter,
-  DatetimeUnit,
-  ConcreteField,
-  LocalFieldReference,
-  ForeignFieldReference,
-  ExpressionReference,
-} from "metabase/meta/types/Query";
+const singleDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
+const multiDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
 
 const SingleDatePicker = ({
+  className,
   filter: [op, field, value],
   onFilterChange,
   hideTimeSelectors,
 }) => (
-  <div className="mx2">
-    <SpecificDatePicker
-      value={value}
-      onChange={value => onFilterChange([op, field, value])}
-      hideTimeSelectors={hideTimeSelectors}
-      calendar
-    />
-  </div>
+  <SpecificDatePicker
+    className={className}
+    value={value}
+    onChange={value => onFilterChange([op, field, value])}
+    hideTimeSelectors={hideTimeSelectors}
+    calendar
+  />
 );
 
+SingleDatePicker.propTypes = singleDatePickerPropTypes;
+
 const MultiDatePicker = ({
+  className,
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
 }) => (
-  <div className="mx2 mb1">
+  <div className={className}>
     <div className="Grid Grid--1of2 Grid--gutters">
       <div className="Grid-cell">
         <SpecificDatePicker
@@ -70,11 +76,12 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
-        isDual
       />
     </div>
   </div>
 );
+
+MultiDatePicker.propTypes = multiDatePickerPropTypes;
 
 const PreviousPicker = props => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
@@ -86,19 +93,7 @@ const NextPicker = props => <RelativeDatePicker {...props} />;
 
 NextPicker.horizontalLayout = true;
 
-type CurrentPickerProps = {
-  filter: TimeIntervalFilter,
-  onFilterChange: (filter: TimeIntervalFilter) => void,
-};
-
-type CurrentPickerState = {
-  showUnits: boolean,
-};
-
 class CurrentPicker extends Component {
-  props: CurrentPickerProps;
-  state: CurrentPickerState;
-
   state = {
     showUnits: false,
   };
@@ -107,25 +102,23 @@ class CurrentPicker extends Component {
 
   render() {
     const {
+      className,
       filter: [operator, field, intervals, unit],
       onFilterChange,
     } = this.props;
     return (
-      <div className="flex-full mr2 mb2">
-        <DateUnitSelector
-          value={unit}
-          open={this.state.showUnits}
-          onChange={value => {
-            onFilterChange([operator, field, intervals, value]);
-            this.setState({ showUnits: false });
-          }}
-          togglePicker={() =>
-            this.setState({ showUnits: !this.state.showUnits })
-          }
-          formatter={val => val}
-          periods={DATE_PERIODS}
-        />
-      </div>
+      <DateUnitSelector
+        className={className}
+        value={unit}
+        open={this.state.showUnits}
+        onChange={value => {
+          onFilterChange([operator, field, intervals, value]);
+          this.setState({ showUnits: false });
+        }}
+        togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
+        formatter={val => val}
+        periods={DATE_PERIODS}
+      />
     );
   }
 }
@@ -147,66 +140,40 @@ const getDate = value => {
 const hasTime = value =>
   typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
 
-function getDateTimeField(
-  field: ConcreteField,
-  bucketing: ?DatetimeUnit,
-): ConcreteField {
-  let target = getDateTimeFieldTarget(field);
-  if (bucketing) {
-    // $FlowFixMe
-    return ["datetime-field", target, bucketing];
-  } else {
-    return target;
+/**
+ * Returns MBQL :field clause with temporal bucketing applied.
+ * @deprecated -- just use FieldDimension to do this stuff.
+ */
+function getDateTimeField(field, bucketing) {
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    if (bucketing) {
+      return dimension.withTemporalUnit(bucketing).mbql();
+    } else {
+      return dimension.withoutTemporalBucketing().mbql();
+    }
   }
+  return field;
 }
 
-export function getDateTimeFieldTarget(
-  field: ConcreteField,
-): LocalFieldReference | ForeignFieldReference | ExpressionReference {
-  if (Query.isDatetimeField(field)) {
-    // $FlowFixMe:
-    return (field[1]: // $FlowFixMe:
-    LocalFieldReference | ForeignFieldReference | ExpressionReference);
+export function getDateTimeFieldTarget(field) {
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension && dimension.temporalUnit()) {
+    return dimension.withoutTemporalBucketing().mbql();
   } else {
-    // $FlowFixMe
     return field;
   }
 }
 
-// wraps values in "datetime-field" is any of them have a time component
-function getDateTimeFieldAndValues(
-  filter: FieldFilter,
-  count: number,
-): [ConcreteField, any] {
+// add temporal-unit to fields if any of them have a time component
+function getDateTimeFieldAndValues(filter, count) {
   const values = filter
     .slice(2, 2 + count)
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
-  // $FlowFixMe
   return [field, ...values];
 }
-
-export type OperatorName =
-  | "all"
-  | "previous"
-  | "next"
-  | "current"
-  | "before"
-  | "after"
-  | "on"
-  | "between"
-  | "empty"
-  | "not-empty";
-
-export type Operator = {
-  name: OperatorName,
-  displayName: string,
-  widget?: any,
-  init: (filter: FieldFilter) => any,
-  test: (filter: FieldFilter) => boolean,
-  options?: { [key: string]: any },
-};
 
 const ALL_TIME_OPERATOR = {
   name: "all",
@@ -215,7 +182,7 @@ const ALL_TIME_OPERATOR = {
   test: op => op === null,
 };
 
-export const DATE_OPERATORS: Operator[] = [
+export const DATE_OPERATORS = [
   {
     name: "previous",
     displayName: t`Previous`,
@@ -227,7 +194,6 @@ export const DATE_OPERATORS: Operator[] = [
       getOptions(filter),
     ],
     test: ([op, field, value]) =>
-      // $FlowFixMe
       (op === "time-interval" && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
@@ -242,7 +208,6 @@ export const DATE_OPERATORS: Operator[] = [
       getUnit(filter),
       getOptions(filter),
     ],
-    // $FlowFixMe
     test: ([op, field, value]) => op === "time-interval" && value >= 0,
     widget: NextPicker,
     options: { "include-current": true },
@@ -289,7 +254,7 @@ export const DATE_OPERATORS: Operator[] = [
   },
 ];
 
-export const EMPTINESS_OPERATORS: Operator[] = [
+export const EMPTINESS_OPERATORS = [
   {
     name: "empty",
     displayName: t`Is Empty`,
@@ -304,34 +269,14 @@ export const EMPTINESS_OPERATORS: Operator[] = [
   },
 ];
 
-export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(
-  EMPTINESS_OPERATORS,
-);
+export const ALL_OPERATORS = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
 
-export function getOperator(
-  filter: FieldFilter,
-  operators?: Operator[] = ALL_OPERATORS,
-) {
+export function getOperator(filter, operators = ALL_OPERATORS) {
   return _.find(operators, o => o.test(filter));
 }
 
-type Props = {
-  className?: string,
-  filter: FieldFilter,
-  onFilterChange: (filter: FieldFilter) => void,
-  hideEmptinessOperators?: boolean, // Don't show is empty / not empty dialog
-  hideTimeSelectors?: boolean,
-  includeAllTime?: boolean,
-  operators?: Operator[],
-};
-
-type State = {
-  operators: Operator[],
-};
-
 export default class DatePicker extends Component {
-  props: Props;
-  state: State = {
+  state = {
     operators: [],
   };
 
@@ -341,10 +286,12 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
+    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
+    disableOperatorSelection: PropTypes.bool,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     let operators = this.props.operators || DATE_OPERATORS;
     if (!this.props.hideEmptinessOperators) {
       operators = operators.concat(EMPTINESS_OPERATORS);
@@ -357,8 +304,17 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const { filter, onFilterChange, includeAllTime } = this.props;
+    const {
+      className,
+      filter,
+      onFilterChange,
+      includeAllTime,
+      isSidebar,
+      disableOperatorSelection,
+    } = this.props;
+
     let { operators } = this.state;
+
     if (includeAllTime) {
       operators = [ALL_TIME_OPERATOR, ...operators];
     }
@@ -369,19 +325,27 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx("border-top pt2", {
+        className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
+          "PopoverBody--marginBottom": !isSidebar,
         })}
-        style={{ minWidth: 380 }}
+        style={{ minWidth: 300 }}
       >
-        <DateOperatorSelector
-          operator={operator && operator.name}
-          operators={operators}
-          onOperatorChange={operator => onFilterChange(operator.init(filter))}
-        />
+        {!disableOperatorSelection && (
+          <DateOperatorSelector
+            className={cx({
+              mr2: Widget && Widget.horizontalLayout,
+              mb2: Widget && !Widget.horizontalLayout,
+            })}
+            operator={operator && operator.name}
+            operators={operators}
+            onOperatorChange={operator => onFilterChange(operator.init(filter))}
+          />
+        )}
         {Widget && (
           <Widget
             {...this.props}
+            className="flex-full"
             filter={filter}
             hideHoursAndMinutes={this.props.hideTimeSelectors}
             onFilterChange={filter => {

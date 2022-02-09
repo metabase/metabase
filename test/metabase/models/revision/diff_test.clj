@@ -1,30 +1,36 @@
 (ns metabase.models.revision.diff-test
   (:require [clojure.data :as data]
-            [expectations :refer :all]
-            [metabase.models.revision.diff :refer :all]))
+            [clojure.test :refer :all]
+            [metabase.models.revision.diff :as diff]))
 
-;; Check that pattern matching allows specialization and that string only reflects the keys that have changed
-(expect "renamed this card from \"Tips by State\" to \"Spots by State\"."
-  (let [[before after] (data/diff {:name "Tips by State", :private false}
-                                  {:name "Spots by State", :private false})]
-    (diff-string "card" before after)))
+(deftest rename-test
+  (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
+                "changed")
+    (let [[before after] (data/diff {:name "Tips by State", :private false}
+                                    {:name "Spots by State", :private false})]
+      (is (= "renamed this card from \"Tips by State\" to \"Spots by State\"."
+             (diff/diff-string "card" before after))))))
 
-(expect "made this card private."
+(deftest make-private-test
   (let [[before after] (data/diff {:name "Spots by State", :private false}
                                   {:name "Spots by State", :private true})]
-    (diff-string "card" before after)))
+    (is (= "made this card private."
+           (diff/diff-string "card" before after)))))
 
-(expect "changed priority from \"Important\" to \"Regular\"."
+(deftest change-priority-test
   (let [[before after] (data/diff {:priority "Important"}
                                   {:priority "Regular"})]
-    (diff-string "card" before after)))
+    (is (= "changed priority from \"Important\" to \"Regular\"."
+           (diff/diff-string "card" before after)))))
 
-(expect "made this card private and renamed it from \"Tips by State\" to \"Spots by State\"."
+(deftest multiple-changes-test
   (let [[before after] (data/diff {:name "Tips by State", :private false}
                                   {:name "Spots by State", :private true})]
-    (diff-string "card" before after)))
+    (is (= "made this card private and renamed it from \"Tips by State\" to \"Spots by State\"."
+           (diff/diff-string "card" before after))))
 
-(expect "changed priority from \"Important\" to \"Regular\", made this card private and renamed it from \"Tips by State\" to \"Spots by State\"."
   (let [[before after] (data/diff {:name "Tips by State", :private false, :priority "Important"}
                                   {:name "Spots by State", :private true, :priority "Regular"})]
-    (diff-string "card" before after)))
+    (is (= (str "changed priority from \"Important\" to \"Regular\", made this card private and renamed it from "
+                "\"Tips by State\" to \"Spots by State\".")
+           (diff/diff-string "card" before after)))))

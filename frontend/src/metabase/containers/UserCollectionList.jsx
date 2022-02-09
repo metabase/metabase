@@ -1,71 +1,83 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
-import { Grid, GridItem } from "metabase/components/Grid";
-import Link from "metabase/components/Link";
+import { Grid } from "metabase/components/Grid";
+import Link from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
-
-import {
+import User from "metabase/entities/users";
+import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import {
+  CardContent,
+  ListGridItem,
+  ListHeader,
+  ListRoot,
+} from "./UserCollectionList.styled";
 
-const UserListLoader = ({ children, ...props }) => (
-  <EntityListLoader entityType="users" children={children} {...props} />
-);
+function mapStateToProps(state) {
+  return {
+    collectionsById: state.entities.collections,
+  };
+}
 
-const UserCollectionList = () => (
-  <Box px={4}>
-    <Box py={2}>
+const UserCollectionList = ({ collectionsById }) => (
+  <ListRoot>
+    <ListHeader>
       <BrowserCrumbs
         crumbs={[
-          { title: ROOT_COLLECTION.name, to: Urls.collection() },
+          { title: ROOT_COLLECTION.name, to: Urls.collection({ id: "root" }) },
           { title: PERSONAL_COLLECTIONS.name },
         ]}
       />
-    </Box>
-    <UserListLoader>
+    </ListHeader>
+    <User.ListLoader>
       {({ list }) => {
         return (
-          <Box>
+          <div>
             <Grid>
               {// map through all users that have logged in at least once
               // which gives them a personal collection ID
               list.map(
                 user =>
                   user.personal_collection_id && (
-                    <GridItem w={1 / 3} key={user.personal_collection_id}>
+                    <ListGridItem key={user.personal_collection_id}>
                       <Link
-                        to={Urls.userCollection(user.personal_collection_id)}
+                        to={Urls.collection(
+                          collectionsById[user.personal_collection_id],
+                        )}
                       >
                         <Card p={2} hoverable>
-                          <Flex align="center">
+                          <CardContent>
                             <Icon
                               name="person"
                               mr={1}
-                              color={colors["text-medium"]}
+                              color={color("text-medium")}
                               size={18}
                             />
                             <h3>{user.common_name}</h3>
-                          </Flex>
+                          </CardContent>
                         </Card>
                       </Link>
-                    </GridItem>
+                    </ListGridItem>
                   ),
               )}
             </Grid>
-          </Box>
+          </div>
         );
       }}
-    </UserListLoader>
-  </Box>
+    </User.ListLoader>
+  </ListRoot>
 );
 
-export default UserCollectionList;
+export default Collection.loadList()(
+  connect(mapStateToProps)(UserCollectionList),
+);

@@ -1,17 +1,9 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
-import CheckBox from "metabase/components/CheckBox";
-import { t } from "c-3po";
-import type { DisplayOptions } from "./EmbedModalContent";
-
-type Props = {
-  className?: string,
-  displayOptions: DisplayOptions,
-  onChangeDisplayOptions: (displayOptions: DisplayOptions) => void,
-};
+import CheckBox from "metabase/core/components/CheckBox";
+import { t } from "ttag";
 
 const THEME_OPTIONS = [
   { name: t`Light`, value: null, icon: "sun" },
@@ -22,10 +14,11 @@ const DisplayOptionsPane = ({
   className,
   displayOptions,
   onChangeDisplayOptions,
-}: Props) => (
+}) => (
   <div className={className}>
     <div className="flex align-center my1">
       <CheckBox
+        label={t`Border`}
         checked={displayOptions.bordered}
         onChange={e =>
           onChangeDisplayOptions({
@@ -34,10 +27,10 @@ const DisplayOptionsPane = ({
           })
         }
       />
-      <span className="ml1">{t`Border`}</span>
     </div>
     <div className="flex align-center my1">
       <CheckBox
+        label={t`Title`}
         checked={displayOptions.titled}
         onChange={e =>
           onChangeDisplayOptions({
@@ -46,7 +39,6 @@ const DisplayOptionsPane = ({
           })
         }
       />
-      <span className="ml1">{t`Title`}</span>
     </div>
     <EmbedSelect
       value={displayOptions.theme}

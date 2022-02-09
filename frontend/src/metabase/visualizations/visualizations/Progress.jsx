@@ -1,13 +1,12 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import { normal } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import { color } from "metabase/lib/colors";
 
 import _ from "underscore";
 
@@ -19,10 +18,15 @@ import cx from "classnames";
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-
 export default class Progress extends Component {
-  props: VisualizationProps;
+  constructor(props) {
+    super(props);
+
+    this.containerRef = React.createRef();
+    this.labelRef = React.createRef();
+    this.pointerRef = React.createRef();
+    this.barRef = React.createRef();
+  }
 
   static uiName = t`Progress`;
   static identifier = "progress";
@@ -34,7 +38,11 @@ export default class Progress extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!isNumeric(cols[0])) {
       throw new Error(t`Progress visualization requires a number.`);
     }
@@ -42,7 +50,14 @@ export default class Progress extends Component {
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
@@ -56,7 +71,7 @@ export default class Progress extends Component {
       section: t`Display`,
       title: t`Color`,
       widget: "color",
-      default: normal.green,
+      default: color("accent1"),
     },
   };
 
@@ -66,10 +81,10 @@ export default class Progress extends Component {
 
   componentDidUpdate() {
     const component = ReactDOM.findDOMNode(this);
-    const pointer = ReactDOM.findDOMNode(this.refs.pointer);
-    const label = ReactDOM.findDOMNode(this.refs.label);
-    const container = ReactDOM.findDOMNode(this.refs.container);
-    const bar = ReactDOM.findDOMNode(this.refs.bar);
+    const pointer = this.pointerRef.current;
+    const label = this.labelRef.current;
+    const container = this.containerRef.current;
+    const bar = this.barRef.current;
 
     // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
     bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
@@ -114,13 +129,16 @@ export default class Progress extends Component {
 
   render() {
     const {
-      series: [{ data: { rows, cols } }],
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
       settings,
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    const value: number =
-      rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
+    const value = rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
     const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 
@@ -158,17 +176,17 @@ export default class Progress extends Component {
           style={{ padding: 10, paddingTop: 0 }}
         >
           <div
-            ref="container"
+            ref={this.containerRef}
             className="relative text-bold text-medium"
             style={{ height: 20 }}
           >
-            <div ref="label" style={{ position: "absolute" }}>
+            <div ref={this.labelRef} style={{ position: "absolute" }}>
               {formatValue(value, settings.column(column))}
             </div>
           </div>
           <div className="relative" style={{ height: 10, marginBottom: 5 }}>
             <div
-              ref="pointer"
+              ref={this.pointerRef}
               style={{
                 width: 0,
                 height: 0,
@@ -182,7 +200,7 @@ export default class Progress extends Component {
             />
           </div>
           <div
-            ref="bar"
+            ref={this.barRef}
             className={cx("relative", { "cursor-pointer": isClickable })}
             style={{
               backgroundColor: restColor,

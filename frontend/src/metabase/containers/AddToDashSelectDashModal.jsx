@@ -1,46 +1,51 @@
-/* @flow  */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "c-3po";
-import { Flex } from "grid-styled";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import DashboardForm from "metabase/containers/DashboardForm.jsx";
+import Link from "metabase/core/components/Link";
+import ModalContent from "metabase/components/ModalContent";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
+import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
-import type { Dashboard, DashboardId } from "metabase/meta/types/Dashboard";
-import type { Card } from "metabase/meta/types/Card";
+function mapStateToProps(state) {
+  return {
+    dashboards: state.entities.dashboards,
+  };
+}
 
+@connect(mapStateToProps)
 export default class AddToDashSelectDashModal extends Component {
   state = {
     shouldCreateDashboard: false,
   };
 
-  props: {
-    card: Card,
-    onClose: () => void,
-    onChangeLocation: string => void,
-    // via connect:
-    createDashboard: Dashboard => any,
+  navigateToDashboard = dashboard => {
+    const { card, onChangeLocation } = this.props;
+
+    onChangeLocation(
+      Urls.dashboard(dashboard, {
+        editMode: true,
+        addCardWithId: card.id,
+      }),
+    );
   };
 
-  addToDashboard = (dashboardId: DashboardId) => {
-    // we send the user over to the chosen dashboard in edit mode with the current card added
-    this.props.onChangeLocation(
-      Urls.dashboard(dashboardId, { addCardWithId: this.props.card.id }),
-    );
+  onDashboardSelected = dashboardId => {
+    const dashboard = this.props.dashboards[dashboardId];
+    this.navigateToDashboard(dashboard);
   };
 
   render() {
     if (this.state.shouldCreateDashboard) {
       return (
-        <DashboardForm
-          dashboard={{ collection_id: this.props.card.collection_id }}
-          onSaved={dashboard => this.addToDashboard(dashboard.id)}
+        <CreateDashboardModal
+          collectionId={this.props.card.collection_id}
+          onSaved={this.navigateToDashboard}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );
@@ -48,18 +53,22 @@ export default class AddToDashSelectDashModal extends Component {
       return (
         <ModalContent
           id="AddToDashSelectDashModal"
-          title={t`Add this question to a dashboard`}
+          title={
+            this.props.card.dataset
+              ? t`Add this model to a dashboard`
+              : t`Add this question to a dashboard`
+          }
           onClose={this.props.onClose}
         >
-          <DashboardPicker onChange={this.addToDashboard} />
+          <DashboardPicker onChange={this.onDashboardSelected} />
           <Link
             mt={1}
             onClick={() => this.setState({ shouldCreateDashboard: true })}
           >
-            <Flex align="center" className="text-brand" py={2}>
+            <LinkContent>
               <Icon name="add" mx={1} bordered />
               <h4>{t`Create a new dashboard`}</h4>
-            </Flex>
+            </LinkContent>
           </Link>
         </ModalContent>
       );

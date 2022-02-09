@@ -11,7 +11,7 @@
  ["messages" [{:field-name "sender_id"
                :base-type  :type/Integer
                :fk         :users}
-              {:field-name "reciever_id"
+              {:field-name "receiver_id"
                :base-type  :type/Integer
                :fk         :users}
               {:field-name "text"

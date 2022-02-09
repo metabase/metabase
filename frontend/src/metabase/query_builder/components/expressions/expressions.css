@@ -1,0 +1,44 @@
+.expression-editor-textfield .ace_editor {
+  overflow: initial;
+}
+
+.expression-editor-textfield textarea {
+  min-height: 5px;
+}
+
+.expression-editor-textfield .ace_content * {
+  font-family: monospace !important;
+}
+
+.expression-editor-textfield .ace_hidpi .ace_content {
+  color: #4c5773;
+  font-weight: 700;
+}
+
+.expression-editor-textfield .ace-tm .ace_keyword,
+.expression-editor-textfield .ace-tm .ace_constant.ace_numeric {
+  color: #4c5773;
+}
+
+.expression-editor-textfield .ace-tm .ace_variable {
+  color: var(--color-brand);
+}
+
+.expression-editor-textfield .ace-tm .ace_string {
+  color: var(--color-accent5);
+}
+
+.expression-editor-textfield .ace_cursor {
+  border-left-width: 1px;
+}
+
+.expression-editor-textfield .ace_hidden-cursors .ace_cursor {
+  opacity: 0;
+}
+
+.expression-editor-textfield .ace_content .error {
+  position: absolute;
+  border-bottom: 2px solid var(--color-error);
+  border-radius: 0px;
+  background-color: var(--color-error-background);
+}

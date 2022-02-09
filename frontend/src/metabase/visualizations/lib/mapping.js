@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import L from "leaflet/dist/leaflet-src.js";
 import d3 from "d3";
 
@@ -57,16 +55,16 @@ export function computeLargestGap(items, valueAccessor = d => d) {
 }
 
 export function getAllFeaturesPoints(features) {
-  let points = [];
-  for (let feature of features) {
+  const points = [];
+  for (const feature of features) {
     if (feature.geometry.type === "Polygon") {
-      for (let coordinates of feature.geometry.coordinates) {
-        points = points.concat(coordinates);
+      for (const coordinates of feature.geometry.coordinates) {
+        points.push(...coordinates);
       }
     } else if (feature.geometry.type === "MultiPolygon") {
-      for (let coordinatesList of feature.geometry.coordinates) {
-        for (let coordinates of coordinatesList) {
-          points = points.concat(coordinates);
+      for (const coordinatesList of feature.geometry.coordinates) {
+        for (const coordinates of coordinatesList) {
+          points.push(...coordinates);
         }
       }
     } else {
