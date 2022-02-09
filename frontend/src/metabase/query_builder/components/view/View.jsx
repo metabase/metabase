@@ -140,22 +140,79 @@ export default class View extends React.Component {
     return null;
   };
 
-  render() {
+  getRightSidebarForStructuredQuery = () => {
     const {
       question,
+      isResultDirty,
+      isShowingSummarySidebar,
+      isShowingFilterSidebar,
+      runQuestionQuery,
+      onCloseSummary,
+    } = this.props;
+
+    if (isShowingSummarySidebar) {
+      return (
+        <SummarizeSidebar
+          question={question}
+          onClose={onCloseSummary}
+          isResultDirty={isResultDirty}
+          runQuestionQuery={runQuestionQuery}
+        />
+      );
+    }
+
+    if (isShowingFilterSidebar) {
+      return (
+        <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
+      );
+    }
+
+    return null;
+  };
+
+  getRightSidebarForNativeQuery = () => {
+    const {
+      isShowingTemplateTagsEditor,
+      isShowingDataReference,
+      isShowingSnippetSidebar,
+      toggleTemplateTagsEditor,
+      toggleDataReference,
+      toggleSnippetSidebar,
+    } = this.props;
+
+    if (isShowingTemplateTagsEditor) {
+      return (
+        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+      );
+    }
+
+    if (isShowingDataReference) {
+      return <DataReference {...this.props} onClose={toggleDataReference} />;
+    }
+
+    if (isShowingSnippetSidebar) {
+      return <SnippetSidebar {...this.props} onClose={toggleSnippetSidebar} />;
+    }
+
+    return null;
+  };
+
+  getRightSidebar = () => {
+    const { question } = this.props;
+    const isStructured = question.isStructured();
+    return isStructured
+      ? this.getRightSidebarForStructuredQuery()
+      : this.getRightSidebarForNativeQuery();
+  };
+
+  render() {
+    const {
       query,
       card,
       isDirty,
-      isResultDirty,
       isLiveResizable,
-      runQuestionQuery,
       databases,
-      isShowingTemplateTagsEditor,
-      isShowingDataReference,
       isShowingNewbModal,
-      isShowingSummarySidebar,
-      isShowingFilterSidebar,
-      isShowingSnippetSidebar,
       queryBuilderMode,
       mode,
       fitClassNames,
@@ -211,35 +268,9 @@ export default class View extends React.Component {
     const onEditBreakout =
       topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
 
-    const rightSideBar =
-      isStructured && isShowingSummarySidebar ? (
-        <SummarizeSidebar
-          question={question}
-          onClose={this.props.onCloseSummary}
-          isResultDirty={isResultDirty}
-          runQuestionQuery={runQuestionQuery}
-        />
-      ) : isStructured && isShowingFilterSidebar ? (
-        <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
-      ) : isNative && isShowingTemplateTagsEditor ? (
-        <TagEditorSidebar
-          {...this.props}
-          onClose={this.props.toggleTemplateTagsEditor}
-        />
-      ) : isNative && isShowingDataReference ? (
-        <DataReference
-          {...this.props}
-          onClose={this.props.toggleDataReference}
-        />
-      ) : isNative && isShowingSnippetSidebar ? (
-        <SnippetSidebar
-          {...this.props}
-          onClose={this.props.toggleSnippetSidebar}
-        />
-      ) : null;
-
     const leftSidebar = this.getLeftSidebar();
-    const isSidebarOpen = leftSidebar || rightSideBar;
+    const rightSidebar = this.getRightSidebar();
+    const isSidebarOpen = leftSidebar || rightSidebar;
 
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
@@ -331,8 +362,8 @@ export default class View extends React.Component {
               <ViewFooter {...this.props} className="flex-no-shrink" />
             </div>
 
-            <ViewSidebar side="right" isOpen={!!rightSideBar}>
-              {rightSideBar}
+            <ViewSidebar side="right" isOpen={!!rightSidebar}>
+              {rightSidebar}
             </ViewSidebar>
           </div>
         </div>
