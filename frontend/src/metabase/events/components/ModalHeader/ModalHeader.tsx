@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
 import Icon from "metabase/components/Icon";
 import {
+  HeaderActions,
   HeaderCloseButton,
   HeaderRoot,
   HeaderTitle,
@@ -20,7 +21,7 @@ const ModalHeader = ({
   return (
     <HeaderRoot>
       <HeaderTitle>{title}</HeaderTitle>
-      {children}
+      {children && <HeaderActions>{children}</HeaderActions>}
       {onClose && (
         <HeaderCloseButton onClick={onClose}>
           <Icon name="close" />

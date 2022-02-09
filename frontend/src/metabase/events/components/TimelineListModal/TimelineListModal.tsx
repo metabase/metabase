@@ -2,8 +2,8 @@ import React from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
 import { Collection, EventTimeline } from "metabase-types/api";
+import ModalHeader from "../ModalHeader";
 import {
   CardBody,
   CardDescription,
@@ -15,6 +15,7 @@ import {
   EmptyStateRoot,
   EmptyStateText,
   ListRoot,
+  ModalBody,
 } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
@@ -31,13 +32,16 @@ const TimelineListModal = ({
   const hasItems = timelines.length > 0;
 
   return (
-    <ModalContent title={t`Events`} onClose={onClose}>
-      {hasItems ? (
-        <TimelineList timelines={timelines} />
-      ) : (
-        <TimelineEmptyState collection={collection} />
-      )}
-    </ModalContent>
+    <div>
+      <ModalHeader title={t`Events`} onClose={onClose} />
+      <ModalBody>
+        {hasItems ? (
+          <TimelineList timelines={timelines} />
+        ) : (
+          <TimelineEmptyState collection={collection} />
+        )}
+      </ModalBody>
+    </div>
   );
 };
 

@@ -17,6 +17,10 @@ export const HeaderTitle = styled.div`
   margin-right: 1rem;
 `;
 
+export const HeaderActions = styled.div`
+  margin-right: 1rem;
+`;
+
 export const HeaderCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("text-light")};

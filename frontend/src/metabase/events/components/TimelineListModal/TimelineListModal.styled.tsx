@@ -3,6 +3,10 @@ import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
+export const ModalBody = styled.div`
+  padding: 2rem;
+`;
+
 export const ListRoot = styled.div`
   display: flex;
   flex-direction: column;
