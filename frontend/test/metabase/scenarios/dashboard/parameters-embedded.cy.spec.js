@@ -51,25 +51,98 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     cy.request("PUT", `/api/setting/enable-public-sharing`, { value: true });
   });
 
-  describe("embeded params", () => {
-    it.skip("should be hideable", () => {
-      // Check viewable
+  describe("embedded parameters", () => {
+    it("should be disabled by default but able to be set to editable", () => {
       cy.visit("/dashboard/2");
       cy.icon("share").click();
+      cy.findByText("Sharing and embedding").click();
+      cy.findByText("Embed this dashboard in an application").click();
+
+      cy.get(".Modal--full").within(() => {
+        // verify that all the parameters on the dashboard are defaulted to disabled
+        cy.findAllByText("Disabled").should("have.length", 4);
+
+        // select the dropdown next to the Id parameter so that we can set it to editable
+        cy.findByText("Id")
+          .parent()
+          .within(() => {
+            cy.findByText("Disabled").click();
+          });
+      });
+
+      cy.findByText("Editable").click();
+
+      // publish the embedded dashboard so that we can directly navigate to its url
+      cy.findByText("Publish").click();
+
+      // directly navigate to the embedded dashboard
+      cy.document().then(doc => {
+        const iframe = doc.querySelector("iframe");
+        cy.visit(iframe.src);
+      });
+
+      // verify that only the Id parameter shows up and is editable
+      cy.findByText("Name").should("not.exist");
+      cy.findByText("Source").should("not.exist");
+      cy.findByText("User").should("not.exist");
+      cy.findByText("Id").click();
+
+      popover().within(() => {
+        cy.get("input").type("1{enter}3{enter}");
+        cy.findByText("Add filter").click();
+      });
+
+      // verify that the dashcard shows the correct, filtered value
+      cy.get(".Card").within(() => {
+        cy.contains("2");
+      });
+    });
+
+    it("should let parameters be locked to a specific value", () => {
+      cy.visit("/dashboard/2");
+      cy.icon("share").click();
+      cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.findByText("Parameters");
       cy.get(".Modal--full").within(() => {
-        cy.findByText("Id");
-        cy.findByText("User");
         cy.findAllByText("Disabled").should("have.length", 4);
+
+        // select the dropdown next to the Id parameter so that we can set it to locked
+        cy.findByText("Id")
+          .parent()
+          .within(() => {
+            cy.findByText("Disabled").click();
+          });
       });
 
-      // Check hideable
-      cy.visit("/dashboard/2#hide_parameters=id%2Cname");
-      cy.reload();
-      cy.findByText("User");
-      cy.findByText("Name").should("not.exist");
+      cy.findByText("Locked").click();
+
+      // set the locked parameter's value
+      cy.findByText("Preview Locked Parameters")
+        .parent()
+        .within(() => {
+          cy.findByText("Id").click();
+        });
+      popover().within(() => {
+        cy.get("input").type("1{enter}3{enter}");
+      });
+      cy.findByText("Add filter").click();
+
+      // publish the embedded dashboard so that we can directly navigate to its url
+      cy.findByText("Publish").click();
+
+      // directly navigate to the embedded dashboard
+      cy.document().then(doc => {
+        const iframe = doc.querySelector("iframe");
+        cy.visit(iframe.src);
+      });
+
+      // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
+      cy.findByText("Id").should("not.exist");
+      cy.get(".Card").within(() => {
+        cy.contains("2");
+      });
     });
   });
 
