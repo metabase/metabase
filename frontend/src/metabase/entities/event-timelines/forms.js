@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { ICONS } from "metabase/lib/events";
+import { getEventIcons } from "metabase/lib/events";
 import validate from "metabase/lib/validate";
 
 const FORM_FIELDS = [
@@ -21,7 +21,7 @@ const FORM_FIELDS = [
     title: t`Default icon`,
     type: "select",
     initial: "star",
-    options: ICONS,
+    options: getEventIcons(),
     validate: validate.required(),
   },
 ];
