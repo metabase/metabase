@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { renderWithProviders, fireEvent } from "__support__/ui";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
@@ -21,10 +21,10 @@ function widget(widget = {}) {
 
 describe("ChartSettings", () => {
   it("should not crash if there are no widgets", () => {
-    render(<ChartSettings {...DEFAULT_PROPS} widgets={[]} />);
+    renderWithProviders(<ChartSettings {...DEFAULT_PROPS} widgets={[]} />);
   });
   it("should not crash if the initial section is invalid", () => {
-    render(
+    renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[widget({ section: "Foo" })]}
@@ -33,7 +33,7 @@ describe("ChartSettings", () => {
     );
   });
   it("should default to the first section (if no section in DEFAULT_TAB_PRIORITY)", () => {
-    const { getByLabelText } = render(
+    const { getByLabelText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
@@ -43,7 +43,7 @@ describe("ChartSettings", () => {
     expect(getByLabelText("Bar")).not.toBeChecked();
   });
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
-    const { getByLabelText } = render(
+    const { getByLabelText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -56,7 +56,7 @@ describe("ChartSettings", () => {
     expect(getByLabelText("Display")).toBeChecked();
   });
   it("should be able to switch sections", () => {
-    const { getByText, getByLabelText } = render(
+    const { getByText, getByLabelText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
@@ -70,7 +70,7 @@ describe("ChartSettings", () => {
   });
 
   it("should show widget names", () => {
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -84,7 +84,7 @@ describe("ChartSettings", () => {
   });
 
   it("should not show hidden widgets", () => {
-    const { getByText, queryByText } = render(
+    const { getByText, queryByText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -98,7 +98,7 @@ describe("ChartSettings", () => {
   });
 
   it("should show the section picker if there are multiple sections", () => {
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -111,7 +111,7 @@ describe("ChartSettings", () => {
   });
 
   it("should not show the section picker if there's only one section", () => {
-    const { queryByText } = render(
+    const { queryByText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
@@ -130,7 +130,7 @@ describe("ChartSettings", () => {
       hidden: true,
       id: "column_settings",
     });
-    const { queryByText } = render(
+    const { queryByText } = renderWithProviders(
       <ChartSettings
         {...DEFAULT_PROPS}
         widgets={[
