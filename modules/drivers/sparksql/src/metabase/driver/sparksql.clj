@@ -100,10 +100,10 @@
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
-      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["show tables"])]
+      (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
         {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
-         :schema (when (seq database)
-                   database)})))})
+         :schema (or (not-empty database)
+                     (not-empty table-namespace))})))})
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
@@ -113,7 +113,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
-  [driver database {table-name :name, schema :schema, :as table}]
+  [driver database {table-name :name, schema :schema}]
   {:name   table-name
    :schema schema
    :fields
