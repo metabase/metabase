@@ -9911,8 +9911,8 @@ databaseChangeLog:
   # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
   #
   # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
-  # internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
-  # `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
+  # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
+  # originally fixed in #4123.
   - changeSet:
       id: v43.00-008
       author: camsaul
