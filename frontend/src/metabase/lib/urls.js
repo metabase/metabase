@@ -293,6 +293,10 @@ export function timelines(root) {
   return `${collectionUrl}/timeline`;
 }
 
+export function timeline(collection, timelineId) {
+  return `${timelines(collection)}/${timelineId}`;
+}
+
 export function newTimeline(collection) {
   return `${timelines(collection)}/new`;
 }

@@ -3,8 +3,8 @@ import _ from "underscore";
 import { goBack } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
-import Events from "metabase/entities/events";
 import NewEventModal from "../../components/NewEventModal";
+import { createEventWithTimeline } from "../../actions";
 import { ModalProps } from "../../types";
 
 const collectionProps = {
@@ -12,7 +12,7 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = {
-  onSubmit: Events.actions.createWithTimeline,
+  onSubmit: createEventWithTimeline,
   onCancel: goBack,
 };
 
