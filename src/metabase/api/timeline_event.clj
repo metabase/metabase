@@ -15,15 +15,15 @@
 (api/defendpoint POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id archived] :as body} :body}]
-  {name su/NonBlankString
-   description (s/maybe s/Str)
+  {name         su/NonBlankString
+   description  (s/maybe s/Str)
    ;; todo: find schema for timestamps?
-   timestamp s/Str
+   timestamp    s/Str
    time_matters (s/maybe s/Bool)
-   timezone s/Str
-   icon (s/maybe s/Str)
-   timeline_id su/IntGreaterThanZero
-   archived (s/maybe s/Bool)}
+   timezone     s/Str
+   icon         (s/maybe s/Str)
+   timeline_id  su/IntGreaterThanZero
+   archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (Timeline timeline_id)]
     (when-not timeline
@@ -48,16 +48,16 @@
 (api/defendpoint PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
-         :as timeline-event-updates} :body}]
-  {name (s/maybe su/NonBlankString)
-   description (s/maybe s/Str)
+            :as   timeline-event-updates} :body}]
+  {name         (s/maybe su/NonBlankString)
+   description  (s/maybe s/Str)
    ;; todo: find schema for timestamps?
-   timestamp (s/maybe s/Str)
+   timestamp    (s/maybe s/Str)
    time_matters (s/maybe s/Bool)
-   timezone (s/maybe s/Str)
-   icon (s/maybe s/Str)
-   timeline_id (s/maybe su/IntGreaterThanZero)
-   archived (s/maybe s/Bool)}
+   timezone     (s/maybe s/Str)
+   icon         (s/maybe s/Str)
+   timeline_id  (s/maybe su/IntGreaterThanZero)
+   archived     (s/maybe s/Bool)}
   (let [existing (api/check-404 (TimelineEvent id))]
     ;; todo: we can do db operations in the permissions (makes sense, we're doing them anyways. that's the cost of
     ;; this. so either do it in the protocol or manually so of course go for protocol. check out dashboard card for a
