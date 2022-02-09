@@ -309,8 +309,6 @@ describe("scenarios > question > new", () => {
       });
 
       openOrdersTable();
-      // this url check is just to give some time for the render to finish
-      cy.url().should("include", "/question#");
 
       cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
@@ -324,6 +322,13 @@ describe("scenarios > question > new", () => {
         "**It should display the table with all orders with the selected quantity.**",
       );
       cy.get(".TableInteractive");
+
+      cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+        .eq(1) // first table body cell
+        .should("contain", 1)
+        .click();
+
+      cy.get(".ObjectDetail");
     });
 
     // flaky test (#19454)
