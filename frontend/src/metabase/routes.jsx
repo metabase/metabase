@@ -233,6 +233,7 @@ export const getRoutes = store => (
           />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
@@ -240,6 +241,7 @@ export const getRoutes = store => (
           <IndexRoute component={QueryBuilder} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
           <Route path=":slug/metadata" component={QueryBuilder} />
