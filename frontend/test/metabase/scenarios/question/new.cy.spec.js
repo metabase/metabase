@@ -299,11 +299,6 @@ describe("scenarios > question > new", () => {
     });
 
     it("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
-      // set ID to `No semantic type`
-      cy.request("PUT", `/api/field/${ORDERS.ID}`, {
-        semantic_type: null,
-      });
-      // set Quantity to `Entity Key`
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
         semantic_type: "type/PK",
       });
