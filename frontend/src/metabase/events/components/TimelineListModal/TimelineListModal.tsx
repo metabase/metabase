@@ -30,11 +30,10 @@ const TimelineListModal = ({
   onClose,
 }: TimelineListModalProps): JSX.Element => {
   const hasItems = timelines.length > 0;
-  const title = hasItems ? t`Events` : t`${collection.name} events`;
 
   return (
     <MenuModal
-      title={title}
+      title={t`Events`}
       menu={hasItems && <TimelineMenu collection={collection} />}
       onClose={onClose}
     >
