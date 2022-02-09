@@ -1,16 +1,20 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Collections from "metabase/entities/collections";
+import { MetabaseApi } from "metabase/services";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+
 import fitViewport from "metabase/hoc/FitViewPort";
-
-import View from "../components/view/View";
-// import Notebook from "../components/notebook/Notebook";
-
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+
+import View from "../components/view/View";
 
 import {
   getCard,
@@ -53,15 +57,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
 } from "../selectors";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
 import * as actions from "../actions";
-import { push } from "react-router-redux";
-
-import Collections from "metabase/entities/collections";
-import { MetabaseApi } from "metabase/services";
 
 function autocompleteResults(card, prefix) {
   const databaseId = card && card.dataset_query && card.dataset_query.database;
