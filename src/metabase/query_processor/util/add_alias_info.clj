@@ -56,7 +56,7 @@
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
   columns that are the result of joins."
   [prefix field-alias]
-  (str prefix "__" field-alias))
+  (driver/escape-alias driver/*driver* (str prefix "__" field-alias)))
 
 (defn- make-unique-alias-fn
   "Creates a function with the signature

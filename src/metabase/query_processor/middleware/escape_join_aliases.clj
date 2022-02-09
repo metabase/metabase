@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.escape-join-aliases
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
-            [metabase.mbql.util :as mbql.u]))
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util :as u]))
 
 (defn- rename-join-aliases
   "Rename joins in `query` by replacing aliases whose keys appear in `original->new` with their corresponding values."
@@ -11,17 +13,19 @@
         aliases-to-replace (set (keys original->new))]
     (if (empty? original->new)
       query
-      (letfn [(rename-join-aliases* [query]
-                (mbql.u/replace query
-                  [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
-                  [:field id-or-name (update opts :join-alias original->new)]
+      (do
+        (log/tracef "Rewriting join aliases:\n%s" (u/pprint-to-str original->new))
+        (letfn [(rename-join-aliases* [query]
+                  (mbql.u/replace query
+                    [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
+                    [:field id-or-name (update opts :join-alias original->new)]
 
-                  (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
-                  (merge
-                   ;; recursively update stuff inside the join
-                   (rename-join-aliases* (dissoc join :alias))
-                   {:alias (original->new (:alias join))})))]
-        (rename-join-aliases* query)))))
+                    (join :guard (every-pred map? :condition (comp aliases-to-replace :alias)))
+                    (merge
+                     ;; recursively update stuff inside the join
+                     (rename-join-aliases* (dissoc join :alias))
+                     {:alias (original->new (:alias join))})))]
+          (rename-join-aliases* query))))))
 
 (defn- all-join-aliases [query]
   (into #{} cat (mbql.u/match query
@@ -39,6 +43,7 @@
   with [[metabase.driver/escape-alias]]."
   [query]
   (let [all-join-aliases (all-join-aliases query)]
+    (log/tracef "Join aliases in query: %s" (pr-str all-join-aliases))
     (if (empty? all-join-aliases)
       query
       (let [escape            (fn [join-alias]
