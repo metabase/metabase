@@ -5,9 +5,9 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
+import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
-import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
+import { ViewTitleHeader } from "./ViewHeader";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
@@ -20,9 +20,7 @@ export const QueryBuilderViewRoot = styled.div`
   bottom: 0;
 `;
 
-export const QueryBuilderContentContainer = styled.div<{
-  isSidebarOpen: boolean;
-}>`
+export const QueryBuilderContentContainer = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
@@ -34,7 +32,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
   flex: 1 0 auto;
   flex-basis: 0;
 
-  ${breakpointMinSmall} {
+  ${breakpointMaxSmall} {
     ${props =>
       props.isSidebarOpen &&
       css`
