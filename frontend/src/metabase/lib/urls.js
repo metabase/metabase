@@ -163,7 +163,10 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
     query += `&segment=${segmentId}`;
   }
 
-  return question(null, { query });
+  // This will result in a URL like "/question#?db=1&table=1"
+  // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
+  // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
+  return question(null, { hash: query });
 }
 
 function slugifyPersonalCollection(collection) {
