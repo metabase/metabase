@@ -28,6 +28,10 @@ import {
   getTableMetadata,
   getTableForeignKeys,
   getTableForeignKeyReferences,
+  getZoomRow,
+  getZoomedObjectId,
+  getCanZoomPreviousRow,
+  getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -39,6 +43,10 @@ const mapStateToProps = state => ({
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
   tableForeignKeyReferences: getTableForeignKeyReferences(state),
+  zoomedRow: getZoomRow(state),
+  zoomedRowID: getZoomedObjectId(state),
+  canZoomPreviousRow: getCanZoomPreviousRow(state),
+  canZoomNextRow: getCanZoomNextRow(state),
 });
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
@@ -90,13 +98,15 @@ export class ObjectDetail extends Component {
   }
 
   getIdValue() {
-    if (!this.props.data) {
+    const { data, zoomedRowID } = this.props;
+    if (!data) {
       return null;
     }
+    if (zoomedRowID) {
+      return zoomedRowID;
+    }
 
-    const {
-      data: { cols, rows },
-    } = this.props;
+    const { cols, rows } = data;
     const columnIndex = _.findIndex(cols, col => isPK(col));
     return rows[0][columnIndex];
   }
@@ -178,18 +188,20 @@ export class ObjectDetail extends Component {
 
   renderDetailsTable() {
     const {
-      data: { cols, rows },
+      zoomedRow,
+      data: { rows, cols },
     } = this.props;
+    const row = zoomedRow || rows[0];
     return cols.map((column, columnIndex) => (
       <div className="Grid Grid--1of2 mb2" key={columnIndex}>
         <div className="Grid-cell">
-          {this.cellRenderer(column, rows[0][columnIndex], true)}
+          {this.cellRenderer(column, row[columnIndex], true)}
         </div>
         <div
           style={{ wordWrap: "break-word" }}
           className="Grid-cell text-bold text-dark"
         >
-          {this.cellRenderer(column, rows[0][columnIndex], false)}
+          {this.cellRenderer(column, row[columnIndex], false)}
         </div>
       </div>
     ));
@@ -294,14 +306,13 @@ export class ObjectDetail extends Component {
   };
 
   render() {
-    const { data, table } = this.props;
+    const { data, zoomedRow, canZoomPreviousRow, canZoomNextRow } = this.props;
     if (!data) {
       return false;
     }
 
     const tableName = table ? table.objectName() : t`Unknown`;
-    // TODO: once we nail down the "title" column of each table this should be something other than the id
-    const idValue = this.getIdValue();
+    const canZoom = !!zoomedRow;
 
     return (
       <div className="scroll-y pt2 px4">
@@ -310,7 +321,7 @@ export class ObjectDetail extends Component {
             <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
               <div className="text-brand text-bold">
                 <span>{tableName}</span>
-                <h1>{idValue}</h1>
+                <h1>{this.getIdValue()}</h1>
               </div>
             </div>
             <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
@@ -324,33 +335,44 @@ export class ObjectDetail extends Component {
               </div>
             </div>
 
-            <div
-              className={cx(
-                "absolute left cursor-pointer text-brand-hover lg-ml2",
-                { disabled: idValue <= 1 },
-              )}
-              style={{
-                top: "50%",
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <DirectionalButton
-                direction="left"
-                onClick={this.props.viewPreviousObjectDetail}
-              />
-            </div>
-            <div
-              className="absolute right cursor-pointer text-brand-hover lg-ml2"
-              style={{
-                top: "50%",
-                transform: "translate(50%, -50%)",
-              }}
-            >
-              <DirectionalButton
-                direction="right"
-                onClick={this.props.viewNextObjectDetail}
-              />
-            </div>
+            {canZoom && (
+              <div
+                className={cx(
+                  "absolute left cursor-pointer text-brand-hover lg-ml2",
+                  { disabled: !canZoomPreviousRow },
+                )}
+                aria-disabled={!canZoomPreviousRow}
+                style={{
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+                data-testid="view-previous-object-detail"
+              >
+                <DirectionalButton
+                  direction="left"
+                  onClick={this.props.viewPreviousObjectDetail}
+                />
+              </div>
+            )}
+            {canZoom && (
+              <div
+                className={cx(
+                  "absolute right cursor-pointer text-brand-hover lg-ml2",
+                  { disabled: !canZoomNextRow },
+                )}
+                aria-disabled={!canZoomNextRow}
+                style={{
+                  top: "50%",
+                  transform: "translate(50%, -50%)",
+                }}
+                data-testid="view-next-object-detail"
+              >
+                <DirectionalButton
+                  direction="right"
+                  onClick={this.props.viewNextObjectDetail}
+                />
+              </div>
+            )}
           </div>
           <div className="Grid">
             <div
