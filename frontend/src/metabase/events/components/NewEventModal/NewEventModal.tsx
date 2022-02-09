@@ -1,23 +1,34 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/events/forms";
-import { Event, EventTimeline } from "metabase-types/api";
+import { Collection, Event, EventTimeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
+  collection?: Collection;
   timeline?: EventTimeline;
-  onSubmit: (values: Partial<Event>) => void;
+  onSubmit: (values: Partial<Event>, collection?: Collection) => void;
   onCancel: () => void;
 }
 
 const NewEventModal = ({
+  collection,
   timeline,
   onSubmit,
   onCancel,
 }: NewEventModalProps): JSX.Element => {
-  const initialValues = { timeline_id: timeline?.id };
+  const initialValues = useMemo(() => {
+    return { timeline_id: timeline?.id };
+  }, [timeline]);
+
+  const handleSubmit = useCallback(
+    async (values: Partial<Event>) => {
+      await onSubmit(values, collection);
+    },
+    [collection, onSubmit],
+  );
 
   return (
     <div>
@@ -27,7 +38,7 @@ const NewEventModal = ({
           form={forms.collection}
           initialValues={initialValues}
           isModal={true}
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit}
           onClose={onCancel}
         />
       </ModalBody>

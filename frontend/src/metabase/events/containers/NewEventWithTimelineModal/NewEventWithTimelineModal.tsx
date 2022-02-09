@@ -12,7 +12,7 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = {
-  onSubmit: Events.actions.create,
+  onSubmit: Events.actions.createWithTimeline,
   onCancel: goBack,
 };
 

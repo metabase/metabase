@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/event-timelines/forms";
@@ -17,7 +17,9 @@ const NewTimelineModal = ({
   onSubmit,
   onCancel,
 }: NewTimelineModalProps): JSX.Element => {
-  const initialValues = { collection_id: collection.id };
+  const initialValues = useMemo(() => {
+    return { collection_id: collection.id };
+  }, [collection]);
 
   return (
     <div>
