@@ -2,6 +2,7 @@
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
             [toucan.db :as db]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
@@ -46,3 +47,28 @@
    {:perms-objects-set perms-objects-set
     :can-read?         (partial i/current-user-has-full-permissions? :read)
     :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+
+(comment
+  (let [start (java.time.OffsetDateTime/of
+               (java.time.LocalDateTime/of 2022 2 8 9 0)
+               (java.time.ZoneOffset/of "+6"))
+        end (java.time.OffsetDateTime/now)]
+    (count
+     (db/query {:select [:*]
+                :from [[TimelineEvent :e]]
+                :where [:and
+                        ;; in our collections
+                        [:in :timeline_id [2 3]]
+                        [:or
+                         ;; absolute time in bounds
+                         [:and
+                          [:= :time_matters true]
+                          ;; less than or equal?
+                          [:<= start :timestamp]
+                          [:<= :timestamp end]]
+                         ;; non-specic time in bounds
+                         [:and
+                          [:= :time_matters false]
+                          [:<= (hx/->date start) (hx/->date :timestamp)]
+                          [:<= (hx/->date :timestamp) (hx/->date end)]]]]})))
+  )
