@@ -9,7 +9,7 @@ export default {
         title: t`Timeline name`,
         placeholder: t`E.x. Product releases`,
         autoFocus: true,
-        validate: validate.required().maxLength(100),
+        validate: validate.required().maxLength(255),
       },
       {
         name: "description",

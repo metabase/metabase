@@ -7,7 +7,7 @@ export interface NewTimelineModalProps {
 }
 
 const NewTimelineModal = ({ onClose }: NewTimelineModalProps): JSX.Element => {
-  return <MenuModal title={t`New event`} onClose={onClose} />;
+  return <MenuModal title={t`New event timeline`} onClose={onClose} />;
 };
 
 export default NewTimelineModal;
