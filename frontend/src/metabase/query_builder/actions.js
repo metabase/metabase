@@ -1408,6 +1408,10 @@ export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow = ({ objectId }) => dispatch => {
   dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
 };
+
+export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
+export const resetRowZoom = createAction(RESET_ROW_ZOOM);
+
 // We use this for two things:
 // - counting the rows with this as an FK (loadObjectDetailFKReferences)
 // - following those links to a new card that's filtered (followForeignKey)

@@ -40,6 +40,7 @@ import {
   SET_RESULTS_METADATA,
   SET_METADATA_DIFF,
   ZOOM_IN_ROW,
+  RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -282,6 +283,7 @@ export const zoomedRowObjectId = handleActions(
     [ZOOM_IN_ROW]: {
       next: (state, { payload }) => payload.objectId,
     },
+    [RESET_ROW_ZOOM]: { next: () => null },
     [RESET_QB]: { next: () => null },
   },
   null,
