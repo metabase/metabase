@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   popover,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -102,7 +103,7 @@ describe("scenarios > question > joined questions", () => {
     assertDimensionName("parent", "Created At: Day");
     assertDimensionName("join", "Created At: Day");
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
     visualize();
@@ -115,7 +116,7 @@ describe("scenarios > question > joined questions", () => {
   it("should show 'Previous results' instead of a table name for non-field dimensions", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
     cy.findByText("Pick a column to group by").click();

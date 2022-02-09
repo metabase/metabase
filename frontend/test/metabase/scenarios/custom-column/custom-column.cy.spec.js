@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  summarize,
   visualize,
   openOrdersTable,
   visitQuestionAdhoc,
@@ -42,9 +43,8 @@ describe("scenarios > question > custom column", () => {
 
     visualize();
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    summarize();
+
     cy.findByText("Group by")
       .parent()
       .findByText("Math")
@@ -82,7 +82,7 @@ describe("scenarios > question > custom column", () => {
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
 
     popover().within(() => {
       cy.findByText("Sum of ...").click();
@@ -401,7 +401,7 @@ describe("scenarios > question > custom column", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Sum of ...").click();
     popover()
       .findByText("MyCC [2021]")

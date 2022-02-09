@@ -8,6 +8,7 @@ import {
   visualize,
   mockSessionProperty,
   sidebar,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -306,9 +307,8 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Summarize").click();
-      });
+      summarize();
+
       selectDimensionOptionFromSidebar("Created At");
       cy.button("Done").click();
 

@@ -6,6 +6,7 @@ import {
   openNotebookEditor,
   enterCustomColumnDetails,
   visitQuestionAdhoc,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -209,7 +210,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       cy.log("It shouldn't use FK for a column title");
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Pick a column to group by").click();
 
       // NOTE: Since there is no better way to "get" the element we need, below is a representation of the current DOM structure.
@@ -484,7 +485,7 @@ describe("scenarios > question > joined questions", () => {
 
     it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
       cy.visit("/question/1/notebook");
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText("Created At")

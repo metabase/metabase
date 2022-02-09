@@ -9,6 +9,7 @@ import {
   remapDisplayValueToFK,
   setupSMTP,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -198,7 +199,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 

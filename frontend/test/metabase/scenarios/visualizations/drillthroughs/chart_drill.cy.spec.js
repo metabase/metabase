@@ -6,6 +6,7 @@ import {
   sidebar,
   visitQuestionAdhoc,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -292,7 +293,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Saved Questions").click();
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
-    cy.contains("Summarize").click();
+    summarize();
     cy.contains("Summarize by")
       .parent()
       .parent()
@@ -306,7 +307,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".bar")
       .first()
       .click({ force: true });
-    cy.contains("View this CA Person").click();
+    cy.contains("View this CA People").click();
 
     // check that filter is applied and person displayed
     cy.contains("City is Beaver Dams");
@@ -345,7 +346,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
@@ -625,7 +626,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     beforeEach(() => {
       // Build a question without saving
       openProductsTable();
-      cy.findByText("Summarize").click();
+      summarize();
       sidebar().within(() => {
         cy.contains("Category").click();
       });

@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   popover,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("issue 17512", () => {
@@ -36,7 +37,7 @@ describe("issue 17512", () => {
 });
 
 function addSummarizeCustomExpression(formula, name) {
-  cy.findByText("Summarize").click();
+  summarize({ mode: "notebook" });
   popover()
     .contains("Custom Expression")
     .click();

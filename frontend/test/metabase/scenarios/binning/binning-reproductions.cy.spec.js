@@ -7,6 +7,7 @@ import {
   changeBinningForDimension,
   getBinningButtonForDimension,
   openNotebookEditor,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -21,7 +22,7 @@ describe("binning related reproductions", () => {
   // This is basically covered with tests in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
   it("should not render duplicated values in date binning popover (metabase#15574)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Pick a column to group by").click();
 
     changeBinningForDimension({
@@ -117,7 +118,7 @@ describe("binning related reproductions", () => {
       display: "line",
     });
 
-    cy.contains("Summarize").click();
+    summarize();
 
     changeBinningForDimension({
       name: "Created At",
@@ -246,9 +247,8 @@ describe("binning related reproductions", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("11439").click();
     visualize();
-    cy.findAllByTestId("toggle-summarize-sidebar-button")
-      .contains("Summarize")
-      .click();
+
+    summarize();
 
     cy.findByText("Group by")
       .parent()
@@ -273,7 +273,7 @@ describe("binning related reproductions", () => {
   it("binning on values from joined table should work (metabase#15648)", () => {
     // Simple question
     openOrdersTable();
-    cy.findByText("Summarize").click();
+    summarize();
     cy.findByText("Group by")
       .parent()
       .findByText("Rating")
@@ -282,7 +282,7 @@ describe("binning related reproductions", () => {
 
     // Custom question ("Notebook")
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     popover().within(() => {
@@ -303,20 +303,17 @@ describe("binning related reproductions", () => {
 
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
-      cy.createQuestion({
-        name: "16379",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
-          breakout: [["field", ORDERS.USER_ID, null]],
+      cy.createQuestion(
+        {
+          name: "16379",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
+            breakout: [["field", ORDERS.USER_ID, null]],
+          },
         },
-      }).then(({ body }) => {
-        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-        cy.visit(`/question/${body.id}`);
-
-        // Wait for `result_metadata` to load
-        cy.wait("@cardQuery");
-      });
+        { visitQuestion: true },
+      );
     });
 
     it("should work for simple question", () => {
@@ -374,8 +371,8 @@ describe("binning related reproductions", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.findByText("Summarize").click();
       cy.wait("@dataset");
+      summarize();
     });
 
     it("should render number auto binning correctly (metabase#16670)", () => {
@@ -418,5 +415,8 @@ function openSummarizeOptions(questionType) {
   cy.findByText(questionType).click();
   cy.findByText("Saved Questions").click();
   cy.findByText("16379").click();
-  cy.findByText("Summarize").click();
+
+  if (questionType === "Simple question") {
+    summarize();
+  }
 }
