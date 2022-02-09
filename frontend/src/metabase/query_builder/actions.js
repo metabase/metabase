@@ -628,12 +628,15 @@ export const initializeQB = (location, params) => {
       metadata,
     );
 
+    const objectId = params?.objectId || queryParams?.objectId;
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
       parameterValues,
+      objectId,
     });
 
     // if we have loaded up a card that we can run then lets kick that off as well
@@ -654,6 +657,7 @@ export const initializeQB = (location, params) => {
         updateUrl(card, {
           replaceState: true,
           preserveParameters,
+          objectId,
         }),
       );
     }
