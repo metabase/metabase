@@ -109,13 +109,13 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [ModelString] :else ModelString))
+(def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -194,10 +194,24 @@
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
   {:select [:id :name [(hx/literal "snippet") :model]]
-       :from   [[NativeQuerySnippet :nqs]]
-       :where  [:and
-                [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]})
+   :from   [[NativeQuerySnippet :nqs]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod collection-children-query :timeline
+  [_ collection {:keys [archived?]}]
+  ;; might need "poison" this query when asking for pinned items
+  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+   :from   [[Timeline :timeline]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :timeline
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
@@ -347,7 +361,8 @@
     :dataset    Card
     :dashboard  Dashboard
     :pulse      Pulse
-    :snippet    NativeQuerySnippet))
+    :snippet    NativeQuerySnippet
+    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -366,7 +381,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :display :model :collection_position :authority_level
-   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status
+   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
 (defn- add-missing-columns
@@ -387,7 +402,8 @@
                   :dataset    3
                   :card       4
                   :snippet    5
-                  :collection 6}]
+                  :collection 6
+                  :timeline   7}]
     (conj select-clause [(get rankings model 100)
                          :model_ranking])))
 
@@ -478,9 +494,9 @@
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models], :as options} :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet]
+  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models], :as options}                     :- CollectionChildrenOptions]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
