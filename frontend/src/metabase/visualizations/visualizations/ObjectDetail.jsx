@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import { NotFound } from "metabase/containers/ErrorPages";
 import {
   isID,
   isPK,
@@ -78,8 +79,18 @@ export class ObjectDetail extends Component {
     ...columnSettings({ hidden: true }),
   };
 
+  state = {
+    hasNotFoundError: false,
+  };
+
   componentDidMount() {
-    const { table } = this.props;
+    const { data, table, zoomedRow, zoomedRowID } = this.props;
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (data && notFoundObject) {
+      this.setState({ hasNotFoundError: true });
+      return;
+    }
+
     if (table && table.fks == null) {
       this.props.fetchTableFks(table.id);
     }
@@ -88,6 +99,16 @@ export class ObjectDetail extends Component {
       this.props.loadObjectDetailFKReferences();
     }
     window.addEventListener("keydown", this.onKeyDown, true);
+  }
+
+  componentDidUpdate(prevProps) {
+    const { data: prevData } = prevProps;
+    const { data, zoomedRow, zoomedRowID } = this.props;
+    const queryCompleted = !prevData && data;
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (queryCompleted && notFoundObject) {
+      this.setState({ hasNotFoundError: true });
+    }
   }
 
   componentWillUnmount() {
@@ -328,6 +349,9 @@ export class ObjectDetail extends Component {
     const { data, zoomedRow, canZoomPreviousRow, canZoomNextRow } = this.props;
     if (!data) {
       return false;
+    }
+    if (this.state.hasNotFoundError) {
+      return <NotFound />;
     }
 
     const canZoom = !!zoomedRow;

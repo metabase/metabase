@@ -8,26 +8,25 @@ describe("scenarios > question > object details", () => {
   const SECOND_ORDER_ID = 10874;
   const THIRD_ORDER_ID = 11246;
 
+  const TEST_QUESTION = {
+    query: {
+      "source-table": ORDERS_ID,
+      filter: [
+        "and",
+        [">", ["field", ORDERS.TOTAL, null], 149],
+        [">", ["field", ORDERS.TAX, null], 10],
+        ["not-null", ["field", ORDERS.DISCOUNT, null]],
+      ],
+    },
+  };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          filter: [
-            "and",
-            [">", ["field", ORDERS.TOTAL, null], 149],
-            [">", ["field", ORDERS.TAX, null], 10],
-            ["not-null", ["field", ORDERS.DISCOUNT, null]],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
   });
 
   it("handles browsing records by PKs", () => {
+    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
     getFirstTableColumn()
       .eq(1)
       .should("contain", FIRST_ORDER_ID)
@@ -55,6 +54,7 @@ describe("scenarios > question > object details", () => {
   });
 
   it("handles browsing records by FKs", () => {
+    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
     const FIRST_USER_ID = 1283;
 
     cy.findByText(String(FIRST_USER_ID)).click();
@@ -68,6 +68,17 @@ describe("scenarios > question > object details", () => {
     getNextObjectDetailButton().click();
     getNextObjectDetailButton().click();
     assertUserDetailView({ id: FIRST_USER_ID + 1 });
+  });
+
+  it("handles opening a filtered out record", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    const FILTERED_OUT_ID = 1;
+
+    cy.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
+      cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
+      cy.wait("@cardQuery");
+      cy.findByText("The page you asked for couldn't be found.");
+    });
   });
 });
 
