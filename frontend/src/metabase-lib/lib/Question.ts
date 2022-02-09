@@ -1298,6 +1298,3 @@ export default class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 }
-window.Question = Question;
-window.NativeQuery = NativeQuery;
-window.StructuredQuery = StructuredQuery;
