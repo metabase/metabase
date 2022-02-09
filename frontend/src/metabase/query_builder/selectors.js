@@ -14,7 +14,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-
+import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
@@ -85,6 +85,33 @@ export const getQueryResults = createSelector(
 
 export const getFirstQueryResult = createSelector([getQueryResults], results =>
   Array.isArray(results) ? results[0] : null,
+);
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult],
+  result => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+    return cols.findIndex(isPK);
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
 );
 
 // get instance settings, used for determining whether to display certain actions
@@ -327,6 +354,18 @@ export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
     card && metadata && new Question(card, metadata, parameterValues),
+);
+
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+
+const getZoomedObjectRowIndex = createSelector(
+  [getPKRowIndexMap, getZoomedObjectId],
+  (PKRowIndexMap, objectId) => {
+    if (!PKRowIndexMap) {
+      return;
+    }
+    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+  },
 );
 
 export const getMode = createSelector(
