@@ -24,6 +24,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.timeline :refer [Timeline]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -506,6 +507,18 @@
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
+
+(api/defendpoint GET "/root/timelines"
+  "Fetch a specific Collection's timelines."
+  ;; todo: do we care about `archived` option?
+  []
+  (hydrate (db/select Timeline :collection_id nil) :timeline-events))
+
+(api/defendpoint GET "/:id/timelines"
+  "Fetch a specific Collection's timelines."
+  ;; todo: do we care about `archived` option?
+  [id]
+  (hydrate (db/select Timeline :collection_id id) :timeline-events))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
