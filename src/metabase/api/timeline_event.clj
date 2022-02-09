@@ -41,9 +41,7 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
-  (let [event (api/check-404 (TimelineEvent id))]
-    (api/read-check (Timeline (:timeline_id event)))
-    event))
+  (api/read-check TimelineEvent id))
 
 (api/defendpoint PUT "/:id"
   "Update a [[TimelineEvent]]."
@@ -58,11 +56,7 @@
    icon         (s/maybe s/Str)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
-  (let [existing (api/check-404 (TimelineEvent id))]
-    ;; todo: we can do db operations in the permissions (makes sense, we're doing them anyways. that's the cost of
-    ;; this. so either do it in the protocol or manually so of course go for protocol. check out dashboard card for a
-    ;; similar situation
-    (api/write-check Timeline (:timeline_id existing))
+  (let [existing (api/write-check TimelineEvent id)]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (db/update! TimelineEvent id
