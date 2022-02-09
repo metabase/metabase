@@ -62,6 +62,9 @@ import {
   getNativeEditorSelectedText,
   getSnippetCollectionId,
   getQueryResults,
+  getZoomedObjectId,
+  getPreviousRowPKValue,
+  getNextRowPKValue,
   isBasedOnExistingQuestion,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
@@ -1519,55 +1522,21 @@ export const loadObjectDetailFKReferences = createThunkAction(
 export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
-export const VIEW_NEXT_OBJECT_DETAIL = "metabase/qb/VIEW_NEXT_OBJECT_DETAIL";
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const filter = question.query().filters()[0];
-
-    const newFilter = ["=", filter[1], parseInt(filter[2]) + 1];
-
-    dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
-
-    dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
-    );
-
-    dispatch(runQuestionQuery());
+    const objectId = getNextRowPKValue(getState());
+    if (objectId != null) {
+      dispatch(zoomInRow({ objectId }));
+    }
   };
 };
 
-export const VIEW_PREVIOUS_OBJECT_DETAIL =
-  "metabase/qb/VIEW_PREVIOUS_OBJECT_DETAIL";
-
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const filter = question.query().filters()[0];
-
-    if (filter[2] === 1) {
-      return false;
+    const objectId = getPreviousRowPKValue(getState());
+    if (objectId != null) {
+      dispatch(zoomInRow({ objectId }));
     }
-
-    const newFilter = ["=", filter[1], parseInt(filter[2]) - 1];
-
-    dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
-
-    dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
-    );
-
-    dispatch(runQuestionQuery());
   };
 };
 
