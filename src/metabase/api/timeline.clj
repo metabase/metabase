@@ -29,7 +29,7 @@
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
-  {name          su/NonBlankString
+  {name          (s/maybe su/NonBlankString)
    description   (s/maybe s/Str)
    ;; todo: there are six valid ones. What are they?
    icon          (s/maybe s/Str)
