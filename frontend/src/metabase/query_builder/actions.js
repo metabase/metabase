@@ -23,7 +23,6 @@ import {
   deserializeCardFromUrl,
   serializeCardForUrl,
   cleanCopyCard,
-  urlForCardState,
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
@@ -87,6 +86,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import {
+  getCurrentQueryParams,
+  getURLForCardState,
   getQueryBuilderModeFromLocation,
   getPathNameFromQueryBuilderMode,
   getNextTemplateTagVisibilityState,
@@ -248,6 +249,7 @@ export const updateUrl = createThunkAction(
       preserveParameters = true,
       queryBuilderMode,
       datasetEditorTab,
+      objectId,
     } = {},
   ) => (dispatch, getState) => {
     let question;
@@ -285,10 +287,12 @@ export const updateUrl = createThunkAction(
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
+      objectId,
     };
 
     const { currentState } = getState().qb;
-    const url = urlForCardState(newState, dirty);
+    const queryParams = preserveParameters ? getCurrentQueryParams() : {};
+    const url = getURLForCardState(newState, dirty, queryParams, objectId);
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
@@ -297,7 +301,7 @@ export const updateUrl = createThunkAction(
         queryBuilderMode,
         datasetEditorTab,
       }),
-      search: preserveParameters ? window.location.search : "",
+      search: urlParsed.search,
       hash: urlParsed.hash,
       state: newState,
     };
@@ -1414,6 +1418,7 @@ export const cancelQuery = () => (dispatch, getState) => {
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const zoomInRow = ({ objectId }) => dispatch => {
   dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
+  dispatch(updateUrl(null, { objectId, replaceState: false }));
 };
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
