@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Motion, spring } from "react-motion";
-import { t } from "ttag";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Subhead from "metabase/components/type/Subhead";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -36,7 +34,7 @@ import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
-import QuestionDataSelector from "./QuestionDataSelector";
+import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 const DEFAULT_POPOVER_STATE = {
@@ -235,23 +233,10 @@ export default class View extends React.Component {
     const isNative = query instanceof NativeQuery;
 
     const isNewQuestion =
-      query instanceof StructuredQuery &&
-      !query.sourceTableId() &&
-      !query.sourceQuery();
+      isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return (
-        <div className={fitClassNames}>
-          <div className="p4 mx2">
-            <QuestionDataSelector
-              query={query}
-              triggerElement={
-                <Subhead className="mb2">{t`Pick your data`}</Subhead>
-              }
-            />
-          </div>
-        </div>
-      );
+      return <NewQuestionView query={query} fitClassNames={fitClassNames} />;
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
