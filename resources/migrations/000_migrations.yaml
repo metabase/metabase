@@ -10075,6 +10075,44 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v43.00-004
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline collection_id
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v43.00-005
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline_event timeline_id
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v43.00-006
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline timestamp
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id_timestamp
+            columns:
+              - column:
+                  name: timeline_id
+              - column:
+                  name: timestamp
+
   #
   # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
   #
