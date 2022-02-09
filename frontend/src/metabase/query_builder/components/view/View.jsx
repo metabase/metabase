@@ -1,17 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Motion, spring } from "react-motion";
-import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
-import DebouncedFrame from "metabase/components/DebouncedFrame";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
@@ -30,12 +26,23 @@ import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 
-import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
+import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
+
+import {
+  QueryBuilderViewRoot,
+  QueryBuilderContentContainer,
+  QueryBuilderMain,
+  QueryBuilderViewHeaderContainer,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
+  StyledDebouncedFrame,
+  StyledSyncedParametersList,
+} from "./View.styled";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -216,20 +223,15 @@ export default class View extends React.Component {
         style={isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }}
       >
         {({ opacity }) => (
-          <div className="flex-no-shrink z3 bg-white relative">
-            <ViewTitleHeader
-              {...this.props}
-              style={{ opacity }}
-              py={1}
-              className="border-bottom"
-            />
+          <QueryBuilderViewHeaderContainer>
+            <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
             {opacity < 1 && (
               <NewQuestionHeader
                 className="spread"
                 style={{ opacity: 1 - opacity }}
               />
             )}
-          </div>
+          </QueryBuilderViewHeaderContainer>
         )}
       </Motion>
     );
@@ -293,6 +295,7 @@ export default class View extends React.Component {
     if (!card || !databases) {
       return <LoadingAndErrorWrapper className={fitClassNames} loading />;
     }
+
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
@@ -328,10 +331,9 @@ export default class View extends React.Component {
 
     return (
       <div className={fitClassNames}>
-        <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
+        <QueryBuilderViewRoot className="QueryBuilder">
           {this.renderHeader()}
-
-          <div className="flex flex-full relative">
+          <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
@@ -343,23 +345,18 @@ export default class View extends React.Component {
               {leftSidebar}
             </ViewSidebar>
 
-            <div
-              className={cx("flex-full flex flex-column flex-basis-none", {
-                "hide sm-show": isSidebarOpen,
-              })}
-            >
+            <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
               {isNative ? (
-                <div className="z2 hide sm-show border-bottom mb2">
+                <NativeQueryEditorContainer className="hide sm-show">
                   <NativeQueryEditor
                     {...this.props}
                     viewHeight={height}
                     isOpen={!card.dataset_query.native.query || isDirty}
                     datasetQuery={card && card.dataset_query}
                   />
-                </div>
+                </NativeQueryEditorContainer>
               ) : (
-                <SyncedParametersList
-                  className="mt2 ml3"
+                <StyledSyncedParametersList
                   parameters={this.props.parameters}
                   setParameterValue={this.props.setParameterValue}
                   commitImmediately
@@ -368,34 +365,30 @@ export default class View extends React.Component {
 
               <ViewSubHeader {...this.props} />
 
-              <DebouncedFrame
-                className="flex-full"
-                style={{ flexGrow: 1 }}
-                enabled={!isLiveResizable}
-              >
+              <StyledDebouncedFrame enabled={!isLiveResizable}>
                 <QueryVisualization
                   {...this.props}
+                  noHeader
+                  className="spread"
                   onAddSeries={onAddSeries}
                   onEditSeries={onEditSeries}
                   onRemoveSeries={onRemoveSeries}
                   onEditBreakout={onEditBreakout}
-                  noHeader
-                  className="spread"
                 />
-              </DebouncedFrame>
+              </StyledDebouncedFrame>
 
               {ModeFooter && (
                 <ModeFooter {...this.props} className="flex-no-shrink" />
               )}
 
               <ViewFooter {...this.props} className="flex-no-shrink" />
-            </div>
+            </QueryBuilderMain>
 
             <ViewSidebar side="right" isOpen={!!rightSidebar}>
               {rightSidebar}
             </ViewSidebar>
-          </div>
-        </div>
+          </QueryBuilderContentContainer>
+        </QueryBuilderViewRoot>
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
