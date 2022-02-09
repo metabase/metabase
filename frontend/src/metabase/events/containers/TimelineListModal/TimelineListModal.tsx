@@ -1,19 +1,30 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
+import EventTimelines from "metabase/entities/event-timelines";
+import { State } from "metabase-types/store";
 import TimelineListModal from "../../components/TimelineListModal";
-import { ModalProps } from "../../types";
+
+export interface TimelineListModalParams {
+  slug: string;
+}
+
+export interface TimelineListModalProps {
+  params: TimelineListModalParams;
+}
 
 const collectionProps = {
-  id: (props: ModalProps) => Urls.extractCollectionId(props.params.slug),
+  id: (state: State, props: TimelineListModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
-const mapStateToProps = () => ({
-  timelines: [],
+const timelineProps = () => ({
+  query: (state: State, props: TimelineListModalProps) => ({
+    collectionId: Urls.extractEntityId(props.params.slug),
+  }),
 });
 
 export default _.compose(
   Collections.load(collectionProps),
-  connect(mapStateToProps),
+  EventTimelines.loadList(timelineProps),
 )(TimelineListModal);

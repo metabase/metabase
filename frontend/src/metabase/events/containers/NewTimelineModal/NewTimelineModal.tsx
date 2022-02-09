@@ -4,11 +4,20 @@ import { goBack } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import NewTimelineModal from "../../components/NewTimelineModal";
+import { State } from "metabase-types/store";
 import { createTimeline } from "../../actions";
-import { ModalProps } from "../../types";
+
+export interface NewTimelineModalParams {
+  slug: string;
+}
+
+export interface NewTimelineModalProps {
+  params: NewTimelineModalParams;
+}
 
 const collectionProps = {
-  id: (props: ModalProps) => Urls.extractCollectionId(props.params.slug),
+  id: (state: State, props: NewTimelineModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const mapDispatchToProps = {

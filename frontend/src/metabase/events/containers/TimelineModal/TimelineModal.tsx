@@ -2,15 +2,26 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import EventTimelines from "metabase/entities/event-timelines";
+import { State } from "metabase-types/store";
 import TimelineModal from "../../components/TimelineModal";
-import { ModalProps } from "../../types";
+
+export interface TimelineModalParams {
+  slug: string;
+  timelineId: string;
+}
+
+export interface TimelineModalProps {
+  params: TimelineModalParams;
+}
 
 const collectionProps = {
-  id: (props: ModalProps) => Urls.extractCollectionId(props.params.slug),
+  id: (state: State, props: TimelineModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const timelineProps = {
-  id: (props: ModalProps) => Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, props: TimelineModalProps) =>
+    Urls.extractEntityId(props.params.timelineId),
 };
 
 export default _.compose(

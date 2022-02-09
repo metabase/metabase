@@ -4,16 +4,27 @@ import { goBack } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import EventTimelines from "metabase/entities/event-timelines";
+import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 import { createEvent } from "../../actions";
-import { ModalProps } from "../../types";
+
+export interface NewEventModalParams {
+  slug: string;
+  timelineId: string;
+}
+
+export interface NewEventModalProps {
+  params: NewEventModalParams;
+}
 
 const collectionProps = {
-  id: (props: ModalProps) => Urls.extractCollectionId(props.params.slug),
+  id: (state: State, props: NewEventModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const timelineProps = {
-  id: (props: ModalProps) => Urls.extractEntityId(props.params.timelineId),
+  id: (state: State, props: NewEventModalProps) =>
+    Urls.extractEntityId(props.params.timelineId),
 };
 
 const mapDispatchToProps = {

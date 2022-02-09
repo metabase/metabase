@@ -3,12 +3,21 @@ import _ from "underscore";
 import { goBack } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
+import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 import { createEventWithTimeline } from "../../actions";
-import { ModalProps } from "../../types";
+
+export interface NewEventWithTimelineModalParams {
+  slug: string;
+}
+
+export interface NewEventWithTimelineModalProps {
+  params: NewEventWithTimelineModalParams;
+}
 
 const collectionProps = {
-  id: (props: ModalProps) => Urls.extractCollectionId(props.params.slug),
+  id: (state: State, props: NewEventWithTimelineModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const mapDispatchToProps = {
