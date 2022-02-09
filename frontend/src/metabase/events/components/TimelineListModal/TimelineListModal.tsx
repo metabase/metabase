@@ -1,7 +1,6 @@
 import React from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, EventTimeline } from "metabase-types/api";
 import MenuModal from "../MenuModal";
@@ -17,6 +16,7 @@ import {
   EmptyStateText,
   ListRoot,
 } from "./TimelineListModal.styled";
+import Link from "metabase/core/components/Link";
 
 export interface TimelineListModalProps {
   collection: Collection;
@@ -29,18 +29,19 @@ const TimelineListModal = ({
   timelines,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
-  const hasTimelines = timelines.length > 0;
+  const hasItems = timelines.length > 0;
+  const title = hasItems ? t`Events` : t`${collection.name} events`;
 
   return (
     <MenuModal
-      title={t`Events`}
-      menu={hasTimelines && <TimelineMenu collection={collection} />}
+      title={title}
+      menu={hasItems && <TimelineMenu collection={collection} />}
       onClose={onClose}
     >
-      {hasTimelines ? (
+      {hasItems ? (
         <TimelineList timelines={timelines} />
       ) : (
-        <TimelineEmptyState />
+        <TimelineEmptyState collection={collection} />
       )}
     </MenuModal>
   );
@@ -96,14 +97,25 @@ const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
   return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };
 
-const TimelineEmptyState = (): JSX.Element => {
+export interface TimelineEmptyStateProps {
+  collection: Collection;
+}
+
+const TimelineEmptyState = ({
+  collection,
+}: TimelineEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
       <EmptyStateBody>
         <EmptyStateText>
           {t`Add events to Metabase to show important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateText>
-        <Button primary>{t`Add an event`}</Button>
+        <Link
+          className="Button Button--primary"
+          to={Urls.newTimelineAndEvent(collection)}
+        >
+          {t`Add an event`}
+        </Link>
       </EmptyStateBody>
     </EmptyStateRoot>
   );

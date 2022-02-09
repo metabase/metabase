@@ -297,6 +297,10 @@ export function newTimeline(collection) {
   return `${timelines(collection)}/new`;
 }
 
+export function newTimelineAndEvent(collection) {
+  return `${timelines(collection)}/new/event/new`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
