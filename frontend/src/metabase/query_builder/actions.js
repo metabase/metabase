@@ -1404,6 +1404,10 @@ export const cancelQuery = () => (dispatch, getState) => {
   }
 };
 
+export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
+export const zoomInRow = ({ objectId }) => dispatch => {
+  dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
+};
 // We use this for two things:
 // - counting the rows with this as an FK (loadObjectDetailFKReferences)
 // - following those links to a new card that's filtered (followForeignKey)
