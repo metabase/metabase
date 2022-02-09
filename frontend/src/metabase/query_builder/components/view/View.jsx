@@ -235,6 +235,46 @@ export default class View extends React.Component {
     );
   };
 
+  renderAggregationPopover = () => {
+    const { query } = this.props;
+    const { aggregationPopoverTarget, aggregationIndex } = this.state;
+    return (
+      <Popover
+        isOpen={!!aggregationPopoverTarget}
+        target={aggregationPopoverTarget}
+        onClose={this.handleClosePopover}
+      >
+        <AggregationPopover
+          query={query}
+          aggregation={
+            aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
+          }
+          onChangeAggregation={this.onChangeAggregation}
+          onClose={this.handleClosePopover}
+        />
+      </Popover>
+    );
+  };
+
+  renderBreakoutPopover = () => {
+    const { query } = this.props;
+    const { breakoutPopoverTarget, breakoutIndex } = this.state;
+    return (
+      <Popover
+        isOpen={!!breakoutPopoverTarget}
+        onClose={this.handleClosePopover}
+        target={breakoutPopoverTarget}
+      >
+        <BreakoutPopover
+          query={query}
+          breakout={breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0}
+          onChangeBreakout={this.onChangeBreakout}
+          onClose={this.handleClosePopover}
+        />
+      </Popover>
+    );
+  };
+
   render() {
     const {
       query,
@@ -248,12 +288,6 @@ export default class View extends React.Component {
       fitClassNames,
       height,
     } = this.props;
-    const {
-      aggregationIndex,
-      aggregationPopoverTarget,
-      breakoutIndex,
-      breakoutPopoverTarget,
-    } = this.state;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
@@ -298,7 +332,7 @@ export default class View extends React.Component {
           {this.renderHeader()}
 
           <div className="flex flex-full relative">
-            {query instanceof StructuredQuery && (
+            {isStructured && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
@@ -372,40 +406,8 @@ export default class View extends React.Component {
 
         <QueryModals {...this.props} />
 
-        {isStructured && (
-          <Popover
-            isOpen={!!aggregationPopoverTarget}
-            target={aggregationPopoverTarget}
-            onClose={this.handleClosePopover}
-          >
-            <AggregationPopover
-              query={query}
-              aggregation={
-                aggregationIndex >= 0
-                  ? query.aggregations()[aggregationIndex]
-                  : 0
-              }
-              onChangeAggregation={this.onChangeAggregation}
-              onClose={this.handleClosePopover}
-            />
-          </Popover>
-        )}
-        {isStructured && (
-          <Popover
-            isOpen={!!breakoutPopoverTarget}
-            onClose={this.handleClosePopover}
-            target={breakoutPopoverTarget}
-          >
-            <BreakoutPopover
-              query={query}
-              breakout={
-                breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0
-              }
-              onChangeBreakout={this.onChangeBreakout}
-              onClose={this.handleClosePopover}
-            />
-          </Popover>
-        )}
+        {isStructured && this.renderAggregationPopover()}
+        {isStructured && this.renderBreakoutPopover()}
       </div>
     );
   }
