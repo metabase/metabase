@@ -189,7 +189,7 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status)))
+    (dissoc row :description :display :authority_level :moderated_status :icon)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
@@ -216,7 +216,9 @@
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
-    (dissoc row :description :collection_position :display :authority_level :moderated_status)))
+    (dissoc row
+            :description :collection_position :display :authority_level
+            :moderated_status :icon)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
@@ -268,7 +270,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level) rows) :favorite))
+  (hydrate (map #(dissoc % :authority_level :icon) rows) :favorite))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -295,7 +297,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -320,7 +322,7 @@
     ;; don't get models back from ulterior over-query
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
-    (assoc (dissoc row :collection_position :display :moderated_status)
+    (assoc (dissoc row :collection_position :display :moderated_status :icon)
            :can_write
            (mi/can-write? Collection (:id row)))))
 
