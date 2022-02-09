@@ -1,11 +1,13 @@
 import React from "react";
 import { Event } from "metabase-types/api";
 import {
+  CardBody,
   CardRoot,
   CardThread,
   CardThreadIcon,
   CardThreadIconContainer,
   CardThreadStroke,
+  CardTitle,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -21,6 +23,9 @@ const EventCard = ({ event }: EventCardProps): JSX.Element => {
         </CardThreadIconContainer>
         <CardThreadStroke />
       </CardThread>
+      <CardBody>
+        <CardTitle>{event.name}</CardTitle>
+      </CardBody>
     </CardRoot>
   );
 };
