@@ -29,7 +29,7 @@ const timelineProps = {
 
 const mapDispatchToProps = {
   onSubmit: createEvent,
-  onCancel: goBack,
+  onClose: goBack,
 };
 
 export default _.compose(

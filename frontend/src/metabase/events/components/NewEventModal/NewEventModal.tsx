@@ -10,14 +10,14 @@ export interface NewEventModalProps {
   collection: Collection;
   timeline?: EventTimeline;
   onSubmit: (values: Partial<Event>, collection: Collection) => void;
-  onCancel: () => void;
+  onClose: () => void;
 }
 
 const NewEventModal = ({
   collection,
   timeline,
   onSubmit,
-  onCancel,
+  onClose,
 }: NewEventModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
     return { timeline_id: timeline?.id };
@@ -26,20 +26,21 @@ const NewEventModal = ({
   const handleSubmit = useCallback(
     async (values: Partial<Event>) => {
       await onSubmit(values, collection);
+      onClose();
     },
-    [collection, onSubmit],
+    [collection, onSubmit, onClose],
   );
 
   return (
     <div>
-      <ModalHeader title={t`New event`} />
+      <ModalHeader title={t`New event`} onClose={onClose} />
       <ModalBody>
         <Form
           form={forms.collection}
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
-          onClose={onCancel}
+          onClose={onClose}
         />
       </ModalBody>
     </div>

@@ -9,13 +9,13 @@ import { ModalBody } from "./NewTimelineModal.styled";
 export interface NewTimelineModalProps {
   collection: Collection;
   onSubmit: (values: Partial<EventTimeline>, collection: Collection) => void;
-  onCancel: () => void;
+  onClose: () => void;
 }
 
 const NewTimelineModal = ({
   collection,
   onSubmit,
-  onCancel,
+  onClose,
 }: NewTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
     return { collection_id: collection.id };
@@ -24,8 +24,9 @@ const NewTimelineModal = ({
   const handleSubmit = useCallback(
     async (values: Partial<EventTimeline>) => {
       await onSubmit(values, collection);
+      onClose();
     },
-    [collection, onSubmit],
+    [collection, onSubmit, onClose],
   );
 
   return (
@@ -37,7 +38,7 @@ const NewTimelineModal = ({
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
-          onClose={onCancel}
+          onClose={onClose}
         />
       </ModalBody>
     </div>

@@ -22,7 +22,7 @@ const collectionProps = {
 
 const mapDispatchToProps = {
   onSubmit: createTimeline,
-  onCancel: goBack,
+  onClose: goBack,
 };
 
 export default _.compose(

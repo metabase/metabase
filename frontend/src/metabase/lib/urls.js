@@ -305,6 +305,10 @@ export function newTimelineAndEvent(collection) {
   return `${timelines(collection)}/new/event/new`;
 }
 
+export function editTimeline(collection, timelineId) {
+  return `${timeline(collection, timelineId)}/edit`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;

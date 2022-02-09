@@ -1,3 +1,5 @@
+import { connect } from "react-redux";
+import { goBack } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
@@ -24,7 +26,12 @@ const timelineProps = {
     Urls.extractEntityId(props.params.timelineId),
 };
 
+const mapDispatchToProps = {
+  onClose: goBack,
+};
+
 export default _.compose(
   Collections.load(collectionProps),
   EventTimelines.load(timelineProps),
+  connect(null, mapDispatchToProps),
 )(TimelineModal);

@@ -2,6 +2,7 @@ import React from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
+import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, EventTimeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import {
@@ -33,7 +34,9 @@ const TimelineListModal = ({
 
   return (
     <div>
-      <ModalHeader title={t`Events`} onClose={onClose} />
+      <ModalHeader title={t`Events`} onClose={onClose}>
+        <TimelineMenu collection={collection} />
+      </ModalHeader>
       <ModalBody>
         {hasItems ? (
           <TimelineList timelines={timelines} />
@@ -78,6 +81,21 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
       </CardInfo>
     </CardRoot>
   );
+};
+
+export interface TimelineMenuProps {
+  collection: Collection;
+}
+
+const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
+  const items = [
+    {
+      title: t`New timeline`,
+      link: Urls.newTimeline(collection),
+    },
+  ];
+
+  return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };
 
 export interface TimelineEmptyStateProps {
