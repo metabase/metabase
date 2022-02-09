@@ -56,6 +56,9 @@ export function RevisionBatchedDescription({ changes }) {
 function capitalizeChangeRecord(change) {
   if (Array.isArray(change)) {
     const [first, ...rest] = change;
+    if (Array.isArray(first)) {
+      return capitalizeChangeRecord(first);
+    }
     return [capitalize(first, { lowercase: false }), ...rest];
   }
   return capitalize(change, { lowercase: false });
