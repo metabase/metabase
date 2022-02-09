@@ -36,7 +36,6 @@
             [metabase.api.testing :as testing]
             [metabase.api.tiles :as tiles]
             [metabase.api.timeline :as timeline]
-            ;; todo: singularize these
             [metabase.api.timeline-event :as timeline-event]
             [metabase.api.transform :as transform]
             [metabase.api.user :as user]
