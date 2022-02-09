@@ -108,7 +108,7 @@ export default class PartialQueryBuilder extends Component {
     const previewCard = {
       dataset_query: datasetQuery,
     };
-    const previewUrl = Urls.question(null, { hash: previewCard });
+    const previewUrl = Urls.serializedQuestion(previewCard);
 
     return (
       <div className="py1">

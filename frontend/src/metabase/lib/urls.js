@@ -75,8 +75,8 @@ export function question(card, { hash = "", query = "" } = {}) {
   return `${path}${query}${hash}`;
 }
 
-export function serializedQuestion(card) {
-  return question(null, { hash: card });
+export function serializedQuestion(card, opts = {}) {
+  return question(null, { ...opts, hash: card });
 }
 
 export const extractQueryParams = query => {
