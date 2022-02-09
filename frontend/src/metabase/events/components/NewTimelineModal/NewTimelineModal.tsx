@@ -2,13 +2,13 @@ import React from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/event-timelines/forms";
-import { Collection } from "metabase-types/api";
+import { Collection, EventTimeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewTimelineModal.styled";
 
 export interface NewTimelineModalProps {
-  collection: Collection;
-  onSubmit?: () => void;
+  collection?: Collection;
+  onSubmit?: (values: Partial<EventTimeline>) => void;
   onCancel?: () => void;
 }
 
@@ -17,7 +17,7 @@ const NewTimelineModal = ({
   onSubmit,
   onCancel,
 }: NewTimelineModalProps): JSX.Element => {
-  const initialValues = { collection_id: collection.id };
+  const initialValues = { collection_id: collection?.id };
 
   return (
     <div>

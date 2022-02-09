@@ -1,4 +1,25 @@
 import { t } from "ttag";
+import { Collection, Event, EventTimeline } from "metabase-types/api";
+
+export const getDefaultEvent = (
+  values: Partial<Event>,
+  timeline: EventTimeline,
+): Partial<Event> => {
+  return {
+    ...values,
+    timeline_id: timeline.id,
+  };
+};
+
+export const getDefaultTimeline = (
+  collection: Collection,
+): Partial<EventTimeline> => {
+  return {
+    name: t`${collection.name} events`,
+    collection_id: collection.id,
+    default_icon: "star",
+  };
+};
 
 export const getEventIcons = () => {
   return [
