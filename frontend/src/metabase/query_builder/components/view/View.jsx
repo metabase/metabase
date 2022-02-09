@@ -153,6 +153,7 @@ export default class View extends React.Component {
       isShowingFilterSidebar,
       runQuestionQuery,
       onCloseSummary,
+      onCloseFilter,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -167,9 +168,7 @@ export default class View extends React.Component {
     }
 
     if (isShowingFilterSidebar) {
-      return (
-        <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
-      );
+      return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
     return null;
@@ -238,7 +237,19 @@ export default class View extends React.Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, card, mode, isDirty, isLiveResizable, height } = this.props;
+    const {
+      query,
+      card,
+      mode,
+      parameters,
+      isDirty,
+      isLiveResizable,
+      isPreviewable,
+      isPreviewing,
+      height,
+      setParameterValue,
+      setIsPreviewing,
+    } = this.props;
 
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
@@ -270,13 +281,17 @@ export default class View extends React.Component {
           </NativeQueryEditorContainer>
         ) : (
           <StyledSyncedParametersList
-            parameters={this.props.parameters}
-            setParameterValue={this.props.setParameterValue}
+            parameters={parameters}
+            setParameterValue={setParameterValue}
             commitImmediately
           />
         )}
 
-        <ViewSubHeader {...this.props} />
+        <ViewSubHeader
+          isPreviewable={isPreviewable}
+          isPreviewing={isPreviewing}
+          setIsPreviewing={setIsPreviewing}
+        />
 
         <StyledDebouncedFrame enabled={!isLiveResizable}>
           <QueryVisualization
@@ -341,12 +356,14 @@ export default class View extends React.Component {
 
   render() {
     const {
+      question,
       query,
       card,
       databases,
       isShowingNewbModal,
       queryBuilderMode,
       fitClassNames,
+      closeQbNewbModal,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -396,8 +413,8 @@ export default class View extends React.Component {
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
-            question={this.props.question}
-            onClose={() => this.props.closeQbNewbModal()}
+            question={question}
+            onClose={() => closeQbNewbModal()}
           />
         )}
 
