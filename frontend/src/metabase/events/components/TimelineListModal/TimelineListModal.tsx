@@ -1,9 +1,9 @@
 import React from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import EntityMenu from "metabase/components/EntityMenu";
+import Link from "metabase/core/components/Link";
+import ModalContent from "metabase/components/ModalContent";
 import { Collection, EventTimeline } from "metabase-types/api";
-import MenuModal from "../MenuModal";
 import {
   CardBody,
   CardDescription,
@@ -16,7 +16,6 @@ import {
   EmptyStateText,
   ListRoot,
 } from "./TimelineListModal.styled";
-import Link from "metabase/core/components/Link";
 
 export interface TimelineListModalProps {
   collection: Collection;
@@ -32,17 +31,13 @@ const TimelineListModal = ({
   const hasItems = timelines.length > 0;
 
   return (
-    <MenuModal
-      title={t`Events`}
-      menu={hasItems && <TimelineMenu collection={collection} />}
-      onClose={onClose}
-    >
+    <ModalContent title={t`Events`} onClose={onClose}>
       {hasItems ? (
         <TimelineList timelines={timelines} />
       ) : (
         <TimelineEmptyState collection={collection} />
       )}
-    </MenuModal>
+    </ModalContent>
   );
 };
 
@@ -79,21 +74,6 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
       </CardInfo>
     </CardRoot>
   );
-};
-
-export interface TimelineMenuProps {
-  collection: Collection;
-}
-
-const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
-  const items = [
-    {
-      title: t`New timeline`,
-      link: Urls.newTimeline(collection),
-    },
-  ];
-
-  return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };
 
 export interface TimelineEmptyStateProps {

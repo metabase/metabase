@@ -7,7 +7,6 @@ export const ListRoot = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 2rem;
 `;
 
 export const CardRoot = styled(Link)`
@@ -53,7 +52,6 @@ export const EmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
 `;
 
 export const EmptyStateBody = styled.div`
