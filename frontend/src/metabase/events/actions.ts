@@ -1,12 +1,10 @@
 import { push } from "react-router-redux";
+import { getDefaultTimeline } from "metabase/lib/events";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import Events from "metabase/entities/events";
 import EventTimelines from "metabase/entities/event-timelines";
 import { Collection, Event, EventTimeline } from "metabase-types/api";
-import { getDefaultTimeline } from "metabase/lib/events";
-
-type Dispatch = any;
 
 export const CREATE_EVENT = "metabase/events/CREATE_EVENT";
 export const createEvent = createThunkAction(
@@ -60,3 +58,5 @@ const createTimelineEntity = async (
   const action = await dispatch(EventTimelines.actions.create(values));
   return EventTimelines.HACK_getObjectFromAction(action);
 };
+
+type Dispatch = any;
