@@ -43,8 +43,10 @@
   (try
     (log/tracef "Purging cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
+    (log/trace "Successfully purged old cache entries.")
+    :done
     (catch Throwable e
-      (log/error e (trs "Error purging old cache entries")))))
+      (log/error e (trs "Error purging old cache entries: {0}" (ex-message e))))))
 
 (defn- min-duration-ms
   "Minimum duration it must take a query to complete in order for it to be eligible for caching."
@@ -79,13 +81,15 @@
       (if-not (instance? (Class/forName "[B") bytez)
         (log/error (trs "Cannot cache results: expected byte array, got {0}" (class bytez)))
         (do
+          (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
-          (log/debug (trs "Successfully cached results for query."))
+          (log/debug "Successfully cached results for query.")
           (purge! *backend*))))
+    :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
         (log/debug e (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
-        (log/error e (trs "Error saving query results to cache."))))))
+        (log/error e (trs "Error saving query results to cache: {0}" (ex-message e)))))))
 
 (defn- save-results-xform [start-time metadata query-hash rf]
   (let [has-rows? (volatile! false)]
@@ -164,8 +168,8 @@
       (log/debug (trs "Request is closed; no one to return cached results to"))
       ::canceled)
     (catch Throwable e
-      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}"
-                        (i/short-hex-hash query-hash)))
+      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
+                        (i/short-hex-hash query-hash) (ex-message e)))
       ::miss)))
 
 

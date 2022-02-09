@@ -57,7 +57,7 @@
       pretty/PrettyPrintable
       (pretty [_]
         (str "\n"
-             (metabase.util/pprint-to-str 'blue
+             (u/pprint-to-str 'blue
                (for [[hash {:keys [created]}] @store]
                  [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
@@ -69,7 +69,7 @@
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]
         (let [hex-hash (codecs/bytes->hex query-hash)]
-          (log/tracef "Fetch results for %s store: %s" hex-hash this)
+          (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
           (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
                                                                                (when (= hash hex-hash)
                                                                                  entry))
@@ -84,7 +84,7 @@
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
-          (log/tracef "Save results for %s --> store: %s" hex-hash this))
+          (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
 
       (purge-old-entries! [this max-age-seconds]
@@ -92,12 +92,12 @@
                        (into {} (filter (fn [[_ {:keys [created]}]]
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
-        (log/tracef "Purge old entries --> store: %s" this)
+        (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge)))))
 
 (defn do-with-mock-cache [f]
-  (mt/with-open-channels [save-chan  (a/chan 1)
-                          purge-chan (a/chan 1)]
+  (mt/with-open-channels [save-chan  (a/chan 10)
+                          purge-chan (a/chan 10)]
     (mt/with-temporary-setting-values [enable-query-caching  true
                                        query-caching-max-ttl 60
                                        query-caching-min-ttl 0]
