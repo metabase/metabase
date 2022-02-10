@@ -4,6 +4,7 @@ import NewEventModal from "../../containers/NewEventModal";
 import NewTimelineModal from "../../containers/NewTimelineModal";
 import TimelineListModal from "../../containers/TimelineListModal";
 import TimelineModal from "../../containers/TimelineModal";
+import NewEventWithTimelineModal from "../../containers/NewEventWithTimelineModal";
 
 export interface TimelineAppProps {
   mode: TimelineMode;
@@ -19,6 +20,8 @@ const TimelineApp = ({ mode }: TimelineAppProps): JSX.Element | null => {
       return <NewTimelineModal />;
     case "timeline-event-new":
       return <NewEventModal />;
+    case "timeline-event-new-default":
+      return <NewEventWithTimelineModal />;
     default:
       return null;
   }

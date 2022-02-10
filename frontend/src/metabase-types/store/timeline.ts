@@ -4,6 +4,7 @@ export type TimelineMode =
   | "timeline-new"
   | "timeline-edit"
   | "timeline-event-new"
+  | "timeline-event-new-default"
   | "timeline-event-edit";
 
 export interface TimelineState {

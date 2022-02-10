@@ -7,7 +7,7 @@ import { getCollectionId, getTimelineQuery } from "../../selectors";
 import { setMode } from "metabase/timelines/actions";
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onCreateEvent: () => dispatch(setMode("timeline")),
+  onCreateEvent: () => dispatch(setMode("timeline-event-new-default")),
   onCreateTimeline: () => dispatch(setMode("timeline-new")),
 });
 
