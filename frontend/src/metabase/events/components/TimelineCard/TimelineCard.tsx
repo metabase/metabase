@@ -18,7 +18,7 @@ const TimelineCard = ({
   timeline,
   collection,
 }: TimelineCardProps): JSX.Element => {
-  const url = Urls.timeline(timeline, collection);
+  const url = Urls.timeline(timeline.id, collection);
 
   return (
     <CardRoot to={url}>
