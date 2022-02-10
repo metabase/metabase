@@ -2,7 +2,6 @@ import {
   restore,
   popover,
   visualize,
-  openOrdersTable,
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
@@ -17,19 +16,6 @@ describe("binning related reproductions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  // This is basically covered with tests in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
-  it("should not render duplicated values in date binning popover (metabase#15574)", () => {
-    openOrdersTable({ mode: "notebook" });
-    summarize({ mode: "notebook" });
-    cy.findByText("Pick a column to group by").click();
-
-    changeBinningForDimension({
-      name: "Created At",
-      fromBinning: "by month",
-      toBinning: "Minute",
-    });
   });
 
   it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {

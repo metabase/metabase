@@ -98,6 +98,9 @@ const LONGITUDE_BUCKETS = [
  * Makes sure that all binning options (bucket sizes) are rendered correctly for the regular table.
  *  1. no option should be rendered multiple times
  *  2. the selected option should be highlighted when the popover with all options opens
+ *
+ * This spec covers the following issues:
+ *  - metabase#15574
  */
 
 describe("scenarios > binning > binning options", () => {
