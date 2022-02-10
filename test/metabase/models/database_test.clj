@@ -218,39 +218,21 @@
 
 (deftest user-may-not-update-sample-database-test
   (binding [api/*current-user-id* (mt/user->id :crowberto)]
-    (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :my-engine
+    (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
                                                                       :is_sample true
-                                                                      :name      "the sample database"
+                                                                      :name      "Sample Database"
                                                                       :details   {:host "localhost" :password-value "my-password-123"}}]
-      (testing " updating the details of a sample database is not allowed"
-        (try (db/update! Database id :details (assoc details :host "new-host"))
-             (catch Exception e
-               (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
-               (is (= {:status-code      400,
-                       :existing-engine  :my-engine,
-                       :is-sample?       true
-                       :new-engine       nil,
-                       :existing-details nil,
-                       :new-details      {:host "new-host", :password-value "my-password-123"}}
-                      (ex-data e))))))
       (testing " updating the engine of a sample database is not allowed"
-        (try (db/update! Database id :engine :engine-X)
+        (try (db/update! Database id :engine :sqlite)
              (catch Exception e
-               (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
-               (is (= {:status-code      400,
-                       :existing-engine  :my-engine,
-                       :is-sample?       true
-                       :new-details      nil,
-                       :existing-details nil,
-                       :new-engine       :engine-X}
+               (is (= "The engine on a sample database cannot be changed." (.getMessage e)))
+               (is (= {:status-code     400,
+                       :existing-engine :h2
+                       :new-engine      :sqlite}
                       (ex-data e))))))
       (testing " updating other attributes of a sample database is allowed"
-        (db/update! Database id :name "Big Joe's Data Rows")
-        (is (= "Big Joe's Data Rows" (db/select-one-field :name Database :id id))))
-      (testing " updating the engine of a sample database is allowed when mdb/*allow-sample-update?* is true"
-        (binding [database/*allow-sample-update?* true]
-          (db/update! Database id :engine :engine-x)
-          (is (= :engine-x (db/select-one-field :engine Database :id id))))))))
+        (db/update! Database id :name "My New Name")
+        (is (= "My New Name" (db/select-one-field :name Database :id id)))))))
 
 (driver/register! ::test, :abstract? true)
 

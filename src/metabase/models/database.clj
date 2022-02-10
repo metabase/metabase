@@ -143,31 +143,27 @@
 (defn- pre-update
   [{new-metadata-schedule    :metadata_sync_schedule,
     new-fieldvalues-schedule :cache_field_values_schedule,
-    new-details              :details
     new-engine               :engine
     :as                      database}]
   (let [{is-sample?               :is_sample
          old-metadata-schedule    :metadata_sync_schedule
          old-fieldvalues-schedule :cache_field_values_schedule
          existing-engine          :engine
-         existing-details         :details
          existing-name            :name} (db/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
                                                          :name
-                                                         :is_sample] :id (u/the-id database))]
+                                                         :is_sample] :id (u/the-id database))
+        new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
-             (not *allow-sample-update?*)
-             (or (and new-engine (not= new-engine existing-engine))
-                 (and new-details (not= new-details existing-details))))
-      (throw (ex-info (trs "The engine or details on a sample database cannot be changed.")
-                      {:status-code 400
-                       :is-sample? is-sample?
+             ;; TODO still needed?
+             ;; (false? *allow-sample-update?*)
+             (and new-engine (not= new-engine existing-engine)))
+      (throw (ex-info (trs "The engine on a sample database cannot be changed.")
+                      {:status-code     400
                        :existing-engine existing-engine
-                       :existing-details existing-details
-                       :new-engine new-engine
-                       :new-details new-details}))
+                       :new-engine      new-engine}))
       (u/prog1 (handle-secrets-changes database)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
