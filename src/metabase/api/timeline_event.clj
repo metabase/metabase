@@ -1,5 +1,5 @@
 (ns metabase.api.timeline-event
-  "/api/timeline_events endpoints."
+  "/api/timeline_event endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
