@@ -5,6 +5,7 @@ import {
   openNativeEditor,
   openNotebookEditor,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > native", () => {
@@ -141,16 +142,12 @@ describe("scenarios > question > native", () => {
         "**Final assertion: Count of rows with 'null' value should be 1**",
       );
       // "Count" is pre-selected option for "Summarize"
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
 
       cy.icon("close").click();
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       cy.icon("close").click();
       cy.findByText("Done").click();
     });

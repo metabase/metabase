@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, summarize } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -14,9 +14,7 @@ describe.skip("issue 16170", () => {
   });
 
   it("should correctly replace only the missing values with zero (metabase#16170)", () => {
-    cy.findAllByRole("button")
-      .contains("Summarize")
-      .click();
+    summarize();
 
     cy.findByTestId("sidebar-right")
       .findByText("Created At")

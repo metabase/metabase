@@ -3,6 +3,7 @@ import {
   sidebar,
   visualize,
   openNotebookEditor,
+  summarize,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -198,9 +199,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Pick your data").should("not.exist");
 
       // Summarize by date ordered
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       sidebar()
         .contains("Created At")
         .click();

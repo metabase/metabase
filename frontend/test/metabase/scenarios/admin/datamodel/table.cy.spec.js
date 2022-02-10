@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, filter } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -68,7 +68,7 @@ describe("scenarios > admin > databases > table", () => {
     it("simple question (metabase#15947-1)", () => {
       turnTableVisibilityOff(ORDERS_ID);
       cy.visit("/question/1");
-      cy.findByText("Filter");
+      filter();
     });
 
     it("question with joins (metabase#15947-2)", () => {
