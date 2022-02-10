@@ -9,12 +9,14 @@ import { ModalBody } from "./NewTimelineModal.styled";
 export interface NewTimelineModalProps {
   collection: Collection;
   onSubmit: (values: Partial<Timeline>) => void;
-  onClose: () => void;
+  onCancel: () => void;
+  onClose?: () => void;
 }
 
 const NewTimelineModal = ({
   collection,
   onSubmit,
+  onCancel,
   onClose,
 }: NewTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -30,7 +32,7 @@ const NewTimelineModal = ({
           initialValues={initialValues}
           isModal={true}
           onSubmit={onSubmit}
-          onClose={onClose}
+          onClose={onCancel}
         />
       </ModalBody>
     </div>

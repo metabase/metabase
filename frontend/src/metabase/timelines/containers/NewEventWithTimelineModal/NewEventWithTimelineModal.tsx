@@ -9,7 +9,7 @@ import { getCollectionId } from "../../selectors";
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) =>
     dispatch(createTimelineWithEvent(values, collection)),
-  onClose: () => dispatch(setMode("timeline-view")),
+  onCancel: () => dispatch(setMode("timeline-view")),
 });
 
 export default _.compose(

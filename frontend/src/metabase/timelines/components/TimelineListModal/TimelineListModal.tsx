@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
@@ -11,7 +12,6 @@ import {
   ListRoot,
   ModalBody,
 } from "./TimelineListModal.styled";
-import Button from "metabase/core/components/Button";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];

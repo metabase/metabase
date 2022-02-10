@@ -10,13 +10,15 @@ export interface NewEventModalProps {
   timeline?: Timeline;
   collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
-  onClose: () => void;
+  onCancel: () => void;
+  onClose?: () => void;
 }
 
 const NewEventModal = ({
   timeline,
   collection,
   onSubmit,
+  onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -39,7 +41,7 @@ const NewEventModal = ({
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
-          onClose={onClose}
+          onClose={onCancel}
         />
       </ModalBody>
     </div>
