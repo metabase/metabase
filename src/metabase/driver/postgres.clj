@@ -157,7 +157,7 @@
 
 (def ^:private ^:dynamic *enum-types* nil)
 
-;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
+; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
 ;; and used later in `database-type->base-type`, which you will find below.
 (defmethod driver/describe-table :postgres
@@ -170,7 +170,11 @@
 ;; since this one only applies to JSON fields.
 (defmethod driver/describe-table-json :postgres
   [driver database table]
-  ;;;;; implement here...
+  ;;; get connection
+  ;;; sample
+  ;;; determine if samey schema or not, somehow fast
+  ;;; if samey schema, make that field list
+  ;;; return that sucker
   )
 
 
