@@ -264,6 +264,16 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
+(defmulti describe-table-json
+  "Return information about the nestable columns in a `table`. Required for drivers that support `:nested-field-columns`. Results
+  should match the [[metabase.sync.interface/JSONMetadata]] schema."
+  {:arglists '([this database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod describe-table-json ::driver [_ _ _]
+  nil)
+
 (def ConnectionDetailsProperty
   "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
@@ -344,6 +354,9 @@
 
     ;; Does this database support nested fields (e.g. Mongo)?
     :nested-fields
+
+    ;; Does this database support nested fields but only for certain field types (e.g. Postgres and JSON / JSONB columns)?
+    :nested-field-columns
 
     ;; Does this driver support setting a timezone for the query?
     :set-timezone
