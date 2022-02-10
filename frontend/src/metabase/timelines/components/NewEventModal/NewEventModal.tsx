@@ -31,8 +31,8 @@ const NewEventModal = ({
   }, [timeline]);
 
   const handleSubmit = useCallback(
-    (values: Partial<TimelineEvent>) => {
-      return onSubmit(values, collection, timeline);
+    async (values: Partial<TimelineEvent>) => {
+      await onSubmit(values, collection, timeline);
     },
     [timeline, collection, onSubmit],
   );
