@@ -1,6 +1,6 @@
 export type TimelineMode =
-  | "timeline-list"
   | "timeline-view"
+  | "timeline-list"
   | "timeline-new"
   | "timeline-edit"
   | "timeline-event-new"

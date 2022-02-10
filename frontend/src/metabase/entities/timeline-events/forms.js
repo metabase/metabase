@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { getEventIcons } from "metabase/lib/timeline";
+import { getTimelineIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
 const FORM_FIELDS = [
@@ -27,7 +27,7 @@ const FORM_FIELDS = [
     title: t`Icon`,
     type: "select",
     initial: "star",
-    options: getEventIcons(),
+    options: getTimelineIcons(),
     validate: validate.required(),
   },
 ];
