@@ -54,6 +54,12 @@
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
 
+(def JSONMetadata
+  "Schema for the expected output of `describe-table-json`.
+  Recall that the TableMetadataFields are supposed to be flattened for `describe-table-json`,
+  which is why this one doesn't recurse."
+  (s/maybe #{#'TableMetadataField}))
+
 (def TimeZoneId
   "Schema predicate ensuring a valid time zone string"
   (s/pred (fn [tz-str]
