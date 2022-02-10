@@ -71,7 +71,7 @@ function PermissionsLink({
 
 function TimelinesLink({ collection }) {
   const tooltip = t`Event timelines`;
-  const link = `${Urls.collection(collection)}/timelines`;
+  const link = Urls.timelinesInCollection(collection);
 
   return (
     <Tooltip tooltip={tooltip}>
