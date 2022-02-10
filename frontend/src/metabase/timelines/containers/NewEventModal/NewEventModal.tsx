@@ -2,14 +2,13 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { Collection, TimelineEvent } from "metabase-types/api";
+import { TimelineEvent } from "metabase-types/api";
 import NewEventModal from "../../components/NewEventModal";
 import { createEvent, setMode } from "../../actions";
 import { getCollectionId, getTimelineId } from "../../selectors";
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: (values: Partial<TimelineEvent>, collection: Collection) =>
-    dispatch(createEvent(values, collection)),
+  onSubmit: (values: Partial<TimelineEvent>) => dispatch(createEvent(values)),
   onClose: () => dispatch(setMode("timeline-view")),
 });
 

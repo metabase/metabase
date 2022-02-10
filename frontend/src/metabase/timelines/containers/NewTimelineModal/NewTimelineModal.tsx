@@ -1,7 +1,17 @@
+import { connect } from "react-redux";
+import _ from "underscore";
 import Collections from "metabase/entities/collections";
+import { Timeline } from "metabase-types/api";
 import NewTimelineModal from "../../components/NewTimelineModal";
+import { createTimeline, setMode } from "../../actions";
 import { getCollectionId } from "../../selectors";
 
-export default Collections.load({
-  id: getCollectionId,
-})(NewTimelineModal);
+const mapDispatchToProps = (dispatch: any) => ({
+  onSubmit: (values: Partial<Timeline>) => dispatch(createTimeline(values)),
+  onClose: () => dispatch(setMode("timeline-list")),
+});
+
+export default _.compose(
+  Collections.load({ id: getCollectionId }),
+  connect(null, mapDispatchToProps),
+)(NewTimelineModal);
