@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, renderWithProviders, screen } from "__support__/ui";
+import { getCollectionChangeDescription } from "./revisions";
 import { RevisionTitle, RevisionBatchedDescription } from "./components";
 
 describe("RevisionTitle", () => {
@@ -39,5 +40,15 @@ describe("RevisionBatchedDescription", () => {
       />,
     );
     expect(screen.queryByText("Renamed this and moved to Our analytics"));
+  });
+
+  it("should handle nested messages (metabase#20414)", () => {
+    renderWithProviders(
+      <RevisionBatchedDescription
+        changes={[getCollectionChangeDescription(1, 2), "edited metadata"]}
+      />,
+    );
+    expect(screen.getByText(/Moved this to/)).toBeInTheDocument();
+    expect(screen.getByText(/edited metadata/)).toBeInTheDocument();
   });
 });

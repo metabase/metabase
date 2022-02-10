@@ -63,7 +63,7 @@ function getSeriesChangeDescription(prevCards, cards) {
     : t`removed series from a question`;
 }
 
-function getCollectionChangeDescription(prevCollectionId, collectionId) {
+export function getCollectionChangeDescription(prevCollectionId, collectionId) {
   const key = `collection-from-${prevCollectionId}-to-${collectionId}`;
   return [
     jt`moved this to ${(
