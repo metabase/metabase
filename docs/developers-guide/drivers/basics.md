@@ -130,27 +130,10 @@ The astute may have noticed that BigQuery is mentioned as having both `:sql` and
 ```clj
 (driver/register! :bigquery, :parent #{:sql :google})
 ```
-
-For drivers shipped as a plugin, this is done in the plugin manifest, which will be described in a later chapter.
-
 In some cases, both parents may provide an implementation for a method; to fix this ambiguity, simply provide an implementation for your driver and pass them to the preferred parent driver's implementation as described above.
 
-### Chapter Summary
-
-- Familiarize yourself with Clojure before proceeding
-- Metabase drivers do four things:
-  - provide basic information like capabilities of the DB, connection properties needed to connect to it, etc.
-  - provide information about the schema of the DB
-  - transpile MBQL queries to native queries
-  - run native queries and return results
-- Metabase drivers typically live in their own namespace; some also have additional `query-processor` or `sync` namespaces
-- Drivers must be registered before use; this is done automatically for drivers packaged as separate plugins
-- Drivers are nothing more than a series of multimethod implementations
-- Drivers can have one or more parent drivers to use shared functionality
-  - The most common parents are `:sql` and `:sql-jdbc`
-  - Most parent drivers define their own set of multimethods you must implement
-  - Use `get-method` to call a parent driver implementation; be sure to pass the `driver` argument as-is
+For drivers shipped as a plugin, you'll register methods in the plugin manifest.
 
 ## Next Up
 
-[Chapter 2: Packaging a Driver & Metabase Plugin Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Packaging-a-Driver-&-Metabase-Plugin-Basics)
+Packaging a driver as a [plugin](plugins.md).

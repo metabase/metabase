@@ -9,13 +9,21 @@ Before you start building a driver from scratch, see if one already exists that 
 - [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases)
 - [Community databases](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver)
 
-## Setting up
-
-See [Setting up your development environment](../devend.md)
-
 ## Writing a driver
 
-Avoid skipping right to whichever page you think will give you code to copy-pasta to write your driver. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better driver. 
+Avoid skipping right to whichever page you think will give you code you'll need to copy-pasta. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better one. 
+
+### Setting up
+
+Before you start working on a driver, you'll need to set up your [development environment](../devend.md).
+
+### Working with Clojure
+
+Having an in-depth understanding of Clojure is less important when writing JDBC-based drivers because their implementation is simpler -- much of the work is already done for you -- but it would still be helpful to understand what things like [multimethods](https://clojure.org/reference/multimethods) are.
+
+See also: [Working with Clojure](../clojure.md).
+
+### Driver resources
 
 - [Driver basics](basics.md)
 - [Packaging your driver](plugins.md)

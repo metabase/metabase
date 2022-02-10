@@ -1,9 +1,9 @@
 # Metabase plugins
 
-There are different ways a driver's namespaces and dependencies can be packaged:
+There are different ways you can package a driver's namespaces and dependencies:
 
 - Built-in to the core Metabase project.
-- In the same repository as the core Metabase project, but built as separate plugins; the plugins are bundled into the uberjar and extracted into the `plugins` directory on launch.
+- In the same repository as the core Metabase project, but built as a plugin. Metabase bundles the plugins into the uberjar and extracts them into the `plugins` directory on launch.
 - In a different repository, and built as a separate plugin. To use this kind of driver, you must manually copy the plugin into your `plugins` directory.
 
 ## Building a community driver
@@ -99,12 +99,12 @@ Now that we understand what Metabase plugins are, let's look at the different wa
 
 ## Drivers built-in to the core Metabase project
 
-This is the simplest method of shipping drivers; it's used for the `:postgres`, `:h2`, and `:mysql` drivers, as well as common parents like `:sql` and `:sql-jdbc`. (In fact, before Metabase 0.32, all drivers were shipped this way.)
+This is the simplest method of shipping drivers; it's used for the `:postgres`, `:h2`, and `:mysql` drivers, as well as common parents like `:sql` and `:sql-jdbc`.
 
-With this method, dependencies (i.e., JDBC drivers) are included in the core project's `project.clj`, and the drivers themselves are in the found in the same place all other Metabase source is. The file layout will look something like:
+With this method, dependencies (like JDBC drivers) are included in the core project's `deps.edn`. The file layout will look something like:
 
 ```clj
-metabase/project.clj                         ; <- deps go in here
+metabase/deps.edn                            ; <- deps go in here
 metabase/src/metabase/driver/mysql.clj       ; <- main driver namespace
 metabase/test/metabase/test/data/mysql.clj   ; <- test extensions
 metabase/test/metabase/driver/mysql_test.clj ; <- driver-specific tests go here
@@ -124,74 +124,40 @@ A typical plugin directory layout looks something like the [SQL plugin](https://
 
 #### `deps.edn`
 
-With this method, drivers are actually a separate Leiningen project, albeit one in the same Git repository as the core Metabase project. As a separate Leiningen project, it must have a separate `project.clj`; here's Mongo's, for example:
-
-
 Here's the [`deps.edn` file] for the SQLite driver.
 
 
 ```clj
-(defproject metabase/mongo-driver "1.0.0-3.5.0"
-  :min-lein-version "2.5.0"
+{:paths
+ ["src" "resources"]
 
-  :dependencies
-  [[com.novemberain/monger "3.5.0"]]
-
-  :profiles
-  {:provided
-   {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
-
-   :uberjar
-   {:auto-clean    true
-    :aot           :all
-    :javac-options ["-target" "1.8", "-source" "1.8"]
-    :target-path   "target/%s"
-    :uberjar-name  "mongo.metabase-driver.jar"}})
+ :deps
+ {org.xerial/sqlite-jdbc {:mvn/version "3.36.0.3"}}}
 ```
 
-Not that it includes the dependencies (`monger`) for the driver as well as a dependency on the `metabase-core` project (we'll explain this more in a second) as well as a profile for building the uberjar. The version is `1.0.0-3.5.0` -- the formula I've used here is `<actual-driver-version>-<dependencies-version>`, but you can use whatever version numbers you feel appropriate; just know the plugin system assumes semantic versioning (e.g. `1.10` is newer than `1.2`).
-
-#### Installing `metabase-core` locally
-
-The dependency on `metabase-core` makes all namespaces that are part of the core Metabase project (e.g. `metabase.driver`) available for use in the driver itself. By putting this dependency in a `provided` profile, `lein uberjar` won't include that dependency in the built driver.
-
-Note that Metabase is not currently available in Clojars or other plugin repositories -- you'll have to install it locally before working on a driver. You can do this by running
-
-```
-lein install-for-building-drivers
-```
-
-from the root of the core Metabase repository. For now, `metabase-core` has one version -- `1.0.0-SNAPSHOT` -- so this is what your driver should specify. As APIs get locked down in the near future and we ship a Metabase 1.0 release, we'll ship real `[metabase-core "1.0.0"]` (and so forth) dependencies, and most likely publish them on Clojars, meaning you'll be able to skip this step; for now, stick to `[metabase-core "1.0.0-SNAPSHOT"]`. I'll update this guide when this changes.
-
-#### Building a driver plugin shipped as part of the core Metabase repo
+### Building a driver plugin shipped as part of the core Metabase repo
 
 A helpful script is included as part of Metabase to build drivers packaged this way:
 
 ```bash
-./bin/build-driver.sh mongo
+./bin/build-driver.sh sqlite
 ```
 
-This will take care of everything and copy the resulting file to `./resources/modules/mongo.metabase-driver.jar`. You can also build the JAR using
-
-```bash
-LEIN_SNAPSHOTS_IN_RELEASE=true lein uberjar
-```
-
-from the `modules/drivers/mongo` directory; you'll have to copy it into `resources/modules` yourself to have it included with the Metabase uberjar if you're building it locally.
+This will take care of everything, including copying the resulting file to `./resources/modules/sqlite.metabase-driver.jar`.
 
 Drivers shipped this way are bundled up inside the uberjar under the `modules` directory (anything in `resources` gets included in the uberjar); anything JARs in the `modules/` directory of the uberjar is extracted into the plugins directory when Metabase starts.
 
-#### Working with the driver from the REPL and in CIDER
+## Working with the driver from the REPL and in CIDER
 
-Having to install `metabase-core` locally, and build driver uberjars would be obnoxious, especially if you had to repeat it to test every change. Luckily, you can use an included Leiningen profile, `include-all-drivers`, to merge the driver's source paths, test paths, and dependencies into the core Metabase project, letting you run commands as if everything was part of one giant project:
+Having to install `metabase-core` locally and build driver uberjars would be obnoxious, especially if you had to repeat it to test every change. Luckily, you can use an included Leiningen profile, `include-all-drivers`, to merge the driver's source paths, test paths, and dependencies into the core Metabase project, letting you run commands as if everything was part of one giant project:
 
 ```bash
-lein with-profiles +include-all-drivers repl
+clojure -A:dev:drivers:drivers-dev
+
+clojure -M:run:drivers
 ```
 
 This currently works for a variety of tasks, such as `repl`, `test`, and our various linters. Note it is not currently set up to work when running from source (i.e. with `lein run` or `lein ring server`) -- you'll need to rebuild the driver and install it in your `./plugins` directory instead, and restart when you make changes. This may be fixed in the future, but in the meantime if you want to avoid the slow feedback loop, consider developing your driver using an interactive REPL such as CIDER instead (discussed below), or developing your driver as a "built-in" driver as described above and repackaging it as plugin once everything is finished.
-
-When developing with Emacs and [CIDER](https://github.com/clojure-emacs/cider) sending the universal prefix argument to `cider-jack-in` (i.e. running it with `C-u M-x cider-jack-in`) will prompt you for the command it should use to start the NREPL process; you can add `with-profiles +include-all-drivers` to the beginning of the command to include source paths for your driver.
 
 Of course, you can also work on the driver directly from its `modules/drivers/<driver>` directory -- just note that you won't be able to run tests from that directory, or work on them -- driver test extensions require code in `metabase/test`, which is not bundled up with `metabase-core`; the only way for your driver to have access to the namespaces is to use `with-profiles +include-all-drivers` to simulate an uber-project.
 
@@ -200,11 +166,16 @@ Of course, you can also work on the driver directly from its `modules/drivers/<d
 Package a driver this way if you plan on shipping it as a plugin and don't plan on submitting it as a PR. Fundamentally, the structure is similar to plugins shipped as part of Metabase, but in a separate repo rather than the `modules/drivers/` directory, and without test extensions or tests (at least, without ones that piggyback off the core project's test functionality):
 
 ```clj
-./project.clj                    ; <- deps go in here
+./deps.edn                       ; <- deps go in here
 ./resources/metabase-plugin.yaml ; <- plugin manifest
 ./src/metabase/driver/sudoku.clj ; <- main driver namespace
 ```
 
-Building a driver like this is largely the same as plugins shipped as part of Metabase -- install `metabase-core` locally, then build the driver using `lein uberjar`. Copy the resulting `JAR` file into your plugins directory, and you're off to the races.
+Building a driver like this is largely the same as plugins shipped as part of Metabase -- install `metabase-core` locally, then build the driver using: 
+
+```
+clojure -X:dev:build
+```
+Copy the resulting `JAR` file into your plugins directory, and you're off to the races.
 
 [env-var]: ../../operations-guide/environment-variables.html
