@@ -41,5 +41,4 @@
   (when-let [sample-db (Database :is_sample true)]
     (let [intended (db-details)]
       (when (not= (:details sample-db) intended)
-        (binding [metabase.models.database/*allow-sample-update?* true]
-          (db/update! Database (:id sample-db) :details intended))))))
+        (db/update! Database (:id sample-db) :details intended)))))

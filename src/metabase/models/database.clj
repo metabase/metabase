@@ -134,12 +134,6 @@
       (assoc database :details updated-details))
     database))
 
-(def ^:dynamic ^Boolean *allow-sample-update?*
-  "We want to disallow edits to a sample `database`'s `engine` and `details` fields, because that causes problems when
-  restarting the application (#16382), but you can temporarily enable that e.g.
-  in [[metabase.sample-data/update-sample-database-if-needed!]]."
-  false)
-
 (defn- pre-update
   [{new-metadata-schedule    :metadata_sync_schedule,
     new-fieldvalues-schedule :cache_field_values_schedule,
@@ -157,9 +151,8 @@
                                                          :is_sample] :id (u/the-id database))
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
-             ;; TODO still needed?
-             ;; (false? *allow-sample-update?*)
-             (and new-engine (not= new-engine existing-engine)))
+             new-engine
+             (not= new-engine existing-engine))
       (throw (ex-info (trs "The engine on a sample database cannot be changed.")
                       {:status-code     400
                        :existing-engine existing-engine
