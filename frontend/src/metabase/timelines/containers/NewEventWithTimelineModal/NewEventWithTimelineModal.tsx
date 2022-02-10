@@ -1,14 +1,5 @@
-import _ from "underscore";
 import Collections from "metabase/entities/collections";
-import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
+import { getCollectionId } from "../../selectors";
 
-export interface NewEventModalProps {
-  collectionId: string;
-}
-
-const collectionProps = {
-  id: (state: State, props: NewEventModalProps) => props.collectionId,
-};
-
-export default _.compose(Collections.load(collectionProps))(NewEventModal);
+export default Collections.load({ id: getCollectionId })(NewEventModal);
