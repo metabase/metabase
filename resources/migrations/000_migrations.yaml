@@ -9931,6 +9931,7 @@ databaseChangeLog:
               WHERE key = 'humanization-strategy';
       changes:
         - sql:
+            dbms: h2,postgresql
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -9938,6 +9939,16 @@ databaseChangeLog:
                 (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
               FROM setting
               WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'humanization-strategy'                                      AS `key`,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE `key` = 'enable-advanced-humanization';
 
   # [migrate-humanization-setting part 2 of 2]
   - changeSet:
@@ -9947,8 +9958,13 @@ databaseChangeLog:
         Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
       changes:
         - sql:
+            dbms: h2,postgresql
             sql: >-
               DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM setting WHERE `key` = 'enable-advanced-humanization';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
