@@ -41,7 +41,8 @@
            potemkin/deftype+ clojure.core/deftype
            clojurewerkz.quartzite.jobs/defjob clojure.core/defn
            honeysql.util/defalias clojure.core/def
-           honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all}
+           honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
+           clojure.core.logic/defne clj-kondo.lint-as/def-catch-all}
  :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
                           metabase.test/dataset             hooks.metabase.test.data/dataset
                           metabase.test.data/$ids           hooks.metabase.test.data/$ids
