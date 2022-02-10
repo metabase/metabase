@@ -787,11 +787,11 @@
                                     :breakout     [!month.date]}
                      :limit        2})]
         (mt/with-native-query-testing-context query
-          (is (sql= {:select   '[count        AS count
-                                 count (*)    AS count_2]
+          (is (sql= {:select   '[source.count  AS count
+                                 count (*)     AS count_2]
                      :from     [(let [prefix (project-id-prefix-if-set)]
                                   {:select   ['date_trunc (list (symbol (str prefix 'v3_test_data.checkins.date)) 'month) 'AS 'date
-                                              'source.count '(*)                                                          'AS 'count]
+                                              'count '(*)                                                                 'AS 'count]
                                    :from     [(symbol (str prefix 'v3_test_data.checkins))]
                                    :group-by '[date]
                                    :order-by '[date ASC]})
