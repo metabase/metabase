@@ -42,6 +42,7 @@ export default class EntityObjectLoader extends React.Component {
     loadingAndErrorWrapper: true,
     reload: false,
     wrapped: false,
+    dispatchApiErrorEvent: true,
   };
 
   _getWrappedObject;
@@ -61,11 +62,15 @@ export default class EntityObjectLoader extends React.Component {
   }
 
   UNSAFE_componentWillMount() {
-    const { entityId, fetch } = this.props;
+    const { entityId, fetch, dispatchApiErrorEvent } = this.props;
     if (entityId != null) {
       fetch(
         { id: entityId },
-        { reload: this.props.reload, properties: this.props.properties },
+        {
+          reload: this.props.reload,
+          properties: this.props.properties,
+          noEvent: !dispatchApiErrorEvent,
+        },
       );
     }
   }
@@ -121,7 +126,11 @@ export default class EntityObjectLoader extends React.Component {
   reload = () => {
     return this.props.fetch(
       { id: this.props.entityId },
-      { reload: true, properties: this.props.properties },
+      {
+        reload: true,
+        properties: this.props.properties,
+        noEvent: !this.props.dispatchApiErrorEvent,
+      },
     );
   };
 
