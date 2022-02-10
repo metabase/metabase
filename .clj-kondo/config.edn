@@ -53,6 +53,7 @@
                           metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint}
            :macroexpand {metabase.query-processor.streaming/streaming-response
                          metabase.query-processor.streaming/streaming-response
+                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
                          toucan.models/defmodel toucan.models/defmodel
                          clojurewerkz.quartzite.jobs/build macros.quartz/build-job
                          clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
