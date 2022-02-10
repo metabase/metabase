@@ -39,7 +39,8 @@
            potemkin/defrecord+ clojure.core/defrecord
            potemkin.types/deftype+ clojure.core/deftype
            potemkin/deftype+ clojure.core/deftype
-           clojurewerkz.quartzite.jobs/defjob clojure.core/defn}
+           clojurewerkz.quartzite.jobs/defjob clojure.core/defn
+           honeysql.util/defalias clojure.core/def}
  :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
                           metabase.test/dataset             hooks.metabase.test.data/dataset
                           metabase.test.data/$ids           hooks.metabase.test.data/$ids
