@@ -11,6 +11,12 @@ const FORM_FIELDS = [
     validate: validate.required().maxLength(255),
   },
   {
+    name: "timestamp",
+    title: t`Date`,
+    placeholder: "2022-01-01T10:20:30.000000Z",
+    validate: validate.required(),
+  },
+  {
     name: "description",
     title: t`Description`,
     type: "text",
