@@ -9950,7 +9950,7 @@ databaseChangeLog:
                   'type/Source',
                   'type/State',
                   'type/Subscription',
-                  'type/Title',
+                  'type/Title'
                 );
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
