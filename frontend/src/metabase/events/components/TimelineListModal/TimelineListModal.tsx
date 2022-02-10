@@ -15,14 +15,14 @@ import {
 } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
-  collection: Collection;
   timelines: Timeline[];
+  collection: Collection;
   onClose?: () => void;
 }
 
 const TimelineListModal = ({
-  collection,
   timelines,
+  collection,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
   const hasItems = timelines.length > 0;
@@ -34,7 +34,7 @@ const TimelineListModal = ({
       </ModalHeader>
       <ModalBody>
         {hasItems ? (
-          <TimelineList timelines={timelines} />
+          <TimelineList timelines={timelines} collection={collection} />
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
@@ -45,13 +45,21 @@ const TimelineListModal = ({
 
 interface TimelineListProps {
   timelines: Timeline[];
+  collection: Collection;
 }
 
-const TimelineList = ({ timelines }: TimelineListProps): JSX.Element => {
+const TimelineList = ({
+  timelines,
+  collection,
+}: TimelineListProps): JSX.Element => {
   return (
     <ListRoot>
       {timelines.map(timeline => (
-        <TimelineCard key={timeline.id} timeline={timeline} />
+        <TimelineCard
+          key={timeline.id}
+          timeline={timeline}
+          collection={collection}
+        />
       ))}
     </ListRoot>
   );

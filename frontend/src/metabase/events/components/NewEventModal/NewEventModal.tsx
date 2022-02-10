@@ -7,15 +7,15 @@ import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
-  collection: Collection;
   timeline?: Timeline;
+  collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
   onClose: () => void;
 }
 
 const NewEventModal = ({
-  collection,
   timeline,
+  collection,
   onSubmit,
   onClose,
 }: NewEventModalProps): JSX.Element => {
