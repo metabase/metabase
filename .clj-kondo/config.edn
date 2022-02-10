@@ -14,10 +14,60 @@
                                          (clojure.core.logic/fresh)
                                          (clojure.core.logic/matcha)
                                          (clojure.core.logic/run)]}
-           ;; TODO: clj-kondo should have a way to disable this in certain macro calls like
-           ;; metabase.mbql.util.match/replace
            :unexpected-recur {:level :off}
-           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}}
+           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver/supports?
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver/current-db-time
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.common/current-db-time-native-query
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/current-db-time-date-formatters
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/read-column
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/first-successful-parse
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/ThreadSafeSimpleDateFormat
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/create-db-time-formatters
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/current-db-time
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*field-options*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*source-query*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/field->identifier
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/field->alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/prefix-field-alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*table-alias*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.public-settings.premium-features/enable-enhancements?
+                                      {:namespaces ["metabase\\.models.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/escape-alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.sync.interface/syncable-schemas
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.query-processor/query->preprocessed
+                                      {:namespaces ["metabase.*"]}
+                                      schema.core/either
+                                      {:namespaces ["metabase.*"]}
+                                      schema.core/both
+                                      {:namespaces ["metabase.*"]}}}}
  :lint-as {metabase.api.common/let-404 clojure.core/let
            metabase.db.data-migrations/defmigration clojure.core/def
            metabase.query-processor.error-type/deferror clojure.core/def
@@ -39,7 +89,10 @@
            potemkin/defrecord+ clojure.core/defrecord
            potemkin.types/deftype+ clojure.core/deftype
            potemkin/deftype+ clojure.core/deftype
-           clojurewerkz.quartzite.jobs/defjob clojure.core/defn}
+           clojurewerkz.quartzite.jobs/defjob clojure.core/defn
+           honeysql.util/defalias clojure.core/def
+           honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
+           clojure.core.logic/defne clj-kondo.lint-as/def-catch-all}
  :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
                           metabase.test/dataset             hooks.metabase.test.data/dataset
                           metabase.test.data/$ids           hooks.metabase.test.data/$ids
@@ -52,6 +105,7 @@
                           metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint}
            :macroexpand {metabase.query-processor.streaming/streaming-response
                          metabase.query-processor.streaming/streaming-response
+                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
                          toucan.models/defmodel toucan.models/defmodel
                          clojurewerkz.quartzite.jobs/build macros.quartz/build-job
                          clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
