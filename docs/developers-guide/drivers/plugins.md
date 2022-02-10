@@ -149,7 +149,7 @@ Drivers shipped this way are bundled up inside the uberjar under the `modules` d
 
 ## Working with the driver from the REPL and in CIDER
 
-Having to install `metabase-core` locally and build driver uberjars would be obnoxious, especially if you had to repeat it to test every change. Luckily, you can use an included Leiningen profile, `include-all-drivers`, to merge the driver's source paths, test paths, and dependencies into the core Metabase project, letting you run commands as if everything was part of one giant project:
+Having to install `metabase-core` locally and build driver uberjars would be obnoxious, especially if you had to repeat it to test every change. Luckily, you can run commands as if everything was part of one giant project:
 
 ```bash
 clojure -A:dev:drivers:drivers-dev
@@ -157,9 +157,7 @@ clojure -A:dev:drivers:drivers-dev
 clojure -M:run:drivers
 ```
 
-This currently works for a variety of tasks, such as `repl`, `test`, and our various linters. Note it is not currently set up to work when running from source (i.e. with `lein run` or `lein ring server`) -- you'll need to rebuild the driver and install it in your `./plugins` directory instead, and restart when you make changes. This may be fixed in the future, but in the meantime if you want to avoid the slow feedback loop, consider developing your driver using an interactive REPL such as CIDER instead (discussed below), or developing your driver as a "built-in" driver as described above and repackaging it as plugin once everything is finished.
-
-Of course, you can also work on the driver directly from its `modules/drivers/<driver>` directory -- just note that you won't be able to run tests from that directory, or work on them -- driver test extensions require code in `metabase/test`, which is not bundled up with `metabase-core`; the only way for your driver to have access to the namespaces is to use `with-profiles +include-all-drivers` to simulate an uber-project.
+You'll need to rebuild the driver and install it in your `./plugins` directory, and restart when you make changes. 
 
 ## Drivers shipped as 3rd-party plugins
 

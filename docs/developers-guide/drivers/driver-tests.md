@@ -93,7 +93,11 @@ Let's look at an real-life Metabase test so we can understand how it works and w
       rows formatted-venues-rows))
 ```
 
-Let's say we launch tests with `DRIVERS=mysql lein test`.
+Let's say we launch tests with
+
+```
+DRIVERS=mysql clojure -X:dev:drivers:drivers-dev:test`.
+```
 
 1.  Metabase will check and see if test extensions for `:mysql` are loaded. If not, it will `(require 'metabase.test.data.mysql)`.
 2.  Metabase will check to see if the default `test-data` database has been created for MySQL, loaded with data, and synced. If not, it will call the test extension method `tx/load-data!` to create the `test-data` database and load data into it. After loading the data, Metabase syncs the test database. (This is discussed in more detail below.)
