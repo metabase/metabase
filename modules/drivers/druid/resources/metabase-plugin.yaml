@@ -17,8 +17,23 @@ driver:
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
+    - name: auth-enabled
+      display-name: Authentication header
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: auth-username
+      display-name: Username
+      type: string
+      visible-if:
+        auth-enabled: true
+    - name: auth-token
+      display-name: Token
+      type: string
+      visible-if:
+        auth-enabled: true
     - default-advanced-options
-    - auth-basic-token
 
 init:
   - step: load-namespace

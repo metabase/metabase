@@ -86,6 +86,7 @@
         get-request    (test-request druid.client/GET no-auth-basic)
         post-request   (test-request druid.client/POST no-auth-basic)
         delete-request (test-request druid.client/DELETE no-auth-basic)]
-    (is (= (contains? (get-auth-header get-request)    :basic-auth)
+    (is (= no-auth-basic
+           (contains? (get-auth-header get-request)    :basic-auth)
            (contains? (get-auth-header post-request)   :basic-auth)
            (contains? (get-auth-header delete-request) :basic-auth)) "basic auth header not included")))
