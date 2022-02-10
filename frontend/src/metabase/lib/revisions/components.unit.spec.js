@@ -11,6 +11,16 @@ describe("RevisionTitle", () => {
 });
 
 describe("RevisionBatchedDescription", () => {
+  const originalWarn = console.warn;
+
+  beforeAll(() => {
+    console.warn = jest.fn();
+  });
+
+  afterAll(() => {
+    console.warn = originalWarn;
+  });
+
   it("correctly renders two change records", () => {
     render(
       <RevisionBatchedDescription
@@ -50,5 +60,15 @@ describe("RevisionBatchedDescription", () => {
     );
     expect(screen.getByText(/Moved this to/)).toBeInTheDocument();
     expect(screen.getByText(/edited metadata/)).toBeInTheDocument();
+  });
+
+  it("should use fallback when failing to format changes message", () => {
+    render(
+      <RevisionBatchedDescription
+        changes={[{ key: "try to parse this" }, -1, false]}
+        fallback="Just a fallback"
+      />,
+    );
+    expect(screen.getByText("Just a fallback")).toBeInTheDocument();
   });
 });
