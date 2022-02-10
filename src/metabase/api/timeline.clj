@@ -7,6 +7,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [metabase.util :as u]))
 
 
@@ -25,7 +26,8 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
   [id]
-  (api/read-check (Timeline id)))
+  (let [timeline (api/read-check (Timeline id))]
+    (hydrate timeline :creator)))
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
@@ -42,7 +44,7 @@
       (u/select-keys-when timeline-updates
         :present #{:description :icon :collection_id :archived}
         :non-nil #{:name}))
-    (Timeline id)))
+    (hydrate (Timeline id) :creator)))
 
 
 ;; todo: icons

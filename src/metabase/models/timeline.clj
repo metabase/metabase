@@ -14,7 +14,8 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id]
-  (hydrate (db/select Timeline :collection_id collection-id) :timeline-events))
+  (hydrate (db/select Timeline :collection_id collection-id)
+           :timeline-events :creator))
 
 (u/strict-extend (class Timeline)
   models/IModel
