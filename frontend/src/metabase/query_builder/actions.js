@@ -161,12 +161,14 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { locationBeforeTransitions } = getState().routing;
+      const { locationBeforeTransitions = {} } = getState().routing;
+      const { state, query } = locationBeforeTransitions;
+      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
-      const previouslyZoomedObjectId =
-        locationBeforeTransitions?.state?.objectId;
-
-      if (previouslyZoomedObjectId) {
+      if (
+        previouslyZoomedObjectId &&
+        zoomedObjectId !== previouslyZoomedObjectId
+      ) {
         dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
       } else {
         dispatch(resetRowZoom());
@@ -1438,7 +1440,10 @@ export const zoomInRow = ({ objectId }) => dispatch => {
 };
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
-export const resetRowZoom = createAction(RESET_ROW_ZOOM);
+export const resetRowZoom = () => dispatch => {
+  dispatch({ type: RESET_ROW_ZOOM });
+  dispatch(updateUrl());
+};
 
 // We use this for two things:
 // - counting the rows with this as an FK (loadObjectDetailFKReferences)
