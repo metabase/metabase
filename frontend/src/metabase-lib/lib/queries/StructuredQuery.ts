@@ -212,7 +212,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the table ID, if a table is selected.
    */
   sourceTableId(): TableId | null | undefined {
-    return this.query()["source-table"];
+    return this.query()?.["source-table"];
   }
 
   /**
@@ -1437,7 +1437,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   @memoize
   sourceQuery(): StructuredQuery | null | undefined {
-    const sourceQuery = this.query()["source-query"];
+    const sourceQuery = this.query()?.["source-query"];
 
     if (sourceQuery) {
       return new NestedStructuredQuery(
