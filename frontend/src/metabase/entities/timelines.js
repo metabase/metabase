@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import { TimelineApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
+import { getDefaultTimeline } from "metabase/lib/timeline";
+import TimelineEvents from "./timeline-events";
 import forms from "./timelines/forms";
 
 const Timelines = createEntity({
@@ -18,6 +20,24 @@ const Timelines = createEntity({
       } else {
         return TimelineApi.getTimelines(params, ...args);
       }
+    },
+  },
+
+  actions: {
+    createWithEvent: (event, collection) => async dispatch => {
+      const timelineData = getDefaultTimeline(collection);
+      const timelineAction = Timelines.actions.create(timelineData);
+      const timelineResponse = await dispatch(timelineAction);
+      const timeline = Timelines.HACK_getObjectFromAction(timelineResponse);
+
+      const eventData = { ...event, timeline_id: timeline.id };
+      const eventAction = TimelineEvents.actions.create(eventData);
+      await dispatch(eventAction);
+
+      return {
+        type: "metabase/entities/timelines/CREATE_WITH_EVENT",
+        payload: timeline,
+      };
     },
   },
 
