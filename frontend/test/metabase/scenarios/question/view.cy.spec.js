@@ -3,6 +3,9 @@ import {
   openOrdersTable,
   popover,
   getAddDimensionButton,
+  summarize,
+  sidebar,
+  filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -18,7 +21,7 @@ describe("scenarios > question > view", () => {
     it("should summarize by category and show a bar chart", () => {
       openOrdersTable();
 
-      cy.contains("Summarize").click();
+      summarize();
       cy.contains("Category").click();
       cy.contains("Done").click();
       cy.contains("Count by Product → Category");
@@ -26,16 +29,10 @@ describe("scenarios > question > view", () => {
 
     it("should show orders by year and product category", () => {
       openOrdersTable();
-      cy.contains("Showing first 2,000 rows");
-      cy.contains("Summarize").click();
 
-      // alias @sidebar so we can more easily click dimensions
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
+      summarize();
 
-      cy.get("@sidebar")
+      sidebar()
         .contains("Created At")
         .click();
       cy.findByText("Done").click();
@@ -43,14 +40,9 @@ describe("scenarios > question > view", () => {
       cy.contains("Count by Created At: Month");
 
       // Go back into sidebar
-      cy.contains("Summarize").click();
+      summarize();
 
-      // change grouping from month to year
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
-      cy.get("@sidebar")
+      sidebar()
         .contains("by month")
         .click();
       cy.get(".PopoverBody")
@@ -73,8 +65,8 @@ describe("scenarios > question > view", () => {
   describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
-      cy.contains("Vendor").click();
+      filter();
+      cy.contains("Vendor").click({ force: true });
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
         .type("A");
@@ -87,7 +79,7 @@ describe("scenarios > question > view", () => {
     // flaky test (#19454)
     it.skip("should show info popover for dimension in the filter list", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
+      filter();
 
       cy.contains("Name").trigger("mouseenter");
       popover().contains("Name");

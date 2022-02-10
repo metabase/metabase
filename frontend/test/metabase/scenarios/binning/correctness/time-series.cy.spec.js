@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   getBinningButtonForDimension,
+  summarize,
 } from "__support__/e2e/cypress";
 
 import { TIME_OPTIONS } from "./constants";
@@ -27,9 +28,7 @@ describe("scenarios > binning > correctness > time series", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByTestId("qb-header-action-panel")
-      .contains("Summarize")
-      .click();
+    summarize();
 
     openPopoverFromDefaultBucketSize("Created At", "by month");
   });

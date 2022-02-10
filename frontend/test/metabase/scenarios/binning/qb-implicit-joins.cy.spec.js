@@ -2,6 +2,7 @@ import {
   restore,
   changeBinningForDimension,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > binning > from a saved QB question using implicit joins", () => {
@@ -15,7 +16,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
   context("via simple question", () => {
     beforeEach(() => {
       cy.visit("/question/1");
-      cy.findByText("Summarize").click();
+      summarize();
     });
 
     it("should work for time series", () => {
@@ -73,7 +74,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
   context("via custom question", () => {
     beforeEach(() => {
       cy.visit("/question/1/notebook");
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       // Click "Order" accordion to collapse it and expose the other tables

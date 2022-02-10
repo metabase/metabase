@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openReviewsTable,
   popover,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -115,7 +116,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     openReviewsTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.get(".List-section-header")
