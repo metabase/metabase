@@ -205,8 +205,8 @@ If you find yourself using the same saved question as a starting point for multi
 
 ---
 
-## Next: Editing and sharing question
+## Next: Visualizing results
 
-Check out [sharing answers](06-sharing-answers.md).
+Check out [Visualizing results](06-sharing-answers.md).
 
 [model]: models.md
