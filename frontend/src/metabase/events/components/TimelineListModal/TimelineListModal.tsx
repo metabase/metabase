@@ -1,17 +1,12 @@
 import React from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, EventTimeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
+import TimelineCard from "../TimelineCard";
 import {
-  CardBody,
-  CardDescription,
-  CardIcon,
-  CardInfo,
-  CardRoot,
-  CardTitle,
   EmptyStateBody,
   EmptyStateRoot,
   EmptyStateText,
@@ -59,27 +54,6 @@ const TimelineList = ({ timelines }: TimelineListProps): JSX.Element => {
         <TimelineCard key={timeline.id} timeline={timeline} />
       ))}
     </ListRoot>
-  );
-};
-
-interface TimelineCardProps {
-  timeline: EventTimeline;
-}
-
-const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
-  const events = timeline.events.length;
-
-  return (
-    <CardRoot to="">
-      <CardIcon name={timeline.default_icon} />
-      <CardBody>
-        <CardTitle>{timeline.name}</CardTitle>
-        <CardDescription>{timeline.description}</CardDescription>
-      </CardBody>
-      <CardInfo>
-        {ngettext(msgid`${events} event`, `${events} events`, events)}
-      </CardInfo>
-    </CardRoot>
   );
 };
 
