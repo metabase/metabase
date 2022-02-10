@@ -1,6 +1,5 @@
 import React from "react";
-import * as Urls from "metabase/lib/urls";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import {
   CardBody,
   CardDescription,
@@ -11,17 +10,11 @@ import {
 
 export interface TimelineCardProps {
   timeline: Timeline;
-  collection: Collection;
 }
 
-const TimelineCard = ({
-  timeline,
-  collection,
-}: TimelineCardProps): JSX.Element => {
-  const url = Urls.timeline(timeline.id, collection);
-
+const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
   return (
-    <CardRoot to={url}>
+    <CardRoot>
       <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>

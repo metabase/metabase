@@ -72,7 +72,6 @@ import FieldDetailContainer from "metabase/reference/databases/FieldDetailContai
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
-import getEventRoutes from "metabase/events/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
@@ -208,7 +207,6 @@ export const getRoutes = store => (
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-          {getEventRoutes()}
         </Route>
 
         <Route path="activity" component={ActivityApp} />

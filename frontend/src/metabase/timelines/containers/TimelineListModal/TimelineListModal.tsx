@@ -1,30 +1,25 @@
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import { CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineListModal from "../../components/TimelineListModal";
 
-export interface TimelineListModalParams {
-  slug: string;
-}
-
 export interface TimelineListModalProps {
-  params: TimelineListModalParams;
+  collectionId: CollectionId;
 }
-
-const collectionProps = {
-  id: (state: State, props: TimelineListModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-};
 
 const timelineProps = {
   query: (state: State, props: TimelineListModalProps) => ({
-    collectionId: Urls.extractCollectionId(props.params.slug),
+    collectionId: props.collectionId,
   }),
 };
 
+const collectionProps = {
+  id: (state: State, props: TimelineListModalProps) => props.collectionId,
+};
+
 export default _.compose(
-  Collections.load(collectionProps),
   Timelines.loadList(timelineProps),
+  Collections.load(collectionProps),
 )(TimelineListModal);

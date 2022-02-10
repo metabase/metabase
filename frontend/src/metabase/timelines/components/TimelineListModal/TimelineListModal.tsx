@@ -1,9 +1,7 @@
 import React from "react";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import TimelineCard from "../TimelineCard";
 import {
@@ -13,30 +11,33 @@ import {
   ListRoot,
   ModalBody,
 } from "./TimelineListModal.styled";
+import Button from "metabase/core/components/Button";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
-  collection: Collection;
   onClose?: () => void;
+  onCreateEvent?: () => void;
+  onCreateTimeline?: () => void;
 }
 
 const TimelineListModal = ({
   timelines,
-  collection,
   onClose,
+  onCreateEvent,
+  onCreateTimeline,
 }: TimelineListModalProps): JSX.Element => {
   const hasItems = timelines.length > 0;
 
   return (
     <div>
       <ModalHeader title={t`Events`} onClose={onClose}>
-        <TimelineMenu collection={collection} />
+        <TimelineMenu onCreateTimeline={onCreateTimeline} />
       </ModalHeader>
       <ModalBody>
         {hasItems ? (
-          <TimelineList timelines={timelines} collection={collection} />
+          <TimelineList timelines={timelines} />
         ) : (
-          <TimelineEmptyState collection={collection} />
+          <TimelineEmptyState onCreateEvent={onCreateEvent} />
         )}
       </ModalBody>
     </div>
@@ -45,35 +46,27 @@ const TimelineListModal = ({
 
 interface TimelineListProps {
   timelines: Timeline[];
-  collection: Collection;
 }
 
-const TimelineList = ({
-  timelines,
-  collection,
-}: TimelineListProps): JSX.Element => {
+const TimelineList = ({ timelines }: TimelineListProps): JSX.Element => {
   return (
     <ListRoot>
       {timelines.map(timeline => (
-        <TimelineCard
-          key={timeline.id}
-          timeline={timeline}
-          collection={collection}
-        />
+        <TimelineCard key={timeline.id} timeline={timeline} />
       ))}
     </ListRoot>
   );
 };
 
 export interface TimelineMenuProps {
-  collection: Collection;
+  onCreateTimeline?: () => void;
 }
 
-const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
+const TimelineMenu = ({ onCreateTimeline }: TimelineMenuProps): JSX.Element => {
   const items = [
     {
       title: t`New timeline`,
-      link: Urls.newTimeline(collection),
+      action: onCreateTimeline,
     },
   ];
 
@@ -81,11 +74,11 @@ const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
 };
 
 export interface TimelineEmptyStateProps {
-  collection: Collection;
+  onCreateEvent?: () => void;
 }
 
 const TimelineEmptyState = ({
-  collection,
+  onCreateEvent,
 }: TimelineEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
@@ -93,12 +86,9 @@ const TimelineEmptyState = ({
         <EmptyStateText>
           {t`Add events to Metabase to show important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateText>
-        <Link
-          className="Button Button--primary"
-          to={Urls.newTimelineAndEvent(collection)}
-        >
+        <Button primary onClick={onCreateEvent}>
           {t`Add an event`}
-        </Link>
+        </Button>
       </EmptyStateBody>
     </EmptyStateRoot>
   );

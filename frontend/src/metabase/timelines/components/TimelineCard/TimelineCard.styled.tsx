@@ -1,9 +1,8 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link/Link";
 import Icon from "metabase/components/Icon";
 
-export const CardRoot = styled(Link)`
+export const CardRoot = styled.div`
   display: flex;
   padding: 1.75rem;
   align-items: center;

@@ -288,27 +288,6 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
-export function timelines(collections) {
-  const collectionUrl = collection(collections);
-  return `${collectionUrl}/timeline`;
-}
-
-export function timeline(timelineId, collection) {
-  return `${timelines(collection)}/${timelineId}`;
-}
-
-export function newTimeline(collection) {
-  return `${timelines(collection)}/new`;
-}
-
-export function newTimelineAndEvent(collection) {
-  return `${timelines(collection)}/new/event/new`;
-}
-
-export function editTimeline(timelineId, collection) {
-  return `${timeline(timelineId, collection)}/edit`;
-}
-
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
