@@ -19,7 +19,7 @@
 
 (defn hydrate-events
   "Efficiently hydrate the events for a timeline."
-  {:batched-hydrate :timeline-events}
+  {:batched-hydrate :events}
   [timelines]
   (when (seq timelines)
     (let [timeline-id->events (->> (db/select TimelineEvent

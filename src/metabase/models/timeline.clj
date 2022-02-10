@@ -15,7 +15,7 @@
   timeline at `:events` on the timeline."
   [collection-id]
   (hydrate (db/select Timeline :collection_id collection-id)
-           :timeline-events :creator))
+           [:events :creator] :creator))
 
 (u/strict-extend (class Timeline)
   models/IModel
