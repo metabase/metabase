@@ -15,6 +15,11 @@ const {
   PRODUCTS,
 } = SAMPLE_DATABASE;
 
+/**
+ * The list of issues this spec covers:
+ *  - metabase#15446
+ *  -
+ */
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
     restore();
