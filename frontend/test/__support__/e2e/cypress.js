@@ -28,5 +28,6 @@ export * from "./helpers/e2e-snowplow-helpers";
 export * from "./helpers/e2e-custom-column-helpers";
 export * from "./helpers/e2e-dimension-list-helpers";
 export * from "./helpers/e2e-downloads-helpers";
+export * from "./helpers/e2e-bi-basics-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);

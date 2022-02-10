@@ -3,6 +3,7 @@ import {
   popover,
   restore,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("issue 6239", () => {
@@ -12,7 +13,7 @@ describe("issue 6239", () => {
 
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
     cy.get(".ace_text-input")

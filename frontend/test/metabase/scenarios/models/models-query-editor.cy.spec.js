@@ -1,4 +1,4 @@
-import { restore, runNativeQuery } from "__support__/e2e/cypress";
+import { restore, runNativeQuery, summarize } from "__support__/e2e/cypress";
 
 import {
   selectFromDropdown,
@@ -57,9 +57,7 @@ describe("scenarios > models query editor", () => {
     it("locks display to table", () => {
       cy.visit("/model/1/query");
 
-      cy.findByTestId("action-buttons")
-        .findByText("Summarize")
-        .click();
+      summarize({ mode: "notebook" });
 
       selectFromDropdown("Count of rows");
 
