@@ -1,32 +1,32 @@
 import React from "react";
-import { msgid, ngettext } from "ttag";
-import { EventTimeline } from "metabase-types/api";
+import * as Urls from "metabase/lib/urls";
+import { Collection, Timeline } from "metabase-types/api";
 import {
   CardBody,
   CardDescription,
   CardIcon,
-  CardInfo,
   CardRoot,
   CardTitle,
 } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
-  timeline: EventTimeline;
+  timeline: Timeline;
+  collection: Collection;
 }
 
-const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
-  const events = timeline.events.length;
+const TimelineCard = ({
+  timeline,
+  collection,
+}: TimelineCardProps): JSX.Element => {
+  const url = Urls.timeline(collection, timeline);
 
   return (
-    <CardRoot to="">
-      <CardIcon name={timeline.default_icon} />
+    <CardRoot to={url}>
+      <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>
         <CardDescription>{timeline.description}</CardDescription>
       </CardBody>
-      <CardInfo>
-        {ngettext(msgid`${events} event`, `${events} events`, events)}
-      </CardInfo>
     </CardRoot>
   );
 };

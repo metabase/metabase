@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
-import forms from "metabase/entities/event-timelines/forms";
-import { Collection, EventTimeline } from "metabase-types/api";
+import forms from "metabase/entities/timelines/forms";
+import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewTimelineModal.styled";
 
 export interface NewTimelineModalProps {
   collection: Collection;
-  onSubmit: (values: Partial<EventTimeline>, collection: Collection) => void;
+  onSubmit: (values: Partial<Timeline>, collection: Collection) => void;
   onClose: () => void;
 }
 
@@ -22,7 +22,7 @@ const NewTimelineModal = ({
   }, [collection]);
 
   const handleSubmit = useCallback(
-    async (values: Partial<EventTimeline>) => {
+    async (values: Partial<Timeline>) => {
       await onSubmit(values, collection);
       onClose();
     },

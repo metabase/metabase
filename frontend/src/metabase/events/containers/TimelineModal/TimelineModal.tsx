@@ -3,7 +3,7 @@ import { goBack } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
-import EventTimelines from "metabase/entities/event-timelines";
+import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import TimelineModal from "../../components/TimelineModal";
 
@@ -32,6 +32,6 @@ const mapDispatchToProps = {
 
 export default _.compose(
   Collections.load(collectionProps),
-  EventTimelines.load(timelineProps),
+  Timelines.load(timelineProps),
   connect(null, mapDispatchToProps),
 )(TimelineModal);

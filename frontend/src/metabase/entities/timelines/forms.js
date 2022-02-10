@@ -1,12 +1,12 @@
 import { t } from "ttag";
-import { getEventIcons } from "metabase/lib/events";
+import { getEventIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
 const FORM_FIELDS = [
   {
     name: "name",
-    title: t`Event name`,
-    placeholder: t`Product launch`,
+    title: t`Timeline name`,
+    placeholder: t`Product releases`,
     autoFocus: true,
     validate: validate.required().maxLength(255),
   },
@@ -18,7 +18,7 @@ const FORM_FIELDS = [
   },
   {
     name: "icon",
-    title: t`Icon`,
+    title: t`Default icon`,
     type: "select",
     initial: "star",
     options: getEventIcons(),

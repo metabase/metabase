@@ -11,31 +11,31 @@ const getRoutes = () => {
     <Fragment>
       <ModalRoute
         {...{
-          path: "timelines",
+          path: "timeline",
           modal: TimelineListModal,
         }}
       />
       <ModalRoute
         {...{
-          path: "timelines/new",
+          path: "timeline/new",
           modal: NewTimelineModal,
         }}
       />
       <ModalRoute
         {...{
-          path: "timelines/:timelineId",
+          path: "timeline/:timelineId",
           modal: TimelineModal,
         }}
       />
       <ModalRoute
         {...{
-          path: "timelines/new/event/new",
+          path: "timeline/new/event/new",
           modal: NewEventWithTimelineModal,
         }}
       />
       <ModalRoute
         {...{
-          path: "timelines/:timelineId/event/new",
+          path: "timeline/:timelineId/event/new",
           modal: NewEventModal,
         }}
       />

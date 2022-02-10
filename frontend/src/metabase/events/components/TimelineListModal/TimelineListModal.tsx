@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, EventTimeline } from "metabase-types/api";
+import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import TimelineCard from "../TimelineCard";
 import {
@@ -16,7 +16,7 @@ import {
 
 export interface TimelineListModalProps {
   collection: Collection;
-  timelines: EventTimeline[];
+  timelines: Timeline[];
   onClose?: () => void;
 }
 
@@ -44,7 +44,7 @@ const TimelineListModal = ({
 };
 
 interface TimelineListProps {
-  timelines: EventTimeline[];
+  timelines: Timeline[];
 }
 
 const TimelineList = ({ timelines }: TimelineListProps): JSX.Element => {

@@ -288,8 +288,8 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
-export function timelines(root) {
-  const collectionUrl = collection(root);
+export function timelines(collections) {
+  const collectionUrl = collection(collections);
   return `${collectionUrl}/timeline`;
 }
 

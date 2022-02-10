@@ -1,7 +1,7 @@
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
-import EventTimelines from "metabase/entities/event-timelines";
+import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import TimelineListModal from "../../components/TimelineListModal";
 
@@ -18,13 +18,13 @@ const collectionProps = {
     Urls.extractCollectionId(props.params.slug),
 };
 
-const timelineProps = () => ({
+const timelineProps = {
   query: (state: State, props: TimelineListModalProps) => ({
-    collectionId: Urls.extractEntityId(props.params.slug),
+    collectionId: Urls.extractCollectionId(props.params.slug),
   }),
-});
+};
 
 export default _.compose(
   Collections.load(collectionProps),
-  EventTimelines.loadList(timelineProps),
+  Timelines.loadList(timelineProps),
 )(TimelineListModal);

@@ -2,11 +2,11 @@ import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, EventTimeline } from "metabase-types/api";
+import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 
 export interface TimelineModalProps {
-  timeline: EventTimeline;
+  timeline: Timeline;
   collection: Collection;
   onClose: () => void;
 }
@@ -26,7 +26,7 @@ const TimelineModal = ({
 };
 
 export interface TimelineMenuProps {
-  timeline: EventTimeline;
+  timeline: Timeline;
   collection: Collection;
 }
 

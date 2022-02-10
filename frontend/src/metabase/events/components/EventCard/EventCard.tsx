@@ -1,5 +1,5 @@
 import React from "react";
-import { Event } from "metabase-types/api";
+import { TimelineEvent } from "metabase-types/api";
 import {
   CardBody,
   CardRoot,
@@ -11,7 +11,7 @@ import {
 } from "./EventCard.styled";
 
 export interface EventCardProps {
-  event: Event;
+  event: TimelineEvent;
 }
 
 const EventCard = ({ event }: EventCardProps): JSX.Element => {
