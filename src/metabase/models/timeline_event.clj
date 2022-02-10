@@ -29,7 +29,7 @@
                                    (group-by :timeline_id))]
       (for [{:keys [id] :as timeline} timelines]
         (when timeline
-          (assoc timeline :timeline-events (timeline-id->events id)))))))
+          (assoc timeline :events (timeline-id->events id)))))))
 
 ;;;; model
 
