@@ -1,16 +1,16 @@
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { TimelineEvent } from "metabase-types/api";
 import NewEventModal from "../../components/NewEventModal";
-import { createEvent, setMode } from "../../actions";
+import { createEvent } from "../../actions";
 import { getCollectionId, getTimelineId } from "../../selectors";
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: (values: Partial<TimelineEvent>) => dispatch(createEvent(values)),
-  onCancel: () => dispatch(setMode("timeline-view")),
-});
+const mapDispatchToProps = {
+  onSubmit: createEvent,
+  onChangeLocation: push,
+};
 
 export default _.compose(
   Timelines.load({ id: getTimelineId }),

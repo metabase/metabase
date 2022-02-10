@@ -4,7 +4,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 const TimelineEvents = createEntity({
   name: "timelineEvents",
   nameOne: "timelineEvent",
-  path: "/api/timeline_event",
+  path: "/api/timeline-event",
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>

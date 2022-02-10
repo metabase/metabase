@@ -24,6 +24,10 @@ const FORM_FIELDS = [
     options: getTimelineIcons(),
     validate: validate.required(),
   },
+  {
+    name: "collection_id",
+    type: "hidden",
+  },
 ];
 
 export default {

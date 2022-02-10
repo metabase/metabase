@@ -23,9 +23,6 @@ import reference from "metabase/reference/reference";
 /* revisions */
 import revisions from "metabase/redux/revisions";
 
-/* timelines */
-import timelines from "metabase/timelines/reducers";
-
 /* alerts */
 import alert from "metabase/alert/alert";
 
@@ -44,6 +41,5 @@ export default {
   reference,
   revisions,
   setup: combineReducers(setup),
-  timelines: combineReducers(timelines),
   admin,
 };

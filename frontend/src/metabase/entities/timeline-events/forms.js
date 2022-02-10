@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { getTimelineIcons } from "metabase/lib/timeline";
+import { getDefaultTimezone, getTimelineIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
 const FORM_FIELDS = [
@@ -13,7 +13,7 @@ const FORM_FIELDS = [
   {
     name: "timestamp",
     title: t`Date`,
-    placeholder: "2022-01-01T10:20:30.000000Z",
+    placeholder: "2022-01-02",
     validate: validate.required(),
   },
   {
@@ -29,6 +29,20 @@ const FORM_FIELDS = [
     initial: "star",
     options: getTimelineIcons(),
     validate: validate.required(),
+  },
+  {
+    name: "timezone",
+    type: "hidden",
+    initial: getDefaultTimezone(),
+  },
+  {
+    name: "time_matters",
+    type: "hidden",
+    initial: false,
+  },
+  {
+    name: "timeline_id",
+    type: "hidden",
   },
 ];
 

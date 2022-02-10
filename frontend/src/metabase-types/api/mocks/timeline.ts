@@ -18,6 +18,7 @@ export const createMockTimelineEvent = (
   id: 1,
   timeline_id: 1,
   name: "Christmas",
+  description: null,
   icon: "star",
   date: "2021-12-25",
   creator: createMockUser(),

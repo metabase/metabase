@@ -288,6 +288,31 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
+export function timelinesInCollection(collections) {
+  const collectionUrl = collection(collections);
+  return `${collectionUrl}/timelines`;
+}
+
+export function timelineInCollection(timeline, collection) {
+  return `${timelinesInCollection(collection)}/${timeline.id}`;
+}
+
+export function newTimelineInCollection(collection) {
+  return `${timelinesInCollection(collection)}/new`;
+}
+
+export function editTimelineInCollection(timeline, collection) {
+  return `${timelineInCollection(collection, timeline)}/edit`;
+}
+
+export function newEventInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/events/new`;
+}
+
+export function newEventAndTimelineInCollection(collection) {
+  return `${timelinesInCollection(collection)}/new/events/new`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
