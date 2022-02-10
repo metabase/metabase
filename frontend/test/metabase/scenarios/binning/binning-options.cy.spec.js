@@ -4,6 +4,7 @@ import {
   openTable,
   visitQuestionAdhoc,
   getBinningButtonForDimension,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -267,7 +268,7 @@ describe("scenarios > binning > binning options", () => {
 
 function chooseInitialBinningOption({ table, column, mode = null } = {}) {
   openTable({ table, mode });
-  cy.findByText("Summarize").click();
+  summarize({ mode });
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
@@ -287,7 +288,7 @@ function chooseInitialBinningOptionForExplicitJoin({
 } = {}) {
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
-  cy.findByTextEnsureVisible("Summarize").click();
+  summarize();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition

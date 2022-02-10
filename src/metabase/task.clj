@@ -94,6 +94,7 @@
 
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider
+  (initialize [_])
   (getConnection [_]
     ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
     ;; when it's done

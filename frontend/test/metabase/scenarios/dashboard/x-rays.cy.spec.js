@@ -3,6 +3,7 @@ import {
   getDimensionByName,
   visitQuestionAdhoc,
   popover,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -101,7 +102,7 @@ describe("scenarios > x-rays", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
-      cy.findByText("Summarize").click();
+      summarize();
       getDimensionByName({ name: "SOURCE" }).click();
       cy.button("Done").click();
       cy.get(".bar")
