@@ -527,16 +527,18 @@
   (collection-detail (api/read-check Collection id)))
 
 (api/defendpoint GET "/root/timelines"
-  "Fetch a specific Collection's timelines."
+  "Fetch the root Collection's timelines."
   ;; todo: do we care about `archived` option?
-  []
-  (hydrate (db/select Timeline :collection_id nil) :timeline-events))
+  [include]
+  {include (s/maybe s/Str)}
+  (timeline/timelines-for-collection nil include))
 
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   ;; todo: do we care about `archived` option?
-  [id]
-  (timeline/timelines-for-collection id))
+  [id include]
+  {include (s/maybe s/Str)}
+  (timeline/timelines-for-collection id include))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:

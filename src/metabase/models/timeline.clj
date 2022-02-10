@@ -13,9 +13,11 @@
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
-  [collection-id]
-  (hydrate (db/select Timeline :collection_id collection-id)
-           [:events :creator] :creator))
+  [collection-id include]
+  (if include
+    (hydrate (db/select Timeline :collection_id collection-id)
+                 [:events :creator] :creator)
+    (hydrate (db/select Timeline :collection_id collection-id) :creator)))
 
 (u/strict-extend (class Timeline)
   models/IModel

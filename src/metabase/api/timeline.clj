@@ -25,11 +25,15 @@
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
-  [id]
+  [id include]
+  {include (s/maybe s/Str)}
   (let [timeline (api/read-check (Timeline id))]
-    (hydrate timeline :creator)))
+    (if include
+      (hydrate timeline :creator :events)
+      (hydrate timeline :creator))))
 
 (api/defendpoint PUT "/:id"
+  "Update the [[Timeline]] with `id`."
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    description   (s/maybe s/Str)
