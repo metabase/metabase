@@ -180,7 +180,7 @@ describe("scenarios > binning > binning options", () => {
     });
   });
 
-  context("via time series footer", () => {
+  context("via time series footer (metabase#11183)", () => {
     it("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
 

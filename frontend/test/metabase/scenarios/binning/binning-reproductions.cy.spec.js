@@ -213,27 +213,6 @@ describe("binning related reproductions", () => {
     });
   });
 
-  // Probably safe to delete in the future - we're covering this steps in the main binnig tests
-  it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
-    const questionDetails = {
-      name: "11183",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      display: "line",
-    };
-
-    cy.createQuestion(questionDetails, { visitQuestion: true });
-
-    cy.log("Reported missing in v0.33.1");
-    cy.findAllByTestId("select-button")
-      .as("select")
-      .contains(/All Time/i);
-    cy.get("@select").contains(/Month/i);
-  });
-
   it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
     // save "Orders" as question
     cy.createQuestion({
