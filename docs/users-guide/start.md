@@ -16,7 +16,7 @@
 - [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
 - [Joining data](join.md)
 
-## Saving questions in Collections
+## Saving questions in collections
 
 - [Sharing and organizing your saved questions](06-sharing-answers.md)
 - [Collections](collections.md)
