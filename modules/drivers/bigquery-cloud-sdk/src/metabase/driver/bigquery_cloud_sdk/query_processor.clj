@@ -511,12 +511,8 @@
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
-      ;; if this Field is from a source table DO NOT qualify it at all.
-      (let [field-clause (cond-> field-clause
-                           (= source-table ::add/source)
-                           (mbql.u/update-field-options assoc ::add/source-table ::add/none))]
-        (-> (parent-method driver field-clause)
-            (with-temporal-type (temporal-type field-clause)))))))
+      (-> (parent-method driver field-clause)
+          (with-temporal-type (temporal-type field-clause))))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]

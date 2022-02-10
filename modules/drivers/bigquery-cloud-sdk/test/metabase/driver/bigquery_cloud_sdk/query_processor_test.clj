@@ -791,7 +791,7 @@
                                  count (*)    AS count_2]
                      :from     [(let [prefix (project-id-prefix-if-set)]
                                   {:select   ['date_trunc (list (symbol (str prefix 'v3_test_data.checkins.date)) 'month) 'AS 'date
-                                              'count '(*)                                                                 'AS 'count]
+                                              'source.count '(*)                                                          'AS 'count]
                                    :from     [(symbol (str prefix 'v3_test_data.checkins))]
                                    :group-by '[date]
                                    :order-by '[date ASC]})
@@ -819,17 +819,20 @@
                                              {:name "CE", :display-name "CE"}]]
                               :limit       10}))))))))
 
-
 (deftest no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Breakout field name is not qualified if it is from source query (#18742)"
-      (is (sql= '{:select   [source    AS source
-                             count (*) AS count]
-                  :from     [(select 1 as val "2" as source)
-                             source]
-                  :group-by [source]
-                  :order-by [source ASC]}
-                (mt/mbql-query checkins
-                  {:aggregation  [[:count]]
-                   :breakout     [[:field "source" {:base-type :type/Text}]],
-                   :source-query {:native "select 1 as `val`, '2' as `source`"}}))))))
+    (testing "Make sure columns name `source` in source query work correctly (#18742)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation  [[:count]]
+                     :breakout     [[:field "source" {:base-type :type/Text}]],
+                     :source-query {:native "select 1 as `val`, '2' as `source`"}})]
+        (is (sql= '{:select   [source.source    AS source
+                               count (*)        AS count]
+                    :from     [(select 1 as val "2" as source)
+                               source]
+                    :group-by [source]
+                    :order-by [source ASC]}
+                  query))
+        (mt/with-native-query-testing-context query
+          (is (= [["2" 1]]
+                 (mt/rows (qp/process-query query)))))))))
