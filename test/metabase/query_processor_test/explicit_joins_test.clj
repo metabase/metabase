@@ -691,8 +691,7 @@
 
 (deftest join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362, #20413)"
-    ;; not fixing this for the deprecated `:bigquery` driver. You better just upgrade.
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join) :bigquery)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
               q2         (mt/mbql-query products {:breakout [$category], :aggregation [[:sum $price]]})
