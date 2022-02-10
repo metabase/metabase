@@ -207,6 +207,6 @@ If you find yourself using the same saved question as a starting point for multi
 
 ## Next: Visualizing results
 
-Check out [Visualizing results](06-sharing-answers.md).
+Next, we'll learn how to [visualize results](05-visualizing-results.md).
 
 [model]: models.md
