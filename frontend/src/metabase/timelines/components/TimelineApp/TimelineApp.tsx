@@ -3,6 +3,7 @@ import { TimelineMode } from "metabase-types/store";
 import NewEventModal from "../../containers/NewEventModal";
 import NewTimelineModal from "../../containers/NewTimelineModal";
 import TimelineListModal from "../../containers/TimelineListModal";
+import TimelineModal from "../../containers/TimelineModal";
 
 export interface TimelineAppProps {
   mode: TimelineMode;
@@ -10,6 +11,8 @@ export interface TimelineAppProps {
 
 const TimelineApp = ({ mode }: TimelineAppProps): JSX.Element | null => {
   switch (mode) {
+    case "timeline-view":
+      return <TimelineModal />;
     case "timeline-list":
       return <TimelineListModal />;
     case "timeline-new":
