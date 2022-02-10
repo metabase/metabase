@@ -17,7 +17,10 @@
            ;; TODO: clj-kondo should have a way to disable this in certain macro calls like
            ;; metabase.mbql.util.match/replace
            :unexpected-recur {:level :off}
-           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}}
+           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
+                                      {:namespaces [metabase.automagic-dashboards.comparison
+                                                    metabase.automagic-dashboards.core]}}}}
  :lint-as {metabase.api.common/let-404 clojure.core/let
            metabase.db.data-migrations/defmigration clojure.core/def
            metabase.query-processor.error-type/deferror clojure.core/def
