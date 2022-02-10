@@ -33,7 +33,7 @@ describe("issue 20393", () => {
     // open the sharing modal and enable sharing
     cy.icon("share").click();
     cy.findByText("Sharing and embedding").click();
-    cy.findByRole("switch").click();
+    cy.findByRole("checkbox").click();
 
     // navigate to the public dashboard link
     cy.findByText("Public link")
