@@ -208,6 +208,7 @@ export function isExpression(expr) {
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
+    isBooleanLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
     isCase(expr)
@@ -220,6 +221,10 @@ export function isLiteral(expr) {
 
 export function isStringLiteral(expr) {
   return typeof expr === "string";
+}
+
+export function isBooleanLiteral(expr) {
+  return typeof expr?.[0] === "boolean";
 }
 
 export function isNumberLiteral(expr) {

@@ -39,10 +39,14 @@ function findMBQL(op) {
 }
 
 const isCompatible = (a, b) => {
+  console.log(">>> iscompat", a, b);
   if (a === b) {
     return true;
   }
-  if (a === "expression" && (b === "number" || b === "string")) {
+  if (
+    a === "expression" &&
+    (b === "number" || b === "string" || b === "boolean")
+  ) {
     return true;
   }
   if (a === "aggregation" && b === "number") {
@@ -52,8 +56,13 @@ const isCompatible = (a, b) => {
 };
 
 export function resolve(expression, type = "expression", fn = undefined) {
+  console.log(">>>>>>>=", expression, type);
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
+
+    if (typeof op === "boolean") {
+      return expression;
+    }
 
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
@@ -79,6 +88,8 @@ export function resolve(expression, type = "expression", fn = undefined) {
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";
+    } else if (op === "true" || op === "false") {
+      operandType = "expression";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
       const [firstOperand] = operands;

@@ -4,6 +4,7 @@ import {
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
   isNumberLiteral,
+  isBooleanLiteral,
   isStringLiteral,
   isOperator,
   isFunction,
@@ -27,6 +28,8 @@ export function format(mbql, options = {}) {
     return "";
   } else if (isNumberLiteral(mbql)) {
     return formatNumberLiteral(mbql, options);
+  } else if (isBooleanLiteral(mbql)) {
+    return formatBooleanLiteral(mbql, options);
   } else if (isStringLiteral(mbql)) {
     return formatStringLiteral(mbql, options);
   } else if (isOperator(mbql)) {
@@ -45,6 +48,10 @@ export function format(mbql, options = {}) {
     return formatNegativeFilter(mbql, options);
   }
   throw new Error("Unknown MBQL clause " + JSON.stringify(mbql));
+}
+
+function formatBooleanLiteral(mbql) {
+  return mbql[0] ? "True" : "False";
 }
 
 function formatNumberLiteral(mbql) {
