@@ -75,12 +75,14 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.models.setting.cache :as cache]
+            [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as models])
+            [toucan.models :as models]
+            [metabase.api.common :as api])
   (:import [clojure.lang Keyword Symbol]
            java.io.StringWriter
            java.time.temporal.Temporal))
@@ -97,6 +99,15 @@
 
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
   nil)
+
+(def ^:dynamic *user-local-values*
+  "User-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
+  `User.settings` in the application DB. When bound, any Setting that *can* be User-local will have a value from this
+  map returned preferentially to the site-wide value.
+
+  This is normally bound automatically by session middleware, in
+  [[metabase.server.middleware.session/do-with-current-user]]."
+  (atom nil))
 
 (def ^:private retired-setting-names
   "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
@@ -187,8 +198,9 @@
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)            ; if non-nil, contains the Metabase version in which this setting was deprecated
 
-   ;; whether this Setting can be Database-local. See [[metabase.models.setting]] docstring for more info.
+   ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
    :database-local LocalOption
+   :user-local     LocalOption
 
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
@@ -249,16 +261,44 @@
   (setting-name [this]
     (name this)))
 
+(defn- allows-site-wide-values? [setting]
+  (and
+   (not= (:database-local (resolve-setting setting)) :only)
+   (not= (:user-local (resolve-setting setting)) :only)))
+
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
-
-(defn- allows-site-wide-values? [setting]
-  (not= (:database-local (resolve-setting setting)) :only))
 
 (defn- database-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
+
+(defn- allows-user-local-values? [setting]
+  (#{:only :allowed} (:user-local (resolve-setting setting))))
+
+(defn- user-local-value [setting-definition-or-name]
+  (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
+    (when (allows-user-local-values? setting)
+      (core/get @*user-local-values* setting-name))))
+
+(defn- should-set-user-local-value? [setting-definition-or-name]
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (and (allows-user-local-values? setting)
+         @*user-local-values*)))
+
+(defn- set-user-local-value! [setting-definition-or-name value]
+  (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+    ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
+    ;; subsequent setting updates within the same API request will not overwrite this value.
+    (swap! *user-local-values*
+           (fn [old-settings] (do
+                               (clojure.pprint/pprint @*user-local-values*)
+                               (if value
+                                 (assoc old-settings setting-name value)
+                                 (dissoc old-settings setting-name)))))
+    (clojure.pprint/pprint @*user-local-values*)
+    (db/update! User api/*current-user-id* {:settings (json/generate-string @*user-local-values*)})))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -292,6 +332,8 @@
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
+    (def my-setting setting)
+    (comment (clojure.pprint/pprint my-setting))
     (when (allows-site-wide-values? setting)
       (let [v (if *disable-cache*
                 (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
@@ -311,7 +353,8 @@
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
 
-  1. From [[*database-local-values*]] if this Setting is allowed to have a Database-local value
+  2. From [[*user-local-values*]] if this Setting is allowed to have User-local values
+  1. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
   2. From the corresponding env var (excluding empty string values)
   3. From the application database (i.e., set via the admin panel) (excluding empty string values)
   4. The default value, if one was specified
@@ -326,7 +369,8 @@
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
    (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [database-local-value
+         source-fns [user-local-value
+                     database-local-value
                      env-var-value
                      db-or-cache-value
                      default-value]]
@@ -491,27 +535,32 @@
           (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
                          setting-name
                          deprecated)))
-        ;; always update the cache entirely when updating a Setting.
-        (cache/restore-cache!)
-        ;; write to DB
-        (cond
-          (nil? new-value)
-          (db/simple-delete! Setting :key setting-name)
+        (if (should-set-user-local-value? setting)
+          ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
+          ;; site-wide value or write or read from the cache
+          (set-user-local-value! setting-name new-value)
+          (do
+            ;; always update the cache entirely when updating a Setting.
+            (cache/restore-cache!)
+            ;; write to DB
+            (cond
+              (nil? new-value)
+              (db/simple-delete! Setting :key setting-name)
 
-          ;; if there's a value in the cache then the row already exists in the DB; update that
-          (contains? (cache/cache) setting-name)
-          (update-setting! setting-name new-value)
+              ;; if there's a value in the cache then the row already exists in the DB; update that
+              (contains? (cache/cache) setting-name)
+              (update-setting! setting-name new-value)
 
-          ;; if there's nothing in the cache then the row doesn't exist, insert a new one
-          :else
-          (set-new-setting! setting-name new-value))
-        ;; update cached value
-        (cache/update-cache! setting-name new-value)
-        ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
-        ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
-        ;; cause other instances to do needless reloading of the cache from the DB)
-        (when-not *disable-cache*
-          (cache/update-settings-last-updated!))
+              ;; if there's nothing in the cache then the row doesn't exist, insert a new one
+              :else
+              (set-new-setting! setting-name new-value))
+            ;; update cached value
+            (cache/update-cache! setting-name new-value)
+            ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
+            ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
+            ;; cause other instances to do needless reloading of the cache from the DB)
+            (when-not *disable-cache*
+              (cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
 
@@ -628,6 +677,7 @@
                  :sensitive?     false
                  :cache?         true
                  :database-local :never
+                 :user-local     :never
                  :deprecated     nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
@@ -648,6 +698,7 @@
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
+      ;; TODO: validate that a setting is not both user- and database-local
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

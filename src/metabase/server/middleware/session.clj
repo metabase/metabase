@@ -1,6 +1,8 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require
+            [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
@@ -9,6 +11,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.session :refer [Session]]
+            [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
@@ -234,12 +237,14 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
+            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
+            *user-local-values*            (atom (or (json/parse-string settings keyword)
+                                                     {}))]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request
@@ -265,7 +270,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]]
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user

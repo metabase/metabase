@@ -134,7 +134,8 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :types          (constantly {:login_attributes :json-no-keywordization})}))
+          :types          (constantly {:login_attributes :json-no-keywordization
+                                       :settings         :encrypted-json})}))
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
