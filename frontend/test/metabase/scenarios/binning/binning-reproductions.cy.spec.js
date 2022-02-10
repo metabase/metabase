@@ -10,57 +10,12 @@ import {
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("binning related reproductions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
-    cy.createQuestion({
-      name: "15446",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              [
-                "field",
-                PRODUCTS.ID,
-                {
-                  "join-alias": "Products",
-                },
-              ],
-            ],
-            alias: "Products",
-          },
-        ],
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}/notebook`);
-    });
-    cy.findByText("Pick a column to group by").click();
-    // In the first popover we'll choose the breakout method
-    popover().within(() => {
-      cy.findByText("User").click();
-      cy.findByPlaceholderText("Find...").type("cr");
-    });
-
-    changeBinningForDimension({
-      name: "Created At",
-      fromBinning: "by month",
-      toBinning: "Minute",
-    });
-
-    // Given that the previous step passes, we should now see this in the UI
-    cy.findByText("User → Created At: Minute");
   });
 
   it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
