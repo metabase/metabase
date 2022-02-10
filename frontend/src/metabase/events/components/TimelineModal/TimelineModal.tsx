@@ -41,7 +41,7 @@ const TimelineMenu = ({
     },
     {
       title: t`Edit timeline details`,
-      link: Urls.editTimeline(collection, timeline.id),
+      link: Urls.editTimeline(timeline.id, collection),
     },
   ];
 

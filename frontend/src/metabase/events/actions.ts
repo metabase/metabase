@@ -13,7 +13,7 @@ export const createEvent = createThunkAction(
     dispatch: Dispatch,
   ) => {
     const event = await createEventEntity(values, dispatch);
-    dispatch(push(Urls.timeline(collection, event.timeline_id)));
+    dispatch(push(Urls.timeline(event.timeline_id, collection)));
   },
 );
 
@@ -24,7 +24,7 @@ export const createTimeline = createThunkAction(
     dispatch: Dispatch,
   ) => {
     const timeline = await createTimelineEntity(values, dispatch);
-    dispatch(push(Urls.timeline(collection, timeline.id)));
+    dispatch(push(Urls.timeline(timeline.id, collection)));
   },
 );
 
@@ -39,7 +39,7 @@ export const createEventWithTimeline = createThunkAction(
     const timeline = await createTimelineEntity(timelineValues, dispatch);
     const eventValues = { ...values, timeline_id: timeline.id };
     await createEventEntity(eventValues, dispatch);
-    dispatch(push(Urls.timeline(collection, timeline.id)));
+    dispatch(push(Urls.timeline(timeline.id, collection)));
   },
 );
 

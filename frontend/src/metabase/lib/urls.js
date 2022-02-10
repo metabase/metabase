@@ -293,7 +293,7 @@ export function timelines(collections) {
   return `${collectionUrl}/timeline`;
 }
 
-export function timeline(collection, timelineId) {
+export function timeline(timelineId, collection) {
   return `${timelines(collection)}/${timelineId}`;
 }
 
@@ -305,8 +305,8 @@ export function newTimelineAndEvent(collection) {
   return `${timelines(collection)}/new/event/new`;
 }
 
-export function editTimeline(collection, timelineId) {
-  return `${timeline(collection, timelineId)}/edit`;
+export function editTimeline(timelineId, collection) {
+  return `${timeline(timelineId, collection)}/edit`;
 }
 
 export function extractEntityId(slug) {
