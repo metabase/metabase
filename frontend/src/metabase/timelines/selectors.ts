@@ -3,15 +3,15 @@ import { State, TimelineMode } from "metabase-types/store";
 import { ModalProps } from "./types";
 
 export const getMode = (state: State): TimelineMode => {
-  return state.timeline.mode;
+  return state.timelines.mode;
 };
 
 export const getTimelineId = (state: State): number | undefined => {
-  return state.timeline.timelineId;
+  return state.timelines.timelineId;
 };
 
 export const getTimelineEventId = (state: State): number | undefined => {
-  return state.timeline.timelineEventId;
+  return state.timelines.timelineEventId;
 };
 
 export const getCollectionId = (state: State, props: ModalProps) => {

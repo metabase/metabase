@@ -39,6 +39,7 @@ import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
+import TimelineApp from "metabase/timelines/containers/TimelineApp";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
@@ -207,6 +208,7 @@ export const getRoutes = store => (
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          <ModalRoute path="timelines" modal={TimelineApp} />
         </Route>
 
         <Route path="activity" component={ActivityApp} />

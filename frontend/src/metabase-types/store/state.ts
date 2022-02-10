@@ -5,5 +5,5 @@ import { TimelineState } from "./timeline";
 export interface State {
   admin: AdminState;
   settings: SettingsState;
-  timeline: TimelineState;
+  timelines: TimelineState;
 }
