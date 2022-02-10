@@ -352,7 +352,7 @@
     ;; Does this database support foreign key relationships?
     :foreign-keys
 
-    ;; Does this database support nested fields for any and every field (e.g. Mongo)?
+    ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
 
     ;; Does this database support nested fields but only for certain field types (e.g. Postgres and JSON / JSONB columns)?
