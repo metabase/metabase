@@ -1,4 +1,4 @@
-{:config-paths ^:replace ["macros"]
+{:config-paths ["macros"]
  :linters {:unresolved-symbol {:exclude [schema= re=
                                          (metabase.util/prog1 [<>])
                                          (metabase.mbql.util/match-one)
