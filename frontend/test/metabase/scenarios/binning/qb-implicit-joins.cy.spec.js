@@ -5,6 +5,12 @@ import {
   summarize,
 } from "__support__/e2e/cypress";
 
+/**
+ * The list of issues this spec covers:
+ *  - metabase#15648
+ *  -
+ */
+
 describe("scenarios > binning > from a saved QB question using implicit joins", () => {
   beforeEach(() => {
     restore();
