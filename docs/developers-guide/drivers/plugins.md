@@ -207,8 +207,4 @@ Package a driver this way if you plan on shipping it as a plugin and don't plan 
 
 Building a driver like this is largely the same as plugins shipped as part of Metabase -- install `metabase-core` locally, then build the driver using `lein uberjar`. Copy the resulting `JAR` file into your plugins directory, and you're off to the races.
 
-# Next Up
-
-[Chapter 3: Implementing `metabase.driver` methods](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Implementing-metabase.driver-methods)
-
 [env-var]: ../../operations-guide/environment-variables.html

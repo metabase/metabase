@@ -11,6 +11,18 @@ The Metabase application has two basic components:
 
 Both components are built and assembled together into a single jar file which runs the entire application.
 
+## Preparing Dependencies
+
+Prep dependencies by changing into the Metabase directory and running:
+
+```bash
+clojure -X:deps prep 
+cd modules/drivers
+clojure -X:deps prep
+cd ../..
+```
+You must run these commands before running any other `clojure` commands in the repository, but you only need to do this once. 
+
 ## Third-party dependencies
 
 Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
@@ -76,7 +88,7 @@ $ FS_CACHE=true yarn build-hot
 
 When using `FS_CACHE=true` you may need to remove the `node_modules/.cache` directory to fix scenarios where the build may be improperly cached, and you must run `rm -rf node_modules/.cache` in order for the build to work correctly when alternating between open source and enterprise builds of the codebase.
 
-## Frontend testing
+### Frontend testing
 
 Run all unit and Cypress end-to-end tests with
 
@@ -88,7 +100,7 @@ Cypress tests and some unit tests are located in `frontend/test` directory. New 
 
 If you are using `FS_CACHE=true`, you can also use `FS_CACHE=true` with `yarn test`.
 
-## Frontend debugging
+### Frontend debugging
 
 By default, we use a simple source mapping option that is optimized for speed.
 
@@ -153,7 +165,7 @@ drivers' dependencies and source paths into the Metabase project:
 clojure -P -X:dev:ci:drivers:drivers-dev
 ```
 
-#### Unit Tests / Linting
+### Running unit tests
 
 Run unit tests with
 
@@ -176,16 +188,17 @@ or a specific test (or test namespace) with
     # our test runner treats strings as directories
     clojure -X:dev:test :only '"test/metabase/util"'
 
+#### Testing drivers
+
 By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `DRIVERS`:
 
     DRIVERS=h2,postgres,mysql,mongo clojure -X:dev:drivers:drivers-dev:test
 
 Some drivers require additional environment variables when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
-##### Run the linters:
+### Running the linters
 
-`clj-kondo` must be installed separately; see https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md for
-instructions.
+`clj-kondo` must be [installed separately](https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md).
 
     # Run Eastwood
     clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
@@ -195,79 +208,6 @@ instructions.
 
     # Run clj-kondo
     clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn
-
-### Developing with Emacs
-
-`.dir-locals.el` contains some Emacs Lisp that tells `clojure-mode` how to indent Metabase macros and which arguments are docstrings. Whenever this file is updated,
-Emacs will ask you if the code is safe to load. You can answer `!` to save it as safe.
-
-By default, Emacs will insert this code as a customization at the bottom of your `init.el`.
-You'll probably want to tell Emacs to store customizations in a different file. Add the following to your `init.el`:
-
-```emacs-lisp
-(setq custom-file (concat user-emacs-directory ".custom.el")) ; tell Customize to save customizations to ~/.emacs.d/.custom.el
-(ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
-  (load-file custom-file))
-```
-
-## Developing with Visual Studio Code
-
-### Debugging
-
-First, install the following extension:
-* [Debugger for Firefox](https://marketplace.visualstudio.com/items?itemName=firefox-devtools.vscode-firefox-debug)
-
-_Note_: Debugger for Chrome has been deprecated. You can safely delete it as Visual Studio Code now has [a bundled JavaScript Debugger](https://github.com/microsoft/vscode-js-debug) that covers the same functionality.
-
-Before starting the debugging session, make sure that Metabase is built and running. Choose menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_. Alternatively, use the corresponding shortcut `Ctrl+Shift+B`. The built-in terminal will appear to show the progress, wait a few moment until webpack indicates a complete (100%) bundling.
-
-To begin debugging Metabase, switch to the Debug view (shortcut: `Ctrl+Shift+D`) and then select one of the two launch configurations from the drop-down at the top:
-
-* Debug with Firefox, or
-* Debug with Chrome
-
-After that, begin the debugging session by choosing menu _Run_, _Start Debugging_ (shortcut: `F5`).
-
-For more details, please refer to the complete VS Code documentation on [Debugging](https://code.visualstudio.com/docs/editor/debugging).
-
-### Docker-based Workflow
-
-These instructions allow you to work on Metabase codebase on Windows, Linux, or macOS using [Visual Studio Code](https://code.visualstudio.com/), **without** manually installing the necessary dependencies. This is possible by leveraging Docker container and the Remote Containers extension from VS Code.
-
-For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers).
-
-Requirements:
-
-* [Visual Studio Code](https://code.visualstudio.com/) (obviously)
-* [Docker](https://www.docker.com/)
-* [Remote - Containers extension](vscode:extension/ms-vscode-remote.remote-containers) for VS Code
-
-_Important_: Ensure that Docker is running properly and it can be used to download an image and launch a container, e.g. by running:
-
-```
-$ docker run hello-world
-```
-If everything goes well, you should see the following message:
-
-```
-Hello from Docker!
-This message shows that your installation appears to be working correctly.
-```
-
-Steps:
-
-1. Clone Metabase repository
-
-2. Launch VS Code and open your cloned Metabase repository
-
-3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
-   **Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
-
-4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
-
-5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
-
-See [here](dev-branch-docker.md) for more on running development branches of Metabase using Docker.
 
 ## Continuous integration
 

@@ -4,28 +4,22 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 
 ## Does a driver for your data source already exist?
 
-See:
+Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
 - [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases)
 - [Community databases](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver)
 
-## Before you start coding
+## Setting up
 
-Avoid skipping right to whichever chapter you think will give you code to copy-pasta to write your driver. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better driver. 
+See [Setting up your development environment](../devend.md)
 
+## Writing a driver
 
-- [The Basics](basics.md)
-- [Packaging a driver]
-- [Metabase plugin basics]
-- [Implementing metabase.driver methods]
-- 
+Avoid skipping right to whichever page you think will give you code to copy-pasta to write your driver. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better driver. 
 
-Chapter 2: Packaging a Driver & Metabase Plugin Basics
-Chapter 3: Implementing metabase.driver methods
-Chapter 4: A Sample Driver
-Chapter 5: Writing Drivers for SQL-Based Databases
-Chapter 6: A Sample SQL Driver
-Chapter 7: Writing Drivers for SQL-Based Databases that have a JDBC Driver
-Chapter 8: A Sample SQL JDBC Driver
-Chapter 9: Adding Test Extensions, Tests, and Setting up CI
-Chapter 10: Publishing a Driver
+- [Driver basics](basics.md)
+- [Packaging your driver](plugins.md)
+- [Submitting a PR for your driver](driver-tests.md)
+- [A sample driver](https://github.com/metabase/sudoku-driver)
+- [An official driver](https://github.com/metabase/metabase/tree/master/modules/drivers/sqlite)
+
