@@ -9923,12 +9923,19 @@ databaseChangeLog:
         Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
       preConditions:
         - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT count(*)
-              FROM setting
-              WHERE key = 'humanization-strategy';
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
       changes:
         - sql:
             dbms: h2,postgresql
