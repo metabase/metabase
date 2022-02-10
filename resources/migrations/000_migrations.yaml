@@ -9920,10 +9920,18 @@ databaseChangeLog:
         Added 0.43.0. Make sure 'site-url' Setting includes protocol.
       changes:
         - sql:
+            dbms: h2,postgresql
             sql: >-
               UPDATE setting
               SET value = concat('http://', value)
               WHERE key = 'site-url'
+                AND value NOT LIKE 'http%';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE `key` = 'site-url'
                 AND value NOT LIKE 'http%';
 
 
