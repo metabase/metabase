@@ -26,7 +26,7 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
   [id include]
-  {include (s/maybe s/Str)}
+  {include (s/maybe (s/enum "events"))}
   (let [timeline (api/read-check (Timeline id))]
     (if include
       (hydrate timeline :creator :events)

@@ -530,14 +530,14 @@
   "Fetch the root Collection's timelines."
   ;; todo: do we care about `archived` option?
   [include]
-  {include (s/maybe s/Str)}
+  {include (s/maybe (s/enum "events"))}
   (timeline/timelines-for-collection nil include))
 
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   ;; todo: do we care about `archived` option?
   [id include]
-  {include (s/maybe s/Str)}
+  {include (s/maybe (s/enum "events"))}
   (timeline/timelines-for-collection id include))
 
 (api/defendpoint GET "/:id/items"
