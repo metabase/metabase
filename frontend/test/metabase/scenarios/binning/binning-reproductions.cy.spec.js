@@ -2,77 +2,20 @@ import {
   restore,
   popover,
   visualize,
-  openOrdersTable,
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
+  openNotebookEditor,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("binning related reproductions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  // This is basically covered with tests in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
-  it("should not render duplicated values in date binning popover (metabase#15574)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
-    cy.findByText("Pick a column to group by").click();
-
-    changeBinningForDimension({
-      name: "Created At",
-      fromBinning: "by month",
-      toBinning: "Minute",
-    });
-  });
-
-  it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
-    cy.createQuestion({
-      name: "15446",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              [
-                "field",
-                PRODUCTS.ID,
-                {
-                  "join-alias": "Products",
-                },
-              ],
-            ],
-            alias: "Products",
-          },
-        ],
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}/notebook`);
-    });
-    cy.findByText("Pick a column to group by").click();
-    // In the first popover we'll choose the breakout method
-    popover().within(() => {
-      cy.findByText("User").click();
-      cy.findByPlaceholderText("Find...").type("cr");
-    });
-
-    changeBinningForDimension({
-      name: "Created At",
-      fromBinning: "by month",
-      toBinning: "Minute",
-    });
-
-    // Given that the previous step passes, we should now see this in the UI
-    cy.findByText("User → Created At: Minute");
   });
 
   it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
@@ -116,7 +59,7 @@ describe("binning related reproductions", () => {
       display: "line",
     });
 
-    cy.contains("Summarize").click();
+    summarize();
 
     changeBinningForDimension({
       name: "Created At",
@@ -211,22 +154,55 @@ describe("binning related reproductions", () => {
     });
   });
 
+  it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
+    // save "Orders" as question
+    cy.createQuestion({
+      name: "11439",
+      query: { "source-table": ORDERS_ID },
+    });
+
+    // it is essential for this repro to find question following these exact steps
+    // (for example, visiting `/collection/root` would yield different result)
+    openNotebookEditor();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("11439").click();
+    visualize();
+
+    summarize();
+
+    cy.findByText("Group by")
+      .parent()
+      .within(() => {
+        cy.log("Reported failing since v0.33.5.1");
+        cy.log(
+          "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
+        );
+
+        cy.findAllByText("Created At")
+          .eq(0)
+          .closest("li")
+          .contains("by month")
+          // realHover() or mousemove don't work for whatever reason
+          // have to use this ugly hack for now
+          .click({ force: true });
+      });
+    // // this step is maybe redundant since it fails to even find "by month"
+    cy.findByText("Hour of Day");
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
-      cy.createQuestion({
-        name: "16379",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
-          breakout: [["field", ORDERS.USER_ID, null]],
+      cy.createQuestion(
+        {
+          name: "16379",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
+            breakout: [["field", ORDERS.USER_ID, null]],
+          },
         },
-      }).then(({ body }) => {
-        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-        cy.visit(`/question/${body.id}`);
-
-        // Wait for `result_metadata` to load
-        cy.wait("@cardQuery");
-      });
+        { visitQuestion: true },
+      );
     });
 
     it("should work for simple question", () => {
@@ -284,8 +260,8 @@ describe("binning related reproductions", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.findByText("Summarize").click();
       cy.wait("@dataset");
+      summarize();
     });
 
     it("should render number auto binning correctly (metabase#16670)", () => {
@@ -328,5 +304,8 @@ function openSummarizeOptions(questionType) {
   cy.findByText(questionType).click();
   cy.findByText("Saved Questions").click();
   cy.findByText("16379").click();
-  cy.findByText("Summarize").click();
+
+  if (questionType === "Simple question") {
+    summarize();
+  }
 }

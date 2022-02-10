@@ -9,6 +9,8 @@ import {
   remapDisplayValueToFK,
   setupSMTP,
   visualize,
+  summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -139,7 +141,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
         popover().within(() => {
           cy.findByText("Total").click();
         });
@@ -198,7 +200,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 
@@ -482,10 +484,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.get(".cellData")
@@ -640,11 +640,10 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
+
         // Title of the first order for User ID = 1
         cy.findByText("Awesome Concrete Shoes");
       });
@@ -969,10 +968,9 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openOrdersTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openOrdersTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       cy.contains("37.65");
@@ -1026,10 +1024,9 @@ describeWithToken("formatting > sandboxes", () => {
       });
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openReviewsTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openReviewsTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       // Add positive assertion once this issue is fixed

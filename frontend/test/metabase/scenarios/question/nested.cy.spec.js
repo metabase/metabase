@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   visualize,
   getDimensionByName,
+  summarize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -177,16 +178,16 @@ describe("scenarios > question > nested", () => {
 
   it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
     openOrdersTable({ mode: "notebook" });
+
     // add initial aggregation ("Average of Total by Order ID")
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Average of ...").click();
     cy.findByText("Total").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("ID").click();
+
     // add another aggregation ("Count by Average of Total")
-    cy.get(".Button")
-      .contains("Summarize")
-      .click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.log("Reported failing on v0.34.3 - v0.37.0.2");
@@ -399,7 +400,7 @@ describe("scenarios > question > nested", () => {
     // The column title
     cy.findByText("Products → Category").click();
     cy.findByText("Distribution").click();
-    cy.contains("Summarize").click();
+    summarize();
     cy.findByText("Group by")
       .parent()
       .within(() => {
@@ -455,9 +456,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("15397").click();
 
       cy.wait("@dataset");
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
 
       if (test === "average") {
         cy.findByTestId("sidebar-right")
@@ -586,9 +585,7 @@ describe("scenarios > question > nested", () => {
 
       visualize();
 
-      cy.findAllByRole("button")
-        .contains("Summarize")
-        .click();
+      summarize();
       cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
       popover()

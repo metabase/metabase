@@ -4,6 +4,7 @@ import {
   visitQuestionAdhoc,
   openNativeEditor,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -102,7 +103,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should work with time-series data", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
@@ -123,7 +124,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should hide the Total label if there is no space", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
