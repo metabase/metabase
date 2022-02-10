@@ -25,7 +25,7 @@ export const newPulse = () => `/pulse/create`;
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
 
-export function question(card, hash = "", query = "") {
+export function question(card, { hash = "", query = "" } = {}) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
@@ -75,8 +75,8 @@ export function question(card, hash = "", query = "") {
   return `${path}${query}${hash}`;
 }
 
-export function serializedQuestion(card) {
-  return question(null, card);
+export function serializedQuestion(card, opts = {}) {
+  return question(null, { ...opts, hash: card });
 }
 
 export const extractQueryParams = query => {
@@ -163,7 +163,10 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
     query += `&segment=${segmentId}`;
   }
 
-  return question(null, query);
+  // This will result in a URL like "/question#?db=1&table=1"
+  // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
+  // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
+  return question(null, { hash: query });
 }
 
 function slugifyPersonalCollection(collection) {
