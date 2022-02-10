@@ -24,6 +24,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
+            [metabase.models.timeline :as timeline]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
@@ -172,6 +173,15 @@
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+
+(api/defendpoint GET "/:id/timelines"
+  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
+  [id]
+  (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
+    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
+    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
+    ;; the read-checks are particularly fast on multiple items
+    (timeline/timelines-for-collection collection_id)))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
