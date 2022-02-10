@@ -270,37 +270,6 @@ describe("binning related reproductions", () => {
     cy.findByText("Hour of Day");
   });
 
-  it("binning on values from joined table should work (metabase#15648)", () => {
-    // Simple question
-    openOrdersTable();
-    summarize();
-    cy.findByText("Group by")
-      .parent()
-      .findByText("Rating")
-      .click();
-    cy.get(".Visualization .bar").should("have.length", 6);
-
-    // Custom question ("Notebook")
-    openOrdersTable({ mode: "notebook" });
-    summarize({ mode: "notebook" });
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      // Close expanded "Orders" section in order to bring everything else into view
-      cy.get(".List-section-title")
-        .contains(/Orders?/)
-        .click();
-      cy.get(".List-section-title")
-        .contains(/Products?/)
-        .click();
-      cy.findByText("Rating").click();
-    });
-
-    visualize();
-
-    cy.get(".Visualization .bar").should("have.length", 6);
-  });
-
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion(
