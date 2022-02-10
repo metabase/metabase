@@ -165,6 +165,14 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
+;; Describe the JSON fields present in a table.
+;; Not to be confused with existing nested field functionality for mongo,
+;; since this one only applies to JSON fields.
+(defmethod driver/describe-table-json :postgres
+  [driver database table]
+  ;;;;; implement here...
+  )
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
