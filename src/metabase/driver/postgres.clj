@@ -165,17 +165,25 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
+(defn- describe-table-json*
+  [driver conn table]
+  (let [table-fields (sql-jdbc.sync/describe-table-fields driver conn table)
+        json-fields  (filter those suckers)]
+    (for [json-field json-fields]
+      (let [sample sample that fucker
+            same-schema filter it down to see if it's good for us]
+        (if same-schema
+          (get that schema)
+          false)))))
+
 ;; Describe the JSON fields present in a table.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields.
 (defmethod driver/describe-table-json :postgres
   [driver database table]
-  ;;; get connection
-  ;;; sample
-  ;;; determine if samey schema or not, somehow fast
-  ;;; if samey schema, make that field list
-  ;;; return that sucker
-  )
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (with-open [conn (jdbc/get-connection spec)]
+      (describe-table-json* driver conn table))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
