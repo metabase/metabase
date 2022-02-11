@@ -20,6 +20,7 @@
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
             [metabase.api.public :as public-api]
@@ -276,7 +277,7 @@
    (check-embedding-enabled-for-object (db/select-one [entity :enable_embedding] :id id)))
 
   ([object]
-   (api/check-embedding-enabled)
+   (validation/check-embedding-enabled)
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)

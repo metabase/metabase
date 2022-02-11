@@ -76,7 +76,6 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
-            [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
@@ -292,13 +291,10 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! *user-local-values*
-           (fn [old-settings] (do
-                               (clojure.pprint/pprint @*user-local-values*)
-                               (if value
-                                 (assoc old-settings setting-name value)
-                                 (dissoc old-settings setting-name)))))
-    (clojure.pprint/pprint @*user-local-values*)
-    (db/update! User api/*current-user-id* {:settings (json/generate-string @*user-local-values*)})))
+           (fn [old-settings] (if value
+                                (assoc old-settings setting-name value)
+                                (dissoc old-settings setting-name))))
+    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @*user-local-values*)})))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -332,8 +328,6 @@
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
-    (def my-setting setting)
-    (comment (clojure.pprint/pprint my-setting))
     (when (allows-site-wide-values? setting)
       (let [v (if *disable-cache*
                 (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))

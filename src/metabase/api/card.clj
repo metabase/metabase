@@ -8,6 +8,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as dataset-api]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
@@ -330,7 +331,7 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (defn- publish-card-update!
@@ -713,7 +714,7 @@
   be enabled."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -725,7 +726,7 @@
   "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
     :public_uuid       nil
@@ -736,7 +737,7 @@
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -744,7 +745,7 @@
   and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"
