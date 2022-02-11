@@ -16,32 +16,22 @@
     (i/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
-(defn- hydrate-events-impl
-  "Event hydration implementation."
-  [timelines archived?]
+
+;; todo: is there a way to pass in archived boolean to the hydration?
+;; right now it hydrates both archived/unarchived and filters one out at the endpoint
+(defn hydrate-events
+  "Efficiently hydrate the events for a timeline."
+  {:batched-hydrate :events}
+  [timelines]
   (when (seq timelines)
     (let [timeline-id->events (->> (db/select TimelineEvent
                                      :timeline_id [:in (map :id timelines)]
-                                     :archived archived?
                                      {:order-by [[:timestamp :asc]]})
                                    (group-by :timeline_id))]
       (for [{:keys [id] :as timeline} timelines]
         (let [events (timeline-id->events id)]
           (when timeline
             (assoc timeline :events (if events events []))))))))
-
-;; todo: is there a way to pass args into the hydrate function instead of having two hydrate keys?
-(defn hydrate-events
-  "Efficiently hydrate the events for a timeline."
-  {:batched-hydrate :events}
-  [timelines]
-  (hydrate-events-impl timelines false))
-
-(defn hydrate-archived-events
-  "Efficiently hydrate the events for a timeline when `archived` is `true`."
-  {:batched-hydrate :archived-events}
-  [timelines]
-  (hydrate-events-impl timelines true))
 
 ;;;; model
 

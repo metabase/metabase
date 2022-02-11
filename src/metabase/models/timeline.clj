@@ -14,9 +14,11 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [include archived]}]
-  (let [events-hydration-key (if archived :archived-events :events)]
+  (let [filter-fn (fn [e] (filter #(= (:archived %) archived) e))]
     (if include
-      (hydrate (db/select Timeline :collection_id collection-id) [events-hydration-key :creator] :creator)
+      (as-> (db/select Timeline :collection_id collection-id) <>
+          (hydrate <> :creator [:events :creator])
+          (map #(update % :events filter-fn) <>))
       (hydrate (db/select Timeline :collection_id collection-id) :creator))))
 
 (u/strict-extend (class Timeline)

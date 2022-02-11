@@ -27,12 +27,14 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
   [id include archived]
-  {include (s/maybe include-events-schema)
+  {include  (s/maybe include-events-schema)
    archived (s/maybe su/BooleanString)}
-  (let [timeline (api/read-check (Timeline id))
-        event-hydration-key (if archived :archived-events :events)]
+  (let [archived? (Boolean/parseBoolean archived)
+        timeline  (api/read-check (Timeline id))
+        filter-fn (fn [e] (filter #(= (:archived %) archived?) e))]
     (if include
-      (hydrate timeline :creator event-hydration-key [event-hydration-key :creator])
+      (-> (hydrate timeline :creator [:events :creator])
+          (update :events filter-fn))
       (hydrate timeline :creator))))
 
 (api/defendpoint PUT "/:id"

@@ -532,16 +532,18 @@
   [include archived]
   {include  (s/maybe timeline-api/include-events-schema)
    archived (s/maybe su/BooleanString)}
-  (timeline/timelines-for-collection nil {:include  include
-                                          :archived archived}))
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection nil {:include  include
+                                            :archived archived?})))
 
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
   {include  (s/maybe timeline-api/include-events-schema)
    archived (s/maybe su/BooleanString)}
-  (timeline/timelines-for-collection id {:include  include
-                                         :archived archived}))
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection id {:include  include
+                                           :archived archived?})))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
