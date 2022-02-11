@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
+import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import EventCard from "../EventCard";
 import ModalHeader from "../ModalHeader";
@@ -20,24 +21,49 @@ const TimelineModal = ({
 }: TimelineModalProps): JSX.Element => {
   return (
     <div>
-      <ModalHeader title={timeline.name} onClose={onClose} />
+      <ModalHeader title={timeline.name} onClose={onClose}>
+        <TimelineMenu timeline={timeline} collection={collection} />
+      </ModalHeader>
       <ModalBody>
-        <EventToolbar timeline={timeline} collection={collection} />
-        <EventList timeline={timeline} />
+        <TimelineToolbar timeline={timeline} collection={collection} />
+        <TimelineList timeline={timeline} />
       </ModalBody>
     </div>
   );
 };
 
-interface EventToolbarProps {
+export interface TimelineMenuProps {
   timeline: Timeline;
   collection: Collection;
 }
 
-const EventToolbar = ({
+const TimelineMenu = ({
   timeline,
   collection,
-}: EventToolbarProps): JSX.Element => {
+}: TimelineMenuProps): JSX.Element => {
+  const items = [
+    {
+      title: t`New timeline`,
+      link: Urls.newTimelineInCollection(collection),
+    },
+    {
+      title: t`Edit timeline details`,
+      link: Urls.editTimelineInCollection(timeline, collection),
+    },
+  ];
+
+  return <EntityMenu items={items} triggerIcon="ellipsis" />;
+};
+
+interface TimelineToolbarProps {
+  timeline: Timeline;
+  collection: Collection;
+}
+
+const TimelineToolbar = ({
+  timeline,
+  collection,
+}: TimelineToolbarProps): JSX.Element => {
   return (
     <ModalToolbar>
       <Link
@@ -48,11 +74,11 @@ const EventToolbar = ({
   );
 };
 
-interface EventListProps {
+interface TimelineListProps {
   timeline: Timeline;
 }
 
-const EventList = ({ timeline }: EventListProps): JSX.Element => {
+const TimelineList = ({ timeline }: TimelineListProps): JSX.Element => {
   return (
     <div>
       {timeline.events.map(event => (
