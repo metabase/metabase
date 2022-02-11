@@ -10,6 +10,7 @@
             [toucan.hydrate :refer [hydrate]]
             [metabase.util :as u]))
 
+(def include-events-schema (s/enum "events"))
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
@@ -26,7 +27,7 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
   [id include]
-  {include (s/maybe (s/enum "events"))}
+  {include (s/maybe include-events-schema)}
   (let [timeline (api/read-check (Timeline id))]
     (if include
       (hydrate timeline :creator :events)

@@ -11,6 +11,7 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -530,14 +531,14 @@
   "Fetch the root Collection's timelines."
   ;; todo: do we care about `archived` option?
   [include]
-  {include (s/maybe (s/enum "events"))}
+  {include (s/maybe timeline-api/include-events-schema)}
   (timeline/timelines-for-collection nil include))
 
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   ;; todo: do we care about `archived` option?
   [id include]
-  {include (s/maybe (s/enum "events"))}
+  {include (s/maybe timeline-api/include-events-schema)}
   (timeline/timelines-for-collection id include))
 
 (api/defendpoint GET "/:id/items"
