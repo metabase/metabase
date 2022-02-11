@@ -15,21 +15,17 @@ describe("issue 10803", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "10803",
-      native: {
-        query:
-          "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
-        "template-tags": {},
+    cy.createNativeQuestion(
+      {
+        name: "10803",
+        native: {
+          query:
+            "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
+          "template-tags": {},
+        },
       },
-    }).then(({ body }) => {
-      questionId = body.id;
-
-      cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-      cy.visit(`/question/${questionId}`);
-
-      cy.wait("@cardQuery");
-    });
+      { loadMetadata: true },
+    );
   });
 
   testCases.forEach(fileType => {

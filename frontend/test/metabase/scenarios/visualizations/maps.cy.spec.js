@@ -59,23 +59,24 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.createNativeQuestion({
-      name: "14254",
-      native: {
-        query:
-          'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
-        "template-tags": {},
+    cy.createNativeQuestion(
+      {
+        name: "14254",
+        native: {
+          query:
+            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "us_states",
+          "map.type": "pin",
+          "map.latitude_column": "LATITUDE",
+          "map.longitude_column": "LONGITUDE",
+        },
       },
-      display: "map",
-      visualization_settings: {
-        "map.region": "us_states",
-        "map.type": "pin",
-        "map.latitude_column": "LATITUDE",
-        "map.longitude_column": "LONGITUDE",
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
+      { visitQuestion: true },
+    );
 
     cy.findByText("Visualization")
       .closest(".Button")
