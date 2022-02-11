@@ -9908,7 +9908,7 @@ databaseChangeLog:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
   - changeSet:
-      id: v43.00-002
+      id: v43.00-021
       author: adam-james
       comment: Added 0.43.0 - Timeline table for Events
       changes:
@@ -9982,7 +9982,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v43.00-003
+      id: v43.00-022
       author: adam-james
       comment: Added 0.43.0 - Events table
       changes:
@@ -10076,7 +10076,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v43.00-004
+      id: v43.00-023
       author: dpsutton
       comment: Added 0.43.0 - Index on timeline collection_id
       changes:
@@ -10088,7 +10088,7 @@ databaseChangeLog:
                   name: collection_id
 
   - changeSet:
-      id: v43.00-005
+      id: v43.00-024
       author: dpsutton
       comment: Added 0.43.0 - Index on timeline_event timeline_id
       changes:
@@ -10100,7 +10100,7 @@ databaseChangeLog:
                   name: timeline_id
 
   - changeSet:
-      id: v43.00-006
+      id: v43.00-025
       author: dpsutton
       comment: Added 0.43.0 - Index on timeline timestamp
       changes:
