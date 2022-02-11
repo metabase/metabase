@@ -149,6 +149,11 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     expect(process("A and not X")).toEqual(["and", A, ["not", X]]);
   });
 
+  it("should detect aggregation functions with no argument", () => {
+    expect(process("COUNT/2")).toEqual(["/", ["count"], 2]);
+    expect(process("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
+  });
+
   it("should resolve segments", () => {
     expect(process("Expensive", "boolean")).toEqual(["segment", "Expensive"]);
     expect(process("NOT LowVolume")).toEqual(["not", ["segment", "LowVolume"]]);
