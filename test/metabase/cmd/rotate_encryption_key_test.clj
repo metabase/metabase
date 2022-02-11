@@ -10,7 +10,6 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Secret Setting User]]
-            [metabase.models.database :as database]
             [metabase.models.interface :as interface]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]

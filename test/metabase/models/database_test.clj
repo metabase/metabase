@@ -221,12 +221,12 @@
     (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
                                                                       :is_sample true
                                                                       :name      "Sample Database"
-                                                                      :details   {:host "localhost" :password-value "my-password-123"}}]
+                                                                      :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
       (testing " updating the engine of a sample database is not allowed"
         (try (db/update! Database id :engine :sqlite)
              (catch Exception e
                (is (= "The engine on a sample database cannot be changed." (.getMessage e)))
-               (is (= {:status-code     400,
+               (is (= {:status-code     400
                        :existing-engine :h2
                        :new-engine      :sqlite}
                       (ex-data e))))))

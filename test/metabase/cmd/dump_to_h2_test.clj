@@ -13,7 +13,6 @@
             [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Setting]]
-            [metabase.models.database :as database]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
