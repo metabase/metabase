@@ -5,7 +5,6 @@ import forms from "metabase/entities/timelines/forms";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalButton, ModalBody } from "./EditTimelineModal.styled";
-import Button from "metabase/core/components/Button";
 
 export interface EditTimelineModalProps {
   timeline: Timeline;
@@ -46,7 +45,7 @@ const EditTimelineModal = ({
           onSubmit={handleSubmit}
           onClose={onCancel}
           footerExtraButtons={
-            <ModalButton borderless onClick={handleArchive}>
+            <ModalButton type="button" borderless onClick={handleArchive}>
               {t`Archive timeline and all events`}
             </ModalButton>
           }

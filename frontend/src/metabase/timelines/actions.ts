@@ -32,6 +32,28 @@ export const createTimelineWithEvent = createThunkAction(
   },
 );
 
+export const UPDATE_TIMELINE = "metabase/timelines/UPDATE_TIMELINE";
+export const updateTimeline = createThunkAction(
+  UPDATE_TIMELINE,
+  (timeline: Timeline, collection: Collection) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(Timelines.actions.update(timeline));
+      dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    };
+  },
+);
+
+export const ARCHIVE_TIMELINE = "metabase/timelines/ARCHIVE_TIMELINE";
+export const archiveTimeline = createThunkAction(
+  ARCHIVE_TIMELINE,
+  (timeline: Timeline, collection: Collection) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(Timelines.actions.setArchived(timeline, true));
+      dispatch(push(Urls.timelinesInCollection(collection)));
+    };
+  },
+);
+
 export const CREATE_EVENT = "metabase/timelines/CREATE_EVENT";
 export const createEvent = createThunkAction(
   CREATE_EVENT,
@@ -46,17 +68,6 @@ export const createEvent = createThunkAction(
   },
 );
 
-export const UPDATE_TIMELINE = "metabase/timelines/UPDATE_TIMELINE";
-export const updateTimeline = createThunkAction(
-  UPDATE_TIMELINE,
-  (timeline: Timeline, collection: Collection) => {
-    return async (dispatch: Dispatch) => {
-      await dispatch(Timelines.actions.update(timeline));
-      dispatch(push(Urls.timelineInCollection(timeline, collection)));
-    };
-  },
-);
-
 export const UPDATE_EVENT = "metabase/timelines/UPDATE_EVENT";
 export const updateEvent = createThunkAction(
   UPDATE_EVENT,
@@ -67,5 +78,12 @@ export const updateEvent = createThunkAction(
     };
   },
 );
+
+export const ARCHIVE_EVENT = "metabase/events/ARCHIVE_EVENT";
+export const archiveEvent = createThunkAction(ARCHIVE_EVENT, (event: Event) => {
+  return async (dispatch: Dispatch) => {
+    await dispatch(TimelineEvents.actions.setArchived(event, true));
+  };
+});
 
 type Dispatch = any;

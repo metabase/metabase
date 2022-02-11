@@ -37,7 +37,8 @@ export const CardThreadStroke = styled.div`
 `;
 
 export const CardBody = styled.div`
-  padding: 0.375rem 0.75rem;
+  flex: 1 1 auto;
+  padding: 0.375rem 0.75rem 0;
 `;
 
 export const CardTitle = styled.div`
@@ -45,4 +46,8 @@ export const CardTitle = styled.div`
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+`;
+
+export const CardAside = styled.div`
+  flex: 0 0 auto;
 `;

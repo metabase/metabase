@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { TimelineSchema } from "metabase/schema";
 import { TimelineApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline } from "metabase/lib/timeline";
@@ -9,6 +10,7 @@ const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
+  schema: TimelineSchema,
   forms,
 
   api: {

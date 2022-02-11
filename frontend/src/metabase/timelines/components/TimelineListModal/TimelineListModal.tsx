@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
@@ -70,12 +70,15 @@ export interface TimelineMenuProps {
 }
 
 const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
-  const items = [
-    {
-      title: t`New timeline`,
-      link: Urls.newTimelineInCollection(collection),
-    },
-  ];
+  const items = useMemo(
+    () => [
+      {
+        title: t`New timeline`,
+        link: Urls.newTimelineInCollection(collection),
+      },
+    ],
+    [collection],
+  );
 
   return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };

@@ -321,6 +321,11 @@ export function newEventAndTimelineInCollection(collection) {
   return `${timelinesInCollection(collection)}/new/events/new`;
 }
 
+export function editEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/edit`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
