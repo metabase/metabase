@@ -32,6 +32,7 @@ export default class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
+    isBookmarked: PropTypes.bool.isRequired,
     isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
@@ -54,6 +55,13 @@ export default class DashboardHeader extends Component {
 
     onSharingClick: PropTypes.func.isRequired,
   };
+
+  handleBookmark(e) {
+    e.preventDefault();
+
+    const { dashboard, isBookmarked, setBookmark } = this.props;
+    setBookmark(dashboard.id, !isBookmarked);
+  }
 
   handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
@@ -257,6 +265,15 @@ export default class DashboardHeader extends Component {
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
+          onClick={e => this.handleBookmark(e)}
+          data-metabase-event={"Dashboard;Bookmark"}
+        >
+          {this.props.isBookmarked ? t`Remove Bookmark` : t`Bookmark`}
+        </Link>,
+      );
+      extraButtons.push(
+        <Link
+          className={extraButtonClassNames}
           to={location.pathname + "/history"}
           data-metabase-event={"Dashboard;EditDetails"}
         >
@@ -282,8 +299,6 @@ export default class DashboardHeader extends Component {
             {t`Move`}
           </Link>,
         );
-      }
-      if (canEdit) {
         extraButtons.push(
           <Link
             className={extraButtonClassNames}
@@ -340,3 +355,7 @@ export default class DashboardHeader extends Component {
     );
   }
 }
+
+DashboardHeader.defaultProps = {
+  isBookmarked: true,
+};
