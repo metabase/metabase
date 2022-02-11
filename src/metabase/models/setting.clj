@@ -76,13 +76,13 @@
             [medley.core :as m]
             [metabase.models.setting.cache :as cache]
             [metabase.models.user :refer [User]]
+            [metabase.api.common :as api]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as models]
-            [metabase.api.common :as api])
+            [toucan.models :as models])
   (:import [clojure.lang Keyword Symbol]
            java.io.StringWriter
            java.time.temporal.Temporal))
