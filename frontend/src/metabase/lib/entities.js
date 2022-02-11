@@ -154,8 +154,8 @@ export function createEntity(def) {
         ({ id }) => [...getObjectStatePath(id), "fetch"],
       ),
       withEntityActionDecorators("fetch"),
-    )((entityObject, options = {}) => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get({ id: entityObject.id }, options)),
+    )((entityQuery, options = {}) => async (dispatch, getState) =>
+      entity.normalize(await entity.api.get(entityQuery, options)),
     ),
 
     create: compose(

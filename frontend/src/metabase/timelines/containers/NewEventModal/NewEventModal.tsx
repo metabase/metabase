@@ -10,15 +10,13 @@ import { createEvent } from "../../actions";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
-  query: (state: State, props: ModalProps) => ({
-    id: Urls.extractEntityId(props.params.timelineId),
-  }),
+  id: (state: State, props: ModalProps) =>
+    Urls.extractEntityId(props.params.timelineId),
 };
 
 const collectionProps = {
-  query: (state: State, props: ModalProps) => ({
-    id: Urls.extractCollectionId(props.params.slug),
-  }),
+  id: (state: State, props: ModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const mapDispatchToProps = {

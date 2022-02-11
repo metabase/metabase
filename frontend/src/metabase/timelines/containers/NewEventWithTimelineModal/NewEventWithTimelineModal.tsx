@@ -9,9 +9,8 @@ import { createTimelineWithEvent } from "../../actions";
 import { ModalProps } from "../../types";
 
 const collectionProps = {
-  query: (state: State, props: ModalProps) => ({
-    id: Urls.extractCollectionId(props.params.slug),
-  }),
+  id: (state: State, props: ModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 const mapDispatchToProps = {

@@ -13,9 +13,8 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  query: (state: State, props: ModalProps) => ({
-    id: Urls.extractCollectionId(props.params.slug),
-  }),
+  id: (state: State, props: ModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
 };
 
 export default _.compose(
