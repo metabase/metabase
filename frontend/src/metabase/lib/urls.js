@@ -310,7 +310,7 @@ export function newTimelineInCollection(collection) {
 }
 
 export function editTimelineInCollection(timeline, collection) {
-  return `${timelineInCollection(collection, timeline)}/edit`;
+  return `${timelineInCollection(timeline, collection)}/edit`;
 }
 
 export function newEventInCollection(timeline, collection) {

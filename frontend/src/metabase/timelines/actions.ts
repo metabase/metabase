@@ -46,4 +46,26 @@ export const createEvent = createThunkAction(
   },
 );
 
+export const UPDATE_TIMELINE = "metabase/timelines/UPDATE_TIMELINE";
+export const updateTimeline = createThunkAction(
+  UPDATE_TIMELINE,
+  (timeline: Timeline, collection: Collection) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(Timelines.actions.update(timeline));
+      dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    };
+  },
+);
+
+export const UPDATE_EVENT = "metabase/timelines/UPDATE_EVENT";
+export const updateEvent = createThunkAction(
+  UPDATE_EVENT,
+  (event: TimelineEvent, collection: Collection, timeline: Timeline) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(TimelineEvents.actions.update(event));
+      dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    };
+  },
+);
+
 type Dispatch = any;
