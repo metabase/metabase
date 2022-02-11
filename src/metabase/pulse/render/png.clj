@@ -86,7 +86,11 @@
                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
       (let [image         (.getImage graphics-engine)
-            content-width (int (.getMaximalWidth (.getViewport graphics-engine)))]
+            viewport      (.getViewport graphics-engine)
+            ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+            content-width (max (int (.getMinimalWidth viewport))
+                               (int (.getMaximalWidth viewport)))]
+        ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
         (if (< content-width (.getWidth image))
           (.getSubimage image 0 0 content-width (.getHeight image))
           image)))))
