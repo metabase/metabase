@@ -9,6 +9,7 @@ import { ModalProps } from "../../types";
 const timelineProps = {
   query: (state: State, props: ModalProps) => ({
     id: Urls.extractEntityId(props.params.timelineId),
+    include: "events",
   }),
 };
 
