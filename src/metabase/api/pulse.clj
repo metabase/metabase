@@ -31,13 +31,13 @@
   "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
   associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
   created by the user, or for which the user is a known recipient."
-  [archived dashboard_id user_id]
+  [archived dashboard_id]
   {archived     (s/maybe su/BooleanString)
-   dashboard_id (s/maybe su/IntGreaterThanZero)
-   user_id      (s/maybe su/IntGreaterThanZero)}
+   dashboard_id (s/maybe su/IntGreaterThanZero)}
   (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
                                 :dashboard-id dashboard_id
-                                :user-id      user_id}) <>
+                                :user-id      api/*current-user-id*
+                                :is-superuser api/*is-superuser?*}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
