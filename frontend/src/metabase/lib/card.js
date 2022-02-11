@@ -1,7 +1,6 @@
 import _ from "underscore";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
@@ -60,12 +59,6 @@ export function serializeCardForUrl(card) {
 
 export function deserializeCardFromUrl(serialized) {
   return JSON.parse(b64hash_to_utf8(serialized));
-}
-
-export function urlForCardState(state, dirty) {
-  return Urls.question(state.card, {
-    hash: state.serializedCard && dirty ? state.serializedCard : "",
-  });
 }
 
 export function cleanCopyCard(card) {

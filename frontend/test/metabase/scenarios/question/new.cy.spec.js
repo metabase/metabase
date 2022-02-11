@@ -298,18 +298,11 @@ describe("scenarios > question > new", () => {
     });
 
     it("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
-      // set ID to `No semantic type`
-      cy.request("PUT", `/api/field/${ORDERS.ID}`, {
-        semantic_type: null,
-      });
-      // set Quantity to `Entity Key`
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
         semantic_type: "type/PK",
       });
 
       openOrdersTable();
-      // this url check is just to give some time for the render to finish
-      cy.url().should("include", "/question#");
 
       cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
@@ -323,6 +316,13 @@ describe("scenarios > question > new", () => {
         "**It should display the table with all orders with the selected quantity.**",
       );
       cy.get(".TableInteractive");
+
+      cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+        .eq(1) // first table body cell
+        .should("contain", 1)
+        .click();
+
+      cy.get(".ObjectDetail");
     });
 
     // flaky test (#19454)

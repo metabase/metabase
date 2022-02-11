@@ -167,11 +167,7 @@ export default class QueryBuilder extends Component {
   }
 
   UNSAFE_componentWillMount() {
-    this.props.initializeQB(
-      this.props.location,
-      this.props.params,
-      this.props.location.query,
-    );
+    this.props.initializeQB(this.props.location, this.props.params);
   }
 
   componentDidMount() {
