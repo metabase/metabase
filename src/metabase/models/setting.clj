@@ -32,39 +32,44 @@
   [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
-  ### Database-Local Settings
+  ### User-local and Database-local Settings
 
-  Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
-  value. These are similar in concept to buffer-local variables in Emacs Lisp.
+  Starting in 0.42.0, some Settings are allowed to have User- and Database-specific values that override the normal
+  site-wide value. These are similar in concept to buffer-local variables in Emacs Lisp.
 
-  When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will be
-  returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
-  `Database.settings` column in the application DB. `nil` values in [[*database-local-values*]] are ignored, i.e. you
-  cannot 'unset' a site-wide value with a Database-local one.
+  When a Setting is allowed to be User or Database local, any values in [[*user-local-values*]] or
+  [[*database-local-values*]] for that Setting will be returned preferentially to site-wide values of that Setting.
+  [[*user-local-values*]] comes from the `User.settings` column in the application DB, and [[*database-local-values*]]
+  comes from the `Database.settings` column. `nil` values in [[*user-local-values*]] and [[*database-local-values*]]
+  are ignored, i.e. you cannot 'unset' a site-wide value with a User- or Database-local one.
 
-  Whether or not a Setting can be Database-local is controlled by the `:database-local` option passed
-  to [[defsetting]]. There are three valid values of this option:
+  Whether or not a Setting can be User- or Database-local is controlled by the `:user-local` and `:database-local`
+  options passed to [[defsetting]]. A Setting can only be User-local *or* Database-local, not both; this is enforced
+  when the Setting is defined. There are three valid values of these options:
 
-  * `:only` means this Setting can *only* have a Database-local value and cannot have a 'normal' site-wide value. It
-  cannot be set via env var. Default values are still allowed for Database-local-only Settings. Database-local-only
-  Settings are never returned by [[admin-writable-settings]] or [[user-readable-values-map]] regardless of
-  their [[Visibility]].
+  * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
+  value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
+  User- and Database-local-only Settings are never returned by [[admin-writable-settings]] or
+  [[user-readable-values-map]] regardless of their [[Visibility]].
 
-  * `:allowed` means this Setting can be Database-local and can also have a normal site-wide value; if both are
-  specified, the Database-specific value will be returned preferentially when we are in the context of a specific
-  Database (i.e., [[*database-local-values*]] is bound).
+  * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
+  are specified, the User- or Database-specific value will be returned preferentially when we are in the context of a
+  specific User or Database (i.e., [[*user-local-values*]] or [[*database-local-values*]] is bound).
 
-  * `:never` means Database-specific values cannot be set for this Setting. Values in [[*database-local-values*]]
-  will be ignored.
+  * `:never` means User- or Database-specific values cannot be set for this Setting. Values in [[*user-local-values*]]
+  and [[*database-local-values*]] will be ignored.
 
-  `:never` is the default value of `:database-local`; to allow Database-local values, the Setting definition must
-  explicitly specify `:database-local` `:only` or `:allowed`.
+  `:never` is the default value of both `:user-local` and `:database-local`; to allow User- or Database-local values,
+  the Setting definition must explicitly specify `:only` or `:allowed` for the appropriate option.
 
-  Setting setter functions do not affect Database-local values; they always set the site-wide value. (At the time of
-  this writing, there is not yet a FE-client-friendly way to set Database-local values. Just set them manually in the
-  application DB until we figure that out.)
+  If a User-local setting is written in the context of an API request (i.e., when [[metabase.api.common/*current-user*]]
+  is bound), the value will be local to the current user. If it is written outside of an API request, a site-wide
+  value will be written. (At the time of this writing, there is not yet a FE-client-friendly way to set Database-local
+  values. Just set them manually in the application DB until we figure that out.)
 
-  See #19399 for more information about and motivation behind Database-local Settings."
+  Custom setter functions do not affect User- or Database-local values; they always set the site-wide value.
+
+  See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
             [clojure.core :as core]
@@ -692,7 +697,10 @@
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
-      ;; TODO: validate that a setting is not both user- and database-local
+      (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
+        (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -953,8 +961,9 @@
   `:internal`. In either case we *do not* want to return env var values -- we don't want to serialize them regardless
   of whether the value should be readable or not, and admins should not be allowed to modify them."
   [& {:as options}]
-  ;; ignore Database-local values even if this is bound for some reason
-  (binding [*database-local-values* nil]
+  ;; ignore User-local and Database-local values
+  (binding [*database-local-values* nil
+            *user-local-values*     nil]
     (into
      []
      (comp (filter (fn [setting]
@@ -973,8 +982,9 @@
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
   [visibility]
-  ;; ignore Database-local values even if this is bound for some reason
-  (binding [*database-local-values* nil]
+  ;; ignore User-local and Database-local values
+  (binding [*database-local-values* nil
+            *user-local-values*     nil]
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
