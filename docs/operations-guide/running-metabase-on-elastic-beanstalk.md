@@ -1,23 +1,42 @@
 # Covered in this guide:
 
-- [Running Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
-  - [Quick Launch](#quick-launch)
-  - [Step 1 - Creating the Application](#step-1---creating-the-application)
+- [Covered in this guide:](#covered-in-this-guide)
+  - [Running Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
+    - [Quick and simple](#quick-and-simple)
+    - [Comprehensive guide](#comprehensive-guide)
+  - [Step 1 - Create the network](#step-1---create-the-network)
+    - [1.1 Creating a VPC](#11-creating-a-vpc)
+    - [1.2 Creating subnets](#12-creating-subnets)
+    - [1.3 Creating an Internet Gateway](#13-creating-an-internet-gateway)
+    - [1.4 Creating a NAT Gateway](#14-creating-a-nat-gateway)
+    - [1.5 Create route tables](#15-create-route-tables)
+    - [1.6 Create the security groups (firewall rules)](#16-create-the-security-groups-firewall-rules)
+  - [Step 2 - Create the database](#step-2---create-the-database)
+    - [2.1 Create a subnet group](#21-create-a-subnet-group)
+    - [2.2 Create the RDS database](#22-create-the-rds-database)
+      - [Additional configuration](#additional-configuration)
+  - [Step 3 - Create the Elastic Beanstalk deployment](#step-3---create-the-elastic-beanstalk-deployment)
     - [Application information](#application-information)
     - [Environment information](#environment-information)
     - [Platform](#platform)
-  - [Step 2 - Configure the basic Metabase architecture](#step-2---configure-the-basic-metabase-architecture)
-    - [2.1 Enabling enhanced health checks](#21-enabling-enhanced-health-checks)
-    - [2.2 Enabling VPC](#22-enabling-vpc)
-    - [2.3 Final step and deploy](#23-final-step-and-deploy)
-  - [Step 3 - Wait for your environment to start](#step-3---wait-for-your-environment-to-start)
-- [Optional extras](#optional-extras)
-  - [Instance Details](#instance-details)
-  - [Application Database creation inside Elastic Beanstalk configuration (not recommended)](#application-database-creation-inside-elastic-beanstalk-configuration-not-recommended)
-  - [Permissions](#permissions)
-  - [Set or change environment variables](#set-or-change-environment-variables)
-  - [Notifications](#notifications)
-- [Deploying New Versions of Metabase on Elastic Beanstalk](#deploying-new-versions-of-metabase-on-elastic-beanstalk)
+      - [Software](#software)
+  - [Quick Launch](#quick-launch)
+    - [Step 1 - Creating the Application](#step-1---creating-the-application)
+      - [Application information](#application-information-1)
+      - [Environment information](#environment-information-1)
+      - [Platform](#platform-1)
+    - [Step 2 - Configure the basic Metabase architecture](#step-2---configure-the-basic-metabase-architecture)
+      - [2.1 Enabling VPC](#21-enabling-vpc)
+      - [2.2 Enabling enhanced health checks](#22-enabling-enhanced-health-checks)
+      - [2.3 Final step and deploy](#23-final-step-and-deploy)
+    - [Step 3 - Wait for your environment to start](#step-3---wait-for-your-environment-to-start)
+  - [Optional extras](#optional-extras)
+    - [Instance Details](#instance-details)
+    - [Application Database creation inside Elastic Beanstalk configuration (not recommended)](#application-database-creation-inside-elastic-beanstalk-configuration-not-recommended)
+    - [Permissions](#permissions)
+    - [Set or change environment variables](#set-or-change-environment-variables)
+    - [Notifications](#notifications)
+  - [Deploying New Versions of Metabase on Elastic Beanstalk](#deploying-new-versions-of-metabase-on-elastic-beanstalk)
 
 ## Running Metabase on AWS Elastic Beanstalk
 
@@ -25,30 +44,30 @@ This guide is comprised of two sections: one with a quick and simple way of laun
 
 ### Quick and simple
 
-1) Download [this](https://s3.amazonaws.com/downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip) file which has the configuration of Metabase Elastic Beanstalk deployment
-2) Click on this [pre-set link](https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&platform=Docker%20running%20on%2064bit%20Amazon%20Linux%202&environmentType=SingleInstance&tierName=WebServer&instanceType=t3a.small&withVpc=true&withRds=false) that will provide you with a few configurations already set and will launch in the US East region. on the bottom of the page, click on "Upload your code" and click on the "Choose file" button to upload the file that you downloaded in the previous step. Then click on "Review and Launch"
-3) Go to the Network section, click "Edit", select the default VPC (if you haven't created any VPC in AWS, then it's the only one that should be available in the combobox), enable "Public IP Address", select one "Availability zone" in Instance Subnet and click "Save"
-5) Click on "Create App" and wait a few minutes till Metabase launches, you will be able to access your test Metabase instance in the link that appears in the top of the page under the name of the environment.
+1) Download [this Elastic Beanstalk deployment](https://s3.amazonaws.com/downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip) file which has the zipped configuration to run Metabase in Elastic Beanstalk.
+2) Click on this [pre-set link](https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&platform=Docker%20running%20on%2064bit%20Amazon%20Linux%202&environmentType=SingleInstance&tierName=WebServer&instanceType=t3a.small&withVpc=true&withRds=false) that will provide you with a few configurations already set and will launch Metabase in the US East region. On the bottom of the page, click on "Upload your code" and click on the "Choose file" button to upload the file that you downloaded in the previous step. Then click on "Review and Launch"
+3) Go to the Network section, click "Edit", select the default VPC (if you haven't created any VPC in AWS, then it's the only one that should be available in the combobox), enable "Public IP Address", select one "Availability zone" in Instance Subnet and click "Save".
+4) Click on "Create App" and wait a few minutes till Metabase launches, you will be able to access your test Metabase instance in the link that appears in the top of the page under the name of the environment.
 
-**Note**: this environment is for testing purposes only and it will lose all data once it reboots as it does not have an application database connected where Metabase can persist its data. If you want to connect an application database to this simple deployment, check out [how to create an RDS database](creating-RDS-database-on-AWS.html) and connect it later to this environment via [environment variables](environment-variables.html)
+**Note**: this environment is for testing purposes only and it will lose all data once it reboots as it does not have an application database connected where Metabase can persist its data. If you want to connect an application database to this simple deployment, check out [how to create an RDS database](creating-RDS-database-on-AWS.html) and connect it later to this environment via [environment variables](environment-variables.html).
 
 ### Comprehensive guide
 
 This guide tends to be for advanced users, **so proceed with caution** and only if you know what you are doing.
 
 In the following guide we will build a highly-available and production ready Metabase deployment, which will include:
-a) Public (internet facing) and Private subnets, with route tables
-b) Internet Gateway
-c) Security groups
-d) NAT Gateways (so instances in Private subnets can fetch updates without being exposed)
-e) Application Load balancer (so you can deploy SSL/TLS with custom certificates and even Web Application Firewall rules)
-f) A Production-grade RDS database
+a) Public (internet facing) and Private subnets, with route tables to isolate the traffic.
+b) Internet Gateway.
+c) Security groups (firewall rules).
+d) NAT Gateways (so instances in Private subnets can fetch updates without being exposed).
+e) Application Load balancer (so you can deploy SSL/TLS with custom certificates and even Web Application Firewall rules).
+f) A production-grade relational database so Metabase can persist all settings, questions, dashboards, etc.
 
-If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/).
+If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/hosted/) as all these steps are already taken care for you.
 
 ## Step 1 - Create the network
 
-### 2.1 Creating a VPC
+### 1.1 Creating a VPC
 
 A Virtual Private Cloud (VPC) is a virtual network you can use to isolate resources. Inside these VPC's, you can create subnets, firewall rules, route tables and many more. It's one of the foundational features of AWS, and you can learn more about it [here](https://aws.amazon.com/vpc/faqs/).
 
@@ -57,9 +76,9 @@ To create a VPC, go to the VPC service in AWS and click on the VPC label and the
 - Name: Metabase-network
 - IPv4 CIDR: 192.168.0.0/21 (here you can use any IP range that fits your network design, in this specific example we will need 6 subnets)
 
-### 2.2 Creating subnets
+### 1.2 Creating subnets
 
-We're going to create 6 subnets: two for the load balancer, two for the Metabase application itself and the rest for the database. This will allow your application to be highly available and only fail if the whole AWS region goes down.
+We're going to create 6 subnets: two for the load balancer, two for the Metabase application itself and the rest for the database. This will allow your application to be highly available and only fail if these 2 zones or the whole AWS region goes down.
 
 To create subnets, go to the Subnets section and click on the button "Create Subnet" on the top right side of the page.
 
@@ -74,24 +93,24 @@ On the page that opens, select the VPC ID of the VPC you created in the previous
 
 Please consider that we used subnets in the IP range that we selected in the previous step, in case you have selected another IP range, then consider switching the subnet ranges.
 
-### 2.3 Creating an Internet Gateway
+### 1.3 Creating an Internet Gateway
 
 In this step we're going to create the Internet Gateway for the application to be accesible over the Internet.
 
 On the VPC section go to "Internet Gateways", and create a new Internet Gateway. After the creation is ready, right click on your new Internet Gateway and click on "Attach to VPC" and then select the VPC that you created in the first step of this guide.
 
-### 2.4 Creating a NAT Gateway
+### 1.4 Creating a NAT Gateway
 
 This is a component that the network needs to pull the containers and updates to the Operating System. To create a NAT Gateway, click on NAT Gateway in the VPC menu and click on the button located in the top right section. Complete it with the following parameters:
 
-- Subnet: select the subnate named Public-AZ1. The NAT gateway will be located only in one subnet, which means that if that Availability zone goes down, you lose the internet connectivity on your private subnets.
+- Subnet: select the subnate named Public-AZ1. The NAT gateway will be located only in one subnet, which means that if that specific Availability zone goes down, you lose the internet connectivity on your private subnets (so instances won't be able to fetch updates during the downtime of the AZ).
 - Elastic IP allocation ID: click on "Allocate Elastic-IP" to generate a fixed IPv4 address for the NAT gateway.
 
 Then click on Create NAT Gateway on the bottom of the page.
 
-### 2.5 Create route tables
+### 1.5 Create route tables
 
-This step is one of the most important steps of this guide, as it will limit the routing of the entire network so you can rest assured that your deployment traffic is safe.
+This step is one of the most important steps of this guide, as it will limit the routing of the entire network so you can rest assured that your deployment traffic is isolated.
 
 Go to "Route Tables" in the VPC menu and then click on "Create route table" button which is located in the top right corner. You'll need to create 3 route tables (one for each tier of your deployment). Assign them all to the VPC you created in the first step of the guide:
 
@@ -101,42 +120,129 @@ Go to "Route Tables" in the VPC menu and then click on "Create route table" butt
 
 For the "public" route:
 
-- your-vpc-ip-range/16 -> target: local
-- 0.0.0.0/0 -> target: the internet gateway that you created on step 3 of this guide
+- your-vpc-ip-range/21 -> target: local
+- 0.0.0.0/0 -> target: the **internet gateway** that you created on step 1.3 of this guide
 
 For the "application" route:
 
-- your-vpc-ip-range/16 -> target: local
-- 0.0.0.0/0 -> target: the NAT gateway that you created on step 4 of this guide
+- your-vpc-ip-range/21 -> target: local
+- 0.0.0.0/0 -> target: the **NAT gateway** that you created on step 4 of this guide
 
 For the "database" route:
 
-- your-vpc-ip-range/16 -> target: local
+- your-vpc-ip-range/21 -> target: local
 
-Make sure you assign each route table to the subnets you created in step 2 of this guide, so public route table needs to be explicitly associated with Public-AZ1 and Public-AZ2, application needs to be associated with Application-AZ1 and Application-AZ2, and finally database associated with Database-AZ1 and Database-AZ2.
+After the creation of the route tables you need to assign each route table to the subnets you created in step 2 of this guide, so public route table needs to be explicitly associated with Public-AZ1 and Public-AZ2, application needs to be associated with Application-AZ1 and Application-AZ2, and finally database associated with Database-AZ1 and Database-AZ2.
 
 If you forget to explicitly associate a subnet with a route table, then the subnets will inherit the route table of the VPC, which could have unintended consequences.
 
-### 2.6 Create the security groups (firewall rules)
+### 1.6 Create the security groups (firewall rules)
 
-In the VPC menu, click on "Security groups" in the right side of the page under "Security" header and create the following Security Groups that will live in the VPC:
+In the VPC menu, click on "Security groups" in the right side of the page under "Security" header and create the following Security Groups (make sure you select the correct VPC):
 
-Public:
+Public (this will be the security group for the Load Balancer):
 
-- Inbound rules: HTTP and HTTPS for Any IP both IPv4 and IPv6 (or use the IP addresses of the places you want to access Metabase)
+- Inbound rules: HTTP and HTTPS for Any IP source both IPv4 and IPv6 (or use the IP addresses of the places you want to access Metabase)
 - Outbound rules: Custom TCP on port 3000. For the destination, use the IP ranges of the Application subnet (in our example we used 192.168.3.0/24 and 192.168.4.0/24)
 
-Application:
+Application (this will be the security group for the Metabase Application):
 
 - Inbound rules: Custom TCP on port 3000. For the source, use the IP ranges of the Public subnet (in our example we used 192.168.1.0/24 and 192.168.2.0/24)
 - Outbound rules: Custom TCP on port 5432 or 3306 (depending if you're going to use PostgreSQL or MySQL as the application database). For the destination, use the IP ranges of the database subnet (in our example we used 192.168.5.0/24 and 192.168.6.0/24).
 
-Database:
+Database (this will be the security group for the Database):
 
-- Inbound rules: Custom TCP on port 5432 or 3306 (depending if you're going to use PostgreSQL or MySQL as the application database). For the destination, use the IP ranges of the database subnet.
+- Inbound rules: Custom TCP on port 5432 or 3306 (depending if you're going to use PostgreSQL or MySQL as the application database). For the source, use the IP ranges of the Application subnet (192.168.3.0/24 and 192.168.4.0/24 in this guide).
 - Outbound rules: None.
 
 ## Step 2 - Create the database
+
+### 2.1 Create a subnet group
+
+To make the database live in a private subnet, we need to create a Subnet group. So go to RDS-> Subnet groups -> Create DB subnet group
+
+- Name: Metabase RDS subnet group
+- Description: Metabase RDS subnet group
+- VPC: select the VPC you created in the previous step
+- Availability zone: use the availability zones you used in the previous step (1a and 1b)
+- Subnets: select the subnets you created specifically for the database (the ones ending in 5.0/24 and 6.0/24)
+
+Then click on the Create button and head to the Databases sectio to create the cluster
+
+### 2.2 Encrypt traffic to the database
+
+By default, RDS does not enable encryption in transit, so in order to make the traffic encrypted to the database, go to "Parameter groups", create a new parameter group selecting the the database and version that you're going to use (e.g. `postgres14`), use a group name to identify the new parameter group (e.g. `postgres14-encrypted`), then search for the `rds.force_ssl` parameter in the new parameter group and set it to 1.
+
+### 2.3 Create the RDS database
+
+On the Database section click on Create database and use the following values:
+
+- Engine type: choose between MySQL, PostgreSQL or Aurora (both MySQL and PostgreSQL compatible will work). We'll continue with PostgreSQL in this guide.
+- Version: latest one available, if possible
+- Templates: Production
+- Availability and Durability: Multi-AZ DB Instance
+- DB instance identifier: any name you wish. In this case we'll use metabase-app-db
+- Master username: postgres
+- Master password: choose any secure password and repeate it in the confirmation box
+- DB instance class: db.m6g.large is a good starting point for production workloads. If you're only looking to spin up a small server, you can use burstable instances (t class).
+- Storage type: Provisioned IOPS SSD, although gp2 disks can be selected depending on the amount of users and usage pattern of the instance.
+- Allocated storage: 100GB is a good starting point for production workloads
+- Storage autoscaling: leave it enabled with the 1000 GB storage value
+- VPC: ensure you're using the VPC created in the previous section and that the subnet group is the one you created in step 2.1
+- Public access: No
+- VPC security groups: remove "default" and add "Database" (which was created in step 1.6)
+- Database authentication: Password authentication
+
+#### Additional configuration
+
+- Initial database name: metabase
+- Log export: select PostgreSQL log
+
+Once finished, click on the create button on the bottom of the page and wait till the database finishes creating. This step can take a long time to finish as it's spinning up an Active-Passive DB cluster for high-availability.
+
+## Step 3 - Create the Elastic Beanstalk deployment
+
+Go to Elastic Beanstalk in AWS now to finish the creation of your deployment and click on "Create Application"
+
+### Application information
+
+Elastic Beanstalk is organized into Applications and Environments, so to get started we need to create a new application. You can customize the application name in case you need other than the default one.
+
+![Elastic Beanstalk Application Information](images/EBApplicationInformation.png)
+
+### Environment information
+
+Here's where you can pick the environment name and the domain URL that you want to use for your Metabase instance. The environment name is simply the label you're assigning to this instance of Metabase.
+
+As for the domain URL, Feel free to get creative — just remember that the URL for your Metabase instance must be unique across all AWS Elastic Beanstalk deployments, so you'll have to pick something that nobody else is already using. We often recommend something like `mycompanyname-metabase`. If you don't care about the URL you can simply leave it to whatever Amazon inputs by default. Just be aware that this can't be changed later.
+
+![Elastic Beanstalk Environment Information](images/EBNewEnvironmentInformation.png)
+
+### Platform
+
+While most of the fields here will be correctly pre-filled by following the launch URL above, you'll just need to do two things:
+
+1. Make sure **Platform** is set to `Docker`, with the platform branch dropdown set to `Docker running on 64bit Amazon Linux 2`, and Platform version to the one that has a `(Recommended)` tag.
+2. Change the **Application code** setting to `Upload your code`.
+
+![Elastic Beanstalk Base Configuration](images/EBUploadYourCode.png)
+
+- In the **Source code origin** section click the `Choose file` button with the `Local File` radio button selected and upload the file you dowloaded at the very beginning of this guide (`metabase-aws-eb.zip`):
+
+![Elastic Beanstalk Base Configuration](images/EBUploadZipFile.png)
+
+These settings will run the Metabase application using the [official Metabase Docker image on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+
+After the file finished uploading, click on "Configure more options" and use the following values:
+
+- Presets: use "Custom configuration"
+
+#### Software
+
+- Container options: ensure that Proxy server is set to "None".
+- S3 log storage: enable the log rotation.
+- Instance log streaming to Cloudwatch Logs: enable Log Streaming and adjust the retention to your needs.
+- Environment properties: you need to use environment variables to
 
 
 
@@ -207,9 +313,6 @@ Click **Review and launch**.  You'll be directed to a page to configure and laun
 #### 2.1 Enabling VPC
 
 A Virtual Private Cloud (VPC) is a virtual network you can use to isolate resources. Inside these VPC's, you can create subnets, firewall rules, route tables and many more. It's one of the foundational features of AWS, and you can learn more about it [here](https://aws.amazon.com/vpc/faqs/).
-
-
-### 2.1 Enabling VPC
 
 You must configure your Application launch in a VPC, otherwise you'll receive an error when creating it as AWS no longer supports launching instances outside VPC's. To use a VPC, head to the **Network** section in the configuration and click on the `Edit` button.
 
