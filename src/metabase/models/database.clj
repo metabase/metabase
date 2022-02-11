@@ -164,9 +164,8 @@
           ;; if one of the schedules wasn't passed continue using the old one
           (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
                 new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-            (when (and (or new-metadata-schedule new-fieldvalues-schedule)
-                       (not= [new-metadata-schedule new-fieldvalues-schedule]
-                             [old-metadata-schedule old-fieldvalues-schedule]))
+            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
+                        [old-metadata-schedule old-fieldvalues-schedule])
               (log/info
                (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
                "\n"
