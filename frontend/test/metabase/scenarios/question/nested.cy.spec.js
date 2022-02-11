@@ -42,7 +42,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         },
         display: "scalar",
       },
-      { loadMetadata: true },
+      { loadMetadata: true, interceptAlias: "secondCardQuery" },
     );
 
     // [quarantine] The whole CI was timing out

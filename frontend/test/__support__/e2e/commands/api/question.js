@@ -40,6 +40,7 @@ Cypress.Commands.add(
  * @param {boolean} customOptions.visitQuestion - Whether to visit the question after the creation or not.
  * @param {boolean} customOptions.wrapId - Whether to wrap a question id, to make it available outside of this scope.
  * @param {string} customOptions.idAlias - Alias a question id in order to use it later with `cy.get("@" + alias).
+ * @param {string} customOptions.interceptAlias - We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
  */
 function question(
   type,
@@ -60,6 +61,7 @@ function question(
     visitQuestion = false,
     wrapId = false,
     idAlias = "questionId",
+    interceptAlias = "cardQuery",
   } = {},
 ) {
   cy.request("POST", "/api/card", {
@@ -95,13 +97,15 @@ function question(
       dataset
         ? cy.intercept("POST", `/api/dataset`).as("dataset")
         : // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
-          cy.intercept("POST", `/api/card/**/${body.id}/query`).as("cardQuery");
+          cy
+            .intercept("POST", `/api/card/**/${body.id}/query`)
+            .as(interceptAlias);
 
       const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);
 
       // Wait for `result_metadata` to load
-      dataset ? cy.wait("@dataset") : cy.wait("@cardQuery");
+      dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
     }
   });
 }
