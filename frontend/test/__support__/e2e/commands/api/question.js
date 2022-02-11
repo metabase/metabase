@@ -38,6 +38,8 @@ Cypress.Commands.add(
  * @param {object} customOptions
  * @param {boolean} customOptions.loadMetadata - Whether to visit the question in order to load its metadata.
  * @param {boolean} customOptions.visitQuestion - Whether to visit the question after the creation or not.
+ * @param {boolean} customOptions.wrapId - Whether to wrap a question id, to make it available outside of this scope.
+ * @param {string} customOptions.idAlias - Alias a question id in order to use it later with `cy.get("@" + alias).
  */
 function question(
   type,
@@ -53,7 +55,12 @@ function question(
     collection_id,
     collection_position,
   } = {},
-  { loadMetadata = false, visitQuestion = false } = {},
+  {
+    loadMetadata = false,
+    visitQuestion = false,
+    wrapId = false,
+    idAlias = "questionId",
+  } = {},
 ) {
   cy.request("POST", "/api/card", {
     name,
@@ -68,6 +75,18 @@ function question(
     collection_id,
     collection_position,
   }).then(({ body }) => {
+    /**
+     * Optionally, if you need question's id later in the test, outside the scope of this function,
+     * you can use it like this:
+     *
+     * `cy.get("@questionId").then(id=> {
+     *   doSomethingWith(id);
+     * })
+     */
+    if (wrapId) {
+      cy.wrap(body.id).as(idAlias);
+    }
+
     if (dataset) {
       cy.request("PUT", `/api/card/${body.id}`, { dataset });
     }
