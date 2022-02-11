@@ -37,7 +37,7 @@ export const CardThreadStroke = styled.div`
 `;
 
 export const CardBody = styled.div`
-  padding: 0 0.75rem;
+  padding: 0.375rem 0.75rem;
 `;
 
 export const CardTitle = styled.div`
