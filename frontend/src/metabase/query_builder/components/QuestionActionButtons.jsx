@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import colors from "metabase/lib/colors";
+
 import {
   checkDatabaseSupportsModels,
   checkCanBeModel,
@@ -26,10 +28,11 @@ export const ARCHIVE_TESTID = "archive-button";
 const ICON_SIZE = 18;
 
 QuestionActionButtons.propTypes = {
-  question: PropTypes.object.isRequired,
-  canWrite: PropTypes.bool.isRequired,
   areNestedQueriesEnabled: PropTypes.bool.isRequired,
+  canWrite: PropTypes.bool.isRequired,
+  isBookmarked: PropTypes.bool,
   onOpenModal: PropTypes.func.isRequired,
+  question: PropTypes.object.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -39,10 +42,11 @@ function mapStateToProps(state) {
 }
 
 function QuestionActionButtons({
-  question,
-  canWrite,
   areNestedQueriesEnabled,
+  canWrite,
+  isBookmarked = false,
   onOpenModal,
+  question,
 }) {
   const isDataset = question.isDataset();
 
@@ -55,6 +59,12 @@ function QuestionActionButtons({
     !isDataset &&
     areNestedQueriesEnabled &&
     checkDatabaseSupportsModels(question.query().database());
+
+  const bookmarkButtonColor = isBookmarked ? colors["brand"] : "";
+
+  const handleBookmark = () => {
+    console.log("🚀", "handleBookmark");
+  };
 
   return (
     <Container data-testid="question-action-buttons">
@@ -127,6 +137,15 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
+      <Tooltip tooltip={t`Bookmark`}>
+        <Button
+          onlyIcon
+          icon="bookmark"
+          iconSize={ICON_SIZE}
+          onClick={() => handleBookmark()}
+          style={{ color: bookmarkButtonColor }}
+        />
+      </Tooltip>
     </Container>
   );
 }
