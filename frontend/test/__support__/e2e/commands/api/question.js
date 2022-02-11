@@ -94,7 +94,8 @@ function question(
     if (loadMetadata || visitQuestion) {
       dataset
         ? cy.intercept("POST", `/api/dataset`).as("dataset")
-        : cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+        : // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+          cy.intercept("POST", `/api/card/**/${body.id}/query`).as("cardQuery");
 
       const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);

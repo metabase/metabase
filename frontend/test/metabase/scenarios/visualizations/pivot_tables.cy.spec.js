@@ -870,18 +870,10 @@ const testQuery = {
 };
 
 function createAndVisitTestQuestion({ display = "pivot" } = {}) {
-  cy.request(
-    "POST",
-    "/api/card",
-    {
-      name: QUESTION_NAME,
-      dataset_query: testQuery,
-      display,
-      description: null,
-      visualization_settings: {},
-    },
-    { visitQuestion: true },
-  );
+  const { query } = testQuery;
+  const questionDetails = { name: QUESTION_NAME, query, display };
+
+  cy.createQuestion(questionDetails, { visitQuestion: true });
 }
 
 function assertOnPivotSettings() {
