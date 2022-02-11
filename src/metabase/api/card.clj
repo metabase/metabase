@@ -177,13 +177,15 @@
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [id include]
-  {include (s/maybe timeline-api/include-events-schema)}
+  [id include archived]
+  {include  (s/maybe timeline-api/include-events-schema)
+   archived (s/maybe su/BooleanString)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
     ;; the read-checks are particularly fast on multiple items
-    (timeline/timelines-for-collection collection_id include)))
+    (timeline/timelines-for-collection collection_id {:include include
+                                                      :archived archived})))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 

@@ -1,8 +1,8 @@
 (ns metabase.models.timeline-event
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
-            [toucan.db :as db]
             [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]
             [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
@@ -16,20 +16,32 @@
     (i/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
+(defn- hydrate-events-impl
+  "Event hydration implementation."
+  [timelines archived?]
+  (when (seq timelines)
+    (let [timeline-id->events (->> (db/select TimelineEvent
+                                     :timeline_id [:in (map :id timelines)]
+                                     :archived archived?
+                                     {:order-by [[:timestamp :asc]]})
+                                   (group-by :timeline_id))]
+      (for [{:keys [id] :as timeline} timelines]
+        (let [events (timeline-id->events id)]
+          (when timeline
+            (assoc timeline :events (if events events []))))))))
 
+;; todo: is there a way to pass args into the hydrate function instead of having two hydrate keys?
 (defn hydrate-events
   "Efficiently hydrate the events for a timeline."
   {:batched-hydrate :events}
   [timelines]
-  (when (seq timelines)
-    (let [timeline-id->events (->> (db/select TimelineEvent
-                                     :timeline_id [:in (map :id timelines)]
-                                     :archived false
-                                     {:order-by [[:timestamp :asc]]})
-                                   (group-by :timeline_id))]
-      (for [{:keys [id] :as timeline} timelines]
-        (when timeline
-          (assoc timeline :events (timeline-id->events id)))))))
+  (hydrate-events-impl timelines false))
+
+(defn hydrate-archived-events
+  "Efficiently hydrate the events for a timeline when `archived` is `true`."
+  {:batched-hydrate :archived-events}
+  [timelines]
+  (hydrate-events-impl timelines true))
 
 ;;;; model
 

@@ -529,17 +529,19 @@
 
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
-  ;; todo: do we care about `archived` option?
-  [include]
-  {include (s/maybe timeline-api/include-events-schema)}
-  (timeline/timelines-for-collection nil include))
+  [include archived]
+  {include  (s/maybe timeline-api/include-events-schema)
+   archived (s/maybe su/BooleanString)}
+  (timeline/timelines-for-collection nil {:include  include
+                                          :archived archived}))
 
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
-  ;; todo: do we care about `archived` option?
-  [id include]
-  {include (s/maybe timeline-api/include-events-schema)}
-  (timeline/timelines-for-collection id include))
+  [id include archived]
+  {include  (s/maybe timeline-api/include-events-schema)
+   archived (s/maybe su/BooleanString)}
+  (timeline/timelines-for-collection id {:include  include
+                                         :archived archived}))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:

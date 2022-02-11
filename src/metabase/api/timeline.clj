@@ -26,11 +26,13 @@
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
-  [id include]
-  {include (s/maybe include-events-schema)}
-  (let [timeline (api/read-check (Timeline id))]
+  [id include archived]
+  {include (s/maybe include-events-schema)
+   archived (s/maybe su/BooleanString)}
+  (let [timeline (api/read-check (Timeline id))
+        event-hydration-key (if archived :archived-events :events)]
     (if include
-      (hydrate timeline :creator :events)
+      (hydrate timeline :creator event-hydration-key [event-hydration-key :creator])
       (hydrate timeline :creator))))
 
 (api/defendpoint PUT "/:id"
