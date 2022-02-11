@@ -7,13 +7,15 @@ import TimelineModal from "../../components/TimelineModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+  query: (state: State, props: ModalProps) => ({
+    id: Urls.extractEntityId(props.params.timelineId),
+  }),
 };
 
 const collectionProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
+  query: (state: State, props: ModalProps) => ({
+    id: Urls.extractCollectionId(props.params.slug),
+  }),
 };
 
 export default _.compose(
