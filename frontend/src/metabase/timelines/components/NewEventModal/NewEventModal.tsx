@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
@@ -15,7 +14,7 @@ export interface NewEventModalProps {
     collection: Collection,
     timeline?: Timeline,
   ) => void;
-  onChangeLocation: (location: string) => void;
+  onCancel: (location: string) => void;
   onClose?: () => void;
 }
 
@@ -23,7 +22,7 @@ const NewEventModal = ({
   timeline,
   collection,
   onSubmit,
-  onChangeLocation,
+  onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -37,14 +36,6 @@ const NewEventModal = ({
     [timeline, collection, onSubmit],
   );
 
-  const handleCancel = useCallback(() => {
-    if (timeline) {
-      onChangeLocation(Urls.timelineInCollection(timeline, collection));
-    } else {
-      onChangeLocation(Urls.timelinesInCollection(collection));
-    }
-  }, [timeline, collection, onChangeLocation]);
-
   return (
     <div>
       <ModalHeader title={t`New event`} onClose={onClose} />
@@ -54,7 +45,7 @@ const NewEventModal = ({
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
-          onClose={handleCancel}
+          onClose={onCancel}
         />
       </ModalBody>
     </div>

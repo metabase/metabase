@@ -1,17 +1,24 @@
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { goBack } from "react-router-redux";
 import _ from "underscore";
+import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
+import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 import { createTimelineWithEvent } from "../../actions";
-import { getCollectionId } from "../../selectors";
+import { ModalProps } from "../../types";
+
+const collectionProps = {
+  id: (state: State, props: ModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
+};
 
 const mapDispatchToProps = {
   onSubmit: createTimelineWithEvent,
-  onChangeLocation: push,
+  onCancel: goBack,
 };
 
 export default _.compose(
-  Collections.load({ id: getCollectionId }),
+  Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
 )(NewEventModal);
