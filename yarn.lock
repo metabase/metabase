@@ -4638,10 +4638,10 @@
     "@types/estree" "*"
     "@types/json-schema" "*"
 
-"@types/eslint@7.28.1":
-  version "7.28.1"
-  resolved "https://registry.yarnpkg.com/@types/eslint/-/eslint-7.28.1.tgz#50b07747f1f84c2ba8cd394cf0fe0ba07afce320"
-  integrity sha512-XhZKznR3i/W5dXqUhgU9fFdJekufbeBd5DALmkuXoeFcjbQcPk+2cL+WLHf6Q81HWAnM2vrslIHpGVyCAviRwg==
+"@types/eslint@7.29.0":
+  version "7.29.0"
+  resolved "https://registry.yarnpkg.com/@types/eslint/-/eslint-7.29.0.tgz#e56ddc8e542815272720bb0b4ccc2aff9c3e1c78"
+  integrity sha512-VNcvioYDH8/FxaeTKkM4/TiTwt6pBV9E3OfGmvaw8tPl0rrHCJ4Ll15HRT+pMiFAf/MLQvAzC+6RzUMEL9Ceng==
   dependencies:
     "@types/estree" "*"
     "@types/json-schema" "*"
@@ -4728,7 +4728,7 @@
   dependencies:
     "@types/unist" "*"
 
-"@types/history@3.2.5", "@types/history@^3":
+"@types/history@3.2.5", "@types/history@^3", "@types/history@^3.2.5":
   version "3.2.5"
   resolved "https://registry.yarnpkg.com/@types/history/-/history-3.2.5.tgz#be614208f1a10a20c414b4d3762d1f2b65b53ae4"
   integrity sha512-TqWYI0mlqS5qhH8MHgJJs0RcgvvZLxkn0bi2qK07liZqP7M9rl1kpJ6TCAUo5Cp4vP5DObIqHcky0MWyyQojVQ==
@@ -5039,10 +5039,10 @@
     "@types/node" "*"
     postcss "7.x.x"
 
-"@types/prettier@1.18.2":
-  version "1.18.2"
-  resolved "https://registry.yarnpkg.com/@types/prettier/-/prettier-1.18.2.tgz#069e7d132024d436fd1f5771f6932426a695f230"
-  integrity sha512-2JBasa5Qaj81Qsp/dxX2Njy+MdKC767WytHUDsRM7TYEfQvKPxsnGpnCBlBS1i2Aiv1YwCpmKSbQ6O6v8TpiKg==
+"@types/prettier@1.19.1":
+  version "1.19.1"
+  resolved "https://registry.yarnpkg.com/@types/prettier/-/prettier-1.19.1.tgz#33509849f8e679e4add158959fdb086440e9553f"
+  integrity sha512-5qOlnZscTn4xxM5MeGXAMOsIOIKIbh9e85zJWfBRVPlRMEVawzoPhINYbRGkBZCI8LxvBe7tJCdWiarA99OZfQ==
 
 "@types/prettier@^2.1.5":
   version "2.3.2"
@@ -5124,10 +5124,10 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-motion@^0.0.31":
-  version "0.0.31"
-  resolved "https://registry.yarnpkg.com/@types/react-motion/-/react-motion-0.0.31.tgz#93e2abfc5056c5c0f47650ff9ed23533857245c5"
-  integrity sha512-ncpSpnTE52QLZQTM8cuwhHA/ChpDmjfLzACihK7X6cz4DtqlIhA4RzMEsku/3WevjBMsFlbM+XJCwC2RalfDHw==
+"@types/react-motion@0.0.32":
+  version "0.0.32"
+  resolved "https://registry.yarnpkg.com/@types/react-motion/-/react-motion-0.0.32.tgz#c7355cca054664f1aeadd7388f6890e9355e1783"
+  integrity sha512-xePjDdhy6/6AX3CUQCeQ2GSF0RwF+lXSpUSrm8tmdUXRf5Ps/dULwouTJ8YHhDvX7WlwYRKZjHXatadz/x3HXA==
   dependencies:
     "@types/react" "*"
 
@@ -5154,12 +5154,12 @@
     "@types/history" "^3"
     redux "^3.6.0"
 
-"@types/react-router@3.0.26":
-  version "3.0.26"
-  resolved "https://registry.yarnpkg.com/@types/react-router/-/react-router-3.0.26.tgz#09406b00e1df696311ce365819b5a21efea99975"
-  integrity sha512-fXijsAY9jFSQbdTz8e4QCMm2s8xkd6HPnYQcg57K4H+Hy5xeB+i2zbY7BaURGewWecN56oILH93AjaYB3BfVig==
+"@types/react-router@3.0.28":
+  version "3.0.28"
+  resolved "https://registry.yarnpkg.com/@types/react-router/-/react-router-3.0.28.tgz#ae457228e6934f6664e6b092afd7f8e1bb6eee3a"
+  integrity sha512-cf3V8fSBLAzmICC8l5qbnrJhdjF0ia8K0EZwL8IpJDBQN6ieHDdw8t1+9regufQxEVip1T4tCQRwhAmy26Zn2A==
   dependencies:
-    "@types/history" "^3"
+    "@types/history" "^3.2.5"
     "@types/react" "*"
 
 "@types/react-router@^2":
@@ -5184,10 +5184,10 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-transition-group@1.1.7":
-  version "1.1.7"
-  resolved "https://registry.yarnpkg.com/@types/react-transition-group/-/react-transition-group-1.1.7.tgz#e35a6cb64e10d1ce27de2c96e13ba84feb5e1f56"
-  integrity sha512-bT5N1SkugaZo+idbcV94llptAqMDuoy3oW+w0qFveL2vL6TmbPjlbljNxJPMMeOJcKDDDvSHZV5rhuR8i/PGBw==
+"@types/react-transition-group@1.1.8":
+  version "1.1.8"
+  resolved "https://registry.yarnpkg.com/@types/react-transition-group/-/react-transition-group-1.1.8.tgz#99b01ebf3e73a50c484e5ee86a49e9289698d456"
+  integrity sha512-dPE733MOo56o6Uvck0lwz8383HTneJsw8SDKe3+M9qnxPqfj78s73l0tMk//Bz1CSf+7aZLF9UVYMY9agnrboA==
   dependencies:
     "@types/react" "*"
 
