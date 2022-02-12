@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models :refer [Card Table]]
+            [metabase.models :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test.timezones-test :as timezones-test]
             [metabase.query-processor.test-util :as qp.test-util]
