@@ -262,8 +262,8 @@
    [_ _id-or-name {:keys [join-alias]}, :as _field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
-    ;; TODO -- this just recalculates the info instead of actually finding the Field in the source query and getting its
-    ;; desired alias there... this seems like a clear bug since it doesn't go thru the uniquify logic. Something will
+    ;; TODO -- this just recalculates the info instead of actually finding the Field in the join and getting its desired
+    ;; alias there... this seems like a clear bug since it doesn't go thru the uniquify logic. Something will
     ;; potentially break by doing this. I haven't been able to reproduce it yet however.
     ;;
     ;; This will only be triggered if the join somehow exposes duplicate columns or columns that have the same escaped
