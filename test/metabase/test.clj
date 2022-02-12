@@ -375,3 +375,11 @@
            :let [~argv args#]]
      (is ~expr
          (str (are+-message '~expr '~argv args#)))))
+
+(defmacro disable-for-driver-tests
+  "Only run `body` when we're not running driver tests (i.e., `DRIVERS` is not set). Perfect for disabling those damn
+  flaky tests that cause CI to fail all the time."
+  {:style/indent 0}
+  [& body]
+  `(when-not (seq (env/env :drivers))
+     ~@body))
