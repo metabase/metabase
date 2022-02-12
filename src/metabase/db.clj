@@ -51,6 +51,12 @@
 (defonce ^:private connection-pool-data-source*
   (atom nil))
 
+;; I don't think we really need this anymore now that the DB sets itself up when needed.
+(defn db-is-set-up?
+  "True if the Metabase DB is setup and ready."
+  ^Boolean []
+  (some? @connection-pool-data-source*))
+
 (defn- setup-db-if-needed!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
