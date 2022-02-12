@@ -55,19 +55,6 @@
    ;; don't explode in the future if we add more to the response! lol
    s/Any                           s/Any})
 
-(defsetting site-uuid-for-premium-features-token-checks
-  "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
-  site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
-  same way as [[metabase.public-settings/site-uuid]] but should only be used by the token check logic
-  in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
-  anonymous.)"
-  :visibility :internal
-  :setter     :none
-  ;; `:metabase.public-settings/uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is
-  ;; fetched.
-  :type       :metabase.public-settings/uuid-nonce)
-
 (s/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
@@ -80,7 +67,7 @@
    (future
      (try (some-> (token-status-url token)
                   (http/get {:query-params {:users     (active-user-count)
-                                            :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}})
+                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
                   (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the
