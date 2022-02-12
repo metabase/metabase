@@ -136,7 +136,8 @@
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (s/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
-  use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
+  use [[metabase.db/setup-db-if-needed!]] instead, which can be called more than once without issue and is
+  thread-safe."
   [db-type       :- s/Keyword
    data-source   :- javax.sql.DataSource
    auto-migrate? :- (s/maybe s/Bool)]

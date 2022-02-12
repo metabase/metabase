@@ -20,8 +20,8 @@
 
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. This is NOT a pooled data source!
-  That's created later as part of [[metabase.db/setup-db!]] -- use [[toucan.db/connection]] if you want to get
-  a [[clojure.java.jdbc]] spec for the connection pool."
+  That's created later as part of [[metabase.db/setup-db-if-needed!]] -- use [[toucan.db/connection]] if you want to
+  get a [[clojure.java.jdbc]] spec for the connection pool."
   ^javax.sql.DataSource []
   (or *data-source*
       mdb.env/data-source))

@@ -9,10 +9,11 @@
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 (defn rotate-encryption-key!
   "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
   [to-key]
-  (mdb/setup-db!)
   (let [make-encrypt-fn   (fn [maybe-encrypt-fn]
                             (if to-key
                               (partial maybe-encrypt-fn (encrypt/validate-and-hash-secret-key to-key))

@@ -22,6 +22,8 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 (def ^:private Mode
   (su/with-api-error-message (s/enum :skip :update)
     (deferred-trs "invalid --mode value")))
@@ -40,7 +42,6 @@
   "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)               ;
-  (mdb/setup-db!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (let [context (merge {:mode     :skip
@@ -123,7 +124,6 @@
   ([path user opts]
    (dump path user :active opts))
   ([path user state opts]
-   (mdb/setup-db!)
    (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
    (let [users       (if user
                        (let [user (db/select-one User

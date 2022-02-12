@@ -26,6 +26,8 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -244,7 +246,6 @@
 (defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
   (assert (string? database-name))
   (assert (keyword? driver-kw))
-  (mdb/setup-db!)
   (Database :name database-name, :engine (name driver-kw)))
 
 

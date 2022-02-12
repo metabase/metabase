@@ -23,6 +23,8 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
 (comment metabase.driver.h2/keep-me
          metabase.driver.mysql/keep-me
@@ -92,7 +94,6 @@
 
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
-  (mdb/setup-db!)
   (init-status/set-progress! 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation

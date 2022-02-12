@@ -8,6 +8,8 @@
             [metabase.sync :as sync]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 (defn- test-fixture-db-path
   "Get the path to the test fixture DB that we'll use for `MB_DB_FILE`. Throw an Exception if the file doesn't exist."
   []
@@ -24,7 +26,6 @@
     ;; now set the path at MB_DB_FILE
     (alter-var-root #'env/env assoc :mb-db-type "h2", :mb-db-file db-path)
     ;; set up the DB, make sure sample database is added
-    (mdb/setup-db!)
     (sample-data/add-sample-database!)
     (sample-data/update-sample-database-if-needed!)
     ;; clear out all Fingerprints so we force analysis to run again. Clear out semantic type and has_field_values as

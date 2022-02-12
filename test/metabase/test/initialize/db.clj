@@ -1,13 +1,12 @@
 (ns metabase.test.initialize.db
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.db :as mdb]
+  (:require [metabase.db :as mdb]
             [metabase.task :as task]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+            [metabase.util :as u]))
+
+(comment mdb/keep-me)
 
 (defn init! []
   (println (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))
   (#'task/set-jdbc-backend-properties!)
-  (mdb/setup-db!)
-  (jdbc/with-db-metadata [metadata (db/connection)]
-    (println (u/format-color 'blue "Application DB is %s %s" (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata)))))
+  ;; nothing else to do. Just by loading [[metabase.db]] the Toucan connection info is set up.
+  nil)

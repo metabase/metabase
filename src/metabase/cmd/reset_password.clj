@@ -5,6 +5,8 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 (defn- set-reset-token!
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
   [email-address]
@@ -16,7 +18,6 @@
 (defn reset-password!
   "Reset the password for EMAIL-ADDRESS, and return the reset token in a format that can be understood by the Mac App."
   [email-address]
-  (mdb/setup-db!)
   (println (str (deferred-trs "Resetting password for {0}..." email-address)
                 "\n"))
   (try

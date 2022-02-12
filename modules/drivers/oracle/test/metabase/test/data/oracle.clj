@@ -18,6 +18,8 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+(comment mdb/keep-me)
+
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
 ;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases;
@@ -114,7 +116,6 @@
   (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
     (locking oracle-test-dbs-created-by-this-instance
       (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db!)                 ; if not already setup
         (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
           (let [existing-db-id (u/the-id existing-db)
                 all-schemas    (db/select-field :schema Table :db_id existing-db-id)]

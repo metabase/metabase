@@ -28,11 +28,16 @@
     details maps
 
   * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
-  (:require [metabase.config :as config]
+  (:require [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
             [metabase.db.setup :as mdb.setup]
-            [potemkin :as p]))
+            [metabase.util :as u]
+            [potemkin :as p]
+            [toucan.db :as db])
+  (:import javax.sql.DataSource))
 
 ;; TODO - determine if we *actually* need to import any of these
 ;;
@@ -43,25 +48,42 @@
   db-type
   quoting-style])
 
-(defonce ^:private db-setup-finished?
-  (atom false))
+(defonce ^:private connection-pool-data-source*
+  (atom nil))
 
-(defn db-is-set-up?
-  "True if the Metabase DB is setup and ready."
-  ^Boolean []
-  @db-setup-finished?)
-
-(defn setup-db!
+(defn- setup-db-if-needed!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
-  (when-not @db-setup-finished?
-    (locking db-setup-finished?
-      (when-not @db-setup-finished?
+  (when-not @connection-pool-data-source*
+    (locking connection-pool-data-source*
+      (when-not @connection-pool-data-source*
         (let [db-type       (mdb.connection/db-type)
               data-source   (mdb.connection/data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate?)
-          (mdb.connection-pool-setup/create-connection-pool! db-type data-source))
-        (reset! db-setup-finished? true))))
+          (let [pool-data-source (mdb.connection-pool-setup/create-connection-pool! db-type data-source)]
+            (db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
+            (reset! connection-pool-data-source* pool-data-source)
+            (with-open [conn (.getConnection pool-data-source)]
+              (let [metadata (.getMetaData conn)]
+                ;; not i18n'ed because app DB is not officially set up yet so we can't read the `site-locale` Setting
+                ;; yet.
+                (log/info (u/format-color 'blue "Application DB is %s %s"
+                                          (.getDatabaseProductName metadata)
+                                          (.getDatabaseProductVersion metadata))))))))))
   :done)
+
+(defn- connection-pool-data-source ^DataSource []
+  {:post [(instance? DataSource %)]}
+  (setup-db-if-needed!)
+  @connection-pool-data-source*)
+
+(def ^:private ^DataSource data-source
+  (reify DataSource
+    (getConnection [_this]
+      (.getConnection (connection-pool-data-source)))
+    (getConnection [_this username password]
+      (.getConnection (connection-pool-data-source) username password))))
+
+(db/set-default-db-connection! {:datasource data-source})

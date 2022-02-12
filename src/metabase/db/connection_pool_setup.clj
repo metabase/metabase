@@ -4,7 +4,6 @@
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.db.connection :as mdb.connection]
-            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
@@ -23,16 +22,16 @@
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
      {"maxPoolSize" max-pool-size})))
 
-(s/defn ^:private connection-pool-spec :- {:datasource javax.sql.DataSource}
+(s/defn ^:private connection-pool-data-source :- javax.sql.DataSource
   [db-type     :- s/Keyword
    data-source :- javax.sql.DataSource]
   (let [ds-name    (format "metabase-%s-app-db" (name db-type))
         pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
-    {:datasource (com.mchange.v2.c3p0.DataSources/pooledDataSource
-                  data-source
-                  (connection-pool/map->properties pool-props))}))
+    (com.mchange.v2.c3p0.DataSources/pooledDataSource
+     data-source
+     (connection-pool/map->properties pool-props))))
 
-(s/defn create-connection-pool! :- {:datasource javax.sql.DataSource}
+(s/defn create-connection-pool! :- javax.sql.DataSource
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
   [db-type     :- (s/enum :h2 :postgres :mysql)
@@ -44,7 +43,4 @@
       (log/trace "Closing old application DB connection pool")
       (.close pool)))
   (log/debug (trs "Set default db connection with connection pool..."))
-  (let [pool-spec (connection-pool-spec db-type data-source)]
-    (db/set-default-db-connection! pool-spec)
-    (db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
-    pool-spec))
+  (connection-pool-data-source db-type data-source))
