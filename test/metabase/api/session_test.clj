@@ -141,7 +141,7 @@
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     ;; disable this when we're testing drivers since it tends to F L A K E.
-    (mt/disable-for-driver-tests
+    (mt/disable-flaky-test-when-running-driver-tests-in-ci
       (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
                                                                               [:username :ip-address])
                     public-settings/source-address-header (constantly "x-forwarded-for")]

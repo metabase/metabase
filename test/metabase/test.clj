@@ -376,10 +376,11 @@
      (is ~expr
          (str (are+-message '~expr '~argv args#)))))
 
-(defmacro disable-for-driver-tests
-  "Only run `body` when we're not running driver tests (i.e., `DRIVERS` is not set). Perfect for disabling those damn
-  flaky tests that cause CI to fail all the time."
+(defmacro disable-flaky-test-when-running-driver-tests-in-ci
+  "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
+  disabling those damn flaky tests that cause CI to fail all the time."
   {:style/indent 0}
   [& body]
-  `(when-not (seq (env/env :drivers))
+  `(when (and (not (seq (env/env :drivers)))
+              (not (seq (env/env :ci))))
      ~@body))
