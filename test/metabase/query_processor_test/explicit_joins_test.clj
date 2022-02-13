@@ -690,7 +690,7 @@
                      (qp/process-query query))))))))))
 
 (deftest join-against-multiple-saved-questions-with-same-column-test
-  (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362, #20413)"
+  (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
@@ -729,3 +729,50 @@
                           ["Gizmo"     51 "Gizmo"     2834.88 "Gizmo"     3.64]
                           ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                          (mt/formatted-rows [str int str 2.0 str 2.0] results))))))))))))
+
+(deftest use-correct-source-alias-for-fields-from-joins-test
+  (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query orders
+                      {:joins       [{:source-table $$products
+                                      :alias        "Products Renamed"
+                                      :condition    [:=
+                                                     $product_id
+                                                     [:field %products.id {:join-alias "Products Renamed"}]]
+                                      :fields       :all}]
+                       :expressions {"CC" [:+ 1 1]}
+                       :filter      [:=
+                                     [:field %products.category {:join-alias "Products Renamed"}]
+                                     "Doohickey"]
+                       :order-by    [[:asc $id]]
+                       :limit       2})]
+          (mt/with-native-query-testing-context query
+            (let [results (qp/process-query query)]
+              (when (#{:h2 :postgres} driver/*driver*)
+                (is (= ["ID"
+                        "User ID"
+                        "Product ID"
+                        "Subtotal"
+                        "Tax"
+                        "Total"
+                        "Discount"
+                        "Created At"
+                        "Quantity"
+                        "CC"
+                        "Products Renamed → ID"
+                        "Products Renamed → Ean"
+                        "Products Renamed → Title"
+                        "Products Renamed → Category"
+                        "Products Renamed → Vendor"
+                        "Products Renamed → Price"
+                        "Products Renamed → Rating"
+                        "Products Renamed → Created At"]
+                       (map :display_name (get-in results [:data :results_metadata :columns])))))
+              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
+                       60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
+                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
+                       6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
+                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int int
+                                         int str str str str 2.0 2.0 str]
+                       results))))))))))
