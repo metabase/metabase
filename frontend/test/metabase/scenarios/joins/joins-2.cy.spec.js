@@ -382,39 +382,34 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-      cy.createQuestion({
-        name: "14649_min",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "aggregation-options",
-                ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { name: "Revenue", "display-name": "Revenue" },
+      cy.createQuestion(
+        {
+          name: "14649_min",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                [
+                  "aggregation-options",
+                  ["sum", ["field", ORDERS.SUBTOTAL, null]],
+                  { name: "Revenue", "display-name": "Revenue" },
+                ],
               ],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
+            aggregation: [
+              ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
             ],
           },
-          aggregation: [
-            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-          ],
+
+          display: "scalar",
         },
+        { visitQuestion: true },
+      );
 
-        display: "scalar",
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
-        cy.visit(`/question/${QUESTION_ID}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).to.not.exist;
-        });
-
-        cy.findByText("49.54");
-      });
+      cy.findByText("49.54");
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
