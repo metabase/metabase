@@ -243,8 +243,7 @@
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
-            *user-local-values*            (atom (or (json/parse-string settings keyword)
-                                                     {}))]
+            *user-local-values*            (atom (or settings {}))]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request
