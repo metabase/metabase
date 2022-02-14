@@ -691,8 +691,7 @@
                      (qp/process-query query))))))))))
 
 (deftest join-against-multiple-saved-questions-with-same-column-test
-<<<<<<< HEAD
-  (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362, #20413)"
+  (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
@@ -731,43 +730,6 @@
                           ["Gizmo"     51 "Gizmo"     2834.88 "Gizmo"     3.64]
                           ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                          (mt/formatted-rows [str int str 2.0 str 2.0] results))))))))))))
-=======
-  (testing "Should be able to join multiple against saved questions on the same column (#15863)"
-    (mt/dataset sample-dataset
-      (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
-            q2         (mt/mbql-query products {:breakout [$category], :aggregation [[:sum $price]]})
-            q3         (mt/mbql-query products {:breakout [$category], :aggregation [[:avg $rating]]})
-            metadata   (fn [query]
-                         {:post [(some? %)]}
-                         (-> query qp/process-query :data :results_metadata :columns))
-            query-card (fn [query]
-                         {:dataset_query query, :result_metadata (metadata query)})]
-        (mt/with-temp* [Card [{card-1-id :id} (query-card q1)]
-                        Card [{card-2-id :id} (query-card q2)]
-                        Card [{card-3-id :id} (query-card q3)]]
-          (let [query (mt/mbql-query products
-                        {:source-table (format "card__%d" card-1-id)
-                         :joins        [{:fields       :all
-                                         :source-table (format "card__%d" card-2-id)
-                                         :condition    [:=
-                                                        $category
-                                                        &Q2.category]
-                                         :alias        "Q2"}
-                                        {:fields       :all
-                                         :source-table (format "card__%d" card-3-id)
-                                         :condition    [:=
-                                                        $category
-                                                        &Q3.category]
-                                         :alias        "Q3"}]})]
-            (mt/with-native-query-testing-context query
-              (let [results (qp/process-query query)]
-                (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum" "Q3 → Category" "Q3 → Avg"]
-                       (map :display_name (get-in results [:data :results_metadata :columns]))))
-                (is (= [["Doohickey" 42 "Doohickey" 2185.89 "Doohickey" 3.73]
-                        ["Gadget"    53 "Gadget"    3019.2  "Gadget"    3.43]
-                        ["Gizmo"     51 "Gizmo"     2834.88 "Gizmo"     3.64]
-                        ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
-                       (mt/formatted-rows [str int str 2.0 str 2.0] results)))))))))))
 
 (deftest use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
@@ -886,4 +848,3 @@
                       [2 "Stout Burgers & Beers" "Burger" "Burger"]]
                      (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
->>>>>>> f94d5149e3 (Add logic to truncate and uniquely-suffix column alias identifiers (#19659))
