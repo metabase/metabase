@@ -456,7 +456,7 @@
                                                              ::add/source-table  "Products Renamed"
                                                              :join-alias         "Products Renamed"}]]
                                                           :strategy     :left-join}]
-                                          :expressions  {"CC" [:+ 1 1]}
+                                          :expressions  {:CC [:+ 1 1]}
                                           :fields
                                           [[:field
                                             %products.id
