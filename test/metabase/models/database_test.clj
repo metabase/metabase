@@ -217,22 +217,21 @@
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
-  (binding [api/*current-user-id* (mt/user->id :crowberto)]
-    (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
-                                                                      :is_sample true
-                                                                      :name      "Sample Database"
-                                                                      :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
-      (testing " updating the engine of a sample database is not allowed"
-        (try (db/update! Database id :engine :sqlite)
-             (catch Exception e
-               (is (= "The engine on a sample database cannot be changed." (.getMessage e)))
-               (is (= {:status-code     400
-                       :existing-engine :h2
-                       :new-engine      :sqlite}
-                      (ex-data e))))))
-      (testing " updating other attributes of a sample database is allowed"
-        (db/update! Database id :name "My New Name")
-        (is (= "My New Name" (db/select-one-field :name Database :id id)))))))
+  (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
+                                                                    :is_sample true
+                                                                    :name      "Sample Database"
+                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+    (testing " updating the engine of a sample database is not allowed"
+      (try (db/update! Database id :engine :sqlite)
+           (catch Exception e
+             (is (= "The engine on a sample database cannot be changed." (.getMessage e)))
+             (is (= {:status-code     400
+                     :existing-engine :h2
+                     :new-engine      :sqlite}
+                    (ex-data e))))))
+    (testing " updating other attributes of a sample database is allowed"
+      (db/update! Database id :name "My New Name")
+      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 
