@@ -697,6 +697,20 @@ describe("scenarios > question > filter", () => {
       .and("contains", "Button");
   });
 
+  it("should allow hiding the suggestion list with Escape", () => {
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+    cy.findByText("Tax");
+
+    // Esc closes the suggestion popover
+    cy.realPress("{esc}");
+    cy.findByText("Tax").should("not.exist");
+  });
+
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
