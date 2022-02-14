@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { t } from "ttag";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 addAbbreviatedLocale();
 
 // when you define a custom locale, moment automatically makes it the active global locale,
@@ -32,6 +34,8 @@ function addAbbreviatedLocale() {
 
   moment.locale(initialLocale);
 }
+
+const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
   "day-of-week": value => moment.parseZone(value, "ddd").startOf("day"),
@@ -191,4 +195,21 @@ export function msToHours(ms) {
 
 export function hoursToSeconds(hours) {
   return hours * 60 * 60;
+}
+
+export function getDateStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  const temporalSettings = customFormattingSettings["type/Temporal"];
+  return temporalSettings.date_style;
+}
+
+export function getTimeStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  const temporalSettings = customFormattingSettings["type/Temporal"];
+  return temporalSettings.time_style;
+}
+
+export function has24HourModeSetting() {
+  const timeStyle = getTimeStyleFromSettings();
+  return timeStyle === TIME_FORMAT_24_HOUR;
 }

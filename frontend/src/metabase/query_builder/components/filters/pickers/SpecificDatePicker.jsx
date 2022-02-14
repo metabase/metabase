@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
@@ -66,18 +67,20 @@ export default class SpecificDatePicker extends Component {
       date = moment(value, DATE_FORMAT, true);
     }
 
+    const dateFormat = getDateStyleFromSettings();
+
     return (
       <div className={className}>
         <div className="mb2 full bordered rounded flex align-center">
           <InputBlurChange
-            placeholder={moment().format("MM/DD/YYYY")}
+            placeholder={moment().format(dateFormat)}
             className="borderless full p1 h3"
             style={{
               outline: "none",
             }}
-            value={date ? date.format("MM/DD/YYYY") : ""}
+            value={date ? date.format(dateFormat) : ""}
             onBlurChange={({ target: { value } }) => {
-              const date = moment(value, "MM/DD/YYYY");
+              const date = moment(value, dateFormat);
               if (date.isValid()) {
                 this.onChange(date, hours, minutes);
               } else {
