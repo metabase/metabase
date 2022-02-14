@@ -11,37 +11,37 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByLabelText("Client ID").type(
       "fake-client-id.apps.googleusercontent.com",
     );
-    saveSettings();
-    cy.findByText("Success");
+    successfullySaveSettings();
     cy.reload();
-    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com").type(
-      "fake-client-id2.apps.googleusercontent.com",
-    );
-    saveSettings();
+    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com")
+      .clear()
+      .type("fake-client-id2.apps.googleusercontent.com");
+    successfullySaveSettings();
     cy.findByText("Success");
   });
 
   it("Remove Google Sing-In Setup (metabase#20442)", () => {
-    cy.findByLabelText("Client ID").type("example.apps.googleusercontent.com");
-    cy.findByLabelText("Domain").type("example.test");
-    saveSettings();
-    cy.findByText("Success");
+    cy.request("PUT", "/api/setting", {
+      "google-auth-client-id": "example.apps.googleusercontent.com",
+      "google-auth-auto-create-accounts-domain": "example.test",
+    });
+    successfullySaveSettings();
     cy.reload();
     cy.findByLabelText("Client ID").clear();
     cy.findByLabelText("Domain").clear();
-    saveSettings();
-    cy.findByText("Success");
+    successfullySaveSettings();
   });
 
   it("Google sign-in client ID form should show an error message if it does not end with the correct suffix (metabase#15975)", () => {
     cy.findByLabelText("Client ID").type("fake-client-id");
-    saveSettings();
+    cy.button("Save changes").click();
     cy.findByText(
       'Invalid Google Sign-In Client ID: must end with ".apps.googleusercontent.com"',
     );
   });
 });
 
-function saveSettings() {
+function successfullySaveSettings() {
   cy.button("Save changes").click();
+  cy.findByText("Success");
 }
