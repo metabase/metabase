@@ -32,9 +32,11 @@ const TimelineModal = ({
           to={Urls.newEventInCollection(timeline, collection)}
         >{t`Add an event`}</Link>
       </ModalToolbar>
-      <ModalBody>
-        <EventList timeline={timeline} collection={collection} />
-      </ModalBody>
+      {timeline.events && (
+        <ModalBody>
+          <EventList timeline={timeline} collection={collection} />
+        </ModalBody>
+      )}
     </ModalRoot>
   );
 };

@@ -27,6 +27,16 @@ export const CardDescription = styled.span`
   color: ${color("text-dark")};
 `;
 
+export interface CardAsideProps {
+  isTopAligned?: boolean;
+}
+
+export const CardAside = styled.span<CardAsideProps>`
+  display: block;
+  color: ${color("text-dark")};
+  align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
+`;
+
 export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;

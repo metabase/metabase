@@ -19,14 +19,15 @@ export interface EventListProps {
 }
 
 const EventList = ({ timeline, collection }: EventListProps): JSX.Element => {
-  const events = useMemo(
-    () => _.sortBy(timeline.events, e => parseTimestamp(e.timestamp)).reverse(),
-    [timeline],
+  const allEvents = timeline.events;
+  const sortedEvents = useMemo(
+    () => _.sortBy(allEvents ?? [], e => parseTimestamp(e.timestamp)).reverse(),
+    [allEvents],
   );
 
   return (
     <div>
-      {events.map(event => (
+      {sortedEvents.map(event => (
         <EventCard
           key={event.id}
           event={event}
