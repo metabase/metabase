@@ -69,7 +69,8 @@ const mapDispatchToProps = {
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
-  setBookmark: id => Dashboards.actions.setFavorited({ id }, true),
+  setBookmark: (id, shouldBeBookmarked) =>
+    Dashboards.actions.setFavorited({ id }, shouldBeBookmarked),
   onChangeLocation: push,
 };
 
