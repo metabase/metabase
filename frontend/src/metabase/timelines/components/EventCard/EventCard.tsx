@@ -1,11 +1,15 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
+import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
+  CardDescription,
+  CardInfo,
   CardRoot,
   CardThread,
   CardThreadIcon,
@@ -25,6 +29,9 @@ const EventCard = ({
   timeline,
   collection,
 }: EventCardProps): JSX.Element => {
+  const menuItems = getMenuItems(event, timeline, collection);
+  const createdAtMessage = getCreatedAtMessage(event);
+
   return (
     <CardRoot>
       <CardThread>
@@ -35,36 +42,40 @@ const EventCard = ({
       </CardThread>
       <CardBody>
         <CardTitle>{event.name}</CardTitle>
+        {event.description && (
+          <CardDescription>{event.description}</CardDescription>
+        )}
+        <CardInfo>{createdAtMessage}</CardInfo>
       </CardBody>
       <CardAside>
-        <EventMenu event={event} timeline={timeline} collection={collection} />
+        <EntityMenu items={menuItems} triggerIcon="ellipsis" />
       </CardAside>
     </CardRoot>
   );
 };
 
-export interface EventMenuProps {
-  event: TimelineEvent;
-  timeline: Timeline;
-  collection: Collection;
-}
+const getMenuItems = (
+  event: TimelineEvent,
+  timeline: Timeline,
+  collection: Collection,
+) => {
+  return [
+    {
+      title: t`Edit event`,
+      link: Urls.editEventInCollection(event, timeline, collection),
+    },
+  ];
+};
 
-const EventMenu = ({
-  event,
-  timeline,
-  collection,
-}: EventMenuProps): JSX.Element => {
-  const items = useMemo(
-    () => [
-      {
-        title: t`Edit event`,
-        link: Urls.editEventInCollection(event, timeline, collection),
-      },
-    ],
-    [event, timeline, collection],
-  );
+const getCreatedAtMessage = (event: TimelineEvent) => {
+  const options = Settings.formattingOptions();
+  const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
 
-  return <EntityMenu items={items} triggerIcon="ellipsis" />;
+  if (event.creator) {
+    return t`${event.creator.common_name} added this on ${createdAt}`;
+  } else {
+    return t`Added on ${createdAt}`;
+  }
 };
 
 export default EventCard;

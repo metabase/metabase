@@ -41,11 +41,21 @@ export const CardBody = styled.div`
   padding: 0.375rem 0.75rem 0;
 `;
 
+export const CardInfo = styled.div`
+  color: ${color("text-medium")};
+  margin-top: 1rem;
+`;
+
 export const CardTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+`;
+
+export const CardDescription = styled.div`
+  color: ${color("text-dark")};
+  margin-top: 0.25rem;
 `;
 
 export const CardAside = styled.div`
