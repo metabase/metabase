@@ -3,9 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Tooltip from "metabase/components/Tooltip";
-
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 export default class ChartTooltip extends Component {
   static propTypes = {
@@ -14,16 +12,18 @@ export default class ChartTooltip extends Component {
   };
 
   _getRows() {
-    const { hovered } = this.props;
+    const { hovered, settings } = this.props;
     if (!hovered) {
       return [];
     }
     if (Array.isArray(hovered.data)) {
       // Array of key, value, col: { data: [{ key, value, col }], element, event }
-      return hovered.data.map(d => ({
-        ...d,
-        key: d.key || (d.col && getFriendlyName(d.col)),
-      }));
+      return hovered.data.map(d => {
+        return {
+          ...d,
+          key: d.key || formatColumn(d.col, settings),
+        };
+      });
     } else if (hovered.value !== undefined || hovered.dimensions) {
       // ClickObject: { value, column, dimensions: [{ value, column }], element, event }
       const dimensions = [];
@@ -34,7 +34,7 @@ export default class ChartTooltip extends Component {
         dimensions.push({ value: hovered.value, column: hovered.column });
       }
       return dimensions.map(({ value, column }) => ({
-        key: column && getFriendlyName(column),
+        key: formatColumn(column, settings),
         value: value,
         col: column,
       }));
