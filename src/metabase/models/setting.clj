@@ -352,11 +352,11 @@
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
 
-  2. From [[*user-local-values*]] if this Setting is allowed to have User-local values
-  1. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
-  2. From the corresponding env var (excluding empty string values)
-  3. From the application database (i.e., set via the admin panel) (excluding empty string values)
-  4. The default value, if one was specified
+  1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
+  2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
+  3. From the corresponding env var (excluding empty string values)
+  4. From the application database (i.e., set via the admin panel) (excluding empty string values)
+  5. The default value, if one was specified
 
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
