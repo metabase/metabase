@@ -26,7 +26,7 @@ const TimelineListModal = ({
   onClose,
 }: TimelineListModalProps): JSX.Element => {
   const hasItems = timelines.length > 0;
-  const title = timelines.length > 1 ? t`Events` : t`${collection.name} events`;
+  const title = hasItems ? t`Events` : t`${collection.name} events`;
 
   return (
     <div>
