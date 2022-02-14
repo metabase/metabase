@@ -99,7 +99,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
-    cy.intercept("/app/assets/geojson").as("geojson");
+    cy.intercept("/app/assets/geojson/**").as("geojson");
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,

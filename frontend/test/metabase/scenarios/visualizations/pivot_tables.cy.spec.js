@@ -430,7 +430,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
-    cy.icon("arrow_up").click();
+    cy.icon("arrow_up").realClick();
     cy.findByText("8 – 10");
     cy.findByText("158 – 160").should("not.exist");
   });
