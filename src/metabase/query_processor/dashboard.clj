@@ -51,7 +51,9 @@
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str matching-mapping))
+      (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
+                  card-id dashcard-id
+                  (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
       ;; if `request-param` specifies type, then validate that the type is allowed
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
@@ -144,6 +146,9 @@
                          options
                          {:parameters   resolved-params
                           :dashboard-id dashboard-id})]
+    (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
+                dashboard-id card-id dashcard-id
+                (u/pprint-to-str options))
     ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
     (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
       (m/mapply qp.card/run-query-for-card-async card-id export-format options))))
