@@ -17,9 +17,9 @@ describe("metabase > scenarios > navbar > new menu", () => {
     cy.url("should.contain", "/question/notebook#");
   });
 
-  it("question item opens SQL query editor", () => {
+  it("question item opens Native query editor", () => {
     popover().within(() => {
-      cy.findByText("SQL query").click();
+      cy.findByText("Native query").click();
     });
 
     cy.url("should.contain", "/question#");

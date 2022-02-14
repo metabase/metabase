@@ -33,7 +33,7 @@ export function openNativeEditor({
     cy.visit("/");
   }
   cy.findByText("New").click();
-  cy.findByText("SQL query").click();
+  cy.findByText("Native query").click();
 
   databaseName && cy.findByText(databaseName).click();
 
