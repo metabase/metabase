@@ -161,6 +161,16 @@ describe("metabase/lib/expression/suggest", () => {
         expect(args).toHaveLength(3);
       });
 
+      it("should provide help text for the unique match", () => {
+        const { structure, args } = helpText({
+          source: "lower", // doesn't need to be "lower(" since it's a unique match
+          query: ORDERS.query(),
+          startRule: "expression",
+        });
+        expect(structure).toEqual("lower(text)");
+        expect(args).toHaveLength(1);
+      });
+
       it("should provide help text after first argument if there's only one argument", () => {
         expect(
           helpText({
