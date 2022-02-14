@@ -983,9 +983,8 @@
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
   [visibility]
-  ;; ignore User-local and Database-local values
-  (binding [*database-local-values* nil
-            *user-local-values*     (atom nil)]
+  ;; ignore Database-local values, but not User-local values
+  (binding [*database-local-values* nil]
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
