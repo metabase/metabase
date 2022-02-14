@@ -22,7 +22,7 @@ import {
 } from "metabase/lib/schema_metadata";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
@@ -192,6 +192,14 @@ export default class LineAreaBarChart extends Component {
       return newSeries;
     }
   }
+
+  static columnSettings = {
+    column_title: {
+      title: t`Column title`,
+      widget: "input",
+      getDefault: column => formatColumn(column),
+    },
+  };
 
   static propTypes = {
     card: PropTypes.object.isRequired,
