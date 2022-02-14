@@ -4,13 +4,13 @@
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [metabase.util :as u]))
+            [toucan.hydrate :refer [hydrate]]))
 
-(def include-events-schema (s/enum "events"))
+(def ^{:doc "Events Query Parameters Schema"} include-events-schema (s/enum "events"))
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
@@ -23,6 +23,13 @@
    archived      (s/maybe s/Bool)}
   (collection/check-write-perms-for-collection collection_id)
   (db/insert! Timeline (assoc body :creator_id api/*current-user-id*)))
+
+(api/defendpoint GET "/"
+  "Fetch a list of [[Timelines]]."
+  [archived]
+  {archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)]
+    (db/select Timeline [:where [:= :archived archived?]])))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`."
