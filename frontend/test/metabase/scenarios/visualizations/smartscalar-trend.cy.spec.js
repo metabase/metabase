@@ -51,7 +51,7 @@ describe("scenarios > visualizations > scalar", () => {
     cy.icon("arrow_down");
 
     cy.get(".SmartWrapper")
-      .should("contain", "99.9%")
+      .should("contain", "99,900%")
       .and("contain", "was 1,000 last year");
   });
 });
