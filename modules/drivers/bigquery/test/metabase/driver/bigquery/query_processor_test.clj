@@ -709,35 +709,29 @@
               ""
               (apply str (repeat 1055 "a")))))))
 
-(deftest ->valid-field-identifier-test
-  (testing "`->valid-field-identifier` should generate valid field identifiers"
+(deftest escape-alias-test
+  (testing "`escape-alias` should generate valid field identifiers"
     (testing "no need to change anything"
       (is (= "abc"
-             (#'bigquery.qp/->valid-field-identifier "abc"))))
+             (driver/escape-alias :bigquery "abc"))))
     (testing "replace spaces with underscores"
-      (is (= "A_B_C_0ef78513"
-             (#'bigquery.qp/->valid-field-identifier "A B C"))))
+      (is (= "A_B_C"
+             (driver/escape-alias :bigquery "A B C"))))
     (testing "trim spaces"
-      (is (= "A_B_61f5f1b3"
-             (#'bigquery.qp/->valid-field-identifier " A B "))))
+      (is (= "A_B"
+             (driver/escape-alias :bigquery " A B "))))
     (testing "diacritical marks"
-      (is (= "Organizacao_6c2736cd"
-             (#'bigquery.qp/->valid-field-identifier "Organização")))
-      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
-        (is (= "Organizacao_f3d24ea0"
-               (#'bigquery.qp/->valid-field-identifier "Organizacaó")))))
+      (is (= "Organizacao"
+             (driver/escape-alias :bigquery "Organização"))))
     (testing "cannot start with a number"
-      (is (= "_123_202cb962"
-             (#'bigquery.qp/->valid-field-identifier "123"))))
+      (is (= "_123"
+             (driver/escape-alias :bigquery "123"))))
     (testing "replace non-letter characters with underscores"
-      (is (= "__02612e19"
-             (#'bigquery.qp/->valid-field-identifier "😍")))
-      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
-        (is (= "__e88ec744"
-               (#'bigquery.qp/->valid-field-identifier "🥰")))))
+      (is (= "_"
+             (driver/escape-alias :bigquery "😍"))))
     (testing "trim long strings"
-      (is (= (str (str/join (repeat 119 "a")) "_4e5475d1")
-             (#'bigquery.qp/->valid-field-identifier (str/join (repeat 300 "a"))))))))
+      (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
+             (driver/escape-alias :bigquery (str/join (repeat 300 "a"))))))))
 
 (deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery
