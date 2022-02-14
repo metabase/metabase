@@ -10,7 +10,9 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(def ^{:doc "Events Query Parameters Schema"} include-events-schema (s/enum "events"))
+(def include-events-schema
+  "Events Query Parameters Schema"
+  (s/enum "events"))
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
