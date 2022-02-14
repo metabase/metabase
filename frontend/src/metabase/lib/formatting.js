@@ -798,7 +798,7 @@ export function formatColumn(column, chartSettings) {
   if (chartSettings) {
     const columnSettings = chartSettings.column(column);
     if (columnSettings?.column_title) {
-      return chartSettings.column_title;
+      return columnSettings.column_title;
     }
   }
 

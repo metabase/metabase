@@ -4,11 +4,10 @@ import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
-import { getFriendlyName } from "./utils";
 
 export function getClickHoverObject(
   d,
@@ -32,14 +31,14 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  function getColumnDisplayName(col) {
+  function getColumnDisplayName(col, settings) {
     const title = getIn(settings, ["series_settings", col.name, "title"]);
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
     if (!isBreakoutMultiseries && title) {
       return title;
     }
 
-    return getFriendlyName(col);
+    return formatColumn(col, settings);
   }
 
   let data = [];
@@ -52,14 +51,14 @@ export function getClickHoverObject(
       data = d.key._origin.row.map((value, index) => {
         const col = d.key._origin.cols[index];
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, settings),
           value: value,
           col,
         };
       });
     } else {
       data = d.key.map((value, index) => ({
-        key: getColumnDisplayName(cols[index]),
+        key: getColumnDisplayName(cols[index], settings),
         value: value,
         col: cols[index],
       }));
@@ -104,7 +103,7 @@ export function getClickHoverObject(
       data = rawCols.map((col, i) => {
         if (isNormalized && cols[1].field_ref === col.field_ref) {
           return {
-            key: getColumnDisplayName(cols[1]),
+            key: getColumnDisplayName(cols[1], settings),
             value: formatValue(d.data.value, {
               number_style: "percent",
               column: cols[1],
@@ -114,7 +113,7 @@ export function getClickHoverObject(
           };
         }
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, settings),
           value: formatNull(aggregatedRow[i]),
           col: col,
         };
@@ -127,7 +126,9 @@ export function getClickHoverObject(
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
     const { _breakoutValue: value, _breakoutColumn: column } = card;
-    data = [{ key: getColumnDisplayName(column), col: column, value }];
+    data = [
+      { key: getColumnDisplayName(column, settings), col: column, value },
+    ];
     dimensions = [{ column, value }];
   }
 
