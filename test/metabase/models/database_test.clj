@@ -222,13 +222,10 @@
                                                                     :name      "Sample Database"
                                                                     :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
     (testing " updating the engine of a sample database is not allowed"
-      (try (db/update! Database id :engine :sqlite)
-           (catch Exception e
-             (is (= "The engine on a sample database cannot be changed." (.getMessage e)))
-             (is (= {:status-code     400
-                     :existing-engine :h2
-                     :new-engine      :sqlite}
-                    (ex-data e))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"The engine on a sample database cannot be changed."
+           (db/update! Database id :engine :sqlite))))
     (testing " updating other attributes of a sample database is allowed"
       (db/update! Database id :name "My New Name")
       (is (= "My New Name" (db/select-one-field :name Database :id id))))))
