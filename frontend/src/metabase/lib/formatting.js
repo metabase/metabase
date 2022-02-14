@@ -794,7 +794,14 @@ export function formatValueRaw(value, options = {}) {
   }
 }
 
-export function formatColumn(column) {
+export function formatColumn(column, chartSettings) {
+  if (chartSettings) {
+    const columnSettings = chartSettings.column(column);
+    if (columnSettings?.column_title) {
+      return chartSettings.column_title;
+    }
+  }
+
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
