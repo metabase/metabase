@@ -26,10 +26,11 @@ const TimelineListModal = ({
   onClose,
 }: TimelineListModalProps): JSX.Element => {
   const hasItems = timelines.length > 0;
+  const title = timelines.length > 1 ? t`Events` : t`${collection.name} events`;
 
   return (
     <div>
-      <ModalHeader title={t`Events`} onClose={onClose}>
+      <ModalHeader title={title} onClose={onClose}>
         {hasItems && <TimelineMenu collection={collection} />}
       </ModalHeader>
       <ModalBody>
