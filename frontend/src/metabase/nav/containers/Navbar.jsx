@@ -178,7 +178,7 @@ export default class Navbar extends Component {
               ...(hasNativeWrite
                 ? [
                     {
-                      title: t`SQL query`,
+                      title: t`Native query`,
                       icon: `sql`,
                       link: Urls.newQuestion({
                         type: "native",
