@@ -198,7 +198,6 @@
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
-;; TODO -- we should rework this to use
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
