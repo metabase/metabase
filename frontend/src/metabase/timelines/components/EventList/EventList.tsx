@@ -1,7 +1,5 @@
-import React, { useMemo } from "react";
-import _ from "underscore";
+import React from "react";
 import { t } from "ttag";
-import { parseTimestamp } from "metabase/lib/time";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
@@ -24,14 +22,9 @@ const EventList = ({
   timeline,
   collection,
 }: EventListProps): JSX.Element => {
-  const sortedEvents = useMemo(
-    () => _.sortBy(events, e => parseTimestamp(e.timestamp)).reverse(),
-    [events],
-  );
-
   return (
     <div>
-      {sortedEvents.map(event => (
+      {events.map(event => (
         <EventCard
           key={event.id}
           event={event}
