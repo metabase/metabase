@@ -964,7 +964,7 @@
   [& {:as options}]
   ;; ignore User-local and Database-local values
   (binding [*database-local-values* nil
-            *user-local-values*     nil]
+            *user-local-values*     (atom nil)]
     (into
      []
      (comp (filter (fn [setting]
@@ -985,7 +985,7 @@
   [visibility]
   ;; ignore User-local and Database-local values
   (binding [*database-local-values* nil
-            *user-local-values*     nil]
+            *user-local-values*     (atom nil)]
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
