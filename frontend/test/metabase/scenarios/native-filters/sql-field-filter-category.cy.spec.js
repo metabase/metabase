@@ -10,26 +10,27 @@ describe("scenarios > filters > sql filters > field filter > Category", () => {
 
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "Products SQL",
-      native: {
-        query: "select * from products where {{category}}",
-        "template-tags": {
-          category: {
-            "display-name": "Field Filter",
-            id: "abc123",
-            name: "category",
-            type: "dimension",
-            "widget-type": "category",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-            default: ["Doohickey"],
+    cy.createNativeQuestion(
+      {
+        name: "Products SQL",
+        native: {
+          query: "select * from products where {{category}}",
+          "template-tags": {
+            category: {
+              "display-name": "Field Filter",
+              id: "abc123",
+              name: "category",
+              type: "dimension",
+              "widget-type": "category",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              default: ["Doohickey"],
+            },
           },
         },
+        display: "table",
       },
-      display: "table",
-    }).then(({ body: { id: card_id } }) => {
-      cy.visit(`/question/${card_id}`);
-    });
+      { visitQuestion: true },
+    );
   });
 
   it("should work despite it not showing up in the widget type list", () => {

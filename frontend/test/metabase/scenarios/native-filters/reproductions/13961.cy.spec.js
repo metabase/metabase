@@ -38,12 +38,7 @@ describe.skip("issue 13961", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-
-      cy.visit(`/question/${body.id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should clear default filter value in native questions (metabase#13961)", () => {

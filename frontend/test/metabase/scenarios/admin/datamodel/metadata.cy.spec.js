@@ -86,23 +86,24 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion({
-      name: "14124",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-        ],
+    cy.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
 
-      cy.findByText("Created At: Hour of day");
+    cy.findByText("Created At: Hour of day");
 
-      cy.log("Reported failing in v0.37.2");
-      cy.findByText(/^3:00 AM$/);
-    });
+    cy.log("Reported failing in v0.37.2");
+    cy.findByText(/^3:00 AM$/);
   });
 
   it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
