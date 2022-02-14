@@ -30,8 +30,8 @@ const EditTimelineModal = ({
     [collection, onSubmit],
   );
 
-  const handleArchive = useCallback(() => {
-    onArchive(timeline, collection);
+  const handleArchive = useCallback(async () => {
+    await onArchive(timeline, collection);
   }, [timeline, collection, onArchive]);
 
   return (

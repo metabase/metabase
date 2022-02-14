@@ -79,4 +79,14 @@ export const updateEvent = createThunkAction(
   },
 );
 
+export const ARCHIVE_EVENT = "metabase/timelines/ARCHIVE_EVENT";
+export const archiveEvent = createThunkAction(
+  ARCHIVE_EVENT,
+  (event: TimelineEvent) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(TimelineEvents.actions.setArchived(event, true));
+    };
+  },
+);
+
 type Dispatch = any;

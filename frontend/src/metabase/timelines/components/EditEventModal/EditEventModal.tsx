@@ -4,7 +4,7 @@ import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
-import { ModalBody } from "./EditEventModal.styled";
+import { ModalBody, ModalDangerButton } from "./EditEventModal.styled";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
@@ -15,6 +15,7 @@ export interface EditEventModalProps {
     timeline: Timeline,
     collection: Collection,
   ) => void;
+  onArchive: (event: TimelineEvent) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
@@ -24,6 +25,7 @@ const EditEventModal = ({
   timeline,
   collection,
   onSubmit,
+  onArchive,
   onCancel,
   onClose,
 }: EditEventModalProps): JSX.Element => {
@@ -33,6 +35,10 @@ const EditEventModal = ({
     },
     [timeline, collection, onSubmit],
   );
+
+  const handleArchive = useCallback(async () => {
+    await onArchive(event);
+  }, [event, onArchive]);
 
   return (
     <div>
@@ -44,6 +50,11 @@ const EditEventModal = ({
           isModal={true}
           onSubmit={handleSubmit}
           onClose={onCancel}
+          footerExtraButtons={
+            <ModalDangerButton type="button" borderless onClick={handleArchive}>
+              {t`Archive event`}
+            </ModalDangerButton>
+          }
         />
       </ModalBody>
     </div>
