@@ -5,11 +5,12 @@ import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/
 import { SIDEBAR_VIEWS } from "./constants";
 
 QuestionDetailsSidebar.propTypes = {
+  isBookmarked: PropTypes.bool.isRequired,
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebar({ question, onOpenModal }) {
+function QuestionDetailsSidebar({ isBookmarked, question, onOpenModal }) {
   const [view, setView] = useState(view);
 
   switch (view) {
@@ -17,6 +18,7 @@ function QuestionDetailsSidebar({ question, onOpenModal }) {
     default:
       return (
         <QuestionDetailsSidebarPanel
+          isBookmarked={isBookmarked}
           setView={setView}
           question={question}
           onOpenModal={onOpenModal}

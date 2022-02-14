@@ -96,6 +96,7 @@ export default class View extends React.Component {
       isLiveResizable,
       runQuestionQuery,
       databases,
+      isBookmarked,
       isShowingTemplateTagsEditor,
       isShowingDataReference,
       isShowingNewbModal,
@@ -169,7 +170,11 @@ export default class View extends React.Component {
     ) : isShowingChartTypeSidebar ? (
       <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
     ) : isShowingQuestionDetailsSidebar ? (
-      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+      <QuestionDetailsSidebar
+        question={question}
+        onOpenModal={onOpenModal}
+        isBookmarked={isBookmarked}
+      />
     ) : null;
 
     const rightSideBar =

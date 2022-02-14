@@ -30,7 +30,7 @@ const ICON_SIZE = 18;
 QuestionActionButtons.propTypes = {
   areNestedQueriesEnabled: PropTypes.bool.isRequired,
   canWrite: PropTypes.bool.isRequired,
-  isBookmarked: PropTypes.bool,
+  isBookmarked: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
   question: PropTypes.object.isRequired,
 };
@@ -44,7 +44,7 @@ function mapStateToProps(state) {
 function QuestionActionButtons({
   areNestedQueriesEnabled,
   canWrite,
-  isBookmarked = false,
+  isBookmarked,
   onOpenModal,
   question,
 }) {
