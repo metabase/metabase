@@ -34,7 +34,11 @@ const TimelineModal = ({
       </ModalToolbar>
       {timeline.events && (
         <ModalBody>
-          <EventList timeline={timeline} collection={collection} />
+          <EventList
+            events={timeline.events}
+            timeline={timeline}
+            collection={collection}
+          />
         </ModalBody>
       )}
     </ModalRoot>

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { parseTimestamp } from "metabase/lib/time";
-import { Collection, Timeline } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,
@@ -14,15 +14,19 @@ import {
 } from "./EventList.styled";
 
 export interface EventListProps {
+  events: TimelineEvent[];
   timeline: Timeline;
   collection: Collection;
 }
 
-const EventList = ({ timeline, collection }: EventListProps): JSX.Element => {
-  const allEvents = timeline.events;
+const EventList = ({
+  events,
+  timeline,
+  collection,
+}: EventListProps): JSX.Element => {
   const sortedEvents = useMemo(
-    () => _.sortBy(allEvents ?? [], e => parseTimestamp(e.timestamp)).reverse(),
-    [allEvents],
+    () => _.sortBy(events, e => parseTimestamp(e.timestamp)).reverse(),
+    [events],
   );
 
   return (
