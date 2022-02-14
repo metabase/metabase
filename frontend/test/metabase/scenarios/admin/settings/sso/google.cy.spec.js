@@ -42,5 +42,4 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 
 function successfullySaveSettings() {
   cy.button("Save changes").click();
-  cy.findByText("Success");
 }
