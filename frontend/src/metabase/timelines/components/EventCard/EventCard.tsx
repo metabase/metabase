@@ -9,14 +9,16 @@ import {
   CardAside,
   CardBody,
   CardDescription,
-  CardInfo,
+  CardCreatorInfo,
   CardRoot,
   CardThread,
   CardThreadIcon,
   CardThreadIconContainer,
   CardThreadStroke,
   CardTitle,
+  CardDateInfo,
 } from "./EventCard.styled";
+import { parseTimestamp } from "metabase/lib/time";
 
 export interface EventCardProps {
   event: TimelineEvent;
@@ -29,8 +31,9 @@ const EventCard = ({
   timeline,
   collection,
 }: EventCardProps): JSX.Element => {
+  const dateText = getDateText(event);
+  const creatorText = getCreatorText(event);
   const menuItems = getMenuItems(event, timeline, collection);
-  const createdAtMessage = getCreatedAtMessage(event);
 
   return (
     <CardRoot>
@@ -41,11 +44,12 @@ const EventCard = ({
         <CardThreadStroke />
       </CardThread>
       <CardBody>
+        <CardDateInfo>{dateText}</CardDateInfo>
         <CardTitle>{event.name}</CardTitle>
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
         )}
-        <CardInfo>{createdAtMessage}</CardInfo>
+        <CardCreatorInfo>{creatorText}</CardCreatorInfo>
       </CardBody>
       <CardAside>
         <EntityMenu items={menuItems} triggerIcon="ellipsis" />
@@ -67,7 +71,18 @@ const getMenuItems = (
   ];
 };
 
-const getCreatedAtMessage = (event: TimelineEvent) => {
+const getDateText = (event: TimelineEvent) => {
+  const date = parseTimestamp(event.timestamp);
+  const options = Settings.formattingOptions();
+
+  if (date.hours() === 0 && date.minutes() === 0) {
+    return formatDateTimeWithUnit(date, "day", options);
+  } else {
+    return formatDateTimeWithUnit(date, "default", options);
+  }
+};
+
+const getCreatorText = (event: TimelineEvent) => {
   const options = Settings.formattingOptions();
   const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
 

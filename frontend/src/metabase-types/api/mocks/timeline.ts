@@ -20,7 +20,7 @@ export const createMockTimelineEvent = (
   name: "Christmas",
   description: null,
   icon: "star",
-  date: "2021-12-25",
+  timestamp: "2021-12-25",
   creator: createMockUser(),
   created_at: "2021-12-01",
   archived: false,
