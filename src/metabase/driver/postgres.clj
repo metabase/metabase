@@ -166,24 +166,7 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-(defn- describe-table-json*
-  [driver conn table]
-  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
-        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
-        query            {:select [:*]
-                          :from   [(keyword (:name table))]
-                          :limit  2}
-        sample           (db/query query)]
-    ;;; figure out reducible-query stuf...
-    (println sample)
-    (for [json-field json-fields]
-      (println json-field))))
-        
-;;       (let [sample sample that fucker
-;;             same-schema filter it down to see if it's good for us]
-;;         (if same-schema
-;;           (get that schema)
-;;           false)))))
+(def ^:const json-sample-limit 10000)
 
 ;; Describe the JSON fields present in a table.
 ;; Not to be confused with existing nested field functionality for mongo,
@@ -194,6 +177,22 @@
     (with-open [conn (jdbc/get-connection spec)]
       (describe-table-json* driver conn table))))
 
+(defn- describe-table-json*
+  ;;;; types for this for chrissakes
+  [driver conn table]
+  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+        ;;; need to only select json fields...
+        query            {:select [:*]
+                          :from   [(keyword (:name table))]
+                          :limit  json-sample-limit}
+        sample           (db/query query)]
+    ;;; figure out reducible-query stuf...
+    ;;; {:is-stable {stability dict here...}} -
+    ;;; not just a straight stability dict because we're gonna have other bullshit, i guarantee it
+    (println sample)
+    (for [json-field json-fields]
+      (println json-field))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
