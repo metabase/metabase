@@ -59,3 +59,9 @@
                                     (map (juxt identity (comp uniquify escape)))
                                     all-join-aliases)]
         (rename-join-aliases query original->escaped)))))
+
+(defn escape-join-aliases-middleware
+  "< 43 middleware version of [[escape-join-aliases]]."
+  [qp]
+  (fn [query rff metadata]
+    (qp (escape-join-aliases query) rff metadata)))
