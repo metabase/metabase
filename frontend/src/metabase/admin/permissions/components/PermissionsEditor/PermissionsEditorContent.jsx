@@ -88,7 +88,6 @@ export function PermissionsEditorContent({
 
       <PermissionTableWrapper>
         <PermissionsTable
-          horizontalPadding="lg"
           entities={filteredEntities || entities}
           columns={columns}
           onSelect={onSelect}

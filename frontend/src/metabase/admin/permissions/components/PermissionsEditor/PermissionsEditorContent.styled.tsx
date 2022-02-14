@@ -15,6 +15,6 @@ export const EditorEmptyStateContainer = styled.div`
 
 export const PermissionTableWrapper = styled.div`
   position: relative;
-  overflow: auto;
+  overflow-x: auto;
   padding-bottom: 20px;
 `;

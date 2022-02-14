@@ -19,9 +19,18 @@ export const PermissionsTableCell = styled.td`
     min-width: 300px;
     background: white;
     left: 0;
+    top: 0;
     position: sticky;
     padding-left: 0;
-    border-right: 1px solid ${alpha(color("border"), 0.5)};
+
+    &:after {
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 100%;
+      border-right: 1px solid ${alpha(color("border"), 0.5)};
+      content: " ";
+    }
   }
 `;
 
@@ -29,7 +38,9 @@ export const PermissionTableHeaderCell = styled(
   PermissionsTableCell.withComponent("th"),
 )`
   &:first-of-type {
-    border-right: none;
+    &:after {
+      display: none;
+    }
   }
 `;
 
@@ -39,7 +50,6 @@ export const PermissionsTableRow = styled.tr`
 `;
 
 export const EntityNameCell = styled(PermissionsTableCell)`
-  display: flex;
   align-items: center;
 `;
 

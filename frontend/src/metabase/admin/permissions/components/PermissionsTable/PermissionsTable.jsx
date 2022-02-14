@@ -26,7 +26,6 @@ const propTypes = {
   onChange: PropTypes.func,
   onAction: PropTypes.func,
   colorScheme: PropTypes.oneOf(["default", "admin"]),
-  horizontalPadding: PropTypes.oneOf(["sm", "lg"]),
 };
 
 export function PermissionsTable({
@@ -35,7 +34,6 @@ export function PermissionsTable({
   onSelect,
   onAction,
   onChange,
-  horizontalPadding = "sm",
   colorScheme,
   emptyState = null,
 }) {
@@ -79,11 +77,7 @@ export function PermissionsTable({
           <tr>
             {columns.map(column => {
               return (
-                <PermissionTableHeaderCell
-                  as="th"
-                  key={column}
-                  horizontalPadding={horizontalPadding}
-                >
+                <PermissionTableHeaderCell key={column}>
                   <ColumnName>{column}</ColumnName>
                 </PermissionTableHeaderCell>
               );
@@ -94,7 +88,7 @@ export function PermissionsTable({
           {entities.map(entity => {
             return (
               <PermissionsTableRow key={entity.id}>
-                <EntityNameCell horizontalPadding={horizontalPadding}>
+                <EntityNameCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
                       {entity.name}
@@ -112,10 +106,7 @@ export function PermissionsTable({
 
                 {entity.permissions.map(permission => {
                   return (
-                    <PermissionsTableCell
-                      key={permission.name}
-                      horizontalPadding={horizontalPadding}
-                    >
+                    <PermissionsTableCell key={permission.name}>
                       <PermissionsSelect
                         {...permission}
                         onChange={(value, toggleState) =>
