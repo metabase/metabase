@@ -9,6 +9,6 @@ export const ModalToolbar = styled.div`
   justify-content: flex-end;
 `;
 
-export const ModalList = styled.div`
+export const ModalContent = styled.div`
   padding-top: 1rem;
 `;

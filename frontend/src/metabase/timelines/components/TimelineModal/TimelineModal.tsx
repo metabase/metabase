@@ -1,14 +1,12 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
-import EventCard from "../EventCard";
+import EventList from "../EventList";
 import ModalHeader from "../ModalHeader";
-import { ModalBody, ModalList, ModalToolbar } from "./TimelineModal.styled";
-import { parseTimestamp } from "metabase/lib/time";
+import { ModalBody, ModalContent, ModalToolbar } from "./TimelineModal.styled";
 
 export interface TimelineModalProps {
   timeline: Timeline;
@@ -28,7 +26,7 @@ const TimelineModal = ({
       </ModalHeader>
       <ModalBody>
         <TimelineToolbar timeline={timeline} collection={collection} />
-        <TimelineList timeline={timeline} collection={collection} />
+        <TimelineContent timeline={timeline} collection={collection} />
       </ModalBody>
     </div>
   );
@@ -79,31 +77,19 @@ const TimelineToolbar = ({
   );
 };
 
-interface TimelineListProps {
+interface TimelineContentProps {
   timeline: Timeline;
   collection: Collection;
 }
 
-const TimelineList = ({
+const TimelineContent = ({
   timeline,
   collection,
-}: TimelineListProps): JSX.Element => {
-  const events = useMemo(
-    () => _.sortBy(timeline.events, e => parseTimestamp(e.timestamp)).reverse(),
-    [timeline],
-  );
-
+}: TimelineContentProps): JSX.Element => {
   return (
-    <ModalList>
-      {events.map(event => (
-        <EventCard
-          key={event.id}
-          event={event}
-          timeline={timeline}
-          collection={collection}
-        />
-      ))}
-    </ModalList>
+    <ModalContent>
+      <EventList timeline={timeline} collection={collection} />
+    </ModalContent>
   );
 };
 
