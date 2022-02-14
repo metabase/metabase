@@ -13,7 +13,38 @@ A Metabase driver:
 
 ## How are Metabase drivers written?
 
-Let's take a high-level look at how Metabase drivers are written. Take a look at this sample code.
+Let's take a high-level look at the [SQLite driver](https://github.com/metabase/metabase/tree/master/modules/drivers/sqlite): 
+
+```
+|-- deps.edn
+|-- resources
+|   `-- metabase-plugin.yaml
+|-- src
+|   `-- metabase
+|       `-- driver
+|           `-- sqlite.clj
+`-- test
+    `-- metabase
+        |-- driver
+        |   `-- sqlite_test.clj
+        `-- test
+            `-- data
+                `-- sqlite.clj
+```
+
+### `deps.edn`
+
+The `deps.edn` file specifies your driver's dependencies.
+
+### `resources/metabase-plugin.yaml`
+
+Your driver's manifest.
+
+## A minimalist driver
+
+But first, let's focus on the main driver file for our Fox Pro '98.
+
+Take a look at this sample code.
 
 ```clj
 ;; Define a namespace for the driver
@@ -38,7 +69,7 @@ So, what's going on here?
   (:require [metabase.driver :as driver]))
 ```
 
-**Typically, each Metabase driver lives in its own namespace** -- `com.mycompany.metabase.driver.foxpro98` in this case. All core Metabase drivers live in `metabase.driver.*` namespaces, but feel free to call your namespace whatever you want, unless your goal is to have it merged into the core Metabase repo, in which case you'll need to stick to `metabase.driver.<driver-name>`. It's probably best to use something resembling the [Java package naming conventions](https://en.wikipedia.org/wiki/Java_package#Package_naming_conventions).
+**Typically, each Metabase driver lives in its own namespace** -- `com.mycompany.metabase.driver.foxpro98` in this case. All core Metabase drivers live in `metabase.driver.*` namespaces, but feel free to call your namespace whatever you want (unless your goal is to your driver merged into the core Metabase repo, in which case you'll need to stick to `metabase.driver.<driver-name>`). It's probably best to use names that follow the [Java package naming conventions](https://en.wikipedia.org/wiki/Java_package#Package_naming_conventions).
 
 **Many drivers are further broken out into additional namespaces**, especially larger drivers. Commonly, a driver will have a `query-processor` namespace (e.g., `com.mycompany.metabase.driver.foxpro98.query-processor`) that contains the logic for converting MBQL queries into native ones. The query processor is often the most complicated part of a driver, so keeping that logic separate can help make things easier to work with. Some drivers also have a separate `sync` namespace that has implementations for methods used by the sync process.
 

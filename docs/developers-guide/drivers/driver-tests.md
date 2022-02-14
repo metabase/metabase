@@ -4,7 +4,7 @@ If you want to submit a PR to add a driver, you'll need to make sure the driver 
 
 To test your driver, you'll need to:
 
-- Move your plugin into the  [`modules/drivers`](https://github.com/metabase/metabase/tree/master/modules/drivers) directory in the Metabase repository.
+- Move your plugin into the [`modules/drivers`](https://github.com/metabase/metabase/tree/master/modules/drivers) directory in the Metabase repository.
 - Add _test extensions_ to your driver.
 - Edit [`.circleci/config.yml`](https://github.com/metabase/metabase/blob/master/.circleci/config.yml) to tell CircleCI how to set up a Docker image for your database and run tests against it.
 
@@ -20,7 +20,7 @@ To run the test suite with your driver, you'll need to write a series of method 
 
 These test extensions will tell Metabase how to create new databases and load them with test data, and provide information about what Metabae can expect from the created database. Test extensions are simply additional multimethods used only by tests. Like the core driver multimethods, they dispatch on the driver name as a keyword, e.g. `:mysql`.
 
-### File Organization
+### File organization
 
 Test extensions for a driver usually live in a namespace called `metabase.test.data.<driver>`. If your driver is for SQLite, your files should look something like:
 
@@ -49,7 +49,7 @@ You'll need to require the following namespaces, aliased like so:
 (require '[metabase.test.data.sql-jdbc :as sql-jdbc.tx])
 ```
 
-### Registering Test Extensions
+### Registering test extensions
 
 Like the driver itself, you need to register the fact that your driver has test extensions, so Metabase knows it doesn't need to try to load them a second time. (If they're not loaded yet, Metabase will load them when needed by looking for a namespace named `metabase.test.data.<driver>`, which is why you need to follow that naming pattern.) The `:sql` and `:sql-jdbc` drivers have their own sets of test extensions, so depending on which parent you're using for your driver, register test extensions with:
 
@@ -73,7 +73,7 @@ You only need one call -- there's no need to do all three for a `:sql-jdbc` driv
 (sql-jdbc.tx/register-test-extensions! :mysql)
 ```
 
-## Anatomy of a Metabase Test
+## Anatomy of a Metabase test
 
 Let's look at an real-life Metabase test so we can understand how it works and what exactly we need to do to power it:
 
@@ -130,7 +130,7 @@ Like test extension method definitions, schemas for `DatabaseDefinition` live in
 
 I'd like to document every single test extension method in detail here, but until I find the time to do that, the methods are all documented in the codebase itself; take a look at the appropriate test extension namespaces and see which methods you'll need to implement. You can also refer to the test extensions written for other similar drivers to get a picture of what exactly it is you need to be doing.
 
-### Connection Details
+## Connection Details
 
 Of course, Metabase also needs to know how it can connect to your newly created database. Specifically, it needs to know what it should save as part of the connection `:details` map when it saves the newly created database as a `Database` object. All drivers with test extensions need to implement `tx/dbdef->connection-details` to return an appropriate set of `:details` for a given database definition. For example:
 
@@ -150,13 +150,18 @@ Of course, Metabase also needs to know how it can connect to your newly created 
 
 Let's take a look at what's going on here.
 
-##### Connection Context
+### Connection context
 
-`tx/dbdef->connection-details` is called in two different contexts: when creating a database, and when loading data into one and syncing. Most databases won't let you connect to a database that hasn't been created yet, meaning something like a `CREATE DATABASE "test-data";` statement would have to be ran _without_ specifying `test-data` as part of the connection. Thus, the `context` parameter. `context` is either `:server`, meaning "give me details for connecting to the DBMS server, but not to a specific database", or `:db`, meaning "give me details for connecting to a specific database". In MySQL's case, it adds the `:db` connection property whenever context is `:db`.
+`tx/dbdef->connection-details` is called in two different contexts: 
 
-##### Getting connection properties from env vars
+- When creating a database,
+- And when loading data into one and syncing. 
 
-What's `tx/db-test-env-var` about? As previously mentioned, you'll almost certainly be running your database in a local Docker container. Rather than hardcode the username, host, port, etc. for the Docker container, we'd like to be flexible, and let people specify those in environment variables, in case they're running against a different container or are just running the database outside of a container or on another computer entirely. Metabase handily provides the aformentioned function to get such details from environment variables. For example,
+Most databases won't let you connect to a database that hasn't been created yet, meaning something like a `CREATE DATABASE "test-data";` statement would have to be ran _without_ specifying `test-data` as part of the connection. Thus, the `context` parameter. `context` is either `:server`, meaning "give me details for connecting to the DBMS server, but not to a specific database", or `:db`, meaning "give me details for connecting to a specific database". In MySQL's case, it adds the `:db` connection property whenever context is `:db`.
+
+### Getting connection properties from env vars
+
+You'll almost certainly be running your database in a local Docker container. Rather than hardcode the connection details (the username, host, port...) for the Docker container, we'd like to be flexible, and let people specify those in environment variables, in case they're running against a different container or are just running the database outside of a container, or on another computer entirely. You can use `tx/db-test-env-var` to get details from environment variables. For example,
 
 ```clj
 (tx/db-test-env-var :mysql :user "root")
@@ -188,7 +193,7 @@ This is actually a common problem, and luckily we have figured out how to work a
 
 See [Running unit tests](devenv.md#running-unit-tests) and [Testing drivers](devenv.md#testing-drivers).
 
-## Running the linter 
+## Running the linter
 
 See [Run the linters](devenv.md#run-the-linters).
 
@@ -200,24 +205,24 @@ Here is an example configuration for PostgreSQL.
 
 ```yaml
 postgres-latest:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-        environment:
-          MB_DB_TYPE: postgres
-          MB_DB_PORT: 5432
-          MB_DB_HOST: localhost
-          MB_DB_DBNAME: metabase_test
-          MB_DB_USER: metabase_test
-          MB_POSTGRESQL_TEST_USER: metabase_test
-      - image: circleci/postgres:latest
-        environment:
-          POSTGRES_USER: metabase_test
-          POSTGRES_DB: metabase_test
-          POSTGRES_HOST_AUTH_METHOD: trust
+  working_directory: /home/circleci/metabase/metabase/
+  docker:
+    - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      environment:
+        MB_DB_TYPE: postgres
+        MB_DB_PORT: 5432
+        MB_DB_HOST: localhost
+        MB_DB_DBNAME: metabase_test
+        MB_DB_USER: metabase_test
+        MB_POSTGRESQL_TEST_USER: metabase_test
+    - image: circleci/postgres:latest
+      environment:
+        POSTGRES_USER: metabase_test
+        POSTGRES_DB: metabase_test
+        POSTGRES_HOST_AUTH_METHOD: trust
 ```
 
-and
+and the steps:
 
 ```
        - test-driver:
@@ -247,5 +252,4 @@ For more on what it is you're doing here and how all this works, see [CircleCI 2
 
 Metabase currently doesn't support new databases that can't be ran locally with Docker. In rare cases, we'll support a database if the people behind it will provide us with a free partner/developer account. If that's the case, let us know the situation when you open your PR, and we'll see whether it still makes sense. If that can't be done (i.e., Metabase would have to pay for an account in order to test your driver on CI), your driver is best shipped as a 3rd-party driver rather than as a part of the core Metabase product.
 
-If the database can be ran locally, but you can't find a Docker image for it, please create one yourself. 
-
+If the database can be ran locally, but you can't find a Docker image for it, please create one yourself.

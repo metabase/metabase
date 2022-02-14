@@ -174,6 +174,6 @@ Building a driver like this is largely the same as plugins shipped as part of Me
 ```
 clojure -X:dev:build
 ```
-Copy the resulting `JAR` file into your plugins directory, and you're off to the races.
+Copy the resulting `JAR` file into the plugins directory (the `plugins` directory where you run the metabase JAR), and you're off to the races.
 
 [env-var]: ../../operations-guide/environment-variables.html
