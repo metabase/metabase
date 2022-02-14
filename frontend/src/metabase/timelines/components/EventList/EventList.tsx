@@ -1,11 +1,14 @@
 import React, { useMemo } from "react";
 import _ from "underscore";
+import { t } from "ttag";
 import { parseTimestamp } from "metabase/lib/time";
 import { Collection, Timeline } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,
-  ListRoot,
+  ListIcon,
+  ListIconContainer,
+  ListIconText,
   ListThread,
   ListThreadContainer,
 } from "./EventList.styled";
@@ -22,7 +25,7 @@ const EventList = ({ timeline, collection }: EventListProps): JSX.Element => {
   );
 
   return (
-    <ListRoot>
+    <div>
       {events.map(event => (
         <EventCard
           key={event.id}
@@ -35,8 +38,12 @@ const EventList = ({ timeline, collection }: EventListProps): JSX.Element => {
         <ListThreadContainer>
           <ListThread />
         </ListThreadContainer>
+        <ListIconContainer>
+          <ListIcon name="dyno" />
+          <ListIconText>{t`The Paleozoic Era`}</ListIconText>
+        </ListIconContainer>
       </ListFooter>
-    </ListRoot>
+    </div>
   );
 };
 
