@@ -11,9 +11,10 @@ describe("scenarios > collection pinned items overview", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("GET", "/api/collection/root/items?pinned_state=is_pinned").as(
-      "pinnedItemsGET",
-    );
+    cy.intercept(
+      "GET",
+      "/api/collection/root/items?pinned_state=is_pinned*",
+    ).as("pinnedItemsGET");
   });
 
   it("should let the user pin items", () => {
