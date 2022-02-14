@@ -194,3 +194,33 @@
         (testing "DashCard 2 (Category = Gadget)"
           (is (= [[53]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id)))))))))
+
+(deftest operator-field-filters-use-dashboard-defaults-test
+  (testing "Operator Field Filters should use Dashboard default values (#20493)"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
+                                    :template-tags {"cat" {:id           "__cat__"
+                                                           :name         "cat"
+                                                           :display-name "Cat"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :widget-type  :string/=
+                                                           :default      nil}}})]
+        (mt/with-native-query-testing-context query
+          (is (= [[200]]
+                 (mt/rows (qp/process-query query)))))
+        (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
+                        Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
+                                                                         :slug      "text"
+                                                                         :id        "a605c1fb"
+                                                                         :type      :text #_:string/=
+                                                                         :sectionId "string"
+                                                                         :default   "Doohickey"}]}]
+                        DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "a605c1fb"
+                                                                                    :card_id      card-id
+                                                                                    :target       [:dimension [:template-tag "cat"]]}]
+                                                          :card_id                card-id
+                                                          :visualization_settings {}
+                                                          :dashboard_id           dashboard-id}]]
+          (is (= [[42]]
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))))))
