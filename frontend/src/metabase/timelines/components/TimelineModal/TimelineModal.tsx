@@ -13,12 +13,14 @@ import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
 export interface TimelineModalProps {
   timeline: Timeline;
   collection: Collection;
+  onArchive: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
 const TimelineModal = ({
   timeline,
   collection,
+  onArchive,
   onClose,
 }: TimelineModalProps): JSX.Element => {
   const events = getEvents(timeline.events, timeline.archived);
@@ -41,6 +43,7 @@ const TimelineModal = ({
             events={events}
             timeline={timeline}
             collection={collection}
+            onArchive={onArchive}
           />
         </ModalBody>
       )}
