@@ -264,6 +264,16 @@
    [_ _id-or-name {:keys [join-alias]}, :as _field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
+    ;; TODO -- this just recalculates the info instead of actually finding the Field in the join and getting its desired
+    ;; alias there... this seems like a clear bug since it doesn't go thru the uniquify logic. Something will
+    ;; potentially break by doing this. I haven't been able to reproduce it yet however.
+    ;;
+    ;; This will only be triggered if the join somehow exposes duplicate columns or columns that have the same escaped
+    ;; name after going thru [[driver/escape-alias]]. I think the only way this could happen is if we escape them
+    ;; aggressively but the escape logic produces duplicate columns (i.e., there is overlap between the unique hashes we
+    ;; suffix to escaped identifiers.)
+    ;;
+    ;; We'll have to look into this more in the future. For now, it seems to work for everything we try it with.
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query

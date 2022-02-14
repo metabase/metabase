@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -21,9 +21,11 @@ export const Footer = styled.div`
   align-items: center;
 `;
 
-export const UpdateButton = styled(Button).attrs({
-  purple: true,
-})`
+export const UpdateButton = styled(Button)`
   justify-self: end;
   grid-column-start: 2;
 `;
+
+UpdateButton.defaultProps = {
+  purple: true,
+};

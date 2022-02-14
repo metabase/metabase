@@ -58,7 +58,7 @@ type Props = {
 const TOOLTIP_DELAY: [number, null] = [700, null];
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
-  const [hoverRef, isHovered] = useHover();
+  const [hoverRef, isHovered] = useHover<HTMLDivElement>();
   const resultMetadata = dataset.getResultMetadata();
 
   if (!Array.isArray(resultMetadata) || resultMetadata.length === 0) {

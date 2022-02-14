@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import IconWrapper from "metabase/components/IconWrapper";
 
 export const IconContainer = styled(IconWrapper)`

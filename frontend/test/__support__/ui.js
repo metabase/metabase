@@ -6,7 +6,7 @@ import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
-import { ThemeProvider } from "styled-components";
+import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";

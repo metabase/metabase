@@ -276,13 +276,13 @@ describe("scenarios > admin > databases > add", () => {
     it("should display driver deprecation messages", () => {
       cy.visit("/admin/databases/create");
 
-      chooseDatabase("BigQuery");
+      chooseDatabase("Presto");
 
-      cy.findByText("BigQuery");
+      cy.findByText("Presto");
       cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
-      cy.findByText("BigQuery (Deprecated Driver)");
+      cy.findByText("Presto (Deprecated Driver)");
       cy.findByText("Need help connecting?");
     });
   });

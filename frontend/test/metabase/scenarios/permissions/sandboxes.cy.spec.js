@@ -9,6 +9,8 @@ import {
   remapDisplayValueToFK,
   setupSMTP,
   visualize,
+  summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -139,9 +141,9 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
         popover().within(() => {
-          cy.findByText("Total").click();
+          cy.findByText("Total").click({ force: true });
         });
         cy.findByText("Equal to").click();
         cy.findByText("Greater than").click();
@@ -198,7 +200,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 

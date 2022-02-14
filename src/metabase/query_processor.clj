@@ -221,11 +221,11 @@
         (apply (qp) args))
       (qp))))
 
-(def ^{:arglists '([query] [query context])} process-query-async
+(def ^{:arglists '([query] [query context] [query rff context])} process-query-async
   "Process a query asynchronously, returning a `core.async` channel that is called with the final result (or Throwable)."
   (base-qp default-middleware))
 
-(def ^{:arglists '([query] [query context])} process-query-sync
+(def ^{:arglists '([query] [query context] [query rff context])} process-query-sync
   "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
   (qp.reducible/sync-qp process-query-async))
 
@@ -233,7 +233,7 @@
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  {:arglists '([query] [query context])}
+  {:arglists '([query] [query context] [query rff context])}
   [{:keys [async?], :as query} & args]
   (apply (if async? process-query-async process-query-sync)
          query

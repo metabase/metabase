@@ -27,7 +27,7 @@
 
 (deftest no-existing-cookie
   (testing "set DEVICE cookie with SameSite=Lax if served over HTTP"
-    (let [request    (-> (mock/request :get "http://localhost/foo"))
+    (let [request    (mock/request :get "http://localhost/foo")
           response   (handler request)
           browser-id (:body response)]
       (is (some? (UUID/fromString browser-id)))
@@ -38,7 +38,7 @@
              (-> (get-in response [:cookies browser-id-cookie-name])
                  (dissoc :expires))))))
   (testing "set DEVICE cookie with SameSite=None if served over HTTPS"
-    (let [request    (-> (mock/request :get "https://localhost/foo"))
+    (let [request    (mock/request :get "https://localhost/foo")
           response   (handler request)
           browser-id (:body response)]
       (is (some? (UUID/fromString browser-id)))

@@ -212,6 +212,12 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const TimelineApi = {
+  getTimelines: GET("/api/timeline"),
+  getCardTimelines: GET("/api/card/:cardId/timelines"),
+  getCollectionTimelines: GET("/api/collection/:collectionId/timelines"),
+};
+
 export const MetabaseApi = {
   db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),

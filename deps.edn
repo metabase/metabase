@@ -4,9 +4,7 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {aleph/aleph                               {:mvn/version "0.4.6"               ; Async HTTP library; WebSockets
-                                             :exclusions  [org.clojure/tools.logging]}
-  amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
+ {amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
                                              :exclusions  [org.clojure/clojure
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
@@ -22,7 +20,8 @@
                                                            commons-io/commons-io
                                                            slingshot/slingshot]}
   clojurewerkz/quartzite                    {:mvn/version "2.1.0"               ; scheduling library
-                                             :exclusions  [c3p0/c3p0]}
+                                             :exclusions  [c3p0/c3p0
+                                                           org.quartz-scheduler/quartz]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
   com.cemerick/friend                       {:mvn/version "0.2.3"               ; auth library
@@ -119,6 +118,7 @@
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
   org.postgresql/postgresql                 {:mvn/version "42.3.2"}             ; Postgres driver
+  org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "1.7.35"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.7.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter

@@ -11,8 +11,8 @@ const FormSelectWidget = ({ placeholder, options = [], field }) => (
     onChange={e => field.onChange(e.target.value)}
     buttonProps={{ style: { minWidth: 200 } }}
   >
-    {options.map(({ name, value }) => (
-      <Option key={value} value={value}>
+    {options.map(({ name, value, icon }) => (
+      <Option key={value} value={value} icon={icon}>
         {name}
       </Option>
     ))}

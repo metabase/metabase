@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
@@ -15,9 +16,9 @@ function RawMaybeLink({ to, ...props }) {
 
 RawMaybeLink.propTypes = propTypes;
 
-const hoverStyle = css`
+const hoverStyle = props => css`
   cursor: pointer;
-  color: ${props => color(props.activeColor)};
+  color: ${color(props.activeColor)};
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -28,7 +29,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   color: ${props => color(props.inactiveColor)};
 
   :hover {
-    ${props => (props.to || props.onClick) && hoverStyle}
+    ${props => (props.to || props.onClick) && hoverStyle(props)}
   }
 `;
 

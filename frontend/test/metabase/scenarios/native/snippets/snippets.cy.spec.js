@@ -100,24 +100,25 @@ describe("scenarios > question > snippets", () => {
       });
 
       // Create native question using snippet 1
-      cy.createNativeQuestion({
-        name: "15387",
-        native: {
-          "template-tags": {
-            "snippet: Table: Orders": {
-              id: "14a923c5-83a2-b359-64f7-5e287c943caf",
-              name: "snippet: Table: Orders",
-              "display-name": "Snippet: table: orders",
-              type: "snippet",
-              "snippet-name": "Table: Orders",
-              "snippet-id": SNIPPET_ID,
+      cy.createNativeQuestion(
+        {
+          name: "15387",
+          native: {
+            "template-tags": {
+              "snippet: Table: Orders": {
+                id: "14a923c5-83a2-b359-64f7-5e287c943caf",
+                name: "snippet: Table: Orders",
+                "display-name": "Snippet: table: orders",
+                type: "snippet",
+                "snippet-name": "Table: Orders",
+                "snippet-id": SNIPPET_ID,
+              },
             },
+            query: "select * from {{snippet: Table: Orders}} limit 1",
           },
-          query: "select * from {{snippet: Table: Orders}} limit 1",
         },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}`);
-      });
+        { visitQuestion: true },
+      );
     });
 
     cy.get(".Visualization")

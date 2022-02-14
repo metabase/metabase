@@ -599,7 +599,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
     cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.route("POST", "/api/card/*/query").as("cardQuery");
 
     cy.createQuestion({
       name: "15331",
@@ -675,7 +675,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .contains("1")
       .click();
 
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@cardQuery").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.findByText("37.65");

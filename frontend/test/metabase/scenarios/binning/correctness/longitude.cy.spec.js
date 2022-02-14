@@ -1,4 +1,9 @@
-import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openPeopleTable,
+  summarize,
+} from "__support__/e2e/cypress";
 
 import { LONGITUDE_OPTIONS } from "./constants";
 
@@ -7,7 +12,7 @@ describe("scenarios > binning > correctness > longitude", () => {
     restore();
     cy.signInAsAdmin();
     openPeopleTable();
-    cy.findByText("Summarize").click();
+    summarize();
     openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
   });
 

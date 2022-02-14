@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { color } from "metabase/lib/colors";

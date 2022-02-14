@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const EditorHeaderContainer = styled.div`
   padding: 0 3rem;

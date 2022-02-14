@@ -395,6 +395,13 @@ export default class ExpressionEditorTextfield extends React.Component {
         this.chooseSuggestion();
       },
     },
+    {
+      name: "clearSuggestions",
+      bindKey: { win: "Esc", mac: "Esc" },
+      exec: () => {
+        this.clearSuggestions();
+      },
+    },
   ];
 
   render() {

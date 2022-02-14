@@ -295,7 +295,7 @@ describe("scenarios > collection_defaults", () => {
         parent_id: 1,
       });
       cy.visit("/collection/root");
-      cy.get("[class*=CollectionSidebar]").as("sidebar");
+      cy.findByRole("tree").as("sidebar");
 
       displaySidebarChildOf("Your personal collection");
       cy.findByText(COLLECTION);
@@ -393,7 +393,7 @@ describe("scenarios > collection_defaults", () => {
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
-      cy.get("[class*=CollectionSidebar]")
+      cy.findByRole("tree")
         .as("sidebar")
         .within(() => {
           cy.findAllByText("Second collection").should("have.length", 1);
