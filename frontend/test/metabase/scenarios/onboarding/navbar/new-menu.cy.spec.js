@@ -17,7 +17,9 @@ describe("metabase > scenarios > navbar > new menu", () => {
     cy.url("should.contain", "/question/notebook#");
   });
 
-  it("question item opens Native query editor", () => {
+  // Although the issue is related to Mongo and some other databases that don't have SQL queries,
+  // this is a good spot to check that we don't use the term "SQL" even for the databases that do support it.
+  it("question item opens Native query editor (metabase#20499)", () => {
     popover().within(() => {
       cy.findByText("Native query").click();
     });
