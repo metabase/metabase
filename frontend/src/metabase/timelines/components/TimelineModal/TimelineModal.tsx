@@ -24,7 +24,7 @@ const TimelineModal = ({
   return (
     <ModalRoot>
       <ModalHeader title={timeline.name} onClose={onClose}>
-        <EntityMenu items={menuItems} triggerIcon="ellipses" />
+        <EntityMenu items={menuItems} triggerIcon="ellipsis" />
       </ModalHeader>
       <ModalToolbar>
         <Link
