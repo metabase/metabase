@@ -17,7 +17,6 @@ describe("scenarios > admin > settings > SSO > Google", () => {
       .clear()
       .type("fake-client-id2.apps.googleusercontent.com");
     successfullySaveSettings();
-    cy.findByText("Success");
   });
 
   it("Remove Google Sing-In Setup (metabase#20442)", () => {
