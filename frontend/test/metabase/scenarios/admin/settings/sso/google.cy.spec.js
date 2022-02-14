@@ -24,7 +24,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
       "google-auth-client-id": "example.apps.googleusercontent.com",
       "google-auth-auto-create-accounts-domain": "example.test",
     });
-    successfullySaveSettings();
+    cy.visit("/admin/settings/authentication/google");
     cy.reload();
     cy.findByLabelText("Client ID").clear();
     cy.findByLabelText("Domain").clear();
