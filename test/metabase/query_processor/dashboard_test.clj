@@ -213,9 +213,9 @@
                         Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
                                                                          :slug      "text"
                                                                          :id        "a605c1fb"
-                                                                         :type      :text #_:string/=
+                                                                         :type      :string/=
                                                                          :sectionId "string"
-                                                                         :default   "Doohickey"}]}]
+                                                                         :default   ["Doohickey"]}]}]
                         DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "a605c1fb"
                                                                                     :card_id      card-id
                                                                                     :target       [:dimension [:template-tag "cat"]]}]
