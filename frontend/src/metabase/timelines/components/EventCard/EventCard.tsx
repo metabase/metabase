@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -93,4 +93,4 @@ const getCreatorMessage = (event: TimelineEvent) => {
   }
 };
 
-export default EventCard;
+export default memo(EventCard);

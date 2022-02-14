@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import * as Urls from "metabase/lib/urls";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -29,4 +29,4 @@ const TimelineCard = ({
   );
 };
 
-export default TimelineCard;
+export default memo(TimelineCard);
