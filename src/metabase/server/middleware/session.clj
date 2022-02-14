@@ -1,7 +1,6 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require
-            [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -251,15 +250,16 @@
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
-  `*current-user-permissions-set*`.
+  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`,
+  `*current-user-permissions-set*, and `metabase.models.setting/*user-local-values*`.
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
+  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
     (with-current-user-for-request request
