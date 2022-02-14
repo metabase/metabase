@@ -15,7 +15,11 @@ export interface EditEventModalProps {
     timeline: Timeline,
     collection: Collection,
   ) => void;
-  onArchive: (event: TimelineEvent) => void;
+  onArchive: (
+    event: TimelineEvent,
+    timeline: Timeline,
+    collection: Collection,
+  ) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
@@ -37,8 +41,8 @@ const EditEventModal = ({
   );
 
   const handleArchive = useCallback(async () => {
-    await onArchive(event);
-  }, [event, onArchive]);
+    await onArchive(event, timeline, collection);
+  }, [event, timeline, collection, onArchive]);
 
   return (
     <div>

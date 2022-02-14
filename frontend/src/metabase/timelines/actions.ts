@@ -82,9 +82,13 @@ export const updateEvent = createThunkAction(
 export const ARCHIVE_EVENT = "metabase/timelines/ARCHIVE_EVENT";
 export const archiveEvent = createThunkAction(
   ARCHIVE_EVENT,
-  (event: TimelineEvent) => {
+  (event: TimelineEvent, timeline?: Timeline, collection?: Collection) => {
     return async (dispatch: Dispatch) => {
       await dispatch(TimelineEvents.actions.setArchived(event, true));
+
+      if (timeline && collection) {
+        dispatch(push(Urls.timelineInCollection(timeline, collection)));
+      }
     };
   },
 );
