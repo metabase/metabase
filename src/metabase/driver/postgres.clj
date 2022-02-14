@@ -24,7 +24,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]])
+            [pretty.core :refer [PrettyPrintable]]
+            [toucan.db :as db])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
@@ -167,14 +168,22 @@
 
 (defn- describe-table-json*
   [driver conn table]
-  (let [table-fields (sql-jdbc.sync/describe-table-fields driver conn table)
-        json-fields  (filter those suckers)]
+  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+        query            {:select [:*]
+                          :from   [(keyword (:name table))]
+                          :limit  2}
+        sample           (db/query query)]
+    ;;; figure out reducible-query stuf...
+    (println sample)
     (for [json-field json-fields]
-      (let [sample sample that fucker
-            same-schema filter it down to see if it's good for us]
-        (if same-schema
-          (get that schema)
-          false)))))
+      (println json-field))))
+        
+;;       (let [sample sample that fucker
+;;             same-schema filter it down to see if it's good for us]
+;;         (if same-schema
+;;           (get that schema)
+;;           false)))))
 
 ;; Describe the JSON fields present in a table.
 ;; Not to be confused with existing nested field functionality for mongo,
