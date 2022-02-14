@@ -4,6 +4,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
@@ -154,6 +156,8 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
+  setBookmarked: (id, shouldBeBookmarked) =>
+    Questions.objectActions.setFavorited(id, shouldBeBookmarked),
 };
 
 @connect(mapStateToProps, mapDispatchToProps)

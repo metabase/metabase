@@ -111,6 +111,7 @@ export default class View extends React.Component {
       fitClassNames,
       height,
       onOpenModal,
+      setBookmarked,
     } = this.props;
     const {
       aggregationIndex,
@@ -174,6 +175,7 @@ export default class View extends React.Component {
         question={question}
         onOpenModal={onOpenModal}
         isBookmarked={isBookmarked}
+        setBookmarked={setBookmarked}
       />
     ) : null;
 
