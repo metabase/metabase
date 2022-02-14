@@ -1,6 +1,7 @@
 (ns metabase.driver.hive-like
   (:require [buddy.core.codecs :as codecs]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -86,21 +87,24 @@
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
 
+(defrecord DateExtract [unit expr]
+  hformat/ToSql
+  (to-sql [_this]
+    (format "extract(%s FROM %s)" (name unit) (hformat/to-sql expr))))
+
 (defmethod sql.qp/date [:hive-like :day-of-week]
-  [driver _ expr]
-  (sql.qp/adjust-day-of-week driver
-                             (hx/->integer (date-format "u"
-                                                        (hx/+ (hx/->timestamp expr)
-                                                              (hsql/raw "interval '1' day"))))))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (-> (->DateExtract :dow (hx/->timestamp expr))
+                                        (hx/with-database-type-info "integer"))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [driver _ expr]
   (let [week-extract-fn (fn [expr]
-                          (hsql/call :date_sub
-                            (hx/+ (hx/->timestamp expr)
-                                  (hsql/raw "interval '1' day"))
-                            (date-format "u" (hx/+ (hx/->timestamp expr)
-                                                   (hsql/raw "interval '1' day")))))]
+                          (-> (hsql/call :date_sub
+                                         (hx/+ (hx/->timestamp expr)
+                                               (hsql/raw "interval '1' day"))
+                                         (->DateExtract :dow (hx/->timestamp expr)))
+                              (hx/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
@@ -169,19 +173,19 @@
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
-  [_ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [t (.getTimestamp rs i)]
       (t/offset-time (t/local-time t) (t/zone-offset 0)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
-  [_ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [t (.getDate rs i)]
       (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
-  [_ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (when-let [t (.getTimestamp rs i)]
       (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC")))))
