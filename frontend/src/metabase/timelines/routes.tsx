@@ -1,5 +1,6 @@
 import React, { Fragment } from "react";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import EditEventModal from "./containers/EditEventModal";
 import EditTimelineModal from "./containers/EditTimelineModal";
 import NewEventModal from "./containers/NewEventModal";
 import NewEventWithTimelineModal from "./containers/NewEventWithTimelineModal";
@@ -44,6 +45,12 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/events/new",
           modal: NewEventModal,
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/events/:timelineEventId/edit",
+          modal: EditEventModal,
         }}
       />
     </Fragment>

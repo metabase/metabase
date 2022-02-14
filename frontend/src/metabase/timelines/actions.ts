@@ -60,7 +60,7 @@ export const createEvent = createThunkAction(
 export const UPDATE_EVENT = "metabase/timelines/UPDATE_EVENT";
 export const updateEvent = createThunkAction(
   UPDATE_EVENT,
-  (event: TimelineEvent, collection: Collection, timeline: Timeline) => {
+  (event: TimelineEvent, timeline: Timeline, collection: Collection) => {
     return async (dispatch: Dispatch) => {
       await dispatch(TimelineEvents.actions.update(event));
       dispatch(push(Urls.timelineInCollection(timeline, collection)));
