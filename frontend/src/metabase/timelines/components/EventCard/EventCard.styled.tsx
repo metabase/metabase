@@ -38,7 +38,7 @@ export const CardThreadStroke = styled.div`
 
 export const CardBody = styled.div`
   flex: 1 1 auto;
-  padding: 0.375rem 0.75rem 0;
+  padding: 0.25rem 0.75rem 0;
 `;
 
 export const CardTitle = styled.div`
@@ -56,11 +56,13 @@ export const CardDescription = styled.div`
 export const CardDateInfo = styled.div`
   color: ${color("brand")};
   font-size: 0.75rem;
+  line-height: 1.5rem;
+  font-weight: bold;
 `;
 
 export const CardCreatorInfo = styled.div`
   color: ${color("text-medium")};
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 `;
 
 export const CardAside = styled.div`

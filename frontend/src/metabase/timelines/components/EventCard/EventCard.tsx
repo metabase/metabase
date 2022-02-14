@@ -2,23 +2,23 @@ import React from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
-  CardDescription,
   CardCreatorInfo,
+  CardDateInfo,
+  CardDescription,
   CardRoot,
   CardThread,
   CardThreadIcon,
   CardThreadIconContainer,
   CardThreadStroke,
   CardTitle,
-  CardDateInfo,
 } from "./EventCard.styled";
-import { parseTimestamp } from "metabase/lib/time";
 
 export interface EventCardProps {
   event: TimelineEvent;
@@ -31,9 +31,9 @@ const EventCard = ({
   timeline,
   collection,
 }: EventCardProps): JSX.Element => {
-  const dateText = getDateText(event);
-  const creatorText = getCreatorText(event);
   const menuItems = getMenuItems(event, timeline, collection);
+  const dateMessage = getDateMessage(event);
+  const creatorMessage = getCreatorMessage(event);
 
   return (
     <CardRoot>
@@ -44,12 +44,12 @@ const EventCard = ({
         <CardThreadStroke />
       </CardThread>
       <CardBody>
-        <CardDateInfo>{dateText}</CardDateInfo>
+        <CardDateInfo>{dateMessage}</CardDateInfo>
         <CardTitle>{event.name}</CardTitle>
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
         )}
-        <CardCreatorInfo>{creatorText}</CardCreatorInfo>
+        <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
       <CardAside>
         <EntityMenu items={menuItems} triggerIcon="ellipsis" />
@@ -71,7 +71,7 @@ const getMenuItems = (
   ];
 };
 
-const getDateText = (event: TimelineEvent) => {
+const getDateMessage = (event: TimelineEvent) => {
   const date = parseTimestamp(event.timestamp);
   const options = Settings.formattingOptions();
 
@@ -82,7 +82,7 @@ const getDateText = (event: TimelineEvent) => {
   }
 };
 
-const getCreatorText = (event: TimelineEvent) => {
+const getCreatorMessage = (event: TimelineEvent) => {
   const options = Settings.formattingOptions();
   const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
 
