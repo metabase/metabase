@@ -232,6 +232,7 @@ export function mergeSettings(first = {}, second = {}) {
       }
     }
   }
+  console.log("mergeSettings", merged);
   return merged;
 }
 

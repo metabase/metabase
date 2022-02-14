@@ -813,6 +813,7 @@ export const updateCardVisualizationSettings = settings => async (
   dispatch,
   getState,
 ) => {
+  console.log("updateCardVisualizationSettings", settings);
   const question = getQuestion(getState());
   const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
   const queryBuilderMode = getQueryBuilderMode(getState());

@@ -20,7 +20,7 @@ import {
   isDimension,
   isMetric,
 } from "metabase/lib/schema_metadata";
-import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 
@@ -534,7 +534,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         // show column name if there are multiple metrics or sigle series
         (metricColumnIndexes.length > 1 || series.length === 1) &&
           col &&
-          getFriendlyName(col),
+          formatColumn(col, settings),
       ]
         .filter(n => n)
         .join(": ");

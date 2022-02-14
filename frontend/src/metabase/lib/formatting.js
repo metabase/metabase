@@ -797,6 +797,7 @@ export function formatValueRaw(value, options = {}) {
 export function formatColumn(column, chartSettings) {
   if (chartSettings) {
     const columnSettings = chartSettings.column(column);
+    console.log("formatColumn", columnSettings?.column_title);
     if (columnSettings?.column_title) {
       return columnSettings.column_title;
     }
