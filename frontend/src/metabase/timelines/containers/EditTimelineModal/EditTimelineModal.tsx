@@ -6,7 +6,7 @@ import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import EditTimelineModal from "../../components/EditTimelineModal";
-import { archiveTimeline, updateTimeline } from "../../actions";
+import { updateTimeline } from "../../actions";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -21,7 +21,6 @@ const collectionProps = {
 
 const mapDispatchToProps = {
   onSubmit: updateTimeline,
-  onArchive: archiveTimeline,
   onCancel: goBack,
 };
 

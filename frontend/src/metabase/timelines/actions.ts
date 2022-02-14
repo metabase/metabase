@@ -43,17 +43,6 @@ export const updateTimeline = createThunkAction(
   },
 );
 
-export const ARCHIVE_TIMELINE = "metabase/timelines/ARCHIVE_TIMELINE";
-export const archiveTimeline = createThunkAction(
-  ARCHIVE_TIMELINE,
-  (timeline: Timeline, collection: Collection) => {
-    return async (dispatch: Dispatch) => {
-      await dispatch(Timelines.actions.setArchived(timeline, true));
-      dispatch(push(Urls.timelinesInCollection(collection)));
-    };
-  },
-);
-
 export const CREATE_EVENT = "metabase/timelines/CREATE_EVENT";
 export const createEvent = createThunkAction(
   CREATE_EVENT,
@@ -78,12 +67,5 @@ export const updateEvent = createThunkAction(
     };
   },
 );
-
-export const ARCHIVE_EVENT = "metabase/events/ARCHIVE_EVENT";
-export const archiveEvent = createThunkAction(ARCHIVE_EVENT, (event: Event) => {
-  return async (dispatch: Dispatch) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, true));
-  };
-});
 
 type Dispatch = any;

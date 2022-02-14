@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline } from "metabase-types/api";
 import EventCard from "../EventCard";
 import ModalHeader from "../ModalHeader";
 import { ModalBody, ModalList, ModalToolbar } from "./TimelineModal.styled";
@@ -11,14 +11,12 @@ import { ModalBody, ModalList, ModalToolbar } from "./TimelineModal.styled";
 export interface TimelineModalProps {
   timeline: Timeline;
   collection: Collection;
-  onArchive: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
 const TimelineModal = ({
   timeline,
   collection,
-  onArchive,
   onClose,
 }: TimelineModalProps): JSX.Element => {
   return (
@@ -28,11 +26,7 @@ const TimelineModal = ({
       </ModalHeader>
       <ModalBody>
         <TimelineToolbar timeline={timeline} collection={collection} />
-        <TimelineList
-          timeline={timeline}
-          collection={collection}
-          onArchive={onArchive}
-        />
+        <TimelineList timeline={timeline} collection={collection} />
       </ModalBody>
     </div>
   );
@@ -86,13 +80,11 @@ const TimelineToolbar = ({
 interface TimelineListProps {
   timeline: Timeline;
   collection: Collection;
-  onArchive: (event: TimelineEvent) => void;
 }
 
 const TimelineList = ({
   timeline,
   collection,
-  onArchive,
 }: TimelineListProps): JSX.Element => {
   return (
     <ModalList>
@@ -102,7 +94,6 @@ const TimelineList = ({
           event={event}
           timeline={timeline}
           collection={collection}
-          onArchive={onArchive}
         />
       ))}
     </ModalList>
