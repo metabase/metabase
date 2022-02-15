@@ -9930,7 +9930,7 @@ databaseChangeLog:
         - sql:
             # apparently all three of our DBs support `regexp_replace`.
             sql: >-
-              INSERT INTO settings (key, value)
+              INSERT INTO setting (key, value)
               SELECT
                 'site-url' AS key,
                 regexp_replace(value, '/$', '') AS value
