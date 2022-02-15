@@ -4,6 +4,7 @@
             [metabase.http-client :as http]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.timeline :refer [Timeline]]
+            [metabase.models.timeline-event :refer [TimelineEvent]]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]))
@@ -77,7 +78,74 @@
                         :archived)
                    false))))))))
 
-;; TODO: Add events hydration test(s) here? I think probably
+(defn- include-events-request
+  [timeline archived?]
+  (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id timeline))
+                        :include "events" :archived archived?))
+
+(deftest timeline-hydration-test
+  (testing "GET /api/timeline/:id?include=events"
+    (mt/with-temp Collection [collection {:name "Important Data"}]
+      (let [creator-id  (u/the-id (mt/fetch-user :rasta))
+            tl-defaults {:creator_id    creator-id
+                         :collection_id (u/the-id collection)}]
+        (mt/with-temp* [Timeline      [empty-tl (merge tl-defaults {:name "Empty TL"})]
+                        Timeline      [unarchived-tl (merge tl-defaults {:name "Un-archived Events TL"})]
+                        Timeline      [archived-tl (merge tl-defaults {:name "Archived Events TL"})]
+                        Timeline      [timeline (merge tl-defaults {:name "All Events TL"})]]
+          (let [defaults {:creator_id   creator-id
+                          :timestamp    (java.time.OffsetDateTime/now)
+                          :timezone     "PST"
+                          :time_matters false}]
+            (mt/with-temp* [TimelineEvent [event-a (merge defaults {:name        "event-a"
+                                                                    :timeline_id (u/the-id unarchived-tl)})]
+                            TimelineEvent [event-b (merge defaults {:name        "event-b"
+                                                                    :timeline_id (u/the-id unarchived-tl)})]
+                            TimelineEvent [event-c (merge defaults {:name        "event-c"
+                                                                    :timeline_id (u/the-id archived-tl)
+                                                                    :archived    true})]
+                            TimelineEvent [event-d (merge defaults {:name        "event-d"
+                                                                    :timeline_id (u/the-id archived-tl)
+                                                                    :archived    true})]
+                            TimelineEvent [event-e (merge defaults {:name        "event-e"
+                                                                    :timeline_id (u/the-id timeline)})]
+                            TimelineEvent [event-f (merge defaults {:name        "event-f"
+                                                                    :timeline_id (u/the-id timeline)
+                                                                    :archived    true})]]
+              (testing "check that a timeline with no events returns an empty list"
+                (is (->> (include-events-request empty-tl false)
+                         :events
+                         (every-pred empty? seqable?))))
+              (testing "check that a timeline with events returns those events"
+                (is (->> (include-events-request unarchived-tl true)
+                         :events
+                         (every-pred empty? seqable?)))
+                (is (= (->> (include-events-request unarchived-tl false)
+                            :events
+                            (map :name)
+                            set)
+                       #{"event-a" "event-b"})))
+              (testing "check that a timeline with archived events returns those events only when `archived=true`"
+                (is (->> (include-events-request archived-tl false)
+                         :events
+                         (every-pred empty? seqable?)))
+                (is (= (->> (include-events-request archived-tl true)
+                            :events
+                            (map :name)
+                            set)
+                       #{"event-c" "event-d"})))
+              (testing "check that a timeline with both (un-)archived events returns only events respecting the `archived` parameter"
+                (is (= (->> (include-events-request timeline false)
+                            :events
+                            (map :name)
+                            set)
+                       #{"event-e"}))
+                (is (= (->> (include-events-request timeline true)
+                            :events
+                            (map :name)
+                            set)
+                       #{"event-f"}))))))))))
+
 ;; TODO: Add timelines test to collection api tests + hydrating events + archived events
 ;; TODO: Add timelines test to card api tests + hydrating events + archived events
 ;; TODO: Add collection/card start/end time tests
