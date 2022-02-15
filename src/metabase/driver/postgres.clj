@@ -195,7 +195,6 @@
     (into {} (map (fn [[k v]] [k (type v)]) flattened-row))))
 
 (defn- describe-table-json*
-  ;;;; types for this for chrissakes
   [driver conn table]
   (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
         json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
@@ -203,13 +202,14 @@
         query            (db/query {:select json-field-names
                                     :from   [(keyword (:name table))]
                                     :limit  json-sample-limit})
-        printo           (for [q query]
-                           (first (for [[k v] q]
-                             (json/parse-string v))))
-        types            (map row->types printo)
+        parsed-query     (map #(into {}
+                                     (for [[k v] %]
+                                       [k (json/parse-string v)])) query)
+        types            (map row->types parsed-query)
+        ;;;;; gotta do a group by de facto, because we want hash dealios from columns being borked...
         hashes           (map hash types)]
-    (println printo)
     (println query)
+    (println parsed-query)
     (println types)
     (println hashes)
     hashes))
