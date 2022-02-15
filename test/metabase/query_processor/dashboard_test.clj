@@ -195,8 +195,8 @@
           (is (= [[53]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id)))))))))
 
-(deftest operator-field-filters-use-dashboard-defaults-test
-  (testing "Operator Field Filters should use Dashboard default values (#20493)"
+(deftest field-filters-should-work-if-no-value-is-specified-test
+  (testing "Field Filters should work if no value is specified (#20493)"
     (mt/dataset sample-dataset
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
@@ -212,15 +212,15 @@
         (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
                         Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
                                                                          :slug      "text"
-                                                                         :id        "a605c1fb"
+                                                                         :id        "_text_"
                                                                          :type      :string/=
                                                                          :sectionId "string"
                                                                          :default   ["Doohickey"]}]}]
-                        DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "a605c1fb"
+                        DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
                                                                                     :card_id      card-id
                                                                                     :target       [:dimension [:template-tag "cat"]]}]
                                                           :card_id                card-id
                                                           :visualization_settings {}
                                                           :dashboard_id           dashboard-id}]]
-          (is (= [[42]]
+          (is (= [[200]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))))))

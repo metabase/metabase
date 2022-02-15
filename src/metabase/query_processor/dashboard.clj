@@ -119,7 +119,14 @@
                 (u/pprint-to-str merged-parameters))
     (u/prog1
       (into [] (comp (map (partial resolve-param-for-card card-id dashcard-id dashboard-param-id->param))
-                     (filter some?))
+                     (filter some?)
+                     ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to use these values
+                     ;; ourselves -- the expectation is that the frontend will pass them in as an actual `:value` if it
+                     ;; wants to use them. If we leave them around things get confused and it prevents us from actually
+                     ;; doing the expected `1 = 1` substitution for Field filters. See comments in #20503 for more
+                     ;; information.
+                     (map (fn [param]
+                            (dissoc param :default))))
             merged-parameters)
       (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>)))))
 
