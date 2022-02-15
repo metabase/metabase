@@ -8,6 +8,7 @@
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
@@ -123,7 +124,7 @@
        {"id"             (analytics-uuid),
         "version"        {"tag" (:tag (public-settings/version))},
         "token_features" (m/map-keys name (public-settings/token-features))
-        "created_at"     (instance-creation)}))
+        "created_at"     (u.date/format (instance-creation))}))
 
 (defn- normalize-kw
   [kw]

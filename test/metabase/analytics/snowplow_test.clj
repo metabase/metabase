@@ -8,6 +8,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import java.util.LinkedHashMap))
 
@@ -78,7 +79,7 @@
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
                      :token_features (public-settings/token-features)
-                     :created_at     (snowplow/instance-creation)}}
+                     :created_at     (u.date/format (snowplow/instance-creation))}}
              (:context (first @*snowplow-collector*)))))))
 
 (deftest ip-address-override-test
