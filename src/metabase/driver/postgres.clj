@@ -169,7 +169,7 @@
 
 (def ^:const json-sample-limit 10000)
 
-;; Describe the JSON fields present in a table.
+;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields.
 (defmethod driver/describe-table-json :postgres
@@ -203,17 +203,21 @@
         table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
         json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
         json-field-names (mapv (comp keyword :name) json-fields)
-        query            (db/query {:select json-field-names
-                                    :from   [(keyword (:name table))]
-                                    :limit  json-sample-limit})
-        parsed-query     (map-inner json/parse-string query)
-        types            (map row->types parsed-query)
-        hashes           (map-inner hash types)]
-    (println query)
-    (println parsed-query)
-    (println types)
-    (println hashes)
-    types))
+        query            (db/reducible-query {:select json-field-names
+                                              :from   [(keyword (:name table))]
+                                              :limit  json-sample-limit})
+        res              (transduce (comp
+                                      (map :data)
+                                      (map json/parse-string))
+                                    str query)
+        res2             (transduce (comp
+                                      (map :data)
+                                      (map json/parse-string))
+                                    conj query)]
+        ;; parsed-query     (map-inner json/parse-string query)
+        ;; types            (map row->types parsed-query)
+        ;; hashes           (map-inner hash types)]
+    res2))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
