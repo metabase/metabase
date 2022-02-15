@@ -53,13 +53,6 @@
    (when (= context :db)
      {:db (tx/format-name driver database-name)})))
 
-;; SparkSQL doesn't support specifying the columns in INSERT INTO statements, so remove it
-(defmethod ddl/insert-rows-honeysql-form :sparksql
-  [driver table-identifier row-or-rows]
-  (let [honeysql ((get-method ddl/insert-rows-honeysql-form :sql-jdbc/test-extensions)
-                  driver table-identifier row-or-rows)]
-    (dissoc honeysql :columns)))
-
 (defmethod ddl/insert-rows-ddl-statements :sparksql
   [driver table-identifier row-or-rows]
   [(unprepare/unprepare driver
@@ -85,7 +78,7 @@
   (apply load-data/load-data-add-ids! args))
 
 (defmethod sql.tx/create-table-sql :sparksql
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
   (let [quote-name    #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quote-name (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s)"

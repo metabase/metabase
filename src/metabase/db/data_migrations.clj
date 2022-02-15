@@ -11,13 +11,11 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.db.util :as mdb.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
             [metabase.models.humanization :as humanization]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
@@ -29,8 +27,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+            [toucan.models :as models]))
 
 ;;; # Migration Helpers
 
@@ -125,16 +122,6 @@
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
 
-;; There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
-;; specified. Other areas of the application expect that site-url will always include http/https. This migration
-;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
-(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
-  (when-let [stored-site-url (db/select-one-field :value Setting :key "site-url")]
-    (let [defaulted-site-url (public-settings/site-url stored-site-url)]
-      (when (and stored-site-url
-                 (not= stored-site-url defaulted-site-url))
-        (setting/set! "site-url" stored-site-url)))))
-
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
 ;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
@@ -154,31 +141,13 @@
     ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
 
-;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
-;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
-;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
-;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
-;; meaning of the Category special type.
-;;
-;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
-;; their behavior doesn't suddenly change.
-
-;; Note that since v39 semantic_type became semantic_type. All of these migrations concern data from before this
-;; change. Therefore, the migration is set to `:catch? true` and the old name is used. If the column is semantic then
-;; the data shouldn't be bad.
-(defmigration ^{:author "camsaul", :added "0.29.0", :catch? true} mark-category-fields-as-list
-  (db/update-where! Field {:has_field_values nil
-                           :semantic_type     (mdb.u/isa :type/Category)
-                           :active           true}
-    :has_field_values "list"))
-
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
 ;; disable passwords for Google authenticated users
 (defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
 
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
