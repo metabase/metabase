@@ -67,7 +67,7 @@ export default class SpecificDatePicker extends Component {
       date = moment(value, DATE_FORMAT, true);
     }
 
-    const dateFormat = getDateStyleFromSettings();
+    const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
     return (
       <div className={className}>

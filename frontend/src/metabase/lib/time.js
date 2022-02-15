@@ -199,14 +199,12 @@ export function hoursToSeconds(hours) {
 
 export function getDateStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
-  const temporalSettings = customFormattingSettings["type/Temporal"];
-  return temporalSettings.date_style;
+  return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
 export function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
-  const temporalSettings = customFormattingSettings["type/Temporal"];
-  return temporalSettings.time_style;
+  return customFormattingSettings?.["type/Temporal"]?.time_style;
 }
 
 export function has24HourModeSetting() {
