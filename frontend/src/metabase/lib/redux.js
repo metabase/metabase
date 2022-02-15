@@ -256,15 +256,20 @@ export function withRequestState(getRequestStatePath) {
 export function withCachedDataAndRequestState(
   getExistingStatePath,
   getRequestStatePath,
+  getQueryKey,
 ) {
   return compose(
-    withCachedData(getExistingStatePath, getRequestStatePath),
+    withCachedData(getExistingStatePath, getRequestStatePath, getQueryKey),
     withRequestState(getRequestStatePath),
   );
 }
 
 // NOTE: this should be used together with withRequestState, probably via withCachedDataAndRequestState
-function withCachedData(getExistingStatePath, getRequestStatePath) {
+function withCachedData(
+  getExistingStatePath,
+  getRequestStatePath,
+  getQueryKey,
+) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
@@ -276,8 +281,10 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
 
         const existingStatePath = getExistingStatePath(...args);
         const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+        const newQueryKey = getQueryKey(...args);
         const existingData = getIn(getState(), existingStatePath);
-        const { loading, loaded } = getIn(getState(), requestStatePath) || {};
+        const { loading, loaded, queryKey } =
+          getIn(getState(), requestStatePath) || {};
 
         const hasRequestedProperties =
           properties &&
@@ -289,6 +296,8 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
           // we don't want to reload
           // the check is a workaround for EntityListLoader passing reload function to children
           reload !== true &&
+          // reload if the query used to load an entity has changed even if it's already loaded
+          newQueryKey === queryKey &&
           // and we have a an non-error request state or have a list of properties that all exist on the object
           (loading || loaded || hasRequestedProperties)
         ) {

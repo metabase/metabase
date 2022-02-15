@@ -68,12 +68,12 @@ export function createEntity(def) {
     };
   }
 
-  const getIdForQuery = entityQuery => JSON.stringify(entityQuery || null);
-
+  const getQueryKey = entityQuery => JSON.stringify(entityQuery || null);
   const getObjectStatePath = entityId => ["entities", entity.name, entityId];
   const getListStatePath = entityQuery =>
-    ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+    ["entities", entity.name + "_list"].concat(getQueryKey(entityQuery));
 
+  entity.getQueryKey = getQueryKey;
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
@@ -152,6 +152,7 @@ export function createEntity(def) {
       withCachedDataAndRequestState(
         ({ id }) => [...getObjectStatePath(id)],
         ({ id }) => [...getObjectStatePath(id), "fetch"],
+        entityQuery => getQueryKey(entityQuery),
       ),
       withEntityActionDecorators("fetch"),
     )((entityQuery, options = {}) => async (dispatch, getState) =>
@@ -247,6 +248,7 @@ export function createEntity(def) {
       withCachedDataAndRequestState(
         entityQuery => [...getListStatePath(entityQuery)],
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
+        entityQuery => getQueryKey(entityQuery),
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(entityQuery || {});
@@ -330,7 +332,7 @@ export function createEntity(def) {
   // LIST SELECTORS
 
   const getEntityQueryId = (state, props) =>
-    getIdForQuery(props && props.entityQuery);
+    getQueryKey(props && props.entityQuery);
 
   const getEntityLists = createSelector(
     [getEntities],
@@ -452,7 +454,7 @@ export function createEntity(def) {
         const { entityQuery, metadata, result: list } = payload;
         return {
           ...state,
-          [getIdForQuery(entityQuery)]: {
+          [getQueryKey(entityQuery)]: {
             list,
             metadata,
           },
