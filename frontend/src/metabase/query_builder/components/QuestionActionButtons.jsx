@@ -33,6 +33,7 @@ QuestionActionButtons.propTypes = {
   isBookmarked: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
   question: PropTypes.object.isRequired,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -47,6 +48,7 @@ function QuestionActionButtons({
   isBookmarked,
   onOpenModal,
   question,
+  toggleBookmark,
 }) {
   const isDataset = question.isDataset();
 
@@ -61,10 +63,6 @@ function QuestionActionButtons({
     checkDatabaseSupportsModels(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? colors["brand"] : "";
-
-  const handleBookmark = () => {
-    console.log("🚀", "handleBookmark");
-  };
 
   return (
     <Container data-testid="question-action-buttons">
@@ -142,7 +140,7 @@ function QuestionActionButtons({
           onlyIcon
           icon="bookmark"
           iconSize={ICON_SIZE}
-          onClick={() => handleBookmark()}
+          onClick={() => toggleBookmark()}
           style={{ color: bookmarkButtonColor }}
         />
       </Tooltip>

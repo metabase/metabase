@@ -149,7 +149,7 @@ const mapStateToProps = (state, props) => {
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
 
-    isBookmarked: true,
+    isBookmarked: false,
   };
 };
 
@@ -274,6 +274,16 @@ export default class QueryBuilder extends Component {
     }, 5000);
   };
 
+  toggleBookmark = () => {
+    const {
+      card: { id },
+      isBookmarked,
+      setBookmarked,
+    } = this.props;
+
+    setBookmarked(id, !isBookmarked);
+  };
+
   render() {
     const {
       uiControls: { modal, recentlySaved },
@@ -293,6 +303,7 @@ export default class QueryBuilder extends Component {
         onSave={this.handleSave}
         onCreate={this.handleCreate}
         handleResize={this.handleResize}
+        toggleBookmark={this.toggleBookmark}
       />
     );
   }

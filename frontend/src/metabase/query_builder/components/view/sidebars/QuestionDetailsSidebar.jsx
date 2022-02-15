@@ -8,14 +8,14 @@ QuestionDetailsSidebar.propTypes = {
   isBookmarked: PropTypes.bool.isRequired,
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  setBookmarked: PropTypes.func.isRequired,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebar({
   isBookmarked,
   question,
   onOpenModal,
-  setBookmarked,
+  toggleBookmark,
 }) {
   const [view, setView] = useState(view);
 
@@ -28,7 +28,7 @@ function QuestionDetailsSidebar({
           setView={setView}
           question={question}
           onOpenModal={onOpenModal}
-          setBookmarked={setBookmarked}
+          toggleBookmark={toggleBookmark}
         />
       );
   }
