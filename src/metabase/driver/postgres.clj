@@ -177,19 +177,35 @@
     (with-open [conn (jdbc/get-connection spec)]
       (describe-table-json* driver conn table))))
 
+(defn- flatten-row [row]
+  (letfn [(flatten-row [row path]
+            (lazy-seq
+              (when-let [[[k v] & xs] (seq row)]
+                (cond (and (map? v) (not-empty v))
+                      (into (flatten-row v (conj path k))
+                            (flatten-row xs path))
+                      :else
+                      (cons [(conj path k) v]
+                            (flatten-row xs path))))))]
+    (into {} (flatten-row row []))))
+
+(defn- row->types [row]
+  (let [flattened-row (flatten-row row)]
+    (into {} (map (fn [[k v]] [k (type v)]) flattened-row))))
+
 (defn- describe-table-json*
   ;;;; types for this for chrissakes
   [driver conn table]
   (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
         json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
         json-field-names (mapv (comp keyword :name) json-fields)
-        query            (db/reducible-query {:select json-field-names
+        query            (db/query {:select json-field-names
                           :from   [(keyword (:name table))]
                           :limit  json-sample-limit})
-        stability        (apply hash-map (interleave json-field-names (repeat true)))
-        description      {:is-stable stability}
-        res              (reduce (fn [some shit] some shit) description query)]
-    res))
+        types            (map (comp hash row->types) query)]
+    (println query)
+    (println types)
+    types))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
