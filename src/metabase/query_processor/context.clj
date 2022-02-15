@@ -71,10 +71,10 @@
 
 (defn reducedf
   "Called in [[reducedf]] with fully reduced results. This result is passed to [[resultf]]."
-  {:arglists '([metadata reduced-rows context])}
-  [metadata reduced-rows {reducedf* :reducedf, :as context}]
+  {:arglists '([reduced-rows context])}
+  [reduced-rows {reducedf* :reducedf, :as context}]
   {:pre [(fn? reducedf*)]}
-  (reducedf* metadata reduced-rows context))
+  (reducedf* reduced-rows context))
 
 (defn timeoutf
   "Call this function when a query times out."

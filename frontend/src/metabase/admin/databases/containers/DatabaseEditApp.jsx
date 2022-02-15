@@ -144,7 +144,10 @@ export default class DatabaseEditApp extends Component {
                         <DatabaseEditContent>
                           <DatabaseEditForm>
                             <Form>
-                              <FormField name="engine" />
+                              <FormField
+                                name="engine"
+                                disabled={database.is_sample}
+                              />
                               <DriverWarning
                                 engine={values.engine}
                                 onChange={engine =>

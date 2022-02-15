@@ -9,6 +9,8 @@ import {
   restore,
   visitQuestionAdhoc,
   visualize,
+  summarize,
+  filter,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -69,7 +71,7 @@ describe("scenarios > question > notebook", () => {
 
   it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Pick a column to group by").click();
     cy.findByText("User ID")
       .closest(".List-item")
@@ -131,7 +133,7 @@ describe("scenarios > question > notebook", () => {
 
   it("should process the updated expression when pressing Enter", () => {
     openProductsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "[Price] > 1" });
 
@@ -244,7 +246,7 @@ describe("scenarios > question > notebook", () => {
     it("should create a nested question with post-aggregation filter", () => {
       openProductsTable({ mode: "notebook" });
 
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       popover().within(() => {
         cy.findByText("Count of rows").click();
       });
@@ -312,7 +314,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should work on custom filter", () => {
-      cy.findByText("Filter").click();
+      filter({ mode: "notebook" });
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
@@ -337,7 +339,7 @@ describe("scenarios > question > notebook", () => {
       const [expression, result] = formula;
 
       it(`should work on custom aggregation with ${filter}`, () => {
-        cy.findByText("Summarize").click();
+        summarize({ mode: "notebook" });
         cy.findByText("Custom Expression").click();
 
         enterCustomColumnDetails({ formula: expression });

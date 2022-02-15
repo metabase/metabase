@@ -29,6 +29,7 @@
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
             [metabase.query-processor.middleware.desugar :as desugar]
+            [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
@@ -100,6 +101,7 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
+   #'escape-join-aliases/escape-join-aliases
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'cumulative-ags/rewrite-cumulative-aggregations
    #'pre-alias-ags/pre-alias-aggregations

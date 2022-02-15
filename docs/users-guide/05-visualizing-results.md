@@ -326,6 +326,6 @@ Learn more about [visualizing data with maps](https://www.metabase.com/learn/bas
 
 ---
 
-## Next: saving and editing your questions
+## Next: Sharing your questions
 
-Now let's learn about [saving and editing your questions](06-sharing-answers.md).
+Now let's learn about [saving, editing, and sharing your questions](06-sharing-answers.md).

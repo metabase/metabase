@@ -9908,6 +9908,33 @@ databaseChangeLog:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
   #
+  # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
+  #
+  # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
+  # specified. Other areas of the application expect that site-url will always include http/https. This migration
+  # ensures that if we have a site-url stored it has the current defaulting logic applied to it
+  - changeSet:
+      id: v43.00-009
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Make sure 'site-url' Setting includes protocol.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE key = 'site-url'
+                AND value NOT LIKE 'http%';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE `key` = 'site-url'
+                AND value NOT LIKE 'http%';
+
+  #
   # The following migration replaces metabase.db.migrations/mark-category-fields-as-list, added in 0.29.0
   #
   # Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
