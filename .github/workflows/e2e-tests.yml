@@ -8,7 +8,7 @@ on:
 jobs:
 
   build:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-8vcpu-ubuntu-2004
     timeout-minutes: 25
     strategy:
       matrix:
@@ -49,7 +49,7 @@ jobs:
           ./SHA256.sum
 
   e2e-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-8vcpu-ubuntu-2004
     timeout-minutes: 20
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
