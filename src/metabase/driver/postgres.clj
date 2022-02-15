@@ -204,6 +204,7 @@
   ([] nil)
   ([fst] fst)
   ([fst snd]
+   ;;;;; gotta not hardcode that field name....
    (if (or (nil? fst) (= (hash (:data fst)) (hash (:data snd))))
      snd
      {:data nil})))
