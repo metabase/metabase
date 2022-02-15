@@ -20,7 +20,7 @@ const questionDetails = {
     joins: [
       {
         fields: "all",
-        "source-table": 1,
+        "source-table": PRODUCTS_ID,
         condition: [
           "=",
           ["field", "CATEGORY", { "base-type": "type/Text" }],
