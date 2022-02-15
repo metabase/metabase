@@ -24,7 +24,8 @@ export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
   collection: Collection;
-  onArchive: (event: TimelineEvent) => void;
+  onArchive?: (event: TimelineEvent) => void;
+  onRestore?: (event: TimelineEvent) => void;
 }
 
 const EventCard = ({
@@ -32,8 +33,15 @@ const EventCard = ({
   timeline,
   collection,
   onArchive,
+  onRestore,
 }: EventCardProps): JSX.Element => {
-  const menuItems = getMenuItems(event, timeline, collection, onArchive);
+  const menuItems = getMenuItems(
+    event,
+    timeline,
+    collection,
+    onArchive,
+    onRestore,
+  );
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
@@ -64,18 +72,28 @@ const getMenuItems = (
   event: TimelineEvent,
   timeline: Timeline,
   collection: Collection,
-  onArchive: (event: TimelineEvent) => void,
+  onArchive?: (event: TimelineEvent) => void,
+  onRestore?: (event: TimelineEvent) => void,
 ) => {
-  return [
-    {
-      title: t`Edit event`,
-      link: Urls.editEventInCollection(event, timeline, collection),
-    },
-    {
-      title: t`Archive event`,
-      action: () => onArchive(event),
-    },
-  ];
+  if (!event.archived) {
+    return [
+      {
+        title: t`Edit event`,
+        link: Urls.editEventInCollection(event, timeline, collection),
+      },
+      {
+        title: t`Archive event`,
+        action: () => onArchive?.(event),
+      },
+    ];
+  } else {
+    return [
+      {
+        title: t`Restore event`,
+        action: () => onRestore?.(event),
+      },
+    ];
+  }
 };
 
 const getDateMessage = (event: TimelineEvent) => {

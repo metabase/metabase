@@ -15,7 +15,8 @@ export interface EventListProps {
   events: TimelineEvent[];
   timeline: Timeline;
   collection: Collection;
-  onArchive: (event: TimelineEvent) => void;
+  onArchive?: (event: TimelineEvent) => void;
+  onRestore?: (event: TimelineEvent) => void;
 }
 
 const EventList = ({
@@ -23,6 +24,7 @@ const EventList = ({
   timeline,
   collection,
   onArchive,
+  onRestore,
 }: EventListProps): JSX.Element => {
   return (
     <div>
@@ -33,6 +35,7 @@ const EventList = ({
           timeline={timeline}
           collection={collection}
           onArchive={onArchive}
+          onRestore={onRestore}
         />
       ))}
       <ListFooter>

@@ -13,29 +13,36 @@ import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
 export interface TimelineModalProps {
   timeline: Timeline;
   collection: Collection;
-  onArchive: (event: TimelineEvent) => void;
+  archived: boolean;
+  onArchive?: (event: TimelineEvent) => void;
+  onRestore?: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
 const TimelineModal = ({
   timeline,
   collection,
+  archived,
   onArchive,
+  onRestore,
   onClose,
 }: TimelineModalProps): JSX.Element => {
-  const events = getEvents(timeline.events, timeline.archived);
+  const title = archived ? t`Archived events` : timeline.name;
+  const events = getEvents(timeline.events, archived);
   const menuItems = getMenuItems(timeline, collection);
 
   return (
     <ModalRoot>
-      <ModalHeader title={timeline.name} onClose={onClose}>
-        <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+      <ModalHeader title={title} onClose={onClose}>
+        {!archived && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
       </ModalHeader>
       <ModalToolbar>
-        <Link
-          className="Button"
-          to={Urls.newEventInCollection(timeline, collection)}
-        >{t`Add an event`}</Link>
+        {!archived && (
+          <Link
+            className="Button"
+            to={Urls.newEventInCollection(timeline, collection)}
+          >{t`Add an event`}</Link>
+        )}
       </ModalToolbar>
       {events.length > 0 && (
         <ModalBody>
@@ -44,6 +51,7 @@ const TimelineModal = ({
             timeline={timeline}
             collection={collection}
             onArchive={onArchive}
+            onRestore={onRestore}
           />
         </ModalBody>
       )}

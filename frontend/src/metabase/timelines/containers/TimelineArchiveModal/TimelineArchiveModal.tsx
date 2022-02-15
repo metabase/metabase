@@ -6,7 +6,7 @@ import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import TimelineModal from "../../components/TimelineModal";
 import { ModalProps } from "../../types";
-import { archiveEvent } from "metabase/timelines/actions";
+import { restoreEvent } from "metabase/timelines/actions";
 
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
@@ -20,11 +20,11 @@ const collectionProps = {
 };
 
 const mapStateToProps = () => ({
-  archived: false,
+  archived: true,
 });
 
 const mapDispatchToProps = {
-  onArchive: archiveEvent,
+  onRestore: restoreEvent,
 };
 
 export default _.compose(

@@ -93,4 +93,14 @@ export const archiveEvent = createThunkAction(
   },
 );
 
+export const RESTORE_EVENT = "metabase/timelines/RESTORE_EVENT";
+export const restoreEvent = createThunkAction(
+  RESTORE_EVENT,
+  (event: TimelineEvent) => {
+    return async (dispatch: Dispatch) => {
+      await dispatch(TimelineEvents.actions.setArchived(event, false));
+    };
+  },
+);
+
 type Dispatch = any;
