@@ -331,6 +331,16 @@ describe("QuestionDataSource", () => {
             Urls.browseDatabase(question.database()),
           );
         });
+
+        it("shows nothing if a user doesn't have data permissions", () => {
+          const originalMethod = question.query().database;
+          question.query().database = () => null;
+
+          setup({ question });
+          expect(screen.getByTestId("head-crumbs-container")).toBeEmpty();
+
+          question.query().database = originalMethod;
+        });
       });
     });
   });

@@ -218,7 +218,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type  str/lower-case)
+  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info
