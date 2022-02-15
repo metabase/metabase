@@ -415,12 +415,11 @@
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-XX:+PrintGC"]}
 
-  ;; get the H2 shell with clojure -M:h2
-  ;; TODO -- this doesn't currently work correctly -- use this instead:
-  ;;
-  ;;    java -cp `clojure -Spath` org.h2.tools.Shell
+  ;; get the H2 shell with clojure -X:h2
   :h2
-  {:jvm-opts ["org.h2.tools.Shell"]}
+  {:extra-paths ["dev/src"]
+   :exec-fn     dev.h2-shell/shell
+   :java-opts   ["-Dfile.encoding=UTF-8"]}
 
   ;; clojure -M:generate-automagic-dashboards-pot
   :generate-automagic-dashboards-pot
@@ -432,6 +431,18 @@
   :nrepl
   {:extra-deps {nrepl/nrepl {:mvn/version "0.9.0"}}
    :main-opts  ["-m" "nrepl.cmdline"]}
+
+  ;; Liquibase CLI:
+  ;;
+  ;;    clojure -M:liquibase <command>
+  ;;
+  ;; e.g.
+  ;;
+  ;;    clojure -M:liquibase dbDoc target/liquibase
+  :liquibase
+  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.2.10"}}
+   :extra-paths ["dev/src"]
+   :main-opts   ["-m" "dev.liquibase"]}
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.
