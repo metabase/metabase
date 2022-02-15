@@ -180,17 +180,20 @@
 (defn- describe-table-json*
   ;;;; types for this for chrissakes
   [driver conn table]
-  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
-        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+  (let [table-fields (sql-jdbc.sync/describe-table-fields driver conn table)
+        json-fields  (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
         ;;; need to only select json fields...
-        query            {:select [:*]
-                          :from   [(keyword (:name table))]
-                          :limit  json-sample-limit}
-        sample           (db/query query)]
+        query        (db/reducible-query {:select [:*]
+                      :from   [(keyword (:name table))]
+                      :limit  json-sample-limit})
+        stability    (hash-map some shit)
+        description  {:is-stable stability}]
+    ;; (reduce {} some shit query)
     ;;; figure out reducible-query stuf...
     ;;; {:is-stable {stability dict here...}} -
     ;;; not just a straight stability dict because we're gonna have other bullshit, i guarantee it
-    (println sample)
+    ;; (reduce #(some shit) description query)
+    (println description)
     (for [json-field json-fields]
       (println json-field))))
 
