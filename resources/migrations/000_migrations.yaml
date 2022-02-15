@@ -9920,14 +9920,22 @@ databaseChangeLog:
         Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
       preConditions:
         - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT count(*)
-              FROM setting
-              WHERE key = 'site-url';
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
       changes:
         - sql:
+            dbms: h2,postgresql
             # apparently all three of our DBs support `regexp_replace`.
             sql: >-
               INSERT INTO setting (key, value)
@@ -9936,6 +9944,16 @@ databaseChangeLog:
                 regexp_replace(value, '/$', '') AS value
               FROM setting
               WHERE key = '-site-url';
+        - sql:
+            dbms: mysql,mariadb
+            # 'key' has to be quoted in MySQL
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'site-url' AS `key`,
+                regexp_replace(value, '/$', '') AS value
+              FROM setting
+              WHERE `key` = '-site-url';
 
   #
   # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
