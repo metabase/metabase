@@ -16,6 +16,10 @@ export const EntityLink = styled(RawEntityLink)`
   }
 `;
 
+EntityLink.defaultProps = {
+  dispatchApiErrorEvent: false,
+};
+
 const revisionTitlePropTypes = {
   username: PropTypes.string.isRequired,
   message: PropTypes.node.isRequired,

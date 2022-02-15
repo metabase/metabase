@@ -61,46 +61,48 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.createQuestion({
-      name: "12872",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        filter: [
-          "and",
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, null],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-        ],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", PRODUCTS.ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    cy.createQuestion(
+      {
+        name: "12872",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          filter: [
+            "and",
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, null],
+              "2019-04-15",
+              "2019-04-15",
             ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-        ],
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+              "2019-04-15",
+              "2019-04-15",
+            ],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+        },
+        display: "scalar",
       },
-      display: "scalar",
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("12872");
-      cy.log("At the moment of unfixed issue, it's showing '0'");
-      cy.get(".ScalarValue").contains("1");
-    });
+      { visitQuestion: true },
+    );
+
+    cy.findByText("12872");
+    cy.log("At the moment of unfixed issue, it's showing '0'");
+    cy.get(".ScalarValue").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -693,6 +695,20 @@ describe("scenarios > question > filter", () => {
     cy.focused()
       .should("have.attr", "class")
       .and("contains", "Button");
+  });
+
+  it("should allow hiding the suggestion list with Escape", () => {
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+    cy.findByText("Tax");
+
+    // Esc closes the suggestion popover
+    cy.realPress("{esc}");
+    cy.findByText("Tax").should("not.exist");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {

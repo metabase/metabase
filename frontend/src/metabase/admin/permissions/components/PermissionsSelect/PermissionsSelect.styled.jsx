@@ -13,6 +13,14 @@ export const PermissionsSelectRoot = styled.div`
   cursor: ${props => (props.isDisabled ? "default" : "pointer")};
 `;
 
+export const SelectedOption = styled(PermissionsSelectOption)`
+  transition: color 200ms;
+
+  &:hover {
+    color: ${color("accent7")};
+  }
+`;
+
 export const PermissionsSelectText = styled(Label)`
   flex-grow: 1;
 `;
