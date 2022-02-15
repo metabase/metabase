@@ -9962,7 +9962,10 @@ databaseChangeLog:
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
-
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
               INSERT INTO setting (key, value)
               SELECT
                 'humanization-strategy'                                      AS key,
@@ -9991,6 +9994,7 @@ databaseChangeLog:
             dbms: h2,postgresql
             sql: >-
               DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
         - sql:
             dbms: mysql,mariadb
             sql: >-
