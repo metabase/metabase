@@ -7,7 +7,8 @@
             [metabase.models.timeline-event :refer [TimelineEvent]]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (deftest auth-tests
   (testing "Authentication"

@@ -40,8 +40,7 @@
   (merge
    models/IModelDefaults
    ;; todo: add hydration keys??
-   {#_#_:hydration-keys (constantly [:timeline-event])
-    :properties (constantly {:timestamped? true})})
+   {:properties (constantly {:timestamped? true})})
 
   i/IObjectPermissions
   (merge
