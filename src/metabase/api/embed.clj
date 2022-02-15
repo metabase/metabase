@@ -23,6 +23,7 @@
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
             [metabase.api.public :as public-api]
+            [metabase.driver.common.parameters.operators :as params.operators]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.query-processor :as qp]
@@ -160,7 +161,12 @@
   [parameters slug->value]
   (when (seq parameters)
     (for [param parameters
-          :let  [value (get slug->value (keyword (:slug param)))]
+          :let  [value (get slug->value (keyword (:slug param)))
+                 value (if (and (seq value)
+                              (params.operators/operator? (:type param))
+                              (not (sequential? value)))
+                         [value]
+                         value)]
           :when (some? value)]
       (assoc (select-keys param [:type :target :slug])
              :value value))))
@@ -360,7 +366,7 @@
     (check-embedding-enabled-for-dashboard (eu/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
-(defn- card-results-for-signed-token-async
+(defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -395,7 +401,7 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-  (card-results-for-signed-token-async token dashcard-id card-id :api query-params))
+  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -473,7 +479,7 @@
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id, :as {:keys [query-params]}]
   {export-format dataset-api/ExportFormat}
-  (card-results-for-signed-token-async token
+  (dashcard-results-for-signed-token-async token
     dashcard-id
     card-id
     export-format
@@ -573,6 +579,6 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-  (card-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
+  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
 
 (api/define-routes)
