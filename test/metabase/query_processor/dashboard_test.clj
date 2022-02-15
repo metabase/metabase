@@ -7,8 +7,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.card-test :as qp.card-test]
             [metabase.query-processor.dashboard :as qp.dashboard]
-            [metabase.test :as mt]
-            [schema.core :as s]))
+            [metabase.test :as mt]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
 
@@ -46,44 +45,6 @@
      :run          (fn [query info]
                      (qp/process-query (assoc query :async? false) info))
      options)))
-
-;; NOCOMMIT
-#_(deftest merge-defaults-from-mappings-test
-  (testing "DashboardCard parameter mappings can specify default values, and we should respect those"
-    (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query         "SELECT {{x}}"
-                                                                    :template-tags {"x" {:id           "abc"
-                                                                                         :name         "x"
-                                                                                         :display-name "X"
-                                                                                         :type         :number
-                                                                                         :required     true}}}}}]
-                    ;; `:name` doesn't matter for Dashboard parameter mappings.
-                    Dashboard [{dashboard-id :id} {:parameters [{:name    "A_DIFFERENT_X"
-                                                                 :slug    "x_slug"
-                                                                 :id      "__X__"
-                                                                 :type    :category
-                                                                 :default 3}]}]
-                    DashboardCard [{dashcard-id :id} {:card_id            card-id
-                                                      :dashboard_id       dashboard-id
-                                                      :parameter_mappings [{:parameter_id "__X__"
-                                                                            :card_id      card-id
-                                                                            :target       [:variable [:template-tag "x"]]}]}]]
-      (testing "param resolution code should include default values"
-        (is (schema= [(s/one
-                       {:type     (s/eq :category)
-                        :id       (s/eq "__X__")
-                        :default  (s/eq 3)
-                        :target   (s/eq [:variable [:template-tag "x"]])
-                        s/Keyword s/Any}
-                       "parameter")]
-                     (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id nil))))
-      (testing "make sure it works end-to-end"
-        (is (schema= {:status   (s/eq :completed)
-                      :data     {:rows     (s/eq [[3]])
-                                 s/Keyword s/Any}
-                      s/Keyword s/Any}
-                     (run-query-for-dashcard dashboard-id card-id dashcard-id)))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
@@ -164,22 +125,19 @@
                            :parameters [{:id    "5791ff38"
                                          :value ["Something Else"]}])))))))))
 
-;; NOCOMMIT
-#_(deftest do-not-apply-unconnected-filters-for-same-card-test
+(deftest do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
                 "filters for the DashCard we're running a query for (#19494)")
     (mt/dataset sample-dataset
       (mt/with-temp* [Card      [{card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-                      Dashboard [{dashboard-id :id} {:parameters [{:name    "Category (DashCard 1)"
-                                                                   :slug    "category_1"
-                                                                   :id      "CATEGORY_1"
-                                                                   :type    :string/=
-                                                                   :default ["Doohickey"]}
+                      Dashboard [{dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
+                                                                   :slug "category_1"
+                                                                   :id   "CATEGORY_1"
+                                                                   :type :string/=}
                                                                   {:name    "Category (DashCard 2)"
                                                                    :slug    "category_2"
                                                                    :id      "CATEGORY_2"
-                                                                   :type    :string/=
-                                                                   :default ["Gadget"]}]}]
+                                                                   :type    :string/=}]}]
                       DashboardCard [{dashcard-1-id :id} {:card_id            card-id
                                                           :dashboard_id       dashboard-id
                                                           :parameter_mappings [{:parameter_id "CATEGORY_1"
@@ -192,10 +150,24 @@
                                                                                 :target       [:dimension (mt/$ids $products.category)]}]}]]
         (testing "DashCard 1 (Category = Doohickey)"
           (is (= [[42]]
-                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-1-id)))))
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-1-id
+                                                  :parameters [{:id    "CATEGORY_1"
+                                                                :value ["Doohickey"]}]))))
+          (testing "DashCard 2 should ignore DashCard 1 params"
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id
+                                                    :parameters [{:id    "CATEGORY_1"
+                                                                  :value ["Doohickey"]}]))))))
         (testing "DashCard 2 (Category = Gadget)"
           (is (= [[53]]
-                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id)))))))))
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-2-id
+                                                  :parameters [{:id    "CATEGORY_2"
+                                                                :value ["Gadget"]}]))))
+          (testing "DashCard 1 should ignore DashCard 2 params"
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-1-id
+                                                    :parameters [{:id    "CATEGORY_2"
+                                                                  :value ["Gadget"]}]))))))))))
 
 (deftest field-filters-should-work-if-no-value-is-specified-test
   (testing "Field Filters should work if no value is specified (#20493)"
