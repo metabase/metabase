@@ -1,7 +1,8 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -200,12 +201,18 @@
         json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
         json-field-names (mapv (comp keyword :name) json-fields)
         query            (db/query {:select json-field-names
-                          :from   [(keyword (:name table))]
-                          :limit  json-sample-limit})
-        types            (map (comp hash row->types) query)]
+                                    :from   [(keyword (:name table))]
+                                    :limit  json-sample-limit})
+        printo           (for [q query]
+                           (first (for [[k v] q]
+                             (json/parse-string v))))
+        types            (map row->types printo)
+        hashes           (map hash types)]
+    (println printo)
     (println query)
     (println types)
-    types))
+    (println hashes)
+    hashes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
