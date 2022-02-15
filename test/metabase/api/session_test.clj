@@ -140,23 +140,25 @@
 
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
-                                                                            [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
-      (dotimes [n 50]
-        (let [response    (send-login-request (format "user-%d" n)
-                                              {"x-forwarded-for" "10.1.2.3"})
-              status-code (:status response)]
-          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (let [error (fn []
-                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-                        :body
-                        json/parse-string
-                        (get-in ["errors" "username"])))]
-        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                 (error)))
-        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                 (error)))))))
+    ;; disable this when we're testing drivers since it tends to F L A K E.
+    (mt/disable-flaky-test-when-running-driver-tests-in-ci
+      (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                              [:username :ip-address])
+                    public-settings/source-address-header (constantly "x-forwarded-for")]
+        (dotimes [n 50]
+          (let [response    (send-login-request (format "user-%d" n)
+                                                {"x-forwarded-for" "10.1.2.3"})
+                status-code (:status response)]
+            (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
+        (let [error (fn []
+                      (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                          :body
+                          json/parse-string
+                          (get-in ["errors" "username"])))]
+          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                   (error)))
+          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                   (error))))))))
 
 (deftest failure-threshold-per-request-source
   (testing "The same as above, but ensure that throttling is done on a per request source basis."

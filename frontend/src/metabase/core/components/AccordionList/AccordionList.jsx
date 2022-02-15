@@ -557,7 +557,7 @@ export default class AccordionList extends Component {
       return (
         <AccordionListRoot
           role="tree"
-          innerRef={this.containerRef}
+          ref={this.containerRef}
           onKeyDown={this.handleKeyDown}
           tabIndex={-1}
           className={className}
@@ -608,7 +608,7 @@ export default class AccordionList extends Component {
     return (
       <AccordionListRoot
         role="tree"
-        innerRef={this.containerRef}
+        ref={this.containerRef}
         onKeyDown={this.handleKeyDown}
         tabIndex={-1}
       >

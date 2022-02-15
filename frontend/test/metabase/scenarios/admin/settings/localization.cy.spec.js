@@ -79,36 +79,38 @@ describe("scenarios > admin > localization", () => {
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
   it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.createNativeQuestion({
-      name: "14294",
-      native: {
-        query:
-          "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
-        "template-tags": {
-          date_range: {
-            id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-            name: "date_range",
-            "display-name": "Date range",
-            type: "dimension",
-            dimension: ["field", ORDERS.CREATED_AT, null],
-            "widget-type": "date/all-options",
-            default: "past220weeks",
-            required: true,
+    cy.createNativeQuestion(
+      {
+        name: "14294",
+        native: {
+          query:
+            "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
+          "template-tags": {
+            date_range: {
+              id: "93961154-c3d5-7c93-7b59-f4e494fda499",
+              name: "date_range",
+              "display-name": "Date range",
+              type: "dimension",
+              dimension: ["field", ORDERS.CREATED_AT, null],
+              "widget-type": "date/all-options",
+              default: "past220weeks",
+              required: true,
+            },
           },
         },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-      cy.get(".TableInteractive-header")
-        .next()
-        .as("resultTable");
+      { visitQuestion: true },
+    );
 
-      cy.get("@resultTable").within(() => {
-        // The third cell in the first row (CREATED_AT_DAY)
-        cy.get(".cellData")
-          .eq(2)
-          .should("not.contain", "Sunday");
-      });
+    cy.get(".TableInteractive-header")
+      .next()
+      .as("resultTable");
+
+    cy.get("@resultTable").within(() => {
+      // The third cell in the first row (CREATED_AT_DAY)
+      cy.get(".cellData")
+        .eq(2)
+        .should("not.contain", "Sunday");
     });
   });
 

@@ -1,11 +1,10 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-export const EditorContainer = styled.div.attrs({
-  className: "expression-editor-textfield",
-})`
+export const EditorContainer = styled.div`
   border: 1px solid;
   border-color: ${color("border")};
   border-radius: ${space(0)};
@@ -31,6 +30,10 @@ export const EditorContainer = styled.div.attrs({
     transition: none;
   }
 `;
+
+EditorContainer.defaultProps = {
+  className: "expression-editor-textfield",
+};
 
 export const EditorEqualsSign = styled.div`
   font: 12px / normal "Monaco", monospace;

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
@@ -19,9 +19,7 @@ export const Description = styled.p`
   margin-bottom: 24px;
 `;
 
-export const ButtonLink = styled(ExternalLink).attrs({
-  className: "Button Button--primary",
-})`
+export const ButtonLink = styled(ExternalLink)`
   text-align: center;
 `;
 

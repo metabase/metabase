@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import EditBar from "metabase/components/EditBar";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
@@ -67,7 +68,7 @@ export const TableHeaderColumnName = styled.div`
   }
 `;
 
-export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
+export const FieldTypeIcon = styled(Icon)`
   background-color: ${props =>
     props.isSelected ? color("white") : color("brand")};
 
@@ -76,6 +77,8 @@ export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
   border-radius: 0.3em;
   padding: 0.2em;
 `;
+
+FieldTypeIcon.defaultProps = { size: 14 };
 
 // Mirrors styling of some QB View div elements
 

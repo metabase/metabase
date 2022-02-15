@@ -124,7 +124,7 @@
          metadata)))))
 
 (defn- streaming-reducedf [results-writer ^OutputStream os]
-  (fn [_ final-metadata context]
+  (fn [final-metadata context]
     (i/finish! results-writer final-metadata)
     (u/ignore-exceptions
       (.flush os)

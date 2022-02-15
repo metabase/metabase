@@ -1,5 +1,4 @@
-import styled from "styled-components";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import styled from "@emotion/styled";
 
 export const PercentageLabel = styled.span`
   position: absolute;
@@ -18,7 +17,7 @@ export const PercentageLabel = styled.span`
   transition: all 0.4s;
 `;
 
-export const Root = forwardRefToInnerRef(styled.div<{ ref?: React.Ref<any> }>`
+export const Root = styled.div`
   display: flex;
   flex: 1;
   position: relative;
@@ -30,7 +29,7 @@ export const Root = forwardRefToInnerRef(styled.div<{ ref?: React.Ref<any> }>`
       transform: translate(-50%, 0);
     }
   }
-`);
+`;
 
 export const TooltipParagraph = styled.p`
   margin: 0;

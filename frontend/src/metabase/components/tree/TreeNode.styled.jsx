@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
@@ -44,10 +45,7 @@ export const ExpandToggleButton = styled.button`
   visibility: ${props => (props.hidden ? "hidden" : "visible")};
 `;
 
-export const ExpandToggleIcon = styled(Icon).attrs({
-  name: "chevronright",
-  size: 12,
-})`
+export const ExpandToggleIcon = styled(Icon)`
   transition: transform 200ms;
 
   ${props =>
@@ -56,6 +54,11 @@ export const ExpandToggleIcon = styled(Icon).attrs({
       transform: rotate(90deg);
     `}
 `;
+
+ExpandToggleIcon.defaultProps = {
+  name: "chevronright",
+  size: 12,
+};
 
 export const NameContainer = styled.div`
   padding: 0.5rem 0.5rem 0.5rem 0.25rem;

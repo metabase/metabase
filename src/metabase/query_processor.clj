@@ -29,6 +29,7 @@
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
             [metabase.query-processor.middleware.desugar :as desugar]
+            [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
@@ -100,6 +101,7 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
+   #'escape-join-aliases/escape-join-aliases
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'cumulative-ags/rewrite-cumulative-aggregations
    #'pre-alias-ags/pre-alias-aggregations
@@ -219,11 +221,11 @@
         (apply (qp) args))
       (qp))))
 
-(def ^{:arglists '([query] [query context])} process-query-async
+(def ^{:arglists '([query] [query context] [query rff context])} process-query-async
   "Process a query asynchronously, returning a `core.async` channel that is called with the final result (or Throwable)."
   (base-qp default-middleware))
 
-(def ^{:arglists '([query] [query context])} process-query-sync
+(def ^{:arglists '([query] [query context] [query rff context])} process-query-sync
   "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
   (qp.reducible/sync-qp process-query-async))
 
@@ -231,7 +233,7 @@
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  {:arglists '([query] [query context])}
+  {:arglists '([query] [query context] [query rff context])}
   [{:keys [async?], :as query} & args]
   (apply (if async? process-query-async process-query-sync)
          query

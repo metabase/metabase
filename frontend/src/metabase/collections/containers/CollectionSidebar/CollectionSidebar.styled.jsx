@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
@@ -49,19 +50,21 @@ export const Sidebar = styled.aside`
   }
 `;
 
-export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  name: "close",
-  size: 20,
-})`
+export const ToggleMobileSidebarIcon = styled(Icon)`
   color: ${color("brand")};
   // margin sizes hard-coded
   // for icon to land on
   // same position as burger icon
   // when sidebar is hidden in mobile
-  margin: -4px ${space(2)} 0 30px};
+  margin: -4px ${space(2)} 0 30px;
 
   ${breakpointMinSmall} {
     cursor: pointer;
     display: none;
   }
 `;
+
+ToggleMobileSidebarIcon.defaultProps = {
+  name: "close",
+  size: 20,
+};

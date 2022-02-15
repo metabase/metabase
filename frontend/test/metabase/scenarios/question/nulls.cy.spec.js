@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  summarize,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -184,7 +189,7 @@ describe("scenarios > question > null", () => {
     it("summarize with null values (metabase#12585)", () => {
       openOrdersTable();
 
-      cy.contains("Summarize").click();
+      summarize();
       // remove pre-selected "Count"
       cy.icon("close").click();
       // dropdown immediately opens with the new set of metrics to choose from

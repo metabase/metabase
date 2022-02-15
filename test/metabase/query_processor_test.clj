@@ -37,6 +37,7 @@
   "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
+  {:pre [(every? keyword? (cons feature more-features))]}
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
   (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
@@ -186,8 +187,10 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
-                                                 (:name source-col))))))
+               :source_alias (driver/escape-alias
+                              driver/*driver*
+                              (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                  (:name source-col)))))))
 
 (declare cols)
 

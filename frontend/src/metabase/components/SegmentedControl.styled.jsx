@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import { color, darken } from "metabase/lib/colors";
@@ -55,7 +55,7 @@ export const SegmentedItemLabel = styled.label`
   }
 `;
 
-export const SegmentedControlRadio = styled.input.attrs({ type: "radio" })`
+export const SegmentedControlRadio = styled.input`
   cursor: inherit;
   position: absolute;
   opacity: 0;
@@ -67,6 +67,8 @@ export const SegmentedControlRadio = styled.input.attrs({ type: "radio" })`
   padding: 0;
   z-index: 1;
 `;
+
+SegmentedControlRadio.defaultProps = { type: "radio" };
 
 function IconWrapper(props) {
   return <Icon {..._.omit(props, "iconOnly")} />;

@@ -11,15 +11,20 @@
 ;;; --------------------------------------------- google-auth-client-id ----------------------------------------------
 
 (deftest google-auth-client-id-test
-  (testing "Client ID must end with correct suffix"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
-         (google/google-auth-client-id "invalid-client-id"))))
+  (mt/with-temporary-setting-values [google-auth-client-id nil]
+    (testing "Client ID must end with correct suffix"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
+           (google/google-auth-client-id "invalid-client-id"))))
 
-  (testing "Trailing whitespace in client ID is stripped upon save"
-    (google/google-auth-client-id "test-client-id.apps.googleusercontent.com     ")
-    (is (= "test-client-id.apps.googleusercontent.com" (google/google-auth-client-id)))))
+    (testing "Trailing whitespace in client ID is stripped upon save"
+      (google/google-auth-client-id "test-client-id.apps.googleusercontent.com     ")
+      (is (= "test-client-id.apps.googleusercontent.com" (google/google-auth-client-id))))
+
+    (testing "Saving an empty string will clear the client ID setting"
+      (google/google-auth-client-id "")
+      (is (= nil (google/google-auth-client-id))))))
 
 
 ;;; --------------------------------------------- account autocreation -----------------------------------------------

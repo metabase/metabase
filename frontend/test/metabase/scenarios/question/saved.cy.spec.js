@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openOrdersTable,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
@@ -14,7 +15,7 @@ describe("scenarios > question > saved", () => {
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
     openOrdersTable();
     cy.icon("notebook").click();
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     popover()

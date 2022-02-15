@@ -220,7 +220,7 @@ describe("collection permissions", () => {
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
-                    cy.get("[class*=PageHeading]")
+                    cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Second collection");
                     sidebar().within(() => {
@@ -260,7 +260,7 @@ describe("collection permissions", () => {
                       // This is the equivalent of hitting the back button but it also shows that the same UI is present whenever we visit the collection by its id
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
-                    cy.get("[class*=PageHeading]")
+                    cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Third collection");
                     // Creating new sub-collection at this point shouldn't be possible
@@ -305,7 +305,7 @@ describe("collection permissions", () => {
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
                       );
-                      cy.get("[class*=PageHeading]")
+                      cy.findByTestId("collection-name-heading")
                         .as("title")
                         .contains("Third collection");
                     });
@@ -590,25 +590,35 @@ describe("collection permissions", () => {
 
             describe("managing dashboard from the dashboard's edit menu", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Archive")
                   .should("not.exist");
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 const { first_name, last_name } = USERS[user];
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.wait("@collections");
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Duplicate")
                   .click();

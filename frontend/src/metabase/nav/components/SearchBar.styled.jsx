@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { space } from "styled-system";
 
 import { getDefaultSearchColor } from "metabase/nav/constants";

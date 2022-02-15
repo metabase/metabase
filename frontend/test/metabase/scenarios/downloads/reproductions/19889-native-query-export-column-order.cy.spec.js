@@ -16,22 +16,18 @@ describe("issue 19889", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.wrap(id).as("questionId");
-
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-      cy.visit(`/question/${id}`);
-
-      cy.wait("@cardQuery");
-
-      // Reorder columns a and b
-      cy.findByText("column a")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 100, 0, { force: true })
-        .trigger("mouseup", 100, 0, { force: true });
-      cy.findByText("Started from").click(); // Give DOM some time to update
+    cy.createNativeQuestion(questionDetails, {
+      loadMetadata: true,
+      wrapId: true,
     });
+
+    // Reorder columns a and b
+    cy.findByText("column a")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 100, 0, { force: true })
+      .trigger("mouseup", 100, 0, { force: true });
+    cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
   testCases.forEach(fileType => {
