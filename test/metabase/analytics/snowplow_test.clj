@@ -70,13 +70,15 @@
          events)))
 
 (deftest custom-content-test
-  (testing "Snowplow events include a custom context that includes the schema, instance ID, version and token features"
+  (testing "Snowplow events include a custom context that includes the schema, instance ID, version, token features
+           and creation timestamp"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
-                     :token-features (public-settings/token-features)}}
+                     :token_features (public-settings/token-features)
+                     :created_at     (snowplow/instance-creation)}}
              (:context (first @*snowplow-collector*)))))))
 
 (deftest ip-address-override-test

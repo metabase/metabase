@@ -100,7 +100,8 @@
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
        {"id"             (analytics-uuid),
         "version"        {"tag" (:tag (public-settings/version))},
-        "token-features" (m/map-keys name (public-settings/token-features))}))
+        "token_features" (m/map-keys name (public-settings/token-features))
+        "created_at"     (instance-creation)}))
 
 (defn- normalize-kw
   [kw]
