@@ -213,6 +213,21 @@ describe("ViewHeader", () => {
             screen.queryByLabelText("refresh icon"),
           ).not.toBeInTheDocument();
         });
+
+        it("does not offer to modify a query when a user doesn't have data permissions", () => {
+          const originalMethod = question.query().database;
+          question.query().database = () => null;
+
+          setup({ question });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+          expect(
+            screen.queryByLabelText("notebook icon"),
+          ).not.toBeInTheDocument();
+          expect(screen.queryByLabelText("refresh icon")).toBeInTheDocument();
+
+          question.query().database = originalMethod;
+        });
       });
     });
   });

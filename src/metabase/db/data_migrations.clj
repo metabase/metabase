@@ -11,14 +11,11 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.db.util :as mdb.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.humanization :as humanization]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
@@ -123,43 +120,6 @@
 (defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
-
-;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
-;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
-;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
-;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
-(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
-  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
-    (when (seq enable-advanced-humanization-str)
-      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
-      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
-      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
-      ;; invalid value. In that case, fail silently.
-      (u/ignore-exceptions
-        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
-                                              "advanced"
-                                              "simple"))))
-    ;; either way, delete the old value from the DB since we'll never be using it again.
-    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
-    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
-
-;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
-;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
-;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
-;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
-;; meaning of the Category special type.
-;;
-;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
-;; their behavior doesn't suddenly change.
-
-;; Note that since v39 semantic_type became semantic_type. All of these migrations concern data from before this
-;; change. Therefore, the migration is set to `:catch? true` and the old name is used. If the column is semantic then
-;; the data shouldn't be bad.
-(defmigration ^{:author "camsaul", :added "0.29.0", :catch? true} mark-category-fields-as-list
-  (db/update-where! Field {:has_field_values nil
-                           :semantic_type     (mdb.u/isa :type/Category)
-                           :active           true}
-    :has_field_values "list"))
 
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we

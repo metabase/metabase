@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.driver.common.parameters.operators :as params.operators]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -64,6 +65,12 @@
       (merge
        {:type (:type matching-param)}
        request-param
+       ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
+       ;; vector so the parameter handling code doesn't explode.
+       (when (and (params.operators/operator? (:type matching-param))
+                  (seq (:value request-param))
+                  (not (sequential? (:value request-param))))
+         {:value [(:value request-param)]})
        {:id     param-id
         :target (:target matching-mapping)}))))
 

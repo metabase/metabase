@@ -233,7 +233,7 @@
 (defmethod ->honeysql [:sql :value] [driver [_ value]] (->honeysql driver value))
 
 (defmethod ->honeysql [:sql :expression]
-  [driver [_ expression-name {::add/keys [source-table source-alias]} :as clause]]
+  [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
   (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
     (->honeysql driver (if (= source-table ::add/source)
                          (apply hx/identifier :field source-query-alias source-alias)
@@ -347,16 +347,20 @@
                                    (:database_type field))
           identifier           (->honeysql driver
                                            (apply hx/identifier :field
-                                                  (concat source-table-aliases [source-alias])))]
+                                                  (concat source-table-aliases [source-alias])))
+          maybe-add-db-type    (fn [expr]
+                                 (if (hx/type-info->db-type (hx/type-info expr))
+                                   expr
+                                   (hx/with-database-type-info expr database-type)))]
       (u/prog1
-       (cond->> identifier
-         allow-casting?           (cast-field-if-needed driver field)
-         database-type            (#(hx/with-database-type-info % database-type))
-         (:temporal-unit options) (apply-temporal-bucketing driver options)
-         (:binning options)       (apply-binning options))
-       (log/trace (binding [*print-meta* true]
-                    (format "Compiled field clause\n%s\n=>\n%s"
-                            (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
+        (cond->> identifier
+          allow-casting?           (cast-field-if-needed driver field)
+          database-type            maybe-add-db-type                         ; only add type info if it wasn't added by [[cast-field-if-needed]]
+          (:temporal-unit options) (apply-temporal-bucketing driver options)
+          (:binning options)       (apply-binning options))
+        (log/trace (binding [*print-meta* true]
+                     (format "Compiled field clause\n%s\n=>\n%s"
+                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}

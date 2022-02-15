@@ -71,6 +71,7 @@ export function getCollectionChangeDescription(prevCollectionId, collectionId) {
         key={key}
         entityId={collectionId || "root"}
         entityType="collections"
+        fallback={t`Unknown`}
       />
     )}`,
   ];
