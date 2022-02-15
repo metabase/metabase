@@ -9936,7 +9936,6 @@ databaseChangeLog:
       changes:
         - sql:
             dbms: h2,postgresql
-            # apparently all three of our DBs support `regexp_replace`.
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -9946,12 +9945,19 @@ databaseChangeLog:
               WHERE key = '-site-url';
         - sql:
             dbms: mysql,mariadb
+            # MySQL 5.7 doesn't support regexp_replace :(
             # 'key' has to be quoted in MySQL
             sql: >-
               INSERT INTO setting (`key`, value)
               SELECT
                 'site-url' AS `key`,
-                regexp_replace(value, '/$', '') AS value
+                CASE
+                  WHEN value LIKE '%/'
+                    THEN substring(value, 1, length(value) - 1)
+                  ELSE
+                    value
+                  END
+                AS value
               FROM setting
               WHERE `key` = '-site-url';
 
