@@ -9983,6 +9983,73 @@ databaseChangeLog:
                 AND value NOT LIKE 'http%';
 
   #
+  # The following migrations replace metabase.db.migrations/migrate-humanization-setting, added in 0.28.0
+  #
+  # Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+  # `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+  # was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+  # between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+
+  # [migrate-humanization-setting part 1 of 2]
+  - changeSet:
+      id: v43.00-010
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'humanization-strategy'                                      AS key,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'humanization-strategy'                                      AS `key`,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE `key` = 'enable-advanced-humanization';
+
+  # [migrate-humanization-setting part 2 of 2]
+  - changeSet:
+      id: v43.00-011
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM setting WHERE `key` = 'enable-advanced-humanization';
+
+  #
   # The following migration replaces metabase.db.migrations/mark-category-fields-as-list, added in 0.29.0
   #
   # Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
