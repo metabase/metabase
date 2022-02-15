@@ -35,7 +35,6 @@
             [toucan.util.test :as tt])
   (:import [java.io File FileInputStream]
            java.net.ServerSocket
-           java.nio.charset.StandardCharsets
            java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
@@ -1017,9 +1016,9 @@
   interpreted as a UTF-8 encoded string, then compared to `expected. Otherwise, the individual bytes of each are
   compared."
   {:added "0.42.0"}
-  [expected value]
+  [expected ^bytes value]
   (cond (string? expected)
-        (= expected (String. value (.name StandardCharsets/UTF_8)))
+        (= expected (String. value "UTF-8"))
 
         (bytes? expected)
         (= (seq expected) (seq value))
@@ -1062,7 +1061,7 @@
 
 (defn file->bytes
   "Reads a file at `file-path` completely into a byte array, returning that array."
-  [file-path]
+  [^String file-path]
   (let [f   (File. file-path)
         ary (byte-array (.length f))]
     (with-open [is (FileInputStream. f)]

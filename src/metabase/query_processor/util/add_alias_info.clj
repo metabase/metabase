@@ -67,6 +67,8 @@
   same unique alias."
   []
   (let [unique-name-fn (mbql.u/unique-name-generator
+                        ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
+                        ;; unique regardless of case
                         :name-key-fn     str/lower-case
                         ;; TODO -- we should probably limit the length somehow like we do in
                         ;; [[metabase.query-processor.middleware.add-implicit-joins/join-alias]], and also update this

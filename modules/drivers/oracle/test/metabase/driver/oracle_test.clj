@@ -386,3 +386,8 @@
         (mt/with-native-query-testing-context query
           (is (= [42M]
                  (mt/first-row (qp/process-query query)))))))))
+
+(deftest escape-alias-test
+  (testing "Oracle should strip double quotes and null characters from identifiers"
+    (is (= "ABC_D_E__FG_H"
+           (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))
