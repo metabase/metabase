@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 
 import { NumberColumn } from "../__support__/visualizations";
 
@@ -37,7 +37,7 @@ describe("Table", () => {
         },
       ],
     };
-    const { getByText } = render(
+    const { getByText } = renderWithProviders(
       <Visualization rawSeries={series(rows, settings)} />,
     );
     jest.runAllTimers();

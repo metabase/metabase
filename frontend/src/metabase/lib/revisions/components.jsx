@@ -29,26 +29,32 @@ RevisionTitle.propTypes = revisionTitlePropTypes;
 
 const revisionBatchedDescriptionPropTypes = {
   changes: PropTypes.arrayOf(PropTypes.node).isRequired,
+  fallback: PropTypes.string,
 };
 
-export function RevisionBatchedDescription({ changes }) {
+export function RevisionBatchedDescription({ changes, fallback }) {
   const formattedChanges = useMemo(() => {
-    const result = [];
+    let result = [];
 
     changes.forEach((change, i) => {
-      const isFirst = i === 0;
-      result.push(isFirst ? capitalizeChangeRecord(change) : change);
-      const isLast = i === changes.length - 1;
-      const isBeforeLast = i === changes.length - 2;
-      if (isBeforeLast) {
-        result.push(" " + t`and` + " ");
-      } else if (!isLast) {
-        result.push(", ");
+      try {
+        const isFirst = i === 0;
+        result.push(isFirst ? capitalizeChangeRecord(change) : change);
+        const isLast = i === changes.length - 1;
+        const isBeforeLast = i === changes.length - 2;
+        if (isBeforeLast) {
+          result.push(" " + t`and` + " ");
+        } else if (!isLast) {
+          result.push(", ");
+        }
+      } catch {
+        console.warn("Error formatting revision changes", changes);
+        result = fallback;
       }
     });
 
     return result;
-  }, [changes]);
+  }, [changes, fallback]);
 
   return <span>{formattedChanges}</span>;
 }
@@ -56,6 +62,9 @@ export function RevisionBatchedDescription({ changes }) {
 function capitalizeChangeRecord(change) {
   if (Array.isArray(change)) {
     const [first, ...rest] = change;
+    if (Array.isArray(first)) {
+      return capitalizeChangeRecord(first);
+    }
     return [capitalize(first, { lowercase: false }), ...rest];
   }
   return capitalize(change, { lowercase: false });

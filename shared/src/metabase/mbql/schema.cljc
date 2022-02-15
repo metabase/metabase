@@ -1,6 +1,6 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
    (:clj
     [(:require

@@ -1,6 +1,6 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import { createMockDatabase, createMockEngine } from "metabase-types/api/mocks";
+import { createMockEngine } from "metabase-types/api/mocks";
 import DriverWarning from "./DriverWarning";
 
 export default {

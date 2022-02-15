@@ -1,4 +1,4 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import { restore, popover, visualize, filter } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -15,6 +15,7 @@ const questionDetails = {
 describe("issue 14843", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/database/1/schema/PUBLIC").as("schema");
 
     restore();
     cy.signInAsAdmin();
@@ -24,7 +25,10 @@ describe("issue 14843", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.icon("notebook").click();
-    cy.icon("filter").click();
+
+    cy.wait("@schema");
+
+    filter({ mode: "notebook" });
 
     popover()
       .findByText(CC_NAME)

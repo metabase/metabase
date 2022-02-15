@@ -123,16 +123,6 @@
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
 
-;; There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
-;; specified. Other areas of the application expect that site-url will always include http/https. This migration
-;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
-(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
-  (when-let [stored-site-url (db/select-one-field :value Setting :key "site-url")]
-    (let [defaulted-site-url (public-settings/site-url stored-site-url)]
-      (when (and stored-site-url
-                 (not= stored-site-url defaulted-site-url))
-        (setting/set! "site-url" stored-site-url)))))
-
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
 ;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
 ;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to

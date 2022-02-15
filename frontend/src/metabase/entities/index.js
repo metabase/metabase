@@ -3,10 +3,10 @@ export { default as collections } from "./collections";
 export { default as snippetCollections } from "./snippet-collections";
 export { default as dashboards } from "./dashboards";
 export { default as databaseCandidates } from "./database-candidates";
-export { default as events } from "./events";
-export { default as eventTimelines } from "./eventTimelines";
 export { default as pulses } from "./pulses";
 export { default as questions } from "./questions";
+export { default as timelines } from "./timelines";
+export { default as timelineEvents } from "./timeline-events";
 
 export { default as revisions } from "./revisions";
 

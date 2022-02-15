@@ -1,3 +1,6 @@
+export type CollectionId = number | string;
+
 export interface Collection {
-  id: number;
+  id: CollectionId;
+  name: string;
 }

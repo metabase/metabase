@@ -2,6 +2,7 @@ import {
   restore,
   visualize,
   changeBinningForDimension,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -14,6 +15,11 @@ const {
   PRODUCTS,
 } = SAMPLE_DATABASE;
 
+/**
+ * The list of issues this spec covers:
+ *  - metabase#15446
+ *  -
+ */
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
     restore();
@@ -64,8 +70,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
-      cy.findByText("Summarize").click();
       cy.wait("@dataset");
+      summarize();
     });
 
     it("should work for time series", () => {
@@ -129,7 +135,6 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
 
-      cy.findByText("Summarize").click();
       cy.findByText("Pick the metric you want to see").click();
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
