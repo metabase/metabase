@@ -34,8 +34,9 @@
 
   ### User-local and Database-local Settings
 
-  Starting in 0.42.0, some Settings are allowed to have User- and Database-specific values that override the normal
-  site-wide value. These are similar in concept to buffer-local variables in Emacs Lisp.
+  Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
+  value. Similarly, starting in 0.43.0, some Settings are allowed to have User-specific values. These are similar in
+  concept to buffer-local variables in Emacs Lisp.
 
   When a Setting is allowed to be User or Database local, any values in [[*user-local-values*]] or
   [[*database-local-values*]] for that Setting will be returned preferentially to site-wide values of that Setting.
@@ -958,14 +959,11 @@
   `options` are passed to [[user-facing-value]].
 
   This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
-  page) so all admin-visible Settings should be included. Also used
-  by [[metabase-enterprise.serialization.dump/dump-settings]] which should also have access to everything not
-  `:internal`. In either case we *do not* want to return env var values -- we don't want to serialize them regardless
-  of whether the value should be readable or not, and admins should not be allowed to modify them."
+  page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
+  are not allowed to modify them."
   [& {:as options}]
   ;; ignore User-local and Database-local values
-  (binding [*database-local-values* nil
-            *user-local-values*     (atom nil)]
+  (binding [*database-local-values* nil]
     (into
      []
      (comp (filter (fn [setting]
@@ -973,6 +971,16 @@
                           (allows-site-wide-values? setting))))
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
+
+(defn admin-writable-site-wide-settings
+  "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
+  excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
+  be included with their site-wide value, if a site-wide value is set.
+
+  This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
+  [& {:as options}]
+  (binding [*user-local-values* (atom nil)]
+    (admin-writable-settings options)))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
