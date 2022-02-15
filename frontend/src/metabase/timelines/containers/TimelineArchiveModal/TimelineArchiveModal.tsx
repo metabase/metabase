@@ -11,7 +11,7 @@ import { restoreEvent } from "metabase/timelines/actions";
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
+  query: { include: "events", archived: true },
 };
 
 const collectionProps = {
