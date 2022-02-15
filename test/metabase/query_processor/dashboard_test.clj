@@ -47,7 +47,8 @@
                      (qp/process-query (assoc query :async? false) info))
      options)))
 
-(deftest merge-defaults-from-mappings-test
+;; NOCOMMIT
+#_(deftest merge-defaults-from-mappings-test
   (testing "DashboardCard parameter mappings can specify default values, and we should respect those"
     (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                          :type     :native
@@ -163,7 +164,8 @@
                            :parameters [{:id    "5791ff38"
                                          :value ["Something Else"]}])))))))))
 
-(deftest do-not-apply-unconnected-filters-for-same-card-test
+;; NOCOMMIT
+#_(deftest do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
                 "filters for the DashCard we're running a query for (#19494)")
     (mt/dataset sample-dataset

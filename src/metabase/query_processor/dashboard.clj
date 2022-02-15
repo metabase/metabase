@@ -106,7 +106,16 @@
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
         dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
-        dashboard-param-id->param (dashboard/dashboard->resolved-params dashboard)
+        dashboard-param-id->param (into {}
+                                        ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
+                                        ;; use these values ourselves -- the expectation is that the frontend will pass
+                                        ;; them in as an actual `:value` if it wants to use them. If we leave them
+                                        ;; around things get confused and it prevents us from actually doing the
+                                        ;; expected `1 = 1` substitution for Field filters. See comments in #20503 for
+                                        ;; more information.
+                                        (map (fn [[param-id param]]
+                                               [param-id (dissoc param :default)]))
+                                        (dashboard/dashboard->resolved-params dashboard))
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
@@ -119,14 +128,7 @@
                 (u/pprint-to-str merged-parameters))
     (u/prog1
       (into [] (comp (map (partial resolve-param-for-card card-id dashcard-id dashboard-param-id->param))
-                     (filter some?)
-                     ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to use these values
-                     ;; ourselves -- the expectation is that the frontend will pass them in as an actual `:value` if it
-                     ;; wants to use them. If we leave them around things get confused and it prevents us from actually
-                     ;; doing the expected `1 = 1` substitution for Field filters. See comments in #20503 for more
-                     ;; information.
-                     (map (fn [param]
-                            (dissoc param :default))))
+                     (filter some?))
             merged-parameters)
       (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>)))))
 
