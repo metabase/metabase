@@ -180,22 +180,16 @@
 (defn- describe-table-json*
   ;;;; types for this for chrissakes
   [driver conn table]
-  (let [table-fields (sql-jdbc.sync/describe-table-fields driver conn table)
-        json-fields  (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
-        ;;; need to only select json fields...
-        query        (db/reducible-query {:select [:*]
-                      :from   [(keyword (:name table))]
-                      :limit  json-sample-limit})
-        stability    (hash-map some shit)
-        description  {:is-stable stability}]
-    ;; (reduce {} some shit query)
-    ;;; figure out reducible-query stuf...
-    ;;; {:is-stable {stability dict here...}} -
-    ;;; not just a straight stability dict because we're gonna have other bullshit, i guarantee it
-    ;; (reduce #(some shit) description query)
-    (println description)
-    (for [json-field json-fields]
-      (println json-field))))
+  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+        json-field-names (mapv (comp keyword :name) json-fields)
+        query            (db/reducible-query {:select json-field-names
+                          :from   [(keyword (:name table))]
+                          :limit  json-sample-limit})
+        stability        (apply hash-map (interleave json-field-names (repeat true)))
+        description      {:is-stable stability}
+        res              (reduce (fn [some shit] some shit) description query)]
+    res))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
