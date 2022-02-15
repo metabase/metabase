@@ -9935,7 +9935,7 @@ databaseChangeLog:
                 AND value NOT LIKE 'http%';
 
   - changeSet:
-      id: v43.00-021
+      id: v43.00-026
       author: noahmoss
       comment: >-
         Added 0.43.0 - adds User.settings column to implement User-local Settings
