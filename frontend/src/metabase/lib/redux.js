@@ -222,7 +222,7 @@ export function withAction(actionType) {
 /**
  * Decorator that tracks the state of a request action
  */
-export function withRequestState(getRequestStatePath) {
+export function withRequestState(getRequestStatePath, getQueryKey) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
@@ -230,20 +230,21 @@ export function withRequestState(getRequestStatePath) {
       // thunk:
       async (dispatch, getState) => {
         const statePath = getRequestStatePath(...args);
+        const queryKey = getQueryKey(...args);
         try {
-          dispatch(setRequestLoading(statePath));
+          dispatch(setRequestLoading(statePath, queryKey));
 
           const result = await thunkCreator(...args)(dispatch, getState);
 
           // Dispatch `setRequestLoaded` after clearing the call stack because
           // we want to the actual data to be updated before we notify
           // components that fetching the data is completed
-          setTimeout(() => dispatch(setRequestLoaded(statePath)));
+          setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
 
           return result;
         } catch (error) {
           console.error(`Request ${statePath.join(",")} failed:`, error);
-          dispatch(setRequestError(statePath, error));
+          dispatch(setRequestError(statePath, queryKey, error));
           throw error;
         }
       };
