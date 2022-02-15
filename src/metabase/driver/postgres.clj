@@ -191,28 +191,29 @@
     (into {} (flatten-row row []))))
 
 (defn- row->types [row]
-  (let [flattened-row (flatten-row row)]
-    (into {} (map (fn [[k v]] [k (type v)]) flattened-row))))
+  (into {} (for [[field-name field-val] row]
+             [field-name (let [flattened-row (flatten-row field-val)]
+                           (into {} (map (fn [[k v]] [k (type v)]) flattened-row)))])))
 
 (defn- describe-table-json*
   [driver conn table]
-  (let [table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+  (let [map-inner        (fn [f xs] (map #(into {}
+                                             (for [[k v] %]
+                                               [k (f v)])) xs))
+        table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
         json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
         json-field-names (mapv (comp keyword :name) json-fields)
         query            (db/query {:select json-field-names
                                     :from   [(keyword (:name table))]
                                     :limit  json-sample-limit})
-        parsed-query     (map #(into {}
-                                     (for [[k v] %]
-                                       [k (json/parse-string v)])) query)
+        parsed-query     (map-inner json/parse-string query)
         types            (map row->types parsed-query)
-        ;;;;; gotta do a group by de facto, because we want hash dealios from columns being borked...
-        hashes           (map hash types)]
+        hashes           (map-inner hash types)]
     (println query)
     (println parsed-query)
     (println types)
     (println hashes)
-    hashes))
+    types))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
