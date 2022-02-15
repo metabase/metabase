@@ -127,6 +127,12 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
+    if (this.isVirtualized()) {
+      // HACK: When passing ref to containerProps it becomes unset inside Grid
+      // which causes errors when scrolling in some cases
+      this.containerRef.current = this._list.Grid._scrollingContainer;
+    }
+
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
     this._forceUpdateList();
@@ -272,7 +278,7 @@ export default class AccordionList extends Component {
 
     for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
       const section = sections[sectionIndex];
-      for (let itemIndex = 0; itemIndex < section.items.length; itemIndex++) {
+      for (let itemIndex = 0; itemIndex < section.items?.length; itemIndex++) {
         const item = section.items[itemIndex];
         if (itemIsSelected(item)) {
           return {
@@ -512,6 +518,8 @@ export default class AccordionList extends Component {
     );
   }
 
+  isVirtualized = () => this.props.maxHeight !== Infinity;
+
   canToggleSections = () => {
     const { alwaysTogglable, sections } = this.props;
     return alwaysTogglable || sections.length > 1;
@@ -553,7 +561,7 @@ export default class AccordionList extends Component {
 
     const searchRowIndex = rows.findIndex(row => row.type === "search");
 
-    if (this.props.maxHeight === Infinity) {
+    if (!this.isVirtualized()) {
       return (
         <AccordionListRoot
           role="tree"
@@ -603,68 +611,65 @@ export default class AccordionList extends Component {
       // HACK - Ensure the component can scroll
       // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
       overflowY: "auto",
+      outline: "none",
     };
 
     return (
-      <AccordionListRoot
-        role="tree"
-        ref={this.containerRef}
-        onKeyDown={this.handleKeyDown}
-        tabIndex={-1}
-      >
-        <List
-          id={id}
-          ref={list => (this._list = list)}
-          className={className}
-          style={{ ...defaultListStyle, ...style }}
-          containerStyle={{ pointerEvents: "auto" }}
-          width={width}
-          height={height}
-          rowCount={rows.length}
-          deferredMeasurementCache={this._cache}
-          rowHeight={this._cache.rowHeight}
-          // HACK: needs to be large enough to render enough rows to fill the screen since we used
-          // the CellMeasurerCache to calculate the height
-          overscanRowCount={100}
-          scrollToIndex={scrollToIndex}
-          scrollToAlignment={scrollToAlignment}
-          rowRenderer={({ key, index, parent, style }) => {
-            return (
-              <CellMeasurer
-                cache={this._cache}
-                columnIndex={0}
-                key={key}
-                rowIndex={index}
-                parent={parent}
-              >
-                {({ measure }) => (
-                  <AccordionListCell
-                    hasCursor={this.isRowSelected(rows[index])}
-                    {...this.props}
-                    style={style}
-                    row={rows[index]}
-                    sections={sections}
-                    onChange={this.handleChange}
-                    searchText={this.state.searchText}
-                    onChangeSearchText={this.handleChangeSearchText}
-                    sectionIsExpanded={this.isSectionExpanded}
-                    canToggleSections={this.canToggleSections()}
-                    toggleSection={this.toggleSection}
-                  />
-                )}
-              </CellMeasurer>
-            );
-          }}
-          onRowsRendered={({ startIndex, stopIndex }) => {
-            this._startIndex = startIndex;
-            this._stopIndex = stopIndex;
+      <List
+        id={id}
+        ref={list => (this._list = list)}
+        className={className}
+        style={{ ...defaultListStyle, ...style }}
+        containerStyle={{ pointerEvents: "auto" }}
+        width={width}
+        height={height}
+        rowCount={rows.length}
+        deferredMeasurementCache={this._cache}
+        rowHeight={this._cache.rowHeight}
+        // HACK: needs to be large enough to render enough rows to fill the screen since we used
+        // the CellMeasurerCache to calculate the height
+        overscanRowCount={100}
+        scrollToIndex={scrollToIndex}
+        scrollToAlignment={scrollToAlignment}
+        containerProps={{
+          onKeyDown: this.handleKeyDown,
+        }}
+        rowRenderer={({ key, index, parent, style }) => {
+          return (
+            <CellMeasurer
+              cache={this._cache}
+              columnIndex={0}
+              key={key}
+              rowIndex={index}
+              parent={parent}
+            >
+              {({ measure }) => (
+                <AccordionListCell
+                  hasCursor={this.isRowSelected(rows[index])}
+                  {...this.props}
+                  style={style}
+                  row={rows[index]}
+                  sections={sections}
+                  onChange={this.handleChange}
+                  searchText={this.state.searchText}
+                  onChangeSearchText={this.handleChangeSearchText}
+                  sectionIsExpanded={this.isSectionExpanded}
+                  canToggleSections={this.canToggleSections()}
+                  toggleSection={this.toggleSection}
+                />
+              )}
+            </CellMeasurer>
+          );
+        }}
+        onRowsRendered={({ startIndex, stopIndex }) => {
+          this._startIndex = startIndex;
+          this._stopIndex = stopIndex;
 
-            if (searchRowIndex < startIndex || searchRowIndex > stopIndex) {
-              this.handleSearchRemoval();
-            }
-          }}
-        />
-      </AccordionListRoot>
+          if (searchRowIndex < startIndex || searchRowIndex > stopIndex) {
+            this.handleSearchRemoval();
+          }
+        }}
+      />
     );
   }
 }

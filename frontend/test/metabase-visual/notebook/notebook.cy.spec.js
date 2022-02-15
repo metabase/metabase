@@ -1,4 +1,5 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;
@@ -100,6 +101,28 @@ describe("visual tests > notebook > Run buttons", () => {
         widths: [VIEWPORT_WIDTH],
       },
     );
+  });
+});
+
+describe("visual tests > notebook", () => {
+  const VIEWPORT_WIDTH = 1200;
+  const VIEWPORT_HEIGHT = 600;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+    _.range(10).forEach(index => {
+      const name = `Sample Database ${index + 1}`;
+      cy.addH2SampleDatabase({ name });
+    });
+  });
+
+  it("data picker", () => {
+    openNotebookEditor();
+    cy.findByText("Sample Database");
+    cy.percySnapshot();
   });
 });
 
