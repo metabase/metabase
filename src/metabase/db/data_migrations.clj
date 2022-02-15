@@ -23,7 +23,6 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
