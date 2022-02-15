@@ -57,9 +57,8 @@ const requestStateReducer = handleActions(
       }),
     },
     [setRequestUnloaded]: {
-      next: (state, { payload: { queryKey } }) => ({
+      next: state => ({
         ...state,
-        queryKey,
         loaded: false,
         error: null,
       }),

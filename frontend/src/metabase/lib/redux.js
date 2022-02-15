@@ -58,6 +58,7 @@ export const fetchData = async ({
   getState,
   requestStatePath,
   existingStatePath,
+  queryKey,
   getData,
   reload = false,
   properties = null,
@@ -78,20 +79,20 @@ export const fetchData = async ({
   try {
     const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
-      dispatch(setRequestLoading(statePath));
+      dispatch(setRequestLoading(statePath, queryKey));
       const data = await getData();
 
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
       // before we notify components via `state.requests.fetches` that fetching the data is completed
-      setTimeout(() => dispatch(setRequestLoaded(statePath)));
+      setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
 
       return data;
     }
 
     return existingData;
   } catch (error) {
-    dispatch(setRequestError(statePath, error));
+    dispatch(setRequestError(statePath, queryKey, error));
     console.error("fetchData error", error);
     return existingData;
   }
@@ -103,6 +104,7 @@ export const updateData = async ({
   getState,
   requestStatePath,
   existingStatePath,
+  queryKey,
   // specify any request paths that need to be invalidated after this update
   dependentRequestStatePaths,
   putData,
@@ -112,9 +114,9 @@ export const updateData = async ({
     : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
-    dispatch(setRequestLoading(statePath));
+    dispatch(setRequestLoading(statePath, queryKey));
     const data = await putData();
-    dispatch(setRequestLoaded(statePath));
+    dispatch(setRequestLoaded(statePath, queryKey));
 
     (dependentRequestStatePaths || []).forEach(statePath =>
       dispatch(setRequestUnloaded(statePath)),
@@ -122,7 +124,7 @@ export const updateData = async ({
 
     return data;
   } catch (error) {
-    dispatch(setRequestError(statePath, error));
+    dispatch(setRequestError(statePath, queryKey, error));
     console.error(error);
     return existingData;
   }
@@ -230,7 +232,7 @@ export function withRequestState(getRequestStatePath, getQueryKey) {
       // thunk:
       async (dispatch, getState) => {
         const statePath = getRequestStatePath(...args);
-        const queryKey = getQueryKey(...args);
+        const queryKey = getQueryKey && getQueryKey(...args);
         try {
           dispatch(setRequestLoading(statePath, queryKey));
 
@@ -261,7 +263,7 @@ export function withCachedDataAndRequestState(
 ) {
   return compose(
     withCachedData(getExistingStatePath, getRequestStatePath, getQueryKey),
-    withRequestState(getRequestStatePath),
+    withRequestState(getRequestStatePath, getQueryKey),
   );
 }
 
