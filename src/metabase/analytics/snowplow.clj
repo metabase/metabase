@@ -52,6 +52,28 @@
                 "http://localhost:9090")
   :visibility :public)
 
+(defn- first-user-creation
+  "Returns the earliest user creation timestamp in the database"
+  []
+  (:min (db/select-one [User [:%min.date_joined :min]])))
+
+(declare track-event!)
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :visibility :public
+  :type       :timestamp
+  :setter     :none
+  :getter     (fn []
+                (when-not (db/exists? Setting :key "instance-creation")
+                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                  ;; is first read.
+                  (let [value (or (first-user-creation) (t/offset-date-time))]
+                    (setting/set-value-of-type! :timestamp :instance-creation value)
+                    (track-event! ::new-instance-created)))
+                (setting/get-value-of-type :timestamp :instance-creation)))
+
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
   (let [emitter* (delay
@@ -149,26 +171,3 @@
         (track-event-impl! (tracker) event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
-
-;; Instance creation timestamp setting.
-;; Must be defined after [[track-event!]] since it sends a Snowplow event the first time the setting is read.
-
-(defn- first-user-creation
-  "Returns the earliest user creation timestamp in the database"
-  []
-  (:min (db/select-one [User [:%min.date_joined :min]])))
-
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (when-not (db/exists? Setting :key "instance-creation")
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (let [value (or (first-user-creation) (t/offset-date-time))]
-                    (setting/set-value-of-type! :timestamp :instance-creation value)
-                    (track-event! ::new-instance-created)))
-                (setting/get-value-of-type :timestamp :instance-creation)))
