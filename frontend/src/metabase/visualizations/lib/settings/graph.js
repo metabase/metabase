@@ -554,7 +554,7 @@ export const GRAPH_AXIS_SETTINGS = {
       if (series.length === 1) {
         const column = series[0].data.cols[0];
         const key = keyForColumn(column);
-        const chartSettings = vizSettings.column_settings[key];
+        const chartSettings = vizSettings.column_settings?.[key];
         return chartSettings?.column_title || formatColumn(column);
       }
 
@@ -586,7 +586,7 @@ export const GRAPH_AXIS_SETTINGS = {
             }
 
             const key = keyForColumn(metricCol);
-            const chartSettings = vizSettings.column_settings[key];
+            const chartSettings = vizSettings.column_settings?.[key];
             return chartSettings?.column_title || formatColumn(metricCol);
           }),
         ),
