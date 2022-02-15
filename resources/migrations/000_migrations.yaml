@@ -9907,6 +9907,33 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
+  #
+  # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
+  #
+  # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
+  # specified. Other areas of the application expect that site-url will always include http/https. This migration
+  # ensures that if we have a site-url stored it has the current defaulting logic applied to it
+  - changeSet:
+      id: v43.00-009
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Make sure 'site-url' Setting includes protocol.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE key = 'site-url'
+                AND value NOT LIKE 'http%';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE `key` = 'site-url'
+                AND value NOT LIKE 'http%';
+
   - changeSet:
       id: v43.00-021
       author: noahmoss

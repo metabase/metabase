@@ -83,6 +83,17 @@
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce)
 
+(defsetting site-uuid-for-premium-features-token-checks
+  "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
+  site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
+  same way as [[site-uuid]] but should only be used by the token check logic
+  in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
+  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  anonymous.)"
+  :visibility :internal
+  :setter     :none
+  :type       ::uuid-nonce)
+
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")

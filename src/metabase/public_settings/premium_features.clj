@@ -66,7 +66,8 @@
   (deref
    (future
      (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users (active-user-count)}})
+                  (http/get {:query-params {:users     (active-user-count)
+                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
                   (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the

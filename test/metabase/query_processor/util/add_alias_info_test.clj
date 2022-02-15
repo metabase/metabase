@@ -1,5 +1,6 @@
 (ns metabase.query-processor.util.add-alias-info-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
@@ -415,6 +416,103 @@
                            :breakout     [[:field "double_price" {:base-type :type/Integer}]]})
                         add-alias-info
                         :query)))))))
+
+(driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
+
+(defmethod driver/escape-alias ::custom-escape-spaces-to-underscores
+  [driver field-alias]
+  (-> ((get-method driver/escape-alias :h2) driver field-alias)
+      (str/replace #"\s" "_")))
+
+(deftest use-correct-alias-for-joined-field-test
+  (testing "Make sure we call `driver/escape-alias` for the `:source-alias` for Fields coming from joins (#20413)"
+    (mt/dataset sample-dataset
+      (let [db (mt/db)]
+        (driver/with-driver ::custom-escape-spaces-to-underscores
+          (mt/with-db db
+            (is (query= (mt/$ids nil
+                          {:source-query {:source-table $$orders
+                                          :joins        [{:source-table $$products
+                                                          :alias        "Products Renamed"
+                                                          :condition
+                                                          [:=
+                                                           [:field
+                                                            %orders.product_id
+                                                            {::add/source-alias "PRODUCT_ID"
+                                                             ::add/source-table $$orders}]
+                                                           [:field
+                                                            %products.id
+                                                            {::add/desired-alias "Products_Renamed__ID"
+                                                             ::add/position      0
+                                                             ::add/source-alias  "ID"
+                                                             ::add/source-table  "Products Renamed"
+                                                             :join-alias         "Products Renamed"}]]
+                                                          :fields
+                                                          [[:field
+                                                            %products.id
+                                                            {::add/desired-alias "Products_Renamed__ID"
+                                                             ::add/position      0
+                                                             ::add/source-alias  "ID"
+                                                             ::add/source-table  "Products Renamed"
+                                                             :join-alias         "Products Renamed"}]]
+                                                          :strategy     :left-join}]
+                                          :expressions  {"CC" [:+ 1 1]}
+                                          :fields
+                                          [[:field
+                                            %products.id
+                                            {::add/desired-alias "Products_Renamed__ID"
+                                             ::add/position      0
+                                             ::add/source-alias  "ID"
+                                             ::add/source-table  "Products Renamed"
+                                             :join-alias         "Products Renamed"}]
+                                           [:expression "CC" {::add/desired-alias "CC", ::add/position 1}]]
+                                          :filter
+                                          [:=
+                                           [:field
+                                            %products.category
+                                            {::add/source-alias "CATEGORY"
+                                             ::add/source-table  "Products Renamed"
+                                             :join-alias        "Products Renamed"}]
+                                           [:value
+                                            "Doohickey"
+                                            {:base_type         :type/Text
+                                             :coercion_strategy nil
+                                             :database_type     "VARCHAR"
+                                             :effective_type    :type/Text
+                                             :name              "CATEGORY"
+                                             :semantic_type     :type/Category}]]}
+                           :fields       [[:field
+                                           %products.id
+                                           {::add/desired-alias "Products_Renamed__ID"
+                                            ::add/position      0
+                                            ::add/source-alias  "Products_Renamed__ID"
+                                            ::add/source-table  ::add/source
+                                            :join-alias         "Products Renamed"}]
+                                          [:field
+                                           "CC"
+                                           {::add/desired-alias "CC"
+                                            ::add/position      1
+                                            ::add/source-alias  "CC"
+                                            ::add/source-table  ::add/source
+                                            :base-type          :type/Float}]]
+                           :limit        1})
+                        (-> (mt/mbql-query orders
+                              {:source-query {:source-table $$orders
+                                              :joins        [{:source-table $$products
+                                                              :alias        "Products Renamed"
+                                                              :condition    [:=
+                                                                             $product_id
+                                                                             [:field %products.id {:join-alias "Products Renamed"}]]
+                                                              :fields       [[:field %products.id {:join-alias "Products Renamed"}]]}]
+                                              :expressions  {"CC" [:+ 1 1]}
+                                              :fields       [[:field %products.id {:join-alias "Products Renamed"}]
+                                                             [:expression "CC"]]
+                                              :filter       [:=
+                                                             [:field %products.category {:join-alias "Products Renamed"}]
+                                                             "Doohickey"]}
+                               :limit        1})
+                            add-alias-info
+                            :query)))))))))
 
 (deftest use-source-unique-aliases-test
   (testing "Make sure uniquified aliases in the source query end up getting used for `::add/source-alias`"
