@@ -5,12 +5,14 @@ import {
   isAny,
 } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
+
 import {
   columnsAreValid,
-  getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
+import { formatColumn } from "metabase/lib/formatting";
+import { keyForColumn } from "metabase/lib/dataset";
 
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -548,8 +550,16 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.x_axis.labels_enabled"] === false,
-    getDefault: (series, vizSettings) =>
-      series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+    getDefault: (series, vizSettings) => {
+      if (series.length === 1) {
+        const column = series[0].data.cols[0];
+        const key = keyForColumn(column);
+        const chartSettings = vizSettings.column_settings[key];
+        return chartSettings?.column_title || formatColumn(column);
+      }
+
+      return null;
+    },
   },
   "graph.y_axis.labels_enabled": {
     section: t`Labels`,
@@ -571,7 +581,13 @@ export const GRAPH_AXIS_SETTINGS = {
         new Set(
           series.map(({ data: { cols } }) => {
             const metricCol = cols.find(c => c.name === metric);
-            return metricCol && metricCol.display_name;
+            if (!metricCol) {
+              return null;
+            }
+
+            const key = keyForColumn(metricCol);
+            const chartSettings = vizSettings.column_settings[key];
+            return chartSettings?.column_title || formatColumn(metricCol);
           }),
         ),
       );
