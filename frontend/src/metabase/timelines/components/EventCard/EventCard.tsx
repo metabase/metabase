@@ -24,14 +24,16 @@ export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
   collection: Collection;
+  onArchive: (event: TimelineEvent) => void;
 }
 
 const EventCard = ({
   event,
   timeline,
   collection,
+  onArchive,
 }: EventCardProps): JSX.Element => {
-  const menuItems = getMenuItems(event, timeline, collection);
+  const menuItems = getMenuItems(event, timeline, collection, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
@@ -62,11 +64,16 @@ const getMenuItems = (
   event: TimelineEvent,
   timeline: Timeline,
   collection: Collection,
+  onArchive: (event: TimelineEvent) => void,
 ) => {
   return [
     {
       title: t`Edit event`,
       link: Urls.editEventInCollection(event, timeline, collection),
+    },
+    {
+      title: t`Archive event`,
+      action: () => onArchive(event),
     },
   ];
 };

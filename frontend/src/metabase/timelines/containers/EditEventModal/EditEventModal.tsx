@@ -7,7 +7,7 @@ import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { State } from "metabase-types/store";
 import EditEventModal from "../../components/EditEventModal";
-import { updateEvent } from "../../actions";
+import { archiveEvent, updateEvent } from "../../actions";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -28,6 +28,7 @@ const collectionProps = {
 
 const mapDispatchToProps = {
   onSubmit: updateEvent,
+  onArchive: archiveEvent,
   onCancel: goBack,
 };
 

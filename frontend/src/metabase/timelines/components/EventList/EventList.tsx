@@ -1,8 +1,6 @@
-import React, { useMemo } from "react";
-import _ from "underscore";
+import React from "react";
 import { t } from "ttag";
-import { parseTimestamp } from "metabase/lib/time";
-import { Collection, Timeline } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,
@@ -14,25 +12,27 @@ import {
 } from "./EventList.styled";
 
 export interface EventListProps {
+  events: TimelineEvent[];
   timeline: Timeline;
   collection: Collection;
+  onArchive: (event: TimelineEvent) => void;
 }
 
-const EventList = ({ timeline, collection }: EventListProps): JSX.Element => {
-  const allEvents = timeline.events;
-  const sortedEvents = useMemo(
-    () => _.sortBy(allEvents ?? [], e => parseTimestamp(e.timestamp)).reverse(),
-    [allEvents],
-  );
-
+const EventList = ({
+  events,
+  timeline,
+  collection,
+  onArchive,
+}: EventListProps): JSX.Element => {
   return (
     <div>
-      {sortedEvents.map(event => (
+      {events.map(event => (
         <EventCard
           key={event.id}
           event={event}
           timeline={timeline}
           collection={collection}
+          onArchive={onArchive}
         />
       ))}
       <ListFooter>
