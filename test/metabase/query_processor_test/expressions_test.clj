@@ -446,12 +446,14 @@
 (deftest expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
-      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
-             (mt/formatted-rows [int str int 4.0 4.0 int int]
-               (mt/run-mbql-query venues
-                 {:expressions {(keyword "Refund Amount (?)") [:* $price -1]}
+      (let [query (mt/mbql-query venues
+                 {:expressions {"Refund Amount (?)" [:* $price -1]}
                   :limit       1
-                  :order-by    [[:asc $id]]})))))))
+                  :order-by    [[:asc $id]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 #_-3]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int]
+                   (qp/process-query query)))))))))
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"

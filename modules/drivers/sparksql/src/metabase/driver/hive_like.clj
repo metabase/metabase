@@ -1,5 +1,6 @@
 (ns metabase.driver.hive-like
   (:require [buddy.core.codecs :as codecs]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -19,6 +20,16 @@
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
+
+(defmethod driver/escape-alias :hive-like
+  [driver s]
+  ;; replace question marks inside aliases with `_QMARK_`, otherwise Spark SQL will interpret them as JDBC parameter
+  ;; placeholder (yes, even if the identifier is quoted... (:unamused:)
+  ;;
+  ;; `_QMARK_` is kind of arbitrary but that's what [[munge]] does and it seems like it would lead to less potential
+  ;; name clashes than if we just used underscores.
+  (let [s (str/replace s #"\?" "_QMARK_")]
+    ((get-method driver/escape-alias :sql) driver s)))
 
 (defmethod driver/db-start-of-week :hive-like
   [_]
