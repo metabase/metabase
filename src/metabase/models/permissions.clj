@@ -222,7 +222,8 @@
   "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
   (u.regex/rx "^/"
-              ;; any path starting with /db/ is a DATA PERMISSIONS path
+              ;; any path containing /db/ is a DATA permissions path
+              ;; any path starting with /db/ is a DATA ACCESS permissions path
               (or
                ;; /db/:id/ -> permissions for the entire DB -- native and all schemas
                (and #"db/\d+/"
@@ -243,6 +244,17 @@
                                                               ;; .../segmented/ -> Permissions to run a query against
                                                               ;; a Table using GTAP
                                                               (opt "segmented/"))))))))))))
+               ;; any path starting with /download/ is a DOWNLOAD permissions path
+               ;; /download/db/:id/ -> permissions to download 1M rows in query results
+               ;; /download/limited/db/:id/ -> permissions to download 1k rows in query results
+               (and "download/"
+                    (opt "limited/")
+                    (and #"db/\d+/"
+                         (opt (or
+                               "native/"
+                               (and "schema/"
+                                    (opt (and path-char "*/"
+                                              (opt #"table/\d+/"))))))))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
