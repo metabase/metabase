@@ -46,4 +46,29 @@ export const LabelContainer = styled.div`
   display: flex;
   align-items: center;
   position: relative;
+  width: 100%;
+`;
+
+export const BookmarkCollectionButton = styled(IconButtonWrapper)`
+  align-items: center;
+  background: ${color("bg-medium")};
+  background: linear-gradient(
+    90deg,
+    ${color("bg-medium")}00 0%,
+    ${color("bg-medium")} 30%
+  );
+  border-radius: 0;
+  color: ${color("brand")};
+  cursor: pointer;
+  height: calc(100% + 16px);
+  opacity: 0;
+  padding-left: 10px;
+  position: absolute;
+  right: -8px;
+  transition: opacity 0.2s;
+  width: 40px;
+
+  ${LabelContainer}:hover & {
+    opacity: 1;
+  }
 `;

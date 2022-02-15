@@ -4,6 +4,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
 import {
+  BookmarkCollectionButton,
   CollectionListIcon,
   ChildrenContainer,
   ExpandCollectionButton,
@@ -59,6 +60,9 @@ function Label({ action, depth, collection, isOpen }) {
         targetOffsetX={targetOffsetX}
       />
       {name}
+      <BookmarkCollectionButton>
+        <Icon name="bookmark" />
+      </BookmarkCollectionButton>
     </LabelContainer>
   );
 }
