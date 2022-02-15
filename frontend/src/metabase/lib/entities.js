@@ -248,7 +248,6 @@ export function createEntity(def) {
       withCachedDataAndRequestState(
         entityQuery => [...getListStatePath(entityQuery)],
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
-        entityQuery => getQueryKey(entityQuery),
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(entityQuery || {});

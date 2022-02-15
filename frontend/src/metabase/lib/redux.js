@@ -284,7 +284,7 @@ function withCachedData(
 
         const existingStatePath = getExistingStatePath(...args);
         const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-        const newQueryKey = getQueryKey(...args);
+        const newQueryKey = getQueryKey && getQueryKey(...args);
         const existingData = getIn(getState(), existingStatePath);
         const { loading, loaded, queryKey } =
           getIn(getState(), requestStatePath) || {};
