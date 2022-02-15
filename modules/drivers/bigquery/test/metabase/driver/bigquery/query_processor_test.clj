@@ -738,12 +738,13 @@
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (mt/with-bigquery-fks :bigquery
         (let [query (mt/mbql-query checkins
-                      {:fields [$id $venue_id->venues.name]})]
+                      {:fields [$id $venue_id->venues.name]
+                       :limit  1})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
-            (is (= (str "SELECT `v3_test_data.checkins`.`id` AS `id`,"
-                        " `Organização__via__venue_id`.`name` AS `Organizacao__via__venue_id__name_560a3449` "
-                        "FROM `v3_test_data.checkins` "
-                        "LEFT JOIN `v3_test_data.Organização` `Organização__via__venue_id`"
-                        " ON `v3_test_data.checkins`.`venue_id` = `Organização__via__venue_id`.`id` "
-                        "LIMIT 1048575")
-                   (:query (qp/query->native query))))))))))
+            (is (sql= '{:select    [v3_test_data.checkins.id        AS id
+                                    Organizacao__via__venue_id.name AS Organizacao__via__venue_id__name]
+                        :from      [v3_test_data.checkins]
+                        :left-join [v3_test_data.Organização Organizacao__via__venue_id
+                                    ON v3_test_data.checkins.venue_id = Organizacao__via__venue_id.id]
+                        :limit     [1]}
+                      query))))))))
