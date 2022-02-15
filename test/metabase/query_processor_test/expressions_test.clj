@@ -451,7 +451,7 @@
                   :limit       1
                   :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 #_-3]]
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int]
                    (qp/process-query query)))))))))
 
