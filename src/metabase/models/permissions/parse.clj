@@ -41,12 +41,12 @@
     [:permission t]              (path t)
     [:all]                       [:all] ; admin permissions
     [:db db-id]                  (let [db-id (Long/parseUnsignedLong db-id)]
-                                   [[:db db-id :native :write]
-                                    [:db db-id :schemas :all]])
+                                   [[:db db-id :data :native :write]
+                                    [:db db-id :data :schemas :all]])
     [:db db-id db-node]          (let [db-id (Long/parseUnsignedLong db-id)]
                                    (into [:db db-id] (path db-node)))
-    [:schemas]                   [:schemas :all]
-    [:schemas schema]            (into [:schemas] (path schema))
+    [:schemas]                   [:data :schemas :all]
+    [:schemas schema]            (into [:data :schemas] (path schema))
     [:schema schema-name]        [schema-name :all]
     [:schema schema-name table]  (into [schema-name] (path table))
     [:table table-id]            [(Long/parseUnsignedLong table-id) :all]
@@ -55,7 +55,7 @@
                                     "read"            [:read :all]
                                     "query"           [:query :all]
                                     "query/segmented" [:query :segmented])
-    [:native]                    [:native :write]
+    [:native]                    [:data :native :write]
     ;; collection perms
     [:collection id]             [:collection (collection-id id) :write]
     [:collection id "read"]      [:collection (collection-id id) :read]
