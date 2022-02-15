@@ -16,6 +16,9 @@ import cx from "classnames";
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
+const TIME_SELECTOR_DEFAULT_HOUR = 12;
+const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+
 export default class SpecificDatePicker extends Component {
   constructor(props) {
     super(props);
@@ -117,7 +120,13 @@ export default class SpecificDatePicker extends Component {
             {hours == null || minutes == null ? (
               <div
                 className="text-purple-hover cursor-pointer flex align-center"
-                onClick={() => this.onChange(date, 12, 30)}
+                onClick={() =>
+                  this.onChange(
+                    date,
+                    TIME_SELECTOR_DEFAULT_HOUR,
+                    TIME_SELECTOR_DEFAULT_MINUTE,
+                  )
+                }
               >
                 <Icon className="mr1" name="clock" />
                 {t`Add a time`}
