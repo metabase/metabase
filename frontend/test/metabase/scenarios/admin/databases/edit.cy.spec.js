@@ -15,6 +15,15 @@ describe("scenarios > admin > databases > edit", () => {
     cy.route("PUT", "/api/database/*").as("databaseUpdate");
   });
 
+  describe("Database type", () => {
+    it("should be disabled for the Sample Dataset (metabase#16382)", () => {
+      cy.visit("/admin/databases/1");
+      cy.findByText("H2")
+        .parentsUntil("a")
+        .should("be.disabled");
+    });
+  });
+
   describe("Connection settings", () => {
     it("shows the connection settings for sample database correctly", () => {
       cy.visit("/admin/databases/1");

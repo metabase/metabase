@@ -167,11 +167,7 @@ export default class QueryBuilder extends Component {
   }
 
   UNSAFE_componentWillMount() {
-    this.props.initializeQB(
-      this.props.location,
-      this.props.params,
-      this.props.location.query,
-    );
+    this.props.initializeQB(this.props.location, this.props.params);
   }
 
   componentDidMount() {
@@ -203,7 +199,6 @@ export default class QueryBuilder extends Component {
     //    @connect(null, { updateQuestion })
     //    @connect(mapStateToProps, mapDispatchToProps)
     if (nextProps.question) {
-      window.question = nextProps.question;
       nextProps.question._update = nextProps.updateQuestion;
     }
   }

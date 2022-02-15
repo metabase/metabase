@@ -33,6 +33,7 @@ export default class Select extends Component {
     onChange: PropTypes.func.isRequired,
     multiple: PropTypes.bool,
     placeholder: PropTypes.string,
+    disabled: PropTypes.bool,
 
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
@@ -191,6 +192,7 @@ export default class Select extends Component {
       hideEmptySectionsInSearch,
       isInitiallyOpen,
       onClose,
+      disabled,
     } = this.props;
 
     const sections = this._getSections();
@@ -210,6 +212,7 @@ export default class Select extends Component {
               ref={this.selectButtonRef}
               className="flex-full"
               hasValue={selectedNames.length > 0}
+              disabled={disabled}
               {...buttonProps}
             >
               {selectedNames.length > 0
@@ -226,6 +229,7 @@ export default class Select extends Component {
         onClose={composeEventHandlers(onClose, this.handleClose)}
         triggerClasses={cx("flex", className)}
         isInitiallyOpen={isInitiallyOpen}
+        disabled={disabled}
         verticalAttachments={["top", "bottom"]}
         // keep the popover from jumping around one its been opened,
         // this can happen when filtering items via search

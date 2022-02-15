@@ -4,5 +4,6 @@ export const createMockCollection = (
   opts?: Partial<Collection>,
 ): Collection => ({
   id: 1,
+  name: "Collection",
   ...opts,
 });

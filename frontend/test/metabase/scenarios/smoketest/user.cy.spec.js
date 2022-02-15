@@ -4,6 +4,7 @@ import {
   popover,
   visualize,
   openNotebookEditor,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("smoketest > user", () => {
@@ -156,17 +157,13 @@ describe("smoketest > user", () => {
   it("should summarize via both the sidebar and notebook editor", () => {
     // Sidebar summary
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    summarize();
     cy.findByText("Category").click();
     cy.findByText("Done").click();
 
     // Delete summary from sidebar
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    summarize();
     cy.icon("close")
       .first()
       .click();
@@ -181,7 +178,7 @@ describe("smoketest > user", () => {
 
     cy.icon("notebook").click();
 
-    cy.icon("sum").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.icon("calendar").click();

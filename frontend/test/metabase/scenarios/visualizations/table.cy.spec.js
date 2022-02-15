@@ -6,6 +6,7 @@ import {
   popover,
   enterCustomColumnDetails,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > table", () => {
@@ -149,9 +150,8 @@ describe("scenarios > visualizations > table", () => {
         .trigger("mouseleave");
     });
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    summarize();
+
     cy.findAllByTestId("dimension-list-item-name")
       .first()
       .click();

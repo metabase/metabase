@@ -117,16 +117,6 @@
           :object   (perms/data-perms-path database-id)
           :group_id group-id)))))
 
-;; There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
-;; specified. Other areas of the application expect that site-url will always include http/https. This migration
-;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
-(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
-  (when-let [stored-site-url (db/select-one-field :value Setting :key "site-url")]
-    (let [defaulted-site-url (public-settings/site-url stored-site-url)]
-      (when (and stored-site-url
-                 (not= stored-site-url defaulted-site-url))
-        (setting/set! "site-url" stored-site-url)))))
-
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
 ;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
