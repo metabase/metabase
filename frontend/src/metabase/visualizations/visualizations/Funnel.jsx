@@ -9,7 +9,7 @@ import {
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
@@ -129,6 +129,14 @@ export default class Funnel extends Component {
       // legacy "bar" funnel was only previously available via multiseries
       getDefault: series => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
+    },
+  };
+
+  static columnSettings = {
+    column_title: {
+      title: t`Column title`,
+      widget: "input",
+      getDefault: column => formatColumn(column),
     },
   };
 
