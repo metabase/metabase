@@ -1170,6 +1170,7 @@ describe("Question", () => {
         query: {
           "source-table": 1,
         },
+        database: 1,
       },
     };
 
