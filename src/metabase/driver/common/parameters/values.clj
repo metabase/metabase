@@ -81,12 +81,8 @@
   [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
   (let [matching-params  (params-with-target params [:dimension [:template-tag (:name tag)]])
         normalize-params (fn [params]
-                           (let [params (for [param params]
-                                          ;; If param specifies a `:default` but no `:value`, use the default value
-                                          (merge (when-let [default (:default param)]
-                                                   {:value default})
-                                                 ;; remove `:target` which is no longer needed after this point.
-                                                 (dissoc param :target)))]
+                           ;; remove `:target` which is no longer needed after this point.
+                           (let [params (map #(dissoc % :target) params)]
                              (if (= (count params) 1)
                                (first params)
                                params)))]
