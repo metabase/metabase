@@ -5,6 +5,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
+
 import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -144,12 +146,15 @@ const mapStateToProps = (state, props) => {
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
+    isBookmarked: false,
   };
 };
 
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
+  setBookmarked: (id, shouldBeBookmarked) =>
+    Questions.objectActions.setFavorited(id, shouldBeBookmarked),
 };
 
 function QueryBuilder(props) {
@@ -262,9 +267,81 @@ function QueryBuilder(props) {
     }
   }, [uiControls, previousUIControls, forceUpdateDebounced]);
 
+<<<<<<< HEAD
   useEffect(() => {
     if (previousLocation && location !== previousLocation) {
       locationChanged(previousLocation, location, params);
+=======
+    if (nextProps.location !== this.props.location) {
+      nextProps.locationChanged(
+        this.props.location,
+        nextProps.location,
+        nextProps.params,
+      );
+    }
+
+    // NOTE: not sure if there's a better way to bind an action to something returned in mapStateToProps
+    // Could stack like so  and do it in a selector but ugh
+    //    @connect(null, { updateQuestion })
+    //    @connect(mapStateToProps, mapDispatchToProps)
+    if (nextProps.question) {
+      nextProps.question._update = nextProps.updateQuestion;
+    }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelQuery();
+    window.removeEventListener("resize", this.handleResize);
+    clearTimeout(this.timeout);
+    this.closeModal();
+  }
+
+  // When the window is resized we need to re-render, mainly so that our visualization pane updates
+  // Debounce the function to improve resizing performance.
+  handleResize = e => {
+    this.forceUpdateDebounced();
+  };
+
+  openModal = modal => {
+    this.props.setUIControls({ modal });
+  };
+
+  closeModal = () => {
+    this.props.setUIControls({ modal: null });
+  };
+
+  setRecentlySaved = recentlySaved => {
+    this.props.setUIControls({ recentlySaved });
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(() => {
+      this.props.setUIControls({ recentlySaved: null });
+    }, 5000);
+  };
+
+  toggleBookmark = () => {
+    const {
+      card: { id },
+      isBookmarked,
+      setBookmarked,
+    } = this.props;
+
+    setBookmarked(id, !isBookmarked);
+  };
+
+  handleCreate = async card => {
+    const { question, apiCreateQuestion } = this.props;
+    const questionWithUpdatedCard = question.setCard(card);
+    await apiCreateQuestion(questionWithUpdatedCard);
+
+    this.setRecentlySaved("created");
+  };
+
+  handleSave = async (card, { rerunQuery = false } = {}) => {
+    const { question, apiUpdateQuestion, updateUrl } = this.props;
+    const questionWithUpdatedCard = question.setCard(card);
+    await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+    if (!rerunQuery) {
+      await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
     }
   }, [location, params, previousLocation, locationChanged]);
 
