@@ -26,19 +26,6 @@ compile_java_sources() {
     fi
 }
 
-compile_spark_sql_aot_sources() {
-    cd "$project_root"
-
-    echo "Compile Spark SQL AOT source files in $project_root/modules/drivers/sparksql if needed..."
-    if [ ! -d "$project_root/modules/drivers/sparksql/target/classes" ]; then
-        echo 'Compile Spark SQL AOT source files'
-        cd "$project_root/modules/drivers"
-        clojure -Sforce -X:deps prep
-    else
-        echo 'Spark SQL AOT source files are already compiled'
-    fi
-}
-
 prep_deps() {
     if compile_java_sources; then
         echo "Java sources => OK"
@@ -46,14 +33,6 @@ prep_deps() {
         echo 'Compilation failed (WHY?!); clearing classpath caches and trying again...'
         clear_cpcaches
         compile_java_sources
-    fi
-
-    if compile_spark_sql_aot_sources; then
-        echo "Spark SQL AOT sources => OK"
-    else
-        echo 'Compilation failed (WHY?!); clearing classpath caches and trying again...'
-        clear_cpcaches
-        compile_spark_sql_aot_sources
     fi
 
     cd "$project_root"

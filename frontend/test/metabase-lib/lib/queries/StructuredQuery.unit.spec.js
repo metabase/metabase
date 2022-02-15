@@ -158,6 +158,12 @@ describe("StructuredQuery", () => {
       it("A valid query should be editable", () => {
         expect(query.isEditable()).toBe(true);
       });
+
+      it("should be not editable when database object is missing", () => {
+        const q = makeQuery();
+        q.database = () => null;
+        expect(q.isEditable()).toBe(false);
+      });
     });
     describe("isEmpty", () => {
       it("tells that a non-empty query is not empty", () => {
