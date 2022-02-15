@@ -195,6 +195,19 @@
              [field-name (let [flattened-row (flatten-row field-val)]
                            (into {} (map (fn [[k v]] [k (type v)]) flattened-row)))])))
 
+(defn- describe-json-xform [member]
+  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+         (map #(into {} %))
+         (map row->types)) member))
+
+(defn- describe-json-rf
+  ([] nil)
+  ([fst] fst)
+  ([fst snd]
+   (if (or (nil? fst) (= (hash (:data fst)) (hash (:data snd))))
+     snd
+     {:data nil})))
+
 (defn- describe-table-json*
   [driver conn table]
   (let [map-inner        (fn [f xs] (map #(into {}
@@ -205,19 +218,8 @@
         json-field-names (mapv (comp keyword :name) json-fields)
         query            (db/reducible-query {:select json-field-names
                                               :from   [(keyword (:name table))]
-                                              :limit  json-sample-limit})
-        res              (transduce (comp
-                                      (map :data)
-                                      (map json/parse-string))
-                                    str query)
-        res2             (transduce (comp
-                                      (map :data)
-                                      (map json/parse-string))
-                                    conj query)]
-        ;; parsed-query     (map-inner json/parse-string query)
-        ;; types            (map row->types parsed-query)
-        ;; hashes           (map-inner hash types)]
-    res2))
+                                              :limit  json-sample-limit})]
+    (transduce describe-json-xform describe-json-rf query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
