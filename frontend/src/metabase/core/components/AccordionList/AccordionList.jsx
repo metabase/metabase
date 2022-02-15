@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
@@ -45,8 +46,6 @@ export default class AccordionList extends Component {
       fixedWidth: true,
       minHeight: 10,
     });
-
-    this.containerRef = React.createRef();
   }
 
   static propTypes = {
@@ -127,11 +126,7 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
-    if (this.isVirtualized()) {
-      // HACK: When passing ref to containerProps it becomes unset inside Grid
-      // which causes errors when scrolling in some cases
-      this.containerRef.current = this._list.Grid._scrollingContainer;
-    }
+    this.container = ReactDOM.findDOMNode(this);
 
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
@@ -140,11 +135,11 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
-      const hasFocusedChildren = this.containerRef?.current?.contains(
+      const hasFocusedChildren = this.container.contains(
         document.activeElement,
       );
       if (!hasFocusedChildren && this.props.hasInitialFocus) {
-        this.containerRef?.current?.focus();
+        this.container.focus();
       }
 
       const index = this._initialSelectedRowIndex;
@@ -547,7 +542,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this.containerRef?.current?.focus();
+    this.container?.focus();
   };
 
   render() {
@@ -565,7 +560,6 @@ export default class AccordionList extends Component {
       return (
         <AccordionListRoot
           role="tree"
-          ref={this.containerRef}
           onKeyDown={this.handleKeyDown}
           tabIndex={-1}
           className={className}
