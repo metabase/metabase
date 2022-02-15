@@ -978,9 +978,9 @@
   be included with their site-wide value, if a site-wide value is set.
 
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
-  [& {:as options}]
+  [& options]
   (binding [*user-local-values* (atom nil)]
-    (apply admin-writable-settings (mapcat identity options))))
+    (apply admin-writable-settings options)))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
