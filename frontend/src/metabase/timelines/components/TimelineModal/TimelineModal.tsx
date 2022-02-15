@@ -77,6 +77,10 @@ const getMenuItems = (timeline: Timeline, collection: Collection) => {
       title: t`Edit timeline details`,
       link: Urls.editTimelineInCollection(timeline, collection),
     },
+    {
+      title: t`View archived events`,
+      link: Urls.timelineArchiveInCollection(timeline, collection),
+    },
   ];
 };
 
