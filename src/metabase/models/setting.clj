@@ -980,7 +980,7 @@
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
   [& {:as options}]
   (binding [*user-local-values* (atom nil)]
-    (admin-writable-settings options)))
+    (apply admin-writable-settings (mapcat identity options))))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
