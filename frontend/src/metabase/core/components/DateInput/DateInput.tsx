@@ -5,6 +5,7 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 import moment, { Moment } from "moment";
@@ -20,8 +21,10 @@ export type DateInputAttributes = Omit<
 
 export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
+  placeholder?: string;
   readOnly?: boolean;
   fullWidth?: boolean;
+  autoFocus?: boolean;
   onChange?: (value: Moment | undefined) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -30,8 +33,10 @@ export interface DateInputProps extends DateInputAttributes {
 const DateInput = forwardRef(function DateInput(
   {
     value,
+    placeholder,
     readOnly,
     fullWidth,
+    autoFocus,
     onChange,
     onFocus,
     onBlur,
@@ -39,7 +44,8 @@ const DateInput = forwardRef(function DateInput(
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [text, setText] = useState(value?.format(DATE_FORMAT));
+  const [text, setText] = useState(() => value?.format(DATE_FORMAT));
+  const defaultPlaceholder = useMemo(() => moment().format(DATE_FORMAT), []);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -76,8 +82,10 @@ const DateInput = forwardRef(function DateInput(
     <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
       <Input
         value={text}
+        placeholder={placeholder ?? defaultPlaceholder}
         readOnly={readOnly}
         fullWidth={fullWidth}
+        autoFocus={autoFocus}
         borderless
         onChange={handleChange}
         onFocus={onFocus}
