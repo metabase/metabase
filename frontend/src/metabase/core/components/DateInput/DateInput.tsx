@@ -2,7 +2,7 @@ import React, {
   ChangeEvent,
   FocusEvent,
   forwardRef,
-  HTMLAttributes,
+  InputHTMLAttributes,
   Ref,
   useCallback,
   useMemo,
@@ -21,8 +21,8 @@ import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
 const DATE_FORMAT = "MM/DD/YYYY";
 
 export type DateInputAttributes = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "onChange" | "onFocus" | "onBlur"
+  InputHTMLAttributes<HTMLDivElement>,
+  "value" | "onChange"
 >;
 
 export interface DateInputProps extends DateInputAttributes {
@@ -32,25 +32,21 @@ export interface DateInputProps extends DateInputAttributes {
   disabled?: boolean;
   error?: boolean;
   fullWidth?: boolean;
-  autoFocus?: boolean;
-  tabIndex?: number;
   onChange?: (value: Moment | undefined) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
   {
+    className,
+    style,
     value,
     placeholder,
     readOnly,
     disabled,
     error,
     fullWidth,
-    autoFocus,
-    tabIndex,
     onChange,
-    onFocus,
     onBlur,
     ...props
   }: DateInputProps,
@@ -136,23 +132,22 @@ const DateInput = forwardRef(function DateInput(
     >
       <InputRoot
         ref={ref}
+        className={className}
+        style={style}
         readOnly={readOnly}
         error={error}
         fullWidth={fullWidth}
-        {...props}
       >
         <Input
+          {...props}
           value={text}
           placeholder={placeholder ?? initialPlaceholder}
           readOnly={readOnly}
           disabled={disabled}
           error={error}
           fullWidth={fullWidth}
-          autoFocus={autoFocus}
-          tabIndex={tabIndex}
           borderless
           onChange={handleInputChange}
-          onFocus={onFocus}
           onBlur={handleInputBlur}
         />
         {!readOnly && !disabled && (
