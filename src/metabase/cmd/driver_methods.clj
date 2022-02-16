@@ -30,14 +30,10 @@
 
 (defn print-available-multimethods
   "Print a list of all multimethods available for a driver to implement,
-  along with their docstrings."
-  []
+  and maybe their docstrings."
+  [docstring]
   (doseq [[namespc multimethods] (available-multimethods)]
     (println (u/format-color 'blue namespc))
     (doseq [[symb varr] multimethods]
-      (println (str/join " " (cons (u/format-color 'green symb) (:arglists (meta varr))))
-                         "\n"
-                         (:doc (meta varr)))
-    (print "\n"))))
-
-
+      (println (str/join " " (cons (u/format-color 'green symb) (:arglists (meta varr)))))
+      (if docstring (println (:doc (meta varr)) "\n")))))
