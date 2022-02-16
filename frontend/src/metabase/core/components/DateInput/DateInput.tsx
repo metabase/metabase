@@ -116,7 +116,7 @@ const DateInput = forwardRef(function DateInput(
   return (
     <TippyPopover
       trigger="manual"
-      placement="bottom"
+      placement="bottom-start"
       visible={isOpened}
       interactive
       content={
