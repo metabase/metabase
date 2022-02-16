@@ -28,14 +28,15 @@
   (db/insert! Timeline (assoc body :creator_id api/*current-user-id*)))
 
 (api/defendpoint GET "/"
-  "Fetch a list of [[Timelines]]."
+  "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [archived]
   {archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (db/select Timeline [:where [:= :archived archived?]])))
 
 (api/defendpoint GET "/:id"
-  "Fetch the [[Timeline]] with `id`."
+  "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
+  `archived=true` to return all events on the timeline, both archived and unarchived."
   [id include archived]
   {include  (s/maybe include-events-schema)
    archived (s/maybe su/BooleanString)}
@@ -46,7 +47,8 @@
       (timeline-event/include-events-singular {:events/all? archived?}))))
 
 (api/defendpoint PUT "/:id"
-  "Update the [[Timeline]] with `id`."
+  "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
+  events in that timeline."
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    description   (s/maybe s/Str)
@@ -70,9 +72,3 @@
 ;; todo: icons
 ;; todo: how does updated-at work?
 (api/define-routes)
-
-
-(comment
-  (db/update-where! TimelineEvent {:timeline_id 1} :archived true)
-  (map :archived (:events (hydrate (Timeline 1) :events)))
-  )
