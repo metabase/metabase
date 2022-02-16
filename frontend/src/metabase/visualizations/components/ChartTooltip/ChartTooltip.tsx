@@ -2,7 +2,7 @@ import React, { useMemo, MouseEvent } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import { Column } from "metabase-types/types/Dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValueForTooltip, getEventTarget } from "./utils";
 
 type VisualizationSettings = Record<string, unknown> & {
   column?: (col: Column) => Column;
@@ -115,35 +115,3 @@ const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
     </td>
   </tr>
 );
-
-// only exported for testing, so leaving this here rather than a formatting file
-export function formatValueForTooltip({
-  value,
-  column,
-  settings,
-}: {
-  value?: unknown;
-  column?: Column;
-  settings?: VisualizationSettings;
-}) {
-  return formatValue(value, {
-    ...(settings && settings.column && column
-      ? settings.column(column)
-      : { column }),
-    type: "tooltip",
-    majorWidth: 0,
-  });
-}
-
-function getEventTarget(event: MouseEvent) {
-  let target = document.getElementById("popover-event-target");
-  if (!target) {
-    target = document.createElement("div");
-    target.id = "popover-event-target";
-    document.body.appendChild(target);
-  }
-  target.style.left = event.clientX - 3 + "px";
-  target.style.top = event.clientY - 3 + "px";
-
-  return target;
-}
