@@ -8,10 +8,10 @@ import { t } from "ttag";
 
 import {
   columnsAreValid,
+  getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
-import { formatColumn } from "metabase/lib/formatting";
 import { keyForColumn } from "metabase/lib/dataset";
 
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
@@ -555,7 +555,7 @@ export const GRAPH_AXIS_SETTINGS = {
         const column = series[0].data.cols[0];
         const key = keyForColumn(column);
         const chartSettings = vizSettings.column_settings?.[key];
-        return chartSettings?.column_title || formatColumn(column);
+        return chartSettings?.column_title || getFriendlyName(column);
       }
 
       return null;
@@ -587,7 +587,7 @@ export const GRAPH_AXIS_SETTINGS = {
 
             const key = keyForColumn(metricCol);
             const chartSettings = vizSettings.column_settings?.[key];
-            return chartSettings?.column_title || formatColumn(metricCol);
+            return chartSettings?.column_title || metricCol.display_name;
           }),
         ),
       );

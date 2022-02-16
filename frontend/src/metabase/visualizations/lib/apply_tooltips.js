@@ -4,10 +4,11 @@ import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
+import { getFriendlyName } from "./utils";
 
 export function getClickHoverObject(
   d,
@@ -40,7 +41,7 @@ export function getClickHoverObject(
 
     const columnSettings = settings.column(col);
 
-    return columnSettings?.column_title || formatColumn(col);
+    return columnSettings?.column_title || getFriendlyName(col);
   }
 
   let data = [];

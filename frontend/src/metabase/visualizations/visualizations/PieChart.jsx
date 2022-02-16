@@ -19,7 +19,7 @@ import {
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import { color, getColorsForValues } from "metabase/lib/colors";
 
@@ -199,7 +199,7 @@ export default class PieChart extends Component {
     column_title: {
       title: t`Column title`,
       widget: "input",
-      getDefault: column => formatColumn(column),
+      getDefault: column => getFriendlyName(column),
     },
   };
 

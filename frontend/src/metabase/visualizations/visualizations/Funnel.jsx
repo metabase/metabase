@@ -9,8 +9,9 @@ import {
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   metricSetting,
@@ -136,7 +137,7 @@ export default class Funnel extends Component {
     column_title: {
       title: t`Column title`,
       widget: "input",
-      getDefault: column => formatColumn(column),
+      getDefault: column => getFriendlyName(column),
     },
   };
 
