@@ -321,6 +321,46 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression"],
   },
+  "get-year": {
+    displayName: `year`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-quarter": {
+    displayName: `quarter`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-month": {
+    displayName: `month`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-day": {
+    displayName: `day`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-day-of-week": {
+    displayName: `weekday`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-hour": {
+    displayName: `hour`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-minute": {
+    displayName: `minute`,
+    type: "number",
+    args: ["expression"],
+  },
+  "get-second": {
+    displayName: `second`,
+    type: "number",
+    args: ["expression"],
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
@@ -402,6 +442,15 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "is-empty",
   // other
   "coalesce",
+  // date/time
+  "get-year",
+  "get-quarter",
+  "get-month",
+  "get-day",
+  "get-weekday",
+  "get-hour",
+  "get-minute",
+  "get-second",
 ]);
 
 export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);

@@ -59,3 +59,75 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.button("Done").should("not.be.disabled");
   });
 });
+
+describe("scenarios > question > custom column > advanced date/time functions", () => {
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+  });
+
+  it("should support get-year", () => {
+    enterCustomColumnDetails({
+      formula: "year([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-quarter", () => {
+    enterCustomColumnDetails({
+      formula: "quarter([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-month", () => {
+    enterCustomColumnDetails({
+      formula: "month([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-day", () => {
+    enterCustomColumnDetails({
+      formula: "day([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-day-of-week", () => {
+    enterCustomColumnDetails({
+      formula: "weekday([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-hour", () => {
+    enterCustomColumnDetails({
+      formula: "hour([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-minute", () => {
+    enterCustomColumnDetails({
+      formula: "minute([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it("should support get-second", () => {
+    enterCustomColumnDetails({
+      formula: "second([Created At])", // Formula was intentionally written without spaces (important for this repro)!
+      name: "Math",
+    });
+    cy.button("Done").should("not.be.disabled");
+  });
+});

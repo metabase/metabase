@@ -532,6 +532,114 @@ const helperTextStrings = [
       },
     ],
   },
+  {
+    name: "is-empty",
+    structure: "isempty(" + t`column` + ")",
+    description: t`Checks if a column is empty`,
+    example: "isempty([" + t`Name` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+      },
+    ],
+  },
+  {
+    name: "get-year",
+    structure: "year(" + t`column` + ")",
+    description: t`Gets the year of a date column`,
+    example: "year([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-quarter",
+    structure: "quarter(" + t`column` + ")",
+    description: t`Gets the quarter of a date column`,
+    example: "quarter([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-month",
+    structure: "month(" + t`column` + ")",
+    description: t`Gets the month of a date column`,
+    example: "month([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-day",
+    structure: "day(" + t`column` + ")",
+    description: t`Gets the day of a date column`,
+    example: "day([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-day-of-week",
+    structure: "weekday(" + t`column` + ")",
+    description: t`Gets the week of a date column`,
+    example: "weekday([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-hour",
+    structure: "hour(" + t`column` + ")",
+    description: t`Gets the hour of a date column`,
+    example: "hour([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-minute",
+    structure: "minute(" + t`column` + ")",
+    description: t`Gets the minute of a date column`,
+    example: "minute([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
+  {
+    name: "get-second",
+    structure: "second(" + t`column` + ")",
+    description: t`Gets the second of a date column`,
+    example: "second([" + t`Created At` + "])",
+    args: [
+      {
+        name: t`column`,
+        description: t`The date time`,
+      },
+    ],
+  },
 ];
 
 export default name => helperTextStrings.find(h => h.name === name);
