@@ -28,6 +28,7 @@ export interface DateInputProps extends DateInputAttributes {
   placeholder?: string;
   readOnly?: boolean;
   disabled?: boolean;
+  error?: boolean;
   fullWidth?: boolean;
   autoFocus?: boolean;
   onChange?: (value: Moment | undefined) => void;
@@ -41,6 +42,7 @@ const DateInput = forwardRef(function DateInput(
     placeholder,
     readOnly,
     disabled,
+    error,
     fullWidth,
     autoFocus,
     onChange,
@@ -128,12 +130,19 @@ const DateInput = forwardRef(function DateInput(
       }
       onHide={handlePopoverClose}
     >
-      <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
+      <InputRoot
+        ref={ref}
+        readOnly={readOnly}
+        error={error}
+        fullWidth={fullWidth}
+        {...props}
+      >
         <Input
           value={text}
           placeholder={placeholder ?? initialPlaceholder}
           readOnly={readOnly}
           disabled={disabled}
+          error={error}
           fullWidth={fullWidth}
           autoFocus={autoFocus}
           borderless

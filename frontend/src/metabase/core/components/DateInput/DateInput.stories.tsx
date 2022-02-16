@@ -14,3 +14,8 @@ const Template: ComponentStory<typeof DateInput> = args => {
 };
 
 export const Default = Template.bind({});
+
+export const WithError = Template.bind({});
+WithError.args = {
+  error: true,
+};
