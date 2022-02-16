@@ -48,17 +48,9 @@ const DateInput = forwardRef(function DateInput(
   ref: Ref<HTMLDivElement>,
 ) {
   const [text, setText] = useState(() => value?.format(DATE_FORMAT));
-  const [isOpened, setIsOpened] = useState(false);
+  const [target, setTarget] = useState<HTMLButtonElement | null>(null);
   const initialValue = useMemo(() => moment(), []);
   const initialPlaceholder = useMemo(() => moment().format(DATE_FORMAT), []);
-
-  const handleIconClick = useCallback(() => {
-    setIsOpened(isOpened => !isOpened);
-  }, []);
-
-  const handlePopoverHide = useCallback(() => {
-    setIsOpened(false);
-  }, []);
 
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +87,6 @@ const DateInput = forwardRef(function DateInput(
     (newText: string) => {
       const newValue = moment(newText);
       setText(newValue.format(DATE_FORMAT));
-      setIsOpened(false);
       onChange?.(newValue);
     },
     [onChange],
@@ -103,8 +94,10 @@ const DateInput = forwardRef(function DateInput(
 
   return (
     <TippyPopover
-      visible={isOpened}
+      trigger="click"
+      triggerTarget={target}
       placement="bottom"
+      interactive
       content={
         <Calendar
           selected={value}
@@ -113,8 +106,6 @@ const DateInput = forwardRef(function DateInput(
           isRangePicker={false}
         />
       }
-      interactive
-      onHide={handlePopoverHide}
     >
       <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
         <Input
@@ -128,11 +119,12 @@ const DateInput = forwardRef(function DateInput(
           onFocus={onFocus}
           onBlur={handleInputBlur}
         />
-        <InputIconContainer onClick={handleIconClick}>
-          <InputIcon
-            name="calendar"
-            tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}
-          />
+        <InputIconContainer
+          ref={setTarget}
+          tabIndex={-1}
+          aria-label={t`Show calendar`}
+        >
+          <InputIcon name="calendar" tooltip={t`Show calendar`} />
         </InputIconContainer>
       </InputRoot>
     </TippyPopover>

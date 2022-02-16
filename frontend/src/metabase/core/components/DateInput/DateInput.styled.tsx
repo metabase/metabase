@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export interface InputRootProps {
   readOnly?: boolean;
@@ -25,6 +26,6 @@ export const InputIcon = styled(Icon)`
   cursor: pointer;
 `;
 
-export const InputIconContainer = styled.div`
+export const InputIconContainer = styled(IconButtonWrapper)`
   margin: 0 0.5rem;
 `;
