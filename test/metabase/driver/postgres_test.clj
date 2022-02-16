@@ -299,14 +299,14 @@
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.describe_json_table;"
-                           "CREATE TABLE PUBLIC.describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
-                           "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
-                           "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');"]]
+        (doseq [statement ["DROP TABLE IF EXISTS describe_json_table;"
+                           "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
+                           "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
+                           "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');"]]
           (jdbc/execute! spec [statement]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (sync/sync-database! database)
-          (is (= (driver/describe-table-json :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))))
+          (is (= (driver/describe-table :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))))
 
 (mt/defdataset with-uuid
   [["users"
