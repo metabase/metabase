@@ -306,7 +306,7 @@
           (jdbc/execute! spec [statement]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (sync/sync-database! database)
-          (is (= (driver/describe-table-json :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))
+          (is (= (driver/describe-table-json :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))))
 
 (mt/defdataset with-uuid
   [["users"
