@@ -14,13 +14,13 @@ describe("DateInput", () => {
     jest.useRealTimers();
   });
 
-  it("should allow specifying a label", () => {
+  it("should set a label", () => {
     render(<DateInput aria-label="Date" />);
 
     expect(screen.getByLabelText("Date")).toBeInTheDocument();
   });
 
-  it("should allow entering a date with a text input", () => {
+  it("should accept text input", () => {
     const onChange = jest.fn();
 
     render(<DateInput onChange={onChange} />);
