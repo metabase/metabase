@@ -11,7 +11,7 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(def include-events-schema
+(def Include
   "Events Query Parameters Schema"
   (s/enum "events"))
 
@@ -38,7 +38,7 @@
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [id include archived]
-  {include  (s/maybe include-events-schema)
+  {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]

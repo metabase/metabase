@@ -530,7 +530,7 @@
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
-  {include  (s/maybe timeline-api/include-events-schema)
+  {include  (s/maybe timeline-api/Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
@@ -539,7 +539,7 @@
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
-  {include  (s/maybe timeline-api/include-events-schema)
+  {include  (s/maybe timeline-api/Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")

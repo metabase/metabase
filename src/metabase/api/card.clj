@@ -179,7 +179,7 @@
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
-  {include (s/maybe timeline-api/include-events-schema)
+  {include (s/maybe timeline-api/Include)
    start   (s/maybe su/TemporalString)
    end     (s/maybe su/TemporalString)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
