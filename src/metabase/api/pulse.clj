@@ -135,10 +135,11 @@
                  ;; if we have Slack enabled build a dynamic list of channels/users
                  :else
                  (try
-                   (let [slack-channels (for [channel (slack/conversations-list)]
-                                          (str \# (:name channel)))
-                         slack-users    (for [user (slack/users-list)]
-                                          (str \@ (:name user)))]
+                   (let [slack-channels-future        (future (for [channel (slack/conversations-list)]
+                                                         (str \# (:name channel))))
+                         slack-users-future           (future (for [user (slack/users-list)]
+                                                         (str \@ (:name user))))
+                         [slack-channels slack-users] (map deref [slack-channels-future slack-users-future])]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
