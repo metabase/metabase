@@ -80,7 +80,7 @@ export const ListField = ({
       option[0]
         .toString()
         .toLowerCase()
-        .startsWith(trimmedFilter),
+        .includes(trimmedFilter),
     );
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
