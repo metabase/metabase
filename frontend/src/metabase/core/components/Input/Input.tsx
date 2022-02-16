@@ -1,4 +1,4 @@
-import React, { forwardRef, InputHTMLAttributes, ReactNode } from "react";
+import React, { forwardRef, InputHTMLAttributes, ReactNode, Ref } from "react";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { InputField, InputIconContainer, InputRoot } from "./Input.styled";
@@ -10,33 +10,26 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: ReactNode;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+const Input = forwardRef(function Input(
   { className, error, fullWidth, helperText, ...rest }: InputProps,
-  ref,
+  ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <InputRoot className={className} fullWidth={fullWidth}>
+    <InputRoot ref={ref} className={className} fullWidth={fullWidth}>
       <InputField
         {...rest}
         hasError={error}
         hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}
-        ref={ref}
       />
       {helperText && (
         <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
-          <InputHelpContent />
+          <InputIconContainer>
+            <Icon name="info" />
+          </InputIconContainer>
         </Tooltip>
       )}
     </InputRoot>
-  );
-});
-
-const InputHelpContent = forwardRef(function InputHelpContent(props, ref: any) {
-  return (
-    <InputIconContainer ref={ref}>
-      <Icon name="info" />
-    </InputIconContainer>
   );
 });
 
