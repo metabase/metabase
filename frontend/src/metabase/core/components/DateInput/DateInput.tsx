@@ -33,6 +33,7 @@ export interface DateInputProps extends DateInputAttributes {
   error?: boolean;
   fullWidth?: boolean;
   autoFocus?: boolean;
+  tabIndex?: number;
   onChange?: (value: Moment | undefined) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -47,6 +48,7 @@ const DateInput = forwardRef(function DateInput(
     error,
     fullWidth,
     autoFocus,
+    tabIndex,
     onChange,
     onFocus,
     onBlur,
@@ -147,6 +149,7 @@ const DateInput = forwardRef(function DateInput(
           error={error}
           fullWidth={fullWidth}
           autoFocus={autoFocus}
+          tabIndex={tabIndex}
           borderless
           onChange={handleInputChange}
           onFocus={onFocus}
