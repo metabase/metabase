@@ -58,10 +58,6 @@ Drivers that use a JDBC driver under the hood will need to add a `register-jdbc-
 
 The if-you're-interested reason is that Java's JDBC `DriverManager` won't use JDBC drivers loaded with something other than the system `ClassLoader`, which effectively only means `Drivermanager` will only use JDBC driver classes that are packaged as part of the core Metabase uberjar. Since the system classloader doesn't allow you to load the classpath at runtime, Metabase uses a custom `ClassLoader` to initialize plugins. To work around this limitation, Metabase ships with a JDBC proxy driver class that can wrap other JDBC drivers. When Metabase calls `register-jdbc-driver`, Metabase actually registers a new instance of the proxy class that forwards method calls to the actual JDBC driver. `DriverManager` is perfectly fine with this.
 
-## Driver initialization
-
-All drivers, even drivers that aren't packaged as part of plugins, can include additional code to be executed once (and only once) using `metabase.driver/initialize!` when Metabase initializes the driver, that is, before the driver establishes a connection to a database for the first time. (In fact, Metabase uses `metabase.driver/initialize!` to lazy-load the driver.) There are only a few cases where you should use `metabase.driver/initialize`, such as allocating resources or setting certain system properties.
-
 ## Building the driver
 
 To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers).
