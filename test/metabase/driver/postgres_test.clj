@@ -283,6 +283,13 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
+(deftest describe-json-test
+  (mt/test-driver :postgres
+    (testing "flatten row")
+    (testing "describes a json column which has a coherent schema")
+    (testing "describes a json column which does not a coherent schema")
+    (testing "handles multiple mixed json columns OK")))
+
 (mt/defdataset with-uuid
   [["users"
     [{:field-name "user_id", :base-type :type/UUID}]
