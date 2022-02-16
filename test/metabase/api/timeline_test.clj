@@ -66,11 +66,30 @@
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
     (mt/with-temp Collection [collection {:name "Important Data"}]
-      (mt/with-temp* [Timeline [tl-a {:name "Timeline A" :archived true}]]
+      (mt/with-temp* [Timeline [tl-a {:name "Timeline A" :archived true}]
+                      Timeline [tl-b {:name "Timeline B"}]
+                      TimelineEvent [event-a {:name        "event-a"
+                                              :timeline_id (u/the-id tl-b)}]
+                      TimelineEvent [event-b {:name        "event-b"
+                                              :timeline_id (u/the-id tl-b)}]]
         (testing "check that we successfully updated a timeline"
           (is (false?
                (->> (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-a)) {:archived false})
-                    :archived))))))))
+                    :archived))))
+        (testing "check that we archive all events in a timeline when the timeline is archived"
+          ;; update the timeline to be archived
+          (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived true})
+          (is (true?
+               (->> (db/select TimelineEvent :timeline_id (u/the-id tl-b))
+                    (map :archived)
+                    (every? true?)))))
+        (testing "check that we un-archive all events in a timeline when the timeline is un-archived"
+          ;; since we archived in the previous step, we unarchive the same timeline here.
+          (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived false})
+          (is (true?
+               (->> (db/select TimelineEvent :timeline_id (u/the-id tl-b))
+                    (map :archived)
+                    (every? false?)))))))))
 
 (defn- include-events-request
   [timeline archived?]
@@ -115,9 +134,3 @@
             (testing "Returns all events when archived is true"
               (is (= #{"event-e" "event-f"}
                      (event-names (include-events-request timeline true)))))))))))
-
-
-;; TODO: Add timelines test to collection api tests + hydrating events + archived events
-;; TODO: Add timelines test to card api tests + hydrating events + archived events
-;; TODO: Add collection/card start/end time tests
-;; TODO: Add timeline/timelineevent MODEL Tests?
