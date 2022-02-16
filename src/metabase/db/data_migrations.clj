@@ -15,7 +15,6 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.pulse :refer [Pulse]]
@@ -82,18 +81,6 @@
       (db/insert! Permissions
         :group_id (:id (perm-group/admin))
         :object   "/"))))
-
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
-;; DB
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
-  (let [db-ids (db/select-ids Database)]
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]
-            database-id    db-ids]
-      (u/ignore-exceptions
-        (db/insert! Permissions
-          :object   (perms/data-perms-path database-id)
-          :group_id group-id)))))
 
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
