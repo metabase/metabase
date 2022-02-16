@@ -68,11 +68,10 @@
       (map :members results))))
 
 (defn- ordered-groups
-  "Return a sequence of ordered `PermissionsGroups`, excluding the `MetaBot` group."
+  "Return a sequence of ordered `PermissionsGroups`."
   [limit offset]
   (db/select PermissionsGroup
-             (cond-> {:where    [:not= :id (u/the-id (group/metabot))]
-                      :order-by [:%lower.name]}
+             (cond-> {:order-by [:%lower.name]}
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset))))
 

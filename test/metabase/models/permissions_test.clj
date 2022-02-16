@@ -575,16 +575,6 @@
       (is (= {"" {(u/the-id table) :all}}
              (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
 
-(deftest metabot-graph-test
-  (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
-                "only have Collection permissions")
-    ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
-    (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
-      (mt/with-temp* [Database    [db]
-                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/data-perms-path db)}]]
-        (is (= false
-               (contains? (:groups (perms/data-perms-graph)) (u/the-id (group/metabot)))))))))
-
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
     (mt/with-temp PermissionsGroup [group]

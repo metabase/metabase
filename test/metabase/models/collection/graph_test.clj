@@ -68,10 +68,9 @@
   ;; force lazy creation of the three magic groups as needed
   (group/all-users)
   (group/admin)
-  (group/metabot)
   ;; now fetch the graph
   (-> (graph/graph)
-      (only-groups (concat [(group/all-users) (group/metabot) (group/admin)] groups))
+      (only-groups (concat [(group/all-users) (group/admin)] groups))
       (only-collections (cons :root collections))))
 
 (deftest basic-test
@@ -79,7 +78,6 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
               :groups   {(u/the-id (group/all-users)) {:root :none}
-                         (u/the-id (group/metabot))   {:root :none}
                          (u/the-id (group/admin))     {:root :write}}}
              (graph :clear-revisions? true))))))
 
@@ -89,7 +87,6 @@
       (mt/with-temp Collection [collection]
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :none}
-                           (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                            (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
@@ -100,7 +97,6 @@
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :read}
-                           (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                            (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
@@ -111,7 +107,6 @@
         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
         (is (=  {:revision 0
                  :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :write}
-                            (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                             (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                 (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
@@ -121,7 +116,6 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (=   {:revision 0
                   :groups   {(u/the-id (group/all-users)) {:root :none}
-                             (u/the-id (group/metabot))   {:root :none}
                              (u/the-id (group/admin))     {:root :write}
                              (u/the-id new-group)         {:root :none}}}
                  (graph :clear-revisions? true, :groups [new-group])))))))
@@ -133,7 +127,6 @@
         (perms/grant-collection-read-permissions! new-group collection/root-collection)
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
-                           (u/the-id (group/metabot))   {:root :none}
                            (u/the-id (group/admin))     {:root :write}
                            (u/the-id new-group)         {:root :read}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
@@ -145,7 +138,6 @@
         (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
-                           (u/the-id (group/metabot))   {:root :none}
                            (u/the-id (group/admin))     {:root :write}
                            (u/the-id new-group)         {:root :write}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
@@ -159,7 +151,6 @@
         (graph/update-graph! (graph :clear-revisions? true))
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
-                           (u/the-id (group/metabot))   {:root :none}
                            (u/the-id (group/admin))     {:root :write}}}
                (graph))
             "revision should not have changed, because there was nothing to do...")))))
@@ -175,7 +166,6 @@
                                          :read))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :read}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                              (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection]))))))))
 
@@ -188,7 +178,6 @@
                                          :write))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :write}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                              (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
@@ -204,7 +193,6 @@
                                          :none))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :none}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
                              (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
@@ -219,7 +207,6 @@
                                          :read))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
-                             (u/the-id (group/metabot))   {:root :none}
                              (u/the-id (group/admin))     {:root :write}
                              (u/the-id new-group)         {:root :read}}}
                  (graph :groups [new-group])))))))
@@ -234,7 +221,6 @@
                                          :write))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
-                             (u/the-id (group/metabot))   {:root :none}
                              (u/the-id (group/admin))     {:root :write}
                              (u/the-id new-group)         {:root :write}}}
                  (graph :groups [new-group]))))))))
@@ -251,7 +237,6 @@
                                          :none))
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
-                             (u/the-id (group/metabot))   {:root :none}
                              (u/the-id (group/admin))     {:root :write}
                              (u/the-id new-group)         {:root :none}}}
                  (graph :groups [new-group]))))))))
@@ -261,7 +246,6 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
               :groups   {(u/the-id (group/all-users)) {:root :none}
-                         (u/the-id (group/metabot))   {:root :none}
                          (u/the-id (group/admin))     {:root :write}}}
              (graph :clear-revisions? true)))))
 
@@ -271,7 +255,6 @@
       (mt/with-temp Collection [_ {:location (lucky-collection-children-location)}]
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
-                           (u/the-id (group/metabot))   {:root :none}
                            (u/the-id (group/admin))     {:root :write}}}
                (graph)))))))
 
@@ -286,7 +269,6 @@
         (testing "double-check that the graph is unchanged"
           (is (= {:revision 0
                   :groups   {(u/the-id (group/all-users)) {:root :none}
-                             (u/the-id (group/metabot))   {:root :none}
                              (u/the-id (group/admin))     {:root :write}}}
                  (graph))))
 

@@ -18,15 +18,14 @@
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
 
-  Makes use of functionality in the `metabase.db.schema-migrations-test.impl` namespace since that already does
-  what we need."
+  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
+  we need."
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)
      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [group/all-users (#'group/get-or-create-magic-group! group/all-users-group-name)
-                   group/admin     (#'group/get-or-create-magic-group! group/admin-group-name)
-                   group/metabot   (#'group/get-or-create-magic-group! group/metabot-group-name)]
+     (with-redefs [group/all-users (#'group/magic-group group/all-users-group-name)
+                   group/admin     (#'group/magic-group group/admin-group-name)]
        ~@body)))
 
 (t/deftest no-collections-test
