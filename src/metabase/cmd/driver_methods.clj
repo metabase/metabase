@@ -36,4 +36,4 @@
     (println (u/format-color 'blue namespc))
     (doseq [[symb varr] multimethods]
       (println (str/join " " (cons (u/format-color 'green symb) (:arglists (meta varr)))))
-      (if docstring (println (:doc (meta varr)) "\n")))))
+      (when docstring (println (:doc (meta varr)) "\n")))))
