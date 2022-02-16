@@ -14,6 +14,11 @@ export const InputRoot = styled.div<InputRootProps>`
   border: 1px solid ${darken("border", 0.1)};
   border-radius: 4px;
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
+
+  &:focus-within {
+    border-color: ${color("brand")};
+    transition: border 300ms ease-in-out;
+  }
 `;
 
 export const InputIcon = styled(Icon)`
