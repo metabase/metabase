@@ -295,7 +295,7 @@
             types {:bob {[:cobbs] clojure.lang.PersistentVector
                          [:dobbs :robbs] java.lang.Long}}]
         (is (= (#'postgres/row->types row) types))))
-    (testing "describes json columns and gives types for ones with coherent schemas"
+    (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -306,7 +306,8 @@
           (jdbc/execute! spec [statement]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (sync/sync-database! database)
-          (is (= (driver/describe-table :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))))
+          (is (= (driver/describe-table-json :postgres database {:name "describe_json_table"})
+                 {:coherent_json_val {["a"] java.lang.Long, ["b"] java.lang.Long} :incoherent_json_val nil})))))))
 
 (mt/defdataset with-uuid
   [["users"
