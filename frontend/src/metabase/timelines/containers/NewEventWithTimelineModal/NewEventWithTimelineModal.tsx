@@ -1,11 +1,12 @@
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
+import Timelines from "metabase/entities/timelines";
+import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
-import { createTimelineWithEvent } from "../../actions";
 import { ModalProps } from "../../types";
 
 const collectionProps = {
@@ -13,10 +14,17 @@ const collectionProps = {
     Urls.extractCollectionId(props.params.slug),
 };
 
-const mapDispatchToProps = {
-  onSubmit: createTimelineWithEvent,
-  onCancel: goBack,
-};
+const mapDispatchToProps = (dispatch: any) => ({
+  onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
+    const action = Timelines.actions.createWithEvent(values, collection);
+    const response = await dispatch(action);
+    const timeline = Timelines.HACK_getObjectFromAction(response);
+    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+  },
+  onCancel: () => {
+    dispatch(goBack());
+  },
+});
 
 export default _.compose(
   Collections.load(collectionProps),
