@@ -156,7 +156,7 @@ const DateInput = forwardRef(function DateInput(
           onBlur={handleInputBlur}
         />
         {!readOnly && !disabled && (
-          <Tooltip tooltip={isOpened ? t`Hide calendar` : t`Open calendar`}>
+          <Tooltip tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}>
             <InputIconButton tabIndex={-1} onClick={handleIconClick}>
               <Icon name="calendar" />
             </InputIconButton>
