@@ -1,0 +1,149 @@
+import React, { useMemo, MouseEvent } from "react";
+import Tooltip from "metabase/components/Tooltip";
+import { Column } from "metabase-types/types/Dataset";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { formatValue } from "metabase/lib/formatting";
+
+type VisualizationSettings = Record<string, unknown> & {
+  column?: (col: Column) => Column;
+};
+
+type HoveredObject = {
+  index?: number;
+  axisIndex?: number;
+  seriesIndex?: number;
+  value?: unknown;
+  column?: Column;
+  data?: {
+    key?: string;
+    col?: Column;
+    value: unknown;
+  }[];
+  dimensions?: {
+    value: string;
+    column: Column;
+  }[];
+  settings?: VisualizationSettings;
+  element?: HTMLElement;
+  event?: MouseEvent;
+};
+
+type ChartTooltipProps = {
+  hovered?: HoveredObject;
+  settings: VisualizationSettings;
+};
+
+export default function ChartTooltip({ hovered, settings }: ChartTooltipProps) {
+  const rows = useMemo(() => {
+    if (!hovered) {
+      return [];
+    }
+    if (Array.isArray(hovered.data)) {
+      return hovered.data.map(d => ({
+        ...d,
+        key: d.key || (d.col && getFriendlyName(d.col)),
+      }));
+    }
+    if (hovered.value !== undefined || hovered.dimensions) {
+      const dimensions = [];
+      if (hovered.dimensions) {
+        dimensions.push(...hovered.dimensions);
+      }
+      if (hovered.value !== undefined) {
+        dimensions.push({ value: hovered.value, column: hovered.column });
+      }
+      return dimensions.map(({ value, column }) => ({
+        key: column && getFriendlyName(column),
+        value: value,
+        col: column,
+      }));
+    }
+    return [];
+  }, [hovered]);
+
+  const hasTargetElement =
+    hovered?.element != null && document.body.contains(hovered.element);
+  const hasTargetEvent = hovered?.event != null;
+
+  const isOpen = rows.length > 0 && (hasTargetElement || hasTargetEvent);
+
+  let target;
+  if (hasTargetElement) {
+    target = hovered.element;
+  } else if (hasTargetEvent) {
+    target = getEventTarget(hovered.event as MouseEvent);
+  }
+
+  return target ? (
+    <Tooltip
+      reference={target}
+      isOpen={isOpen}
+      tooltip={
+        <table className="py1 px2">
+          <tbody>
+            {rows.map(({ key, value, col }, index) => (
+              <TooltipRow
+                key={index}
+                name={key}
+                value={value}
+                column={col}
+                settings={settings}
+              />
+            ))}
+          </tbody>
+        </table>
+      }
+      maxWidth="unset"
+    />
+  ) : null;
+}
+
+type TooltipRowProps = {
+  name?: string;
+  value?: any;
+  column?: Column;
+  settings: VisualizationSettings;
+};
+
+const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
+  <tr>
+    {name ? <td className="text-light text-right pr1">{name}:</td> : <td />}
+    <td className="text-bold text-left">
+      {React.isValidElement(value)
+        ? value
+        : formatValueForTooltip({ value, column, settings })}
+    </td>
+  </tr>
+);
+
+// only exported for testing, so leaving this here rather than a formatting file
+export function formatValueForTooltip({
+  value,
+  column,
+  settings,
+}: {
+  value?: unknown;
+  column?: Column;
+  settings?: VisualizationSettings;
+}) {
+  return formatValue(value, {
+    ...(settings && settings.column && column
+      ? settings.column(column)
+      : { column }),
+    type: "tooltip",
+    majorWidth: 0,
+  });
+}
+
+function getEventTarget(event: MouseEvent) {
+  let target = document.getElementById("popover-event-target");
+  if (!target) {
+    target = document.createElement("div");
+    target.id = "popover-event-target";
+    document.body.appendChild(target);
+  }
+  target.style.left = event.clientX - 3 + "px";
+  target.style.top = event.clientY - 3 + "px";
+
+  return target;
+}
