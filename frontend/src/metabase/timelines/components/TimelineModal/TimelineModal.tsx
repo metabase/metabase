@@ -13,7 +13,7 @@ import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
 export interface TimelineModalProps {
   timeline: Timeline;
   collection: Collection;
-  archived: boolean;
+  archived?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
@@ -22,7 +22,7 @@ export interface TimelineModalProps {
 const TimelineModal = ({
   timeline,
   collection,
-  archived,
+  archived = false,
   onArchive,
   onUnarchive,
   onClose,
