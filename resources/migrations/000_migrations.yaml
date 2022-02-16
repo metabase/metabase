@@ -9908,6 +9908,103 @@ databaseChangeLog:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
   #
+  # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
+  #
+
+  # Create the magic Permissions Groups if they don't already exist.
+
+  # [add-users-to-default-permissions-groups 1 of 4]
+  - changeSet:
+      id: v43.00-002
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'All Users' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'All Users';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('All Users')
+
+  # [add-users-to-default-permissions-groups 2 of 4]
+  - changeSet:
+      id: v43.00-003
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'Administrators' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'Administrators';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('Administrators')
+
+  # Add existing Users to the magic Permissions Groups if needed.
+
+  # [add-users-to-default-permissions-groups 3 of 4]
+  - changeSet:
+      id: v43.00-004
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users to 'All Users' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                all_users_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'All Users'
+                ) all_users_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND all_users_group.id = pgm.group_id
+                WHERE pgm.id IS NULL;
+
+  # [add-users-to-default-permissions-groups 4 of 4]
+  - changeSet:
+      id: v43.00-005
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users with 'is_superuser' flag to 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                admin_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'Administrators'
+                ) admin_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND admin_group.id = pgm.group_id
+                WHERE u.is_superuser = true
+                  AND pgm.id IS NULL;
+
+  #
   # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
   #
   # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored

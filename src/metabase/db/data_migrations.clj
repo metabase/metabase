@@ -18,7 +18,6 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
@@ -74,22 +73,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 PERMISSIONS v1                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
-  (let [{all-users-group-id :id} (perm-group/all-users)
-        {admin-group-id :id}     (perm-group/admin)]
-    (binding [perm-membership/*allow-changing-all-users-group-members* true]
-      (doseq [{user-id :id, superuser? :is_superuser} (db/select [User :id :is_superuser])]
-        (u/ignore-exceptions
-          (db/insert! PermissionsGroupMembership
-            :user_id  user-id
-            :group_id all-users-group-id))
-        (when superuser?
-          (u/ignore-exceptions
-            (db/insert! PermissionsGroupMembership
-              :user_id  user-id
-              :group_id admin-group-id)))))))
 
 ;; admin group has a single entry that lets it access to everything
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-admin-group-root-entry

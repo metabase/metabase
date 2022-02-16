@@ -15,6 +15,7 @@
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
                                      User ViewLog]]
+            [metabase.models.permissions-group :as group]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -117,7 +118,10 @@
       (throw e))))
 
 (def ^:private table-select-fragments
-  {"metabase_field" "ORDER BY id ASC"}) ; ensure ID order to ensure that parent fields are inserted before children
+  {;; ensure ID order to ensure that parent fields are inserted before children
+   "metabase_field"    "ORDER BY id ASC"
+   ;; don't copy the magic Permissions Groups. They get created by Liquibase migrations.
+   "permissions_group" (format "WHERE name NOT IN ('%s', '%s')" group/all-users-group-name group/admin-group-name)})
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type ^java.sql.Connection target-db-conn]
   (with-open [source-conn (.getConnection source-data-source)]
@@ -152,8 +156,8 @@
 (defn- assert-db-empty
   "Make sure [target] application DB is empty before we start copying data."
   [data-source]
-  ;; check that there are no permissions groups yet -- the default ones normally get created during data migrations
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM permissions_group;")]
+  ;; check that there are no Users yet
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM core_user;")]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")

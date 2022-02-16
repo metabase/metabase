@@ -8,7 +8,8 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
@@ -17,11 +18,14 @@
             [metabase.models.interface :as mi]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import java.sql.Connection
            java.util.UUID))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -298,11 +302,20 @@
 (deftest remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
     (impl/test-migrations ["v43.00-001"] [migrate!]
-      (mt/with-temp Database [db {:name    "Legacy BigQuery driver DB"
-                                  :engine  :bigquery
-                                  :details {:service-account-json "{\"fake_key\": 14}"}}]
-        (migrate!)
-        (is (= :bigquery-cloud-sdk (db/select-one-field :engine Database :id (u/the-id db))))))))
+      (try
+        ;; we're using `simple-insert!` here instead of `with-temp` because Toucan `post-insert` for the DB will
+        ;; normally try to add it to the magic Permissions Groups which don't exist yet. They're added in later
+        ;; migrations
+        (let [db (db/simple-insert! Database {:name       "Legacy BigQuery driver DB"
+                                              :engine     "bigquery"
+                                              :details    (json/generate-string {:service-account-json "{\"fake_key\": 14}"})
+                                              :created_at :%now
+                                              :updated_at :%now})]
+          (migrate!)
+          (is (= [{:engine "bigquery-cloud-sdk"}]
+                 (db/query {:select [:engine], :from [Database], :where [:= :id (u/the-id db)]}))))
+        (finally
+          (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
