@@ -7,7 +7,7 @@ import DateInput from "./DateInput";
 describe("DateInput", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(2015, 0, 1));
+    jest.setSystemTime(new Date(2015, 0, 10));
   });
 
   afterEach(() => {
@@ -18,6 +18,12 @@ describe("DateInput", () => {
     render(<DateInput aria-label="Date" />);
 
     expect(screen.getByLabelText("Date")).toBeInTheDocument();
+  });
+
+  it("should set a placeholder", () => {
+    render(<DateInput />);
+
+    expect(screen.getByPlaceholderText("01/10/2015")).toBeInTheDocument();
   });
 
   it("should accept text input", () => {
