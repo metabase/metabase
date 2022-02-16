@@ -4,7 +4,6 @@ import React, {
   forwardRef,
   HTMLAttributes,
   Ref,
-  SyntheticEvent,
   useCallback,
   useMemo,
   useState,
@@ -14,12 +13,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Calendar from "metabase/components/Calendar";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import {
-  CalendarFooter,
-  InputIcon,
-  InputIconContainer,
-  InputRoot,
-} from "./DateInput.styled";
+import { CalendarFooter, InputIcon, InputRoot } from "./DateInput.styled";
 import Button from "metabase/core/components/Button";
 
 const DATE_FORMAT = "MM/DD/YYYY";
@@ -33,6 +27,7 @@ export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   placeholder?: string;
   readOnly?: boolean;
+  disabled?: boolean;
   fullWidth?: boolean;
   autoFocus?: boolean;
   onChange?: (value: Moment | undefined) => void;
@@ -45,6 +40,7 @@ const DateInput = forwardRef(function DateInput(
     value,
     placeholder,
     readOnly,
+    disabled,
     fullWidth,
     autoFocus,
     onChange,
@@ -61,10 +57,6 @@ const DateInput = forwardRef(function DateInput(
 
   const handleIconClick = useCallback(() => {
     setIsOpened(true);
-  }, []);
-
-  const handleIconMouseDown = useCallback((event: SyntheticEvent) => {
-    event.preventDefault();
   }, []);
 
   const handleSaveClick = useCallback(() => {
@@ -141,6 +133,7 @@ const DateInput = forwardRef(function DateInput(
           value={text}
           placeholder={placeholder ?? initialPlaceholder}
           readOnly={readOnly}
+          disabled={disabled}
           fullWidth={fullWidth}
           autoFocus={autoFocus}
           borderless
@@ -148,14 +141,13 @@ const DateInput = forwardRef(function DateInput(
           onFocus={onFocus}
           onBlur={handleInputBlur}
         />
-        <InputIconContainer
-          tabIndex={-1}
-          aria-label={t`Show calendar`}
-          onClick={handleIconClick}
-          onMouseDown={handleIconMouseDown}
-        >
-          <InputIcon name="calendar" tooltip={t`Show calendar`} />
-        </InputIconContainer>
+        {!readOnly && !disabled && (
+          <InputIcon
+            name="calendar"
+            tooltip={t`Show calendar`}
+            onClick={handleIconClick}
+          />
+        )}
       </InputRoot>
     </TippyPopover>
   );
