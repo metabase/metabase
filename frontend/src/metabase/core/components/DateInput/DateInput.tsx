@@ -1,15 +1,26 @@
-import React, { ChangeEvent, FocusEvent, useCallback, useState } from "react";
+import React, {
+  ChangeEvent,
+  FocusEvent,
+  forwardRef,
+  Ref,
+  useCallback,
+  useState,
+} from "react";
 import moment, { Moment } from "moment";
 import Input from "metabase/core/components/Input";
+import { InputRoot } from "metabase/core/components/DateInput/DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
 export interface DateInputProps {
-  value?: Moment | null;
-  onChange?: (value: Moment | null) => void;
+  value?: Moment;
+  onChange?: (value: Moment | undefined) => void;
 }
 
-const DateInput = ({ value, onChange }: DateInputProps): JSX.Element => {
+const DateInput = forwardRef(function DateInput(
+  { value, onChange }: DateInputProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const [text, setText] = useState(value?.format(DATE_FORMAT));
 
   const handleChange = useCallback(
@@ -19,9 +30,9 @@ const DateInput = ({ value, onChange }: DateInputProps): JSX.Element => {
       setText(text);
 
       if (date.isValid()) {
-        onChange && onChange(date);
+        onChange?.(date);
       } else {
-        onChange && onChange(null);
+        onChange?.(undefined);
       }
     },
     [onChange],
@@ -38,7 +49,16 @@ const DateInput = ({ value, onChange }: DateInputProps): JSX.Element => {
     }
   }, []);
 
-  return <Input value={text} onChange={handleChange} onBlur={handleBlur} />;
-};
+  return (
+    <InputRoot ref={ref}>
+      <Input
+        value={text}
+        fullWidth
+        onChange={handleChange}
+        onBlur={handleBlur}
+      />
+    </InputRoot>
+  );
+});
 
 export default DateInput;
