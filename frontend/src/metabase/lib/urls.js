@@ -313,6 +313,10 @@ export function editTimelineInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/edit`;
 }
 
+export function timelineArchiveInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/archive`;
+}
+
 export function newEventInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/events/new`;
 }
