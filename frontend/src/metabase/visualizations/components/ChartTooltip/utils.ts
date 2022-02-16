@@ -1,10 +1,7 @@
 import { MouseEvent } from "react";
 import { Column } from "metabase-types/types/Dataset";
 import { formatValue } from "metabase/lib/formatting";
-
-type VisualizationSettings = Record<string, unknown> & {
-  column?: (col: Column) => Column;
-};
+import { VisualizationSettings } from "./types";
 
 export function formatValueForTooltip({
   value,
