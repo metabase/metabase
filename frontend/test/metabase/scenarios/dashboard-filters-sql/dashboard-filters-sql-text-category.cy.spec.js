@@ -55,7 +55,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         });
       });
 
-      it.skip(`should work for "${filter}" when set as the default filter and when that filter is removed (metabase#20493)`, () => {
+      it(`should work for "${filter}" when set as the default filter and when that filter is removed (metabase#20493)`, () => {
         cy.findByText("Default value")
           .next()
           .click();

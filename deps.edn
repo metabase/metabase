@@ -287,7 +287,7 @@
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
    :main-opts  ["-m" "clj-check.check"]}
 
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood

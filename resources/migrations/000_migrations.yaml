@@ -9908,6 +9908,60 @@ databaseChangeLog:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
   #
+  # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
+  #
+  # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
+  # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
+  # originally fixed in #4123.
+  - changeSet:
+      id: v43.00-008
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'site-url' AS key,
+                regexp_replace(value, '/$', '') AS value
+              FROM setting
+              WHERE key = '-site-url';
+        - sql:
+            dbms: mysql,mariadb
+            # MySQL 5.7 doesn't support regexp_replace :(
+            # 'key' has to be quoted in MySQL
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'site-url' AS `key`,
+                CASE
+                  WHEN value LIKE '%/'
+                    THEN substring(value, 1, length(value) - 1)
+                  ELSE
+                    value
+                  END
+                AS value
+              FROM setting
+              WHERE `key` = '-site-url';
+
+  #
   # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
   #
   # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
@@ -9934,6 +9988,118 @@ databaseChangeLog:
               WHERE `key` = 'site-url'
                 AND value NOT LIKE 'http%';
 
+  #
+  # The following migrations replace metabase.db.migrations/migrate-humanization-setting, added in 0.28.0
+  #
+  # Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+  # `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+  # was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+  # between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+
+  # [migrate-humanization-setting part 1 of 2]
+  - changeSet:
+      id: v43.00-010
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'humanization-strategy'                                      AS key,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'humanization-strategy'                                      AS `key`,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE `key` = 'enable-advanced-humanization';
+
+  # [migrate-humanization-setting part 2 of 2]
+  - changeSet:
+      id: v43.00-011
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM setting WHERE `key` = 'enable-advanced-humanization';
+
+  #
+  # The following migration replaces metabase.db.migrations/mark-category-fields-as-list, added in 0.29.0
+  #
+  # Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+  # would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+  # longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+  # keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+  # meaning of the Category special type.
+  #
+  # Note that in 0.39.0 special type was renamed to semantic type
+  - changeSet:
+      id: v43.00-012
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Set Field.has_field_values to 'list' if semantic_type derives from :type/Category.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'mark-category-fields-as-list';
+      changes:
+        - sql:
+            # This is a snapshot of all the descendants of `:type/Category` at the time this migration was written. We
+            # don't need to worry about new types being added in the future, since the purpose of this migration is
+            # only to update old columns.
+            sql: >-
+              UPDATE metabase_field
+              SET has_field_values = 'list'
+              WHERE has_field_values IS NULL
+                AND active = true
+                AND semantic_type IN (
+                  'type/Category',
+                  'type/City',
+                  'type/Company',
+                  'type/Country',
+                  'type/Name',
+                  'type/Product',
+                  'type/Source',
+                  'type/State',
+                  'type/Subscription',
+                  'type/Title'
+                );
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
