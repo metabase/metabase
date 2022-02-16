@@ -101,7 +101,8 @@
 (def ^:private retired-setting-names
   "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
   these names to avoid unintended side-effects if an application database still stores values for these settings."
-  #{"enable-advanced-humanization"
+  #{"-site-url"
+    "enable-advanced-humanization"
     "metabot-enabled"})
 
 (models/defmodel Setting

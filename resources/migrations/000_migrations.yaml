@@ -9908,6 +9908,60 @@ databaseChangeLog:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
   #
+  # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
+  #
+  # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
+  # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
+  # originally fixed in #4123.
+  - changeSet:
+      id: v43.00-008
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'site-url' AS key,
+                regexp_replace(value, '/$', '') AS value
+              FROM setting
+              WHERE key = '-site-url';
+        - sql:
+            dbms: mysql,mariadb
+            # MySQL 5.7 doesn't support regexp_replace :(
+            # 'key' has to be quoted in MySQL
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'site-url' AS `key`,
+                CASE
+                  WHEN value LIKE '%/'
+                    THEN substring(value, 1, length(value) - 1)
+                  ELSE
+                    value
+                  END
+                AS value
+              FROM setting
+              WHERE `key` = '-site-url';
+
+  #
   # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
   #
   # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol

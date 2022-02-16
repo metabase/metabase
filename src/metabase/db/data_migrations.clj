@@ -20,9 +20,7 @@
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
             [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.setting :as setting :refer [Setting]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
@@ -113,13 +111,6 @@
         (db/insert! Permissions
           :object   (perms/data-perms-path database-id)
           :group_id group-id)))))
-
-;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
-;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
-;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
-(defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
-  (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
-    (public-settings/site-url site-url)))
 
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
