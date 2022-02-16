@@ -286,14 +286,25 @@
 (deftest describe-json-test
   (mt/test-driver :postgres
     (testing "flatten-row"
-      (let [row some shit]
-        (is (= (flatten-row row) some shit))))
+      (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
+            flattened {[:bob :dobbs] 123
+                       [:bob :cobbs] "boop"}]
+        (is (= (#'postgres/flatten-row row) flattened))))
     (testing "row->types"
-      (let [row some shit]
-        (is (= (row->types row) some shit))))
-    (testing "describes a json column which has a coherent schema")
-    (testing "describes a json column which does not a coherent schema")
-    (testing "handles multiple mixed json columns OK")))
+      (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
+            types {:bob {[:cobbs] clojure.lang.PersistentVector
+                         [:dobbs :robbs] java.lang.Long}}]
+        (is (= (#'postgres/row->types row) types))))
+    (testing "describes json columns and gives types for ones with coherent schemas"
+      (drop-if-exists-and-create-db! "describe-json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.describe_json_table;"
+                           "CREATE TABLE PUBLIC.describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
+                           "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
+                           "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');"]]
+          (jdbc/execute! spec [statement])))
+      (is (= (describe-table-json :postgres db table) {"bob" "dobbs})))))
 
 (mt/defdataset with-uuid
   [["users"
