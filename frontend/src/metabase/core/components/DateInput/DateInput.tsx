@@ -56,6 +56,22 @@ const DateInput = forwardRef(function DateInput(
     [onChange],
   );
 
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const newText = event.target.value;
+      const newValue = moment(newText, DATE_FORMAT);
+
+      if (newValue.isValid()) {
+        setText(newValue.format(DATE_FORMAT));
+      } else {
+        setText("");
+      }
+
+      onBlur?.(event);
+    },
+    [onBlur],
+  );
+
   return (
     <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
       <Input
@@ -65,7 +81,7 @@ const DateInput = forwardRef(function DateInput(
         borderless
         onChange={handleChange}
         onFocus={onFocus}
-        onBlur={onBlur}
+        onBlur={handleBlur}
       />
       <InputIcon name="calendar" />
     </InputRoot>
