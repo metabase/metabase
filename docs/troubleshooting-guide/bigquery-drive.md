@@ -1,10 +1,8 @@
 # Troubleshooting BigQuery and Google Drive connections in Metabase
 
-[This article](../docs/administration-guide/databases/bigquery) explains how to connect a BigQuery data source, including one that uses a file stored in Google Drive, like a Google Sheet (GSheets). 
+[This page](../docs/administration-guide/databases/bigquery) explains how to connect a BigQuery data source, including one that uses a file stored in Google Drive, like a Google Sheet (GSheets). 
 
-See below for common errors in this process. You may also want to check out [this troubleshooting guide](datawarehouse) on database connections.
-
-### 403 Forbidden POST error
+## 403 Forbidden POST error
 
 If you encounter an error that looks like this: 
 
@@ -13,3 +11,7 @@ If you encounter an error that looks like this:
 ```
 
 You may have forgotten to [share your Google Drive source](../docs/administration-guide/databases/bigquery/#share-your-google-drive-source-with-the-service-account) with the service account email. Once that's been fixed, that error should disappear and you'll be able to view and query your data source.
+
+## Further reading
+
+You may also want to check out [this troubleshooting guide](datawarehouse) on database connections.

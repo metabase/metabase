@@ -137,7 +137,7 @@ To connect to a data source stored in Google Drive (like a Google Sheet) first m
 
 ### Share your Google Drive source with the service account
 
-While viewing your Drive file, (e.g. a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console. 
+While viewing your Drive file, (e.g., a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console. 
 
 That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with the your service account and project names filled in accordingly.
 
