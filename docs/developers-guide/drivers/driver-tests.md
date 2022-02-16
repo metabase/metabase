@@ -1,6 +1,11 @@
 # Submitting a PR for a new driver
 
-If you want to submit a PR to add a driver, you'll need to make sure the driver passes Metabase's core test suite.
+If you want to submit a PR to add a driver plugin to the [Metabase repo](https://github.com/metabase/metabase) (as opposed to keeping it in a separate repo), you'll need to:
+
+- Be able to run your database locally with Docker. 
+- Make sure your driver passes Metabase's core test suite.
+
+## Testing your driver 
 
 To test your driver, you'll need to:
 
@@ -8,19 +13,15 @@ To test your driver, you'll need to:
 - Add _test extensions_ to your driver.
 - Edit [`.circleci/config.yml`](https://github.com/metabase/metabase/blob/master/.circleci/config.yml) to tell CircleCI how to set up a Docker image for your database and run tests against it.
 
-- Test extensions do things like create new databases and load data for given _database definitions_.
-- **Make sure all tests and linters are passing and that you've added CI instructions to `.circleci/config.yml` before submitting a PR.**
-- Don't submit PRs for drivers for databases that we can't run locally with Docker.
-
 ## Add test extensions to your driver
 
-Metabase defines a huge suite of tests that automatically run against all drivers, including your new driver.
+Test extensions do things like create new databases and load data for given _database definitions_. Metabase defines a huge suite of tests that automatically run against all drivers, including your new driver.
 
 To run the test suite with your driver, you'll need to write a series of method implementations for special _test extension_ multimethods. Test extensions do things like create new databases and load data for _database definitions_.
 
 These test extensions will tell Metabase how to create new databases and load them with test data, and provide information about what Metabae can expect from the created database. Test extensions are simply additional multimethods used only by tests. Like the core driver multimethods, they dispatch on the driver name as a keyword, e.g. `:mysql`.
 
-### File organization
+## File organization
 
 Test extensions for a driver usually live in a namespace called `metabase.test.data.<driver>`. If your driver is for SQLite, your files should look something like:
 
@@ -36,7 +37,7 @@ So you'll create a new directory and file to house your text extension method im
 metabase/modules/drivers/sqlite/test/metabase/test/data/sqlite.clj   ; <- test extensions
 ```
 
-### Where are test extension methods defined?
+## Where are test extension methods defined?
 
 Metabase test extensions live in the [`metabase.test.data.interface`](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/interface.clj) namespace. Like the core driver methods, `:sql` and `:jdbc-sql` implement some of the test extensions themselves, but define additional methods you must implement to use them; see the [`metabase.test.data.sql`](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/sql.clj)
 and [`metabase.test.data.sql-jdbc`](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/sql_jdbc.clj) namespaces.
@@ -49,7 +50,7 @@ You'll need to require the following namespaces, aliased like so:
 (require '[metabase.test.data.sql-jdbc :as sql-jdbc.tx])
 ```
 
-### Registering test extensions
+## Registering test extensions
 
 Like the driver itself, you need to register the fact that your driver has test extensions, so Metabase knows it doesn't need to try to load them a second time. (If they're not loaded yet, Metabase will load them when needed by looking for a namespace named `metabase.test.data.<driver>`, which is why you need to follow that naming pattern.) The `:sql` and `:sql-jdbc` drivers have their own sets of test extensions, so depending on which parent you're using for your driver, register test extensions with:
 
@@ -248,8 +249,3 @@ and the steps:
 
 For more on what it is you're doing here and how all this works, see [CircleCI 2.0 Workflows](https://circleci.com/docs/2.0/workflows/).
 
-## If your database can't be run locally in a Docker container, ship it as a third-party driver
-
-Metabase currently doesn't support new databases that can't be ran locally with Docker. In rare cases, we'll support a database if the people behind it will provide us with a free partner/developer account. If that's the case, let us know the situation when you open your PR, and we'll see whether it still makes sense. If that can't be done (i.e., Metabase would have to pay for an account in order to test your driver on CI), your driver is best shipped as a 3rd-party driver rather than as a part of the core Metabase product.
-
-If the database can be ran locally, but you can't find a Docker image for it, please create one yourself.

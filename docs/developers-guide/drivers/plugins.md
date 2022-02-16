@@ -1,35 +1,6 @@
-# Metabase plugins
+# Plugin manifests
 
-There are different ways you can package a driver's namespaces and dependencies:
-
-- Built-in to the core Metabase project.
-- In the same repository as the core Metabase project, but built as a plugin. Metabase bundles the plugins into the uberjar and extracts them into the `plugins` directory on launch.
-- In a different repository, and built as a separate plugin. To use this kind of driver, you must manually copy the plugin into your `plugins` directory.
-
-## Building a community driver
-
-You should create a plugin in its own repository.
-
-Drivers are packaged as plugins. A Metabase plugin is a JAR file containing compiled class files and a Metabase [plugin manifest](#plugin-manifest). In most cases, plugins are [lazily loaded](#lazy-loading), which means that Metabase won't initialize the drivers until it connects to a database that would use the driver.
-
-- Plugins are JARs that package up a driver's dependencies.
-- Plugins live in the plugins directory, by default `./plugins`, or set with `MB_PLUGINS_DIR`.
-- Each plugin has a manifest called `metabase.plugin.yaml`.
-
-## All plugins live in the Metabase plugins directory
-
-The plugins directory defaults to `./plugins` in the same directory as `metabase.jar`. For example, your directory structure might look like this:
-
-```
-/Users/cam/metabase/metabase.jar
-/Users/cam/metabase/plugins/my-plugin.jar
-```
-
-You can change the plugin directory by setting the [environment variable][env-var] `MB_PLUGINS_DIR`.
-
-## Plugin manifests
-
-Metabase plugin JARs contain a _plugin manifest_ -- a top-level file named `metabase-plugin.yaml`. When Metabase launches, it iterates over every JAR in the plugins directory, and looks for this file in each. This manifest tells Metabase what the plugin provides and how to initialize it.
+Metabase plugin JARs contain a _plugin manifest_ -- a top-level file named `metabase-plugin.yaml`. When Metabase launches, it iterates over every JAR in the plugins directory, and looks for the manifest in each. This manifest tells Metabase what the plugin provides and how to initialize it.
 
 ## Example manifest
 
@@ -57,8 +28,6 @@ init:
 
 The `driver` section tells Metabase that the plugin defines a driver named `:sqlite` that has `:sql-jdbc` as a parent. Metabase's plugin system uses these details to call `driver/register!`. The plugin also lists the display name and connection properties for the driver, which Metabase's plugin system uses to creates implementations for `driver/display-name` and `driver/connection-properties`.
 
-For more on writing a manifest, check out our [Metabase plugin manifest reference](plugin-manifest-reference.md).
-
 ## Lazy loading
 
 The driver in the [example above](#example-manifest) is listed as `lazy-load: true`, which means that, while the method implementation mentioned above are created when Metabase launches, Metabase won't initialize the driver until the first time someone attempts to connect to a database that uses that driver.
@@ -79,101 +48,178 @@ init:
 
 ## Loading namespaces
 
-You'll need to add one or more `load-namespace` steps to your driver manifest to tell Metabase which namespaces contain your driver method implementations. In the example above, the namespace is `metabase.driver.sqlite`. `load-namespace` calls `require` the [normal Clojure way, meaning it will load other namespaces listed in the `:require` section of its namespace declaration as needed. If your driver's method implementations are split across multiple namespaces, make sure they'll get loaded as well -- you can either have the main namespace handle this (e.g., by including them in the `:require` form in the namespace declaration) or by adding additional `load-namespace` steps. 
+You'll need to add one or more `load-namespace` steps to your driver manifest to tell Metabase which namespaces contain your driver method implementations. In the example above, the namespace is `metabase.driver.sqlite`. `load-namespace` calls `require` the [normal Clojure way, meaning it will load other namespaces listed in the `:require` section of its namespace declaration as needed. If your driver's method implementations are split across multiple namespaces, make sure they'll get loaded as well -- you can either have the main namespace handle this (e.g., by including them in the `:require` form in the namespace declaration) or by adding additional `load-namespace` steps.
 
 For some background on namespaces, see [Clojure namespaces][clojure-namespace].
 
 ## Registering JDBC Drivers
 
-Drivers that use a JDBC driver under the hood will need to add a `register-jdbc-driver` step as well. 
+Drivers that use a JDBC driver under the hood will need to add a `register-jdbc-driver` step as well.
 
 The if-you're-interested reason is that Java's JDBC `DriverManager` won't use JDBC drivers loaded with something other than the system `ClassLoader`, which effectively only means `Drivermanager` will only use JDBC driver classes that are packaged as part of the core Metabase uberjar. Since the system classloader doesn't allow you to load the classpath at runtime, Metabase uses a custom `ClassLoader` to initialize plugins. To work around this limitation, Metabase ships with a JDBC proxy driver class that can wrap other JDBC drivers. When Metabase calls `register-jdbc-driver`, Metabase actually registers a new instance of the proxy class that forwards method calls to the actual JDBC driver. `DriverManager` is perfectly fine with this.
 
 ## Driver initialization
 
-All drivers, even drivers that aren't packaged as part of plugins, can include additional code to be executed once (and only once) using `metabase.driver/initialize!` when Metabase initializes the driver, that is, before the driver establishes a connection to a database for the first time. (In fact, Metabase uses `metabase.driver/initialize!` to lazy-load the driver.) There are only a few cases where you should use `metabase.driver/initialize`, such as  allocating resources or setting certain system properties.
+All drivers, even drivers that aren't packaged as part of plugins, can include additional code to be executed once (and only once) using `metabase.driver/initialize!` when Metabase initializes the driver, that is, before the driver establishes a connection to a database for the first time. (In fact, Metabase uses `metabase.driver/initialize!` to lazy-load the driver.) There are only a few cases where you should use `metabase.driver/initialize`, such as allocating resources or setting certain system properties.
 
-## Different Ways to Ship Drivers
+## Building the driver
 
-Now that we understand what Metabase plugins are, let's look at the different ways you can ship Metabase drivers:
+To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers).
 
-## Drivers built-in to the core Metabase project
+Place the JAR you built in your Metabase's `/plugins` directory, and you're off to the races.
 
-This is the simplest method of shipping drivers; it's used for the `:postgres`, `:h2`, and `:mysql` drivers, as well as common parents like `:sql` and `:sql-jdbc`.
+## The Metabase plugin manifest reference
 
-With this method, dependencies (like JDBC drivers) are included in the core project's `deps.edn`. The file layout will look something like:
-
-```clj
-metabase/deps.edn                            ; <- deps go in here
-metabase/src/metabase/driver/mysql.clj       ; <- main driver namespace
-metabase/test/metabase/test/data/mysql.clj   ; <- test extensions
-metabase/test/metabase/driver/mysql_test.clj ; <- driver-specific tests go here
-```
-
-The only reason these drivers are shipped this way is that these three databases are also supported as application databases, meaning their dependencies would be part of the core Metabase project anyway. When writing a driver for 3rd-party consumption, or one you hope to have merged into the core Metabase project, DO NOT write your driver this way. There are a lot of good reasons to write drivers as separate plugins -- for one, lazy loading improves launch speed and memory consumption.
-
-It might be helpful to start writing a driver this way, since you don't need to work about writing a plugin manifest; but before shipping it, you'll have to move things around to support one of the other delivery methods mentioned below. Thus I'd recommend against starting a driver this way, even for exploratory purposes. **We will not accept any pull requests for drivers packaged this way (i.e., built in to the core product).**
-
-The only situation where you'd might consider shipping a driver this way is as part of a custom fork of Metabase, perhaps because it's only intended for in-house use. ([Even if you'll still have to publish the source for it to comply with the AGPL](https://github.com/metabase/metabase/blob/master/LICENSE.txt)).
-
-## Drivers shipped as part of the core Metabase repo, but packaged as plugins
-
-Check out our list of [official drivers](https://github.com/metabase/metabase/tree/master/modules/drivers) packaged as plugins.
-
-A typical plugin directory layout looks something like the [SQL plugin](https://github.com/metabase/metabase/tree/master/modules/drivers/sqlite).
-
-#### `deps.edn`
-
-Here's the [`deps.edn` file] for the SQLite driver.
-
-
-```clj
-{:paths
- ["src" "resources"]
-
- :deps
- {org.xerial/sqlite-jdbc {:mvn/version "3.36.0.3"}}}
-```
-
-### Building a driver plugin shipped as part of the core Metabase repo
-
-A helpful script is included as part of Metabase to build drivers packaged this way:
-
-```bash
-./bin/build-driver.sh sqlite
-```
-
-This will take care of everything, including copying the resulting file to `./resources/modules/sqlite.metabase-driver.jar`.
-
-Drivers shipped this way are bundled up inside the uberjar under the `modules` directory (anything in `resources` gets included in the uberjar); anything JARs in the `modules/` directory of the uberjar is extracted into the plugins directory when Metabase starts.
-
-## Working with the driver from the REPL and in CIDER
-
-Having to install `metabase-core` locally and build driver uberjars would be obnoxious, especially if you had to repeat it to test every change. Luckily, you can run commands as if everything was part of one giant project:
-
-```bash
-clojure -A:dev:drivers:drivers-dev
-
-clojure -M:run:drivers
-```
-
-You'll need to rebuild the driver and install it in your `./plugins` directory, and restart when you make changes. 
-
-## Drivers shipped as 3rd-party plugins
-
-Package a driver this way if you plan on shipping it as a plugin and don't plan on submitting it as a PR. Fundamentally, the structure is similar to plugins shipped as part of Metabase, but in a separate repo rather than the `modules/drivers/` directory, and without test extensions or tests (at least, without ones that piggyback off the core project's test functionality):
-
-```clj
-./deps.edn                       ; <- deps go in here
-./resources/metabase-plugin.yaml ; <- plugin manifest
-./src/metabase/driver/sudoku.clj ; <- main driver namespace
-```
-
-Building a driver like this is largely the same as plugins shipped as part of Metabase -- install `metabase-core` locally, then build the driver using: 
+Here's an example plugin manifest with comments to get you started on writing your own.
 
 ```
-clojure -X:dev:build
-```
-Copy the resulting `JAR` file into the plugins directory (the `plugins` directory where you run the metabase JAR), and you're off to the races.
+# Basic user-facing information about the driver goes under the info: key
+info:
 
-[env-var]: ../../operations-guide/environment-variables.html
+  # Make sure to give your plugin a name. In the future, we can show
+  # this to the user in a 'plugin management' admin page.
+  name: Metabase SQLite Driver
+
+  # For the sake of consistency with the core Metabase project you
+  # should use semantic versioning. It's not a bad idea to include the
+  # version of its major dependency (e.g., a JDBC driver) when
+  # applicable as part of the 'patch' part of the version, so we can
+  # update dependencies and have that reflected in the version number
+  #
+  # For now core Metabase modules should have a version
+  # 1.0.0-SNAPSHOT-x until version 1.0 ships and the API for plugins
+  # is locked in
+  version: 1.0.0-SNAPSHOT-3.25.2
+
+  # Describe what your plugin does. Not used currently, but in the
+  # future we may use this description in a plugins admin page.
+  description: Allows Metabase to connect to SQLite databases.
+
+# You can list any dependencies needed by the plugin by specifying a
+# list of dependencies. If all dependencies are not met, the plugin
+# will not be initialized.
+#
+# A dependency may be either a 'class' or (in the future) a 'plugin' dependency
+dependencies:
+
+  # A 'class' dependency checks whether a given class is available on
+  # the classpath. It doesn't initialize the class; Metabase defers initialization
+  # until it needs to use the driver
+  # Don't use this for classes that ship as part of the plugin itself;
+  # only use it for external dependencies.
+  - class: oracle.jdbc.OracleDriver
+
+    # You may optionally add a message that will be displayed for
+    # information purposes in the logs, and possibly in a plugin
+    # management page as well in the future
+    message: >
+      Metabase requires the Oracle JDBC driver to connect to JDBC databases. See
+      https://metabase.com/docs/latest/administration-guide/databases/oracle.html
+      for more details
+
+  # A 'plugin' dependency checks whether a given plugin is available.
+  # The value for 'plugin' is whatever that plugin has as its 'name:' -- make
+  # sure you match it exactly!
+  #
+  # If the dependency is not available when this module is first loaded, the module
+  # will be tried again later after more modules are loaded. This means things will
+  # still work the way we expect even if, say, we initially attempt to load the
+  # BigQuery driver *before* loading its dependency, the shared Google driver. Once
+  # the shared Google driver is loaded, Metabase will detect that BigQuery's
+  # dependencies are now satisfied and initialize the plugin.
+  #
+  # In the future, we'll like add version restrictions as well, but for now we only match
+  # by name.
+  - plugin: Metabase SQLHeavy Driver
+
+# If a plugin adds a driver it should define a driver: section.
+#
+# To define multiple drivers, you can pass a list of maps instead. Note
+# that multiple drivers currently still must share the same dependencies
+# set and initialization steps. Thus registering multiple drivers is most
+# useful for slight variations on the same driver or including an abstract
+# parent driver. Note that init steps will get ran once for each driver
+# that gets loaded. This can result in duplicate driver instances registered
+# with the DriverManager, which is certainly not ideal but does not actually
+# hurt anything.
+#
+# In the near future I think I might move init steps into driver itself (or
+# at least allow them there)
+driver:
+
+  # Name of the driver; corresponds to the keyword (e.g. :sqlite) used
+  # in the codebase
+  name: sqlite
+
+  # Nice display name shown to admins when connecting a database
+  display-name: SQLite
+
+  # Whether loading this driver can be deferred until the first
+  # attempt to connect to a database of this type. Default: true. Only
+  # set this to false if absolutely neccesary.
+  lazy-load: true
+
+  # Parent driver, if any.
+  parent: sql-jdbc
+
+  # You may alternatively specify a list of parents for drivers with
+  # more than one:
+  parent:
+    - google
+    - sql
+
+  # Whether this driver is abstract. Default: false
+  abstract: false
+
+  # List of connection properties to ask users to set to connect to
+  # this driver.
+  connection-properties:
+    # Connection properties can be one of the defaults found in
+    # metabase.driver.common, listed by name:
+    - dbname
+    - host
+
+    # Or a full map for a custom option. Complete schema for custom
+    # options can be found in metabase.driver. NOTE: these are not
+    # currently translated for i18n; I'm working on a way to translate
+    # these. Prefer using one of the defaults from
+    # metabase.driver.common if possible.
+    - name: db
+      display-name: Filename
+      placeholder: /home/camsaul/toucan_sightings.sqlite
+      required: true
+
+    # Finally, you can use merge: to merge multiple maps. This is
+    # useful to override specific properties in one of the defaults.
+    - merge:
+      - port
+      - placeholder: 1433
+
+  # You can also tell Metabase to include SSL tunnel configuration options with
+  # connection-properties-include-tunnel-config (default: false)
+  connection-properties-include-tunnel-config: true
+
+# Steps to take to initialize the plugin. For lazy-load drivers, this
+# is delayed until the driver is initialized the first time we connect
+# to a database with it
+init:
+
+  # load-namespace tells Metabase to require a namespace from the JAR,
+  # you can do whatever Clojurey things you need to do inside that
+  # namespace
+  - step: load-namespace
+    namespace: metabase.driver.sqlite
+
+  # register-jdbc-driver tells Metabase to register a JDBC driver that
+  # will be used by this driver. (It actually registers a proxy
+  # driver, because DriverManager won't allow drivers that are loaded
+  # by different classloaders than it was loaded by (i.e., the system
+  # classloader); don't worry to much about this, but know for
+  # JDBC-based drivers you need to include your dependency here)
+  - step: register-jdbc-driver
+    class: org.sqlite.JDBC
+```
+
+## Next up
+
+[Implementing multimethods](multimethods.md) for your driver.
