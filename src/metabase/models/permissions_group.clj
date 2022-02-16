@@ -8,11 +8,12 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
