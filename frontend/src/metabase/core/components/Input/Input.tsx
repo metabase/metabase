@@ -7,11 +7,12 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   className?: string;
   error?: boolean;
   fullWidth?: boolean;
+  borderless?: boolean;
   helperText?: ReactNode;
 }
 
 const Input = forwardRef(function Input(
-  { className, error, fullWidth, helperText, ...rest }: InputProps,
+  { className, error, fullWidth, borderless, helperText, ...rest }: InputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -21,6 +22,7 @@ const Input = forwardRef(function Input(
         hasError={error}
         hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}
+        borderless={borderless}
       />
       {helperText && (
         <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
