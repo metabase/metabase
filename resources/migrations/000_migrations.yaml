@@ -10019,15 +10019,17 @@ databaseChangeLog:
             sql: >-
               INSERT INTO permissions (group_id, object)
               SELECT
-                pg.id AS group_id,
+                admin_group.id AS group_id,
                 '/' AS object
-              FROM permissions p
-              LEFT JOIN permissions_group pg
-                     ON p.group_id = pg.id
-              WHERE pg.name = 'Administrators'
-                AND p.object = '/'
-              GROUP BY pg.id
-              HAVING count(*) = 0;
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'Administrators'
+              ) admin_group
+              LEFT JOIN permissions p
+                     ON admin_group.id = p.group_id
+                    AND p.object = '/'
+              WHERE p.object IS NULL;
 
   #
   # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
