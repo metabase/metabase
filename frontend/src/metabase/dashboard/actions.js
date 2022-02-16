@@ -3,7 +3,6 @@ import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
@@ -12,6 +11,7 @@ import Question from "metabase-lib/lib/Question";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
+import { openUrl } from "metabase/redux/app";
 import {
   createParameter,
   setParameterName as setParamName,
@@ -40,7 +40,6 @@ import {
   addFields,
   loadMetadataForQueries,
 } from "metabase/redux/metadata";
-import { push } from "react-router-redux";
 
 import {
   DashboardApi,
@@ -997,10 +996,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       ? Urls.serializedQuestion(question.card())
       : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
 
-    open(url, {
-      blankOnMetaOrCtrlKey: true,
-      openInSameWindow: url => dispatch(push(url)),
-    });
+    dispatch(openUrl(url));
   },
 );
 
