@@ -25,7 +25,7 @@
             [toucan.db :as db]))
 
 (defn- query-magic-ttl
-  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the
+  "Compute a 'magic' cache TTL time (in seconds) for `query` by multipling its historic average execution times by the
   `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
   utilized.)"
   [query]
@@ -206,4 +206,6 @@
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (normalize/normalize-fragment [:parameters] parameters)))
+    (log/tracef "Running query for Card %d:\n%s" card-id
+                (u/pprint-to-str query))
     (run query info)))

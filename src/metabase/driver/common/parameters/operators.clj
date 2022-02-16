@@ -10,6 +10,7 @@
   (:require [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
 (s/defn ^:private operator-arity :- (s/maybe (s/enum :unary :binary :variadic))
@@ -39,14 +40,14 @@
       (maybe-arity-error 2)
 
       :variadic
-      (when-not (seq param-value)
-        (throw (ex-info (format "No values provided for operator: %s" param-type)
+      (when-not (sequential? param-value)
+        (throw (ex-info (tru "Invalid values provided for operator: {0}" param-type)
                         {:param-type  param-type
                          :param-value param-value
                          :field-id    (second field)
                          :type        qp.error-type/invalid-parameter})))
 
-      (throw (ex-info (format "Unrecognized operation: %s" param-type)
+      (throw (ex-info (tru "Unrecognized operation: {0}" param-type)
                       {:param-type  param-type
                        :param-value param-value
                        :field-id    (second field)
