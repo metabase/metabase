@@ -10,18 +10,14 @@
 (deftest timelines-for-collection-test
   (mt/with-temp Collection [collection {:name "Rasta's Collection"}]
     (let [coll-id  (u/the-id collection)
-          defaults {:creator_id   (u/the-id (mt/fetch-user :rasta))
-                    :timestamp    (java.time.OffsetDateTime/now)
-                    :timezone     "US/Pacific"
-                    :time_matters false}
           event-names (fn [timelines]
                         (into #{} (comp (mapcat :events) (map :name)) timelines))]
-      (mt/with-temp* [Timeline [tl-a (merge (select-keys defaults [:creator_id]) {:name "tl-a" :collection_id coll-id})]
-                      Timeline [tl-b (merge (select-keys defaults [:creator_id]) {:name "tl-b" :collection_id coll-id})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-a"})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-b" :archived true})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-c"})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-d" :archived true})]]
+      (mt/with-temp* [Timeline [tl-a {:name "tl-a" :collection_id coll-id}]
+                      Timeline [tl-b {:name "tl-b" :collection_id coll-id}]
+                      TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "e-a"}]
+                      TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}]
+                      TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "e-c"}]
+                      TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]]
         (testing "Fetching timelines"
           (testing "don't include events by default"
             (is (= #{}

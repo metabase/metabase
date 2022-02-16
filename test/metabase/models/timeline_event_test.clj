@@ -7,22 +7,23 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
+(defn- names [timelines]
+  (into #{} (comp (mapcat :events) (map :name)) timelines))
+
 (deftest hydrate-events-test
-  (testing "hydrate-events function hydrates all timelines with both archived and un-archived events"
-    (let [defaults {:creator_id   (u/the-id (mt/fetch-user :rasta))
-                    :timestamp    (java.time.OffsetDateTime/now)
-                    :timezone     "PST"
-                    :time_matters false}]
-      (mt/with-temp* [Collection [collection {:name "Rasta's Collection"}]
-                      Timeline [tl-a (merge (select-keys defaults [:creator_id]) {:name "tl-a"})]
-                      Timeline [tl-b (merge (select-keys defaults [:creator_id]) {:name "tl-b"})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-a"})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-b" :archived true})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-c"})]
-                      TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-d" :archived true})]]
-        (is (= (->> (te/hydrate-events [tl-a tl-b])
-                    mt/derecordize
-                    (mapcat :events)
-                    (map :name)
-                    set)
-               #{"e-a" "e-b" "e-c" "e-d"}))))))
+  (testing "hydrate-events function hydrates all timelines events"
+    (mt/with-temp* [Collection [collection {:name "Rasta's Collection"}]
+                    Timeline [tl-a {:name "tl-a"}]
+                    Timeline [tl-b {:name "tl-b"}]
+                    TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "un-1"}]
+                    TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "archived-1"
+                                        :archived true}]
+                    TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "un-2"}]
+                    TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "archived-2"
+                                        :archived true}]]
+      (testing "only unarchived events by default"
+        (is (= #{"un-1" "un-2"}
+               (names (te/include-events [tl-a tl-b] {})))))
+      (testing "all events when specified"
+        (is (= #{"un-1" "un-2" "archived-1" "archived-2"}
+               (names (te/include-events [tl-a tl-b] {:events/all? true}))))))))
