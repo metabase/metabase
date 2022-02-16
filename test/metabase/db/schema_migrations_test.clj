@@ -14,7 +14,7 @@
             [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Field Setting Table]]
+            [metabase.models :refer [Database Field Permissions PermissionsGroup Setting Table]]
             [metabase.models.interface :as mi]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
@@ -316,6 +316,30 @@
                  (db/query {:select [:engine], :from [Database], :where [:= :id (u/the-id db)]}))))
         (finally
           (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
+
+(deftest create-database-entries-for-all-users-group-test
+  (testing "Migration v043.00-007: create DB entries for the 'All Users' permissions group"
+    (doseq [with-existing-data-migration? [true false]]
+      (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
+        (impl/test-migrations "v43.00-007" [migrate!]
+          (db/execute! {:insert-into Database
+                        :values      [{:name       "My DB"
+                                       :engine     "h2"
+                                       :created_at :%now
+                                       :updated_at :%now
+                                       :details    "{}"}]})
+          (when with-existing-data-migration?
+            (db/execute! {:insert-into :data_migrations
+                          :values      [{:id        "add-databases-to-magic-permissions-groups"
+                                         :timestamp :%now}]}))
+          (migrate!)
+          (is (= (if with-existing-data-migration?
+                   []
+                   [{:object "/db/1/"}])
+                 (db/query {:select    [:p.object]
+                            :from      [[Permissions :p]]
+                            :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                            :where     [:= :pg.name "All Users"]}))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"

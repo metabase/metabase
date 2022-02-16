@@ -10027,7 +10027,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: >-
-              INSERT INTO permissions (group_id, object)
+              INSERT INTO permissions (object, group_id)
               SELECT db.object, all_users.id AS group_id
               FROM (
                 SELECT concat('/db/', id, '/') AS object
