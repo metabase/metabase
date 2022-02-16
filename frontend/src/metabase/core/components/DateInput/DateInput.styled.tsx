@@ -29,3 +29,9 @@ export const InputIcon = styled(Icon)`
 export const InputIconContainer = styled(IconButtonWrapper)`
   margin: 0 0.5rem;
 `;
+
+export const CalendarFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem;
+`;

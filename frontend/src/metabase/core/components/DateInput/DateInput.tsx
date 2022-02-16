@@ -4,6 +4,7 @@ import React, {
   forwardRef,
   HTMLAttributes,
   Ref,
+  SyntheticEvent,
   useCallback,
   useMemo,
   useState,
@@ -13,7 +14,13 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Calendar from "metabase/components/Calendar";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { InputIcon, InputIconContainer, InputRoot } from "./DateInput.styled";
+import {
+  CalendarFooter,
+  InputIcon,
+  InputIconContainer,
+  InputRoot,
+} from "./DateInput.styled";
+import Button from "metabase/core/components/Button";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -48,9 +55,25 @@ const DateInput = forwardRef(function DateInput(
   ref: Ref<HTMLDivElement>,
 ) {
   const [text, setText] = useState(() => value?.format(DATE_FORMAT));
-  const [target, setTarget] = useState<HTMLButtonElement | null>(null);
+  const [isOpened, setIsOpened] = useState(false);
   const initialValue = useMemo(() => moment(), []);
   const initialPlaceholder = useMemo(() => moment().format(DATE_FORMAT), []);
+
+  const handleIconClick = useCallback(() => {
+    setIsOpened(true);
+  }, []);
+
+  const handleIconMouseDown = useCallback((event: SyntheticEvent) => {
+    event.preventDefault();
+  }, []);
+
+  const handleSaveClick = useCallback(() => {
+    setIsOpened(false);
+  }, []);
+
+  const handlePopoverClose = useCallback(() => {
+    setIsOpened(false);
+  }, []);
 
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -94,18 +117,24 @@ const DateInput = forwardRef(function DateInput(
 
   return (
     <TippyPopover
-      trigger="click"
-      triggerTarget={target}
+      trigger="manual"
       placement="bottom"
+      visible={isOpened}
       interactive
       content={
-        <Calendar
-          selected={value}
-          initial={initialValue}
-          onChange={handleCalendarChange}
-          isRangePicker={false}
-        />
+        <div>
+          <Calendar
+            selected={value}
+            initial={initialValue}
+            onChange={handleCalendarChange}
+            isRangePicker={false}
+          />
+          <CalendarFooter>
+            <Button primary onClick={handleSaveClick}>{t`Save`}</Button>
+          </CalendarFooter>
+        </div>
       }
+      onHide={handlePopoverClose}
     >
       <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
         <Input
@@ -120,9 +149,10 @@ const DateInput = forwardRef(function DateInput(
           onBlur={handleInputBlur}
         />
         <InputIconContainer
-          ref={setTarget}
           tabIndex={-1}
           aria-label={t`Show calendar`}
+          onClick={handleIconClick}
+          onMouseDown={handleIconMouseDown}
         >
           <InputIcon name="calendar" tooltip={t`Show calendar`} />
         </InputIconContainer>
