@@ -345,7 +345,7 @@ describeWithToken("formatting > sandboxes", () => {
             .eq(0)
             .click({ force: true });
         });
-        cy.findByText("View these records").click();
+        cy.findByText("View these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then(xhr => {
@@ -421,7 +421,7 @@ describeWithToken("formatting > sandboxes", () => {
           .eq(0)
           .click({ force: true });
       });
-      cy.findByText("View these records").click();
+      cy.findByText("View these Orders").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
@@ -719,7 +719,7 @@ describeWithToken("formatting > sandboxes", () => {
             .eq(1)
             .click({ force: true });
         });
-        cy.findByText("View these records").click();
+        cy.findByText("View these Orders").click();
 
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
@@ -1049,8 +1049,6 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
-      // Click anywhere outside to close the popover
-      cy.findByText("To:").click();
       cy.findByText("Send email now").click();
       cy.findByText("Email sent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
