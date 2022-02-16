@@ -1,5 +1,4 @@
 import React, {
-  ChangeEvent,
   FocusEvent,
   forwardRef,
   Ref,
@@ -14,49 +13,35 @@ const DATE_FORMAT = "MM/DD/YYYY";
 
 export interface DateInputProps {
   value?: Moment;
+  fullWidth?: boolean;
   onChange?: (value: Moment | undefined) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
-  { value, onChange }: DateInputProps,
+  { value, fullWidth, onChange }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [text, setText] = useState(value?.format(DATE_FORMAT));
 
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
       const text = event.target.value;
       const date = moment(text, DATE_FORMAT);
-      setText(text);
 
       if (date.isValid()) {
+        setText(date.format(DATE_FORMAT));
         onChange?.(date);
       } else {
+        setText("");
         onChange?.(undefined);
       }
     },
     [onChange],
   );
 
-  const handleBlur = useCallback((event: FocusEvent<HTMLInputElement>) => {
-    const text = event.target.value;
-    const date = moment(text, DATE_FORMAT);
-
-    if (date.isValid()) {
-      setText(date.format(DATE_FORMAT));
-    } else {
-      setText("");
-    }
-  }, []);
-
   return (
-    <InputRoot ref={ref}>
-      <Input
-        value={text}
-        fullWidth
-        onChange={handleChange}
-        onBlur={handleBlur}
-      />
+    <InputRoot ref={ref} fullWidth={fullWidth}>
+      <Input value={text} fullWidth={fullWidth} onBlur={handleBlur} />
     </InputRoot>
   );
 });
