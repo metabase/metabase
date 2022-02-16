@@ -9,30 +9,32 @@
 
 (deftest timelines-for-collection-test
   (mt/with-temp Collection [collection {:name "Rasta's Collection"}]
-    (let [coll-id (u/the-id collection)
+    (let [coll-id  (u/the-id collection)
           defaults {:creator_id   (u/the-id (mt/fetch-user :rasta))
                     :timestamp    (java.time.OffsetDateTime/now)
-                    :timezone     "PST"
-                    :time_matters false}]
+                    :timezone     "US/Pacific"
+                    :time_matters false}
+          event-names (fn [timelines]
+                        (into #{} (comp (mapcat :events) (map :name)) timelines))]
       (mt/with-temp* [Timeline [tl-a (merge (select-keys defaults [:creator_id]) {:name "tl-a" :collection_id coll-id})]
                       Timeline [tl-b (merge (select-keys defaults [:creator_id]) {:name "tl-b" :collection_id coll-id})]
                       TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-a"})]
                       TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-a) :name "e-b" :archived true})]
                       TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-c"})]
                       TimelineEvent [e-a (merge defaults {:timeline_id (u/the-id tl-b) :name "e-d" :archived true})]]
-        (testing "timelines are fetched and not hydrated when there is no `include=events`."
-          (is (->> (tl/timelines-for-collection (u/the-id collection) {})
-                   (mapcat :events)
-                   (every? nil?))))
-        (testing "timelines are fetched and hydrated when there is `include=events`."
-          (is (= (->> (tl/timelines-for-collection (u/the-id collection) {:include "events" :archived false})
-                      (mapcat :events)
-                      (map :name)
-                      set)
-                 #{"e-a" "e-c"})))
-        (testing "timelines are fetched and hydrated with archived events when there is `include=events` and `archived=true`."
-          (is (= (->> (tl/timelines-for-collection (u/the-id collection) {:include "events" :archived true})
-                      (mapcat :events)
-                      (map :name)
-                      set)
-                 #{"e-b" "e-d"})))))))
+        (testing "Fetching timelines"
+          (testing "don't include events by default"
+            (is (= #{}
+                   (->> (tl/timelines-for-collection (u/the-id collection) {})
+                        event-names))))
+          (testing "include only unarchived events by default"
+            (is (= #{"e-a" "e-c"}
+                   (->> (tl/timelines-for-collection (u/the-id collection)
+                                                     {:timeline/events? true})
+                        event-names))))
+          (testing "can load all events if specify `:events/all?`"
+            (is (= #{"e-a" "e-b" "e-c" "e-d"}
+                   (->> (tl/timelines-for-collection (u/the-id collection)
+                                                     {:timeline/events? true
+                                                      :events/all?      true})
+                        event-names)))))))))
