@@ -303,8 +303,10 @@
                            "CREATE TABLE PUBLIC.describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
                            "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
                            "INSERT INTO PUBLIC.describe_json_table (coherent_json_val incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');"]]
-          (jdbc/execute! spec [statement])))
-      (is (= (describe-table-json :postgres db table) {"bob" "dobbs})))))
+          (jdbc/execute! spec [statement]))
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (sync/sync-database! database)
+          (is (= (driver/describe-table-json :postgres database {:name "describe_json_table"}) {"bob" "dobbs"})))))
 
 (mt/defdataset with-uuid
   [["users"
