@@ -5,12 +5,14 @@ import { createSelector } from "reselect";
 import _ from "underscore";
 
 import entityType from "./EntityType";
+import { createMemoizedSelector } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 // props that shouldn't be passed to children in order to properly stack
 const CONSUMED_PROPS = [
   "entityType",
   "entityId",
+  "entityQuery",
   "entityAlias",
   // "reload", // Masked by `reload` function. Should we rename that?
   "wrapped",
@@ -19,15 +21,29 @@ const CONSUMED_PROPS = [
   "selectorName",
 ];
 
+// NOTE: Memoize entityQuery so we don't re-render even if a new but identical
+// object is created. This works because entityQuery must be JSON serializable
+const getMemoizedEntityQuery = createMemoizedSelector(
+  (state, entityQuery) => entityQuery,
+  entityQuery => entityQuery,
+);
+
 @entityType()
 @connect(
-  (state, { entityDef, entityId, selectorName = "getObject", ...props }) => {
+  (
+    state,
+    { entityDef, entityId, entityQuery, selectorName = "getObject", ...props },
+  ) => {
     if (typeof entityId === "function") {
       entityId = entityId(state, props);
+    }
+    if (typeof entityQuery === "function") {
+      entityQuery = entityQuery(state, props);
     }
 
     return {
       entityId,
+      entityQuery: getMemoizedEntityQuery(state, entityQuery),
       object: entityDef.selectors[selectorName](state, { entityId }),
       fetched: entityDef.selectors.getFetched(state, { entityId }),
       loading: entityDef.selectors.getLoading(state, { entityId }),
@@ -36,8 +52,6 @@ const CONSUMED_PROPS = [
   },
 )
 export default class EntityObjectLoader extends React.Component {
-  props;
-
   static defaultProps = {
     loadingAndErrorWrapper: true,
     reload: false,
@@ -62,10 +76,10 @@ export default class EntityObjectLoader extends React.Component {
   }
 
   UNSAFE_componentWillMount() {
-    const { entityId, fetch, dispatchApiErrorEvent } = this.props;
+    const { entityId, entityQuery, fetch, dispatchApiErrorEvent } = this.props;
     if (entityId != null) {
       fetch(
-        { id: entityId },
+        { id: entityId, ...entityQuery },
         {
           reload: this.props.reload,
           properties: this.props.properties,
@@ -80,7 +94,7 @@ export default class EntityObjectLoader extends React.Component {
       nextProps.entityId != null
     ) {
       nextProps.fetch(
-        { id: nextProps.entityId },
+        { id: nextProps.entityId, ...nextProps.entityQuery },
         { reload: nextProps.reload, properties: nextProps.properties },
       );
     }
