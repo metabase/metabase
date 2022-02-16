@@ -285,7 +285,12 @@
 
 (deftest describe-json-test
   (mt/test-driver :postgres
-    (testing "flatten row")
+    (testing "flatten-row"
+      (let [row some shit]
+        (is (= (flatten-row row) some shit))))
+    (testing "row->types"
+      (let [row some shit]
+        (is (= (row->types row) some shit))))
     (testing "describes a json column which has a coherent schema")
     (testing "describes a json column which does not a coherent schema")
     (testing "handles multiple mixed json columns OK")))
