@@ -133,6 +133,12 @@ export default class NativeQuery extends AtomicQuery {
     return !database || database.native_permissions !== "write";
   }
 
+  // This basically just mirrors StructuredQueries `isEditable` method,
+  // so there is no need to do `isStructured ? isEditable() : readOnly()`
+  isEditable() {
+    return !this.readOnly();
+  }
+
   /* Methods unique to this query type */
 
   /**

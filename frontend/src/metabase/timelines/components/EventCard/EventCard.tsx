@@ -25,7 +25,7 @@ export interface EventCardProps {
   timeline: Timeline;
   collection: Collection;
   onArchive?: (event: TimelineEvent) => void;
-  onRestore?: (event: TimelineEvent) => void;
+  onUnarchive?: (event: TimelineEvent) => void;
 }
 
 const EventCard = ({
@@ -33,14 +33,14 @@ const EventCard = ({
   timeline,
   collection,
   onArchive,
-  onRestore,
+  onUnarchive,
 }: EventCardProps): JSX.Element => {
   const menuItems = getMenuItems(
     event,
     timeline,
     collection,
     onArchive,
-    onRestore,
+    onUnarchive,
   );
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
@@ -73,7 +73,7 @@ const getMenuItems = (
   timeline: Timeline,
   collection: Collection,
   onArchive?: (event: TimelineEvent) => void,
-  onRestore?: (event: TimelineEvent) => void,
+  onUnarchive?: (event: TimelineEvent) => void,
 ) => {
   if (!event.archived) {
     return [
@@ -90,7 +90,7 @@ const getMenuItems = (
     return [
       {
         title: t`Restore event`,
-        action: () => onRestore?.(event),
+        action: () => onUnarchive?.(event),
       },
     ];
   }

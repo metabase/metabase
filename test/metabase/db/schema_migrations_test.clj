@@ -13,7 +13,7 @@
             [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Field Table]]
+            [metabase.models :refer [Database Field Setting Table]]
             [metabase.models.interface :as mi]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
@@ -303,3 +303,23 @@
                                   :details {:service-account-json "{\"fake_key\": 14}"}}]
         (migrate!)
         (is (= :bigquery-cloud-sdk (db/select-one-field :engine Database :id (u/the-id db))))))))
+
+(deftest migrate-legacy-site-url-setting-test
+  (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
+    (impl/test-migrations ["v43.00-008"] [migrate!]
+      (db/execute! {:insert-into Setting
+                    :values      [{:key   "-site-url"
+                                   :value "http://localhost:3000/"}]})
+      (migrate!)
+      (is (= [{:key "site-url", :value "http://localhost:3000"}]
+             (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
+
+(deftest site-url-ensure-protocol-test
+  (testing "Migration v043.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
+    (impl/test-migrations ["v43.00-009"] [migrate!]
+      (db/execute! {:insert-into Setting
+                    :values      [{:key   "site-url"
+                                   :value "localhost:3000"}]})
+      (migrate!)
+      (is (= [{:key "site-url", :value "http://localhost:3000"}]
+             (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))

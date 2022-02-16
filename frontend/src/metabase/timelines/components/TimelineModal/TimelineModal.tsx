@@ -15,7 +15,7 @@ export interface TimelineModalProps {
   collection: Collection;
   archived: boolean;
   onArchive?: (event: TimelineEvent) => void;
-  onRestore?: (event: TimelineEvent) => void;
+  onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
@@ -24,7 +24,7 @@ const TimelineModal = ({
   collection,
   archived,
   onArchive,
-  onRestore,
+  onUnarchive,
   onClose,
 }: TimelineModalProps): JSX.Element => {
   const title = archived ? t`Archived events` : timeline.name;
@@ -51,7 +51,7 @@ const TimelineModal = ({
             timeline={timeline}
             collection={collection}
             onArchive={onArchive}
-            onRestore={onRestore}
+            onUnarchive={onUnarchive}
           />
         </ModalBody>
       )}

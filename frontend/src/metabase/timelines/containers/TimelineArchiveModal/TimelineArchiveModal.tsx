@@ -3,9 +3,10 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import TimelineEvents from "metabase/entities/timeline-events";
+import { TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineModal from "../../components/TimelineModal";
-import { restoreEvent } from "../../actions";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -23,9 +24,11 @@ const mapStateToProps = () => ({
   archived: true,
 });
 
-const mapDispatchToProps = {
-  onRestore: restoreEvent,
-};
+const mapDispatchToProps = (dispatch: any) => ({
+  onUnarchive: async (event: TimelineEvent) => {
+    await dispatch(TimelineEvents.actions.setArchived(event, false));
+  },
+});
 
 export default _.compose(
   Timelines.load(timelineProps),
