@@ -43,25 +43,26 @@
           ;; make an API call to create a timeline
           (mt/user-http-request :rasta :post 200 "timeline-event" {:name         "Rasta Migrates to Florida for the Winter"
                                                                    :timestamp    (java.time.OffsetDateTime/now)
-                                                                   :timezone     "PST"
+                                                                   :timezone     "US/Pacific"
                                                                    :time_matters false
                                                                    :timeline_id  (u/the-id timeline)}))
           ;; check the Timeline to see if the event is there
-          (is (= (-> (db/select-one TimelineEvent :timeline_id (u/the-id timeline)) :name)
-                 "Rasta Migrates to Florida for the Winter"))))))
+          (is (= "Rasta Migrates to Florida for the Winter"
+                 (-> (db/select-one TimelineEvent :timeline_id (u/the-id timeline)) :name)))))))
 
 (deftest update-timeline-event-test
   (testing "PUT /api/timeline-event/:id"
-    (let [defaults {:creator_id (u/the-id (mt/fetch-user :rasta))}]
-      (mt/with-temp* [Collection    [collection {:name "Important Data"}]
-                      Timeline      [timeline (merge defaults {:name          "Important Events"
-                                                               :collection_id (u/the-id collection)})]
-                      TimelineEvent [event (merge defaults {:name         "Very Important Event"
-                                                            :timestamp    (java.time.OffsetDateTime/now)
-                                                            :timezone     "PST"
-                                                            :time_matters false
-                                                            :timeline_id  (u/the-id timeline)})]]
-        (testing "check that we get the timeline-event with `id`"
-          (is (= (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
-                      :archived)
-                 true)))))))
+    (testing "Can archive the timeline event"
+      (let [defaults {:creator_id (u/the-id (mt/user->id :rasta))}]
+        (mt/with-temp* [Collection    [collection {:name "Important Data"}]
+                        Timeline      [timeline (merge defaults {:name          "Important Events"
+                                                                 :collection_id (u/the-id collection)})]
+                        TimelineEvent [event (merge defaults {:name         "Very Important Event"
+                                                              :timestamp    (java.time.OffsetDateTime/now)
+                                                              :timezone     "US/Pacific"
+                                                              :time_matters false
+                                                              :timeline_id  (u/the-id timeline)})]]
+          (testing "check that we get the timeline-event with `id`"
+            (is (true?
+                 (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
+                      :archived)))))))))
