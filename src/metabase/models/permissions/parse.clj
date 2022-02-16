@@ -60,7 +60,7 @@
     [:collection id]             [:collection (collection-id id) :write]
     [:collection id "read"]      [:collection (collection-id id) :read]
     ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
-    [:block db-id]               [:db (Long/parseUnsignedLong db-id) :schemas :block]))
+    [:block db-id]               [:db (Long/parseUnsignedLong db-id) :data :schemas :block]))
 
 (defn- graph
   "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
