@@ -169,15 +169,6 @@
 
 (def ^:const json-sample-limit 10000)
 
-;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
-;; Not to be confused with existing nested field functionality for mongo,
-;; since this one only applies to JSON fields.
-(defmethod driver/describe-table-json :postgres
-  [driver database table]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (with-open [conn (jdbc/get-connection spec)]
-      (describe-table-json* driver conn table))))
-
 (defn- flatten-row [row]
   (letfn [(flatten-row [row path]
             (lazy-seq
@@ -222,6 +213,16 @@
                                               :from   [(keyword (:name table))]
                                               :limit  json-sample-limit})]
     (transduce describe-json-xform describe-json-rf query)))
+
+;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
+;; Not to be confused with existing nested field functionality for mongo,
+;; since this one only applies to JSON fields.
+(defmethod driver/describe-table-json :postgres
+  [driver database table]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (with-open [conn (jdbc/get-connection spec)]
+      (describe-table-json* driver conn table))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
