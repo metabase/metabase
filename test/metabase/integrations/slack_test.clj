@@ -80,7 +80,7 @@
 
 (deftest conversations-list-test
   (testing "conversations-list"
-    (test-auth conversations-endpoint slack/conversations-list)
+    (test-auth conversations-endpoint (fn [] (:results (slack/conversations-list-timeout))))
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -88,11 +88,11 @@
           (tu/with-temporary-setting-values [slack-token "test-token"
                                              slack-app-token nil]
             (is (= expected-result
-                   (slack/conversations-list))))
+                   (:result (slack/conversations-list-timeout)))))
           (tu/with-temporary-setting-values [slack-app-token "test-token"
                                              slack-token nil]
             (is (= expected-result
-                   (slack/conversations-list)))))))))
+                   (:result (slack/conversations-list-timeout))))))))))
 
 (deftest valid-token?-test
   (testing "valid-token?"

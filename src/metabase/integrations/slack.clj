@@ -1,6 +1,7 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.core.async :as async]
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -41,8 +42,6 @@
   :default "metabase_files"
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
-
-(def ^:private ^String slack-api-base-url "https://slack.com/api")
 
 (defn slack-configured?
   "Is Slack integration configured?"
@@ -96,7 +95,7 @@
                   (slack-app-token)
                   (slack-token))]
     (when token
-      (let [url     (str slack-api-base-url "/" (name endpoint))
+      (let [url     (str "https://slack.com/api/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
@@ -149,12 +148,61 @@
           (lazy-seq
            (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(defn conversations-list
+(defonce *cached-conversations
+  ;; "This is a map from query-parameters -> conversation-list. Usually query-parameters are nil"
+  (atom {}))
+
+(defn ^:private conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
   default only fetches channels."
   [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
-    (paged-list-request "conversations.list" :channels params)))
+  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)
+        result (vec (paged-list-request "conversations.list" :channels params))]
+    (swap! *cached-conversations assoc query-parameters result)
+    result))
+
+;; avoids circular dependency and `declare`
+(when (empty? @*cached-conversations)
+  ;; fill in the cached-conversations for nil query-parameters:
+  (conversations-list))
+
+(def ^:private slack-api-timeout-ms
+  "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
+  return a cached value early. (Note: The underlying page walking will continue, and update the cached value
+  accordingly)."
+  5000)
+
+(defn conversations-list-timeout
+  "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
+  default only fetches unarchived public channels. After slack-api-timeout-ms milliseconds, returns the cached value of "
+  [& {:as query-parameters}]
+  (let [result-chan (async/chan)]
+    (async/go (async/>! result-chan
+                        (try (conversations-list)
+                             (catch Exception e
+                               e))))
+    (let [[result _chan] (async/alts!! [result-chan (async/timeout slack-api-timeout-ms)])]
+      (cond
+        (instance? Throwable result)
+        (throw result)
+
+        (nil? result)
+        ;; timed out, so return the cached version
+        ;; continue walking the requests in the bg
+        {:message (trs "You have a lot of slack channels! Please check back in a minute if you don't see the channel you are looking for.")
+         :result (get @*cached-conversations query-parameters)}
+
+        :else
+        {:result result}))))
+
+(comment
+
+  (conversations-list-timeout)
+
+  (with-redefs [slack-api-timeout-ms 1]
+    (:message (conversations-list-timeout :x 2)))
+
+  )
 
 (defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
@@ -169,7 +217,7 @@
   [token :- su/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
-      (boolean (take 1 (conversations-list :limit 1, :token token))))
+      (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
     (catch Throwable e
       (if (slack-token-error-codes (:error-code (ex-data e)))
         false

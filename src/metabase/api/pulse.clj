@@ -135,7 +135,7 @@
                  ;; if we have Slack enabled build a dynamic list of channels/users
                  :else
                  (try
-                   (let [slack-channels-future        (future (for [channel (slack/conversations-list)]
+                   (let [slack-channels-future        (future (for [channel (:result (slack/conversations-list-timeout))]
                                                          (str \# (:name channel))))
                          slack-users-future           (future (for [user (slack/users-list)]
                                                          (str \@ (:name user))))
