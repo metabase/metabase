@@ -117,6 +117,7 @@ export const ListField = ({
         onChange={setFilter}
         onKeyDown={handleKeyDown}
         hasClearButton
+        autoFocus
       />
 
       {shouldShowEmptyState && (
