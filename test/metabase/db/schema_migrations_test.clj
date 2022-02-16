@@ -16,6 +16,7 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field Permissions PermissionsGroup Setting Table]]
             [metabase.models.interface :as mi]
+            [metabase.models.permissions-group :as group]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -339,7 +340,7 @@
                  (db/query {:select    [:p.object]
                             :from      [[Permissions :p]]
                             :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                            :where     [:= :pg.name "All Users"]}))))))))
+                            :where     [:= :pg.name group/all-users-group-name]}))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
