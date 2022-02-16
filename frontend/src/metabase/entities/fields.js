@@ -76,6 +76,7 @@ const Fields = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Fields.getObjectStatePath(id)],
         ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+        entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
     )(({ id: fieldId }) => async (dispatch, getState) => {

@@ -70,7 +70,7 @@ function PermissionsLink({
 }
 
 function TimelinesLink({ collection }) {
-  const tooltip = t`Event timelines`;
+  const tooltip = t`Events`;
   const link = Urls.timelinesInCollection(collection);
 
   return (
