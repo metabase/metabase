@@ -23,5 +23,8 @@ export const InputRoot = styled.div<InputRootProps>`
 
 export const InputIcon = styled(Icon)`
   cursor: pointer;
+`;
+
+export const InputIconContainer = styled.div`
   margin: 0 0.5rem;
 `;

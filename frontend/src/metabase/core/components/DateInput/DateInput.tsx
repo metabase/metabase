@@ -13,7 +13,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Calendar from "metabase/components/Calendar";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { InputIcon, InputRoot } from "./DateInput.styled";
+import { InputIcon, InputIconContainer, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -56,7 +56,7 @@ const DateInput = forwardRef(function DateInput(
     setIsOpened(isOpened => !isOpened);
   }, []);
 
-  const handleOutsideClick = useCallback(() => {
+  const handlePopoverHide = useCallback(() => {
     setIsOpened(false);
   }, []);
 
@@ -68,7 +68,7 @@ const DateInput = forwardRef(function DateInput(
 
       if (newValue.isValid()) {
         onChange?.(newValue);
-      } else if (!newText) {
+      } else {
         onChange?.(undefined);
       }
     },
@@ -91,20 +91,30 @@ const DateInput = forwardRef(function DateInput(
     [onBlur],
   );
 
+  const handleCalendarChange = useCallback(
+    (newText: string) => {
+      const newValue = moment(newText);
+      setText(newValue.format(DATE_FORMAT));
+      setIsOpened(false);
+      onChange?.(newValue);
+    },
+    [onChange],
+  );
+
   return (
     <TippyPopover
       visible={isOpened}
       placement="bottom"
-      interactive
       content={
         <Calendar
           selected={value}
           initial={initialValue}
-          onChange={onChange}
+          onChange={handleCalendarChange}
           isRangePicker={false}
         />
       }
-      onClickOutside={handleOutsideClick}
+      interactive
+      onHide={handlePopoverHide}
     >
       <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
         <Input
@@ -118,11 +128,12 @@ const DateInput = forwardRef(function DateInput(
           onFocus={onFocus}
           onBlur={handleInputBlur}
         />
-        <InputIcon
-          name="calendar"
-          tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}
-          onClick={handleIconClick}
-        />
+        <InputIconContainer onClick={handleIconClick}>
+          <InputIcon
+            name="calendar"
+            tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}
+          />
+        </InputIconContainer>
       </InputRoot>
     </TippyPopover>
   );
