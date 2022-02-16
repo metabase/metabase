@@ -4,6 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
+            [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -39,12 +40,10 @@
   {include  (s/maybe include-events-schema)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timeline  (api/read-check (Timeline id))
-        filter-fn (fn [e] (filter #(= (:archived %) archived?) e))]
-    (if include
-      (-> (hydrate timeline :creator [:events :creator])
-          (update :events filter-fn))
-      (hydrate timeline :creator))))
+        timeline  (api/read-check (Timeline id))]
+    (cond-> (hydrate timeline :creator)
+      (= include "events")
+      (timeline-event/include-events-singular {:events/all? archived?}))))
 
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`."

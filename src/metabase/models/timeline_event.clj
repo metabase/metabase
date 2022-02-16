@@ -3,6 +3,7 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
@@ -17,21 +18,53 @@
 
 ;;;; hydration
 
-;; todo: is there a way to pass in archived boolean to the hydration?
-;; right now it hydrates both archived/unarchived and filters one out at the endpoint
-(defn hydrate-events
-  "Efficiently hydrate the events for a timeline."
-  {:batched-hydrate :events}
-  [timelines]
-  (when (seq timelines)
-    (let [timeline-id->events (->> (db/select TimelineEvent
-                                     :timeline_id [:in (map :id timelines)]
-                                     {:order-by [[:timestamp :asc]]})
+(defn- fetch-events
+  "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
+  well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
+  regardless of archive state."
+  [timeline-ids {:events/keys [all? start end]}]
+  (let [clause {:where [:and
+                        ;; in our collections
+                        [:in :timeline_id timeline-ids]
+                        (when-not all?
+                          [:= :archived false])
+                        (when (or start end)
+                          [:or
+                           ;; absolute time in bounds
+                           [:and
+                            [:= :time_matters true]
+                            ;; less than or equal?
+                            (when start
+                              [:<= start :timestamp])
+                            (when end
+                              [:<= :timestamp end])]
+                           ;; non-specic time in bounds
+                           [:and
+                            [:= :time_matters false]
+                            (when start
+                              [:<= (hx/->date start) (hx/->date :timestamp)])
+                            (when end
+                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]}]
+    (hydrate (db/select TimelineEvent clause) :creator)))
+
+(defn include-events
+  "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
+  events regardless of archive status (`all?`), and `start` and `end` parameters for events."
+  [timelines options]
+  (if-not (seq timelines)
+    []
+    (let [timeline-id->events (->> (fetch-events (map :id timelines) options)
                                    (group-by :timeline_id))]
       (for [{:keys [id] :as timeline} timelines]
         (let [events (timeline-id->events id)]
           (when timeline
             (assoc timeline :events (if events events []))))))))
+
+(defn include-events-singular
+  "Similar to [[include-events]] but allows for passing a single timeline not in a collection."
+  ([timeline] (include-events-singular timeline {}))
+  ([timeline options]
+   (first (include-events [timeline] options))))
 
 ;;;; model
 

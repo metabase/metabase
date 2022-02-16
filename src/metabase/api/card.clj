@@ -34,6 +34,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -177,16 +178,19 @@
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [id include archived]
-  {include  (s/maybe timeline-api/include-events-schema)
-   archived (s/maybe su/BooleanString)}
+  [id include start end]
+  {include (s/maybe timeline-api/include-events-schema)
+   start   (s/maybe su/TemporalString)
+   end     (s/maybe su/TemporalString)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
     ;; the read-checks are particularly fast on multiple items
-    (let [archived? (Boolean/parseBoolean archived)]
-      (timeline/timelines-for-collection collection_id {:include  include
-                                                        :archived archived?}))))
+    (timeline/timelines-for-collection collection_id
+                                       {:timeline/events? (= include "events")
+                                        :events/start     (when start (u.date/parse start))
+                                        :events/end       (when end (u.date/parse end))})))
+
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
