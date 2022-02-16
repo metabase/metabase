@@ -10,11 +10,13 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
-import Calendar from "metabase/components/Calendar";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { CalendarFooter, InputIcon, InputRoot } from "./DateInput.styled";
 import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
+import Icon from "metabase/components/Icon";
+import Calendar from "metabase/components/Calendar";
+import Tooltip from "metabase/components/Tooltip";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -151,11 +153,11 @@ const DateInput = forwardRef(function DateInput(
           onBlur={handleInputBlur}
         />
         {!readOnly && !disabled && (
-          <InputIcon
-            name="calendar"
-            tooltip={t`Show calendar`}
-            onClick={handleIconClick}
-          />
+          <Tooltip tooltip={isOpened ? t`Hide calendar` : t`Open calendar`}>
+            <InputIconButton tabIndex={-1} onClick={handleIconClick}>
+              <Icon name="calendar" />
+            </InputIconButton>
+          </Tooltip>
         )}
       </InputRoot>
     </TippyPopover>
