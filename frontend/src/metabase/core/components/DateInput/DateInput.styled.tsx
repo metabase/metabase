@@ -25,7 +25,7 @@ export const InputRoot = styled.div<InputRootProps>`
 `;
 
 export const InputIconButton = styled(IconButtonWrapper)`
-  margin: 0 0.5rem;
+  margin: 0 0.75rem;
 `;
 
 export const CalendarFooter = styled.div`
