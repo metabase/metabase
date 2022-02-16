@@ -11,7 +11,15 @@ import {
   NumberColumn,
 } from "../__support__/visualizations";
 
+const settings = {
+  column: jest.fn(),
+};
+
 describe("getClickHoverObject", () => {
+  beforeEach(() => {
+    settings.column.mockReset();
+  });
+
   it("should return data for tooltip", () => {
     const d = { data: { key: "foobar", value: 123 } };
     const cols = [StringColumn(), NumberColumn()];
@@ -21,6 +29,7 @@ describe("getClickHoverObject", () => {
       seriesIndex: 0,
       classList: [],
       event: {},
+      settings,
     };
 
     const obj = getClickHoverObject(d, otherArgs);
@@ -46,6 +55,7 @@ describe("getClickHoverObject", () => {
       seriesIndex: 0,
       classList: [],
       event: {},
+      settings,
     };
 
     const obj = getClickHoverObject(d, otherArgs);
@@ -71,6 +81,7 @@ describe("getClickHoverObject", () => {
       seriesIndex: 0,
       classList: [],
       event: {},
+      settings,
     };
 
     const obj = getClickHoverObject(d, otherArgs);
@@ -89,6 +100,7 @@ describe("getClickHoverObject", () => {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       element: "DOM element",
+      settings,
     };
 
     for (const [eventType, klass, shouldUseMouseLocation] of [
@@ -127,6 +139,7 @@ describe("getClickHoverObject", () => {
       seriesIndex: 0,
       classList: [],
       event: {},
+      settings,
     };
 
     const { data, dimensions } = getClickHoverObject(d, otherArgs);
@@ -145,6 +158,7 @@ describe("getClickHoverObject", () => {
       classList: [],
       event: {},
       seriesTitle: "better name",
+      settings,
     };
 
     const {
@@ -175,6 +189,7 @@ describe("getClickHoverObject", () => {
       seriesIndex: 0,
       classList: [],
       event: {},
+      settings,
     };
 
     const obj = getClickHoverObject(d, otherArgs);
