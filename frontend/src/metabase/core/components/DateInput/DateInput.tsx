@@ -1,41 +1,55 @@
 import React, {
+  ChangeEvent,
   FocusEvent,
   forwardRef,
+  HTMLAttributes,
   Ref,
   useCallback,
   useState,
 } from "react";
 import moment, { Moment } from "moment";
-import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { InputIcon, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
-export interface DateInputProps {
+export type DateInputAttributes = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange" | "onFocus" | "onBlur"
+>;
+
+export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   readOnly?: boolean;
   fullWidth?: boolean;
   onChange?: (value: Moment | undefined) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
-  { value, readOnly, fullWidth, onChange }: DateInputProps,
+  {
+    value,
+    readOnly,
+    fullWidth,
+    onChange,
+    onFocus,
+    onBlur,
+    ...props
+  }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [text, setText] = useState(value?.format(DATE_FORMAT));
-  const [isOpened, setIsOpened] = useState(false);
 
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      const text = event.target.value;
-      const date = moment(text, DATE_FORMAT);
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const newText = event.target.value;
+      const newValue = moment(newText, DATE_FORMAT);
+      setText(newText);
 
-      if (date.isValid()) {
-        setText(date.format(DATE_FORMAT));
-        onChange?.(date);
-      } else {
-        setText("");
+      if (newValue.isValid()) {
+        onChange?.(newValue);
+      } else if (!newText) {
         onChange?.(undefined);
       }
     },
@@ -43,18 +57,17 @@ const DateInput = forwardRef(function DateInput(
   );
 
   return (
-    <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth}>
+    <InputRoot ref={ref} readOnly={readOnly} fullWidth={fullWidth} {...props}>
       <Input
         value={text}
         readOnly={readOnly}
         fullWidth={fullWidth}
         borderless
-        onBlur={handleBlur}
+        onChange={handleChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
-      <InputIcon
-        name="calendar"
-        tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}
-      />
+      <InputIcon name="calendar" />
     </InputRoot>
   );
 });
