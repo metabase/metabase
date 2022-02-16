@@ -553,7 +553,6 @@
     (mt/with-temp PermissionsGroup [group]
       (testing "before"
         ;; first, graph permissions only for VENUES
-        (perms/grant-permissions! my-group my-data-path)
         (perms/grant-permissions! group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :venues)))
         (is (= {(mt/id :venues) :all}
                (test-data-graph group))))
