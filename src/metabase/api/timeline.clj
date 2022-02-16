@@ -4,7 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event]
+            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -55,15 +55,24 @@
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   ;; todo: icon is valid
-  (let [existing (api/write-check Timeline id)]
+  (let [existing (api/write-check Timeline id)
+        current-archived (:archived (db/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
         :present #{:description :icon :collection_id :archived}
         :non-nil #{:name}))
+    (when (and (some? archived) (not= current-archived archived))
+      (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
     (hydrate (Timeline id) :creator)))
 
 
 ;; todo: icons
 ;; todo: how does updated-at work?
 (api/define-routes)
+
+
+(comment
+  (db/update-where! TimelineEvent {:timeline_id 1} :archived true)
+  (map :archived (:events (hydrate (Timeline 1) :events)))
+  )
