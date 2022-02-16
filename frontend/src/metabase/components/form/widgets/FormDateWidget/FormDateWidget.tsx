@@ -1,6 +1,5 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment";
-import { formDomOnlyProps } from "metabase/lib/redux";
 import DateInput from "metabase/core/components/DateInput";
 import { FormField } from "./types";
 
