@@ -8,6 +8,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventList from "../EventList";
 import ModalHeader from "../ModalHeader";
+import TimelineEmptyState from "../TimelineEmptyState";
 import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
 
 export interface TimelineModalProps {
@@ -44,8 +45,8 @@ const TimelineModal = ({
           >{t`Add an event`}</Link>
         )}
       </ModalToolbar>
-      {events.length > 0 && (
-        <ModalBody>
+      <ModalBody>
+        {events.length > 0 ? (
           <EventList
             events={events}
             timeline={timeline}
@@ -53,8 +54,10 @@ const TimelineModal = ({
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
-        </ModalBody>
-      )}
+        ) : (
+          <TimelineEmptyState timeline={timeline} collection={collection} />
+        )}
+      </ModalBody>
     </ModalRoot>
   );
 };
