@@ -4,8 +4,10 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
-import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
+import { keyForColumn } from "metabase/lib/dataset";
+
+import { nestedSettings } from "./nested";
 
 export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries
@@ -33,7 +35,12 @@ export function seriesSetting({
             return legacyTitles[index];
           }
         }
-        return single.card.name;
+
+        const column = series[0].data.cols[0];
+        const key = keyForColumn(column);
+        const chartSettings = vizSettings.column_settings?.[key];
+
+        return chartSettings?.column_title || single.card.name;
       },
     },
     display: {
