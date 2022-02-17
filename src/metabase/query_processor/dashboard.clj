@@ -112,6 +112,9 @@
    request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
+        ;; ignore default values in request params as well. (#20516)
+        request-params            (for [param request-params]
+                                    (dissoc param :default))
         dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to

@@ -70,6 +70,8 @@ jobs:
           - "downloads"
           - "moderation"
           - "native"
+          - "permissions"
+          - "sharing"
           - "smoketest"
     services:
       maildev:

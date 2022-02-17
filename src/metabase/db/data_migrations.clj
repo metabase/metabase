@@ -1,4 +1,4 @@
-(ns metabase.db.data-migrations
+(ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
@@ -12,9 +12,6 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perm-group]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -22,9 +19,9 @@
 
 ;;; # Migration Helpers
 
-(models/defmodel DataMigrations :data_migrations)
+(models/defmodel ^:deprecated DataMigrations :data_migrations)
 
-(defn- run-migration-if-needed!
+(defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
 
@@ -46,16 +43,16 @@
         :id        migration-name
         :timestamp :%now))))
 
-(def ^:private data-migrations (atom []))
+(def ^:private ^:deprecated data-migrations (atom []))
 
-(defmacro ^:private defmigration
+(defmacro ^:private ^:deprecated defmigration
   "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
   `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-(defn run-all!
+(defn ^:deprecated run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -63,23 +60,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 PERMISSIONS v1                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
-;; DB
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
-  (let [db-ids (db/select-ids Database)]
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]
-            database-id    db-ids]
-      (u/ignore-exceptions
-        (db/insert! Permissions
-          :object   (perms/data-perms-path database-id)
-          :group_id group-id)))))
 
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
