@@ -18,6 +18,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -135,12 +136,15 @@
                  ;; if we have Slack enabled build a dynamic list of channels/users
                  :else
                  (try
-                   (let [slack-channels-future        (future (for [channel (:result (slack/conversations-list-timeout))]
-                                                         (str \# (:name channel))))
-                         slack-users-future           (future (for [user (slack/users-list)]
-                                                         (str \@ (:name user))))
-                         [slack-channels slack-users] (map deref [slack-channels-future slack-users-future])]
-                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (let [[conversations users] (map deref [(future (slack/conversations-list-timeout))
+                                                           (future (slack/users-list-timeout))])
+                         slack-channels        (for [channel (:result conversations)] (str \# (:name channel)))
+                         slack-users           (for [user (:result users)] (str \@ (:name user)))
+                         timeout?              (or (:timeout conversations) (:timeout users))]
+                     (cond-> (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))
+                             timeout?
+                             (assoc-in [:slack :warning]
+                                       (tru "You have a lot of slack channels, please check back here in a minute if you don't see the channel or user you are looking for."))))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 

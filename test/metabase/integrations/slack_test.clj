@@ -80,7 +80,7 @@
 
 (deftest conversations-list-test
   (testing "conversations-list"
-    (test-auth conversations-endpoint (fn [] (:results (slack/conversations-list-timeout))))
+    (test-auth conversations-endpoint (fn [] (:result (slack/conversations-list-timeout))))
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -131,16 +131,16 @@
 
 (deftest users-list-test
   (testing "users-list"
-    (test-auth users-endpoint slack/users-list)
+    (test-auth users-endpoint (fn [] (:result (slack/users-list-timeout))))
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (tu/with-temporary-setting-values [slack-app-token "test-token"]
           (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))
+                 (:result (slack/users-list-timeout)))))
         (tu/with-temporary-setting-values [slack-token "test-token"]
           (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))))))
+                 (:result (slack/users-list-timeout)))))))))
 
 (defn- mock-files-channel []
   (let [channel-name (slack/slack-files-channel)]

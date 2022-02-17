@@ -148,8 +148,16 @@
           (lazy-seq
            (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(defonce *cached-conversations
-  ;; "This is a map from query-parameters -> conversation-list. Usually query-parameters are nil"
+(def ^:private slack-api-timeout-ms
+  "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
+  return a cached value early. (Note: The underlying page walking will continue, and update the cached value
+  accordingly)."
+  5000)
+
+(defonce
+  ^{:private true
+    :doc "This is a map from query-parameters -> conversation-list. Usually query-parameters are nil"}
+  *cached-conversations
   (atom {}))
 
 (defn ^:private conversations-list
@@ -161,16 +169,9 @@
     (swap! *cached-conversations assoc query-parameters result)
     result))
 
-;; avoids circular dependency and `declare`
 (when (empty? @*cached-conversations)
-  ;; fill in the cached-conversations for nil query-parameters:
+  ;; fill in the cached-conversations for nil query-parameters
   (conversations-list))
-
-(def ^:private slack-api-timeout-ms
-  "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
-  return a cached value early. (Note: The underlying page walking will continue, and update the cached value
-  accordingly)."
-  5000)
 
 (defn conversations-list-timeout
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
@@ -186,23 +187,22 @@
         (instance? Throwable result)
         (throw result)
 
+        ;; timed out, so return the cached version continue walking the requests in the go block, which will
+        ;; eventually fill in the cache.
         (nil? result)
-        ;; timed out, so return the cached version
-        ;; continue walking the requests in the bg
-        {:message (trs "You have a lot of slack channels! Please check back in a minute if you don't see the channel you are looking for.")
+        {:timeout true
          :result (get @*cached-conversations query-parameters)}
 
+        ;; conversations-list finished before the timeout
         :else
         {:result result}))))
 
 (comment
 
-  (conversations-list-timeout)
+  [(:timeout (conversations-list-timeout))
 
-  (with-redefs [slack-api-timeout-ms 1]
-    (:message (conversations-list-timeout :x 2)))
-
-  )
+   (with-redefs [slack-api-timeout-ms 1]
+     (:timeout (conversations-list-timeout :x 2)))])
 
 (defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
@@ -213,7 +213,7 @@
         (conversations-list)))
 
 (s/defn valid-token?
-  "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
+  "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
   [token :- su/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
@@ -223,14 +223,56 @@
         false
         (throw e)))))
 
-(defn users-list
+(defonce
+  ^{:doc "This is a map from query-parameters -> users list. Usually query-parameters are nil"
+    :private true}
+  *cached-users (atom {}))
+
+(defn ^:private users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users."
   [& {:as query-parameters}]
-  (->> (paged-list-request "users.list" :members query-parameters)
-       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
-       ;; itself so we need to do it after the fact.
-       (filter (complement :deleted))
-       (filter (complement :is_bot))))
+  (let [result (->> (paged-list-request "users.list" :members query-parameters)
+                    ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
+                    ;; itself so we need to do it after the fact.
+                    (filter (complement :deleted))
+                    (filter (complement :is_bot)))]
+    (swap! *cached-users assoc query-parameters result)
+    result))
+
+(defn users-list-timeout
+  "Calls Slack API `users.list` and returns list of users without the @ prefix. After slack-api-timeout-ms
+  milliseconds, returns the value of *cached-users. The long-running slack request continues in the background,
+  eventually re-filling the cache."
+  [& {:as query-parameters}]
+  (let [result-chan (async/chan)]
+    (async/go (async/>! result-chan
+                        (try (users-list)
+                             (catch Exception e
+                               e))))
+    (let [[result _chan] (async/alts!! [result-chan (async/timeout slack-api-timeout-ms)])]
+      (cond
+        (instance? Throwable result)
+        (throw result)
+
+        ;; timed out, so return the cached version continue walking the requests in the go block, which will
+        ;; eventually fill in the cache.
+        (nil? result)
+        {:timeout true
+         :result (get @*cached-users query-parameters)}
+
+        ;; users-list finished before the timeout
+        :else
+        {:result result}))))
+
+(comment
+
+  (:timeout (users-list-timeout))
+
+  (with-redefs [slack-api-timeout-ms 1]
+    (:timeout (users-list-timeout)))
+  )
+
+
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
