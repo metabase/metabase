@@ -48,6 +48,7 @@ CollectionSidebar.propTypes = {
   list: PropTypes.arrayOf(PropTypes.object),
   shouldDisplayMobileSidebar: PropTypes.bool,
   handleToggleMobileSidebar: PropTypes.func,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
 function CollectionSidebar({
@@ -60,6 +61,7 @@ function CollectionSidebar({
   list,
   shouldDisplayMobileSidebar,
   handleToggleMobileSidebar,
+  toggleBookmark,
 }) {
   const [openCollections, setOpenCollections] = useState([]);
 
@@ -112,6 +114,7 @@ function CollectionSidebar({
             handleToggleMobileSidebar={handleToggleMobileSidebar}
             onOpen={onOpen}
             onClose={onClose}
+            toggleBookmark={toggleBookmark}
           />
           <Footer isAdmin={currentUser.is_superuser} />
         </React.Fragment>

@@ -17,6 +17,7 @@ const propTypes = {
   onClose: PropTypes.func.isRequired,
   onOpen: PropTypes.func.isRequired,
   openCollections: PropTypes.array,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
 export default function Collections({
@@ -27,6 +28,7 @@ export default function Collections({
   onClose,
   onOpen,
   openCollections,
+  toggleBookmark,
 }) {
   function filterPersonalCollections(collection) {
     return !collection.archived;
@@ -58,6 +60,7 @@ export default function Collections({
           collections={currentUserPersonalCollections}
           filter={filterPersonalCollections}
           currentCollection={collectionId}
+          toggleBookmark={toggleBookmark}
         />
       </div>
     </Container>

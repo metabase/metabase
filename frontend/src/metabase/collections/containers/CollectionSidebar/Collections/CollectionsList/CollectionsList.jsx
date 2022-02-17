@@ -34,8 +34,8 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
-function Label({ action, depth, collection, isOpen }) {
-  const { children, id, name } = collection;
+function Label({ action, depth, collection, isOpen, toggleBookmark }) {
+  const { children, id, isBookmarked = false, name } = collection;
 
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const hasChildren =
@@ -60,7 +60,9 @@ function Label({ action, depth, collection, isOpen }) {
         targetOffsetX={targetOffsetX}
       />
       {name}
-      <BookmarkCollectionButton>
+      <BookmarkCollectionButton
+        onClick={() => toggleBookmark(id, !isBookmarked)}
+      >
         <Icon name="bookmark" />
       </BookmarkCollectionButton>
     </LabelContainer>
@@ -77,6 +79,7 @@ function Collection({
   onClose,
   onOpen,
   openCollections,
+  toggleBookmark,
 }) {
   const { id, children } = collection;
   const isOpen = openCollections.indexOf(id) >= 0;
@@ -115,6 +118,7 @@ function Collection({
                 initialIcon={initialIcon}
                 isOpen={isOpen}
                 depth={depth}
+                toggleBookmark={toggleBookmark}
               />
             </CollectionLink>
           );
@@ -145,6 +149,7 @@ function CollectionsList({
   handleToggleMobileSidebar,
   initialIcon,
   depth = 1,
+  toggleBookmark,
   ...otherProps
 }) {
   const filteredCollections = collections.filter(filter);
@@ -159,6 +164,7 @@ function CollectionsList({
           handleToggleMobileSidebar={handleToggleMobileSidebar}
           initialIcon={initialIcon}
           key={collection.id}
+          toggleBookmark={toggleBookmark}
           {...otherProps}
         />
       ))}
