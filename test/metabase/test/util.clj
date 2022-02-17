@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory User]]
+                                     PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -108,8 +108,8 @@
             :color "#ABCDEF"})
 
    Dashboard
-   (fn [_] {:creator_id   (rasta-id)
-            :name         (random-name)})
+   (fn [_] {:creator_id (rasta-id)
+            :name       (random-name)})
 
    DashboardCardSeries
    (constantly {:position 0})
@@ -172,7 +172,7 @@
             :is_reversion false})
 
    Segment
-   (fn [_] {:creator_id (rasta-id)
+   (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
@@ -194,6 +194,19 @@
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
+
+   Timeline
+   (fn [_]
+     {:name       "Timeline of bird squawks"
+      :creator_id (rasta-id)})
+
+   TimelineEvent
+   (fn [_]
+     {:name         "default timeline event"
+      :timestamp    (t/zoned-date-time)
+      :timezone     "US/Pacific"
+      :time_matters true
+      :creator_id   (rasta-id)})
 
    User
    (fn [_] {:first_name (random-name)
