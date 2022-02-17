@@ -23,10 +23,18 @@ const FormDateWidget = forwardRef(function FormDateWidget(
 
   const handleChange = useCallback(
     (newValue?: Moment) => {
-      field.onChange(newValue?.format(DATE_FORMAT));
+      field.onChange?.(newValue?.format(DATE_FORMAT));
     },
     [field],
   );
+
+  const handleFocus = useCallback(() => {
+    field.onFocus?.(field.value);
+  }, [field]);
+
+  const handleBlur = useCallback(() => {
+    field.onBlur?.(field.value);
+  }, [field]);
 
   return (
     <DateInput
@@ -40,8 +48,8 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       tabIndex={tabIndex}
       aria-labelledby={`${field.name}-label`}
       onChange={handleChange}
-      onFocus={field.onFocus}
-      onBlur={field.onBlur}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
     />
   );
 });
