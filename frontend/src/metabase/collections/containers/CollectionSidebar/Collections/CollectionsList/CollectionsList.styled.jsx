@@ -87,4 +87,8 @@ export const BookmarkCollectionButton = styled(IconButtonWrapper)`
   &:hover {
     color: #2e7bbf;
   }
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
