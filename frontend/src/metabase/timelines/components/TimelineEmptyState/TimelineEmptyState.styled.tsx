@@ -17,7 +17,39 @@ export const StateBody = styled.div`
 
 export const StateChart = styled.div`
   color: ${color("brand")};
-  margin-bottom: 3.5rem;
+  margin-bottom: -1rem;
+`;
+
+export const StateTooltip = styled.div`
+  display: flex;
+  align-items: center;
+  min-width: 16.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: ${color("text-dark")};
+`;
+
+export const StateTooltipIcon = styled(Icon)`
+  flex: 0 0 auto;
+  color: ${color("white")};
+  width: 1rem;
+  height: 1rem;
+`;
+
+export const StateTooltipBody = styled.div`
+  flex: 1 1 auto;
+  margin-left: 1rem;
+`;
+
+export const StateTooltipTitle = styled.div`
+  color: ${color("white")};
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+`;
+
+export const StateTooltipDescription = styled.div`
+  color: ${color("white")};
 `;
 
 export const StateThread = styled.div`

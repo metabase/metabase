@@ -12,6 +12,11 @@ import {
   StateThreadIcon,
   StateThreadIconContainer,
   StateThreadLine,
+  StateTooltip,
+  StateTooltipBody,
+  StateTooltipDescription,
+  StateTooltipIcon,
+  StateTooltipTitle,
 } from "./TimelineEmptyState.styled";
 
 export interface TimelineEmptyStateProps {
@@ -40,6 +45,13 @@ const TimelineEmptyState = ({
             />
           </svg>
         </StateChart>
+        <StateTooltip>
+          <StateTooltipIcon name="mail" />
+          <StateTooltipBody>
+            <StateTooltipTitle>{t`Launch of v2.0`}</StateTooltipTitle>
+            <StateTooltipDescription>{t`January 1, 2022`}</StateTooltipDescription>
+          </StateTooltipBody>
+        </StateTooltip>
         <StateThread>
           <StateThreadLine />
           <StateThreadIconContainer>
