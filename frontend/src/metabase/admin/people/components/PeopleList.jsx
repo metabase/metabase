@@ -150,12 +150,12 @@ export default class PeopleList extends Component {
                     <span className="ml2 text-bold">{user.common_name}</span>
                   </td>
                   <td>
-                    {user.google_auth ? (
+                    {user.sso_source === "google" ? (
                       <Tooltip tooltip={t`Signed up via Google`}>
                         <Icon name="google" />
                       </Tooltip>
                     ) : null}
-                    {user.ldap_auth ? (
+                    {user.sso_source === "ldap" ? (
                       <Tooltip tooltip={t`Signed up via LDAP`}>
                         <Icon name="ldap" />
                       </Tooltip>

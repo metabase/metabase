@@ -377,3 +377,28 @@
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
               {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
              (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))
+
+(deftest migrate-google-auth-and-ldap-auth-columns
+  (testing "Migrations v43.00-030 thru v43.00-032 : migrate google_auth and ldap_auth columns to sso_source (#20575)"
+    (impl/test-migrations ["v43.00-030" "v43.00-032"] [migrate!]
+      (db/execute! {:insert-into User
+                    :values      (for [row [{:email "regular_cam@metabase.com"}
+                                            {:email       "google_auth_cam@metabase.com"
+                                             :google_auth true}
+                                            {:email     "ldap_cam@metabase.com"
+                                             :ldap_auth true}
+                                            {:email      "saml_cam@metabase.com"
+                                             :sso_source "saml"}]]
+                                   (merge {:first_name  "Cam"
+                                           :last_name   "Era"
+                                           :date_joined :%now
+                                           :sso_source  nil
+                                           :google_auth false
+                                           :ldap_auth   false}
+                                          row))})
+      (migrate!)
+      (is (= [{:email "regular_cam@metabase.com", :sso_source nil}
+              {:email "google_auth_cam@metabase.com", :sso_source "google"}
+              {:email "ldap_cam@metabase.com", :sso_source "ldap"}
+              {:email "saml_cam@metabase.com", :sso_source "saml"}]
+             (db/query {:select [:email :sso_source], :from [User], :order-by [[:id :asc]]}))))))

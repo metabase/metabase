@@ -670,28 +670,6 @@
   (log/infof "User with email %s is new to target DB; setting a random password" (:email user))
   (assoc user :password (str (UUID/randomUUID))))
 
-;; leaving comment out for now (deliberately), because this will send a password reset email to newly inserted users
-;; when enabled in a future release; see `defmethod load "users"` below
-#_(defn- post-insert-user
-    "A function called on the ID of each `User` instance after it is inserted (via upsert)."
-    [user-id]
-    (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :email :google_auth :is_active] :id user-id)]
-      (let [reset-token        (user/set-password-reset-token! user-id)
-            site-url           (public-settings/site-url)
-            password-reset-url (str site-url "/auth/reset_password/" reset-token)
-            ;; in a web server context, the server-name ultimately comes from ServletRequest/getServerName
-            ;; (i.e. the Java class, via Ring); this is the closest approximation in our batch context
-            server-name        (.getHost (URL. site-url))]
-        (let [email-res (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)]
-          (if (:error email-res)
-            (log/infof "Failed to send password reset email generated for user ID %d (%s): %s"
-                       user-id
-                       email
-                       (:message email-res))
-            (log/infof "Password reset email generated for user ID %d (%s)" user-id email)))
-        user-id)))
-
 (defmethod load "users"
   [path context]
   ;; Currently we only serialize the new owner user, so it's fine to ignore mode setting

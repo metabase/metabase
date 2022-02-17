@@ -124,4 +124,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   }),
 );
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.ldap_auth);
+PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => user.sso_source !== "ldap");

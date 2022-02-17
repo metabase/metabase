@@ -28,14 +28,13 @@
     (merge
      (mt/object-defaults User)
      {:date_joined      true
-      :google_auth      false
       :id               true
       :is_active        true
       :last_login       false
-      :ldap_auth        false
       :login_attributes nil
       :updated_at       true
-      :locale           nil})))
+      :locale           nil
+      :sso_source       nil})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -559,9 +558,9 @@
                                    {:email "toucan@metabase.com"}))))
 
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
-      (mt/with-temp User [user {:email       "anemail@metabase.com"
-                                :password    "def123"
-                                :google_auth true}]
+      (mt/with-temp User [user {:email      "anemail@metabase.com"
+                                :password   "def123"
+                                :sso_source "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -570,9 +569,9 @@
 
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
-      (mt/with-temp User [user {:email     "anemail@metabase.com"
-                                :password  "def123"
-                                :ldap_auth true}]
+      (mt/with-temp User [user {:email      "anemail@metabase.com"
+                                :password   "def123"
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -763,13 +762,13 @@
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
-        (mt/with-temp User [user {:google_auth true}]
+        (mt/with-temp User [user {:sso_source "google"}]
           (db/update! User (u/the-id user)
             :is_active false)
           (mt/with-temporary-setting-values [google-auth-client-id nil]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
-            (is (= {:is_active true, :google_auth false}
-                   (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
+            (is (= {:is_active true, :sso_source nil}
+                   (mt/derecordize (db/select-one [User :is_active :sso_source] :id (u/the-id user)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

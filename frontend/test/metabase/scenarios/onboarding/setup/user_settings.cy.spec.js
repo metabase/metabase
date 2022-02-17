@@ -5,7 +5,6 @@ const { first_name, last_name, email, password } = USERS.normal;
 
 const CURRENT_USER = {
   email: "normal@metabase.test",
-  ldap_auth: false,
   first_name: "Robert",
   locale: null,
   last_login: "2021-02-08T15:09:33.918",
@@ -20,7 +19,6 @@ const CURRENT_USER = {
   date_joined: "2021-02-08T15:04:16.251",
   personal_collection_id: 5,
   common_name: "Robert Tableton",
-  google_auth: false,
 };
 
 const requestsCount = alias =>
@@ -95,7 +93,7 @@ describe("user > settings", () => {
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
-          ldap_auth: true,
+          sso_source: "ldap",
         }),
       ).as("getUser");
 
@@ -115,7 +113,7 @@ describe("user > settings", () => {
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
-          google_auth: true,
+          sso_source: "google",
         }),
       ).as("getUser");
 

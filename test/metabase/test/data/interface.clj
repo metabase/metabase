@@ -336,6 +336,7 @@
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
 
 
+;; TODO -- JDBC has `nullsAreSortedAtEnd`, `nullsAsSortedAtStart`, etc. that could be used to determine this.
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
   Of course, in real queries, multiple sort columns can be specified, so considering only one `base-type` isn't 100%

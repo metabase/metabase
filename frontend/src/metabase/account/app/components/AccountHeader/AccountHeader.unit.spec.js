@@ -8,7 +8,7 @@ const getUser = () => ({
   first_name: "John",
   last_name: "Doe",
   email: "john@metabase.test",
-  google_auth: true,
+  sso_source: "google",
 });
 
 describe("AccountHeader", () => {
@@ -41,7 +41,9 @@ describe("AccountHeader", () => {
 
   it("should show the password tab if it is enabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => user.google_auth);
+    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
+      user => user.sso_source === "google",
+    );
 
     render(<AccountHeader user={user} />);
 
@@ -50,7 +52,9 @@ describe("AccountHeader", () => {
 
   it("should hide the password tab if it is disabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.google_auth);
+    PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
+      user => user.sso_source === "google",
+    );
 
     render(<AccountHeader user={user} />);
 

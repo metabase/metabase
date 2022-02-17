@@ -199,9 +199,10 @@
 (defn- forgot-password-impl
   [email]
   (future
-    (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
-      (let [reset-token        (user/set-password-reset-token! user-id)
+    (when-let [{user-id :id, sso-source :sso_source, is-active? :is_active}
+               (db/select-one [User :id :is_active :sso_source] :%lower.email (u/lower-case-en email))]
+      (let [google-auth?       (= sso-source :google)
+            reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (log/info password-reset-url)
         (email/send-password-reset-email! email google-auth? password-reset-url is-active?)))))

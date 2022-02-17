@@ -258,8 +258,8 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
 
 PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
   user =>
-    !user.google_auth &&
-    !user.ldap_auth &&
+    user.sso_source !== "google" &&
+    user.sso_source !== "ldap" &&
     MetabaseSettings.get("enable-password-login"),
 );
 

@@ -116,7 +116,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -134,7 +134,8 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :types          (constantly {:login_attributes :json-no-keywordization})}))
+          :types          (constantly {:login_attributes :json-no-keywordization
+                                       :sso_source       :keyword})}))
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
@@ -189,8 +190,7 @@
    :email                             su/Email
    (s/optional-key :password)         (s/maybe su/NonBlankString)
    (s/optional-key :login_attributes) (s/maybe LoginAttributes)
-   (s/optional-key :google_auth)      s/Bool
-   (s/optional-key :ldap_auth)        s/Bool})
+   (s/optional-key :sso_source)       (s/maybe su/KeywordOrString)})
 
 (def ^:private Invitor
   "Map with info about the admin admin creating the user, used in the new user notification code"
@@ -214,7 +214,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
+  (u/prog1 (insert-new-user! (assoc new-user :sso_source :google))
     ;; send an email to everyone including the site admin if that's set
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
@@ -227,7 +227,7 @@
    (-> new-user
        ;; We should not store LDAP passwords
        (dissoc :password)
-       (assoc :ldap_auth true))))
+       (assoc :sso_source "ldap"))))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
