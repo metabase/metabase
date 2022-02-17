@@ -30,6 +30,7 @@ const TimelineModal = ({
 }: TimelineModalProps): JSX.Element => {
   const title = archived ? t`Archived events` : timeline.name;
   const events = getEvents(timeline.events, archived);
+  const hasEvents = events.length > 0;
   const menuItems = getMenuItems(timeline, collection);
 
   return (
@@ -37,7 +38,7 @@ const TimelineModal = ({
       <ModalHeader title={title} onClose={onClose}>
         {!archived && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
       </ModalHeader>
-      {events.length > 0 && (
+      {hasEvents && (
         <ModalToolbar>
           {!archived && (
             <Link
@@ -48,7 +49,7 @@ const TimelineModal = ({
         </ModalToolbar>
       )}
       <ModalBody>
-        {events.length > 0 ? (
+        {hasEvents && (
           <EventList
             events={events}
             timeline={timeline}
@@ -56,7 +57,8 @@ const TimelineModal = ({
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
-        ) : (
+        )}
+        {!hasEvents && !archived && (
           <TimelineEmptyState timeline={timeline} collection={collection} />
         )}
       </ModalBody>
