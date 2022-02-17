@@ -5,7 +5,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import TimelineCard from "../TimelineCard";
-import TimelineEmptyState from "../TimelineEmptyState";
+import TimelineListEmptyState from "../TimelineListEmptyState";
 import { ListRoot, ModalBody } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
@@ -31,7 +31,7 @@ const TimelineListModal = ({
         {hasTimelines ? (
           <TimelineList timelines={timelines} collection={collection} />
         ) : (
-          <TimelineEmptyState collection={collection} />
+          <TimelineListEmptyState collection={collection} />
         )}
       </ModalBody>
     </div>

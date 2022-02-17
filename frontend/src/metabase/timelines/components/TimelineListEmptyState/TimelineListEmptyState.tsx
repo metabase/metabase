@@ -3,6 +3,7 @@ import { t } from "ttag";
 import moment from "moment";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -19,22 +20,20 @@ import {
   StateTooltipDate,
   StateTooltipIcon,
   StateTooltipTitle,
-} from "./TimelineEmptyState.styled";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+} from "./TimelineListEmptyState.styled";
 
-export interface TimelineEmptyStateProps {
+export interface TimelineListEmptyStateProps {
   timeline?: Timeline;
   collection: Collection;
 }
 
-const TimelineEmptyState = ({
+const TimelineListEmptyState = ({
   timeline,
   collection,
-}: TimelineEmptyStateProps): JSX.Element => {
+}: TimelineListEmptyStateProps): JSX.Element => {
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
-
   const date = formatDateTimeWithUnit(
     moment(),
     "day",
@@ -79,4 +78,4 @@ const TimelineEmptyState = ({
   );
 };
 
-export default TimelineEmptyState;
+export default TimelineListEmptyState;

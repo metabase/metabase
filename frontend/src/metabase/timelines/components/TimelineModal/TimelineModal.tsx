@@ -8,8 +8,9 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventList from "../EventList";
 import ModalHeader from "../ModalHeader";
-import TimelineEmptyState from "../TimelineEmptyState";
+import TimelineListEmptyState from "../TimelineListEmptyState";
 import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
+import TimelineSearchEmptyState from "metabase/timelines/components/TimelineSearchEmptyState";
 
 export interface TimelineModalProps {
   timeline: Timeline;
@@ -49,7 +50,7 @@ const TimelineModal = ({
         </ModalToolbar>
       )}
       <ModalBody>
-        {hasEvents && (
+        {hasEvents ? (
           <EventList
             events={events}
             timeline={timeline}
@@ -57,9 +58,10 @@ const TimelineModal = ({
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
-        )}
-        {!hasEvents && !archived && (
-          <TimelineEmptyState timeline={timeline} collection={collection} />
+        ) : archived ? (
+          <TimelineSearchEmptyState />
+        ) : (
+          <TimelineListEmptyState timeline={timeline} collection={collection} />
         )}
       </ModalBody>
     </ModalRoot>
