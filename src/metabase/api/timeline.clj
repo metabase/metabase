@@ -1,6 +1,6 @@
 (ns metabase.api.timeline
   "/api/timeline endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
@@ -67,6 +67,13 @@
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
     (hydrate (Timeline id) :creator)))
+
+(api/defendpoint DELETE "/:id"
+  "Delete a [[Timeline]]. Will cascade delete its events as well."
+  [id]
+  (api/write-check Timeline id)
+  (db/delete! Timeline :id id)
+  api/generic-204-no-content)
 
 
 ;; todo: icons

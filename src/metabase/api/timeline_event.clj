@@ -1,6 +1,6 @@
 (ns metabase.api.timeline-event
   "/api/timeline-event endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
@@ -65,6 +65,13 @@
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
     (TimelineEvent id)))
+
+(api/defendpoint DELETE "/:id"
+  "Delete a [[TimelineEvent]]."
+  [id]
+  (api/write-check TimelineEvent id)
+  (db/delete! TimelineEvent :id id)
+  api/generic-204-no-content)
 
 ;; todo: icons
 ;; collection_id via timeline_id -> slow, how to do this?
