@@ -94,6 +94,18 @@
             (is (= expected-result
                    (:result (slack/conversations-list-timeout))))))))))
 
+(deftest conversations-list-timeout-test
+  (testing "conversations-list-timeout"
+    (testing "returns :timeout true when a timeout occurs"
+      (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
+        (with-redefs [slack/api-timeout-ms 0] ;; "timeout" is instant
+          (is (true? (:timeout (slack/conversations-list-timeout)))))))
+    (testing "returns :result (and no :timeout key) when a timeout does not occur"
+      (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
+        (with-redefs [slack/api-timeout-ms 10000]
+          (is (= [:result]
+                 (keys (slack/conversations-list-timeout)))))))))
+
 (deftest valid-token?-test
   (testing "valid-token?"
     ;; should ignore the values of `slack-token` and `slack-app-token` settings
@@ -141,6 +153,18 @@
         (tu/with-temporary-setting-values [slack-token "test-token"]
           (is (= (concat (mock-users) (mock-users))
                  (:result (slack/users-list-timeout)))))))))
+
+(deftest users-list-timeout-test
+  (testing "users-list-timeout"
+    (testing "returns :timeout true when a timeout occurs"
+      (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
+        (with-redefs [slack/api-timeout-ms 0] ;; "timeout" is instant
+          (is (true? (:timeout (slack/users-list-timeout)))))))
+    (testing "returns :result (and no :timeout key) when a timeout does not occur"
+      (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
+        (with-redefs [slack/api-timeout-ms 10000]
+          (is (= [:result]
+                 (keys (slack/users-list-timeout)))))))))
 
 (defn- mock-files-channel []
   (let [channel-name (slack/slack-files-channel)]

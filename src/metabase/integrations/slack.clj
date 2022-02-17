@@ -148,7 +148,7 @@
           (lazy-seq
            (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(def ^:private slack-api-timeout-ms
+(def ^:private api-timeout-ms
   "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
   return a cached value early. (Note: The underlying page walking will continue, and update the cached value
   accordingly)."
@@ -174,34 +174,37 @@
   (conversations-list))
 
 (defn conversations-list-timeout
-  "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
-  default only fetches unarchived public channels. After slack-api-timeout-ms milliseconds, returns the cached value of "
+  "Calls paginated Slack API via [[conversations-list]] and returns list of available 'conversations' (channels and
+  direct messages). By default only fetches unarchived public channels. After slack-api-timeout-ms milliseconds,
+  returns the cached value of "
   [& {:as query-parameters}]
-  (let [result-chan (async/chan)]
-    (async/go (async/>! result-chan
-                        (try (conversations-list)
-                             (catch Exception e
-                               e))))
-    (let [[result _chan] (async/alts!! [result-chan (async/timeout slack-api-timeout-ms)])]
-      (cond
-        (instance? Throwable result)
-        (throw result)
+  (if (slack-configured?)
+    (let [result-chan (async/chan)]
+      (async/go (async/>! result-chan
+                          (try (conversations-list)
+                               (catch Exception e
+                                 e))))
+      (let [[result _chan] (async/alts!! [result-chan (async/timeout api-timeout-ms)])]
+        (cond
+          (instance? Throwable result)
+          (throw result)
 
-        ;; timed out, so return the cached version continue walking the requests in the go block, which will
-        ;; eventually fill in the cache.
-        (nil? result)
-        {:timeout true
-         :result (get @*cached-conversations query-parameters)}
+          ;; timed out, so return the cached version continue walking the requests in the go block, which will
+          ;; eventually fill in the cache.
+          (nil? result)
+          {:timeout true
+           :result (get @*cached-conversations query-parameters)}
 
-        ;; conversations-list finished before the timeout
-        :else
-        {:result result}))))
+          ;; conversations-list finished before the timeout
+          :else
+          {:result result})))
+    {:result []}))
 
 (comment
 
   [(:timeout (conversations-list-timeout))
 
-   (with-redefs [slack-api-timeout-ms 1]
+   (with-redefs [api-timeout-ms 1]
      (:timeout (conversations-list-timeout :x 2)))])
 
 (defn channel-with-name
@@ -229,7 +232,7 @@
   *cached-users (atom {}))
 
 (defn ^:private users-list
-  "Calls Slack API `users.list` endpoint and returns the list of available users."
+  "Calls Slack API `users.list` endpoint and returns the list of available users without the @ prefix."
   [& {:as query-parameters}]
   (let [result (->> (paged-list-request "users.list" :members query-parameters)
                     ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
@@ -240,35 +243,37 @@
     result))
 
 (defn users-list-timeout
-  "Calls Slack API `users.list` and returns list of users without the @ prefix. After slack-api-timeout-ms
-  milliseconds, returns the value of *cached-users. The long-running slack request continues in the background,
-  eventually re-filling the cache."
+  "Calls Slack API via [[users-list]]. After slack-api-timeout-ms milliseconds, returns the cached value for these
+  query-parameters in *cached-users. The long-running slack request continues in the background, eventually re-filling
+  the cache."
   [& {:as query-parameters}]
-  (let [result-chan (async/chan)]
-    (async/go (async/>! result-chan
-                        (try (users-list)
-                             (catch Exception e
-                               e))))
-    (let [[result _chan] (async/alts!! [result-chan (async/timeout slack-api-timeout-ms)])]
-      (cond
-        (instance? Throwable result)
-        (throw result)
+  (if (slack-configured?)
+    (let [result-chan (async/chan)]
+      (async/go (async/>! result-chan
+                          (try (users-list)
+                               (catch Exception e
+                                 e))))
+      (let [[result _chan] (async/alts!! [result-chan (async/timeout api-timeout-ms)])]
+        (cond
+          (instance? Throwable result)
+          (throw result)
 
-        ;; timed out, so return the cached version continue walking the requests in the go block, which will
-        ;; eventually fill in the cache.
-        (nil? result)
-        {:timeout true
-         :result (get @*cached-users query-parameters)}
+          ;; timed out, so return the cached version continue walking the requests in the go block, which will
+          ;; eventually fill in the cache.
+          (nil? result)
+          {:timeout true
+           :result (get @*cached-users query-parameters)}
 
-        ;; users-list finished before the timeout
-        :else
-        {:result result}))))
+          ;; users-list finished before the timeout
+          :else
+          {:result result})))
+    {:result []}))
 
 (comment
 
   (:timeout (users-list-timeout))
 
-  (with-redefs [slack-api-timeout-ms 1]
+  (with-redefs [api-timeout-ms 1]
     (:timeout (users-list-timeout)))
   )
 
