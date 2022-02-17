@@ -163,7 +163,7 @@
       (let [original #'slack/users-list]
         (with-redefs [slack/users-list (fn [] (Thread/sleep 1000) (original))
                       slack/slack-configured? (constantly true)
-                      slack/api-timeout-ms 10]
+                      slack/api-timeout-ms 100]
           (is (= true (:timeout (slack/users-list-timeout)))))))
     (testing "returns :result (and no :timeout key) when a timeout does not occur"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
@@ -242,7 +242,7 @@
 
 (deftest slack-token-error-test
   (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
-    (tu/with-temporary-setting-values [slack-app-token "test-token"
+    (tu/with-temporary-setting-values [slack-app-token    "test-token"
                                        slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"

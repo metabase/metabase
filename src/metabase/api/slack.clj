@@ -22,10 +22,10 @@
                         {:errors {:slack-app-token (tru "invalid token")}}))))
     (slack/slack-app-token slack-app-token)
     (when slack-app-token
-      (do
-        (slack/slack-token-valid? true)
-        ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-        (slack/slack-token nil)))
+      (slack/slack-token-valid? true)
+      ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
+      (slack/slack-token nil)
+      (slack/seed-user-and-converstaion-cahces!))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
       (when (and processed-files-channel (not (slack/channel-with-name processed-files-channel)))
         (throw (ex-info (tru "Slack channel not found.")

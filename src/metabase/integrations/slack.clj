@@ -14,25 +14,16 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(declare
- ;; due to this depdendency chain:
- ;; clear-cache! -> conversations-list ->
- ;; paged-list-request -> GET -> do-slack-request ->
- ;; slack-app-token -> clear-cache!
- clear-cache!)
-
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
        " "
        (deferred-tru "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0"
-  :on-change clear-cache!)
+  :deprecated "0.42.0")
 
 (defsetting slack-app-token
   (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
        " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
-  :on-change clear-cache!)
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
 (defsetting slack-token-valid?
   (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
@@ -178,6 +169,8 @@
     (swap! *cached-conversations assoc query-parameters result)
     result))
 
+
+
 (defn conversations-list-timeout
   "Calls paginated Slack API via [[conversations-list]] and returns list of available 'conversations' (channels and
   direct messages). By default only fetches unarchived public channels. After slack-api-timeout-ms milliseconds,
@@ -204,13 +197,6 @@
           :else
           {:result result})))
     {:result []}))
-
-(comment
-
-  [(:timeout (conversations-list-timeout))
-
-   (with-redefs [api-timeout-ms 1]
-     (:timeout (conversations-list-timeout :x 2)))])
 
 (defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
@@ -273,23 +259,6 @@
           :else
           {:result result})))
     {:result []}))
-
-(defn ^:private clear-cache! [old-token new-token]
-  (if new-token
-    (when (not= old-token new-token)
-      (future (reset! *cached-conversations {nil (conversations-list)}))
-      (future (reset! *cached-users {nil (users-list)})))
-    (do
-      (reset! *cached-conversations {})
-      (reset! *cached-users {}))))
-
-(defsetting my-setting
-  (deferred-tru "hi")
-  :on-change (fn [old new] (log/error "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMY SETTING UPDATE\n"
-                                      (pr-str old)
-                                      "\n"
-                                      (pr-str new)
-                                      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
