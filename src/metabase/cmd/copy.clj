@@ -121,7 +121,10 @@
   {;; ensure ID order to ensure that parent fields are inserted before children
    "metabase_field"    "ORDER BY id ASC"
    ;; don't copy the magic Permissions Groups. They get created by Liquibase migrations.
-   "permissions_group" (format "WHERE name NOT IN ('%s', '%s')" group/all-users-group-name group/admin-group-name)})
+   "permissions_group" (format "WHERE name NOT IN ('%s', '%s')" group/all-users-group-name group/admin-group-name)
+   ;; don't copy over root permissions entries. Only the Administrators group should have this entry, and it gets
+   ;; created automatically by a Liquibase migration.
+   "permissions"       "WHERE object <> '/'"})
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type ^java.sql.Connection target-db-conn]
   (with-open [source-conn (.getConnection source-data-source)]
