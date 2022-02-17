@@ -10472,6 +10472,21 @@ databaseChangeLog:
               - column:
                   name: timestamp
 
+  - changeSet:
+      id: v43.00-026
+      author: noahmoss
+      comment: >-
+        Added 0.43.0 - adds User.settings column to implement User-local Settings
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing User-local Settings for this User"
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

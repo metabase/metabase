@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
@@ -271,7 +272,7 @@
   [dash-before-update dash-updates]
   (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
             (api/column-will-change? :embedding_params dash-before-update dash-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (api/defendpoint PUT "/:id"
@@ -513,7 +514,7 @@
   sharing must be enabled."
   [dashboard-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
   {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -525,7 +526,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (db/update! Dashboard dashboard-id
     :public_uuid       nil
@@ -537,7 +538,7 @@
   enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -545,7 +546,7 @@
   endpoints and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"
