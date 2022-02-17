@@ -46,6 +46,8 @@ export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const TimelineSchema = new schema.Entity("timelines");
+export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -80,6 +82,10 @@ SegmentSchema.define({
 
 MetricSchema.define({
   table: TableSchema,
+});
+
+TimelineSchema.define({
+  events: [TimelineEventSchema],
 });
 
 export const ENTITIES_SCHEMA_MAP = {

@@ -9907,6 +9907,225 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
+
+  #
+  # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
+  #
+
+  # Create the magic Permissions Groups if they don't already exist.
+
+  # [add-users-to-default-permissions-groups 1 of 4]
+  - changeSet:
+      id: v43.00-002
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'All Users' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'All Users';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('All Users')
+
+  # [add-users-to-default-permissions-groups 2 of 4]
+  - changeSet:
+      id: v43.00-003
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'Administrators' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'Administrators';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('Administrators')
+
+  # Add existing Users to the magic Permissions Groups if needed.
+
+  # [add-users-to-default-permissions-groups 3 of 4]
+  - changeSet:
+      id: v43.00-004
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users to 'All Users' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                all_users_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'All Users'
+                ) all_users_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND all_users_group.id = pgm.group_id
+                WHERE pgm.id IS NULL;
+
+  # [add-users-to-default-permissions-groups 4 of 4]
+  - changeSet:
+      id: v43.00-005
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users with 'is_superuser' flag to 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                admin_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'Administrators'
+                ) admin_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND admin_group.id = pgm.group_id
+                WHERE u.is_superuser = true
+                  AND pgm.id IS NULL;
+
+  #
+  # This migration replaces metabase.db.data-migrations/add-admin-group-root-entry, added 0.20.0
+  #
+  # Create root permissions entry for admin magic Permissions Group. Admin Group has a single entry that lets it
+  # access to everything
+  - changeSet:
+      id: v43.00-006
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create root '/' permissions entry for the 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                admin_group.id AS group_id,
+                '/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'Administrators'
+              ) admin_group
+              LEFT JOIN permissions p
+                     ON admin_group.id = p.group_id
+                    AND p.object = '/'
+              WHERE p.object IS NULL;
+
+  #
+  # The following migration replaces metabase.db.data-migrations/add-databases-to-magic-permissions-groups, added 0.20.0
+  #
+
+  # Add permissions entries for 'All Users' for all Databases created BEFORE we created the 'All Users' Permissions
+  # Group. This replaces the old 'add-databases-to-magic-permissions-groups' Clojure-land data migration. Only run
+  # this migration if that one hasn't been run yet.
+  - changeSet:
+      id: v43.00-007
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant permissions for existing Databases to 'All Users' permissions group.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-databases-to-magic-permissions-groups';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
+  #
+  # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
+  #
+  # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
+  # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
+  # originally fixed in #4123.
+  - changeSet:
+      id: v43.00-008
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'site-url' AS key,
+                regexp_replace(value, '/$', '') AS value
+              FROM setting
+              WHERE key = '-site-url';
+        - sql:
+            dbms: mysql,mariadb
+            # MySQL 5.7 doesn't support regexp_replace :(
+            # 'key' has to be quoted in MySQL
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'site-url' AS `key`,
+                CASE
+                  WHEN value LIKE '%/'
+                    THEN substring(value, 1, length(value) - 1)
+                  ELSE
+                    value
+                  END
+                AS value
+              FROM setting
+              WHERE `key` = '-site-url';
+
   #
   # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
   #
@@ -10046,6 +10265,212 @@ databaseChangeLog:
                   'type/Subscription',
                   'type/Title'
                 );
+
+  - changeSet:
+      id: v43.00-021
+      author: adam-james
+      comment: Added 0.43.0 - Timeline table for Events
+      changes:
+        - createTable:
+            tableName: timeline
+            remarks: Timeline table to organize events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: Name of the timeline
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional description of the timeline
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: ID of the collection containing the timeline
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_timeline_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: Whether or not the timeline has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the timeline
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_timeline_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the timeline was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the timeline was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-022
+      author: adam-james
+      comment: Added 0.43.0 - Events table
+      changes:
+        - createTable:
+            tableName: timeline_event
+            remarks: Events table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: ID of the timeline containing the event
+                  name: timeline_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: timeline(id)
+                    foreignKeyName: fk_events_timeline_id
+                    deleteCascade: true
+              - column:
+                  remarks: Name of the event
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional markdown description of the event
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+                  remarks: When the event happened
+              - column:
+                  name: time_matters
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  remarks: >-
+                     Indicate whether the time component matters or if the timestamp should just serve to indicate the
+                     day of the event without any time associated to it.
+              - column:
+                  name: timezone
+                  constraints:
+                    nullable: false
+                  type: varchar(255)
+                  remarks: Timezone to display the underlying UTC timestamp in for the client
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: Whether or not the event has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_event_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the event was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the event was modified
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-023
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline collection_id
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v43.00-024
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline_event timeline_id
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v43.00-025
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline timestamp
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id_timestamp
+            columns:
+              - column:
+                  name: timeline_id
+              - column:
+                  name: timestamp
 
   - changeSet:
       id: v43.00-026

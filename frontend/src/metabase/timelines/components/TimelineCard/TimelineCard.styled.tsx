@@ -3,14 +3,6 @@ import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 
-export const CardRoot = styled(Link)`
-  display: flex;
-  padding: 1.75rem;
-  align-items: center;
-  border: 1px solid ${color("border")};
-  border-radius: 6px;
-`;
-
 export const CardIcon = styled(Icon)`
   color: ${color("text-light")};
   width: 1.375rem;
@@ -33,4 +25,34 @@ export const CardTitle = styled.span`
 export const CardDescription = styled.span`
   display: block;
   color: ${color("text-dark")};
+`;
+
+export interface CardAsideProps {
+  isTopAligned?: boolean;
+}
+
+export const CardAside = styled.span<CardAsideProps>`
+  display: block;
+  color: ${color("text-dark")};
+  align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
+`;
+
+export const CardRoot = styled(Link)`
+  display: flex;
+  padding: 1.75rem;
+  align-items: center;
+  border: 1px solid ${color("border")};
+  border-radius: 6px;
+
+  &:hover {
+    border-color: ${color("brand")};
+
+    ${CardIcon} {
+      color: ${color("brand")};
+    }
+
+    ${CardTitle} {
+      color: ${color("brand")};
+    }
+  }
 `;

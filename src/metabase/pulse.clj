@@ -29,6 +29,18 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
+(defn- merge-default-values
+  "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
+  the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
+  wants to use it (see #20503 for more details) but this obviously isn't an option for Dashboard Subscriptions... so
+  go thru `parameters` and change `:default` to `:value` unless a `:value` is explicitly specified."
+  [parameters]
+  (for [{default-value :default, :as parameter} parameters]
+    (merge
+     (when default-value
+       {:value default-value})
+     (dissoc parameter :default))))
+
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
@@ -41,7 +53,7 @@
                      :dashcard-id   (u/the-id dashcard)
                      :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                      :export-format :api
-                     :parameters    parameters
+                     :parameters    (merge-default-values parameters)
                      :middleware    {:process-viz-settings? true
                                      :js-int-to-string?     false}
                      :run           (fn [query info]

@@ -557,7 +557,7 @@
    (s/enum :write :none)
    "Valid native perms option for a database"))
 
-(def ^:private DBPermissionsGraph
+(def ^:private DataPermissionsGraph
   (s/named
    {(s/optional-key :native)  NativePermissionsGraph
     (s/optional-key :schemas) (s/cond-pre (s/enum :all :none :block)
@@ -581,17 +581,17 @@
         nil)
     :ok))
 
-(def ^:private StrictDBPermissionsGraph
-  (s/constrained DBPermissionsGraph
+(def ^:private StrictDataPermissionsGraph
+  (s/constrained DataPermissionsGraph
                  check-native-and-schemas-permissions-allowed-together
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
-(def ^:private StrictGroupPermissionsGraph
-  {su/IntGreaterThanZero StrictDBPermissionsGraph})
+(def ^:private StrictDBPermissionsGraph
+  {su/IntGreaterThanZero {:data StrictDataPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero StrictGroupPermissionsGraph}})
+   :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -602,8 +602,9 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g db-id {:native  :write
-                            :schemas :all}))
+            (assoc g db-id {:data
+                            {:native  :write
+                             :schemas :all}}))
           {}
           db-ids))
 
@@ -842,7 +843,7 @@
     :none  nil))
 
 (s/defn ^:private update-db-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDBPermissionsGraph]
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -874,8 +875,8 @@
             (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
 
 (s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictGroupPermissionsGraph]
-  (doseq [[db-id new-db-perms] new-group-perms]
+  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+  (doseq [[db-id {new-db-perms :data}] new-group-perms]
     (update-db-permissions! group-id db-id new-db-perms)))
 
 (defn check-revision-numbers

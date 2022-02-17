@@ -1,4 +1,4 @@
-(ns metabase.db.data-migrations
+(ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
@@ -15,14 +15,10 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
             [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.setting :as setting :refer [Setting]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
@@ -30,9 +26,9 @@
 
 ;;; # Migration Helpers
 
-(models/defmodel DataMigrations :data_migrations)
+(models/defmodel ^:deprecated DataMigrations :data_migrations)
 
-(defn- run-migration-if-needed!
+(defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
 
@@ -54,16 +50,16 @@
         :id        migration-name
         :timestamp :%now))))
 
-(def ^:private data-migrations (atom []))
+(def ^:private ^:deprecated data-migrations (atom []))
 
-(defmacro ^:private defmigration
+(defmacro ^:private ^:deprecated defmigration
   "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
   `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-(defn run-all!
+(defn ^:deprecated run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -72,55 +68,6 @@
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 PERMISSIONS v1                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
-  (let [{all-users-group-id :id} (perm-group/all-users)
-        {admin-group-id :id}     (perm-group/admin)]
-    (binding [perm-membership/*allow-changing-all-users-group-members* true]
-      (doseq [{user-id :id, superuser? :is_superuser} (db/select [User :id :is_superuser])]
-        (u/ignore-exceptions
-          (db/insert! PermissionsGroupMembership
-            :user_id  user-id
-            :group_id all-users-group-id))
-        (when superuser?
-          (u/ignore-exceptions
-            (db/insert! PermissionsGroupMembership
-              :user_id  user-id
-              :group_id admin-group-id)))))))
-
-;; admin group has a single entry that lets it access to everything
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-admin-group-root-entry
-  (binding [perms/*allow-admin-permissions-changes* true
-            perms/*allow-root-entries* true]
-    (u/ignore-exceptions
-      (db/insert! Permissions
-        :group_id (:id (perm-group/admin))
-        :object   "/"))))
-
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
-;; DB
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
-  (let [db-ids (db/select-ids Database)]
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]
-            database-id    db-ids]
-      (u/ignore-exceptions
-        (db/insert! Permissions
-          :object   (perms/data-perms-path database-id)
-          :group_id group-id)))))
-
-;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
-;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
-;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
-(defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
-  (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
-    (public-settings/site-url site-url)))
-
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
 ;; disable passwords for Google authenticated users
@@ -128,7 +75,6 @@
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
       (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
-
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
 ;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
