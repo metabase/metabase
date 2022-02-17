@@ -1,4 +1,10 @@
-import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openPeopleTable,
+  POPOVER_ELEMENT,
+} from "__support__/e2e/cypress";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -104,7 +110,7 @@ describe("scenarios > question > object details", () => {
     cy.url().should("contain", "objectId=2");
 
     cy.findByText("Domenica Williamson").click();
-    popover().should("not.exist");
+    cy.get(POPOVER_ELEMENT).should("not.exist");
   });
 });
 
