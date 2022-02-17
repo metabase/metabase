@@ -25,8 +25,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]]
-            [toucan.db :as db])
+            [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
@@ -202,26 +201,28 @@
              [json-column nil])))))
 
 (defn- describe-table-json*
-  [driver conn table]
-  (let [map-inner        (fn [f xs] (map #(into {}
-                                             (for [[k v] %]
-                                               [k (f v)])) xs))
-        table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
-        json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
-        json-field-names (mapv (comp keyword :name) json-fields)
-        query            (db/reducible-query {:select json-field-names
-                                              :from   [(keyword (:name table))]
-                                              :limit  json-sample-limit})]
-    (transduce describe-json-xform describe-json-rf query)))
+  [driver spec table]
+  (with-open [conn (jdbc/get-connection spec)]
+    (let [map-inner        (fn [f xs] (map #(into {}
+                                                  (for [[k v] %]
+                                                    [k (f v)])) xs))
+          table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+          json-field-names (mapv (comp keyword :name) json-fields)
+          query-vec        (hsql/format {:select json-field-names
+                                         :from   [(keyword (:name table))]
+                                         :limit  json-sample-limit})
+          query            (jdbc/reducible-query spec query-vec)]
+      {:types (transduce describe-json-xform describe-json-rf query)})))
 
 ;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields.
+;; Every single database major is fiddly and weird and different about JSON so this one doesn't go in sql.jdbc.
 (defmethod driver/describe-table-json :postgres
   [driver database table]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (with-open [conn (jdbc/get-connection spec)]
-      (describe-table-json* driver conn table))))
+    (describe-table-json* driver spec table)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
