@@ -250,8 +250,8 @@
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`,
-  `*current-user-permissions-set*, and `metabase.models.setting/*user-local-values*`.
+  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
+  [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
