@@ -35,6 +35,8 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :as table]
             [metabase.models.task-history :as task-history]
+            [metabase.models.timeline :as timeline]
+            [metabase.models.timeline-event :as timeline-event]
             [metabase.models.user :as user]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
@@ -76,6 +78,8 @@
          setting/keep-me
          table/keep-me
          task-history/keep-me
+         timeline/keep-me
+         timeline-event/keep-me
          user/keep-me
          view-log/keep-me)
 
@@ -116,5 +120,7 @@
  [setting Setting]
  [table Table]
  [task-history TaskHistory]
+ [timeline Timeline]
+ [timeline-event TimelineEvent]
  [user User]
  [view-log ViewLog])
