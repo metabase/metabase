@@ -1,4 +1,4 @@
-(ns metabase.db.data-migrations
+(ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
@@ -14,8 +14,7 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.util :as u]
@@ -25,9 +24,9 @@
 
 ;;; # Migration Helpers
 
-(models/defmodel DataMigrations :data_migrations)
+(models/defmodel ^:deprecated DataMigrations :data_migrations)
 
-(defn- run-migration-if-needed!
+(defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
 
@@ -49,16 +48,16 @@
         :id        migration-name
         :timestamp :%now))))
 
-(def ^:private data-migrations (atom []))
+(def ^:private ^:deprecated data-migrations (atom []))
 
-(defmacro ^:private defmigration
+(defmacro ^:private ^:deprecated defmigration
   "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
   `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-(defn run-all!
+(defn ^:deprecated run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -66,23 +65,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 PERMISSIONS v1                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
-;; DB
-(defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
-  (let [db-ids (db/select-ids Database)]
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]
-            database-id    db-ids]
-      (u/ignore-exceptions
-        (db/insert! Permissions
-          :object   (perms/data-perms-path database-id)
-          :group_id group-id)))))
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
 ;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
