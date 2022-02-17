@@ -18,7 +18,7 @@ export type HoveredDimension = {
 };
 
 export type HoveredTimelineEvent = {
-  timelineEvent: TimelineEvent;
+  timelineEvents: TimelineEvent[];
   element: HTMLElement;
 };
 
@@ -28,7 +28,7 @@ export type HoveredObject = {
   seriesIndex?: number;
   value?: unknown;
   column?: Column;
-  timelineEvent?: TimelineEvent;
+  timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
   dimensions?: HoveredDimension[];
   settings?: VisualizationSettings;

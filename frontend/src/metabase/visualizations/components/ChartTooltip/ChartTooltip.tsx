@@ -22,7 +22,7 @@ export default function ChartTooltip({ hovered, settings }: ChartTooltipProps) {
     }
     return (
       hovered.value !== undefined ||
-      hovered.timelineEvent ||
+      !_.isEmpty(hovered.timelineEvents) ||
       !_.isEmpty(hovered.data) ||
       !_.isEmpty(hovered.dimensions)
     );
@@ -32,7 +32,7 @@ export default function ChartTooltip({ hovered, settings }: ChartTooltipProps) {
     if (!hovered) {
       return null;
     }
-    if (hovered.timelineEvent) {
+    if (!_.isEmpty(hovered.timelineEvents)) {
       return (
         <TimelineEventTooltipContent
           hovered={hovered as HoveredTimelineEvent}

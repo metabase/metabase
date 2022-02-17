@@ -1,6 +1,12 @@
 import styled from "@emotion/styled";
 import DateTime from "metabase/components/DateTime";
 
+export const TimelineEventsList = styled.ul`
+  li:not(:first-child) {
+    margin-top: 8px;
+  }
+`;
+
 export const TimelineEventRow = styled.div`
   display: flex;
 `;
