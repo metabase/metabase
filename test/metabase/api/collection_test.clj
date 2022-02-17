@@ -6,7 +6,7 @@
             [metabase.api.collection :as api-coll]
             [metabase.models :refer [Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
                                      PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Revision Timeline User]]
+                                     PulseChannelRecipient Revision Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
@@ -1380,6 +1380,60 @@
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                          GET /api/collection/root|:id/timelines                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- timelines-request
+  [collection include-events?]
+  (if include-events?
+    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines") :include "events")
+    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines"))))
+
+(defn- timeline-names [timelines]
+  (->> timelines (map :name) set))
+
+(defn- event-names [timelines]
+  (->> timelines (mapcat :events) (map :name) set))
+
+(deftest timelines-test
+  (testing "GET /api/collection/root|id/timelines"
+    (mt/with-temp* [Collection [coll-a {:name "Collection A"}]
+                    Collection [coll-b {:name "Collection B"}]
+                    Collection [coll-c {:name "Collection C"}]]
+    (mt/with-temp* [Timeline [tl-a {:name          "Timeline A"
+                                    :collection_id (u/the-id coll-a)}]
+                    Timeline [tl-b {:name          "Timeline B"
+                                    :collection_id (u/the-id coll-b)}]
+                    Timeline [tl-b-old {:name          "Timeline B-old"
+                                        :collection_id (u/the-id coll-b)
+                                        :archived true}]
+                    Timeline [tl-c {:name          "Timeline C"
+                                    :collection_id (u/the-id coll-c)}]]
+      (mt/with-temp* [TimelineEvent [event-aa {:name        "event-aa"
+                                               :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [event-ab {:name        "event-ab"
+                                               :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [event-ba {:name        "event-ba"
+                                               :timeline_id (u/the-id tl-b)}]
+                      TimelineEvent [event-bb {:name        "event-bb"
+                                               :timeline_id (u/the-id tl-b)
+                                               :archived    true}]]
+        (testing "Timelines in the collection of the card are returned"
+          (is (= #{"Timeline A"}
+                 (timeline-names (timelines-request coll-a false)))))
+        (testing "Only un-archived timelines in the collection of the card are returned"
+          (is (= #{"Timeline B"}
+                 (timeline-names (timelines-request coll-b false)))))
+        (testing "Timelines have events when `include=events` is passed"
+          (is (= #{"event-aa" "event-ab"}
+                 (event-names (timelines-request coll-a true)))))
+        (testing "Timelines have only un-archived events when `include=events` is passed"
+          (is (= #{"event-ba"}
+                 (event-names (timelines-request coll-b true)))))
+        (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
+          (is (= '()
+                 (->> (timelines-request coll-c true) first :events)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

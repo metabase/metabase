@@ -127,7 +127,7 @@
                                                 :timeline_id (u/the-id timeline)
                                                 :archived    true}]]
           (testing "a timeline with no events returns an empty list"
-            (is (= #{} (event-names (include-events-request empty-tl false)))))
+            (is (= '() (:events (include-events-request empty-tl false)))))
           (testing "a timeline with both (un-)archived events"
             (testing "Returns only unarchived events when archived is false"
               (is (= #{"event-e"}

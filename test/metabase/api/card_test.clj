@@ -12,7 +12,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
             [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Table ViewLog]]
+                                     PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -1271,6 +1271,87 @@
           (unfave! card)
           (is (= false
                  (fave? card))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Timelines                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- timelines-request
+  [card include-events?]
+  (if include-events?
+    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines") :include "events")
+    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines"))))
+
+(defn- timeline-names [timelines]
+  (->> timelines (map :name) set))
+
+(defn- event-names [timelines]
+  (->> timelines (mapcat :events) (map :name) set))
+
+(deftest timelines-test
+  (testing "GET /api/card/:id/timelines"
+    (mt/with-temp* [Collection [coll-a {:name "Collection A"}]
+                    Collection [coll-b {:name "Collection B"}]
+                    Collection [coll-c {:name "Collection C"}]]
+    (mt/with-temp* [Card [card-a {:name          "Card A"
+                                  :collection_id (u/the-id coll-a)}]
+                    Card [card-b {:name          "Card B"
+                                  :collection_id (u/the-id coll-b)}]
+                    Card [card-c {:name          "Card C"
+                                  :collection_id (u/the-id coll-c)}]
+                    Timeline [tl-a {:name          "Timeline A"
+                                    :collection_id (u/the-id coll-a)}]
+                    Timeline [tl-b {:name          "Timeline B"
+                                    :collection_id (u/the-id coll-b)}]
+                    Timeline [tl-b-old {:name          "Timeline B-old"
+                                        :collection_id (u/the-id coll-b)
+                                        :archived true}]
+                    Timeline [tl-c {:name          "Timeline C"
+                                    :collection_id (u/the-id coll-c)}]]
+      (mt/with-temp* [TimelineEvent [event-aa {:name        "event-aa"
+                                               :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [event-ab {:name        "event-ab"
+                                               :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [event-ba {:name        "event-ba"
+                                               :timeline_id (u/the-id tl-b)}]
+                      TimelineEvent [event-bb {:name        "event-bb"
+                                               :timeline_id (u/the-id tl-b)
+                                               :archived    true}]]
+        (testing "Timelines in the collection of the card are returned"
+          (is (= #{"Timeline A"}
+                 (timeline-names (timelines-request card-a false)))))
+        (testing "Only un-archived timelines in the collection of the card are returned"
+          (is (= #{"Timeline B"}
+                 (timeline-names (timelines-request card-b false)))))
+        (testing "Timelines have events when `include=events` is passed"
+          (is (= #{"event-aa" "event-ab"}
+                 (event-names (timelines-request card-a true)))))
+        (testing "Timelines have only un-archived events when `include=events` is passed"
+          (is (= #{"event-ba"}
+                 (event-names (timelines-request card-b true)))))
+        (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
+          (is (= '()
+                 (->> (timelines-request card-c true) first :events)))))))))
+
+(comment
+  (mt/with-temp* [Collection [collection {:name "Collection"}]]
+    (mt/with-temp* [Card [card {:name          "Card A"
+                                :collection_id (u/the-id collection)}]
+                    Timeline [tl-a {:name          "Timeline A"
+                                    :collection_id (u/the-id collection)}]
+                    Timeline [tl-b {:name          "Timeline B"
+                                    :collection_id (u/the-id collection)}]]
+      (mt/with-temp* [TimelineEvent [event-aa {:name        "event-aa"
+                                               :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [event-ab {:name        "event-ab"
+                                               :timeline_id (u/the-id tl-a)
+                                               :archived    true}]
+                      TimelineEvent [event-ab {:name        "event-ba"
+                                               :timeline_id (u/the-id tl-b)}]
+                      TimelineEvent [event-ab {:name        "event-bb"
+                                               :timeline_id (u/the-id tl-b)}]]
+        (->> (timelines-request card true) first :events))))
+  )
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
