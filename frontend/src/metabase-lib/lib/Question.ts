@@ -61,7 +61,8 @@ import {
   ParameterValues,
 } from "metabase-types/types/Parameter";
 import {
-  Card as CardObject,
+  Card as SavedCardObject,
+  UnsavedCard as UnsavedCardObject,
   DatasetQuery,
   VisualizationSettings,
 } from "metabase-types/types/Card";
@@ -75,7 +76,11 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
+
+type CardObject = SavedCardObject | UnsavedCardObject;
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
