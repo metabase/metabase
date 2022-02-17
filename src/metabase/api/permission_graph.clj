@@ -44,8 +44,8 @@
 
 (s/def ::schema-name (s/or :kw->str keyword?))
 
-;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms-granular}}}} =>
-;; {:groups {1 {:schemas {"PUBLIC" {1 :all}}}}}
+;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
+;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
 (s/def ::read (s/or :str->kw #{"all" "none"}))
 (s/def ::query (s/or :str->kw #{"all" "none" "segmented"}))
 
@@ -60,20 +60,21 @@
 (s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none"}
                             :identity ::table-graph))
 
-;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms}}}}
+;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms}}}}}
 (s/def ::schema-graph (s/map-of ::schema-name ::schema-perms
                                 :conform-keys true))
 
-;; {:groups {1 {:schemas ::schemas}}}
+;; {:groups {1 {:data {:schemas ::schemas}}}}
 (s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 
-(s/def ::db-perms (s/keys :opt-un [::native ::schemas]))
+(s/def ::data (s/keys :opt-un [::native ::schemas]))
+
+(s/def ::db-perms (s/keys :opt-un [::data]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))
-
 
 (s/def :metabase.api.permission-graph.data/groups
   (s/map-of ::id ::db-graph
