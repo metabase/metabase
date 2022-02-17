@@ -14,16 +14,25 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
+(declare
+ ;; due to this depdendency chain:
+ ;; clear-cache! -> conversations-list ->
+ ;; paged-list-request -> GET -> do-slack-request ->
+ ;; slack-app-token -> clear-cache!
+ clear-cache!)
+
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
        " "
        (deferred-tru "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0")
+  :deprecated "0.42.0"
+  :on-change clear-cache!)
 
 (defsetting slack-app-token
   (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
        " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :on-change clear-cache!)
 
 (defsetting slack-token-valid?
   (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
@@ -75,7 +84,7 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
-      (when (not (false? (slack-token-valid?))) (messages/send-slack-token-error-emails!))
+      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
       (slack-token-valid? false))
     (if invalid-token?
       (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
@@ -152,7 +161,7 @@
   "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
   return a cached value early. (Note: The underlying page walking will continue, and update the cached value
   accordingly)."
-  5000)
+  500)
 
 (defonce
   ^{:private true
@@ -168,10 +177,6 @@
         result (vec (paged-list-request "conversations.list" :channels params))]
     (swap! *cached-conversations assoc query-parameters result)
     result))
-
-(when (empty? @*cached-conversations)
-  ;; fill in the cached-conversations for nil query-parameters
-  (conversations-list))
 
 (defn conversations-list-timeout
   "Calls paginated Slack API via [[conversations-list]] and returns list of available 'conversations' (channels and
@@ -269,15 +274,22 @@
           {:result result})))
     {:result []}))
 
-(comment
+(defn ^:private clear-cache! [old-token new-token]
+  (if new-token
+    (when (not= old-token new-token)
+      (future (reset! *cached-conversations {nil (conversations-list)}))
+      (future (reset! *cached-users {nil (users-list)})))
+    (do
+      (reset! *cached-conversations {})
+      (reset! *cached-users {}))))
 
-  (:timeout (users-list-timeout))
-
-  (with-redefs [api-timeout-ms 1]
-    (:timeout (users-list-timeout)))
-  )
-
-
+(defsetting my-setting
+  (deferred-tru "hi")
+  :on-change (fn [old new] (log/error "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMY SETTING UPDATE\n"
+                                      (pr-str old)
+                                      "\n"
+                                      (pr-str new)
+                                      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need

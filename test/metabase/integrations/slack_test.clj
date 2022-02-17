@@ -98,8 +98,11 @@
   (testing "conversations-list-timeout"
     (testing "returns :timeout true when a timeout occurs"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
-        (with-redefs [slack/api-timeout-ms 0] ;; "timeout" is instant
-          (is (true? (:timeout (slack/conversations-list-timeout)))))))
+        (let [original #'slack/conversations-list]
+          (with-redefs [slack/conversations-list (fn [] (Thread/sleep 1000) (original))
+                        slack/slack-configured? (constantly true)
+                        slack/api-timeout-ms 100]
+            (is (= true (:timeout (slack/conversations-list-timeout))))))))
     (testing "returns :result (and no :timeout key) when a timeout does not occur"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
         (with-redefs [slack/api-timeout-ms 10000]
@@ -157,9 +160,11 @@
 (deftest users-list-timeout-test
   (testing "users-list-timeout"
     (testing "returns :timeout true when a timeout occurs"
-      (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
-        (with-redefs [slack/api-timeout-ms 0] ;; "timeout" is instant
-          (is (true? (:timeout (slack/users-list-timeout)))))))
+      (let [original #'slack/users-list]
+        (with-redefs [slack/users-list (fn [] (Thread/sleep 1000) (original))
+                      slack/slack-configured? (constantly true)
+                      slack/api-timeout-ms 10]
+          (is (= true (:timeout (slack/users-list-timeout)))))))
     (testing "returns :result (and no :timeout key) when a timeout does not occur"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (with-redefs [slack/api-timeout-ms 10000]
