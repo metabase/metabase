@@ -1,0 +1,3929 @@
+databaseChangeLog:
+- property:
+    name: timestamp.type
+    value: timestamp with time zone
+    dbms:
+    - postgres
+    - h2
+- property:
+    name: timestamp.type
+    value: timestamp(6)
+    dbms:
+    - mysql
+    - mariadb
+- property:
+    name: text.type
+    value: text
+    dbms:
+    - postgres
+    - h2
+- property:
+    name: text.type
+    value: longtext
+    dbms:
+    - mysql
+    - mariadb
+- changeSet:
+    id: v00.00-001
+    author: metabase
+    changes:
+    - createTable:
+        tableName: core_user
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: core_user_pkey
+        - name: email
+          type: citext
+          constraints:
+            nullable: false
+            unique: true
+            uniqueConstraintName: core_user_email_key
+        - name: first_name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: last_name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: password
+          type: varchar
+        - name: password_salt
+          type: varchar
+          defaultValue: default
+        - name: date_joined
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: last_login
+          type: ${timestamp.type}
+        - name: is_superuser
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: is_active
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: reset_token
+          type: varchar
+        - name: reset_triggered
+          type: int8
+        - name: is_qbnewb
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: google_auth
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: ldap_auth
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: login_attributes
+          type: ${text.type}
+          remarks: JSON serialized map with attributes used for row level permissions
+        - name: updated_at
+          type: timestamp
+          remarks: When was this User last updated?
+        - name: sso_source
+          type: varchar
+          remarks: String to indicate the SSO backend the user is from
+        - name: locale
+          type: varchar
+          remarks: Preferred ISO locale (language/country) code, e.g "en" or "en-US",
+            for this User. Overrides site default.
+        - name: is_datasetnewb
+          type: boolean
+          remarks: Boolean flag to indicate if the dataset info modal has been dismissed.
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-002
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: core_user
+        indexName: idx_lower_email
+        columns:
+        - lower((email)::text)
+- changeSet:
+    id: v00.00-003
+    author: metabase
+    changes:
+    - createTable:
+        tableName: data_migrations
+        remarks: null
+        columns:
+        - name: id
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: data_migrations_pkey
+        - name: timestamp
+          type: timestamp
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-004
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: data_migrations
+        indexName: idx_data_migrations_id
+        columns:
+        - id
+- changeSet:
+    id: v00.00-005
+    author: metabase
+    changes:
+    - createTable:
+        tableName: dependency
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: dependency_pkey
+        - name: model
+          type: varchar
+          constraints:
+            nullable: false
+        - name: model_id
+          type: integer
+          constraints:
+            nullable: false
+        - name: dependent_on_model
+          type: varchar
+          constraints:
+            nullable: false
+        - name: dependent_on_id
+          type: integer
+          constraints:
+            nullable: false
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-006
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dependency
+        indexName: idx_dependency_dependent_on_id
+        columns:
+        - dependent_on_id
+- changeSet:
+    id: v00.00-007
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dependency
+        indexName: idx_dependency_dependent_on_model
+        columns:
+        - dependent_on_model
+- changeSet:
+    id: v00.00-008
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dependency
+        indexName: idx_dependency_model
+        columns:
+        - model
+- changeSet:
+    id: v00.00-009
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dependency
+        indexName: idx_dependency_model_id
+        columns:
+        - model_id
+- changeSet:
+    id: v00.00-010
+    author: metabase
+    changes:
+    - createTable:
+        tableName: family
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: family_pkey
+        - name: name
+          type: varchar
+- changeSet:
+    id: v00.00-011
+    author: metabase
+    changes:
+    - createTable:
+        tableName: label
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: label_pkey
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: slug
+          type: varchar
+          constraints:
+            nullable: false
+            unique: true
+            uniqueConstraintName: label_slug_key
+        - name: icon
+          type: varchar
+- changeSet:
+    id: v00.00-012
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: label
+        indexName: idx_label_slug
+        columns:
+        - slug
+- changeSet:
+    id: v00.00-013
+    author: metabase
+    changes:
+    - createTable:
+        tableName: moderation_review
+        remarks: Reviews (from moderators) for a given question/dashboard (BUCM)
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: moderation_review_pkey
+        - name: updated_at
+          type: ${timestamp.type}
+          remarks: most recent modification time
+          defaultValue: now()
+          constraints:
+            nullable: false
+        - name: created_at
+          type: ${timestamp.type}
+          remarks: creation time
+          defaultValue: now()
+          constraints:
+            nullable: false
+        - name: status
+          type: varchar
+          remarks: verified, misleading, confusing, not_misleading, pending
+        - name: text
+          type: ${text.type}
+          remarks: Explanation of the review
+        - name: moderated_item_id
+          type: integer
+          remarks: either a document or question ID; the item that needs review
+          constraints:
+            nullable: false
+        - name: moderated_item_type
+          type: varchar
+          remarks: whether it's a question or dashboard
+          constraints:
+            nullable: false
+        - name: moderator_id
+          type: integer
+          remarks: ID of the user who did the review
+          constraints:
+            nullable: false
+        - name: most_recent
+          type: boolean
+          remarks: tag for most recent review
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-014
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: moderation_review
+        indexName: idx_moderation_review_item_type_item_id
+        columns:
+        - moderated_item_type
+        - moderated_item_id
+- changeSet:
+    id: v00.00-015
+    author: metabase
+    changes:
+    - createTable:
+        tableName: permissions_group
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: permissions_group_pkey
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+            unique: true
+            uniqueConstraintName: unique_permissions_group_name
+- changeSet:
+    id: v00.00-016
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions_group
+        indexName: idx_permissions_group_name
+        columns:
+        - name
+- changeSet:
+    id: v00.00-017
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_calendars
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: calendar_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: calendar
+          type: bytea
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-018
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_calendars
+        columnNames:
+        - sched_name
+        - calendar_name
+        constraintName: pk_qrtz_calendars
+- changeSet:
+    id: v00.00-019
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_fired_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: entry_id
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+        - name: instance_name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: fired_time
+          type: int8
+          constraints:
+            nullable: false
+        - name: sched_time
+          type: int8
+        - name: priority
+          type: integer
+          constraints:
+            nullable: false
+        - name: state
+          type: varchar
+          constraints:
+            nullable: false
+        - name: job_name
+          type: varchar
+        - name: job_group
+          type: varchar
+        - name: is_nonconcurrent
+          type: boolean
+        - name: requests_recovery
+          type: boolean
+- changeSet:
+    id: v00.00-020
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_inst_job_req_rcvry
+        columns:
+        - sched_name
+        - instance_name
+        - requests_recovery
+- changeSet:
+    id: v00.00-021
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_j_g
+        columns:
+        - sched_name
+        - job_name
+        - job_group
+- changeSet:
+    id: v00.00-022
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_jg
+        columns:
+        - sched_name
+        - job_group
+- changeSet:
+    id: v00.00-023
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_t_g
+        columns:
+        - sched_name
+        - trigger_name
+        - trigger_group
+- changeSet:
+    id: v00.00-024
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_tg
+        columns:
+        - sched_name
+        - trigger_group
+- changeSet:
+    id: v00.00-025
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_fired_triggers
+        indexName: idx_qrtz_ft_trig_inst_name
+        columns:
+        - sched_name
+        - instance_name
+- changeSet:
+    id: v00.00-026
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_fired_triggers
+        columnNames:
+        - sched_name
+        - entry_id
+        constraintName: pk_qrtz_fired_triggers
+- changeSet:
+    id: v00.00-027
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_job_details
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: job_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: job_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: description
+          type: varchar
+        - name: job_class_name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: is_durable
+          type: boolean
+          constraints:
+            nullable: false
+        - name: is_nonconcurrent
+          type: boolean
+          constraints:
+            nullable: false
+        - name: is_update_data
+          type: boolean
+          constraints:
+            nullable: false
+        - name: requests_recovery
+          type: boolean
+          constraints:
+            nullable: false
+        - name: job_data
+          type: bytea
+- changeSet:
+    id: v00.00-028
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_job_details
+        indexName: idx_qrtz_j_grp
+        columns:
+        - sched_name
+        - job_group
+- changeSet:
+    id: v00.00-029
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_job_details
+        indexName: idx_qrtz_j_req_recovery
+        columns:
+        - sched_name
+        - requests_recovery
+- changeSet:
+    id: v00.00-030
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_job_details
+        columnNames:
+        - sched_name
+        - job_name
+        - job_group
+        constraintName: pk_qrtz_job_details
+- changeSet:
+    id: v00.00-031
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_locks
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: lock_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+- changeSet:
+    id: v00.00-032
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_locks
+        columnNames:
+        - sched_name
+        - lock_name
+        constraintName: pk_qrtz_locks
+- changeSet:
+    id: v00.00-033
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_paused_trigger_grps
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+- changeSet:
+    id: v00.00-034
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_paused_trigger_grps
+        columnNames:
+        - sched_name
+        - trigger_group
+        constraintName: pk_sched_name
+- changeSet:
+    id: v00.00-035
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_scheduler_state
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: instance_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: last_checkin_time
+          type: int8
+          constraints:
+            nullable: false
+        - name: checkin_interval
+          type: int8
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-036
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_scheduler_state
+        columnNames:
+        - sched_name
+        - instance_name
+        constraintName: pk_qrtz_scheduler_state
+- changeSet:
+    id: v00.00-037
+    author: metabase
+    changes:
+    - createTable:
+        tableName: query
+        remarks: Information (such as average execution time) for different queries
+          that have been previously ran.
+        columns:
+        - name: query_hash
+          type: bytea
+          remarks: The hash of the query dictionary. (This is a 256-bit SHA3 hash
+            of the query dict.)
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: query_pkey
+        - name: average_execution_time
+          type: integer
+          remarks: Average execution time for the query, round to nearest number of
+            milliseconds. This is updated as a rolling average.
+          constraints:
+            nullable: false
+        - name: query
+          type: ${text.type}
+          remarks: The actual "query dictionary" for this query.
+- changeSet:
+    id: v00.00-038
+    author: metabase
+    changes:
+    - createTable:
+        tableName: query_cache
+        remarks: Cached results of queries are stored here when using the DB-based
+          query cache.
+        columns:
+        - name: query_hash
+          type: bytea
+          remarks: The hash of the query dictionary. (This is a 256-bit SHA3 hash
+            of the query dict).
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: query_cache_pkey
+        - name: updated_at
+          type: ${timestamp.type}
+          remarks: The timestamp of when these query results were last refreshed.
+          constraints:
+            nullable: false
+        - name: results
+          type: bytea
+          remarks: Cached, compressed results of running the query with the given
+            hash.
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-039
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: query_cache
+        indexName: idx_query_cache_updated_at
+        columns:
+        - updated_at
+- changeSet:
+    id: v00.00-040
+    author: metabase
+    changes:
+    - createTable:
+        tableName: query_execution
+        remarks: A log of executed queries, used for calculating historic execution
+          times, auditing, and other purposes.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: query_execution_pkey
+        - name: hash
+          type: bytea
+          remarks: The hash of the query dictionary. This is a 256-bit SHA3 hash of
+            the query.
+          constraints:
+            nullable: false
+        - name: started_at
+          type: ${timestamp.type}
+          remarks: Timestamp of when this query started running.
+          constraints:
+            nullable: false
+        - name: running_time
+          type: integer
+          remarks: The time, in milliseconds, this query took to complete.
+          constraints:
+            nullable: false
+        - name: result_rows
+          type: integer
+          remarks: Number of rows in the query results.
+          constraints:
+            nullable: false
+        - name: native
+          type: boolean
+          remarks: Whether the query was a native query, as opposed to an MBQL one
+            (e.g., created with the GUI).
+          constraints:
+            nullable: false
+        - name: context
+          type: varchar
+          remarks: Short string specifying how this query was executed, e.g. in a
+            Dashboard or Pulse.
+        - name: error
+          type: ${text.type}
+          remarks: Error message returned by failed query, if any.
+        - name: executor_id
+          type: integer
+          remarks: The ID of the User who triggered this query execution, if any.
+        - name: card_id
+          type: integer
+          remarks: The ID of the Card (Question) associated with this query execution,
+            if any.
+        - name: dashboard_id
+          type: integer
+          remarks: The ID of the Dashboard associated with this query execution, if
+            any.
+        - name: pulse_id
+          type: integer
+          remarks: The ID of the Pulse associated with this query execution, if any.
+        - name: database_id
+          type: integer
+          remarks: ID of the database this query was ran against.
+        - name: cache_hit
+          type: boolean
+          remarks: Cache hit on query execution
+- changeSet:
+    id: v00.00-041
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: query_execution
+        indexName: idx_query_execution_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-042
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: query_execution
+        indexName: idx_query_execution_card_id_started_at
+        columns:
+        - card_id
+        - started_at
+- changeSet:
+    id: v00.00-043
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: query_execution
+        indexName: idx_query_execution_query_hash_started_at
+        columns:
+        - hash
+        - started_at
+- changeSet:
+    id: v00.00-044
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: query_execution
+        indexName: idx_query_execution_started_at
+        columns:
+        - started_at
+- changeSet:
+    id: v00.00-045
+    author: metabase
+    changes:
+    - createTable:
+        tableName: setting
+        remarks: null
+        columns:
+        - name: key
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: setting_pkey
+        - name: value
+          type: ${text.type}
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-046
+    author: metabase
+    changes:
+    - createTable:
+        tableName: task_history
+        remarks: Timing and metadata info about background/quartz processes
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: task_history_pkey
+        - name: task
+          type: varchar
+          remarks: Name of the task
+          constraints:
+            nullable: false
+        - name: db_id
+          type: integer
+        - name: started_at
+          type: ${timestamp.type}
+          defaultValueComputed: current_timestamp
+          constraints:
+            nullable: false
+        - name: ended_at
+          type: ${timestamp.type}
+          defaultValueComputed: current_timestamp
+          constraints:
+            nullable: false
+        - name: duration
+          type: integer
+          constraints:
+            nullable: false
+        - name: task_details
+          type: ${text.type}
+          remarks: JSON string with additional info on the task
+- changeSet:
+    id: v00.00-047
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: task_history
+        indexName: idx_task_history_db_id
+        columns:
+        - db_id
+- changeSet:
+    id: v00.00-048
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: task_history
+        indexName: idx_task_history_end_time
+        columns:
+        - ended_at
+- changeSet:
+    id: v00.00-049
+    author: metabase
+    changes:
+    - createTable:
+        tableName: activity
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: activity_pkey
+        - name: topic
+          type: varchar
+          constraints:
+            nullable: false
+        - name: timestamp
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: user_id
+          type: integer
+          constraints:
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_activity_ref_user_id
+        - name: model
+          type: varchar
+        - name: model_id
+          type: integer
+        - name: database_id
+          type: integer
+        - name: table_id
+          type: integer
+        - name: custom_id
+          type: varchar
+        - name: details
+          type: ${text.type}
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-050
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: activity
+        indexName: idx_activity_custom_id
+        columns:
+        - custom_id
+- changeSet:
+    id: v00.00-051
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: activity
+        indexName: idx_activity_timestamp
+        columns:
+        - timestamp
+- changeSet:
+    id: v00.00-052
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: activity
+        indexName: idx_activity_user_id
+        columns:
+        - user_id
+- changeSet:
+    id: v00.00-053
+    author: metabase
+    changes:
+    - createTable:
+        tableName: card_label
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: card_label_pkey
+        - name: card_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_card_label_ref_card_id
+        - name: label_id
+          type: integer
+          constraints:
+            nullable: false
+            references: label(id)
+            deleteCascade: true
+            foreignKeyName: fk_card_label_ref_label_id
+- changeSet:
+    id: v00.00-054
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: card_label
+        indexName: idx_card_label_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-055
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: card_label
+        indexName: idx_card_label_label_id
+        columns:
+        - label_id
+- changeSet:
+    id: v00.00-056
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: card_label
+        columnNames:
+        - card_id
+        - label_id
+        constraintName: unique_card_label_card_id_label_id
+- changeSet:
+    id: v00.00-057
+    author: metabase
+    changes:
+    - createTable:
+        tableName: collection
+        remarks: Collections are an optional way to organize Cards and handle permissions
+          for them.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: collection_pkey
+        - name: name
+          type: ${text.type}
+          remarks: The user-facing name of this Collection.
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+          remarks: Optional description for this Collection.
+        - name: color
+          type: bpchar
+          remarks: Seven-character hex color for this Collection, including the preceding
+            hash sign.
+          constraints:
+            nullable: false
+        - name: archived
+          type: boolean
+          remarks: Whether this Collection has been archived and should be hidden
+            from users.
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: location
+          type: varchar
+          remarks: Directory-structure path of ancestor Collections. e.g. "/1/2/"
+            means our Parent is Collection 2, and their parent is Collection 1.
+          defaultValue: /
+          constraints:
+            nullable: false
+        - name: personal_owner_id
+          type: integer
+          remarks: If set, this Collection is a personal Collection, for exclusive
+            use of the User with this ID.
+          constraints:
+            unique: true
+            uniqueConstraintName: unique_collection_personal_owner_id
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_collection_personal_owner_id
+        - name: slug
+          type: varchar
+          remarks: Sluggified version of the Collection name. Used only for display
+            purposes in URL; not unique or indexed.
+          constraints:
+            nullable: false
+        - name: namespace
+          type: varchar
+          remarks: The namespace (hierachy) this Collection belongs to. NULL means
+            the Collection is in the default namespace.
+        - name: authority_level
+          type: varchar
+          remarks: Nullable column to incidate collection's authority level. Initially
+            values are "official" and nil.
+- changeSet:
+    id: v00.00-058
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: collection
+        indexName: idx_collection_location
+        columns:
+        - location
+- changeSet:
+    id: v00.00-059
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: collection
+        indexName: idx_collection_personal_owner_id
+        columns:
+        - personal_owner_id
+- changeSet:
+    id: v00.00-060
+    author: metabase
+    changes:
+    - createTable:
+        tableName: collection_permission_graph_revision
+        remarks: Used to keep track of changes made to collections.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: collection_revision_pkey
+        - name: before
+          type: ${text.type}
+          remarks: Serialized JSON of the collections graph before the changes.
+          constraints:
+            nullable: false
+        - name: after
+          type: ${text.type}
+          remarks: Serialized JSON of the collections graph after the changes.
+          constraints:
+            nullable: false
+        - name: user_id
+          type: integer
+          remarks: The ID of the admin who made this set of changes.
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_collection_revision_user_id
+        - name: created_at
+          type: timestamp
+          remarks: The timestamp of when these changes were made.
+          constraints:
+            nullable: false
+        - name: remark
+          type: ${text.type}
+          remarks: Optional remarks explaining why these changes were made.
+- changeSet:
+    id: v00.00-061
+    author: metabase
+    changes:
+    - createTable:
+        tableName: computation_job
+        remarks: Stores submitted async computation jobs.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: computation_job_pkey
+        - name: creator_id
+          type: integer
+          constraints:
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_computation_job_ref_user_id
+        - name: created_at
+          type: timestamp
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: timestamp
+          constraints:
+            nullable: false
+        - name: type
+          type: varchar
+          constraints:
+            nullable: false
+        - name: status
+          type: varchar
+          constraints:
+            nullable: false
+        - name: context
+          type: ${text.type}
+        - name: ended_at
+          type: timestamp
+- changeSet:
+    id: v00.00-062
+    author: metabase
+    changes:
+    - createTable:
+        tableName: computation_job_result
+        remarks: Stores results of async computation jobs.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: computation_job_result_pkey
+        - name: job_id
+          type: integer
+          constraints:
+            nullable: false
+            references: computation_job(id)
+            deleteCascade: true
+            foreignKeyName: fk_computation_result_ref_job_id
+        - name: created_at
+          type: timestamp
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: timestamp
+          constraints:
+            nullable: false
+        - name: permanence
+          type: varchar
+          constraints:
+            nullable: false
+        - name: payload
+          type: ${text.type}
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-063
+    author: metabase
+    changes:
+    - createTable:
+        tableName: core_session
+        remarks: null
+        columns:
+        - name: id
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: core_session_pkey
+        - name: user_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_session_ref_user_id
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: anti_csrf_token
+          type: ${text.type}
+          remarks: Anti-CSRF token for full-app embed sessions.
+- changeSet:
+    id: v00.00-064
+    author: metabase
+    changes:
+    - createTable:
+        tableName: dashboard_favorite
+        remarks: Presence of a row here indicates a given User has favorited a given
+          Dashboard.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: dashboard_favorite_pkey
+        - name: user_id
+          type: integer
+          remarks: ID of the User who favorited the Dashboard.
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboard_favorite_user_id
+        - name: dashboard_id
+          type: integer
+          remarks: ID of the Dashboard favorited by the User.
+          constraints:
+            nullable: false
+            references: report_dashboard(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboard_favorite_dashboard_id
+- changeSet:
+    id: v00.00-065
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dashboard_favorite
+        indexName: idx_dashboard_favorite_dashboard_id
+        columns:
+        - dashboard_id
+- changeSet:
+    id: v00.00-066
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dashboard_favorite
+        indexName: idx_dashboard_favorite_user_id
+        columns:
+        - user_id
+- changeSet:
+    id: v00.00-067
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: dashboard_favorite
+        columnNames:
+        - user_id
+        - dashboard_id
+        constraintName: unique_dashboard_favorite_user_id_dashboard_id
+- changeSet:
+    id: v00.00-068
+    author: metabase
+    changes:
+    - createTable:
+        tableName: dashboardcard_series
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: dashboardcard_series_pkey
+        - name: dashboardcard_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_dashboardcard(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboardcard_series_ref_dashboardcard_id
+        - name: card_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboardcard_series_ref_card_id
+        - name: position
+          type: integer
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-069
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dashboardcard_series
+        indexName: idx_dashboardcard_series_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-070
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dashboardcard_series
+        indexName: idx_dashboardcard_series_dashboardcard_id
+        columns:
+        - dashboardcard_id
+- changeSet:
+    id: v00.00-071
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metabase_field
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metabase_field_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: base_type
+          type: varchar
+          constraints:
+            nullable: false
+        - name: semantic_type
+          type: varchar
+        - name: active
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: preview_display
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: position
+          type: integer
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: table_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_table(id)
+            deleteCascade: true
+            foreignKeyName: fk_field_ref_table_id
+        - name: parent_id
+          type: integer
+          constraints:
+            references: metabase_field(id)
+            deleteCascade: true
+            foreignKeyName: fk_field_parent_ref_field_id
+        - name: display_name
+          type: varchar
+        - name: visibility_type
+          type: varchar
+          defaultValue: normal
+          constraints:
+            nullable: false
+        - name: fk_target_field_id
+          type: integer
+        - name: last_analyzed
+          type: ${timestamp.type}
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: fingerprint
+          type: ${text.type}
+          remarks: Serialized JSON containing non-identifying information about this
+            Field, such as min, max, and percent JSON. Used for classification.
+        - name: fingerprint_version
+          type: integer
+          remarks: The version of the fingerprint for this Field. Used so we can keep
+            track of which Fields need to be analyzed again when new things are added
+            to fingerprints.
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: database_type
+          type: ${text.type}
+          remarks: The actual type of this column in the database. e.g. VARCHAR or
+            TEXT.
+          constraints:
+            nullable: false
+        - name: has_field_values
+          type: ${text.type}
+          remarks: Whether we have FieldValues ("list"), should ad-hoc search ("search"),
+            disable entirely ("none"), or infer dynamically (null)
+        - name: settings
+          type: ${text.type}
+          remarks: Serialized JSON FE-specific settings like formatting, etc. Scope
+            of what is stored here may increase in future.
+        - name: database_position
+          type: integer
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: custom_position
+          type: integer
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: effective_type
+          type: varchar
+          remarks: The effective type of the field after any coercions.
+        - name: coercion_strategy
+          type: varchar
+          remarks: A strategy to coerce the base_type into the effective_type.
+- changeSet:
+    id: v00.00-072
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_field
+        indexName: idx_field_parent_id
+        columns:
+        - parent_id
+- changeSet:
+    id: v00.00-073
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_field
+        indexName: idx_field_table_id
+        columns:
+        - table_id
+- changeSet:
+    id: v00.00-074
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: metabase_field
+        columnNames:
+        - table_id
+        - parent_id
+        - name
+        constraintName: idx_uniq_field_table_id_parent_id_name
+- changeSet:
+    id: v00.00-075
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: metabase_field
+        columnNames:
+        - table_id
+        - name
+        constraintName: idx_uniq_field_table_id_parent_id_name_2col
+- changeSet:
+    id: v00.00-076
+    author: metabase
+    changes:
+    - createTable:
+        tableName: dimension
+        remarks: Stores references to alternate views of existing fields, such as
+          remapping an integer to a description, like an enum
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: dimension_pkey
+        - name: field_id
+          type: integer
+          remarks: ID of the field this dimension row applies to
+          constraints:
+            nullable: false
+            references: metabase_field(id)
+            deleteCascade: true
+            foreignKeyName: fk_dimension_ref_field_id
+        - name: name
+          type: varchar
+          remarks: Short description used as the display name of this new column
+          constraints:
+            nullable: false
+        - name: type
+          type: varchar
+          remarks: Either internal for a user defined remapping or external for a
+            foreign key based remapping
+          constraints:
+            nullable: false
+        - name: human_readable_field_id
+          type: integer
+          remarks: Only used with external type remappings. Indicates which field
+            on the FK related table to use for display
+          constraints:
+            references: metabase_field(id)
+            deleteCascade: true
+            foreignKeyName: fk_dimension_displayfk_ref_field_id
+        - name: created_at
+          type: timestamp
+          remarks: The timestamp of when the dimension was created.
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: timestamp
+          remarks: The timestamp of when these dimension was last updated.
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-077
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: dimension
+        indexName: idx_dimension_field_id
+        columns:
+        - field_id
+- changeSet:
+    id: v00.00-078
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: dimension
+        columnNames:
+        - field_id
+        - name
+        constraintName: unique_dimension_field_id_name
+- changeSet:
+    id: v00.00-079
+    author: metabase
+    changes:
+    - createTable:
+        tableName: group_table_access_policy
+        remarks: Records that a given Card (Question) should automatically replace
+          a given Table as query source for a given a Perms Group.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: group_table_access_policy_pkey
+        - name: group_id
+          type: integer
+          remarks: ID of the Permissions Group this policy affects.
+          constraints:
+            nullable: false
+            references: permissions_group(id)
+            deleteCascade: true
+            foreignKeyName: fk_gtap_group_id
+        - name: table_id
+          type: integer
+          remarks: ID of the Table that should get automatically replaced as query
+            source for the Permissions Group.
+          constraints:
+            nullable: false
+            references: metabase_table(id)
+            deleteCascade: true
+            foreignKeyName: fk_gtap_table_id
+        - name: card_id
+          type: integer
+          remarks: ID of the Card (Question) to be used to replace the Table.
+          constraints:
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_gtap_card_id
+        - name: attribute_remappings
+          type: ${text.type}
+          remarks: JSON-encoded map of user attribute identifier to the param name
+            used in the Card.
+- changeSet:
+    id: v00.00-080
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: group_table_access_policy
+        indexName: idx_gtap_table_id_group_id
+        columns:
+        - table_id
+        - group_id
+- changeSet:
+    id: v00.00-081
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: group_table_access_policy
+        columnNames:
+        - table_id
+        - group_id
+        constraintName: unique_gtap_table_id_group_id
+- changeSet:
+    id: v00.00-082
+    author: metabase
+    changes:
+    - createTable:
+        tableName: login_history
+        remarks: Keeps track of various logins for different users and additional
+          info such as location and device
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: login_history_pkey
+        - name: timestamp
+          type: ${timestamp.type}
+          remarks: When this login occurred.
+          defaultValue: now()
+          constraints:
+            nullable: false
+        - name: user_id
+          type: integer
+          remarks: ID of the User that logged in.
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_login_history_user_id
+        - name: session_id
+          type: varchar
+          remarks: ID of the Session created by this login if one is currently active.
+            NULL if Session is no longer active.
+        - name: device_id
+          type: bpchar
+          remarks: Cookie-based unique identifier for the device/browser the user
+            logged in from.
+          constraints:
+            nullable: false
+        - name: device_description
+          type: ${text.type}
+          remarks: Description of the device that login happened from, for example
+            a user-agent string, but this might be something different if we support
+            alternative auth mechanisms in the future.
+          constraints:
+            nullable: false
+        - name: ip_address
+          type: ${text.type}
+          remarks: IP address of the device that login happened from, so we can geocode
+            it and determine approximate location.
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-083
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: login_history
+        indexName: idx_session_id
+        columns:
+        - session_id
+- changeSet:
+    id: v00.00-084
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: login_history
+        indexName: idx_timestamp
+        columns:
+        - timestamp
+- changeSet:
+    id: v00.00-085
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: login_history
+        indexName: idx_user_id
+        columns:
+        - user_id
+- changeSet:
+    id: v00.00-086
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: login_history
+        indexName: idx_user_id_device_id
+        columns:
+        - session_id
+        - device_id
+- changeSet:
+    id: v00.00-087
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: login_history
+        indexName: idx_user_id_timestamp
+        columns:
+        - user_id
+        - timestamp
+- changeSet:
+    id: v00.00-088
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: login_history
+        baseColumnNames: session_id
+        referencedTableName: core_session
+        referencedColumnNames: id
+        constraintName: fk_login_history_session_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-089
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metabase_database
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metabase_database_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: details
+          type: ${text.type}
+        - name: engine
+          type: varchar
+          constraints:
+            nullable: false
+        - name: is_sample
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: is_full_sync
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: metadata_sync_schedule
+          type: varchar
+          remarks: The cron schedule string for when this database should undergo
+            the metadata sync process (and analysis for new fields).
+          defaultValue: 0 50 * * * ? *
+          constraints:
+            nullable: false
+        - name: cache_field_values_schedule
+          type: varchar
+          remarks: The cron schedule string for when FieldValues for eligible Fields
+            should be updated.
+          defaultValue: 0 50 0 * * ? *
+          constraints:
+            nullable: false
+        - name: timezone
+          type: varchar
+          remarks: Timezone identifier for the database, set by the sync process
+        - name: is_on_demand
+          type: boolean
+          remarks: Whether we should do On-Demand caching of FieldValues for this
+            DB. This means FieldValues are updated when their Field is used in a Dashboard
+            or Card param.
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: options
+          type: ${text.type}
+          remarks: Serialized JSON containing various options like QB behavior.
+        - name: auto_run_queries
+          type: boolean
+          remarks: Whether to automatically run queries when doing simple filtering
+            and summarizing in the Query Builder.
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+        - name: refingerprint
+          type: boolean
+          remarks: Whether or not to enable periodic refingerprinting for this Database.
+        - name: cache_ttl
+          type: integer
+          remarks: Granular cache TTL for specific database.
+        - name: initial_sync_status
+          type: varchar
+          remarks: String indicating whether a database has completed its initial
+            sync and is ready to use
+          defaultValue: complete
+          constraints:
+            nullable: false
+        - name: creator_id
+          type: integer
+          remarks: ID of the admin who added the database
+        - name: settings
+          type: ${text.type}
+          remarks: Serialized JSON containing Database-local Settings for this Database
+- changeSet:
+    id: v00.00-090
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: metabase_database
+        baseColumnNames: creator_id
+        referencedTableName: core_user
+        referencedColumnNames: id
+        constraintName: fk_database_creator_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-091
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metabase_fieldvalues
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metabase_fieldvalues_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: values
+          type: ${text.type}
+        - name: human_readable_values
+          type: ${text.type}
+        - name: field_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_field(id)
+            deleteCascade: true
+            foreignKeyName: fk_fieldvalues_ref_field_id
+- changeSet:
+    id: v00.00-092
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_fieldvalues
+        indexName: idx_fieldvalues_field_id
+        columns:
+        - field_id
+- changeSet:
+    id: v00.00-093
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metabase_table
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metabase_table_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: entity_type
+          type: varchar
+        - name: active
+          type: boolean
+          constraints:
+            nullable: false
+        - name: db_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_database(id)
+            deleteCascade: true
+            foreignKeyName: fk_table_ref_database_id
+        - name: display_name
+          type: varchar
+        - name: visibility_type
+          type: varchar
+        - name: schema
+          type: varchar
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: show_in_getting_started
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: field_order
+          type: varchar
+          defaultValue: database
+          constraints:
+            nullable: false
+        - name: initial_sync_status
+          type: varchar
+          remarks: String indicating whether a table has completed its initial sync
+            and is ready to use
+          defaultValue: complete
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-094
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_table
+        indexName: idx_metabase_table_db_id_schema
+        columns:
+        - db_id
+        - schema
+- changeSet:
+    id: v00.00-095
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_table
+        indexName: idx_metabase_table_show_in_getting_started
+        columns:
+        - show_in_getting_started
+- changeSet:
+    id: v00.00-096
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metabase_table
+        indexName: idx_table_db_id
+        columns:
+        - db_id
+- changeSet:
+    id: v00.00-097
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: metabase_table
+        columnNames:
+        - db_id
+        - schema
+        - name
+        constraintName: idx_uniq_table_db_id_schema_name
+- changeSet:
+    id: v00.00-098
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: metabase_table
+        columnNames:
+        - db_id
+        - name
+        constraintName: idx_uniq_table_db_id_schema_name_2col
+- changeSet:
+    id: v00.00-099
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metric
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metric_pkey
+        - name: table_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_table(id)
+            deleteCascade: true
+            foreignKeyName: fk_metric_ref_table_id
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_metric_ref_creator_id
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: archived
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: definition
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: how_is_this_calculated
+          type: ${text.type}
+        - name: show_in_getting_started
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-100
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metric
+        indexName: idx_metric_creator_id
+        columns:
+        - creator_id
+- changeSet:
+    id: v00.00-101
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metric
+        indexName: idx_metric_show_in_getting_started
+        columns:
+        - show_in_getting_started
+- changeSet:
+    id: v00.00-102
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metric
+        indexName: idx_metric_table_id
+        columns:
+        - table_id
+- changeSet:
+    id: v00.00-103
+    author: metabase
+    changes:
+    - createTable:
+        tableName: metric_important_field
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: metric_important_field_pkey
+        - name: metric_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metric(id)
+            deleteCascade: true
+            foreignKeyName: fk_metric_important_field_metric_id
+        - name: field_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_field(id)
+            deleteCascade: true
+            foreignKeyName: fk_metric_important_field_metabase_field_id
+- changeSet:
+    id: v00.00-104
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metric_important_field
+        indexName: idx_metric_important_field_field_id
+        columns:
+        - field_id
+- changeSet:
+    id: v00.00-105
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: metric_important_field
+        indexName: idx_metric_important_field_metric_id
+        columns:
+        - metric_id
+- changeSet:
+    id: v00.00-106
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: metric_important_field
+        columnNames:
+        - metric_id
+        - field_id
+        constraintName: unique_metric_important_field_metric_id_field_id
+- changeSet:
+    id: v00.00-107
+    author: metabase
+    changes:
+    - createTable:
+        tableName: native_query_snippet
+        remarks: Query snippets (raw text) to be substituted in native queries
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: native_query_snippet_pkey
+        - name: name
+          type: varchar
+          remarks: Name of the query snippet
+          constraints:
+            nullable: false
+            unique: true
+            uniqueConstraintName: native_query_snippet_name_key
+        - name: description
+          type: ${text.type}
+        - name: content
+          type: ${text.type}
+          remarks: Raw query snippet
+          constraints:
+            nullable: false
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_snippet_creator_id
+        - name: archived
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: created_at
+          type: ${timestamp.type}
+          defaultValue: now()
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          defaultValue: now()
+          constraints:
+            nullable: false
+        - name: collection_id
+          type: integer
+          remarks: ID of the Snippet Folder (Collection) this Snippet is in, if any
+- changeSet:
+    id: v00.00-108
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: native_query_snippet
+        indexName: idx_snippet_collection_id
+        columns:
+        - collection_id
+- changeSet:
+    id: v00.00-109
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: native_query_snippet
+        indexName: idx_snippet_name
+        columns:
+        - name
+- changeSet:
+    id: v00.00-110
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: native_query_snippet
+        baseColumnNames: collection_id
+        referencedTableName: collection
+        referencedColumnNames: id
+        constraintName: fk_snippet_collection_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-111
+    author: metabase
+    changes:
+    - createTable:
+        tableName: permissions
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: permissions_pkey
+        - name: object
+          type: varchar
+          constraints:
+            nullable: false
+        - name: group_id
+          type: integer
+          constraints:
+            nullable: false
+            references: permissions_group(id)
+            deleteCascade: true
+            foreignKeyName: fk_permissions_group_id
+- changeSet:
+    id: v00.00-112
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions
+        indexName: idx_permissions_group_id
+        columns:
+        - group_id
+- changeSet:
+    id: v00.00-113
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions
+        indexName: idx_permissions_group_id_object
+        columns:
+        - group_id
+        - object
+- changeSet:
+    id: v00.00-114
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions
+        indexName: idx_permissions_object
+        columns:
+        - object
+- changeSet:
+    id: v00.00-115
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: permissions
+        columnNames:
+        - group_id
+        - object
+        constraintName: permissions_group_id_object_key
+- changeSet:
+    id: v00.00-116
+    author: metabase
+    changes:
+    - createTable:
+        tableName: permissions_group_membership
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: permissions_group_membership_pkey
+        - name: user_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_permissions_group_membership_user_id
+        - name: group_id
+          type: integer
+          constraints:
+            nullable: false
+            references: permissions_group(id)
+            deleteCascade: true
+            foreignKeyName: fk_permissions_group_group_id
+- changeSet:
+    id: v00.00-117
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions_group_membership
+        indexName: idx_permissions_group_membership_group_id
+        columns:
+        - group_id
+- changeSet:
+    id: v00.00-118
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions_group_membership
+        indexName: idx_permissions_group_membership_group_id_user_id
+        columns:
+        - group_id
+        - user_id
+- changeSet:
+    id: v00.00-119
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: permissions_group_membership
+        indexName: idx_permissions_group_membership_user_id
+        columns:
+        - user_id
+- changeSet:
+    id: v00.00-120
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: permissions_group_membership
+        columnNames:
+        - user_id
+        - group_id
+        constraintName: unique_permissions_group_membership_user_id_group_id
+- changeSet:
+    id: v00.00-121
+    author: metabase
+    changes:
+    - createTable:
+        tableName: permissions_revision
+        remarks: Used to keep track of changes made to permissions.
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: permissions_revision_pkey
+        - name: before
+          type: ${text.type}
+          remarks: Serialized JSON of the permissions before the changes.
+          constraints:
+            nullable: false
+        - name: after
+          type: ${text.type}
+          remarks: Serialized JSON of the permissions after the changes.
+          constraints:
+            nullable: false
+        - name: user_id
+          type: integer
+          remarks: The ID of the admin who made this set of changes.
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_permissions_revision_user_id
+        - name: created_at
+          type: timestamp
+          remarks: The timestamp of when these changes were made.
+          constraints:
+            nullable: false
+        - name: remark
+          type: ${text.type}
+          remarks: Optional remarks explaining why these changes were made.
+- changeSet:
+    id: v00.00-122
+    author: metabase
+    changes:
+    - createTable:
+        tableName: pulse
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: pulse_pkey
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_ref_creator_id
+        - name: name
+          type: varchar
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: skip_if_empty
+          type: boolean
+          remarks: Skip a scheduled Pulse if none of its questions have any results
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: alert_condition
+          type: varchar
+          remarks: Condition (i.e. "rows" or "goal") used as a guard for alerts
+        - name: alert_first_only
+          type: boolean
+          remarks: True if the alert should be disabled after the first notification
+        - name: alert_above_goal
+          type: boolean
+          remarks: For a goal condition, alert when above the goal
+        - name: collection_id
+          type: integer
+          remarks: Options ID of Collection this Pulse belongs to.
+        - name: collection_position
+          type: int2
+          remarks: Optional pinned position for this item in its Collection. NULL
+            means item is not pinned.
+        - name: archived
+          type: boolean
+          remarks: Has this pulse been archived?
+          defaultValueBoolean: false
+        - name: dashboard_id
+          type: integer
+          remarks: ID of the Dashboard if this Pulse is a Dashboard Subscription.
+          constraints:
+            references: report_dashboard(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_ref_dashboard_id
+        - name: parameters
+          type: ${text.type}
+          remarks: Let dashboard subscriptions have their own filters
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-123
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse
+        indexName: idx_pulse_collection_id
+        columns:
+        - collection_id
+- changeSet:
+    id: v00.00-124
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse
+        indexName: idx_pulse_creator_id
+        columns:
+        - creator_id
+- changeSet:
+    id: v00.00-125
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: pulse
+        baseColumnNames: collection_id
+        referencedTableName: collection
+        referencedColumnNames: id
+        constraintName: fk_pulse_collection_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-126
+    author: metabase
+    changes:
+    - createTable:
+        tableName: report_dashboardcard
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: report_dashboardcard_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: sizeX
+          type: integer
+          constraints:
+            nullable: false
+        - name: sizeY
+          type: integer
+          constraints:
+            nullable: false
+        - name: row
+          type: integer
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: col
+          type: integer
+          defaultValueNumeric: 0
+          constraints:
+            nullable: false
+        - name: card_id
+          type: integer
+          constraints:
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboardcard_ref_card_id
+        - name: dashboard_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_dashboard(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboardcard_ref_dashboard_id
+        - name: parameter_mappings
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: visualization_settings
+          type: ${text.type}
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-127
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboardcard
+        indexName: idx_dashboardcard_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-128
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboardcard
+        indexName: idx_dashboardcard_dashboard_id
+        columns:
+        - dashboard_id
+- changeSet:
+    id: v00.00-129
+    author: metabase
+    changes:
+    - createTable:
+        tableName: pulse_card
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: pulse_card_pkey
+        - name: pulse_id
+          type: integer
+          constraints:
+            nullable: false
+            references: pulse(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_card_ref_pulse_id
+        - name: card_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_card_ref_card_id
+        - name: position
+          type: integer
+          constraints:
+            nullable: false
+        - name: include_csv
+          type: boolean
+          remarks: True if a CSV of the data should be included for this pulse card
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: include_xls
+          type: boolean
+          remarks: True if a XLS of the data should be included for this pulse card
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: dashboard_card_id
+          type: integer
+          remarks: If this Pulse is a Dashboard subscription, the ID of the DashboardCard
+            that corresponds to this PulseCard.
+          constraints:
+            references: report_dashboardcard(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_card_ref_pulse_card_id
+- changeSet:
+    id: v00.00-130
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse_card
+        indexName: idx_pulse_card_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-131
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse_card
+        indexName: idx_pulse_card_pulse_id
+        columns:
+        - pulse_id
+- changeSet:
+    id: v00.00-132
+    author: metabase
+    changes:
+    - createTable:
+        tableName: pulse_channel
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: pulse_channel_pkey
+        - name: pulse_id
+          type: integer
+          constraints:
+            nullable: false
+            references: pulse(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_channel_ref_pulse_id
+        - name: channel_type
+          type: varchar
+          constraints:
+            nullable: false
+        - name: details
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: schedule_type
+          type: varchar
+          constraints:
+            nullable: false
+        - name: schedule_hour
+          type: integer
+        - name: schedule_day
+          type: varchar
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: schedule_frame
+          type: varchar
+        - name: enabled
+          type: boolean
+          defaultValueBoolean: true
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-133
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse_channel
+        indexName: idx_pulse_channel_pulse_id
+        columns:
+        - pulse_id
+- changeSet:
+    id: v00.00-134
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: pulse_channel
+        indexName: idx_pulse_channel_schedule_type
+        columns:
+        - schedule_type
+- changeSet:
+    id: v00.00-135
+    author: metabase
+    changes:
+    - createTable:
+        tableName: pulse_channel_recipient
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: pulse_channel_recipient_pkey
+        - name: pulse_channel_id
+          type: integer
+          constraints:
+            nullable: false
+            references: pulse_channel(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_channel_recipient_ref_pulse_channel_id
+        - name: user_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_pulse_channel_recipient_ref_user_id
+- changeSet:
+    id: v00.00-136
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_job_details(sched_name)
+            foreignKeyName: fk_qrtz_triggers_job_details
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: job_name
+          type: varchar
+          constraints:
+            nullable: false
+            references: qrtz_job_details(job_name)
+            foreignKeyName: fk_qrtz_triggers_job_details
+        - name: job_group
+          type: varchar
+          constraints:
+            nullable: false
+            references: qrtz_job_details(job_group)
+            foreignKeyName: fk_qrtz_triggers_job_details
+        - name: description
+          type: varchar
+        - name: next_fire_time
+          type: int8
+        - name: prev_fire_time
+          type: int8
+        - name: priority
+          type: integer
+        - name: trigger_state
+          type: varchar
+          constraints:
+            nullable: false
+        - name: trigger_type
+          type: varchar
+          constraints:
+            nullable: false
+        - name: start_time
+          type: int8
+          constraints:
+            nullable: false
+        - name: end_time
+          type: int8
+        - name: calendar_name
+          type: varchar
+        - name: misfire_instr
+          type: int2
+        - name: job_data
+          type: bytea
+- changeSet:
+    id: v00.00-137
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_state
+        columns:
+        - sched_name
+        - trigger_state
+- changeSet:
+    id: v00.00-138
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_nft_st_misfire_grp
+        columns:
+        - sched_name
+        - misfire_instr
+        - next_fire_time
+        - trigger_group
+        - trigger_state
+- changeSet:
+    id: v00.00-139
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_c
+        columns:
+        - sched_name
+        - calendar_name
+- changeSet:
+    id: v00.00-140
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_g
+        columns:
+        - sched_name
+        - trigger_group
+- changeSet:
+    id: v00.00-141
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_n_g_state
+        columns:
+        - sched_name
+        - trigger_group
+        - trigger_state
+- changeSet:
+    id: v00.00-142
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_nft_misfire
+        columns:
+        - sched_name
+        - misfire_instr
+        - next_fire_time
+- changeSet:
+    id: v00.00-143
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_n_state
+        columns:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        - trigger_state
+- changeSet:
+    id: v00.00-144
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_nft_st
+        columns:
+        - sched_name
+        - trigger_state
+        - next_fire_time
+- changeSet:
+    id: v00.00-145
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_nft_st_misfire
+        columns:
+        - sched_name
+        - misfire_instr
+        - next_fire_time
+        - trigger_state
+- changeSet:
+    id: v00.00-146
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_jg
+        columns:
+        - sched_name
+        - job_group
+- changeSet:
+    id: v00.00-147
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_next_fire_time
+        columns:
+        - sched_name
+        - next_fire_time
+- changeSet:
+    id: v00.00-148
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: qrtz_triggers
+        indexName: idx_qrtz_t_j
+        columns:
+        - sched_name
+        - job_name
+        - job_group
+- changeSet:
+    id: v00.00-149
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_triggers
+        columnNames:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        constraintName: pk_qrtz_triggers
+- changeSet:
+    id: v00.00-150
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_blob_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(sched_name)
+            foreignKeyName: fk_qrtz_blob_triggers_triggers
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_name)
+            foreignKeyName: fk_qrtz_blob_triggers_triggers
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_group)
+            foreignKeyName: fk_qrtz_blob_triggers_triggers
+        - name: blob_data
+          type: bytea
+- changeSet:
+    id: v00.00-151
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_blob_triggers
+        columnNames:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        constraintName: pk_qrtz_blob_triggers
+- changeSet:
+    id: v00.00-152
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_cron_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(sched_name)
+            foreignKeyName: fk_qrtz_cron_triggers_triggers
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_name)
+            foreignKeyName: fk_qrtz_cron_triggers_triggers
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_group)
+            foreignKeyName: fk_qrtz_cron_triggers_triggers
+        - name: cron_expression
+          type: varchar
+          constraints:
+            nullable: false
+        - name: time_zone_id
+          type: varchar
+- changeSet:
+    id: v00.00-153
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_cron_triggers
+        columnNames:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        constraintName: pk_qrtz_cron_triggers
+- changeSet:
+    id: v00.00-154
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_simple_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(sched_name)
+            foreignKeyName: fk_qrtz_simple_triggers_triggers
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_name)
+            foreignKeyName: fk_qrtz_simple_triggers_triggers
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_group)
+            foreignKeyName: fk_qrtz_simple_triggers_triggers
+        - name: repeat_count
+          type: int8
+          constraints:
+            nullable: false
+        - name: repeat_interval
+          type: int8
+          constraints:
+            nullable: false
+        - name: times_triggered
+          type: int8
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-155
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_simple_triggers
+        columnNames:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        constraintName: pk_qrtz_simple_triggers
+- changeSet:
+    id: v00.00-156
+    author: metabase
+    changes:
+    - createTable:
+        tableName: qrtz_simprop_triggers
+        remarks: Used for Quartz scheduler.
+        columns:
+        - name: sched_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(sched_name)
+            foreignKeyName: fk_qrtz_simprop_triggers_triggers
+        - name: trigger_name
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_name)
+            foreignKeyName: fk_qrtz_simprop_triggers_triggers
+        - name: trigger_group
+          type: varchar
+          constraints:
+            nullable: false
+            primaryKey: true
+            references: qrtz_triggers(trigger_group)
+            foreignKeyName: fk_qrtz_simprop_triggers_triggers
+        - name: str_prop_1
+          type: varchar
+        - name: str_prop_2
+          type: varchar
+        - name: str_prop_3
+          type: varchar
+        - name: int_prop_1
+          type: integer
+        - name: int_prop_2
+          type: integer
+        - name: long_prop_1
+          type: int8
+        - name: long_prop_2
+          type: int8
+        - name: dec_prop_1
+          type: numeric
+        - name: dec_prop_2
+          type: numeric
+        - name: bool_prop_1
+          type: boolean
+        - name: bool_prop_2
+          type: boolean
+- changeSet:
+    id: v00.00-157
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: qrtz_simprop_triggers
+        columnNames:
+        - sched_name
+        - trigger_name
+        - trigger_group
+        constraintName: pk_qrtz_simprop_triggers
+- changeSet:
+    id: v00.00-158
+    author: metabase
+    changes:
+    - createTable:
+        tableName: report_card
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: report_card_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: display
+          type: varchar
+          constraints:
+            nullable: false
+        - name: dataset_query
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: visualization_settings
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_card_ref_user_id
+        - name: database_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_database(id)
+            deleteCascade: true
+            foreignKeyName: fk_report_card_ref_database_id
+        - name: table_id
+          type: integer
+          constraints:
+            references: metabase_table(id)
+            deleteCascade: true
+            foreignKeyName: fk_report_card_ref_table_id
+        - name: query_type
+          type: varchar
+        - name: archived
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: collection_id
+          type: integer
+          remarks: Optional ID of Collection this Card belongs to.
+        - name: public_uuid
+          type: bpchar
+          remarks: Unique UUID used to in publically-accessible links to this Card.
+          constraints:
+            unique: true
+            uniqueConstraintName: report_card_public_uuid_key
+        - name: made_public_by_id
+          type: integer
+          remarks: The ID of the User who first publically shared this Card.
+          constraints:
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_card_made_public_by_id
+        - name: enable_embedding
+          type: boolean
+          remarks: Is this Card allowed to be embedded in different websites (using
+            a signed JWT)?
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: embedding_params
+          type: ${text.type}
+          remarks: Serialized JSON containing information about required parameters
+            that must be supplied when embedding this Card.
+        - name: cache_ttl
+          type: integer
+          remarks: The maximum time, in seconds, to return cached results for this
+            Card rather than running a new query.
+        - name: result_metadata
+          type: ${text.type}
+          remarks: Serialized JSON containing metadata about the result columns from
+            running the query.
+        - name: collection_position
+          type: int2
+          remarks: Optional pinned position for this item in its Collection. NULL
+            means item is not pinned.
+        - name: dataset
+          type: boolean
+          remarks: Indicate whether question is a dataset
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-159
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_card
+        indexName: idx_card_collection_id
+        columns:
+        - collection_id
+- changeSet:
+    id: v00.00-160
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_card
+        indexName: idx_card_creator_id
+        columns:
+        - creator_id
+- changeSet:
+    id: v00.00-161
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_card
+        indexName: idx_card_public_uuid
+        columns:
+        - public_uuid
+- changeSet:
+    id: v00.00-162
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: report_card
+        baseColumnNames: collection_id
+        referencedTableName: collection
+        referencedColumnNames: id
+        constraintName: fk_card_collection_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-163
+    author: metabase
+    changes:
+    - createTable:
+        tableName: report_cardfavorite
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: report_cardfavorite_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: card_id
+          type: integer
+          constraints:
+            nullable: false
+            references: report_card(id)
+            deleteCascade: true
+            foreignKeyName: fk_cardfavorite_ref_card_id
+        - name: owner_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_cardfavorite_ref_user_id
+- changeSet:
+    id: v00.00-164
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_cardfavorite
+        indexName: idx_cardfavorite_card_id
+        columns:
+        - card_id
+- changeSet:
+    id: v00.00-165
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_cardfavorite
+        indexName: idx_cardfavorite_owner_id
+        columns:
+        - owner_id
+- changeSet:
+    id: v00.00-166
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: report_cardfavorite
+        columnNames:
+        - card_id
+        - owner_id
+        constraintName: idx_unique_cardfavorite_card_id_owner_id
+- changeSet:
+    id: v00.00-167
+    author: metabase
+    changes:
+    - createTable:
+        tableName: report_dashboard
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: report_dashboard_pkey
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboard_ref_user_id
+        - name: parameters
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: show_in_getting_started
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: public_uuid
+          type: bpchar
+          remarks: Unique UUID used to in publically-accessible links to this Dashboard.
+          constraints:
+            unique: true
+            uniqueConstraintName: report_dashboard_public_uuid_key
+        - name: made_public_by_id
+          type: integer
+          remarks: The ID of the User who first publically shared this Dashboard.
+          constraints:
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_dashboard_made_public_by_id
+        - name: enable_embedding
+          type: boolean
+          remarks: Is this Dashboard allowed to be embedded in different websites
+            (using a signed JWT)?
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: embedding_params
+          type: ${text.type}
+          remarks: Serialized JSON containing information about required parameters
+            that must be supplied when embedding this Dashboard.
+        - name: archived
+          type: boolean
+          remarks: Is this Dashboard archived (effectively treated as deleted?)
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: position
+          type: integer
+          remarks: The position this Dashboard should appear in the Dashboards list,
+            lower-numbered positions appearing before higher numbered ones.
+        - name: collection_id
+          type: integer
+          remarks: Optional ID of Collection this Dashboard belongs to.
+        - name: collection_position
+          type: int2
+          remarks: Optional pinned position for this item in its Collection. NULL
+            means item is not pinned.
+        - name: cache_ttl
+          type: integer
+          remarks: Granular cache TTL for specific dashboard.
+- changeSet:
+    id: v00.00-168
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboard
+        indexName: idx_dashboard_collection_id
+        columns:
+        - collection_id
+- changeSet:
+    id: v00.00-169
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboard
+        indexName: idx_dashboard_creator_id
+        columns:
+        - creator_id
+- changeSet:
+    id: v00.00-170
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboard
+        indexName: idx_dashboard_public_uuid
+        columns:
+        - public_uuid
+- changeSet:
+    id: v00.00-171
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: report_dashboard
+        indexName: idx_report_dashboard_show_in_getting_started
+        columns:
+        - show_in_getting_started
+- changeSet:
+    id: v00.00-172
+    author: metabase
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: report_dashboard
+        baseColumnNames: collection_id
+        referencedTableName: collection
+        referencedColumnNames: id
+        constraintName: fk_dashboard_collection_id
+        onDelete: SET NULL
+- changeSet:
+    id: v00.00-173
+    author: metabase
+    changes:
+    - createTable:
+        tableName: revision
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: revision_pkey
+        - name: model
+          type: varchar
+          constraints:
+            nullable: false
+        - name: model_id
+          type: integer
+          constraints:
+            nullable: false
+        - name: user_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_revision_ref_user_id
+        - name: timestamp
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: object
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: is_reversion
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: is_creation
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: message
+          type: ${text.type}
+- changeSet:
+    id: v00.00-174
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: revision
+        indexName: idx_revision_model_model_id
+        columns:
+        - model
+        - model_id
+- changeSet:
+    id: v00.00-175
+    author: metabase
+    changes:
+    - createTable:
+        tableName: secret
+        remarks: Storage for managed secrets (passwords, binary data, etc.)
+        columns:
+        - name: id
+          type: integer
+          remarks: Part of composite primary key for secret; this is the uniquely
+            generted ID column
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: version
+          type: integer
+          remarks: Part of composite primary key for secret; this is the version column
+          defaultValueNumeric: 1
+          constraints:
+            nullable: false
+            primaryKey: true
+        - name: creator_id
+          type: integer
+          remarks: User ID who created this secret instance
+          constraints:
+            nullable: false
+            references: core_user(id)
+            foreignKeyName: fk_secret_ref_user_id
+        - name: created_at
+          type: ${timestamp.type}
+          remarks: Timestamp for when this secret instance was created
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          remarks: Timestamp for when this secret record was updated. Only relevant
+            when non-value field changes since a value change will result in a new
+            version being inserted.
+        - name: name
+          type: varchar
+          remarks: The name of this secret record.
+          constraints:
+            nullable: false
+        - name: kind
+          type: varchar
+          remarks: 'The kind of secret this record represents; the value is interpreted
+            as a Clojure keyword with a hierarchy. Ex: ''bytes'' means generic binary
+            data, ''jks-keystore'' extends ''bytes'' but has a specific meaning.'
+          constraints:
+            nullable: false
+        - name: source
+          type: varchar
+          remarks: 'The source of secret record, which controls how Metabase interprets
+            the value (ex: ''file-path'' means the ''simple_value'' is not the real
+            value, but a pointer to a file that contains the value).'
+        - name: value
+          type: bytea
+          remarks: The base64 encoded binary value of this secret record. If encryption
+            is enabled, this will be the output of the encryption procedure on the
+            plaintext. If not, it will be the base64 encoded plaintext.
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-176
+    author: metabase
+    changes:
+    - addUniqueConstraint:
+        tableName: secret
+        columnNames:
+        - id
+        - version
+        constraintName: secret_pkey
+- changeSet:
+    id: v00.00-177
+    author: metabase
+    changes:
+    - createTable:
+        tableName: segment
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: segment_pkey
+        - name: table_id
+          type: integer
+          constraints:
+            nullable: false
+            references: metabase_table(id)
+            deleteCascade: true
+            foreignKeyName: fk_segment_ref_table_id
+        - name: creator_id
+          type: integer
+          constraints:
+            nullable: false
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_segment_ref_creator_id
+        - name: name
+          type: varchar
+          constraints:
+            nullable: false
+        - name: description
+          type: ${text.type}
+        - name: archived
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+        - name: definition
+          type: ${text.type}
+          constraints:
+            nullable: false
+        - name: created_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: updated_at
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: points_of_interest
+          type: ${text.type}
+        - name: caveats
+          type: ${text.type}
+        - name: show_in_getting_started
+          type: boolean
+          defaultValueBoolean: false
+          constraints:
+            nullable: false
+- changeSet:
+    id: v00.00-178
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: segment
+        indexName: idx_segment_creator_id
+        columns:
+        - creator_id
+- changeSet:
+    id: v00.00-179
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: segment
+        indexName: idx_segment_show_in_getting_started
+        columns:
+        - show_in_getting_started
+- changeSet:
+    id: v00.00-180
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: segment
+        indexName: idx_segment_table_id
+        columns:
+        - table_id
+- changeSet:
+    id: v00.00-181
+    author: metabase
+    changes:
+    - createTable:
+        tableName: view_log
+        remarks: null
+        columns:
+        - name: id
+          type: integer
+          autoIncrement: true
+          constraints:
+            nullable: false
+            primaryKey: true
+            unique: true
+            uniqueConstraintName: view_log_pkey
+        - name: user_id
+          type: integer
+          constraints:
+            references: core_user(id)
+            deleteCascade: true
+            foreignKeyName: fk_view_log_ref_user_id
+        - name: model
+          type: varchar
+          constraints:
+            nullable: false
+        - name: model_id
+          type: integer
+          constraints:
+            nullable: false
+        - name: timestamp
+          type: ${timestamp.type}
+          constraints:
+            nullable: false
+        - name: metadata
+          type: ${text.type}
+          remarks: Serialized JSON corresponding to metadata for view.
+- changeSet:
+    id: v00.00-182
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: view_log
+        indexName: idx_view_log_timestamp
+        columns:
+        - model_id
+- changeSet:
+    id: v00.00-183
+    author: metabase
+    changes:
+    - createIndex:
+        tableName: view_log
+        indexName: idx_view_log_user_id
+        columns:
+        - user_id
