@@ -1,11 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -16,7 +10,11 @@ import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -172,9 +170,10 @@ function QueryBuilder(props) {
     cancelQuery,
   } = props;
 
-  // https://reactjs.org/docs/hooks-faq.html#is-there-something-like-forceupdate
-  const [, forceUpdate] = useReducer(x => x + 1, 0);
-  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), []);
+  const forceUpdate = useForceUpdate();
+  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
+    forceUpdate,
+  ]);
   const timeout = useRef(null);
 
   const previousUIControls = usePrevious(uiControls);
@@ -231,21 +230,20 @@ function QueryBuilder(props) {
     ],
   );
 
-  useEffect(() => {
+  useOnMount(() => {
     initializeQB(location, params);
-    return () => {
-      cancelQuery();
-      closeModal();
-      clearTimeout(timeout.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
+  useOnMount(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useOnUnmount(() => {
+    cancelQuery();
+    closeModal();
+    clearTimeout(timeout.current);
+  });
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
