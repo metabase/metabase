@@ -1,4 +1,5 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -93,6 +94,20 @@ describe("scenarios > question > object details", () => {
     cy.contains("Reviews")
       .parent()
       .contains("8");
+  });
+
+  it.skip("should not offer drill-through on the object detail records (metabase#20560)", () => {
+    openPeopleTable({ limit: 2 });
+
+    cy.get(".Table-ID")
+      .contains("2")
+      .click();
+    cy.url().should("contain", "objectId=2");
+
+    cy.findByText("Domenica Williamson").click();
+    // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
+    // Unfortunately, asserting that the popover does not exist will give us a false positive result.
+    cy.findByText("Searsboro").click();
   });
 });
 
