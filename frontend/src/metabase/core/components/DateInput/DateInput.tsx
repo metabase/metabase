@@ -10,13 +10,10 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import Icon from "metabase/components/Icon";
-import Calendar from "metabase/components/Calendar";
 import Tooltip from "metabase/components/Tooltip";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
+import { InputIconButton, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -27,13 +24,9 @@ export type DateInputAttributes = Omit<
 
 export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
-  placeholder?: string;
-  readOnly?: boolean;
-  disabled?: boolean;
   error?: boolean;
   fullWidth?: boolean;
   onChange?: (value: Moment | undefined) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
@@ -46,34 +39,41 @@ const DateInput = forwardRef(function DateInput(
     disabled,
     error,
     fullWidth,
-    onChange,
+    onFocus,
     onBlur,
+    onChange,
     ...props
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [text, setText] = useState(() => value?.format(DATE_FORMAT));
-  const [isOpened, setIsOpened] = useState(false);
-  const initialValue = useMemo(() => moment(), []);
-  const initialPlaceholder = useMemo(() => moment().format(DATE_FORMAT), []);
+  const now = useMemo(() => moment(), []);
+  const nowText = useMemo(() => now.format(DATE_FORMAT), [now]);
+  const valueText = useMemo(() => value?.format(DATE_FORMAT) ?? "", [value]);
+  const [inputText, setInputText] = useState(valueText);
+  const [isFocused, setIsFocused] = useState(false);
 
-  const handleIconClick = useCallback(() => {
-    setIsOpened(true);
-  }, []);
+  const handleInputFocus = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      setIsFocused(true);
+      setInputText(valueText);
+      onFocus?.(event);
+    },
+    [valueText, onFocus],
+  );
 
-  const handleSaveClick = useCallback(() => {
-    setIsOpened(false);
-  }, []);
-
-  const handlePopoverClose = useCallback(() => {
-    setIsOpened(false);
-  }, []);
+  const handleInputBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      setIsFocused(false);
+      onBlur?.(event);
+    },
+    [onBlur],
+  );
 
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
       const newValue = moment(newText, DATE_FORMAT);
-      setText(newText);
+      setInputText(newText);
 
       if (newValue.isValid()) {
         onChange?.(newValue);
@@ -84,81 +84,38 @@ const DateInput = forwardRef(function DateInput(
     [onChange],
   );
 
-  const handleInputBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      const newText = event.target.value;
-      const newValue = moment(newText, DATE_FORMAT);
-
-      if (newValue.isValid()) {
-        setText(newValue.format(DATE_FORMAT));
-      } else {
-        setText("");
-      }
-
-      onBlur?.(event);
-    },
-    [onBlur],
-  );
-
-  const handleCalendarChange = useCallback(
-    (newText: string) => {
-      const newValue = moment(newText);
-      setText(newValue.format(DATE_FORMAT));
-      onChange?.(newValue);
-    },
-    [onChange],
-  );
+  console.log(value);
 
   return (
-    <TippyPopover
-      trigger="manual"
-      placement="bottom-start"
-      visible={isOpened}
-      interactive
-      content={
-        <div>
-          <Calendar
-            selected={value}
-            initial={initialValue}
-            onChange={handleCalendarChange}
-            isRangePicker={false}
-          />
-          <CalendarFooter>
-            <Button primary onClick={handleSaveClick}>{t`Save`}</Button>
-          </CalendarFooter>
-        </div>
-      }
-      onHide={handlePopoverClose}
+    <InputRoot
+      ref={ref}
+      className={className}
+      style={style}
+      readOnly={readOnly}
+      error={error}
+      fullWidth={fullWidth}
     >
-      <InputRoot
-        ref={ref}
-        className={className}
-        style={style}
+      <Input
+        {...props}
+        value={isFocused ? inputText : valueText}
+        placeholder={nowText}
         readOnly={readOnly}
+        disabled={disabled}
         error={error}
         fullWidth={fullWidth}
-      >
-        <Input
-          {...props}
-          value={text}
-          placeholder={placeholder ?? initialPlaceholder}
-          readOnly={readOnly}
-          disabled={disabled}
-          error={error}
-          fullWidth={fullWidth}
-          borderless
-          onChange={handleInputChange}
-          onBlur={handleInputBlur}
-        />
-        {!readOnly && !disabled && (
-          <Tooltip tooltip={isOpened ? t`Hide calendar` : t`Show calendar`}>
-            <InputIconButton tabIndex={-1} onClick={handleIconClick}>
-              <Icon name="calendar" />
-            </InputIconButton>
-          </Tooltip>
-        )}
-      </InputRoot>
-    </TippyPopover>
+        borderless
+        onFocus={handleInputFocus}
+        onBlur={handleInputBlur}
+        onChange={handleInputChange}
+      />
+      {!readOnly && !disabled && (
+        <Tooltip tooltip={t`Show calendar`}>
+          <InputIconButton tabIndex={-1}>
+            <Icon name="calendar" />
+          </InputIconButton>
+        </Tooltip>
+      )}
+    </InputRoot>
   );
 });
 

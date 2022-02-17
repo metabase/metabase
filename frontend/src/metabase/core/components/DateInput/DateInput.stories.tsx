@@ -10,7 +10,7 @@ export default {
 
 const Template: ComponentStory<typeof DateInput> = args => {
   const [value, setValue] = useState<Moment>();
-  return <DateInput value={value} onChange={setValue} {...args} />;
+  return <DateInput {...args} value={value} onChange={setValue} />;
 };
 
 export const Default = Template.bind({});
