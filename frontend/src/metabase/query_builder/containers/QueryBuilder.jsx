@@ -16,8 +16,6 @@ import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
-import { useQuestionTimelineEvents } from "metabase/containers/QuestionTimelineEventsLoader";
-
 import { usePrevious } from "metabase/hooks/use-previous";
 import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
@@ -182,8 +180,6 @@ function QueryBuilder(props) {
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
 
-  const timelineEvents = useQuestionTimelineEvents({ question });
-
   const openModal = useCallback(modal => setUIControls({ modal }), [
     setUIControls,
   ]);
@@ -283,7 +279,6 @@ function QueryBuilder(props) {
   return (
     <View
       {...props}
-      timelineEvents={timelineEvents}
       modal={uiControls.modal}
       recentlySaved={uiControls.recentlySaved}
       onOpenModal={openModal}
