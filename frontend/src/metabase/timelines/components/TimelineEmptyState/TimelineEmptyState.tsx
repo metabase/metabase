@@ -7,30 +7,30 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";
 import {
-  StateBody,
-  StateChart,
-  StateMessage,
-  StateRoot,
-  StateThread,
-  StateThreadIcon,
-  StateThreadIconContainer,
-  StateThreadLine,
-  StateTooltip,
-  StateTooltipBody,
-  StateTooltipDate,
-  StateTooltipIcon,
-  StateTooltipTitle,
-} from "./TimelineListEmptyState.styled";
+  EmptyStateBody,
+  EmptyStateChart,
+  EmptyStateMessage,
+  EmptyStateRoot,
+  EmptyStateThread,
+  EmptyStateThreadIcon,
+  EmptyStateThreadIconContainer,
+  EmptyStateThreadLine,
+  EmptyStateTooltip,
+  EmptyStateTooltipBody,
+  EmptyStateTooltipDate,
+  EmptyStateTooltipIcon,
+  EmptyStateTooltipTitle,
+} from "./TimelineEmptyState.styled";
 
-export interface TimelineListEmptyStateProps {
+export interface TimelineEmptyStateProps {
   timeline?: Timeline;
   collection: Collection;
 }
 
-const TimelineListEmptyState = ({
+const TimelineEmptyState = ({
   timeline,
   collection,
-}: TimelineListEmptyStateProps): JSX.Element => {
+}: TimelineEmptyStateProps): JSX.Element => {
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
@@ -41,9 +41,9 @@ const TimelineListEmptyState = ({
   );
 
   return (
-    <StateRoot>
-      <StateBody>
-        <StateChart>
+    <EmptyStateRoot>
+      <EmptyStateBody>
+        <EmptyStateChart>
           <svg width="231" height="128" xmlns="http://www.w3.org/2000/svg">
             <path
               fill="currentColor"
@@ -52,30 +52,30 @@ const TimelineListEmptyState = ({
               clipRule="evenodd"
             />
           </svg>
-        </StateChart>
-        <StateTooltip>
-          <StateTooltipIcon name="mail" />
-          <StateTooltipBody>
-            <StateTooltipTitle>{t`Launch of v2.0`}</StateTooltipTitle>
-            <StateTooltipDate>{date}</StateTooltipDate>
-          </StateTooltipBody>
-        </StateTooltip>
-        <StateThread>
-          <StateThreadLine />
-          <StateThreadIconContainer>
-            <StateThreadIcon name="balloons" />
-          </StateThreadIconContainer>
-          <StateThreadLine />
-        </StateThread>
-        <StateMessage>
+        </EmptyStateChart>
+        <EmptyStateTooltip>
+          <EmptyStateTooltipIcon name="mail" />
+          <EmptyStateTooltipBody>
+            <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
+            <EmptyStateTooltipDate>{date}</EmptyStateTooltipDate>
+          </EmptyStateTooltipBody>
+        </EmptyStateTooltip>
+        <EmptyStateThread>
+          <EmptyStateThreadLine />
+          <EmptyStateThreadIconContainer>
+            <EmptyStateThreadIcon name="balloons" />
+          </EmptyStateThreadIconContainer>
+          <EmptyStateThreadLine />
+        </EmptyStateThread>
+        <EmptyStateMessage>
           {t`Add events to Metabase to open important milestones, launches, or anything else, right alongside your data.`}
-        </StateMessage>
+        </EmptyStateMessage>
         <Link className="Button Button--primary" to={link}>
           {t`Add an event`}
         </Link>
-      </StateBody>
-    </StateRoot>
+      </EmptyStateBody>
+    </EmptyStateRoot>
   );
 };
 
-export default TimelineListEmptyState;
+export default TimelineEmptyState;

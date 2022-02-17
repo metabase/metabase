@@ -2,25 +2,25 @@ import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const StateRoot = styled.div`
+export const EmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
 `;
 
-export const StateBody = styled.div`
+export const EmptyStateBody = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   max-width: 22.5rem;
 `;
 
-export const StateChart = styled.div`
+export const EmptyStateChart = styled.div`
   color: ${color("brand")};
   margin-bottom: -1rem;
 `;
 
-export const StateTooltip = styled.div`
+export const EmptyStateTooltip = styled.div`
   display: flex;
   align-items: center;
   min-width: 16.75rem;
@@ -30,48 +30,48 @@ export const StateTooltip = styled.div`
   background-color: ${color("text-dark")};
 `;
 
-export const StateTooltipIcon = styled(Icon)`
+export const EmptyStateTooltipIcon = styled(Icon)`
   flex: 0 0 auto;
   color: ${color("white")};
   width: 1rem;
   height: 1rem;
 `;
 
-export const StateTooltipBody = styled.div`
+export const EmptyStateTooltipBody = styled.div`
   flex: 1 1 auto;
   margin-left: 1rem;
 `;
 
-export const StateTooltipTitle = styled.div`
+export const EmptyStateTooltipTitle = styled.div`
   color: ${color("white")};
   font-weight: bold;
   margin-bottom: 0.25rem;
 `;
 
-export const StateTooltipDate = styled.div`
+export const EmptyStateTooltipDate = styled.div`
   color: ${color("white")};
 `;
 
-export const StateThread = styled.div`
+export const EmptyStateThread = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 1.5rem;
 `;
 
-export const StateThreadLine = styled.div`
+export const EmptyStateThreadLine = styled.div`
   margin: 0 0.5rem;
   width: 11.75rem;
   height: 1px;
   background-color: ${alpha("brand", 0.2)};
 `;
 
-export const StateThreadIcon = styled(Icon)`
+export const EmptyStateThreadIcon = styled(Icon)`
   color: ${color("white")};
   width: 1rem;
   height: 1rem;
 `;
 
-export const StateThreadIconContainer = styled.div`
+export const EmptyStateThreadIconContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
@@ -81,7 +81,7 @@ export const StateThreadIconContainer = styled.div`
   background-color: ${color("brand")};
 `;
 
-export const StateMessage = styled.div`
+export const EmptyStateMessage = styled.div`
   color: ${color("text-dark")};
   line-height: 1.5rem;
   margin-bottom: 2rem;

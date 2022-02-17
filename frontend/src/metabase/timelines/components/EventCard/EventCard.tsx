@@ -89,7 +89,7 @@ const getMenuItems = (
   } else {
     return [
       {
-        title: t`Restore event`,
+        title: t`Unarchive event`,
         action: () => onUnarchive?.(event),
       },
     ];
