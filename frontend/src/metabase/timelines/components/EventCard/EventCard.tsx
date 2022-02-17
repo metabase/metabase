@@ -92,6 +92,10 @@ const getMenuItems = (
         title: t`Unarchive event`,
         action: () => onUnarchive?.(event),
       },
+      {
+        title: t`Delete event`,
+        link: Urls.deleteEventInCollection(event, timeline, collection),
+      },
     ];
   }
 };

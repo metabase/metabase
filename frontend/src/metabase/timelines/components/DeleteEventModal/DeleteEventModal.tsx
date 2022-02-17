@@ -1,26 +1,34 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import { TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalBody, ModalFooter } from "./DeleteEventModal.styled";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;
-  onDelete: (event: TimelineEvent) => void;
+  timeline: Timeline;
+  collection: Collection;
+  onSubmit: (
+    event: TimelineEvent,
+    timeline: Timeline,
+    collection: Collection,
+  ) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
 
 const DeleteEventModal = ({
   event,
-  onDelete,
+  timeline,
+  collection,
+  onSubmit,
   onCancel,
   onClose,
 }: DeleteEventModalProps): JSX.Element => {
-  const handleDelete = useCallback(async () => {
-    await onDelete(event);
-  }, [event, onDelete]);
+  const handleSubmit = useCallback(async () => {
+    await onSubmit(event, timeline, collection);
+  }, [event, timeline, collection, onSubmit]);
 
   return (
     <div>
@@ -28,7 +36,7 @@ const DeleteEventModal = ({
       <ModalBody>
         <ModalFooter>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <Button danger onClick={handleDelete}>{t`Delete`}</Button>
+          <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
         </ModalFooter>
       </ModalBody>
     </div>
