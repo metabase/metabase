@@ -18,7 +18,8 @@ import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
 
-const DATE_FORMAT = "MM/DD/YYYY";
+const INPUT_FORMAT = "MM/DD/YYYY";
+const CALENDAR_FORMAT = "YYYY-MM-DD";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -50,8 +51,8 @@ const DateInput = forwardRef(function DateInput(
   ref: Ref<HTMLDivElement>,
 ) {
   const now = useMemo(() => moment(), []);
-  const nowText = useMemo(() => now.format(DATE_FORMAT), [now]);
-  const valueText = useMemo(() => value?.format(DATE_FORMAT) ?? "", [value]);
+  const nowText = useMemo(() => now.format(INPUT_FORMAT), [now]);
+  const valueText = useMemo(() => value?.format(INPUT_FORMAT) ?? "", [value]);
   const [inputText, setInputText] = useState(valueText);
   const [isOpened, setIsOpened] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -76,7 +77,7 @@ const DateInput = forwardRef(function DateInput(
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, DATE_FORMAT);
+      const newValue = moment(newText, INPUT_FORMAT);
       setInputText(newText);
 
       if (newValue.isValid()) {
@@ -98,7 +99,7 @@ const DateInput = forwardRef(function DateInput(
 
   const handleCalendarChange = useCallback(
     (valueText: string) => {
-      const value = moment(valueText);
+      const value = moment(valueText, CALENDAR_FORMAT);
       onChange?.(value);
     },
     [onChange],
