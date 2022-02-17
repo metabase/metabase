@@ -19,6 +19,12 @@ import {
   EDITOR_FK_SYMBOLS,
 } from "./config";
 
+const suggestionText = func => {
+  const { displayName, args } = func;
+  const suffix = args.length > 0 ? "(" : " ";
+  return displayName + suffix;
+};
+
 export function suggest({
   source,
   query,
@@ -59,7 +65,7 @@ export function suggest({
         .map(func => ({
           type: "functions",
           name: func.displayName,
-          text: func.displayName + "(",
+          text: suggestionText(func),
           index: targetOffset,
           icon: "function",
           order: 1,
@@ -73,7 +79,7 @@ export function suggest({
           .map(func => ({
             type: "aggregations",
             name: func.displayName,
-            text: func.displayName + "(",
+            text: suggestionText(func),
             index: targetOffset,
             icon: "function",
             order: 1,
