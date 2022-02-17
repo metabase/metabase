@@ -32,7 +32,7 @@ const DeleteEventModal = ({
 
   return (
     <div>
-      <ModalHeader title={t`Delete ${event.name}?`} onClose={onClose} />
+      <ModalHeader title={t`Delete ${event?.name}?`} onClose={onClose} />
       <ModalBody>
         <ModalFooter>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
