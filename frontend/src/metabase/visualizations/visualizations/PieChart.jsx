@@ -334,6 +334,11 @@ export default class PieChart extends Component {
       .outerRadius(OUTER_RADIUS)
       .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
+    function getColumnName(col) {
+      const columnSettings = settings.column(col);
+      return columnSettings?.column_title || getFriendlyName(col);
+    }
+
     function hoverForIndex(index, event) {
       const slice = slices[index];
       if (!slice || slice.noHover) {
@@ -353,11 +358,11 @@ export default class PieChart extends Component {
           event: event && event.nativeEvent,
           data: [
             {
-              key: getFriendlyName(cols[dimensionIndex]),
+              key: getColumnName(cols[dimensionIndex]),
               value: formatDimension(slice.key),
             },
             {
-              key: getFriendlyName(cols[metricIndex]),
+              key: getColumnName(cols[metricIndex]),
               value: formatMetric(slice.displayValue),
             },
           ].concat(
