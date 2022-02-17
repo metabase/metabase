@@ -13,7 +13,7 @@ const FORM_FIELDS = [
   {
     name: "timestamp",
     title: t`Date`,
-    placeholder: "2022-01-02",
+    type: "date",
     validate: validate.required(),
   },
   {
