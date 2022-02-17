@@ -6,7 +6,7 @@ import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import TimelineModal from "../../components/TimelineModal";
+import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -34,4 +34,4 @@ export default _.compose(
   Timelines.load(timelineProps),
   Collections.load(collectionProps),
   connect(mapStateToProps, mapDispatchToProps),
-)(TimelineModal);
+)(TimelineDetailsModal);

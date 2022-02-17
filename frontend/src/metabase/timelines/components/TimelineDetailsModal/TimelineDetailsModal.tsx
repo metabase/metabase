@@ -6,13 +6,17 @@ import { parseTimestamp } from "metabase/lib/time";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import EventEmptyState from "../EventEmptyState";
 import EventList from "../EventList";
 import ModalHeader from "../ModalHeader";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
-import EventEmptyState from "metabase/timelines/components/EventEmptyState";
+import {
+  ModalBody,
+  ModalRoot,
+  ModalToolbar,
+} from "./TimelineDetailsModal.styled";
 
-export interface TimelineModalProps {
+export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
   archived?: boolean;
@@ -21,14 +25,14 @@ export interface TimelineModalProps {
   onClose?: () => void;
 }
 
-const TimelineModal = ({
+const TimelineDetailsModal = ({
   timeline,
   collection,
   archived = false,
   onArchive,
   onUnarchive,
   onClose,
-}: TimelineModalProps): JSX.Element => {
+}: TimelineDetailsModalProps): JSX.Element => {
   const title = archived ? t`Archived events` : timeline.name;
   const events = getEvents(timeline.events, archived);
   const hasEvents = events.length > 0;
@@ -93,4 +97,4 @@ const getMenuItems = (timeline: Timeline, collection: Collection) => {
   ];
 };
 
-export default TimelineModal;
+export default TimelineDetailsModal;
