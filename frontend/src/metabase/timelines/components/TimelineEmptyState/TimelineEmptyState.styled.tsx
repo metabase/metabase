@@ -15,13 +15,18 @@ export const StateBody = styled.div`
   max-width: 22.5rem;
 `;
 
+export const StateChart = styled.div`
+  color: ${color("brand")};
+  margin-bottom: 3.5rem;
+`;
+
 export const StateThread = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 1.5rem;
 `;
 
-export const StateThreadStroke = styled.div`
+export const StateThreadLine = styled.div`
   margin: 0 0.5rem;
   width: 11.75rem;
   height: 1px;
