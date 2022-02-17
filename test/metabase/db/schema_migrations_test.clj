@@ -14,8 +14,9 @@
             [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Field Setting Table]]
+            [metabase.models :refer [Database Field Permissions PermissionsGroup Setting Table]]
             [metabase.models.interface :as mi]
+            [metabase.models.permissions-group :as group]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -316,6 +317,23 @@
                  (db/query {:select [:engine], :from [Database], :where [:= :id (u/the-id db)]}))))
         (finally
           (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
+
+(deftest create-root-permissions-entry-for-admin-test
+  (testing "Migration v0.43.00-006: Add root permissions entry for 'Administrators' magic group"
+    (doseq [existing-entry? [true false]]
+      (testing (format "Existing root entry? %s" (pr-str existing-entry?))
+        (impl/test-migrations "v43.00-006" [migrate!]
+          (let [[{admin-group-id :id}] (db/query {:select [:id], :from [PermissionsGroup], :where [:= :name group/admin-group-name]})]
+            (is (integer? admin-group-id))
+            (when existing-entry?
+              (db/execute! {:insert-into Permissions
+                            :values      [{:object   "/"
+                                           :group_id admin-group-id}]}))
+            (migrate!)
+            (is (= [{:object "/"}]
+                   (db/query {:select    [:object]
+                              :from      [Permissions]
+                              :where     [:= :group_id admin-group-id]})))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"

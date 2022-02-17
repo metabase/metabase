@@ -10005,6 +10005,33 @@ databaseChangeLog:
                   AND pgm.id IS NULL;
 
   #
+  # This migration replaces metabase.db.data-migrations/add-admin-group-root-entry, added 0.20.0
+  #
+  # Create root permissions entry for admin magic Permissions Group. Admin Group has a single entry that lets it
+  # access to everything
+  - changeSet:
+      id: v43.00-006
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create root '/' permissions entry for the 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                admin_group.id AS group_id,
+                '/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'Administrators'
+              ) admin_group
+              LEFT JOIN permissions p
+                     ON admin_group.id = p.group_id
+                    AND p.object = '/'
+              WHERE p.object IS NULL;
+
+  #
   # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
   #
   # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
