@@ -124,7 +124,7 @@
     "@storybook/client-api": "6.3.12",
     "@storybook/manager-webpack5": "^6.3.12",
     "@storybook/react": "^6.3.12",
-    "@testing-library/cypress": "^5.0.2",
+    "@testing-library/cypress": "^8.0.2",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^11.0.2",
@@ -248,8 +248,7 @@
     "nth-check": "2.0.1",
     "set-value": "4.0.1",
     "immer": "9.0.6",
-    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "cypress": "6.4.0"
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
