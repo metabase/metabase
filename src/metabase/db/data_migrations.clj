@@ -11,17 +11,12 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
-            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.permissions-group :as perm-group]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
