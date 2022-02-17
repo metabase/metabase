@@ -10,10 +10,8 @@ import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
 import * as Card from "metabase/meta/Card";
 
-import {
-  parseFieldTarget,
-  generateTimeFilterValuesDescriptions,
-} from "metabase/lib/query_time";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -30,25 +28,31 @@ export default class TimeseriesFilterWidget extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
-    const query = Card.getQuery(nextProps.card);
-    if (query) {
-      const breakouts = Query.getBreakouts(query);
-      const filters = Query.getFilters(query);
+    const { query } = nextProps;
+    const breakouts = query.breakouts();
+    if (breakouts && breakouts.length > 0) {
+      const filters = query.filters();
 
-      const timeField = parseFieldTarget(breakouts[0]);
+      const dimensions = breakouts.map(b => b.dimension());
+      const dimension = dimensions[0];
+
+      const timeseriesDimension =
+        dimension instanceof FieldDimension
+          ? dimension.withoutTemporalBucketing()
+          : dimension;
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          _.isEqual(filter[1], timeField.mbql()),
+          _.isEqual(filter[1], timeseriesDimension.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeField.mbql(), -30, "day"];
+        filter = ["time-interval", timeseriesDimension.mbql(), -30, "day"];
       }
 
       this.setState({ filter, filterIndex, currentFilter });

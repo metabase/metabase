@@ -51,7 +51,7 @@
     ;; log which libs we're including and excluding.
     (doseq [lib (sort (keys (:libs basis)))]
       (u/announce (if-let [provider (get provided-lib->provider lib)]
-                    (format "SKIP %%45s (provided by %s)" provider)
+                    (format "SKIP    %%s (provided by %s)" provider)
                     "INCLUDE %s")
                   (colorize/yellow lib)))
     ;; now remove the provide libs from `:classpath`, `:classpath-roots`, and `:libs`
