@@ -2,6 +2,7 @@
   "/api/timeline-event endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
@@ -20,7 +21,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     s/Str
-   icon         (s/maybe s/Str)
+   icon         (s/maybe timeline-api/Icons)
    timeline_id  su/IntGreaterThanZero
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
@@ -51,7 +52,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
-   icon         (s/maybe s/Str)
+   icon         (s/maybe timeline-api/Icons)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)]
@@ -59,7 +60,6 @@
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (db/update! TimelineEvent id
       (u/select-keys-when timeline-event-updates
-        ;; todo: are there more keys needed in non-nil? timestamp?
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
     (TimelineEvent id)))
@@ -70,8 +70,5 @@
   (api/write-check TimelineEvent id)
   (db/delete! TimelineEvent :id id)
   api/generic-204-no-content)
-
-;; todo: icons
-;; collection_id via timeline_id -> slow, how to do this?
 
 (api/define-routes)
