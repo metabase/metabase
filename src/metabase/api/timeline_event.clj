@@ -17,8 +17,7 @@
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id archived] :as body} :body}]
   {name         su/NonBlankString
    description  (s/maybe s/Str)
-   ;; todo: find schema for timestamps?
-   timestamp    s/Str
+   timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     s/Str
    icon         (s/maybe s/Str)
@@ -49,8 +48,7 @@
             :as   timeline-event-updates} :body}]
   {name         (s/maybe su/NonBlankString)
    description  (s/maybe s/Str)
-   ;; todo: find schema for timestamps?
-   timestamp    (s/maybe s/Str)
+   timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
    icon         (s/maybe s/Str)
