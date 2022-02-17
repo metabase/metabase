@@ -336,7 +336,7 @@
                               :where     [:= :group_id admin-group-id]})))))))))
 
 (deftest migrate-legacy-site-url-setting-test
-  (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
+  (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
       (db/execute! {:insert-into Setting
                     :values      [{:key   "-site-url"
@@ -346,7 +346,7 @@
              (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
 
 (deftest site-url-ensure-protocol-test
-  (testing "Migration v043.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
+  (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
       (db/execute! {:insert-into Setting
                     :values      [{:key   "site-url"
@@ -354,3 +354,26 @@
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
              (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
+
+(deftest clear-ldap-user-passwords-test
+  (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
+    (impl/test-migrations ["v43.00-029"] [migrate!]
+      (db/execute! {:insert-into User
+                    :values      [{:first_name    "Cam"
+                                   :last_name     "Era"
+                                   :email         "cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     false}
+                                  {:first_name    "LDAP Cam"
+                                   :last_name     "Era"
+                                   :email         "ldap_cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     true}]})
+      (migrate!)
+      (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
+              {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
+             (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))
