@@ -263,8 +263,8 @@ function QueryBuilder(props) {
   }, [uiControls, previousUIControls, forceUpdateDebounced]);
 
   useEffect(() => {
-    if (location !== previousLocation) {
-      locationChanged(previousLocation || {}, location, params);
+    if (previousLocation && location !== previousLocation) {
+      locationChanged(previousLocation, location, params);
     }
   }, [location, params, previousLocation, locationChanged]);
 
