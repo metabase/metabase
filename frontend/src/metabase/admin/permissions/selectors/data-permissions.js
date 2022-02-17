@@ -8,11 +8,7 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 
-import {
-  isAdminGroup,
-  isDefaultGroup,
-  isMetaBotGroup,
-} from "metabase/lib/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { DATA_PERMISSION_OPTIONS } from "../constants/data-permissions";
 import {
   getFieldsPermission,
@@ -74,11 +70,6 @@ export const getDatabasesWithTables = createSelector(
   },
 );
 
-const getGroupsWithoutMetabot = createSelector(
-  Group.selectors.getList,
-  groups => groups?.filter(group => !isMetaBotGroup(group)) ?? [],
-);
-
 export const getIsDirty = createSelector(
   state => state.admin.permissions.dataPermissions,
   state => state.admin.permissions.originalDataPermissions,
@@ -88,7 +79,6 @@ export const getIsDirty = createSelector(
 
 export const getDiff = createSelector(
   getDatabasesWithTables,
-  getGroupsWithoutMetabot,
   state => state.admin.permissions.dataPermissions,
   state => state.admin.permissions.originalDataPermissions,
   (databases, groups, permissions, originalPermissions) =>
@@ -535,7 +525,6 @@ export const getGroupsDataPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getRouteParams,
   getDataPermissions,
-  getGroupsWithoutMetabot,
   (metadata, params, permissions, groups) => {
     const { databaseId, schemaName, tableId } = params;
 
@@ -618,11 +607,9 @@ const getGroupRouteParams = (_state, props) => {
   };
 };
 
-const isPinnedGroup = group =>
-  isAdminGroup(group) || isDefaultGroup(group) || isMetaBotGroup(group);
+const isPinnedGroup = group => isAdminGroup(group) || isDefaultGroup(group);
 
 export const getGroupsSidebar = createSelector(
-  getGroupsWithoutMetabot,
   getGroupRouteParams,
   (groups, params) => {
     const { groupId } = params;
@@ -678,7 +665,6 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroupRouteParams,
   getDataPermissions,
   getGroup,
-  getGroupsWithoutMetabot,
   getIsLoadingDatabaseTables,
   (metadata, params, permissions, group, groups, isLoading) => {
     const { groupId, databaseId, schemaName } = params;
