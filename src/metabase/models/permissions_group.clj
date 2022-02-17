@@ -49,7 +49,7 @@
   "Administrators")
 
 (def ^{:arglists '([])} admin
-  "Fetch the `Administators` permissions group, creating it if needed."
+  "Fetch the `Administrators` permissions group, creating it if needed."
   (magic-group admin-group-name))
 
 (defn- ^:deprecated get-or-create-magic-group! [group-name]
