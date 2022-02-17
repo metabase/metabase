@@ -8,20 +8,25 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.db.schema-migrations-test.impl :as impl]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Field Setting Table]]
+            [metabase.models :refer [Database Field Permissions PermissionsGroup Setting Table]]
             [metabase.models.interface :as mi]
+            [metabase.models.permissions-group :as group]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import java.sql.Connection
            java.util.UUID))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -298,11 +303,37 @@
 (deftest remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
     (impl/test-migrations ["v43.00-001"] [migrate!]
-      (mt/with-temp Database [db {:name    "Legacy BigQuery driver DB"
-                                  :engine  :bigquery
-                                  :details {:service-account-json "{\"fake_key\": 14}"}}]
-        (migrate!)
-        (is (= :bigquery-cloud-sdk (db/select-one-field :engine Database :id (u/the-id db))))))))
+      (try
+        ;; we're using `simple-insert!` here instead of `with-temp` because Toucan `post-insert` for the DB will
+        ;; normally try to add it to the magic Permissions Groups which don't exist yet. They're added in later
+        ;; migrations
+        (let [db (db/simple-insert! Database {:name       "Legacy BigQuery driver DB"
+                                              :engine     "bigquery"
+                                              :details    (json/generate-string {:service-account-json "{\"fake_key\": 14}"})
+                                              :created_at :%now
+                                              :updated_at :%now})]
+          (migrate!)
+          (is (= [{:engine "bigquery-cloud-sdk"}]
+                 (db/query {:select [:engine], :from [Database], :where [:= :id (u/the-id db)]}))))
+        (finally
+          (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
+
+(deftest create-root-permissions-entry-for-admin-test
+  (testing "Migration v0.43.00-006: Add root permissions entry for 'Administrators' magic group"
+    (doseq [existing-entry? [true false]]
+      (testing (format "Existing root entry? %s" (pr-str existing-entry?))
+        (impl/test-migrations "v43.00-006" [migrate!]
+          (let [[{admin-group-id :id}] (db/query {:select [:id], :from [PermissionsGroup], :where [:= :name group/admin-group-name]})]
+            (is (integer? admin-group-id))
+            (when existing-entry?
+              (db/execute! {:insert-into Permissions
+                            :values      [{:object   "/"
+                                           :group_id admin-group-id}]}))
+            (migrate!)
+            (is (= [{:object "/"}]
+                   (db/query {:select    [:object]
+                              :from      [Permissions]
+                              :where     [:= :group_id admin-group-id]})))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
