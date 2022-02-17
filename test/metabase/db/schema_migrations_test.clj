@@ -335,8 +335,32 @@
                               :from      [Permissions]
                               :where     [:= :group_id admin-group-id]})))))))))
 
+(deftest create-database-entries-for-all-users-group-test
+  (testing "Migration v43.00-007: create DB entries for the 'All Users' permissions group"
+    (doseq [with-existing-data-migration? [true false]]
+      (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
+        (impl/test-migrations "v43.00-007" [migrate!]
+          (db/execute! {:insert-into Database
+                        :values      [{:name       "My DB"
+                                       :engine     "h2"
+                                       :created_at :%now
+                                       :updated_at :%now
+                                       :details    "{}"}]})
+          (when with-existing-data-migration?
+            (db/execute! {:insert-into :data_migrations
+                          :values      [{:id        "add-databases-to-magic-permissions-groups"
+                                         :timestamp :%now}]}))
+          (migrate!)
+          (is (= (if with-existing-data-migration?
+                   []
+                   [{:object "/db/1/"}])
+                 (db/query {:select    [:p.object]
+                            :from      [[Permissions :p]]
+                            :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                            :where     [:= :pg.name group/all-users-group-name]}))))))))
+
 (deftest migrate-legacy-site-url-setting-test
-  (testing "Migration v043.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
+  (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
       (db/execute! {:insert-into Setting
                     :values      [{:key   "-site-url"
@@ -346,7 +370,7 @@
              (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
 
 (deftest site-url-ensure-protocol-test
-  (testing "Migration v043.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
+  (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
       (db/execute! {:insert-into Setting
                     :values      [{:key   "site-url"

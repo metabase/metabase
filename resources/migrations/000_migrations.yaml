@@ -10032,6 +10032,46 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   #
+  # The following migration replaces metabase.db.data-migrations/add-databases-to-magic-permissions-groups, added 0.20.0
+  #
+
+  # Add permissions entries for 'All Users' for all Databases created BEFORE we created the 'All Users' Permissions
+  # Group. This replaces the old 'add-databases-to-magic-permissions-groups' Clojure-land data migration. Only run
+  # this migration if that one hasn't been run yet.
+  - changeSet:
+      id: v43.00-007
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant permissions for existing Databases to 'All Users' permissions group.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-databases-to-magic-permissions-groups';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
+  #
   # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
   #
   # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
