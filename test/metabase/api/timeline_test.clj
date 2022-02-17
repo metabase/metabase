@@ -51,17 +51,18 @@
 
 (deftest create-timeline-test
   (testing "POST /api/timeline"
-    (mt/with-temp Collection [collection {:name "Important Data"}]
-      (let [id (u/the-id collection)]
-        (testing "Create a new timeline"
-          ;; make an API call to create a timeline
-          (mt/user-http-request :rasta :post 200 "timeline"
-                                {:name          "Rasta's TL"
-                                 :creator_id    (u/the-id (mt/fetch-user :rasta))
-                                 :collection_id id})
-          ;; check the collection to see if the timeline is there
-          (is (= "Rasta's TL"
-                 (-> (db/select-one Timeline :collection_id id) :name))))))))
+    (mt/with-model-cleanup [Timeline]
+      (mt/with-temp Collection [collection {:name "Important Data"}]
+        (let [id (u/the-id collection)]
+          (testing "Create a new timeline"
+            ;; make an API call to create a timeline
+            (mt/user-http-request :rasta :post 200 "timeline"
+                                  {:name          "Rasta's TL"
+                                   :creator_id    (u/the-id (mt/fetch-user :rasta))
+                                   :collection_id id})
+            ;; check the collection to see if the timeline is there
+            (is (= "Rasta's TL"
+                   (-> (db/select-one Timeline :collection_id id) :name)))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
