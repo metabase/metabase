@@ -79,6 +79,7 @@ export const getIsDirty = createSelector(
 
 export const getDiff = createSelector(
   getDatabasesWithTables,
+  Group.selectors.getList,
   state => state.admin.permissions.dataPermissions,
   state => state.admin.permissions.originalDataPermissions,
   (databases, groups, permissions, originalPermissions) =>
@@ -525,6 +526,7 @@ export const getGroupsDataPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getRouteParams,
   getDataPermissions,
+  Group.selectors.getList,
   (metadata, params, permissions, groups) => {
     const { databaseId, schemaName, tableId } = params;
 
@@ -610,6 +612,7 @@ const getGroupRouteParams = (_state, props) => {
 const isPinnedGroup = group => isAdminGroup(group) || isDefaultGroup(group);
 
 export const getGroupsSidebar = createSelector(
+  Group.selectors.getList,
   getGroupRouteParams,
   (groups, params) => {
     const { groupId } = params;
@@ -665,6 +668,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getGroupRouteParams,
   getDataPermissions,
   getGroup,
+  Group.selectors.getList,
   getIsLoadingDatabaseTables,
   (metadata, params, permissions, group, groups, isLoading) => {
     const { groupId, databaseId, schemaName } = params;
