@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import { GET } from "metabase/lib/api";
+import { GET, POST, DELETE } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
@@ -18,6 +18,9 @@ import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getFormSelector } from "./collections/forms";
+
+const ADD_BOOKMARK_ACTION = `metabase/entities/dashboards/BOOKMARK/ADD`;
+const DELETE_BOOKMARK_ACTION = `metabase/entities/dashboards/BOOKMARK/DELETE`;
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
@@ -62,6 +65,10 @@ const Collections = createEntity({
       params && params.tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
+    bookmark: {
+      add: POST("/api/collection/:id/favorite"),
+      delete: DELETE("/api/collection/:id/favorite"),
+    },
   },
 
   objectActions: {
@@ -78,6 +85,16 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    toggleBookmark: async (id, shouldBeBookmarked) => {
+      if (shouldBeBookmarked) {
+        await Collections.api.bookmark.add({ id });
+        return { type: ADD_BOOKMARK_ACTION, payload: id };
+      } else {
+        await Collections.api.bookmark.delete({ id });
+        return { type: DELETE_BOOKMARK_ACTION, payload: id };
+      }
+    },
 
     // NOTE: DELETE not currently implemented
     delete: null,

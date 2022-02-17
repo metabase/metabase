@@ -71,4 +71,8 @@ export const BookmarkCollectionButton = styled(IconButtonWrapper)`
   ${LabelContainer}:hover & {
     opacity: 1;
   }
+
+  &:hover {
+    color: #2e7bbf;
+  }
 `;
