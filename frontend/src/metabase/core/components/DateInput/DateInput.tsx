@@ -115,7 +115,7 @@ const DateInput = forwardRef(function DateInput(
         <div>
           <Calendar
             selected={value}
-            initial={now}
+            initial={value ?? now}
             onChange={handleCalendarChange}
             isRangePicker={false}
           />
