@@ -2,16 +2,11 @@
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
   (:require [cheshire.core :as json]
-            [clojure.set :as set]
             [clojure.test :refer :all]
             [metabase.db.data-migrations :as migrations]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.pulse :refer [Pulse]]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -40,110 +35,6 @@
         (testing "There should be no change for a non ldap user"
           (is (= true
                  (u.password/verify-password "no change" user-salt user-pass))))))))
-
-
-;;; -------------------------------------------- add-migrated-collections --------------------------------------------
-
-(def ^:private migrated-collection-names #{"Migrated Dashboards" "Migrated Pulses" "Migrated Questions"})
-
-(defn- do-with-add-migrated-collections-cleanup [f]
-  ;; remove the root collection perms if they're already there so we don't see warnings about duplicate perms
-  (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
-    (finally
-      (doseq [collection-name migrated-collection-names]
-        (db/delete! Collection :name collection-name)))))
-
-(defmacro ^:private with-add-migrated-collections-cleanup [& body]
-  `(do-with-add-migrated-collections-cleanup (fn [] ~@body)))
-
-(deftest add-migrated-collections-root-read-perms-test
-  (testing "should grant Root Collection read perms"
-    (with-add-migrated-collections-cleanup
-      (mt/with-temp PermissionsGroup [group]
-        (#'migrations/add-migrated-collections)
-        (letfn [(perms [group]
-                  (db/select-field :object Permissions
-                    :group_id (u/the-id group)
-                    :object   [:like "/collection/root/%"]))]
-          (testing "to All Users"
-            (is (= #{"/collection/root/"}
-                   (perms (group/all-users)))))
-          (testing "to other groups"
-            (is (= #{"/collection/root/"}
-                   (perms group)))))))))
-
-(deftest add-migrated-collections-create-collections-test
-  (testing "Should create the new Collections"
-    (with-add-migrated-collections-cleanup
-      (mt/with-temp* [Pulse     [_]
-                      Card      [_]
-                      Dashboard [_]]
-        (#'migrations/add-migrated-collections)
-        (let [collections (db/select-field :name Collection)]
-          (doseq [collection-name migrated-collection-names]
-            (is (contains? collections collection-name)))))))
-
-  (testing "Shouldn't create new Collections for models where there's nothing to migrate"
-    (with-add-migrated-collections-cleanup
-      (mt/with-temp Dashboard [_]
-        (let [collections-before (db/select-field :name Collection)
-              orig-db-exists?    db/exists?]
-          ;; pretend no Pulses or Cards exist if we happen to be running this from the REPL.
-          (with-redefs [db/exists? (fn [model & args]
-                                     (if (#{Pulse Card} model)
-                                       false
-                                       (apply orig-db-exists? model args)))]
-            (#'migrations/add-migrated-collections)
-            (is (= #{"Migrated Dashboards"}
-                   (set/difference (db/select-field :name Collection) collections-before)))))))))
-
-(deftest add-migrated-collections-move-objects-test
-  (testing "Should move stuff into the new Collections as appropriate"
-    (testing "Pulse"
-      (with-add-migrated-collections-cleanup
-        (mt/with-temp Pulse [pulse]
-          (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Pulse :id (u/the-id pulse))
-                 (db/select-one-id Collection :name "Migrated Pulses"))))))
-
-    (testing "Card"
-      (with-add-migrated-collections-cleanup
-        (mt/with-temp Card [card]
-          (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
-                 (db/select-one-id Collection :name "Migrated Questions"))))))
-
-    (testing "Dashboard"
-      (with-add-migrated-collections-cleanup
-        (mt/with-temp Dashboard [dashboard]
-          (#'migrations/add-migrated-collections)
-          (is (= (db/select-one-field :collection_id Dashboard :id (u/the-id dashboard))
-                 (db/select-one-id Collection :name "Migrated Dashboards"))))))))
-
-(deftest add-migrated-collections-perms-test
-  (with-add-migrated-collections-cleanup
-    (mt/with-temp* [PermissionsGroup [group]
-                    Pulse            [_]
-                    Card             [_]
-                    Dashboard        [_]]
-      (#'migrations/add-migrated-collections)
-      (letfn [(perms [group]
-                (db/select Permissions
-                  {:where [:and
-                           [:= :group_id (u/the-id (group/all-users))]
-                           (cons
-                            :or
-                            (for [migrated-collection-id (db/select-ids Collection :name [:in migrated-collection-names])]
-                              [:like :object (format "/collection/%d/%%" migrated-collection-id)]))]}))]
-        (testing "All Users shouldn't get any permissions for the 'migrated' groups"
-          (is (= []
-                 (perms (group/all-users)))))
-        (testing "...nor should other groups that happen to exist"
-          (is (= []
-                 (perms group))))))))
 
 (deftest fix-click-through-test
   (let [migrate (fn [card dash]

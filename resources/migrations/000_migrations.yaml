@@ -10253,9 +10253,9 @@ databaseChangeLog:
         - sql:
             # #509ee3 is the MB brand color
             sql: >-
-              INSERT INTO collection (name, color)
+              INSERT INTO collection (name, color, slug)
               VALUES
-              ('Migrated Dashboards', '#509ee3');
+              ('Migrated Dashboards', '#509ee3', 'migrated_dashboards');
 
   # [add-migrated-collections part 2 of 7] Create 'Migrated Pulses' Collection if needed
   - changeSet:
@@ -10289,9 +10289,9 @@ databaseChangeLog:
         - sql:
             # #509ee3 is the MB brand color
             sql: >-
-              INSERT INTO collection (name, color)
+              INSERT INTO collection (name, color, slug)
               VALUES
-              ('Migrated Pulses', '#509ee3');
+              ('Migrated Pulses', '#509ee3', 'migrated_pulses');
 
   # [add-migrated-collections part 3 of 7] Create 'Migrated Questions' Collection if needed
   - changeSet:
@@ -10325,9 +10325,9 @@ databaseChangeLog:
         - sql:
             # #509ee3 is the MB brand color
             sql: >-
-              INSERT INTO collection (name, color)
+              INSERT INTO collection (name, color, slug)
               VALUES
-              ('Migrated Questions', '#509ee3');
+              ('Migrated Questions', '#509ee3', 'migrated_questions');
 
   # [add-migrated-collections part 4 of 7] Move Dashboards not in a Collection to 'Migrated Dashboards'
   - changeSet:
