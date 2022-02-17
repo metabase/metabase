@@ -4,7 +4,7 @@ import Tooltip from "metabase/components/Tooltip";
 import { InputField, InputIconContainer, InputRoot } from "./Input.styled";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  className?: string;
+  inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
   borderless?: boolean;
@@ -12,13 +12,28 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef(function Input(
-  { className, error, fullWidth, borderless, helperText, ...rest }: InputProps,
+  {
+    className,
+    style,
+    inputRef,
+    error,
+    fullWidth,
+    borderless,
+    helperText,
+    ...rest
+  }: InputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <InputRoot ref={ref} className={className} fullWidth={fullWidth}>
+    <InputRoot
+      ref={ref}
+      className={className}
+      style={style}
+      fullWidth={fullWidth}
+    >
       <InputField
         {...rest}
+        ref={inputRef}
         hasError={error}
         hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}

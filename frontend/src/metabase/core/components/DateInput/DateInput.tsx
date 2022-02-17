@@ -27,6 +27,7 @@ export type DateInputAttributes = Omit<
 >;
 
 export interface DateInputProps extends DateInputAttributes {
+  inputRef?: Ref<HTMLInputElement>;
   value?: Moment;
   error?: boolean;
   fullWidth?: boolean;
@@ -37,6 +38,7 @@ const DateInput = forwardRef(function DateInput(
   {
     className,
     style,
+    inputRef,
     value,
     placeholder,
     readOnly,
@@ -136,6 +138,7 @@ const DateInput = forwardRef(function DateInput(
       >
         <Input
           {...props}
+          ref={inputRef}
           value={isFocused ? inputText : valueText}
           placeholder={nowText}
           readOnly={readOnly}
