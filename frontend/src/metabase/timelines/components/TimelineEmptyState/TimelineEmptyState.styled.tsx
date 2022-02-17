@@ -48,7 +48,7 @@ export const StateTooltipTitle = styled.div`
   margin-bottom: 0.25rem;
 `;
 
-export const StateTooltipDescription = styled.div`
+export const StateTooltipDate = styled.div`
   color: ${color("white")};
 `;
 

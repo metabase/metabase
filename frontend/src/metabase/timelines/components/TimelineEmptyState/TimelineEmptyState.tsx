@@ -1,5 +1,7 @@
 import React from "react";
 import { t } from "ttag";
+import moment from "moment";
+import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";
@@ -14,10 +16,11 @@ import {
   StateThreadLine,
   StateTooltip,
   StateTooltipBody,
-  StateTooltipDescription,
+  StateTooltipDate,
   StateTooltipIcon,
   StateTooltipTitle,
 } from "./TimelineEmptyState.styled";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 
 export interface TimelineEmptyStateProps {
   timeline?: Timeline;
@@ -31,6 +34,12 @@ const TimelineEmptyState = ({
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
+
+  const date = formatDateTimeWithUnit(
+    moment(),
+    "day",
+    Settings.formattingOptions(),
+  );
 
   return (
     <StateRoot>
@@ -49,7 +58,7 @@ const TimelineEmptyState = ({
           <StateTooltipIcon name="mail" />
           <StateTooltipBody>
             <StateTooltipTitle>{t`Launch of v2.0`}</StateTooltipTitle>
-            <StateTooltipDescription>{t`January 1, 2022`}</StateTooltipDescription>
+            <StateTooltipDate>{date}</StateTooltipDate>
           </StateTooltipBody>
         </StateTooltip>
         <StateThread>
