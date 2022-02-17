@@ -130,8 +130,12 @@
                                                            (when fragment (str " " fragment)))
                                              results (jdbc/reducible-query {:connection source-conn} sql)]]
       ;; delete any existing rows in the target DB (e.g. the default permissions entries that get created by migrations)
-      (log/debug (u/format-color 'yellow "TRUNCATE TABLE %s;" (name table-name)))
-      (jdbc/execute! target-db-conn-spec (format "TRUNCATE TABLE %s;" (name table-name)))
+      (let [statement (format (if (= target-db-type :postgres)
+                                "TRUNCATE TABLE %s CASCADE;"
+                                "TRUNCATE TABLE %s;")
+                              (name table-name))]
+        (log/debug (u/colorize :yellow statement))
+        (jdbc/execute! target-db-conn-spec statement))
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
