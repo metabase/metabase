@@ -37,14 +37,16 @@ const TimelineModal = ({
       <ModalHeader title={title} onClose={onClose}>
         {!archived && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
       </ModalHeader>
-      <ModalToolbar>
-        {!archived && (
-          <Link
-            className="Button"
-            to={Urls.newEventInCollection(timeline, collection)}
-          >{t`Add an event`}</Link>
-        )}
-      </ModalToolbar>
+      {events.length > 0 && (
+        <ModalToolbar>
+          {!archived && (
+            <Link
+              className="Button"
+              to={Urls.newEventInCollection(timeline, collection)}
+            >{t`Add an event`}</Link>
+          )}
+        </ModalToolbar>
+      )}
       <ModalBody>
         {events.length > 0 ? (
           <EventList

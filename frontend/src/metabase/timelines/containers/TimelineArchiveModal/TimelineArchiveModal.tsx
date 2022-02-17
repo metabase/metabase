@@ -20,6 +20,10 @@ const collectionProps = {
     Urls.extractCollectionId(props.params.slug),
 };
 
+const mapStateToProps = () => ({
+  archived: true,
+});
+
 const mapDispatchToProps = (dispatch: any) => ({
   onUnarchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, false));
@@ -29,5 +33,5 @@ const mapDispatchToProps = (dispatch: any) => ({
 export default _.compose(
   Timelines.load(timelineProps),
   Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(TimelineModal);

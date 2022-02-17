@@ -18,4 +18,5 @@ export const EmptyStateText = styled.div`
   color: ${color("text-dark")};
   line-height: 1.5rem;
   margin-bottom: 2rem;
+  text-align: center;
 `;
