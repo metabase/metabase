@@ -34,7 +34,14 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
-function Label({ action, depth, collection, isOpen, toggleBookmark }) {
+function Label({
+  action,
+  depth,
+  collection,
+  isOpen,
+  toggleBookmark,
+  selected,
+}) {
   const { children, id, isBookmarked = false, name } = collection;
 
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
@@ -61,6 +68,7 @@ function Label({ action, depth, collection, isOpen, toggleBookmark }) {
       />
       {name}
       <BookmarkCollectionButton
+        linkIsSelected={selected}
         onClick={() => toggleBookmark(id, !isBookmarked)}
       >
         <Icon name="bookmark" />
@@ -119,6 +127,7 @@ function Collection({
                 isOpen={isOpen}
                 depth={depth}
                 toggleBookmark={toggleBookmark}
+                selected={selected}
               />
             </CollectionLink>
           );

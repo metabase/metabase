@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   ROOT_COLLECTION,
@@ -67,6 +68,17 @@ export const BookmarkCollectionButton = styled(IconButtonWrapper)`
   right: -8px;
   transition: opacity 0.2s;
   width: 40px;
+
+  ${({ linkIsSelected }) =>
+    linkIsSelected &&
+    css`
+      background: ${color("brand")};
+      background: linear-gradient(
+        90deg,
+        ${color("brand")}00 0%,
+        ${color("brand")} 30%
+      );
+    `};
 
   ${LabelContainer}:hover & {
     opacity: 1;
