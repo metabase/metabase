@@ -209,8 +209,7 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [archived? pinned-state] :as x}]
-  ;; might need "poison" this query when asking for pinned items
+  [_ collection {:keys [archived? pinned-state]}]
   {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
    :from   [[Timeline :timeline]]
    :where  [:and

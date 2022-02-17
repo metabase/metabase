@@ -402,12 +402,12 @@
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
                                                :pinned_state pin-state)))]
-          (let [items (fetch "is_pinned")]
-            (is (= 2 (count items)))
-            (is (= #{"pinned-1" "pinned-2"} (set (map :name items)))))
-          (let [items (fetch "is_not_pinned")]
-            (is (= 2 (count items)))
-            (is (= #{"timeline" "unpinned-card"} (set (map :name items))))))))
+          (is (= #{"pinned-1" "pinned-2"} (->> (fetch "is_pinned")
+                                               (map :name)
+                                               set)))
+          (is (= #{"timeline" "unpinned-card"} (->> (fetch "is_not_pinned")
+                                                    (map :name)
+                                                    set))))))
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
