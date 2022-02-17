@@ -10,10 +10,13 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
+import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import Icon from "metabase/components/Icon";
+import Calendar from "metabase/components/Calendar";
 import Tooltip from "metabase/components/Tooltip";
-import { InputIconButton, InputRoot } from "./DateInput.styled";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -50,6 +53,7 @@ const DateInput = forwardRef(function DateInput(
   const nowText = useMemo(() => now.format(DATE_FORMAT), [now]);
   const valueText = useMemo(() => value?.format(DATE_FORMAT) ?? "", [value]);
   const [inputText, setInputText] = useState(valueText);
+  const [isOpened, setIsOpened] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
   const handleInputFocus = useCallback(
@@ -84,38 +88,73 @@ const DateInput = forwardRef(function DateInput(
     [onChange],
   );
 
-  console.log(value);
+  const handlePopoverOpen = useCallback(() => {
+    setIsOpened(true);
+  }, []);
+
+  const handlePopoverClose = useCallback(() => {
+    setIsOpened(false);
+  }, []);
+
+  const handleCalendarChange = useCallback(
+    (valueText: string) => {
+      const value = moment(valueText);
+      onChange?.(value);
+    },
+    [onChange],
+  );
 
   return (
-    <InputRoot
-      ref={ref}
-      className={className}
-      style={style}
-      readOnly={readOnly}
-      error={error}
-      fullWidth={fullWidth}
+    <TippyPopover
+      trigger="manual"
+      placement="bottom-start"
+      visible={isOpened}
+      interactive
+      content={
+        <div>
+          <Calendar
+            selected={value}
+            initial={now}
+            onChange={handleCalendarChange}
+            isRangePicker={false}
+          />
+          <CalendarFooter>
+            <Button primary onClick={handlePopoverClose}>{t`Save`}</Button>
+          </CalendarFooter>
+        </div>
+      }
+      onHide={handlePopoverClose}
     >
-      <Input
-        {...props}
-        value={isFocused ? inputText : valueText}
-        placeholder={nowText}
+      <InputRoot
+        ref={ref}
+        className={className}
+        style={style}
         readOnly={readOnly}
-        disabled={disabled}
         error={error}
         fullWidth={fullWidth}
-        borderless
-        onFocus={handleInputFocus}
-        onBlur={handleInputBlur}
-        onChange={handleInputChange}
-      />
-      {!readOnly && !disabled && (
-        <Tooltip tooltip={t`Show calendar`}>
-          <InputIconButton tabIndex={-1}>
-            <Icon name="calendar" />
-          </InputIconButton>
-        </Tooltip>
-      )}
-    </InputRoot>
+      >
+        <Input
+          {...props}
+          value={isFocused ? inputText : valueText}
+          placeholder={nowText}
+          readOnly={readOnly}
+          disabled={disabled}
+          error={error}
+          fullWidth={fullWidth}
+          borderless
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          onChange={handleInputChange}
+        />
+        {!readOnly && !disabled && (
+          <Tooltip tooltip={t`Show calendar`}>
+            <InputIconButton tabIndex={-1} onClick={handlePopoverOpen}>
+              <Icon name="calendar" />
+            </InputIconButton>
+          </Tooltip>
+        )}
+      </InputRoot>
+    </TippyPopover>
   );
 });
 
