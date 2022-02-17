@@ -1,19 +1,20 @@
 import { restore, filterWidget, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATABASE;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "20438",
   native: {
-    query: "SELECT * FROM PEOPLE\nWHERE true\n    [[AND {{NAME}}]]\n limit 300",
+    query:
+      "SELECT * FROM PRODUCTS\nWHERE true\n    [[AND {{CATEGORY}}]]\n limit 30",
     "template-tags": {
-      NAME: {
+      CATEGORY: {
         id: "24f69111-29f8-135f-9321-1ff94bbb31ad",
-        name: "NAME",
-        "display-name": "Name",
+        name: "CATEGORY",
+        "display-name": "Category",
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/=",
         default: null,
       },
@@ -36,11 +37,6 @@ describe("issue 20438", () => {
     restore();
     cy.signInAsAdmin();
 
-    // Change filtering to the "List of all values"
-    cy.request("PUT", `/api/field/${PEOPLE.NAME}`, {
-      has_field_values: "list",
-    });
-
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.addFilterToDashboard({ filter, dashboard_id });
@@ -59,7 +55,7 @@ describe("issue 20438", () => {
                 {
                   parameter_id: filter.id,
                   card_id,
-                  target: ["dimension", ["template-tag", "NAME"]],
+                  target: ["dimension", ["template-tag", "CATEGORY"]],
                 },
               ],
             },
@@ -93,7 +89,7 @@ describe("issue 20438", () => {
     cy.wait("@getEmbed");
 
     popover()
-      .contains("Aaron Hand")
+      .contains("Doohickey")
       .click();
     cy.wait("@getEmbed");
 
@@ -101,9 +97,9 @@ describe("issue 20438", () => {
     cy.wait("@getEmbed");
 
     cy.get(".cellData")
-      // The city where Aaron Hand lives
-      .should("contain", "Hardy")
-      // Some other city
-      .and("not.contain", "Rye");
+      // One of product titles for Doohickey
+      .should("contain", "Small Marble Shoes")
+      // One of product titles for Gizmo
+      .and("not.contain", "Rustic Paper Wallet");
   });
 });
