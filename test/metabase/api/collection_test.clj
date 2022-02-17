@@ -6,7 +6,7 @@
             [metabase.api.collection :as api-coll]
             [metabase.models :refer [Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
                                      PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Revision User]]
+                                     PulseChannelRecipient Revision Timeline User]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
@@ -388,11 +388,26 @@
 
     (testing "check that pinning filtering exists"
       (mt/with-temp* [Collection [collection]
-                      Card       [card3        {:collection_id (u/the-id collection) :collection_position 1}]
-                      Card       [card2        {:collection_id (u/the-id collection) :collection_position 1}]
-                      Card       [card1        {:collection_id (u/the-id collection)}]]
-        (is (= 2 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :pinned_state "is_pinned")))))
-        (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :pinned_state "is_not_pinned")))))))
+                      Card       [card3        {:collection_id (u/the-id collection)
+                                                :collection_position 1
+                                                :name "pinned-1"}]
+                      Card       [card2        {:collection_id (u/the-id collection)
+                                                :collection_position 1
+                                                :name "pinned-2"}]
+                      Card       [card1        {:collection_id (u/the-id collection)
+                                                :name "unpinned-card"}]
+                      Timeline   [timeline     {:collection_id (u/the-id collection)
+                                                :name "timeline"}]]
+        (letfn [(fetch [pin-state]
+                  (:data (mt/user-http-request :crowberto :get 200
+                                               (str "collection/" (u/the-id collection) "/items")
+                                               :pinned_state pin-state)))]
+          (let [items (fetch "is_pinned")]
+            (is (= 2 (count items)))
+            (is (= #{"pinned-1" "pinned-2"} (set (map :name items)))))
+          (let [items (fetch "is_not_pinned")]
+            (is (= 2 (count items)))
+            (is (= #{"timeline" "unpinned-card"} (set (map :name items))))))))
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]

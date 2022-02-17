@@ -160,6 +160,14 @@
      :is_not_pinned [:= col nil]
      [:= 1 1])))
 
+(defn- poison-when-pinned-clause
+  "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
+  pinning so that no results return when asking for pinned items."
+  [pinned-state]
+  (if (= pinned-state :is_pinned)
+    [:= 1 2]
+    [:= 1 1]))
+
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
   (fn [model _]
@@ -201,11 +209,12 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [archived?]}]
+  [_ collection {:keys [archived? pinned-state] :as x}]
   ;; might need "poison" this query when asking for pinned items
   {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
    :from   [[Timeline :timeline]]
    :where  [:and
+            (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
 
