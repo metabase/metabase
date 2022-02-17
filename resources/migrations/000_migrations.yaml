@@ -10420,12 +10420,12 @@ databaseChangeLog:
               SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Questions')
               WHERE collection_id IS NULL;
 
-  # [add-migrated-collections part 7 of 7] Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+  # [add-migrated-collections part 7 of 7] Grant All Users readwrite perms for the Root Collection.
   - changeSet:
       id: v43.00-020
       author: camsaul
       comment: >-
-        Added 0.43.0. Grant all Permissions Groups readwrite perms for the Root Collection.
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Collection.
       preConditions:
         - onFail: MARK_RAN
         - and:
@@ -10435,30 +10435,22 @@ databaseChangeLog:
                   SELECT count(*)
                   FROM data_migrations
                   WHERE id = 'add-migrated-collections';
-            - sqlCheck:
-                expectedResult: 0
-                sql: >-
-                  SELECT count(*)
-                  FROM permissions p
-                  LEFT JOIN permissions_group pg
-                         ON p.group_id = pg.id
-                  WHERE pg.name = 'All Users'
       changes:
         - sql:
             sql: >-
               INSERT INTO permissions (group_id, object)
               SELECT
-                pg.id AS group_id,
+                all_users_group.id AS group_id,
                 '/collection/root/' AS object
-              FROM permissions_group pg
-              LEFT JOIN (
-                SELECT group_id, object
-                FROM permissions
-                WHERE object = '/collection/root/'
-              ) p
-                ON p.group_id = pg.id
-              WHERE pg.name <> 'Administrators'
-                AND p.object IS NULL;
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                     ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/root/'
+              WHERE p.object IS NULL;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

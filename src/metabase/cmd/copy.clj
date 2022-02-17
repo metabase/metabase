@@ -108,25 +108,21 @@
 
 (defn- insert-chunk!
   "Insert of `chunkk` of rows into the target database table with `table-name`."
-  [target-db-type target-db-conn table-name chunkk]
+  [target-db-type target-db-conn-spec table-name chunkk]
   (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
     (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
-      (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
+      (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 (def ^:private table-select-fragments
   {;; ensure ID order to ensure that parent fields are inserted before children
-   "metabase_field"    "ORDER BY id ASC"
-   ;; don't copy the magic Permissions Groups. They get created by Liquibase migrations.
-   "permissions_group" (format "WHERE name NOT IN ('%s', '%s')" group/all-users-group-name group/admin-group-name)
-   ;; don't copy over root permissions entries. Only the Administrators group should have this entry, and it gets
-   ;; created automatically by a Liquibase migration.
-   "permissions"       "WHERE object <> '/'"})
+   "metabase_field" "ORDER BY id ASC"})
 
-(defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type ^java.sql.Connection target-db-conn]
+(defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
+  (println "target-db-conn-spec:" target-db-conn-spec) ; NOCOMMIT
   (with-open [source-conn (.getConnection source-data-source)]
     (doseq [{table-name :table, :as entity} entities
             :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
@@ -134,6 +130,9 @@
                                                            (name table-name)
                                                            (when fragment (str " " fragment)))
                                              results (jdbc/reducible-query {:connection source-conn} sql)]]
+      ;; delete any existing rows in the target DB (e.g. the default permissions entries that get created by migrations)
+      (log/debug (u/format-color 'yellow "TRUNCATE TABLE %s;" (name table-name)))
+      (jdbc/execute! target-db-conn-spec (format "TRUNCATE TABLE %s;" (name table-name)))
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
@@ -147,7 +146,7 @@
             (when (zero? cnt)
               (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
             (try
-              (insert-chunk! target-db-type target-db-conn table-name chunkk)
+              (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
                 (throw (ex-info (trs "Error copying instances of {0}" (name entity))
                                 {:entity (name entity)}
@@ -280,12 +279,12 @@
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-db-empty target-data-source))
   ;; create a transaction and load the data.
-  (jdbc/with-db-transaction [target-conn {:datasource target-data-source}]
+  (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)
-    (with-connection-rollback-only target-conn
+    (with-connection-rollback-only target-conn-spec
       ;; disable FK constraints for the duration of loading data.
-      (with-disabled-db-constraints target-db-type target-conn
-        (copy-data! source-data-source target-db-type target-conn))))
+      (with-disabled-db-constraints target-db-type target-conn-spec
+        (copy-data! source-data-source target-db-type target-conn-spec))))
   ;; finally, update sequence values (if needed)
   (update-sequence-values! target-db-type target-data-source))
