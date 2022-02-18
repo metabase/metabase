@@ -10,7 +10,7 @@ describeWithToken("issue 17763", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        "1": { schemas: "block", native: "none" },
+        "1": { data: { schemas: "block", native: "none" } },
       },
     });
   });

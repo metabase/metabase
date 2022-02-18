@@ -8,7 +8,6 @@
             [metabase.api.common.internal :refer [add-route-param-regexes auto-parse route-dox route-fn-name
                                                   validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
-            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -399,18 +398,6 @@
   (check-403 (mi/can-update? instance changes)))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
-
-(defn check-public-sharing-enabled
-  "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
-  []
-  (check (public-settings/enable-public-sharing)
-    [400 (tru "Public sharing is not enabled.")]))
-
-(defn check-embedding-enabled
-  "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
-  []
-  (check (public-settings/enable-embedding)
-    [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
   "Check that the `object` exists and is not `:archived`, or throw a `404`. Returns `object` as-is if check passes."

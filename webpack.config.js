@@ -235,25 +235,28 @@ if (WEBPACK_BUNDLE === "hot") {
 
   config.devServer = {
     hot: true,
-    inline: true,
-    contentBase: "frontend",
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+    static: {
+      directory: "frontend",
+    },
     // tweak stats to make the output in the console more legible
     // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
-    stats: {
-      assets: false,
-      cached: false,
-      cachedAssets: false,
-      chunks: false,
-      chunkModules: false,
-      chunkOrigins: false,
-      modules: false,
-      color: true,
-      hash: false,
-      warnings: true,
-      errorDetals: false,
+    devMiddleware: {
+      stats: {
+        assets: false,
+        cached: false,
+        cachedAssets: false,
+        chunks: false,
+        chunkModules: false,
+        chunkOrigins: false,
+        modules: false,
+        color: true,
+        hash: false,
+        warnings: true,
+        errorDetals: false,
+      },
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {

@@ -44,7 +44,9 @@ Cypress.Commands.add(
         const UPDATED_GROUPS = Object.assign(groups, {
           [user_group]: {
             [database_id]: {
-              schemas,
+              data: {
+                schemas,
+              },
             },
           },
         });

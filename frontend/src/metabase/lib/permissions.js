@@ -60,11 +60,16 @@ export function updatePermission(permissions, groupId, path, value, entityIds) {
 }
 
 export const getSchemasPermission = (permissions, groupId, { databaseId }) => {
-  return getPermission(permissions, groupId, [databaseId, "schemas"], true);
+  return getPermission(
+    permissions,
+    groupId,
+    [databaseId, "data", "schemas"],
+    true,
+  );
 };
 
 export const getNativePermission = (permissions, groupId, { databaseId }) => {
-  return getPermission(permissions, groupId, [databaseId, "native"]);
+  return getPermission(permissions, groupId, [databaseId, "data", "native"]);
 };
 
 export const getTablesPermission = (
@@ -77,7 +82,7 @@ export const getTablesPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName || ""],
+      [databaseId, "data", "schemas", schemaName || ""],
       true,
     );
   } else {
@@ -98,7 +103,7 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName || "", tableId],
+      [databaseId, "data", "schemas", schemaName || "", tableId],
       true,
     );
   } else {
@@ -268,7 +273,7 @@ export function updateFieldsPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas", schemaName, tableId],
+    [databaseId, "data", "schemas", schemaName, tableId],
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE[value] || value,
   );
 
@@ -295,7 +300,7 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas", schemaName || ""],
+    [databaseId, "data", "schemas", schemaName || ""],
     value,
     tableIds,
   );
@@ -329,7 +334,7 @@ export function updateSchemasPermission(
   return updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas"],
+    [databaseId, "data", "schemas"],
     value,
     schemaNamesOrNoSchema,
   );
@@ -352,7 +357,12 @@ export function updateNativePermission(
       metadata,
     );
   }
-  return updatePermission(permissions, groupId, [databaseId, "native"], value);
+  return updatePermission(
+    permissions,
+    groupId,
+    [databaseId, "data", "native"],
+    value,
+  );
 }
 
 function deleteIfEmpty(object, key) {
