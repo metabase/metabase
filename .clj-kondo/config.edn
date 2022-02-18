@@ -103,7 +103,9 @@
                           metabase.test.data/run-mbql-query hooks.metabase.test.data/$ids
                           metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
                           metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
-                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint}
+                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint
+
+                          metabase.test/with-temp hooks.toucan.util.test/with-temp}
            :macroexpand {metabase.query-processor.streaming/streaming-response
                          metabase.query-processor.streaming/streaming-response
                          metabase.api.common/define-routes macros.metabase.api.common/define-routes
