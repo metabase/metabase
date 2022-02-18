@@ -23,6 +23,10 @@ const questionDetails = {
     breakout: [["field", PRODUCTS.CATEGORY, null]],
   },
   display: "bar",
+  visualization_settings: {
+    "graph.dimensions": ["CATEGORY"],
+    "graph.metrics": ["avg"],
+  },
 };
 
 const dashboardName = "20552D";
