@@ -30,7 +30,7 @@ export type Field = {
 
   table_id: TableId;
 
-  fk_target_field_id?: FieldId;
+  fk_target_field_id?: FieldId | null;
 
   max_value?: number;
   min_value?: number;
@@ -44,6 +44,14 @@ export type Field = {
 
   values?: FieldValues;
   dimensions?: FieldDimension;
+
+  settings: any;
+  displayName: (options: {
+    includeTable: boolean;
+    includeSchema: boolean;
+  }) => string;
+
+  target: any;
 };
 
 export type RawFieldValue = Value;

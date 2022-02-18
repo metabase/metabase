@@ -4,6 +4,7 @@ import { Field } from "./Field";
 import { Segment } from "./Segment";
 import { Metric } from "./Metric";
 import { DatabaseId } from "./Database";
+import { DataAccessPermission } from "./Permissions";
 
 export type TableId = number;
 export type SchemaName = string;
@@ -18,6 +19,7 @@ export type Table = {
   schema?: SchemaName;
   name: string;
   display_name: string;
+  schema_name: string;
 
   description: string;
   active: boolean;
@@ -34,6 +36,7 @@ export type Table = {
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started: boolean;
+  data_model_permission?: DataAccessPermission;
 
   updated_at: ISO8601Time;
   created_at: ISO8601Time;

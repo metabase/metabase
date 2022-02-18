@@ -57,11 +57,12 @@ export const iconPropTypes = {
   tooltip: PropTypes.string,
   className: PropTypes.string,
   onClick: PropTypes.func,
+  hover: PropTypes.object,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
   forwardedRef?: any;
-};
+} & React.HTMLProps<HTMLElement>;
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
@@ -144,7 +145,7 @@ const StyledIcon = styled(BaseIconWithRef)`
   flex-shrink: 0
 `;
 
-const Icon = forwardRef(function Icon(
+const Icon = forwardRef<HTMLElement, IconProps>(function Icon(
   { tooltip, ...props }: IconProps,
   ref?: React.Ref<any>,
 ) {

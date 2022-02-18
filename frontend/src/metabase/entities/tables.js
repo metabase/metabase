@@ -251,6 +251,11 @@ const Tables = createEntity({
       [state => getMetadata(state), (state, props) => props.entityId],
       (metadata, id) => metadata.table(id),
     ),
+
+    getDataModelTables: (state, props) =>
+      Tables.selectors
+        .getListUnfiltered(state, props)
+        ?.filter(table => table.data_model_permission !== "none"),
   },
 });
 

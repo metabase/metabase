@@ -11,6 +11,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 // COMPONENTS
 
@@ -29,10 +30,8 @@ import SelectSeparator from "../components/SelectSeparator";
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { isFK } from "metabase/lib/types";
 
-import {
-  FieldVisibilityPicker,
-  SemanticTypeAndTargetPicker,
-} from "../components/database/ColumnItem";
+import FieldVisibilityPicker from "../components/database/FieldVisibilityPicker";
+import SemanticTypeAndTargetPicker from "../components/database/SemanticTypeAndTargetPicker";
 import FieldRemapping from "../components/FieldRemapping";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -170,6 +169,10 @@ export default class FieldApp extends React.Component {
     const db = metadata.database(databaseId);
     const table = metadata.table(tableId);
 
+    const canEditDataModel = PLUGIN_ADVANCED_PERMISSIONS.canEditEntityDataModel(
+      table,
+    );
+
     const isLoading = !field || !table || !idfields;
 
     return (
@@ -216,6 +219,7 @@ export default class FieldApp extends React.Component {
 
               {section == null || section === "general" ? (
                 <FieldGeneralPane
+                  disabled={!canEditDataModel}
                   field={field}
                   idfields={idfields}
                   table={table}
@@ -231,6 +235,7 @@ export default class FieldApp extends React.Component {
               ) : section === "formatting" ? (
                 <FieldSettingsPane
                   field={field}
+                  disabled={!canEditDataModel}
                   onUpdateFieldSettings={this.onUpdateFieldSettings}
                 />
               ) : null}
@@ -254,10 +259,12 @@ const FieldGeneralPane = ({
   rescanFieldValues,
   discardFieldValues,
   fetchTableMetadata,
+  disabled,
 }) => (
   <div>
     <Section first>
       <FieldHeader
+        disabled={disabled}
         field={field}
         updateFieldProperties={onUpdateFieldProperties}
         updateFieldDimension={onUpdateFieldDimension}
@@ -271,6 +278,7 @@ const FieldGeneralPane = ({
       />
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker
+          disabled={disabled}
           field={field}
           updateField={onUpdateFieldProperties}
         />
@@ -280,6 +288,7 @@ const FieldGeneralPane = ({
     <Section>
       <SectionHeader title={t`Field Type`} />
       <SemanticTypeAndTargetPicker
+        disabled={disabled}
         className="flex align-center"
         field={field}
         updateField={onUpdateFieldProperties}
@@ -292,6 +301,7 @@ const FieldGeneralPane = ({
       <Section>
         <SectionHeader title={t`Cast to a specific data type`} />
         <Select
+          disabled={disabled}
           className="inline-block"
           placeholder={t`Select a conversion`}
           searchProp="name"
@@ -323,6 +333,7 @@ const FieldGeneralPane = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
+        disabled={disabled}
         className="inline-block"
         value={field.has_field_values}
         onChange={({ target: { value } }) =>
@@ -340,6 +351,7 @@ const FieldGeneralPane = ({
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
       <FieldRemapping
+        disabled={disabled}
         field={field}
         table={table}
         fields={metadata.fields}
@@ -351,16 +363,18 @@ const FieldGeneralPane = ({
       />
     </Section>
 
-    <Section last>
-      <SectionHeader
-        title={t`Cached field values`}
-        description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
-      />
-      <UpdateCachedFieldValues
-        rescanFieldValues={() => rescanFieldValues(field.id)}
-        discardFieldValues={() => discardFieldValues(field.id)}
-      />
-    </Section>
+    {!disabled && (
+      <Section last>
+        <SectionHeader
+          title={t`Cached field values`}
+          description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+        />
+        <UpdateCachedFieldValues
+          rescanFieldValues={() => rescanFieldValues(field.id)}
+          discardFieldValues={() => discardFieldValues(field.id)}
+        />
+      </Section>
+    )}
   </div>
 );
 
@@ -435,6 +449,7 @@ export class FieldHeader extends React.Component {
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
+          disabled={this.props.disabled}
         />
         <InputBlurChange
           name="description"
@@ -442,6 +457,7 @@ export class FieldHeader extends React.Component {
           value={this.props.field.description}
           onChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}
+          disabled={this.props.disabled}
         />
       </div>
     );

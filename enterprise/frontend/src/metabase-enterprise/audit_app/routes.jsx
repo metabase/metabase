@@ -74,7 +74,6 @@ function getDefaultTab(page) {
 
 const getRoutes = store => (
   <Route key="audit" path="audit" title={t`Audit`} component={AuditApp}>
-    {/* <IndexRedirect to="overview" /> */}
     <IndexRedirect to="members" />
 
     <Route path="overview" component={AuditOverview} />

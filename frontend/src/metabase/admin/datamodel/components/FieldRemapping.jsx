@@ -247,7 +247,7 @@ export default class FieldRemapping extends React.Component {
   };
 
   render() {
-    const { field, table, fields } = this.props;
+    const { field, table, fields, disabled } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
@@ -265,6 +265,7 @@ export default class FieldRemapping extends React.Component {
       <div>
         <FieldMappingContainer>
           <Select
+            disabled={disabled}
             value={mappingType}
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
@@ -274,6 +275,7 @@ export default class FieldRemapping extends React.Component {
           {mappingType === MAP_OPTIONS.foreign && [
             <SelectSeparator classname="flex" key="foreignKeySeparator" />,
             <PopoverWithTrigger
+              disabled={disabled}
               key="foreignKeyName"
               ref={this.fkPopover}
               triggerElement={
@@ -317,6 +319,7 @@ export default class FieldRemapping extends React.Component {
           <div className="mt3">
             {hasChanged && <RemappingNamingTip />}
             <ValueRemappings
+              disabled={disabled}
               remappings={field && field.remapping}
               updateRemappings={this.onUpdateRemappings}
             />
@@ -410,6 +413,7 @@ export class ValueRemappings extends React.Component {
   };
 
   render() {
+    const { disabled } = this.props.disabled;
     const { editingRemappings } = this.state;
 
     return (
@@ -422,6 +426,7 @@ export class ValueRemappings extends React.Component {
           {[...editingRemappings].map(([original, mapped]) => (
             <li key={original} className="mb1">
               <FieldValueMapping
+                disabled={disabled}
                 original={original}
                 mapped={mapped}
                 setMapping={newMapped =>
@@ -434,7 +439,7 @@ export class ValueRemappings extends React.Component {
         <div className="flex align-center">
           <ButtonWithStatus
             className="ml-auto"
-            disabled={!this.customValuesAreNonEmpty()}
+            disabled={disabled || !this.customValuesAreNonEmpty()}
             onClickOperation={this.onSaveClick}
           >
             {t`Save`}
@@ -451,11 +456,12 @@ export class FieldValueMapping extends React.Component {
   };
 
   render() {
-    const { original, mapped } = this.props;
+    const { original, mapped, disabled } = this.props;
     return (
       <div className="flex align-center">
         <h3>{original}</h3>
         <InputBlurChange
+          disabled={disabled}
           className="AdminInput input ml-auto"
           value={mapped}
           onChange={this.onInputChange}

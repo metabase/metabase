@@ -33,7 +33,9 @@ export const clearCurrentUser = createAction(CLEAR_CURRENT_USER);
 export const currentUser = handleActions(
   {
     [CLEAR_CURRENT_USER]: { next: (state, payload) => null },
-    [REFRESH_CURRENT_USER]: { next: (state, { payload }) => payload },
+    [REFRESH_CURRENT_USER]: {
+      next: (state, { payload }) => payload,
+    },
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, is_qbnewb: false }),
     },

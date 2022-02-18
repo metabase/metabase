@@ -2,6 +2,11 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import {
+  canAccessSettings,
+  canAccessDataModel,
+  canEditEntityDataModel,
+} from "./utils";
 
 const BLOCK_PERMISSION_OPTION = {
   label: t`Block`,
@@ -24,4 +29,9 @@ if (hasPremiumFeature("advanced_permissions")) {
   ];
   PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = value =>
     value === BLOCK_PERMISSION_OPTION.value;
+
+  PLUGIN_ADVANCED_PERMISSIONS.canAccessSettings = canAccessSettings;
+  PLUGIN_ADVANCED_PERMISSIONS.canAccessDataModel = canAccessDataModel;
+
+  PLUGIN_ADVANCED_PERMISSIONS.canEditEntityDataModel = canEditEntityDataModel;
 }

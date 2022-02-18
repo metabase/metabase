@@ -105,4 +105,7 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   addSchemaPermissionOptions: (permissions, _value) => permissions,
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
+  canAccessSettings: _user => false,
+  canAccessDataModel: _user => false,
+  canEditEntityDataModel: _entity => true,
 };

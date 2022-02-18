@@ -14,7 +14,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import Grabber from "metabase/components/Grabber";
 
-import ColumnItem from "./ColumnItem";
+import ColumnItem from "../ColumnItem";
 
 export default class ColumnsList extends Component {
   constructor(props) {
@@ -26,6 +26,7 @@ export default class ColumnsList extends Component {
     table: PropTypes.object,
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
+    canEditDataModel: PropTypes.bool,
   };
 
   componentDidMount() {
@@ -93,16 +94,19 @@ export default class ColumnsList extends Component {
   };
 
   render() {
-    const { table = {} } = this.props;
+    const { table = {}, canEditDataModel } = this.props;
     const { fields = [] } = table;
     const { fieldOrder } = this.state;
+
     return (
       <div id="ColumnsList" className="my3">
-        <div className="flex">
-          <div className="flex-align-right">
-            <ColumnOrderDropdown table={table} />
+        {canEditDataModel && (
+          <div className="flex">
+            <div className="flex-align-right">
+              <ColumnOrderDropdown table={table} />
+            </div>
           </div>
-        </div>
+        )}
         <div className="text-uppercase text-medium py1">
           <div
             style={{ minWidth: 420 }}
@@ -124,6 +128,7 @@ export default class ColumnsList extends Component {
             : _.sortBy(fields, ({ id }) => fieldOrder[id])
           ).map((field, index) => (
             <SortableColumnItem
+              canEditDataModel={canEditDataModel}
               key={field.id}
               field={field}
               updateField={this.props.updateField}

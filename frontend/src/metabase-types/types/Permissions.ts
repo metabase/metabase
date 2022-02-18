@@ -21,12 +21,12 @@ export type GroupPermissions = {
   [key: DatabaseId]: DatabasePermissions;
 };
 
+export type DataAccessPermission = "read" | "write" | "none";
+
 export type DatabasePermissions = {
-  native: NativePermissions;
+  native: DataAccessPermission;
   schemas: SchemasPermissions;
 };
-
-export type NativePermissions = "read" | "write" | "none";
 
 export type SchemasPermissions =
   | "all"

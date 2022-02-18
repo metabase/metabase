@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
+import cx from "classnames";
+import { t } from "ttag";
 
 import ColumnsList from "./ColumnsList";
-import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
-
-import _ from "underscore";
-import cx from "classnames";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 @Databases.load({ id: (state, { databaseId }) => databaseId, wrapped: true })
 @Tables.load({
@@ -118,18 +118,28 @@ export default class MetadataTable extends Component {
       return false;
     }
 
+    const canEditDataModel = PLUGIN_ADVANCED_PERMISSIONS.canEditEntityDataModel(
+      table,
+    );
+
     return (
-      <div className="MetadataTable full px3">
+      <div
+        className={cx("MetadataTable full px3", {
+          disabled: !canEditDataModel,
+        })}
+      >
         <div className="MetadataTable-title flex flex-column">
           <InputBlurChange
-            className="AdminInput TableEditor-table-name text-bold rounded-top bordered"
+            disabled={!canEditDataModel}
+            className="AdminInput TableEditor-table-name text-bold rounded-top"
             name="display_name"
             type="text"
             value={table.display_name || ""}
             onBlurChange={this.onNameChange}
           />
           <InputBlurChange
-            className="AdminInput TableEditor-table-description rounded-bottom bordered"
+            disabled={!canEditDataModel}
+            className="AdminInput TableEditor-table-description rounded-bottom"
             name="description"
             type="text"
             value={table.description || ""}
@@ -137,16 +147,23 @@ export default class MetadataTable extends Component {
             placeholder={t`No table description yet`}
           />
         </div>
-        <div className="MetadataTable-header flex align-center py2 text-medium">
-          <span className="mx1 text-uppercase">{t`Visibility`}</span>
-          {this.renderVisibilityWidget()}
-        </div>
-        <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
+        {canEditDataModel && (
+          <div className="MetadataTable-header flex align-center py2 text-medium">
+            <span className="mx1 text-uppercase">{t`Visibility`}</span>
+            {this.renderVisibilityWidget()}
+          </div>
+        )}
+        <div
+          className={cx("mt2", {
+            disabled: this.isHidden(),
+          })}
+        >
           {this.props.idfields && (
             <ColumnsList
               table={table}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
+              canEditDataModel={canEditDataModel}
             />
           )}
         </div>

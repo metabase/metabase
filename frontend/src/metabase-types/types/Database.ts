@@ -1,4 +1,5 @@
 import { ISO8601Time } from ".";
+import { DataAccessPermission } from "./Permissions";
 import { Table } from "./Table";
 
 export type DatabaseId = number;
@@ -22,8 +23,6 @@ export type DatabaseDetails = {
 
 export type DatabaseEngine = string;
 
-export type DatabaseNativePermission = "write" | "read";
-
 export type Database = {
   id: DatabaseId;
   name: string;
@@ -36,7 +35,8 @@ export type Database = {
   features: DatabaseFeature[];
   is_full_sync: boolean;
   is_sample: boolean;
-  native_permissions: DatabaseNativePermission;
+  native_permissions: DataAccessPermission;
+  data_model_permission?: DataAccessPermission;
 
   caveats?: string;
   points_of_interest?: string;

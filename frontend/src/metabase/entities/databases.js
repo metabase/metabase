@@ -84,6 +84,11 @@ const Databases = createEntity({
           return db_id === databaseId && f.isPK();
         }),
     ),
+
+    getDataModelDatabases: (state, props) =>
+      Databases.selectors
+        .getList(state, props)
+        ?.filter(database => database.data_model_permission !== "none"),
   },
 
   // FORM
