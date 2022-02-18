@@ -9,6 +9,9 @@ describe("scenarios > alert > alert permissions", () => {
 
     setupSMTP();
 
+    cy.intercept("/api/card").as("card");
+    cy.intercept("/api/database").as("database");
+
     // Create alert as admin
     cy.visit("/question/1");
     createBasicAlert({ firstAlert: true });
@@ -97,6 +100,9 @@ describe("scenarios > alert > alert permissions", () => {
 });
 
 function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  cy.wait("@card");
+  cy.wait("@database");
+
   cy.get(".Icon-bell").click();
 
   if (firstAlert) {
