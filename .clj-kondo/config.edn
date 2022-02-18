@@ -1,21 +1,23 @@
 {:config-paths ["macros"]
- :linters {:unresolved-symbol {:exclude [schema= re=
-                                         (metabase.util/prog1 [<>])
-                                         (metabase.mbql.util/match-one)
-                                         (metabase.mbql.util/match)
-                                         (metabase.mbql.util.match/match)
-                                         (metabase.mbql.util.match/match-one)
-                                         (metabase.mbql.util.match/replace)
-                                         (metabase.mbql.util/replace)
-                                         (metabase.mbql.util/replace-in)
-                                         (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
-                                         (metabase.util.regex/rx [opt])
-                                         (metabase.async.streaming-response/streaming-response)
-                                         (clojure.core.logic/fresh)
-                                         (clojure.core.logic/matcha)
-                                         (clojure.core.logic/run)
-                                         (metabase.test/with-temporary-setting-values)
-                                         (clojure.test/is [query= sql=])]}
+ :linters {:unresolved-symbol
+           {:exclude [schema= re=
+                      (metabase.util/prog1 [<>])
+                      (metabase.mbql.util/match-one)
+                      (metabase.mbql.util/match)
+                      (metabase.mbql.util.match/match)
+                      (metabase.mbql.util.match/match-one)
+                      (metabase.mbql.util.match/replace)
+                      (metabase.mbql.util/replace)
+                      (metabase.mbql.util/replace-in)
+                      (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
+                      (metabase.util.regex/rx [opt])
+                      (metabase.async.streaming-response/streaming-response)
+                      (clojure.core.logic/fresh)
+                      (clojure.core.logic/matcha)
+                      (clojure.core.logic/run)
+                      (metabase.test/with-temporary-setting-values)
+                      (clojure.test/is [query= sql=])
+                      (toucan.util.test/with-temp*)]}
            :refer-all {:exclude [clojure.test]}
            :unexpected-recur {:level :off}
            :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
