@@ -6,6 +6,7 @@
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -36,14 +37,18 @@
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
-  [id include archived]
+  [id include archived start end]
   {include  (s/maybe Include)
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanString)
+   start    (s/maybe su/TemporalString)
+   end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
     (cond-> (hydrate timeline :creator)
       (= include "events")
-      (timeline-event/include-events-singular {:events/all? archived?}))))
+      (timeline-event/include-events-singular {:events/all?  archived?
+                                               :events/start (when start (u.date/parse start))
+                                               :events/end   (when end (u.date/parse end))}))))
 
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
