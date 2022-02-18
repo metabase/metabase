@@ -134,7 +134,7 @@ const SemanticTypeAndTargetPicker = ({
           searchProp="name"
           searchCaseSensitive={false}
         >
-          {currency.map(([_, c]) => (
+          {currency.map(([_, c]: any) => (
             <Option name={c.name} value={c.code} key={c.code}>
               <span className="flex full align-center">
                 <span>{c.name}</span>

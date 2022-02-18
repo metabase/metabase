@@ -12,5 +12,5 @@ export interface User {
   last_login: string;
   has_invited_second_user: boolean;
   personal_collection_id: number;
-  can_access_data_model: boolean;
+  can_access_data_model?: boolean;
 }

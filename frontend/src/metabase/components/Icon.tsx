@@ -57,12 +57,15 @@ export const iconPropTypes = {
   tooltip: PropTypes.string,
   className: PropTypes.string,
   onClick: PropTypes.func,
+  onKeyUp: PropTypes.func,
   hover: PropTypes.object,
+  tabIndex: PropTypes.number,
+  disabled: PropTypes.bool,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
   forwardedRef?: any;
-} & React.HTMLProps<HTMLElement>;
+};
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
