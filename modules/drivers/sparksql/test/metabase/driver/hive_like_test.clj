@@ -1,5 +1,5 @@
 (ns metabase.driver.hive-like-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [are deftest testing]]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (deftest database-type->base-type-test
