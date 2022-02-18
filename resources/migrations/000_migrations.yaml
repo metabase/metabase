@@ -2486,8 +2486,6 @@ databaseChangeLog:
       validCheckSum:
         - 8:40830260b92cedad8da273afd5eca678
         - 8:28afcfc9b7f1bd1b08caa9d527355c48
-        - 8:ca6efc1c0a7aa82467d2c84421e812eb
-        - 8:ccbc51ac2b9446103414e98e68332036
       changes:
         ######################################## label table ########################################
         - createTable:
@@ -2583,6 +2581,8 @@ databaseChangeLog:
       validCheckSum:
         - 8:483c6c6c8e0a8d056f7b9112d0b0125c
         - 8:32fb3ffb1ac9b619248c3de8e3d09b4b
+        - 8:ca6efc1c0a7aa82467d2c84421e812eb
+        - 8:ccbc51ac2b9446103414e98e68332036
       changes:
         - createTable:
             tableName: raw_table
