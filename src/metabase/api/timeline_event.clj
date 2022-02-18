@@ -2,10 +2,9 @@
   "/api/timeline-event endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.api.timeline :as timeline-api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :refer [TimelineEvent]]
+            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
@@ -21,7 +20,7 @@
    timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
-   icon         (s/maybe timeline-api/Icons)
+   icon         (s/maybe timeline-event/Icons)
    timeline_id  su/IntGreaterThanZero
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
@@ -52,7 +51,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
-   icon         (s/maybe timeline-api/Icons)
+   icon         (s/maybe timeline-event/Icons)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)]

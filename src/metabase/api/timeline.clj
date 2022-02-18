@@ -15,16 +15,12 @@
   "Events Query Parameters Schema"
   (s/enum "events"))
 
-(def Icons
-  "Timeline icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
-
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
   [:as {{:keys [name description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
    description   (s/maybe s/Str)
-   icon          (s/maybe Icons)
+   icon          (s/maybe timeline-event/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (collection/check-write-perms-for-collection collection_id)
@@ -55,7 +51,7 @@
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    description   (s/maybe s/Str)
-   icon          (s/maybe Icons)
+   icon          (s/maybe timeline-event/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (let [existing (api/write-check Timeline id)
