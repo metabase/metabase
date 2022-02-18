@@ -255,7 +255,7 @@
     "concurrently": "yarn && concurrently --kill-others -p name",
     "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
     "dev-ee": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn docs'",
-    "type-check": "yarn && tsc --noEmit",
+    "type-check": "yarn && yarn build:cljs && tsc --noEmit",
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-eslint": "yarn build-quick:cljs && eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test",
