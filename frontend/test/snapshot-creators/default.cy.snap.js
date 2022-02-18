@@ -98,11 +98,13 @@ describe("snapshots", () => {
     cy.request("GET", "/api/user");
 
     cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-      [NOSQL_GROUP]: { "1": { schemas: "all", native: "none" } },
-      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      [READONLY_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [ALL_USERS_GROUP]: { "1": { data: { schemas: "none", native: "none" } } },
+      [DATA_GROUP]: { "1": { data: { schemas: "all", native: "write" } } },
+      [NOSQL_GROUP]: { "1": { data: { schemas: "all", native: "none" } } },
+      [COLLECTION_GROUP]: {
+        "1": { data: { schemas: "none", native: "none" } },
+      },
+      [READONLY_GROUP]: { "1": { data: { schemas: "none", native: "none" } } },
     });
 
     cy.updateCollectionGraph({
