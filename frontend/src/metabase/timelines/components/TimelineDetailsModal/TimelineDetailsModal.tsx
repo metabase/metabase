@@ -41,7 +41,7 @@ const TimelineDetailsModal = ({
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {!archived && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
+        {!archived && <EntityMenu items={menuItems} triggerIcon="kebab" />}
       </ModalHeader>
       {hasEvents && (
         <ModalToolbar>
