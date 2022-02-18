@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { parseTimestamp } from "metabase/lib/time";
-import Link from "metabase/core/components/Link";
+import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventEmptyState from "../EventEmptyState";
@@ -14,6 +14,8 @@ import {
   ModalBody,
   ModalRoot,
   ModalToolbar,
+  ModalToolbarInput,
+  ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
 
 export interface TimelineDetailsModalProps {
@@ -34,6 +36,7 @@ const TimelineDetailsModal = ({
   onClose,
 }: TimelineDetailsModalProps): JSX.Element => {
   const title = archived ? t`Archived events` : timeline.name;
+  const [searchText, setSearchText] = useState("");
   const events = getEvents(timeline.events, archived);
   const hasEvents = events.length > 0;
   const menuItems = getMenuItems(timeline, collection);
@@ -45,11 +48,16 @@ const TimelineDetailsModal = ({
       </ModalHeader>
       {hasEvents && (
         <ModalToolbar>
+          <ModalToolbarInput
+            value={searchText}
+            icon={<Icon name="search" />}
+            onChange={setSearchText}
+          />
           {!archived && (
-            <Link
+            <ModalToolbarLink
               className="Button"
               to={Urls.newEventInCollection(timeline, collection)}
-            >{t`Add an event`}</Link>
+            >{t`Add an event`}</ModalToolbarLink>
           )}
         </ModalToolbar>
       )}

@@ -1,4 +1,6 @@
 import styled from "@emotion/styled";
+import Link from "metabase/core/components/Link";
+import TextInput from "metabase/components/TextInput";
 
 export const ModalRoot = styled.div`
   display: flex;
@@ -8,8 +10,23 @@ export const ModalRoot = styled.div`
 
 export const ModalToolbar = styled.div`
   display: flex;
-  justify-content: flex-end;
   padding: 1rem 2rem 0;
+`;
+
+export const ModalToolbarInput = styled(TextInput)`
+  flex: 1 1 auto;
+  margin-right: 1rem;
+
+  ${TextInput.Input} {
+    height: 2.5rem;
+  }
+`;
+
+export const ModalToolbarLink = styled(Link)`
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 2.5rem;
 `;
 
 export const ModalBody = styled.div`
