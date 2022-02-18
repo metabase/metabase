@@ -31,10 +31,7 @@ describe("scenarios > question > settings", () => {
         .invoke("width")
         .should("be.gt", 350);
 
-      cy.contains("Table options")
-        .parents(".scroll-y")
-        .first()
-        .as("tableOptions");
+      cy.findByTestId("sidebar-content").as("tableOptions");
 
       // remove Total column
       cy.get("@tableOptions")

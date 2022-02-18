@@ -38,7 +38,7 @@ function SidebarContent({
 }: Props) {
   return (
     <SidebarContentRoot className={className}>
-      <SidebarContentMain>
+      <SidebarContentMain data-testid="sidebar-content">
         {(title || icon || onBack) && (
           <SidebarHeader
             className="mx3 my2 pt1"
