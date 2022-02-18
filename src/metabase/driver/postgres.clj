@@ -211,10 +211,10 @@
           table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
           json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
           json-field-names (mapv (comp keyword :name) json-fields)
-          query-vec        (hsql/format {:select json-field-names
+          sql-args         (hsql/format {:select json-field-names
                                          :from   [(keyword (:name table))]
                                          :limit  json-sample-limit})
-          query            (jdbc/reducible-query spec query-vec)]
+          query            (jdbc/reducible-query spec sql-args)]
       {:types (transduce describe-json-xform describe-json-rf query)})))
 
 ;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
