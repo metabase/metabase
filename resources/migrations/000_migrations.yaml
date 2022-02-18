@@ -4,14 +4,6 @@ databaseChangeLog:
   # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
   # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
   - property:
-      name: quote_strategy
-      value: QUOTE_ALL_OBJECTS
-      dbms: mysql,mariadb
-  - property:
-      name: quote_strategy
-      value: LEGACY
-      dbms: postgresql,h2
-  - property:
       name: timestamp_type
       value: timestamp with time zone
       dbms: postgresql,h2
@@ -29,10 +21,16 @@ databaseChangeLog:
       value: longtext
       dbms: mysql,mariadb
 
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
   - changeSet:
       id: '1'
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
+      validCheckSum:
+        - 8:7182ca8e82947c24fa827d31f78b19aa
+        - 8:70d9a1021171b879cc55058f4d094a9c
+        - 8:29a8f482877466643f65adb20c6d2139
+        - 8:c6ae58b391611a9317a5235970daf2bd
       changes:
       - createTable:
           columns:
@@ -154,7 +152,8 @@ databaseChangeLog:
                 foreignKeyName: fk_userorgperm_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           - column:
@@ -163,7 +162,8 @@ databaseChangeLog:
                 foreignKeyName: fk_userorgperm_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: core_userorgperm
@@ -210,7 +210,8 @@ databaseChangeLog:
                 foreignKeyName: fk_permissionviolation_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: core_permissionsviolation
@@ -254,7 +255,8 @@ databaseChangeLog:
                 foreignKeyName: fk_database_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -319,7 +321,8 @@ databaseChangeLog:
                 foreignKeyName: fk_table_ref_database_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_database(id)
+                referencedTableName: metabase_database
+                referencedColumnNames: id
               name: db_id
               type: int
           tableName: metabase_table
@@ -385,7 +388,8 @@ databaseChangeLog:
                 foreignKeyName: fk_field_ref_table_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_table(id)
+                referencedTableName: metabase_table
+                referencedColumnNames: id
               name: table_id
               type: int
           - column:
@@ -430,7 +434,8 @@ databaseChangeLog:
                 foreignKeyName: fk_foreignkey_dest_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: destination_id
               type: int
           - column:
@@ -439,7 +444,8 @@ databaseChangeLog:
                 foreignKeyName: fk_foreignkey_origin_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: origin_id
               type: int
           tableName: metabase_foreignkey
@@ -486,7 +492,8 @@ databaseChangeLog:
                 foreignKeyName: fk_fieldvalues_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: field_id
               type: int
           tableName: metabase_fieldvalues
@@ -526,7 +533,8 @@ databaseChangeLog:
                 foreignKeyName: fk_tablesegment_ref_table_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_table(id)
+                referencedTableName: metabase_table
+                referencedColumnNames: id
               name: table_id
               type: int
           - column:
@@ -591,7 +599,8 @@ databaseChangeLog:
                 foreignKeyName: fk_query_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -600,7 +609,8 @@ databaseChangeLog:
                 foreignKeyName: fk_query_ref_database_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_database(id)
+                referencedTableName: metabase_database
+                referencedColumnNames: id
               name: database_id
               type: int
           tableName: query_query
@@ -690,7 +700,8 @@ databaseChangeLog:
                 foreignKeyName: fk_queryexecution_ref_query_id
                 initiallyDeferred: false
                 nullable: true
-                references: query_query(id)
+                referencedTableName: query_query
+                referencedColumnNames: id
               name: query_id
               type: int
           - column:
@@ -704,7 +715,8 @@ databaseChangeLog:
                 foreignKeyName: fk_queryexecution_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: executor_id
               type: int
           tableName: query_queryexecution
@@ -773,7 +785,8 @@ databaseChangeLog:
                 foreignKeyName: fk_card_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -782,7 +795,8 @@ databaseChangeLog:
                 foreignKeyName: fk_card_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: report_card
@@ -823,7 +837,8 @@ databaseChangeLog:
                 foreignKeyName: fk_cardfavorite_ref_card_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_card(id)
+                referencedTableName: report_card
+                referencedColumnNames: id
               name: card_id
               type: int
           - column:
@@ -832,7 +847,8 @@ databaseChangeLog:
                 foreignKeyName: fk_cardfavorite_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: owner_id
               type: int
           tableName: report_cardfavorite
@@ -890,7 +906,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboard_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -899,7 +916,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboard_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: report_dashboard
@@ -956,7 +974,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardcard_ref_card_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_card(id)
+                referencedTableName: report_card
+                referencedColumnNames: id
               name: card_id
               type: int
           - column:
@@ -965,7 +984,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardcard_ref_dashboard_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_dashboard(id)
+                referencedTableName: report_dashboard
+                referencedColumnNames: id
               name: dashboard_id
               type: int
           tableName: report_dashboardcard
@@ -996,7 +1016,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardsubscription_ref_dashboard_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_dashboard(id)
+                referencedTableName: report_dashboard
+                referencedColumnNames: id
               name: dashboard_id
               type: int
           - column:
@@ -1005,7 +1026,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardsubscription_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: report_dashboardsubscription
@@ -1081,7 +1103,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -1090,7 +1113,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -1126,7 +1150,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_recipients_ref_emailreport_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_emailreport(id)
+                referencedTableName: report_emailreport
+                referencedColumnNames: id
               name: emailreport_id
               type: int
           - column:
@@ -1135,7 +1160,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_recipients_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: report_emailreport_recipients
@@ -1201,7 +1227,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreportexecutions_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -1210,7 +1237,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreportexecutions_ref_report_id
                 initiallyDeferred: false
                 nullable: true
-                references: report_emailreport(id)
+                referencedTableName: report_emailreport
+                referencedColumnNames: id
               name: report_id
               type: int
           tableName: report_emailreportexecutions
@@ -1289,7 +1317,8 @@ databaseChangeLog:
                 foreignKeyName: fk_annotation_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: author_id
               type: int
           - column:
@@ -1298,7 +1327,8 @@ databaseChangeLog:
                 foreignKeyName: fk_annotation_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: annotation_annotation
@@ -1334,6 +1364,11 @@ databaseChangeLog:
   - changeSet:
       id: '2'
       author: agilliland
+      validCheckSum:
+        - 8:bdcf1238e2ccb4fbe66d7f9e1d9b9529
+        - 8:ca241a2c777802abaedd43d8944927f3
+        - 8:983477ec51adb1236dd9d76ebf604be9
+        - 8:b93383f26ef8fd74b0d0c79f71f6dafb
       changes:
       - createTable:
           columns:
@@ -1349,7 +1384,8 @@ databaseChangeLog:
                 foreignKeyName: fk_session_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           - column:
@@ -1440,6 +1476,9 @@ databaseChangeLog:
   - changeSet:
       id: '7'
       author: cammsaul
+      validCheckSum:
+        - 8:c57c69fd78d804beb77d261066521f7f
+        - 8:4f23ddbddd447461588462fa8bb443dd
       changes:
       - addColumn:
           columns:
@@ -1447,7 +1486,8 @@ databaseChangeLog:
               constraints:
                 foreignKeyName: fk_field_parent_ref_field_id
                 nullable: true
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: parent_id
               type: int
           tableName: metabase_field
@@ -1515,7 +1555,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_revision_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1574,7 +1615,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: metabase_database(id)
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1586,7 +1628,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1604,6 +1647,10 @@ databaseChangeLog:
       validCheckSum:
         - 7:f27286894439bef33ff93761f9b32bc4
         - 7:1bc8ccc9b1803cda5651f144029be40c
+        - 8:c2c65930bad8d3e9bab3bb6ae562fe0c
+        - 8:944bf2f6777cec0c4f6c9fe3f98725f4
+        - 8:f3ae0bac98abb3288158ac45d85bf0e3
+        - 8:e4c750cd2fecec6667be99e4adb4ae9f
       changes:
         - createTable:
             tableName: activity
@@ -1630,7 +1677,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_activity_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1695,6 +1743,11 @@ databaseChangeLog:
   - changeSet:
       id: 14
       author: agilliland
+      validCheckSum:
+        - 8:320d2ca8ead3f31309674b2b7f54f395
+        - 8:22397aede818dcd23b443810127b665f
+        - 8:7dc558da864d98b79f8d13a427ca3858
+        - 8:e0ab939d4315c87ed232b71989dfa7a5
       changes:
         - createTable:
             tableName: view_log
@@ -1711,7 +1764,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_view_log_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1750,7 +1804,6 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addColumn:
             tableName: revision
@@ -1829,6 +1882,11 @@ databaseChangeLog:
   - changeSet:
       id: 20
       author: agilliland
+      validCheckSum:
+        - 8:0afa34e8b528b83aa19b4142984f8095
+        - 8:1b6c23d69b9330b56dcb4bb7188e8d5e
+        - 8:7ec10b2c7acbab0fc38043be575ff907
+        - 8:40b0729e80f3f66f92c590268ce390dd
       changes:
         - createTable:
             tableName: pulse
@@ -1845,7 +1903,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1890,7 +1949,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse(id)
+                    referencedTableName: pulse
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_card_ref_pulse_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1899,7 +1959,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_card_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1935,7 +1996,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse(id)
+                    referencedTableName: pulse
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_ref_pulse_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2001,7 +2063,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse_channel(id)
+                    referencedTableName: pulse_channel
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_recipient_ref_pulse_channel_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2010,7 +2073,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_recipient_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2022,6 +2086,11 @@ databaseChangeLog:
   - changeSet:
       id: 21
       author: agilliland
+      validCheckSum:
+        - 8:fb2cd308b17ab81b502d057ecde4fc1b
+        - 8:be31f33e7fa7961b902c3ee4a56e19a7
+        - 8:492a1b64ff9c792aa6ba97d091819261
+        - 8:625a55f4f516a883eae4933528ac08fd
       changes:
         - createTable:
             tableName: segment
@@ -2038,7 +2107,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_segment_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2047,7 +2117,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_segment_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2114,7 +2185,6 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -2191,6 +2261,11 @@ databaseChangeLog:
   - changeSet:
       id: 25
       author: agilliland
+      validCheckSum:
+        - 8:61f25563911117df72f5621d78f10089
+        - 8:ea4cd56cdc21ddf73495101a2a1cb3d4
+        - 8:cea300a621393501d4534b0ff41eb91c
+        - 8:d4523147fa777867f757fb1b5a83969a
       changes:
         - createTable:
             tableName: metric
@@ -2207,7 +2282,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2216,7 +2292,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2286,6 +2363,11 @@ databaseChangeLog:
   - changeSet:
       id: 27
       author: agilliland
+      validCheckSum:
+        - 8:001855139df2d5dac4eb954e5abe6486
+        - 8:4778d6724e114803d2d805f494008fb1
+        - 8:017050df833b3b678d1b52b1a0f4de50
+        - 8:522ded869baeb030fa3889e16e28cbad
       changes:
         - createTable:
             tableName: dashboardcard_series
@@ -2302,7 +2384,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_dashboardcard(id)
+                    referencedTableName: report_dashboardcard
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboardcard_series_ref_dashboardcard_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2311,7 +2394,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboardcard_series_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2399,6 +2483,11 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: camsaul
+      validCheckSum:
+        - 8:40830260b92cedad8da273afd5eca678
+        - 8:28afcfc9b7f1bd1b08caa9d527355c48
+        - 8:ca6efc1c0a7aa82467d2c84421e812eb
+        - 8:ccbc51ac2b9446103414e98e68332036
       changes:
         ######################################## label table ########################################
         - createTable:
@@ -2447,7 +2536,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_label_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2456,7 +2546,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: label(id)
+                    referencedTableName: label
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_label_ref_label_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2489,6 +2580,9 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: agilliland
+      validCheckSum:
+        - 8:483c6c6c8e0a8d056f7b9112d0b0125c
+        - 8:32fb3ffb1ac9b619248c3de8e3d09b4b
       changes:
         - createTable:
             tableName: raw_table
@@ -2505,7 +2599,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_database(id)
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawtable_ref_database
                     deferrable: false
                     initiallyDeferred: false
@@ -2564,7 +2659,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: raw_table(id)
+                    referencedTableName: raw_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawcolumn_tableid_ref_rawtable
                     deferrable: false
                     initiallyDeferred: false
@@ -2593,7 +2689,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: raw_column(id)
+                    referencedTableName: raw_column
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawcolumn_fktarget_ref_rawcolumn
                     deferrable: false
                     initiallyDeferred: false
@@ -2748,6 +2845,9 @@ databaseChangeLog:
   - changeSet:
       id: 38
       author: camsaul
+      validCheckSum:
+        - 8:43604ab55179b50306eb39353e760b46
+        - 8:c9251b99ab1122ef441117d5d9852d29
       changes:
         ######################################## Add "points_of_interest" metadata column to various models ########################################
         - addColumn:
@@ -2910,14 +3010,16 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metric(id)
+                    referencedTableName: metric
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_important_field_metric_id
               - column:
                   name: field_id
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_important_field_metabase_field_id
         - addUniqueConstraint:
             tableName: metric_important_field
@@ -2996,14 +3098,16 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_membership_user_id
               - column:
                   name: group_id
                   type: int
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_group_id
         - addUniqueConstraint:
             tableName: permissions_group_membership
@@ -3053,7 +3157,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_id
         - createIndex:
             tableName: permissions
@@ -3173,6 +3278,8 @@ databaseChangeLog:
       validCheckSum:
         - 7:b20750a949504e93efced32877a4488f
         - 7:dbc18c8ca697fc335869f0ed0eb5f4cb
+        - 8:165e9384e46d6f9c0330784955363f70
+        - 8:3cf48c3e52ea315379a8ed538c9f2624
       changes:
         - createTable:
             tableName: permissions_revision
@@ -3203,7 +3310,8 @@ databaseChangeLog:
                   remarks: 'The ID of the admin who made this set of changes.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_revision_user_id
               - column:
                   name: created_at
@@ -3246,7 +3354,6 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
@@ -3269,6 +3376,9 @@ databaseChangeLog:
   - changeSet:
       id: 47
       author: camsaul
+      validCheckSum:
+        - 8:1d2474e49a27db344c250872df58a6ed
+        - 8:717ed16b2f279bd4fdf5c4aa2b5f5857
       changes:
         ######################################## collection table ########################################
         - createTable:
@@ -3327,7 +3437,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Optional ID of Collection this Card belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_collection_id
         - createIndex:
             tableName: report_card
@@ -3338,6 +3449,9 @@ databaseChangeLog:
   - changeSet:
       id: 48
       author: camsaul
+      validCheckSum:
+        - 8:720ce9d4b9e6f0917aea035e9dc5d95d
+        - 8:b3b418a4bbcf558e40f5d32effd2c7da
       changes:
         - createTable:
             tableName: collection_revision
@@ -3368,7 +3482,8 @@ databaseChangeLog:
                   remarks: 'The ID of the admin who made this set of changes.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_collection_revision_user_id
               - column:
                   name: created_at
@@ -3405,7 +3520,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'The ID of the User who first publically shared this Card.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_made_public_by_id
         - createIndex:
             tableName: report_card
@@ -3431,7 +3547,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'The ID of the User who first publically shared this Dashboard.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_made_public_by_id
         - createIndex:
             tableName: report_dashboard
@@ -3707,7 +3824,8 @@ databaseChangeLog:
                   remarks: 'ID of the User who favorited the Dashboard.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_favorite_user_id
                     deleteCascade: true
               - column:
@@ -3716,7 +3834,8 @@ databaseChangeLog:
                   remarks: 'ID of the Dashboard favorited by the User.'
                   constraints:
                     nullable: false
-                    references: report_dashboard(id)
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_favorite_dashboard_id
                     deleteCascade: true
         - addUniqueConstraint:
@@ -3764,6 +3883,9 @@ databaseChangeLog:
   - changeSet:
       id: 58
       author: senior
+      validCheckSum:
+        - 8:3554219ca39e0fd682d0fba57531e917
+        - 8:9e6d48acacceb109e0bd27e4e44a8cb4
       comment: 'Added 0.25.0'
       changes:
         - createTable:
@@ -3786,7 +3908,8 @@ databaseChangeLog:
                     foreignKeyName: fk_dimension_ref_field_id
                     initiallyDeferred: false
                     nullable: false
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     deleteCascade: true
               - column:
                   name: name
@@ -3809,7 +3932,8 @@ databaseChangeLog:
                     foreignKeyName: fk_dimension_displayfk_ref_field_id
                     initiallyDeferred: false
                     nullable: true
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     deleteCascade: true
               - column:
                   name: created_at
@@ -3943,6 +4067,9 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
+      validCheckSum:
+        - 8:59dfc37744fc362e0e312488fbc9a69b
+        - 8:a03608d97e19b8a716989e918efad0a6
       comment: 'Added 0.27.0'
       changes:
         - createTable:
@@ -3961,7 +4088,8 @@ databaseChangeLog:
                     deferrable: false
                     foreignKeyName: fk_computation_job_ref_user_id
                     initiallyDeferred: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                   name: creator_id
                   type: int
               - column:
@@ -4001,7 +4129,8 @@ databaseChangeLog:
                     foreignKeyName: fk_computation_result_ref_job_id
                     initiallyDeferred: false
                     nullable: false
-                    references: computation_job(id)
+                    referencedTableName: computation_job
+                    referencedColumnNames: id
                   name: job_id
                   type: int
               - column:
@@ -4202,6 +4331,9 @@ databaseChangeLog:
   - changeSet:
       id: 78
       author: camsaul
+      validCheckSum:
+        - 8:1977d7278269cdd0dc4f941f9e82f548
+        - 8:8ea54a54fa04fe657b0b8072125981af
       comment: 'Added 0.30.0'
       changes:
         - createTable:
@@ -4221,7 +4353,8 @@ databaseChangeLog:
                   remarks: 'ID of the Permissions Group this policy affects.'
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_group_id
                     deleteCascade: true
               - column:
@@ -4230,7 +4363,8 @@ databaseChangeLog:
                   remarks: 'ID of the Table that should get automatically replaced as query source for the Permissions Group.'
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_table_id
                     deleteCascade: true
               - column:
@@ -4239,7 +4373,8 @@ databaseChangeLog:
                   remarks: 'ID of the Card (Question) to be used to replace the Table.'
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_card_id
               - column:
                   name: attribute_remappings
@@ -4267,6 +4402,9 @@ databaseChangeLog:
   - changeSet:
       id: 79
       author: camsaul
+      validCheckSum:
+        - 8:3f31cb67f9cdf7754ca95cade22d87a2
+        - 8:37825e0d48bd4ed5cf1a068de30edc60
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4277,7 +4415,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Optional ID of Collection this Dashboard belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_collection_id
               # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
               # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
@@ -4296,7 +4435,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Options ID of Collection this Pulse belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_collection_id
         - createIndex:
             tableName: pulse
@@ -4420,6 +4560,9 @@ databaseChangeLog:
   - changeSet:
       id: 85
       author: camsaul
+      validCheckSum:
+        - 8:9b4c9878a5018452dd63eb6d7c17f415
+        - 8:624bb71d09dc2bef7c16c025f57edff0
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4430,7 +4573,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_collection_personal_owner_id
                     unique: true
                     uniqueConstraintName: unique_collection_personal_owner_id
@@ -6508,6 +6652,9 @@ databaseChangeLog:
   - changeSet:
       id: 167
       author: walterl, camsaul
+      validCheckSum:
+        - 8:4c11dc8c5e829b5263c198fe7879f161
+        - 8:4ed8c3a2d7d00700cc564095ddbb290f
       comment: 'Added 0.36.0'
       changes:
         # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
@@ -6545,7 +6692,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_snippet_creator_id
                     # This primarily affects tests because under normal
                     # circumstances we don't delete Users, we just archive them
@@ -6600,7 +6748,6 @@ databaseChangeLog:
       id: 169
       author: camsaul
       comment: Added 0.36.0
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - dropColumn:
             tableName: metabase_table
@@ -6624,6 +6771,9 @@ databaseChangeLog:
   - changeSet:
       id: 171
       author: camsaul
+      validCheckSum:
+        - 8:0798080c0796e6ab3e791bff007118b8
+        - 8:57f4fb33fe80309af71dc8c0c8d90362
       comment: Added 0.36.0
       changes:
         - addColumn:
@@ -6635,7 +6785,8 @@ databaseChangeLog:
                   remarks: 'ID of the Snippet Folder (Collection) this Snippet is in, if any'
                   constraints:
                     nullable: true
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_snippet_collection_id
                     deleteCascade: true
         - createIndex:
@@ -7877,7 +8028,8 @@ databaseChangeLog:
                 remarks: 'If this Pulse is a Dashboard subscription, the ID of the DashboardCard that corresponds to this PulseCard.'
                 constraints:
                   nullable: true
-                  references: report_dashboardcard(id)
+                  referencedTableName: report_dashboardcard
+                  referencedColumnNames: id
                   foreignKeyName: fk_pulse_card_ref_pulse_card_id
                   deferrable: false
                   initiallyDeferred: false
@@ -8112,6 +8264,9 @@ databaseChangeLog:
   - changeSet:
       id: 291
       author: camsaul
+      validCheckSum:
+        - 8:b3b15e2ad791618e3ab1300a5d4f072f
+        - 8:f1b9110e87c7cb627c29fe6fb243b675
       comment: Added 0.39.0
       changes:
         - createTable:
@@ -8138,7 +8293,8 @@ databaseChangeLog:
                   remarks: "ID of the User that logged in."
                   constraints:
                     foreignKeyName: fk_login_history_user_id
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     nullable: false
                     deleteCascade: true
               # FK constraint is created later, because we can't create it inline with ON DELETE SET NULL
@@ -8542,7 +8698,8 @@ databaseChangeLog:
                     foreignKeyName: fk_secret_ref_user_id
                     initiallyDeferred: false
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                   name: creator_id
                   remarks: User ID who created this secret instance
                   type: int

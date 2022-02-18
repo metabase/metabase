@@ -3,6 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.db.liquibase.h2 :as liquibase.h2]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -15,6 +16,8 @@
            liquibase.sqlgenerator.SqlGeneratorFactory
            metabase.db.liquibase.MetabaseMySqlCreateTableSqlGenerator))
 
+(comment liquibase.h2/keep-me)
+
 (.register (SqlGeneratorFactory/getInstance) (MetabaseMySqlCreateTableSqlGenerator.))
 
 (def ^:private ^String changelog-file "liquibase.yaml")
@@ -23,7 +26,9 @@
   (JdbcConnection. jdbc-connection))
 
 (defn- database ^Database [^JdbcConnection liquibase-conn]
-  (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn))
+  (if (str/starts-with? (.getURL liquibase-conn) "jdbc:h2")
+    (liquibase.h2/h2-database liquibase-conn)
+    (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^Database database]
   (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))

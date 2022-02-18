@@ -23,6 +23,9 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
+;; This has to be done BEFORE any logging happens! VERY IMPORTANT!!!!!
+(System/setProperty "java.util.logging.manager" "org.apache.logging.log4j.jul.LogManager")
+
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
 (comment metabase.driver.h2/keep-me
          metabase.driver.mysql/keep-me
