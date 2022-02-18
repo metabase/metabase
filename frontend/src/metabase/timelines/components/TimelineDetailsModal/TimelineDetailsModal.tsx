@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
 import { parseTimestamp } from "metabase/lib/time";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import * as Urls from "metabase/lib/urls";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
@@ -21,7 +23,7 @@ import {
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
-  archived?: boolean;
+  isArchive?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
@@ -30,30 +32,44 @@ export interface TimelineDetailsModalProps {
 const TimelineDetailsModal = ({
   timeline,
   collection,
-  archived = false,
+  isArchive = false,
   onArchive,
   onUnarchive,
   onClose,
 }: TimelineDetailsModalProps): JSX.Element => {
-  const title = archived ? t`Archived events` : timeline.name;
-  const [searchText, setSearchText] = useState("");
-  const events = getEvents(timeline.events, archived);
-  const hasEvents = events.length > 0;
-  const menuItems = getMenuItems(timeline, collection);
+  const title = isArchive ? t`Archived events` : timeline.name;
+  const [inputText, setInputText] = useState("");
+
+  const searchText = useDebouncedValue(
+    inputText.toLowerCase(),
+    SEARCH_DEBOUNCE_DURATION,
+  );
+
+  const events = useMemo(() => {
+    return getEvents(timeline.events, searchText, isArchive);
+  }, [timeline, searchText, isArchive]);
+
+  const menuItems = useMemo(() => {
+    return getMenuItems(timeline, collection);
+  }, [timeline, collection]);
+
+  const isNotEmpty = events.length > 0;
+  const isSearching = searchText.length > 0;
 
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {!archived && <EntityMenu items={menuItems} triggerIcon="kebab" />}
+        {!isArchive && <EntityMenu items={menuItems} triggerIcon="kebab" />}
       </ModalHeader>
-      {hasEvents && (
+      {(isNotEmpty || isSearching) && (
         <ModalToolbar>
           <ModalToolbarInput
-            value={searchText}
+            value={inputText}
+            placeholder={t`Search for an event`}
             icon={<Icon name="search" />}
-            onChange={setSearchText}
+            onChange={setInputText}
           />
-          {!archived && (
+          {!isArchive && (
             <ModalToolbarLink
               className="Button"
               to={Urls.newEventInCollection(timeline, collection)}
@@ -62,7 +78,7 @@ const TimelineDetailsModal = ({
         </ModalToolbar>
       )}
       <ModalBody>
-        {hasEvents ? (
+        {isNotEmpty ? (
           <EventList
             events={events}
             timeline={timeline}
@@ -70,7 +86,7 @@ const TimelineDetailsModal = ({
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
-        ) : archived ? (
+        ) : isArchive || isSearching ? (
           <EventEmptyState />
         ) : (
           <TimelineEmptyState timeline={timeline} collection={collection} />
@@ -80,12 +96,27 @@ const TimelineDetailsModal = ({
   );
 };
 
-const getEvents = (events: TimelineEvent[] = [], archived: boolean) => {
-  return _.chain(events)
-    .filter(e => e.archived === archived)
+const getEvents = (
+  events: TimelineEvent[] = [],
+  searchText: string,
+  isArchive: boolean,
+) => {
+  const chain = searchText
+    ? _.chain(events).filter(e => isEventMatch(e, searchText))
+    : _.chain(events);
+
+  return chain
+    .filter(e => e.archived === isArchive)
     .sortBy(e => parseTimestamp(e.timestamp))
     .reverse()
     .value();
+};
+
+const isEventMatch = (event: TimelineEvent, searchText: string) => {
+  return (
+    event.name.toLowerCase().includes(searchText) ||
+    event.description?.toLowerCase()?.includes(searchText)
+  );
 };
 
 const getMenuItems = (timeline: Timeline, collection: Collection) => {
