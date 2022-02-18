@@ -13,7 +13,8 @@
                                          (metabase.async.streaming-response/streaming-response)
                                          (clojure.core.logic/fresh)
                                          (clojure.core.logic/matcha)
-                                         (clojure.core.logic/run)]}
+                                         (clojure.core.logic/run)
+                                         (metabase.test/with-temporary-setting-values)]}
            :refer-all {:exclude [clojure.test]}
            :unexpected-recur {:level :off}
            :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
@@ -82,6 +83,7 @@
            metabase.db.liquibase/with-liquibase clojure.core/let
            metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
            metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           metabase.test.data.interface/defdataset-edn clojure.core/def
            toucan.db/with-call-counting clojure.core/fn
 
            potemkin.types/defprotocol+ clojure.core/defprotocol
