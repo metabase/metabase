@@ -14,7 +14,8 @@
                                          (clojure.core.logic/fresh)
                                          (clojure.core.logic/matcha)
                                          (clojure.core.logic/run)
-                                         (metabase.test/with-temporary-setting-values)]}
+                                         (metabase.test/with-temporary-setting-values)
+                                         (clojure.test/is [query= sql=])]}
            :refer-all {:exclude [clojure.test]}
            :unexpected-recur {:level :off}
            :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
@@ -69,7 +70,8 @@
                                       schema.core/either
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both
-                                      {:namespaces ["metabase.*"]}}}}
+                                      {:namespaces ["metabase.*"]}}}
+           :unresolved-var {:exclude [colorize.core]}}
  :lint-as {metabase.api.common/let-404 clojure.core/let
            metabase.db.data-migrations/defmigration clojure.core/def
            metabase.query-processor.error-type/deferror clojure.core/def
