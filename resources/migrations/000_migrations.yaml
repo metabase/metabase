@@ -10486,6 +10486,43 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: "Serialized JSON containing User-local Settings for this User"
 
+  - changeSet:
+      id: v43.00-027
+      author: camsaul
+      comment: Added 0.43.0. Drop NOT NULL constraint for core_user.password
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: password
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v43.00-028
+      author: camsaul
+      comment: Added 0.43.0. Drop NOT NULL constraint for core_user.password_salt
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: password_salt
+            columnDataType: varchar(254)
+
+  #
+  # The following migration replaces metabase.db.data-migrations/clear-ldap-user-local-passwords, added 0.30.0
+  #
+  # Before 0.30.0, we were storing the LDAP user's password in the core_user table (though it wasn't used). This
+  # migration clears those passwords out, disabling password-based login.
+  - changeSet:
+      id: v43.00-029
+      author: camsaul
+      comment: Added 0.43.0. Clear local password for Users using LDAP auth.
+      changes:
+        - sql:
+            sql: >-
+              UPDATE core_user
+              SET
+                password = NULL,
+                password_salt = NULL
+              WHERE ldap_auth IS TRUE;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

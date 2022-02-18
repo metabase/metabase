@@ -6,8 +6,7 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [cemerick.friend.credentials :as creds]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
@@ -18,7 +17,6 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
             [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
@@ -67,14 +65,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
-;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
-;; disable passwords for Google authenticated users
-(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
-  (db/transaction
-    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
 ;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
