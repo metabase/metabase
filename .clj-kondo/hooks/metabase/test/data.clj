@@ -29,12 +29,12 @@
                                  (swap! vars conj node))))
                            node)
                          body)
-        nil-bindings (vec (interpose nil @vars))
+        nil-bindings (vec (interpose (hooks/token-node nil) @vars))
         unused-bindings (vec (interpose unused-node @vars))
-        final-bindings (concat [table-name nil
+        final-bindings (concat [table-name (hooks/token-node nil)
                                 unused-node table-name]
                                (if (seq nil-bindings)
-                                 (conj nil-bindings nil)
+                                 (conj nil-bindings (hooks/token-node nil))
                                  [])
                                (if (seq unused-bindings)
                                  (conj (next unused-bindings)
@@ -43,8 +43,10 @@
                                  []))]
     {:node (with-meta
              (hooks/list-node
-              (list*
-               (hooks/token-node 'let)
-               (hooks/vector-node (vec final-bindings))
-               body))
+              (with-meta
+                (list*
+                 (hooks/token-node 'let)
+                 (hooks/vector-node (vec final-bindings))
+                 body)
+                (meta body)))
              (meta body))}))
