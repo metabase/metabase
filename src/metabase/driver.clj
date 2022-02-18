@@ -264,14 +264,14 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
-(defmulti describe-table-json
+(defmulti describe-nested-field-columns
   "Return information about the nestable columns in a `table`. Required for drivers that support `:nested-field-columns`. Results
   should match the [[metabase.sync.interface/JSONMetadata]] schema."
-  {:arglists '([this database table])}
+  {:added "0.43.0", :arglists '([this database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod describe-table-json ::driver [_ _ _]
+(defmethod describe-nested-field-columns ::driver [_ _ _]
   nil)
 
 (def ConnectionDetailsProperty

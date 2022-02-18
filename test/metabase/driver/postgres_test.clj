@@ -283,7 +283,7 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
-(deftest describe-json-test
+(deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "flatten-row"
       (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
@@ -303,7 +303,7 @@
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= (into (sorted-map) (driver/describe-table-json :postgres database {:name "describe_json_table"}))
+          (is (= (into (sorted-map) (driver/describe-nested-field-columns :postgres database {:name "describe_json_table"}))
                  (into (sorted-map) {:types {:coherent_json_val {["a"] java.lang.Integer, ["b"] java.lang.Integer} :incoherent_json_val nil}}))))))))
 
 (mt/defdataset with-uuid

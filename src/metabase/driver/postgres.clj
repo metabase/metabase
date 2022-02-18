@@ -166,8 +166,8 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-(def ^:const json-sample-limit
-  "Number of rows to sample for describe-table-json."
+(def ^:const nested-field-sample-limit
+  "Number of rows to sample for describe-nested-field-columns"
   10000)
 
 (defn- flatten-row [row]
@@ -202,7 +202,7 @@
              [json-column (snd json-column)]
              [json-column nil])))))
 
-(defn- describe-table-json*
+(defn- describe-nested-field-columns*
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
     (let [map-inner        (fn [f xs] (map #(into {}
@@ -213,18 +213,19 @@
           json-field-names (mapv (comp keyword :name) json-fields)
           sql-args         (hsql/format {:select json-field-names
                                          :from   [(keyword (:name table))]
-                                         :limit  json-sample-limit})
+                                         :limit  nested-field-sample-limit} {:quoting :ansi})
           query            (jdbc/reducible-query spec sql-args)]
       {:types (transduce describe-json-xform describe-json-rf query)})))
 
-;; Describe the JSON fields present in a table, including if they have proper keyword and type stability.
+;; Describe the nested fields present in a table (currently and maybe forever just JSON),
+;; including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
-;; since this one only applies to JSON fields.
+;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
 ;; Every single database major is fiddly and weird and different about JSON so this one doesn't go in sql.jdbc.
-(defmethod driver/describe-table-json :postgres
+(defmethod driver/describe-nested-field-columns :postgres
   [driver database table]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (describe-table-json* driver spec table)))
+    (describe-nested-field-columns* driver spec table)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
