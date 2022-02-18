@@ -1,14 +1,14 @@
 import React, { forwardRef, InputHTMLAttributes, ReactNode, Ref } from "react";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { InputField, InputIconContainer, InputRoot } from "./Input.styled";
+import { InputField, InputIconButton, InputRoot } from "./Input.styled";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
-  borderless?: boolean;
-  helperText?: ReactNode;
+  rightIcon?: string;
+  rightIconTooltip?: ReactNode;
 }
 
 const Input = forwardRef(function Input(
@@ -18,8 +18,8 @@ const Input = forwardRef(function Input(
     inputRef,
     error,
     fullWidth,
-    borderless,
-    helperText,
+    rightIcon,
+    rightIconTooltip,
     ...rest
   }: InputProps,
   ref: Ref<HTMLDivElement>,
@@ -35,15 +35,14 @@ const Input = forwardRef(function Input(
         {...rest}
         ref={inputRef}
         hasError={error}
-        hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}
-        borderless={borderless}
+        hasRightIcon={Boolean(rightIcon)}
       />
-      {helperText && (
-        <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
-          <InputIconContainer>
-            <Icon name="info" />
-          </InputIconContainer>
+      {rightIcon && (
+        <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
+          <InputIconButton tabIndex={-1}>
+            <Icon name={rightIcon} />
+          </InputIconButton>
         </Tooltip>
       )}
     </InputRoot>

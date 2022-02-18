@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, darken } from "metabase/lib/colors";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export interface InputProps {
   hasError?: boolean;
-  hasTooltip?: boolean;
   fullWidth?: boolean;
-  borderless?: boolean;
+  hasRightIcon?: boolean;
 }
 
 export const InputRoot = styled.div<InputProps>`
@@ -39,33 +39,21 @@ export const InputField = styled.input<InputProps>`
     `};
 
   ${props =>
-    props.hasTooltip &&
-    css`
-      padding-right: 2.25rem;
-    `};
-
-  ${props =>
     props.fullWidth &&
     css`
       width: 100%;
     `}
 
   ${props =>
-    props.borderless &&
+    props.hasRightIcon &&
     css`
-      border: none;
-      border-radius: 0;
-      background-color: transparent;
+      padding-right: 2.25rem;
     `};
 `;
 
-export const InputIconContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
+export const InputIconButton = styled(IconButtonWrapper)`
   position: absolute;
   right: 0.75rem;
   color: ${color("text-light")};
-  cursor: pointer;
   border-radius: 50%;
 `;

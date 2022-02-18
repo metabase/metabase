@@ -11,9 +11,6 @@ import React, {
 import moment, { Moment } from "moment";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
-import { InputIconButton, InputRoot } from "./DateInput.styled";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 
@@ -87,36 +84,21 @@ const DateInput = forwardRef(function DateInput(
   );
 
   return (
-    <InputRoot
+    <Input
+      {...props}
       ref={ref}
-      className={className}
-      style={style}
+      value={isFocused ? inputText : valueText}
+      placeholder={nowText}
       readOnly={readOnly}
+      disabled={disabled}
       error={error}
       fullWidth={fullWidth}
-    >
-      <Input
-        {...props}
-        ref={inputRef}
-        value={isFocused ? inputText : valueText}
-        placeholder={nowText}
-        readOnly={readOnly}
-        disabled={disabled}
-        error={error}
-        fullWidth={fullWidth}
-        borderless
-        onFocus={handleInputFocus}
-        onBlur={handleInputBlur}
-        onChange={handleInputChange}
-      />
-      {!readOnly && !disabled && (
-        <Tooltip tooltip={t`Show calendar`}>
-          <InputIconButton tabIndex={-1}>
-            <Icon name="calendar" />
-          </InputIconButton>
-        </Tooltip>
-      )}
-    </InputRoot>
+      rightIcon="calendar"
+      rightIconTooltip={t`Show calendar`}
+      onFocus={handleInputFocus}
+      onBlur={handleInputBlur}
+      onChange={handleInputChange}
+    />
   );
 });
 
