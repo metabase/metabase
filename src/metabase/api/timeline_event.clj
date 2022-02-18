@@ -18,7 +18,7 @@
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id archived] :as body} :body}]
   {name         su/NonBlankString
    description  (s/maybe s/Str)
-   timestamp    (s/maybe su/TemporalString)
+   timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
    icon         (s/maybe timeline-api/Icons)
