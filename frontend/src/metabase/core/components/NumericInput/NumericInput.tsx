@@ -8,42 +8,26 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import moment, { Moment } from "moment";
-import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 
-const DATE_FORMAT = "MM/DD/YYYY";
-
-export type DateInputAttributes = Omit<
+export type NumericInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
   "value" | "onChange"
 >;
 
-export interface DateInputProps extends DateInputAttributes {
-  value?: Moment;
+export interface NumericInputProps extends NumericInputAttributes {
+  value?: number;
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (value: Moment | undefined) => void;
+  onChange?: (value: number | undefined) => void;
 }
 
-const DateInput = forwardRef(function DateInput(
-  {
-    value,
-    inputRef,
-    placeholder,
-    error,
-    fullWidth,
-    onFocus,
-    onBlur,
-    onChange,
-    ...props
-  }: DateInputProps,
+const NumericInput = forwardRef(function NumericInput(
+  { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const now = useMemo(() => moment(), []);
-  const nowText = useMemo(() => now.format(DATE_FORMAT), [now]);
-  const valueText = useMemo(() => value?.format(DATE_FORMAT) ?? "", [value]);
+  const valueText = useMemo(() => value?.toString() ?? "", [value]);
   const [inputText, setInputText] = useState(valueText);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -67,10 +51,10 @@ const DateInput = forwardRef(function DateInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, DATE_FORMAT);
+      const newValue = parseFloat(newText);
       setInputText(newText);
 
-      if (newValue.isValid()) {
+      if (!isNaN(newValue)) {
         onChange?.(newValue);
       } else {
         onChange?.(undefined);
@@ -84,11 +68,6 @@ const DateInput = forwardRef(function DateInput(
       {...props}
       ref={ref}
       value={isFocused ? inputText : valueText}
-      placeholder={nowText}
-      error={error}
-      fullWidth={fullWidth}
-      rightIcon="calendar"
-      rightIconTooltip={t`Show calendar`}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}
@@ -96,4 +75,4 @@ const DateInput = forwardRef(function DateInput(
   );
 });
 
-export default DateInput;
+export default NumericInput;
