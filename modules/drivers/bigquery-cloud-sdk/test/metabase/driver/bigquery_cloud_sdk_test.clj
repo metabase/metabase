@@ -198,7 +198,7 @@
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
-                  (with-view [#_:clj-kondo/ignore view-name]
+    (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
