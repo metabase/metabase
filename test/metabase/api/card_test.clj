@@ -1300,8 +1300,8 @@
   (testing "GET /api/card/:id/timelines"
     (mt/with-temp* [Collection [coll-a {:name "Collection A"}]
                     Collection [coll-b {:name "Collection B"}]
-                    Collection [coll-c {:name "Collection C"}]]
-    (mt/with-temp* [Card [card-a {:name          "Card A"
+                    Collection [coll-c {:name "Collection C"}]
+                    Card [card-a {:name          "Card A"
                                   :collection_id (u/the-id coll-a)}]
                     Card [card-b {:name          "Card B"
                                   :collection_id (u/the-id coll-b)}]
@@ -1313,33 +1313,33 @@
                                     :collection_id (u/the-id coll-b)}]
                     Timeline [tl-b-old {:name          "Timeline B-old"
                                         :collection_id (u/the-id coll-b)
-                                        :archived true}]
+                                        :archived      true}]
                     Timeline [tl-c {:name          "Timeline C"
-                                    :collection_id (u/the-id coll-c)}]]
-      (mt/with-temp* [TimelineEvent [event-aa {:name        "event-aa"
-                                               :timeline_id (u/the-id tl-a)}]
-                      TimelineEvent [event-ab {:name        "event-ab"
-                                               :timeline_id (u/the-id tl-a)}]
-                      TimelineEvent [event-ba {:name        "event-ba"
-                                               :timeline_id (u/the-id tl-b)}]
-                      TimelineEvent [event-bb {:name        "event-bb"
-                                               :timeline_id (u/the-id tl-b)
-                                               :archived    true}]]
-        (testing "Timelines in the collection of the card are returned"
-          (is (= #{"Timeline A"}
-                 (timeline-names (timelines-request card-a false)))))
-        (testing "Only un-archived timelines in the collection of the card are returned"
-          (is (= #{"Timeline B"}
-                 (timeline-names (timelines-request card-b false)))))
-        (testing "Timelines have events when `include=events` is passed"
-          (is (= #{"event-aa" "event-ab"}
-                 (event-names (timelines-request card-a true)))))
-        (testing "Timelines have only un-archived events when `include=events` is passed"
-          (is (= #{"event-ba"}
-                 (event-names (timelines-request card-b true)))))
-        (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-          (is (= '()
-                 (->> (timelines-request card-c true) first :events)))))))))
+                                    :collection_id (u/the-id coll-c)}]
+                    TimelineEvent [event-aa {:name        "event-aa"
+                                             :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [event-ab {:name        "event-ab"
+                                             :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [event-ba {:name        "event-ba"
+                                             :timeline_id (u/the-id tl-b)}]
+                    TimelineEvent [event-bb {:name        "event-bb"
+                                             :timeline_id (u/the-id tl-b)
+                                             :archived    true}]]
+      (testing "Timelines in the collection of the card are returned"
+        (is (= #{"Timeline A"}
+               (timeline-names (timelines-request card-a false)))))
+      (testing "Only un-archived timelines in the collection of the card are returned"
+        (is (= #{"Timeline B"}
+               (timeline-names (timelines-request card-b false)))))
+      (testing "Timelines have events when `include=events` is passed"
+        (is (= #{"event-aa" "event-ab"}
+               (event-names (timelines-request card-a true)))))
+      (testing "Timelines have only un-archived events when `include=events` is passed"
+        (is (= #{"event-ba"}
+               (event-names (timelines-request card-b true)))))
+      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
+        (is (= '()
+               (->> (timelines-request card-c true) first :events)))))))
 
 (deftest timelines-range-test
   (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
