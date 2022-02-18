@@ -32,6 +32,10 @@ const questionDetails = {
     ],
   },
   display: "line",
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+    "graph.metrics": ["sum"],
+  },
 };
 
 const dashboardName = "20559D";
