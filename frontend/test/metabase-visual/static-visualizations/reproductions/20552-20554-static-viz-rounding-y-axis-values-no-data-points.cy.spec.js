@@ -16,7 +16,7 @@ const FULL_NAME = `${first_name} ${last_name}`;
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  name: "20552",
+  name: "20552-20554",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
@@ -26,13 +26,14 @@ const questionDetails = {
   visualization_settings: {
     "graph.dimensions": ["CATEGORY"],
     "graph.metrics": ["avg"],
+    "graph.show_values": true,
   },
 };
 
-const dashboardName = "20552D";
+const dashboardName = "20552-20554D";
 const dashboardDetails = { name: dashboardName };
 
-describe.skip("issue 20552", () => {
+describe.skip("issue 20552/20554", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -40,7 +41,7 @@ describe.skip("issue 20552", () => {
     setupSMTP();
   });
 
-  it("shouldn't round Y-axis values (metabase#20552)", () => {
+  it("shouldn't round Y-axis values (metabase#20552) and should show data point values (metabase#20554)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
