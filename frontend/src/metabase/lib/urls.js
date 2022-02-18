@@ -330,6 +330,11 @@ export function editEventInCollection(event, timeline, collection) {
   return `${timelineUrl}/events/${event.id}/edit`;
 }
 
+export function deleteEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/delete`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
