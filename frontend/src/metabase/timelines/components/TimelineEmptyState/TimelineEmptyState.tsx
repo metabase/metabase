@@ -31,14 +31,10 @@ const TimelineEmptyState = ({
   timeline,
   collection,
 }: TimelineEmptyStateProps): JSX.Element => {
+  const date = moment();
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
-  const date = formatDateTimeWithUnit(
-    moment(),
-    "day",
-    Settings.formattingOptions(),
-  );
 
   return (
     <EmptyStateRoot>
@@ -57,7 +53,7 @@ const TimelineEmptyState = ({
           <EmptyStateTooltipIcon name="mail" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
-            <EmptyStateTooltipDate>{date}</EmptyStateTooltipDate>
+            <EmptyStateTooltipDate value={date} unit="day" />
           </EmptyStateTooltipBody>
         </EmptyStateTooltip>
         <EmptyStateThread>

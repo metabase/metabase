@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import DateTime from "metabase/components/DateTime";
 
 export const EmptyStateRoot = styled.div`
   display: flex;
@@ -48,7 +49,8 @@ export const EmptyStateTooltipTitle = styled.div`
   margin-bottom: 0.25rem;
 `;
 
-export const EmptyStateTooltipDate = styled.div`
+export const EmptyStateTooltipDate = styled(DateTime)`
+  display: block;
   color: ${color("white")};
 `;
 
