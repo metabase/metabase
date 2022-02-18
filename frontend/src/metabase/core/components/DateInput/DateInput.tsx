@@ -10,9 +10,8 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
+import { getDateStyleFromSettings } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
-
-const DATE_FORMAT = "MM/DD/YYYY";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -24,6 +23,7 @@ export interface DateInputProps extends DateInputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
+  dateFormat?: string;
   onChange?: (value: Moment | undefined) => void;
 }
 
@@ -34,6 +34,7 @@ const DateInput = forwardRef(function DateInput(
     placeholder,
     error,
     fullWidth,
+    dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY",
     onFocus,
     onBlur,
     onChange,
@@ -42,8 +43,11 @@ const DateInput = forwardRef(function DateInput(
   ref: Ref<HTMLDivElement>,
 ) {
   const now = useMemo(() => moment(), []);
-  const nowText = useMemo(() => now.format(DATE_FORMAT), [now]);
-  const valueText = useMemo(() => value?.format(DATE_FORMAT) ?? "", [value]);
+  const nowText = useMemo(() => now.format(dateFormat), [now, dateFormat]);
+  const valueText = useMemo(() => value?.format(dateFormat) || "", [
+    value,
+    dateFormat,
+  ]);
   const [inputText, setInputText] = useState(valueText);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -67,7 +71,7 @@ const DateInput = forwardRef(function DateInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, DATE_FORMAT);
+      const newValue = moment(newText, dateFormat);
       setInputText(newText);
 
       if (newValue.isValid()) {
@@ -76,7 +80,7 @@ const DateInput = forwardRef(function DateInput(
         onChange?.(undefined);
       }
     },
-    [onChange],
+    [dateFormat, onChange],
   );
 
   return (
