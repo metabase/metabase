@@ -14,6 +14,7 @@
                                          (clojure.core.logic/fresh)
                                          (clojure.core.logic/matcha)
                                          (clojure.core.logic/run)]}
+           :refer-all {:exclude [clojure.test]}
            :unexpected-recur {:level :off}
            :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token

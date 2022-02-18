@@ -1,5 +1,5 @@
 (ns metabase.driver.sparksql-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer :all]
             honeysql.types
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
