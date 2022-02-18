@@ -9907,6 +9907,7 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
+
   #
   # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
   #
@@ -10491,6 +10492,227 @@ databaseChangeLog:
                      ON all_users_group.id = p.group_id
                     AND p.object = '/collection/root/'
               WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v43.00-021
+      author: adam-james
+      comment: Added 0.43.0 - Timeline table for Events
+      changes:
+        - createTable:
+            tableName: timeline
+            remarks: Timeline table to organize events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: Name of the timeline
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional description of the timeline
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: ID of the collection containing the timeline
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_timeline_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: Whether or not the timeline has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the timeline
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_timeline_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the timeline was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the timeline was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-022
+      author: adam-james
+      comment: Added 0.43.0 - Events table
+      changes:
+        - createTable:
+            tableName: timeline_event
+            remarks: Events table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: ID of the timeline containing the event
+                  name: timeline_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: timeline(id)
+                    foreignKeyName: fk_events_timeline_id
+                    deleteCascade: true
+              - column:
+                  remarks: Name of the event
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional markdown description of the event
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+                  remarks: When the event happened
+              - column:
+                  name: time_matters
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  remarks: >-
+                     Indicate whether the time component matters or if the timestamp should just serve to indicate the
+                     day of the event without any time associated to it.
+              - column:
+                  name: timezone
+                  constraints:
+                    nullable: false
+                  type: varchar(255)
+                  remarks: Timezone to display the underlying UTC timestamp in for the client
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: Whether or not the event has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_event_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the event was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the event was modified
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-023
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline collection_id
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v43.00-024
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline_event timeline_id
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v43.00-025
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline timestamp
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id_timestamp
+            columns:
+              - column:
+                  name: timeline_id
+              - column:
+                  name: timestamp
+
+  - changeSet:
+      id: v43.00-026
+      author: noahmoss
+      comment: >-
+        Added 0.43.0 - adds User.settings column to implement User-local Settings
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing User-local Settings for this User"
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -8,35 +8,47 @@ const initialPermissions = {
   1: {
     // Sample database
     1: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary multi-schema
     2: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary schemaless
     3: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
   },
   2: {
     // Sample database
     1: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary multi-schema
     2: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary schemaless
     3: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
   },
 };

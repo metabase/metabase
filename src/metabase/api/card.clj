@@ -8,7 +8,9 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as dataset-api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -24,6 +26,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
+            [metabase.models.timeline :as timeline]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
@@ -32,6 +35,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -172,6 +176,22 @@
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+
+(api/defendpoint GET "/:id/timelines"
+  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
+  [id include start end]
+  {include (s/maybe timeline-api/Include)
+   start   (s/maybe su/TemporalString)
+   end     (s/maybe su/TemporalString)}
+  (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
+    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
+    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
+    ;; the read-checks are particularly fast on multiple items
+    (timeline/timelines-for-collection collection_id
+                                       {:timeline/events? (= include "events")
+                                        :events/start     (when start (u.date/parse start))
+                                        :events/end       (when end (u.date/parse end))})))
+
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
@@ -330,7 +350,7 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (defn- publish-card-update!
@@ -713,7 +733,7 @@
   be enabled."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -725,7 +745,7 @@
   "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
     :public_uuid       nil
@@ -736,7 +756,7 @@
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -744,7 +764,7 @@
   and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"

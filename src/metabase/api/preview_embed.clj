@@ -10,13 +10,14 @@
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.embed :as embed-api]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.util.embed :as eu]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (eu/unsign token))
 
 (api/defendpoint GET "/card/:token"
