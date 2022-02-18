@@ -9,11 +9,11 @@ export const ModalRoot = styled.div`
 export const ModalToolbar = styled.div`
   display: flex;
   justify-content: flex-end;
-  padding: 1rem 2rem;
+  padding: 1rem 2rem 0;
 `;
 
 export const ModalBody = styled.div`
   flex: 1 1 auto;
-  padding: 0 2rem 2rem;
+  padding: 2rem;
   overflow-y: auto;
 `;

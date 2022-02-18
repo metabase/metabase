@@ -26,7 +26,7 @@ const NewEventModal = ({
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return { timeline_id: timeline?.id };
+    return { timeline_id: timeline?.id, icon: timeline?.icon };
   }, [timeline]);
 
   const handleSubmit = useCallback(

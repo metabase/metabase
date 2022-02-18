@@ -12,7 +12,7 @@ import { ModalProps } from "../../types";
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events", archived: true },
+  query: { include: "events" },
 };
 
 const collectionProps = {
@@ -21,12 +21,12 @@ const collectionProps = {
 };
 
 const mapStateToProps = () => ({
-  archived: true,
+  archived: false,
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onUnarchive: async (event: TimelineEvent) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, false));
+  onArchive: async (event: TimelineEvent) => {
+    await dispatch(TimelineEvents.actions.setArchived(event, true));
   },
 });
 

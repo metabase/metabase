@@ -4,8 +4,8 @@ export const ModalBody = styled.div`
   padding: 2rem;
 `;
 
-export const ListRoot = styled.div`
+export const ModalFooter = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
+  justify-content: flex-end;
 `;

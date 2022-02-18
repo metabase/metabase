@@ -6,11 +6,17 @@ import { parseTimestamp } from "metabase/lib/time";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import EventEmptyState from "../EventEmptyState";
 import EventList from "../EventList";
 import ModalHeader from "../ModalHeader";
-import { ModalBody, ModalRoot, ModalToolbar } from "./TimelineModal.styled";
+import TimelineEmptyState from "../TimelineEmptyState";
+import {
+  ModalBody,
+  ModalRoot,
+  ModalToolbar,
+} from "./TimelineDetailsModal.styled";
 
-export interface TimelineModalProps {
+export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
   archived?: boolean;
@@ -19,33 +25,36 @@ export interface TimelineModalProps {
   onClose?: () => void;
 }
 
-const TimelineModal = ({
+const TimelineDetailsModal = ({
   timeline,
   collection,
   archived = false,
   onArchive,
   onUnarchive,
   onClose,
-}: TimelineModalProps): JSX.Element => {
+}: TimelineDetailsModalProps): JSX.Element => {
   const title = archived ? t`Archived events` : timeline.name;
   const events = getEvents(timeline.events, archived);
+  const hasEvents = events.length > 0;
   const menuItems = getMenuItems(timeline, collection);
 
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {!archived && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
+        {!archived && <EntityMenu items={menuItems} triggerIcon="kebab" />}
       </ModalHeader>
-      <ModalToolbar>
-        {!archived && (
-          <Link
-            className="Button"
-            to={Urls.newEventInCollection(timeline, collection)}
-          >{t`Add an event`}</Link>
-        )}
-      </ModalToolbar>
-      {events.length > 0 && (
-        <ModalBody>
+      {hasEvents && (
+        <ModalToolbar>
+          {!archived && (
+            <Link
+              className="Button"
+              to={Urls.newEventInCollection(timeline, collection)}
+            >{t`Add an event`}</Link>
+          )}
+        </ModalToolbar>
+      )}
+      <ModalBody>
+        {hasEvents ? (
           <EventList
             events={events}
             timeline={timeline}
@@ -53,8 +62,12 @@ const TimelineModal = ({
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
-        </ModalBody>
-      )}
+        ) : archived ? (
+          <EventEmptyState />
+        ) : (
+          <TimelineEmptyState timeline={timeline} collection={collection} />
+        )}
+      </ModalBody>
     </ModalRoot>
   );
 };
@@ -84,4 +97,4 @@ const getMenuItems = (timeline: Timeline, collection: Collection) => {
   ];
 };
 
-export default TimelineModal;
+export default TimelineDetailsModal;
