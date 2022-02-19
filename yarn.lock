@@ -15419,12 +15419,7 @@ moment-timezone@^0.5.26:
   dependencies:
     moment ">= 2.9.0"
 
-moment@2.19.3:
-  version "2.19.3"
-  resolved "https://registry.yarnpkg.com/moment/-/moment-2.19.3.tgz#bdb99d270d6d7fda78cc0fbace855e27fe7da69f"
-  integrity sha1-vbmdJw1tf9p4zA+6zoVeJ/59pp8=
-
-moment@2.x.x, "moment@>= 2.9.0", moment@^2.29.1:
+moment@2.29.1, moment@2.x.x, "moment@>= 2.9.0", moment@^2.29.1:
   version "2.29.1"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.29.1.tgz#b2be769fa31940be9eeea6469c075e35006fa3d3"
   integrity sha512-kHmoybcPV8Sqy59DwNDY3Jefr64lK/by/da0ViFcuA4DH0vQg5Q6Ze5VimxkfQNSC+Mls/Kx53s7TjP1RhFEDQ==
