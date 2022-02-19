@@ -46,6 +46,7 @@ export const BackButton = styled.button`
   padding: 0.5rem;
   cursor: pointer;
   transition: color 200ms;
+  text-align: left;
 
   &:hover {
     color: ${color("accent7")};

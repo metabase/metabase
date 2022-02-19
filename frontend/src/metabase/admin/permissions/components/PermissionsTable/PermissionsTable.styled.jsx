@@ -49,15 +49,12 @@ export const PermissionsTableRow = styled.tr`
   border-bottom: 1px solid ${alpha(color("border"), 0.5)};
 `;
 
-export const EntityNameCell = styled(PermissionsTableCell)`
-  align-items: center;
-`;
-
-export const EntityName = styled.div`
+export const EntityName = styled.span`
   font-weight: 700;
 `;
 
 export const EntityNameLink = styled(Link)`
+  display: inline;
   font-weight: 700;
   text-decoration: underline;
   color: ${color("admin-navbar")};
