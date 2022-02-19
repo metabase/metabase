@@ -105,4 +105,5 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   addSchemaPermissionOptions: (permissions, _value) => permissions,
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
+  getFeatureLevelDataPermissions: () => [],
 };

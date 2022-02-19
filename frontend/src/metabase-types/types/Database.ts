@@ -1,3 +1,4 @@
+import Schema from "metabase-lib/lib/metadata/Schema";
 import { ISO8601Time } from ".";
 import { Table } from "./Table";
 
@@ -43,4 +44,6 @@ export type Database = {
 
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
+
+  schema: (name: string | null) => Schema | null;
 };

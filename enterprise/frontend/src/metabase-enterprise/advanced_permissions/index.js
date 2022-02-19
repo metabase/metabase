@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
+import { getFeatureLevelDataPermissions } from "./permissions";
+
 const BLOCK_PERMISSION_OPTION = {
   label: t`Block`,
   value: "block",
@@ -24,4 +26,6 @@ if (hasPremiumFeature("advanced_permissions")) {
   ];
   PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = value =>
     value === BLOCK_PERMISSION_OPTION.value;
+
+  PLUGIN_ADVANCED_PERMISSIONS.getFeatureLevelDataPermissions = getFeatureLevelDataPermissions;
 }

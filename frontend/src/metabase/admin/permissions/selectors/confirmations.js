@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   getFieldsPermission,
   getNativePermission,
-  getSchemasPermission,
+  getSchemasDataPermission,
 } from "metabase/lib/permissions";
 
 // these are all the permission levels ordered by level of access
@@ -66,7 +66,9 @@ export function getControlledDatabaseWarningModal(
   groupId,
   entityId,
 ) {
-  if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
+  if (
+    getSchemasDataPermission(permissions, groupId, entityId) !== "controlled"
+  ) {
     return {
       title: t`Change access to this database to limited?`,
       confirmButtonText: t`Change`,
@@ -79,7 +81,7 @@ export function getRawQueryWarningModal(permissions, groupId, entityId, value) {
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
-    getSchemasPermission(permissions, groupId, entityId) !== "all"
+    getSchemasDataPermission(permissions, groupId, entityId) !== "all"
   ) {
     return {
       title: t`Allow native query editing?`,
@@ -102,7 +104,7 @@ export function getRevokingAccessToAllTablesWarningModal(
 ) {
   if (
     value === "none" &&
-    getSchemasPermission(permissions, groupId, entityId) === "controlled" &&
+    getSchemasDataPermission(permissions, groupId, entityId) === "controlled" &&
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
     // allTableEntityIds contains tables from all schemas

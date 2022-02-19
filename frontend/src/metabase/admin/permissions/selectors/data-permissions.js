@@ -13,11 +13,14 @@ import {
   isDefaultGroup,
   isMetaBotGroup,
 } from "metabase/lib/groups";
-import { DATA_PERMISSION_OPTIONS } from "../constants/data-permissions";
+import {
+  DATA_PERMISSION_OPTIONS,
+  DOWNLOAD_PERMISSION_OPTIONS,
+} from "../constants/data-permissions";
 import {
   getFieldsPermission,
   getNativePermission,
-  getSchemasPermission,
+  getSchemasDataPermission,
   getTablesPermission,
   diffDataPermissions,
   isRestrictivePermission,
@@ -349,6 +352,7 @@ const buildFieldsPermissions = (
       value: getNativePermission(permissions, groupId, entityId),
       options: NATIVE_QUERIES_OPTIONS,
     },
+    ...PLUGIN_ADVANCED_PERMISSIONS.getFeatureLevelDataPermissions(isAdmin),
   ];
 };
 
@@ -430,7 +434,7 @@ const buildSchemasPermissions = (
   permissions,
   defaultGroup,
 ) => {
-  const accessPermissionValue = getSchemasPermission(
+  const accessPermissionValue = getSchemasDataPermission(
     permissions,
     groupId,
     entityId,
@@ -528,6 +532,7 @@ const buildSchemasPermissions = (
       confirmations: nativePermissionConfirmations,
       options: NATIVE_QUERIES_OPTIONS,
     },
+    ...PLUGIN_ADVANCED_PERMISSIONS.getFeatureLevelDataPermissions(isAdmin),
   ];
 };
 
