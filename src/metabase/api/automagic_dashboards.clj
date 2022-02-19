@@ -100,7 +100,7 @@
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query"
-  "Return an automagic dashboard for entity `entity` with id `ìd`."
+  "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
   {show   Show
    entity Entity}
@@ -109,7 +109,7 @@
     (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
-  "Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule`."
+  "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
   [entity entity-id-or-query prefix rule show]
   {entity Entity
    show   Show
@@ -147,7 +147,7 @@
                            :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `ìd` compared with entity
+  "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
   [entity entity-id-or-query show comparison-entity comparison-entity-id-or-query]
   {show              Show
@@ -161,7 +161,7 @@
     (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `ìd` using rule `rule`;
+  "Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query prefix rule show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
@@ -179,7 +179,7 @@
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `ìd` defined by query `cell-querry`; compared with entity `comparison-entity` with id
+   with id `id` defined by query `cell-querry`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
@@ -195,7 +195,7 @@
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `ìd` defined by query `cell-querry` using rule `rule`; compared with entity
+   with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query prefix rule show comparison-entity comparison-entity-id-or-query]
   {entity            Entity
