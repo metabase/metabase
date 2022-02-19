@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import DatePicker from "../filters/pickers/DatePicker";
+import DatePicker from "./pickers/NewDatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
 import BooleanPicker from "../filters/pickers/BooleanPicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
