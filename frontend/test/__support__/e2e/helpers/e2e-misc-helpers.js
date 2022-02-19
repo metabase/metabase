@@ -145,3 +145,19 @@ export const cypressWaitAll = function(commands) {
 
   return p;
 };
+
+/**
+ * Visit a question and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitQuestion(id) {
+  // In case we use this function multiple times in a test, make sure aliases are unique for each question
+  const alias = "cardQuery" + id;
+
+  cy.intercept("POST", `/api/card/${id}/query`).as(alias);
+
+  cy.visit(`/question/${id}`);
+
+  cy.wait("@" + alias);
+}
