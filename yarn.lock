@@ -20179,10 +20179,10 @@ styled-components@^3.3.2:
     stylis-rule-sheet "^0.0.10"
     supports-color "^3.2.3"
 
-styled-system@2.2.5:
-  version "2.2.5"
-  resolved "https://registry.yarnpkg.com/styled-system/-/styled-system-2.2.5.tgz#95f1e2c2c9ddc5c462cc56237cf039aa9ecfd27d"
-  integrity sha512-/KJxEzd+mPQxTdr85l7K3b6ac97R4G0M2SlTm9sM48dGkg1CjTIURIvvSV3Y92kE+9GUfrPsG2MpeV8QnmSIQg==
+styled-system@2.3.6:
+  version "2.3.6"
+  resolved "https://registry.yarnpkg.com/styled-system/-/styled-system-2.3.6.tgz#a38c1ffa04a5c35adec46473984e463c48b16f7c"
+  integrity sha512-lGAh/8tC70f5hBUD7w0UOWCKyOBK2AzzWKu9BGzqla/Yjx8PzrvaciA7uATbm493hXTfRrecSdLdrIUET5IYnA==
   dependencies:
     prop-types "^15.6.0"
 
