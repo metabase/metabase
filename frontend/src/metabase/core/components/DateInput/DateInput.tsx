@@ -24,7 +24,7 @@ export interface DateInputProps extends DateInputAttributes {
   error?: boolean;
   fullWidth?: boolean;
   dateFormat?: string;
-  onChange?: (value: Moment | undefined) => void;
+  onChange?: (value?: Moment) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
