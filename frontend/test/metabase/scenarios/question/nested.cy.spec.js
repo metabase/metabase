@@ -267,8 +267,6 @@ describe("scenarios > question > nested", () => {
         name: "12507",
         query: ORIGINAL_QUERY,
       }).then(({ body: { id: questionId } }) => {
-        cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
         cy.log("Create and visit a nested question based on the previous one");
         visitQuestionAdhoc({
           dataset_query: {
@@ -282,10 +280,6 @@ describe("scenarios > question > nested", () => {
         });
 
         cy.log("Reported failing since v0.35.2");
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
         cy.get(".cellData").contains(METRIC_NAME);
       });
     });
