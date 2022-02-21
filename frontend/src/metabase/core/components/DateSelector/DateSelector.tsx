@@ -1,15 +1,19 @@
 import React, { forwardRef, Ref, useCallback } from "react";
 import moment, { Duration, Moment } from "moment";
-import Calendar from "metabase/components/Calendar";
+import { t } from "ttag";
+import Button from "metabase/core/components/Button";
 import TimeInput from "metabase/core/components/TimeInput";
+import Calendar from "metabase/components/Calendar";
+import { SelectorFooter } from "./DateSelector.styled";
 
 export interface DateSelectorProps {
   date?: Moment;
   onChangeDate?: (date?: Moment) => void;
+  onSubmit?: () => void;
 }
 
 const DateSelector = forwardRef(function DateSelector(
-  { date, onChangeDate }: DateSelectorProps,
+  { date, onChangeDate, onSubmit }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const time = moment.duration({
@@ -41,6 +45,10 @@ const DateSelector = forwardRef(function DateSelector(
     <div ref={ref}>
       <Calendar initial={date} selected={date} onChange={handleDateChange} />
       <TimeInput value={time} onChange={handleTimeChange} />
+      <SelectorFooter>
+        <Button borderless>{t`Add time`}</Button>
+        <Button primary onClick={onSubmit}>{t`Save`}</Button>
+      </SelectorFooter>
     </div>
   );
 });
