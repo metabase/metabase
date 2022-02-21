@@ -11,6 +11,7 @@ export const InputRoot = styled.div`
 
 export const InputField = styled(NumericInput)`
   width: 3rem;
+  text-align: center;
 `;
 
 export const InputDivider = styled.div`

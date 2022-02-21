@@ -8,6 +8,9 @@ import {
   InputRoot,
 } from "./TimeInput.styled";
 
+const HOURS_MAX = 24;
+const MINUTES_MAX = 60;
+
 export interface TimeInputProps {
   value?: Duration;
   onChange?: (value?: Duration) => void;
@@ -23,7 +26,7 @@ const TimeInput = forwardRef(function TimeInput(
   const handleHoursChange = useCallback(
     (hours?: number) => {
       const newValue = moment.duration({
-        hours: hours ? hours % 24 : 0,
+        hours: hours ? hours % HOURS_MAX : 0,
         minutes: value ? value.minutes() : 0,
       });
       onChange?.(newValue);
@@ -35,7 +38,7 @@ const TimeInput = forwardRef(function TimeInput(
     (minutes?: number) => {
       const newValue = moment.duration({
         hours: value ? value.hours() : 0,
-        minutes: minutes ? minutes % 60 : 0,
+        minutes: minutes ? minutes % MINUTES_MAX : 0,
       });
       onChange?.(newValue);
     },

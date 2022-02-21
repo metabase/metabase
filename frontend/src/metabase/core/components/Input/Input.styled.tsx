@@ -26,6 +26,7 @@ export const InputField = styled.input<InputProps>`
   border-radius: 4px;
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   outline: none;
+  text-align: inherit;
 
   &:focus {
     border-color: ${color("brand")};

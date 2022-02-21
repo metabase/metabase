@@ -17,6 +17,9 @@ import {
 } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
+const DATE_FORMAT = "MM/DD/YYYY";
+const TIME_FORMAT = "HH:mm";
+
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
   "value" | "onChange"
@@ -46,8 +49,8 @@ const DateInput = forwardRef(function DateInput(
 ) {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
-  const timeFormat = getTimeStyleFromSettings() || "HH:mm";
+  const dateFormat = getDateStyleFromSettings() || DATE_FORMAT;
+  const timeFormat = getTimeStyleFromSettings() || TIME_FORMAT;
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
   const now = useMemo(() => {
