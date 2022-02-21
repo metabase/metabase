@@ -12,6 +12,7 @@ export type Item = {
   copy?: boolean;
   setCollection?: boolean;
   model: string;
+  toggleBookmark: (id: number, shouldBookmark: boolean) => void;
 };
 
 type CollectionId = "root" | number;

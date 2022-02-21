@@ -12,9 +12,17 @@ type Props = {
   collection: Collection;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
+  toggleBookmark: (id: number, shouldBookmark: boolean) => void;
 };
 
-function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
+function ActionMenu({
+  className,
+  item,
+  collection,
+  onCopy,
+  onMove,
+  toggleBookmark,
+}: Props) {
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
   }, [item]);
@@ -31,6 +39,14 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
     item.setArchived(true);
   }, [item]);
 
+  const handleBookmark = useCallback(
+    (id, shouldBookmark) => {
+      toggleBookmark(id, shouldBookmark);
+      // item.setArchived(true);
+    },
+    [/*item, */ toggleBookmark],
+  );
+
   return (
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
@@ -44,6 +60,7 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
         onArchive={
           collection.can_write && item.setArchived ? handleArchive : null
         }
+        onBookmark={() => handleBookmark(1, false)}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>

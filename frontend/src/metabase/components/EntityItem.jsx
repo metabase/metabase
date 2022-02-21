@@ -84,6 +84,7 @@ function EntityItemName({ name, variant }) {
 
 function EntityItemMenu({
   item,
+  onBookmark,
   onPin,
   onMove,
   onCopy,
@@ -122,6 +123,12 @@ function EntityItemMenu({
           action: onArchive,
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
+        onBookmark && {
+          title: t`Bookmark`,
+          icon: "bookmark",
+          action: onBookmark,
+          event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
+        },
       ].filter(action => action),
     [
       showPinnedAction,
@@ -129,6 +136,7 @@ function EntityItemMenu({
       onPin,
       analyticsContext,
       item.model,
+      onBookmark,
       onMove,
       onCopy,
       onArchive,
