@@ -7,6 +7,7 @@ import {
   filterWidget,
   sidebar,
   modal,
+  openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -39,6 +40,16 @@ describe("scenarios > dashboard", () => {
     cy.visit("/collection/root?type=dashboard");
     cy.findByText("This dashboard is looking empty.").should("not.exist");
     cy.findByText("Test Dash");
+  });
+
+  it.skip("should create new dashboard and navigate to it from the root collection (metabase#20638)", () => {
+    cy.visit("/collection/root");
+    openNewCollectionItemFlowFor("dashboard");
+
+    createDashboardUsingUI("Test Dash", "Desc");
+
+    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
   });
 
   it("should add a filter", () => {
