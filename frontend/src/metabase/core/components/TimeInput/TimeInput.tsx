@@ -1,5 +1,7 @@
 import React, { forwardRef, Ref, useCallback } from "react";
+import { t } from "ttag";
 import moment, { Duration } from "moment";
+import Tooltip from "metabase/components/Tooltip";
 import {
   InputClearButton,
   InputClearIcon,
@@ -65,11 +67,11 @@ const TimeInput = forwardRef(function TimeInput(
         fullWidth
         onChange={handleMinutesChange}
       />
-      {
+      <Tooltip tooltip={t`Clear time`}>
         <InputClearButton onClick={handleClearClick}>
           <InputClearIcon name="close" />
         </InputClearButton>
-      }
+      </Tooltip>
     </InputRoot>
   );
 });
