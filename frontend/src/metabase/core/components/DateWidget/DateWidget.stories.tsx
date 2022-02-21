@@ -9,8 +9,8 @@ export default {
 };
 
 const Template: ComponentStory<typeof DateWidget> = args => {
-  const [date, setDate] = useState<Moment>();
-  return <DateWidget {...args} date={date} onChangeDate={setDate} />;
+  const [value, setValue] = useState<Moment>();
+  return <DateWidget {...args} value={value} onChange={setValue} />;
 };
 
 export const Default = Template.bind({});

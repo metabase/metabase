@@ -29,9 +29,9 @@ export type DateInputAttributes = Omit<
 export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   inputRef?: Ref<HTMLInputElement>;
+  hasTime?: boolean;
   error?: boolean;
   fullWidth?: boolean;
-  hasTime?: boolean;
   hasCalendar?: boolean;
   onChange?: (value?: Moment) => void;
   onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -42,9 +42,9 @@ const DateInput = forwardRef(function DateInput(
     value,
     inputRef,
     placeholder,
+    hasTime,
     error,
     fullWidth,
-    hasTime,
     hasCalendar,
     onFocus,
     onBlur,

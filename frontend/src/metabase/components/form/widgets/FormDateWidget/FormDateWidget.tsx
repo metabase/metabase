@@ -1,6 +1,6 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment";
-import DateInput from "metabase/core/components/DateInput";
+import DateWidget from "metabase/core/components/DateWidget";
 import { FormField } from "./types";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -48,7 +48,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   }, [field]);
 
   return (
-    <DateInput
+    <DateWidget
       ref={ref}
       value={value}
       placeholder={placeholder}

@@ -1,6 +1,14 @@
-import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
+import React, {
+  CSSProperties,
+  forwardRef,
+  Ref,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import moment, { Duration, Moment } from "moment";
 import { t } from "ttag";
+import { hasTimePart } from "metabase/lib/time";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
@@ -9,60 +17,61 @@ import {
   SelectorTimeButton,
   SelectorTimeContainer,
 } from "./DateSelector.styled";
-import { hasTimePart } from "metabase/lib/time";
 
 export interface DateSelectorProps {
-  date?: Moment;
+  className?: string;
+  style?: CSSProperties;
+  value?: Moment;
   hasTime?: boolean;
-  onChangeDate?: (date?: Moment) => void;
+  onChange?: (date?: Moment) => void;
   onSubmit?: () => void;
 }
 
 const DateSelector = forwardRef(function DateSelector(
-  { date, hasTime, onChangeDate, onSubmit }: DateSelectorProps,
+  { className, style, value, hasTime, onChange, onSubmit }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(date));
+  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
 
   const time = useMemo(() => {
     return moment.duration({
-      hours: date?.hours(),
-      minutes: date?.minutes(),
+      hours: value?.hours(),
+      minutes: value?.minutes(),
     });
-  }, [date]);
+  }, [value]);
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, dateStart: Moment) => {
       const newDate = dateStart.clone();
-      newDate.hours(date ? date.hours() : 0);
-      newDate.minutes(date ? date.minutes() : 0);
-      onChangeDate?.(newDate);
+      newDate.hours(value ? value.hours() : 0);
+      newDate.minutes(value ? value.minutes() : 0);
+      onChange?.(newDate);
     },
-    [date, onChangeDate],
+    [value, onChange],
   );
 
   const handleTimeChange = useCallback(
     (newTime?: Duration) => {
-      const newDate = date ? date.clone() : moment().startOf("date");
+      const newDate = value ? value.clone() : moment().startOf("date");
       newDate.hours(newTime ? newTime.hours() : 0);
       newDate.minutes(newTime ? newTime.minutes() : 0);
-      onChangeDate?.(newDate);
+      onChange?.(newDate);
       setIsTimeShown(newTime != null);
     },
-    [date, onChangeDate],
+    [value, onChange],
   );
 
   const handleTimeClick = useCallback(() => {
-    const newDate = date ? date.clone() : moment().startOf("date");
-    onChangeDate?.(newDate);
+    const newDate = value ? value.clone() : moment().startOf("date");
+    onChange?.(newDate);
     setIsTimeShown(true);
-  }, [date, onChangeDate]);
+  }, [value, onChange]);
 
   return (
-    <div ref={ref}>
+    <div ref={ref} className={className} style={style}>
       <Calendar
-        initial={date}
-        selected={date}
+        initial={value}
+        selected={value}
         isRangePicker={false}
         onChange={handleDateChange}
       />

@@ -1,6 +1,6 @@
 import React, {
   forwardRef,
-  HTMLAttributes,
+  InputHTMLAttributes,
   Ref,
   useCallback,
   useState,
@@ -10,14 +10,21 @@ import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-export interface DateWidgetProps extends HTMLAttributes<HTMLDivElement> {
-  date?: Moment;
+export type DateWidgetAttributes = Omit<
+  InputHTMLAttributes<HTMLDivElement>,
+  "value" | "onChange"
+>;
+
+export interface DateWidgetProps extends DateWidgetAttributes {
+  value?: Moment;
   hasTime?: boolean;
-  onChangeDate?: (date?: Moment) => void;
+  error?: boolean;
+  fullWidth?: boolean;
+  onChange?: (date?: Moment) => void;
 }
 
 const DateWidget = forwardRef(function DateWidget(
-  { date, hasTime, onChangeDate, ...props }: DateWidgetProps,
+  { value, hasTime, error, fullWidth, onChange, ...props }: DateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const [isOpened, setIsOpened] = useState(false);
@@ -38,9 +45,9 @@ const DateWidget = forwardRef(function DateWidget(
       interactive
       content={
         <DateSelector
-          date={date}
+          value={value}
           hasTime={hasTime}
-          onChangeDate={onChangeDate}
+          onChange={onChange}
           onSubmit={handleClose}
         />
       }
@@ -49,10 +56,12 @@ const DateWidget = forwardRef(function DateWidget(
       <DateInput
         {...props}
         ref={ref}
-        value={date}
+        value={value}
         hasTime={hasTime}
-        hasCalendar
-        onChange={onChangeDate}
+        hasCalendar={true}
+        error={error}
+        fullWidth={fullWidth}
+        onChange={onChange}
         onCalendarClick={handleOpen}
       />
     </TippyPopover>
