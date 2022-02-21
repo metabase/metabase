@@ -6,6 +6,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 export interface InputProps {
   hasError?: boolean;
   fullWidth?: boolean;
+  hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
 }
 
@@ -46,15 +47,28 @@ export const InputField = styled.input<InputProps>`
     `}
 
   ${props =>
+    props.hasLeftIcon &&
+    css`
+      padding-left: 2.25rem;
+    `};
+
+  ${props =>
     props.hasRightIcon &&
     css`
       padding-right: 2.25rem;
     `};
 `;
 
-export const InputIconButton = styled(IconButtonWrapper)`
+export interface InputButtonProps {
+  hasLeftIcon?: boolean;
+  hasRightIcon?: boolean;
+}
+
+export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
-  right: 0.75rem;
   color: ${color("text-light")};
   border-radius: 50%;
+
+  left: ${props => (props.hasLeftIcon ? "0.75rem" : "")};
+  right: ${props => (props.hasRightIcon ? "0.75rem" : "")};
 `;
