@@ -19,10 +19,24 @@ describe("DateInput", () => {
     jest.useRealTimers();
   });
 
-  it("should set a label", () => {
-    render(<DateInputTest aria-label="Date" />);
+  it("should accept text input", () => {
+    render(<DateInputTest />);
 
-    expect(screen.getByLabelText("Date")).toBeInTheDocument();
+    userEvent.type(screen.getByRole("textbox"), "10/20/21");
+    expect(screen.getByDisplayValue("10/20/21")).toBeInTheDocument();
+
+    userEvent.tab();
+    expect(screen.getByDisplayValue("10/20/2021")).toBeInTheDocument();
+  });
+
+  it("should reject invalid input", () => {
+    render(<DateInputTest />);
+
+    userEvent.type(screen.getByRole("textbox"), "abc");
+    expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
+
+    userEvent.tab();
+    expect(screen.getByDisplayValue("")).toBeInTheDocument();
   });
 
   it("should set a placeholder", () => {
@@ -31,15 +45,9 @@ describe("DateInput", () => {
     expect(screen.getByPlaceholderText("01/10/2015")).toBeInTheDocument();
   });
 
-  it("should accept text input", () => {
-    const onChange = jest.fn();
+  it("should set a label", () => {
+    render(<DateInputTest aria-label="Date" />);
 
-    render(<DateInputTest onChange={onChange} />);
-
-    userEvent.type(screen.getByRole("textbox"), "10/20/21");
-    expect(screen.getByDisplayValue("10/20/21")).toBeInTheDocument();
-
-    userEvent.tab();
-    expect(screen.getByDisplayValue("10/20/2021")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toBeInTheDocument();
   });
 });
