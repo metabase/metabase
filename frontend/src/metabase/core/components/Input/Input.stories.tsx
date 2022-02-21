@@ -18,7 +18,8 @@ WithError.args = {
   error: true,
 };
 
-export const WithHelperText = Template.bind({});
-WithHelperText.args = {
-  helperText: "Useful tips",
+export const WithRightIcon = Template.bind({});
+WithRightIcon.args = {
+  rightIcon: "info",
+  rightIconTooltip: "Useful tips",
 };
