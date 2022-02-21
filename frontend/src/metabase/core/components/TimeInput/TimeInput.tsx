@@ -14,20 +14,29 @@ export interface TimeInputProps {
 }
 
 const TimeInput = forwardRef(function TimeInput(
-  { value = moment.duration(), onChange }: TimeInputProps,
+  { value, onChange }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
+  const hoursText = formatTime(value?.hours());
+  const minutesText = formatTime(value?.minutes());
+
   const handleHoursChange = useCallback(
-    (hours = 0) => {
-      const newValue = moment.duration({ hours, minutes: value.minutes() });
+    (hours?: number) => {
+      const newValue = moment.duration({
+        hours: hours ? hours % 24 : 0,
+        minutes: value ? value.minutes() : 0,
+      });
       onChange?.(newValue);
     },
     [value, onChange],
   );
 
   const handleMinutesChange = useCallback(
-    (minutes = 0) => {
-      const newValue = moment.duration({ hours: value.hours(), minutes });
+    (minutes?: number) => {
+      const newValue = moment.duration({
+        hours: value ? value.hours() : 0,
+        minutes: minutes ? minutes % 60 : 0,
+      });
       onChange?.(newValue);
     },
     [value, onChange],
@@ -40,13 +49,15 @@ const TimeInput = forwardRef(function TimeInput(
   return (
     <InputRoot ref={ref}>
       <InputField
-        value={formatTime(value.hours())}
+        value={hoursText}
+        placeholder="00"
         fullWidth
         onChange={handleHoursChange}
       />
       <InputDivider>:</InputDivider>
       <InputField
-        value={formatTime(value.minutes())}
+        value={minutesText}
+        placeholder="00"
         fullWidth
         onChange={handleMinutesChange}
       />
@@ -59,8 +70,12 @@ const TimeInput = forwardRef(function TimeInput(
   );
 });
 
-const formatTime = (value: number) => {
-  return value < 10 ? `0${value}` : `${value}`;
+const formatTime = (value?: number) => {
+  if (value != null) {
+    return value < 10 ? `0${value}` : `${value}`;
+  } else {
+    return "";
+  }
 };
 
 export default TimeInput;
