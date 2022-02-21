@@ -212,6 +212,6 @@ export function has24HourModeSetting() {
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
-export function hasTimePart(date) {
+export function hasTime(date) {
   return date != null && (date.hours() !== 0 || date.minutes() !== 0);
 }

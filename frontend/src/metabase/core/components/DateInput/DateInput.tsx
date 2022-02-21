@@ -5,6 +5,7 @@ import React, {
   InputHTMLAttributes,
   Ref,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 import moment, { Moment } from "moment";
@@ -12,7 +13,7 @@ import { t } from "ttag";
 import {
   getDateStyleFromSettings,
   getTimeStyleFromSettings,
-  hasTimePart,
+  hasTime,
 } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
@@ -43,14 +44,29 @@ const DateInput = forwardRef(function DateInput(
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [inputText, setInputText] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
   const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
   const timeFormat = getTimeStyleFromSettings() || "HH:mm";
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
-  const now = moment();
-  const nowText = now.format(dateFormat);
-  const valueText = formatValue(value, dateFormat, dateTimeFormat);
-  const [inputText, setInputText] = useState(valueText);
-  const [isFocused, setIsFocused] = useState(false);
+
+  const now = useMemo(() => {
+    return moment();
+  }, []);
+
+  const nowText = useMemo(() => {
+    return now.format(dateFormat);
+  }, [now, dateFormat]);
+
+  const valueText = useMemo(() => {
+    if (!value) {
+      return "";
+    } else if (hasTime(value)) {
+      return value.format(dateTimeFormat);
+    } else {
+      return value.format(dateFormat);
+    }
+  }, [value, dateFormat, dateTimeFormat]);
 
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
@@ -101,19 +117,5 @@ const DateInput = forwardRef(function DateInput(
     />
   );
 });
-
-const formatValue = (
-  value: Moment | undefined,
-  dateFormat: string,
-  dateTimeFormat: string,
-) => {
-  if (!value) {
-    return "";
-  } else if (hasTimePart(value)) {
-    return value.format(dateTimeFormat);
-  } else {
-    return value.format(dateFormat);
-  }
-};
 
 export default DateInput;
