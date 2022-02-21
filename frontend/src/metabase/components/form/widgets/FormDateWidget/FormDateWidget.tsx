@@ -4,6 +4,7 @@ import DateInput from "metabase/core/components/DateInput";
 import { FormField } from "./types";
 
 const DATE_FORMAT = "YYYY-MM-DD";
+const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export interface FormDateWidgetProps {
   field: FormField;
@@ -25,15 +26,17 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const format = hasTime ? DATE_TIME_FORMAT : DATE_FORMAT;
+
   const value = useMemo(() => {
-    return field.value ? moment(field.value, DATE_FORMAT) : undefined;
-  }, [field]);
+    return field.value ? moment(field.value, format) : undefined;
+  }, [field, format]);
 
   const handleChange = useCallback(
     (newValue?: Moment) => {
-      field.onChange?.(newValue?.format(DATE_FORMAT));
+      field.onChange?.(newValue?.format(format));
     },
-    [field],
+    [field, format],
   );
 
   const handleFocus = useCallback(() => {
