@@ -16,7 +16,7 @@ export type NumericInputAttributes = Omit<
 >;
 
 export interface NumericInputProps extends NumericInputAttributes {
-  value?: number;
+  value?: number | string;
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;

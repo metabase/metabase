@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Duration } from "moment";
 import { ComponentStory } from "@storybook/react";
 import TimeInput from "./TimeInput";
 
@@ -8,18 +9,8 @@ export default {
 };
 
 const Template: ComponentStory<typeof TimeInput> = args => {
-  const [hours, setHours] = useState<number>();
-  const [minutes, setMinutes] = useState<number>();
-
-  return (
-    <TimeInput
-      {...args}
-      hours={hours}
-      minutes={minutes}
-      onChangeHours={setHours}
-      onChangeMinutes={setMinutes}
-    />
-  );
+  const [value, setValue] = useState<Duration>();
+  return <TimeInput {...args} value={value} onChange={setValue} />;
 };
 
 export const Default = Template.bind({});
