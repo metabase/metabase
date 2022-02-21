@@ -59,16 +59,16 @@ export const InputField = styled.input<InputProps>`
     `};
 `;
 
-export interface InputButtonProps {
-  hasLeftIcon?: boolean;
-  hasRightIcon?: boolean;
-}
-
-export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
+export const InputButton = styled(IconButtonWrapper)`
   position: absolute;
   color: ${color("text-light")};
   border-radius: 50%;
+`;
 
-  left: ${props => (props.hasLeftIcon ? "0.75rem" : "")};
-  right: ${props => (props.hasRightIcon ? "0.75rem" : "")};
+export const InputLeftButton = styled(InputButton)`
+  left: 0.75rem;
+`;
+
+export const InputRightButton = styled(InputButton)`
+  right: 0.75rem;
 `;

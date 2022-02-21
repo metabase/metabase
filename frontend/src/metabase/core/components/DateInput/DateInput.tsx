@@ -3,6 +3,7 @@ import React, {
   FocusEvent,
   forwardRef,
   InputHTMLAttributes,
+  MouseEvent,
   Ref,
   useCallback,
   useMemo,
@@ -30,7 +31,9 @@ export interface DateInputProps extends DateInputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
+  hasCalendar?: boolean;
   onChange?: (value?: Moment) => void;
+  onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
@@ -40,9 +43,11 @@ const DateInput = forwardRef(function DateInput(
     placeholder,
     error,
     fullWidth,
+    hasCalendar,
     onFocus,
     onBlur,
     onChange,
+    onCalendarClick,
     ...props
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
@@ -111,11 +116,12 @@ const DateInput = forwardRef(function DateInput(
       placeholder={nowText}
       error={error}
       fullWidth={fullWidth}
-      rightIcon="calendar"
+      rightIcon={hasCalendar ? "calendar" : undefined}
       rightIconTooltip={t`Show calendar`}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}
+      onRightIconClick={onCalendarClick}
     />
   );
 });

@@ -7,7 +7,12 @@ import React, {
 } from "react";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { InputField, InputButton, InputRoot } from "./Input.styled";
+import {
+  InputField,
+  InputLeftButton,
+  InputRightButton,
+  InputRoot,
+} from "./Input.styled";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   inputRef?: Ref<HTMLInputElement>;
@@ -54,22 +59,22 @@ const Input = forwardRef(function Input(
       />
       {leftIcon && (
         <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
-          <InputButton
+          <InputLeftButton
             tabIndex={onLeftIconClick ? 0 : -1}
             onClick={onLeftIconClick}
           >
             <Icon name={leftIcon} />
-          </InputButton>
+          </InputLeftButton>
         </Tooltip>
       )}
       {rightIcon && (
         <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
-          <InputButton
+          <InputRightButton
             tabIndex={onRightIconClick ? 0 : -1}
             onClick={onRightIconClick}
           >
             <Icon name={rightIcon} />
-          </InputButton>
+          </InputRightButton>
         </Tooltip>
       )}
     </InputRoot>
