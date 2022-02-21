@@ -151,6 +151,26 @@ const MISC_OPTIONS: Option[] = [
   },
 ];
 
+type Operator = {
+  test: (filter: any) => boolean;
+  widget: React.ReactNode;
+};
+
+export const DATE_OPERATORS: Operator[] = [
+  {
+    test: ([op]) => op === "<" || op === ">" || op === "=" || op === "between",
+    widget: SpecificDatePicker,
+  },
+  {
+    test: ([op]) => op === "time-interval",
+    widget: RelativeDatePicker,
+  },
+];
+
+export function getOperator(filter: Filter) {
+  return _.find(DATE_OPERATORS, o => o.test(filter));
+}
+
 type Props = {
   filter: Filter;
   onFilterChange: (filter: Filter) => void;
@@ -158,14 +178,9 @@ type Props = {
   isSidebar?: boolean;
 };
 
-function DatePicker({ className, isSidebar, onFilterChange, filter }: Props) {
+function DatePickerMenu({ onFilterChange, filter }: Props) {
   return (
-    <div
-      className={cx(className, {
-        "PopoverBody--marginBottom": !isSidebar,
-      })}
-      style={{ minWidth: 300 }}
-    >
+    <>
       {DAY_OPTIONS.map(({ displayName, init }) => (
         <PickerButton
           key={displayName}
@@ -198,6 +213,35 @@ function DatePicker({ className, isSidebar, onFilterChange, filter }: Props) {
           {displayName}
         </PickerButton>
       ))}
+    </>
+  );
+}
+
+function DatePicker(props: Props) {
+  const { className, isSidebar, onFilterChange, filter } = props;
+  const [menuVisible, showMenu] = React.useState(false);
+
+  const operator = getOperator(filter);
+  const Widget: any = operator && operator.widget;
+
+  return (
+    <div
+      className={cx(className, {
+        "PopoverBody--marginBottom": !isSidebar,
+      })}
+      style={{ minWidth: 300 }}
+    >
+      {Widget && !menuVisible ? (
+        <Widget {...props} showMenu={showMenu} />
+      ) : (
+        <DatePickerMenu
+          {...props}
+          onFilterChange={filter => {
+            onFilterChange(filter);
+            showMenu(false);
+          }}
+        />
+      )}
     </div>
   );
 }
