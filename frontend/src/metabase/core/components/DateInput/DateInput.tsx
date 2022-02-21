@@ -93,7 +93,6 @@ const DateInput = forwardRef(function DateInput(
 
       if (newValue.isValid()) {
         onChange?.(newValue);
-        console.log(newValue);
       } else {
         onChange?.(undefined);
       }
