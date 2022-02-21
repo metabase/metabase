@@ -5,12 +5,15 @@ import React, {
   InputHTMLAttributes,
   Ref,
   useCallback,
-  useMemo,
   useState,
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import { getDateStyleFromSettings } from "metabase/lib/time";
+import {
+  getDateStyleFromSettings,
+  getTimeStyleFromSettings,
+  hasTimePart,
+} from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
 export type DateInputAttributes = Omit<
@@ -23,7 +26,6 @@ export interface DateInputProps extends DateInputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
-  dateFormat?: string;
   onChange?: (value?: Moment) => void;
 }
 
@@ -34,7 +36,6 @@ const DateInput = forwardRef(function DateInput(
     placeholder,
     error,
     fullWidth,
-    dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY",
     onFocus,
     onBlur,
     onChange,
@@ -42,12 +43,12 @@ const DateInput = forwardRef(function DateInput(
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const now = useMemo(() => moment(), []);
-  const nowText = useMemo(() => now.format(dateFormat), [now, dateFormat]);
-  const valueText = useMemo(() => value?.format(dateFormat) || "", [
-    value,
-    dateFormat,
-  ]);
+  const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
+  const timeFormat = getTimeStyleFromSettings() || "HH:mm";
+  const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
+  const now = moment();
+  const nowText = now.format(dateFormat);
+  const valueText = formatValue(value, dateFormat, dateTimeFormat);
   const [inputText, setInputText] = useState(valueText);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -71,16 +72,17 @@ const DateInput = forwardRef(function DateInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, dateFormat);
+      const newValue = moment(newText, [dateTimeFormat, dateFormat]);
       setInputText(newText);
 
       if (newValue.isValid()) {
         onChange?.(newValue);
+        console.log(newValue);
       } else {
         onChange?.(undefined);
       }
     },
-    [dateFormat, onChange],
+    [dateFormat, dateTimeFormat, onChange],
   );
 
   return (
@@ -99,5 +101,19 @@ const DateInput = forwardRef(function DateInput(
     />
   );
 });
+
+const formatValue = (
+  value: Moment | undefined,
+  dateFormat: string,
+  dateTimeFormat: string,
+) => {
+  if (!value) {
+    return "";
+  } else if (hasTimePart(value)) {
+    return value.format(dateTimeFormat);
+  } else {
+    return value.format(dateFormat);
+  }
+};
 
 export default DateInput;

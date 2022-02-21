@@ -211,3 +211,7 @@ export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
+
+export function hasTimePart(date) {
+  return date != null && (date.hours() !== 0 || date.minutes() !== 0);
+}
