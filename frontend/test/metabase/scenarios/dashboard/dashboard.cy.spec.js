@@ -6,8 +6,9 @@ import {
   showDashboardCardActions,
   filterWidget,
   sidebar,
+  modal,
+  openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
-import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -24,16 +25,14 @@ describe("scenarios > dashboard", () => {
     cy.signInAsAdmin();
   });
 
-  it("should create new dashboard", () => {
+  it("should create new dashboard and navigate to it from the nav bar", () => {
     // Create dashboard
     cy.visit("/");
     cy.icon("add").click();
     cy.findByText("Dashboard").click();
-    modal().within(() => {
-      cy.findByLabelText("Name").type("Test Dash");
-      cy.findByLabelText("Description").type("Desc");
-      cy.findByText("Create").click();
-    });
+
+    createDashboardUsingUI("Test Dash", "Desc");
+
     cy.findByText("This dashboard is looking empty.");
     cy.findByText("You're editing this dashboard.");
 
@@ -41,6 +40,16 @@ describe("scenarios > dashboard", () => {
     cy.visit("/collection/root?type=dashboard");
     cy.findByText("This dashboard is looking empty.").should("not.exist");
     cy.findByText("Test Dash");
+  });
+
+  it.skip("should create new dashboard and navigate to it from the root collection (metabase#20638)", () => {
+    cy.visit("/collection/root");
+    openNewCollectionItemFlowFor("dashboard");
+
+    createDashboardUsingUI("Test Dash", "Desc");
+
+    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
   });
 
   it("should add a filter", () => {
@@ -454,5 +463,23 @@ function assertScrollBarExists() {
     cy.window()
       .its("innerWidth")
       .should("be.gte", bodyWidth);
+  });
+}
+
+function createDashboardUsingUI(name, description) {
+  cy.intercept("POST", "/api/dashboard").as("createDashboard");
+
+  modal().within(() => {
+    // Without waiting for this, the test was constantly flaking locally.
+    // It typed `est Dashboard`.
+    cy.findByText("Our analytics");
+
+    cy.findByLabelText("Name").type(name);
+    cy.findByLabelText("Description").type(description);
+    cy.findByText("Create").click();
+  });
+
+  cy.wait("@createDashboard").then(({ response: { body } }) => {
+    cy.url().should("contain", `/dashboard/${body.id}`);
   });
 }
