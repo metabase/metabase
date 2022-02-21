@@ -13,6 +13,7 @@ const MINUTES_MAX = 60;
 
 export interface TimeInputProps {
   value?: Duration;
+  autoFocus?: boolean;
   onChange?: (value?: Duration) => void;
 }
 
