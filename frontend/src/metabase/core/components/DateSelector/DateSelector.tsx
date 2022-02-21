@@ -59,7 +59,12 @@ const DateSelector = forwardRef(function DateSelector(
 
   return (
     <div ref={ref}>
-      <Calendar initial={date} selected={date} onChange={handleDateChange} />
+      <Calendar
+        initial={date}
+        selected={date}
+        isRangePicker={false}
+        onChange={handleDateChange}
+      />
       {isTimeShown && (
         <SelectorTimeContainer>
           <TimeInput value={time} onChange={handleTimeChange} />
