@@ -9,19 +9,20 @@ import {
   SelectorTimeButton,
   SelectorTimeContainer,
 } from "./DateSelector.styled";
-import { hasTime } from "metabase/lib/time";
+import { hasTimePart } from "metabase/lib/time";
 
 export interface DateSelectorProps {
   date?: Moment;
+  hasTime?: boolean;
   onChangeDate?: (date?: Moment) => void;
   onSubmit?: () => void;
 }
 
 const DateSelector = forwardRef(function DateSelector(
-  { date, onChangeDate, onSubmit }: DateSelectorProps,
+  { date, hasTime, onChangeDate, onSubmit }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const [isTimeShown, setIsTimeShown] = useState(() => hasTime(date));
+  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(date));
 
   const time = useMemo(() => {
     return moment.duration({
@@ -71,7 +72,7 @@ const DateSelector = forwardRef(function DateSelector(
         </SelectorTimeContainer>
       )}
       <SelectorFooter>
-        {!isTimeShown && (
+        {hasTime && !isTimeShown && (
           <SelectorTimeButton icon="clock" borderless onClick={handleTimeClick}>
             {t`Add time`}
           </SelectorTimeButton>

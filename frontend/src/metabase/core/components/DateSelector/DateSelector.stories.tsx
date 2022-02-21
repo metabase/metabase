@@ -14,3 +14,7 @@ const Template: ComponentStory<typeof DateSelector> = args => {
 };
 
 export const Default = Template.bind({});
+
+export const WithTime = Template.bind({
+  hasTime: true,
+});

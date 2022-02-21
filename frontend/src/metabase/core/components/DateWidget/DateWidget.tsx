@@ -12,11 +12,12 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export interface DateWidgetProps extends HTMLAttributes<HTMLDivElement> {
   date?: Moment;
+  hasTime?: boolean;
   onChangeDate?: (date?: Moment) => void;
 }
 
 const DateWidget = forwardRef(function DateWidget(
-  { date, onChangeDate, ...props }: DateWidgetProps,
+  { date, hasTime, onChangeDate, ...props }: DateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const [isOpened, setIsOpened] = useState(false);
@@ -38,6 +39,7 @@ const DateWidget = forwardRef(function DateWidget(
       content={
         <DateSelector
           date={date}
+          hasTime={hasTime}
           onChangeDate={onChangeDate}
           onSubmit={handleClose}
         />
@@ -48,6 +50,7 @@ const DateWidget = forwardRef(function DateWidget(
         {...props}
         ref={ref}
         value={date}
+        hasTime={hasTime}
         hasCalendar
         onChange={onChangeDate}
         onCalendarClick={handleOpen}

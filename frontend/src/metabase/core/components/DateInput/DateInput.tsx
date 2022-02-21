@@ -14,7 +14,7 @@ import { t } from "ttag";
 import {
   getDateStyleFromSettings,
   getTimeStyleFromSettings,
-  hasTime,
+  hasTimePart,
 } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
@@ -31,6 +31,7 @@ export interface DateInputProps extends DateInputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
+  hasTime?: boolean;
   hasCalendar?: boolean;
   onChange?: (value?: Moment) => void;
   onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -43,6 +44,7 @@ const DateInput = forwardRef(function DateInput(
     placeholder,
     error,
     fullWidth,
+    hasTime,
     hasCalendar,
     onFocus,
     onBlur,
@@ -69,12 +71,12 @@ const DateInput = forwardRef(function DateInput(
   const valueText = useMemo(() => {
     if (!value) {
       return "";
-    } else if (hasTime(value)) {
+    } else if (hasTime && hasTimePart(value)) {
       return value.format(dateTimeFormat);
     } else {
       return value.format(dateFormat);
     }
-  }, [value, dateFormat, dateTimeFormat]);
+  }, [value, hasTime, dateFormat, dateTimeFormat]);
 
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
@@ -96,8 +98,10 @@ const DateInput = forwardRef(function DateInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, [dateTimeFormat, dateFormat]);
       setInputText(newText);
+
+      const formats = hasTime ? [dateTimeFormat, dateFormat] : [dateFormat];
+      const newValue = moment(newText, formats);
 
       if (newValue.isValid()) {
         onChange?.(newValue);
@@ -105,7 +109,7 @@ const DateInput = forwardRef(function DateInput(
         onChange?.(undefined);
       }
     },
-    [dateFormat, dateTimeFormat, onChange],
+    [hasTime, dateFormat, dateTimeFormat, onChange],
   );
 
   return (
