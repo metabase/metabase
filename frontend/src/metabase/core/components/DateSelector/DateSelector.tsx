@@ -4,7 +4,11 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
-import { SelectorFooter } from "./DateSelector.styled";
+import {
+  SelectorFooter,
+  SelectorTimeButton,
+  SelectorTimeContainer,
+} from "./DateSelector.styled";
 
 export interface DateSelectorProps {
   date?: Moment;
@@ -44,9 +48,13 @@ const DateSelector = forwardRef(function DateSelector(
   return (
     <div ref={ref}>
       <Calendar initial={date} selected={date} onChange={handleDateChange} />
-      <TimeInput value={time} onChange={handleTimeChange} />
+      <SelectorTimeContainer>
+        <TimeInput value={time} onChange={handleTimeChange} />
+      </SelectorTimeContainer>
       <SelectorFooter>
-        <Button borderless>{t`Add time`}</Button>
+        <SelectorTimeButton icon="clock" borderless>
+          {t`Add time`}
+        </SelectorTimeButton>
         <Button primary onClick={onSubmit}>{t`Save`}</Button>
       </SelectorFooter>
     </div>
