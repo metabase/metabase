@@ -1,9 +1,9 @@
 import React, { forwardRef, Ref } from "react";
-import NumericInput from "metabase/core/components/NumericInput";
 import {
   InputClearButton,
   InputClearIcon,
   InputDivider,
+  InputField,
   InputRoot,
 } from "./TimeInput.styled";
 
@@ -21,9 +21,9 @@ const TimeInput = forwardRef(function TimeInput(
 ): JSX.Element {
   return (
     <InputRoot ref={ref}>
-      <NumericInput value={hours} onChange={onChangeHours} />
-      <InputDivider />
-      <NumericInput value={minutes} onChange={onChangeMinutes} />
+      <InputField value={hours} fullWidth onChange={onChangeHours} />
+      <InputDivider>:</InputDivider>
+      <InputField value={minutes} fullWidth onChange={onChangeMinutes} />
       {onClear && (
         <InputClearButton>
           <InputClearIcon name="close" />
