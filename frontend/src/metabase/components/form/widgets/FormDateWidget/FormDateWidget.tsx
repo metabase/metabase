@@ -8,13 +8,21 @@ const DATE_FORMAT = "YYYY-MM-DD";
 export interface FormDateWidgetProps {
   field: FormField;
   placeholder?: string;
+  hasTime?: boolean;
   readOnly?: boolean;
   autoFocus?: boolean;
   tabIndex?: number;
 }
 
 const FormDateWidget = forwardRef(function FormDateWidget(
-  { field, placeholder, readOnly, autoFocus, tabIndex }: FormDateWidgetProps,
+  {
+    field,
+    placeholder,
+    hasTime,
+    readOnly,
+    autoFocus,
+    tabIndex,
+  }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const value = useMemo(() => {
@@ -41,6 +49,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       ref={ref}
       value={value}
       placeholder={placeholder}
+      hasTime={hasTime}
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}
