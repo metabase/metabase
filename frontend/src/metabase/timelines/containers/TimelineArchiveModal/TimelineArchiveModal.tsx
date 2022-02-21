@@ -21,7 +21,7 @@ const collectionProps = {
 };
 
 const mapStateToProps = () => ({
-  archived: true,
+  isArchive: true,
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
