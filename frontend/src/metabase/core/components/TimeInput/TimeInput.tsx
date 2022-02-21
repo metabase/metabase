@@ -58,6 +58,7 @@ const TimeInput = forwardRef(function TimeInput(
         value={hoursText}
         placeholder="00"
         fullWidth
+        aria-label={t`Hours`}
         onChange={handleHoursChange}
       />
       <InputDivider>:</InputDivider>
@@ -65,10 +66,14 @@ const TimeInput = forwardRef(function TimeInput(
         value={minutesText}
         placeholder="00"
         fullWidth
+        aria-label={t`Minutes`}
         onChange={handleMinutesChange}
       />
       <Tooltip tooltip={t`Remove time`}>
-        <InputClearButton onClick={handleClearClick}>
+        <InputClearButton
+          aria-label={t`Remove time`}
+          onClick={handleClearClick}
+        >
           <InputClearIcon name="close" />
         </InputClearButton>
       </Tooltip>
