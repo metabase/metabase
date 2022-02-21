@@ -59,20 +59,14 @@ const Input = forwardRef(function Input(
       />
       {leftIcon && (
         <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
-          <InputLeftButton
-            tabIndex={onLeftIconClick ? 0 : -1}
-            onClick={onLeftIconClick}
-          >
+          <InputLeftButton tabIndex={-1} onClick={onLeftIconClick}>
             <Icon name={leftIcon} />
           </InputLeftButton>
         </Tooltip>
       )}
       {rightIcon && (
         <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
-          <InputRightButton
-            tabIndex={onRightIconClick ? 0 : -1}
-            onClick={onRightIconClick}
-          >
+          <InputRightButton tabIndex={-1} onClick={onRightIconClick}>
             <Icon name={rightIcon} />
           </InputRightButton>
         </Tooltip>
