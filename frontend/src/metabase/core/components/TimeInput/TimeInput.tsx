@@ -67,7 +67,7 @@ const TimeInput = forwardRef(function TimeInput(
         fullWidth
         onChange={handleMinutesChange}
       />
-      <Tooltip tooltip={t`Clear time`}>
+      <Tooltip tooltip={t`Remove time`}>
         <InputClearButton onClick={handleClearClick}>
           <InputClearIcon name="close" />
         </InputClearButton>
