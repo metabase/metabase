@@ -69,9 +69,10 @@
 
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (trs "Error syncing Fields for Table ''{0}''" (sync-util/name-for-logging table))
-     (let [db-metadata (fetch-metadata/db-metadata database table)]
+     (let [db-metadata  (fetch-metadata/db-metadata database table)
+           nfc-metadata (fetch-metadata/nfc-metadata database table)]
        {:total-fields   (count db-metadata)
-        :updated-fields (sync-and-update! table db-metadata)}))))
+        :updated-fields (sync-and-update! table db-metadata nfc-metadata)}))))
 
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
