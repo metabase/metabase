@@ -4,7 +4,6 @@ describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
   });
 
   it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
@@ -55,7 +54,7 @@ describe("scenarios > admin > databases > list", () => {
   });
 
   it("should let you bring back the sample database", () => {
-    cy.route("POST", "/api/database/sample_database").as("sample_database");
+    cy.intercept("POST", "/api/database/sample_database").as("sample_database");
 
     cy.request("DELETE", "/api/database/1").as("delete");
     cy.visit("/admin/databases");
