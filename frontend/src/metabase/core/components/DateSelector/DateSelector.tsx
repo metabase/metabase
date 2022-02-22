@@ -30,6 +30,7 @@ export interface DateSelectorProps {
   hasTime?: boolean;
   timezone?: string;
   timezones?: TimezoneOption[];
+  hasTimezone?: boolean;
   onChangeDate?: (date?: Moment) => void;
   onChangeTimezone?: (timezone: string) => void;
   onSubmit?: () => void;
@@ -43,6 +44,7 @@ const DateSelector = forwardRef(function DateSelector(
     hasTime,
     timezone,
     timezones,
+    hasTimezone,
     onChangeDate,
     onChangeTimezone,
     onSubmit,
@@ -106,7 +108,7 @@ const DateSelector = forwardRef(function DateSelector(
             <TimeInput value={time} onChange={handleTimeChange} />
           </SelectorField>
         )}
-        {isTimeShown && timezones && (
+        {isTimeShown && hasTimezone && (
           <SelectorField>
             <SelectorFieldLabel>{t`Timezone`}</SelectorFieldLabel>
             <Select

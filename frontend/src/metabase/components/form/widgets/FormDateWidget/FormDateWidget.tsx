@@ -14,6 +14,7 @@ export interface FormDateWidgetProps {
   field: FormField;
   placeholder?: string;
   hasTime?: boolean;
+  hasTimezone?: boolean;
   readOnly?: boolean;
   autoFocus?: boolean;
   tabIndex?: number;
@@ -24,6 +25,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
     field,
     placeholder,
     hasTime,
+    hasTimezone,
     readOnly,
     autoFocus,
     tabIndex,
@@ -36,13 +38,6 @@ const FormDateWidget = forwardRef(function FormDateWidget(
     return field.value ? moment(field.value, format) : undefined;
   }, [field, format]);
 
-  const handleChange = useCallback(
-    (newValue?: Moment) => {
-      field.onChange?.(newValue?.format(format));
-    },
-    [field, format],
-  );
-
   const handleFocus = useCallback(() => {
     field.onFocus?.(field.value);
   }, [field]);
@@ -51,12 +46,20 @@ const FormDateWidget = forwardRef(function FormDateWidget(
     field.onBlur?.(field.value);
   }, [field]);
 
+  const handleChangeDate = useCallback(
+    (newValue?: Moment) => {
+      field.onChange?.(newValue?.format(format));
+    },
+    [field, format],
+  );
+
   return (
     <DateWidget
       ref={ref}
-      value={value}
+      date={value}
       placeholder={placeholder}
       hasTime={hasTime}
+      hasTimezone={hasTimezone}
       dateFormat={getDateStyleFromSettings()}
       timeFormat={getTimeStyleFromSettings()}
       readOnly={readOnly}
@@ -65,7 +68,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       fullWidth
       tabIndex={tabIndex}
       aria-labelledby={`${field.name}-label`}
-      onChange={handleChange}
+      onChangeDate={handleChangeDate}
       onFocus={handleFocus}
       onBlur={handleBlur}
     />

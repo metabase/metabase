@@ -21,6 +21,7 @@ export interface DateWidgetProps extends DateWidgetAttributes {
   hasTime?: boolean;
   timezone?: string;
   timezones?: TimezoneOption[];
+  hasTimezone?: boolean;
   dateFormat?: string;
   timeFormat?: string;
   error?: boolean;
@@ -32,9 +33,10 @@ export interface DateWidgetProps extends DateWidgetAttributes {
 const DateWidget = forwardRef(function DateWidget(
   {
     date,
-    hasTime,
     timezone,
     timezones,
+    hasTime,
+    hasTimezone,
     dateFormat,
     timeFormat,
     error,
@@ -67,6 +69,7 @@ const DateWidget = forwardRef(function DateWidget(
           hasTime={hasTime}
           timezone={timezone}
           timezones={timezones}
+          hasTimezone={hasTimezone}
           onChangeDate={onChangeDate}
           onChangeTimezone={onChangeTimezone}
           onSubmit={handleClose}
