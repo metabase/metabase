@@ -7,6 +7,23 @@ describe("scenarios > admin > databases > list", () => {
     cy.server();
   });
 
+  it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+    const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+    cy.intercept("GET", "/api/database", req => {
+      req.reply({
+        statusCode: 500,
+        body: { message: errorMessage },
+      });
+    }).as("failedGet");
+
+    cy.visit("/admin/databases");
+
+    cy.wait("@failedGet");
+    // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
+    cy.findByText(errorMessage).should("not.exist");
+  });
+
   it("should let you see databases in list view", () => {
     cy.visit("/admin/databases");
     cy.findByText("Sample Database");
