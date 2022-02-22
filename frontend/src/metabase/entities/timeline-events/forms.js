@@ -14,6 +14,7 @@ const FORM_FIELDS = [
     name: "timestamp",
     title: t`Date`,
     type: "date",
+    hasTime: true,
     validate: validate.required(),
   },
   {

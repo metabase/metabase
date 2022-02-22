@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { Moment } from "moment";
 import { ComponentStory } from "@storybook/react";
-import DateInput from "./DateInput";
+import DateWidget from "./DateWidget";
 
 export default {
-  title: "Core/DateInput",
-  component: DateInput,
+  title: "Core/DateWidget",
+  component: DateWidget,
 };
 
-const Template: ComponentStory<typeof DateInput> = args => {
+const Template: ComponentStory<typeof DateWidget> = args => {
   const [value, setValue] = useState<Moment>();
-  return <DateInput {...args} value={value} onChange={setValue} />;
+  return <DateWidget {...args} value={value} onChange={setValue} />;
 };
 
 export const Default = Template.bind({});
