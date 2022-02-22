@@ -9,7 +9,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import { hasTimePart } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
@@ -26,6 +26,7 @@ export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   inputRef?: Ref<HTMLInputElement>;
   hasTime?: boolean;
+  timezone?: string;
   dateFormat?: string;
   timeFormat?: string;
   error?: boolean;
@@ -41,6 +42,7 @@ const DateInput = forwardRef(function DateInput(
     inputRef,
     placeholder,
     hasTime,
+    timezone = moment.tz.guess(),
     dateFormat = DATE_FORMAT,
     timeFormat = TIME_FORMAT,
     error,
@@ -59,8 +61,8 @@ const DateInput = forwardRef(function DateInput(
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
   const now = useMemo(() => {
-    return moment();
-  }, []);
+    return moment.tz(timezone);
+  }, [timezone]);
 
   const nowText = useMemo(() => {
     return now.format(dateFormat);
@@ -99,7 +101,7 @@ const DateInput = forwardRef(function DateInput(
       setInputText(newText);
 
       const formats = hasTime ? [dateTimeFormat, dateFormat] : [dateFormat];
-      const newValue = moment(newText, formats);
+      const newValue = moment.tz(newText, formats, timezone);
 
       if (newValue.isValid()) {
         onChange?.(newValue);
@@ -107,7 +109,7 @@ const DateInput = forwardRef(function DateInput(
         onChange?.(undefined);
       }
     },
-    [hasTime, dateFormat, dateTimeFormat, onChange],
+    [hasTime, timezone, dateFormat, dateTimeFormat, onChange],
   );
 
   return (

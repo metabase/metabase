@@ -62,21 +62,17 @@ export default class Calendar extends Component {
   onClickDay = date => {
     const { selected, selectedEnd, isRangePicker } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
-      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
+      this.props.onChange(date.format("YYYY-MM-DD"), null);
     } else if (!selectedEnd) {
       if (date.isAfter(selected)) {
         this.props.onChange(
           selected.format("YYYY-MM-DD"),
           date.format("YYYY-MM-DD"),
-          selected,
-          date,
         );
       } else {
         this.props.onChange(
           date.format("YYYY-MM-DD"),
           selected.format("YYYY-MM-DD"),
-          date,
-          selected,
         );
       }
     }

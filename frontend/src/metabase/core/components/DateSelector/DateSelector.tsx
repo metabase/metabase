@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import moment, { Duration, Moment } from "moment";
+import moment, { Duration, Moment } from "moment-timezone";
 import { t } from "ttag";
 import { hasTimePart } from "metabase/lib/time";
 import Select from "metabase/core/components/Select";
@@ -21,6 +21,8 @@ import {
   SelectorSubmitButton,
   SelectorTimeButton,
 } from "./DateSelector.styled";
+
+const DATE_FORMAT = "YYYY-MM-DD";
 
 export interface DateSelectorProps {
   className?: string;
@@ -41,7 +43,7 @@ const DateSelector = forwardRef(function DateSelector(
     style,
     date,
     hasTime,
-    timezone,
+    timezone = moment.tz.guess(),
     timezones,
     hasTimezone,
     onChangeDate,
@@ -64,31 +66,31 @@ const DateSelector = forwardRef(function DateSelector(
   }, [timezones]);
 
   const handleDateChange = useCallback(
-    (unused1: string, unused2: string, dateStart: Moment) => {
-      const newDate = dateStart.clone().local();
+    (dateString: string) => {
+      const newDate = moment.tz(dateString, DATE_FORMAT, timezone);
       newDate.hours(date ? date.hours() : 0);
       newDate.minutes(date ? date.minutes() : 0);
       onChangeDate?.(newDate);
     },
-    [date, onChangeDate],
+    [date, timezone, onChangeDate],
   );
 
   const handleTimeChange = useCallback(
     (newTime?: Duration) => {
-      const newDate = date ? date.clone() : moment().startOf("date");
+      const newDate = date ? date.clone() : moment.tz(timezone).startOf("date");
       newDate.hours(newTime ? newTime.hours() : 0);
       newDate.minutes(newTime ? newTime.minutes() : 0);
       onChangeDate?.(newDate);
       setIsTimeShown(newTime != null);
     },
-    [date, onChangeDate],
+    [date, timezone, onChangeDate],
   );
 
   const handleTimeClick = useCallback(() => {
-    const newDate = date ? date.clone() : moment().startOf("date");
+    const newDate = date ? date.clone() : moment.tz(timezone).startOf("date");
     onChangeDate?.(newDate);
     setIsTimeShown(true);
-  }, [date, onChangeDate]);
+  }, [date, timezone, onChangeDate]);
 
   const handleTimezoneChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {

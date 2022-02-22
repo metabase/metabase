@@ -1,6 +1,6 @@
 import React, { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
-import moment, { Duration } from "moment";
+import moment, { Duration } from "moment-timezone";
 import Tooltip from "metabase/components/Tooltip";
 import {
   InputClearButton,
