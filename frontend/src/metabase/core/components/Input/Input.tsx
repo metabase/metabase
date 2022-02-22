@@ -16,6 +16,7 @@ import {
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   inputRef?: Ref<HTMLInputElement>;
+  small?: boolean;
   error?: boolean;
   fullWidth?: boolean;
   leftIcon?: string;
@@ -31,6 +32,7 @@ const Input = forwardRef(function Input(
     className,
     style,
     inputRef,
+    small,
     error,
     fullWidth,
     leftIcon,
@@ -53,7 +55,8 @@ const Input = forwardRef(function Input(
       <InputField
         {...props}
         ref={inputRef}
-        hasError={error}
+        small={small}
+        error={error}
         fullWidth={fullWidth}
         hasRightIcon={Boolean(rightIcon)}
       />

@@ -4,7 +4,8 @@ import { color, darken } from "metabase/lib/colors";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export interface InputProps {
-  hasError?: boolean;
+  small?: boolean;
+  error?: boolean;
   fullWidth?: boolean;
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
@@ -35,7 +36,14 @@ export const InputField = styled.input<InputProps>`
   }
 
   ${props =>
-    props.hasError &&
+    props.small &&
+    css`
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+    `};
+
+  ${props =>
+    props.error &&
     css`
       border-color: ${color("error")};
     `};

@@ -57,6 +57,7 @@ const TimeInput = forwardRef(function TimeInput(
       <InputField
         value={hoursText}
         placeholder="00"
+        small
         fullWidth
         aria-label={t`Hours`}
         onChange={handleHoursChange}
@@ -65,6 +66,7 @@ const TimeInput = forwardRef(function TimeInput(
       <InputField
         value={minutesText}
         placeholder="00"
+        small
         fullWidth
         aria-label={t`Minutes`}
         onChange={handleMinutesChange}
