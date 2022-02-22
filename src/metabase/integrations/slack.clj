@@ -160,7 +160,7 @@
   *cached-conversations
   (atom {}))
 
-(defn ^:private conversations-list
+(defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
   default only fetches channels."
   [& {:as query-parameters}]
@@ -218,7 +218,7 @@
     :private true}
   *cached-users (atom {}))
 
-(defn ^:private users-list
+(defn users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users without the @ prefix."
   [& {:as query-parameters}]
   (let [result (->> (paged-list-request "users.list" :members query-parameters)

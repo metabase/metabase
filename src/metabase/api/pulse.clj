@@ -118,6 +118,32 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
+(api/defendpoint GET "/form_input_refresh"
+  "Provides relevant configuration information and user choices for creating/updating Pulses, can block for quite a long
+  amount of time if the conversations-list or the users-list is huge."
+  []
+  (let [chan-types (-> channel-types
+                       (assoc-in [:slack :configured] (slack/slack-configured?))
+                       (assoc-in [:email :configured] (email/email-configured?)))]
+    {:channels (cond
+                 (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                   (segmented-user?))
+                 (dissoc chan-types :slack)
+
+                 ;; no Slack integration, so we are g2g
+                 (not (get-in chan-types [:slack :configured]))
+                 chan-types
+
+                 :else
+                 (try
+                   (let [[conversations users] (map deref [(future (slack/conversations-list))
+                                                           (future (slack/users-list))])
+                         slack-channels        (for [channel (:result conversations)] (str \# (:name channel)))
+                         slack-users           (for [user (:result users)] (str \@ (:name user)))]
+                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (catch Throwable e
+                     (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
+
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -133,7 +159,6 @@
                  (not (get-in chan-types [:slack :configured]))
                  chan-types
 
-                 ;; if we have Slack enabled build a dynamic list of channels/users
                  :else
                  (try
                    (let [[conversations users] (map deref [(future (slack/conversations-list-timeout))
