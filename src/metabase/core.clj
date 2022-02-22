@@ -10,6 +10,7 @@
             metabase.driver.mysql
             metabase.driver.postgres
             [metabase.events :as events]
+            [metabase.integrations.slack :as slack]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -122,6 +123,9 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!)))
 
+  (when (slack/slack-configured?)
+    (slack/refresh-caches!))
+  
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
 

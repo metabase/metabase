@@ -254,6 +254,11 @@
         :else
         {:result result}))))
 
+
+(defn refresh-caches! []
+  (conversations-list)
+  (users-list))
+
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
   ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
