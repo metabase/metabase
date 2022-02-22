@@ -15,6 +15,7 @@ describe("TimeInput", () => {
 
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
+    userEvent.tab();
 
     expect(screen.getByLabelText("Hours")).toHaveValue("05");
     expect(screen.getByLabelText("Minutes")).toHaveValue("20");
