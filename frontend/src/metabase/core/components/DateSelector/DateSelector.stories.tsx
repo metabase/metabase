@@ -28,6 +28,11 @@ export const Default = Template.bind({});
 export const WithTime = Template.bind({});
 WithTime.args = {
   hasTime: true,
+};
+
+export const WithTimezone = Template.bind({});
+WithTimezone.args = {
+  hasTime: true,
   timezone: "US/Central",
   timezones: [
     {

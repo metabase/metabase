@@ -110,7 +110,7 @@ const DateSelector = forwardRef(function DateSelector(
             <TimeInput value={time} onChange={handleTimeChange} />
           </SelectorField>
         )}
-        {isTimeShown && (
+        {isTimeShown && timezones && (
           <SelectorField>
             <SelectorFieldLabel>{t`Timezone`}</SelectorFieldLabel>
             <Select
