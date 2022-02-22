@@ -12,23 +12,44 @@ import { hasTimePart } from "metabase/lib/time";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
+  SelectorContent,
+  SelectorField,
+  SelectorFieldLabel,
   SelectorFooter,
   SelectorSubmitButton,
   SelectorTimeButton,
-  SelectorTimeContainer,
 } from "./DateSelector.styled";
+import Select from "metabase/core/components/Select";
 
 export interface DateSelectorProps {
   className?: string;
   style?: CSSProperties;
   value?: Moment;
   hasTime?: boolean;
+  timezone?: string;
+  timezones?: TimezoneOption[];
   onChange?: (date?: Moment) => void;
+  onChangeTimezone?: (timezone: string) => void;
   onSubmit?: () => void;
 }
 
+export interface TimezoneOption {
+  name: string;
+  value: string;
+}
+
 const DateSelector = forwardRef(function DateSelector(
-  { className, style, value, hasTime, onChange, onSubmit }: DateSelectorProps,
+  {
+    className,
+    style,
+    value,
+    hasTime,
+    timezone,
+    timezones,
+    onChange,
+    onChangeTimezone,
+    onSubmit,
+  }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
@@ -75,21 +96,37 @@ const DateSelector = forwardRef(function DateSelector(
         isRangePicker={false}
         onChange={handleDateChange}
       />
-      {isTimeShown && (
-        <SelectorTimeContainer>
-          <TimeInput value={time} onChange={handleTimeChange} />
-        </SelectorTimeContainer>
-      )}
-      <SelectorFooter>
-        {hasTime && !isTimeShown && (
-          <SelectorTimeButton icon="clock" borderless onClick={handleTimeClick}>
-            {t`Add time`}
-          </SelectorTimeButton>
+      <SelectorContent>
+        {isTimeShown && (
+          <SelectorField>
+            <TimeInput value={time} onChange={handleTimeChange} />
+          </SelectorField>
         )}
-        <SelectorSubmitButton primary onClick={onSubmit}>
-          {t`Save`}
-        </SelectorSubmitButton>
-      </SelectorFooter>
+        {isTimeShown && (
+          <SelectorField>
+            <SelectorFieldLabel>{t`Timezone`}</SelectorFieldLabel>
+            <Select
+              value={timezone}
+              options={timezones}
+              onChange={onChangeTimezone}
+            />
+          </SelectorField>
+        )}
+        <SelectorFooter>
+          {hasTime && !isTimeShown && (
+            <SelectorTimeButton
+              icon="clock"
+              borderless
+              onClick={handleTimeClick}
+            >
+              {t`Add time`}
+            </SelectorTimeButton>
+          )}
+          <SelectorSubmitButton primary onClick={onSubmit}>
+            {t`Save`}
+          </SelectorSubmitButton>
+        </SelectorFooter>
+      </SelectorContent>
     </div>
   );
 });
