@@ -7,25 +7,17 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const questionDetails = {
+const questionDetails = getQuestionDetails({
   name: "First Series",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-  },
-  display: "line",
-};
+  source: ORDERS_ID,
+  breakout: ORDERS.CREATED_AT,
+});
 
-const secondSeriesQuestion = {
+const secondSeriesQuestion = getQuestionDetails({
   name: "Second Series",
-  query: {
-    "source-table": PEOPLE_ID,
-    aggregation: [["count"]],
-    breakout: [["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }]],
-  },
-  display: "line",
-};
+  source: PEOPLE_ID,
+  breakout: PEOPLE.CREATED_AT,
+});
 
 describe.skip("issue 20637", () => {
   beforeEach(() => {
@@ -57,3 +49,15 @@ describe.skip("issue 20637", () => {
       .and("have.length", 2);
   });
 });
+
+function getQuestionDetails({ name, source, breakout } = {}) {
+  return {
+    name,
+    query: {
+      "source-table": source,
+      aggregation: [["count"]],
+      breakout: [["field", breakout, { "temporal-unit": "month" }]],
+    },
+    display: "line",
+  };
+}
