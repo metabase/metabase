@@ -1,5 +1,5 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import Settings from "metabase/lib/settings";
 import {
   getDateStyleFromSettings,
@@ -7,9 +7,6 @@ import {
 } from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
 import { FormField, FormValues } from "./types";
-
-const DATE_FORMAT = "YYYY-MM-DD";
-const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export interface FormDateWidgetProps {
   field: FormField;
@@ -39,11 +36,9 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const format = hasTime ? DATE_TIME_FORMAT : DATE_FORMAT;
-
   const value = useMemo(() => {
-    return field.value ? moment(field.value, format) : undefined;
-  }, [field, format]);
+    return field.value ? moment.parseZone(field.value) : undefined;
+  }, [field]);
 
   const handleFocus = useCallback(() => {
     field.onFocus?.(field.value);
@@ -55,9 +50,9 @@ const FormDateWidget = forwardRef(function FormDateWidget(
 
   const handleChangeDate = useCallback(
     (newValue?: Moment) => {
-      field.onChange?.(newValue?.format(format));
+      field.onChange?.(newValue?.format());
     },
-    [field, format],
+    [field],
   );
 
   const handleChangeTimezone = useCallback(

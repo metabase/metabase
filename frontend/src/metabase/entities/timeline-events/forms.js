@@ -1,9 +1,5 @@
 import { t } from "ttag";
-import {
-  getDefaultTimezone,
-  hasTimePart,
-  parseTimestamp,
-} from "metabase/lib/time";
+import { hasTimePart, parseTimestamp } from "metabase/lib/time";
 import { getTimelineIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
@@ -42,7 +38,6 @@ const createForm = () => {
     {
       name: "timezone",
       type: "hidden",
-      initial: getDefaultTimezone(),
     },
     {
       name: "time_matters",
