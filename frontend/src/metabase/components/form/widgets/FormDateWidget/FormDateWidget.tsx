@@ -1,34 +1,41 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment";
+import Settings from "metabase/lib/settings";
 import {
   getDateStyleFromSettings,
   getTimeStyleFromSettings,
 } from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
-import { FormField } from "./types";
+import { FormField, FormValues } from "./types";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export interface FormDateWidgetProps {
   field: FormField;
+  values?: FormValues;
   placeholder?: string;
   hasTime?: boolean;
   hasTimezone?: boolean;
+  timezoneFieldName?: string;
   readOnly?: boolean;
   autoFocus?: boolean;
   tabIndex?: number;
+  onChangeField?: (name: string, value?: string) => void;
 }
 
 const FormDateWidget = forwardRef(function FormDateWidget(
   {
     field,
     placeholder,
+    values,
     hasTime,
     hasTimezone,
+    timezoneFieldName = "timezone",
     readOnly,
     autoFocus,
     tabIndex,
+    onChangeField,
   }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -53,13 +60,22 @@ const FormDateWidget = forwardRef(function FormDateWidget(
     [field, format],
   );
 
+  const handleChangeTimezone = useCallback(
+    (timezone?: string) => {
+      onChangeField?.(timezoneFieldName, timezone);
+    },
+    [timezoneFieldName, onChangeField],
+  );
+
   return (
     <DateWidget
       ref={ref}
       date={value}
-      placeholder={placeholder}
       hasTime={hasTime}
+      timezone={values?.timezone}
+      timezones={Settings.get("available-timezones")}
       hasTimezone={hasTimezone}
+      placeholder={placeholder}
       dateFormat={getDateStyleFromSettings()}
       timeFormat={getTimeStyleFromSettings()}
       readOnly={readOnly}
@@ -68,9 +84,10 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       fullWidth
       tabIndex={tabIndex}
       aria-labelledby={`${field.name}-label`}
-      onChangeDate={handleChangeDate}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onChangeDate={handleChangeDate}
+      onChangeTimezone={handleChangeTimezone}
     />
   );
 });

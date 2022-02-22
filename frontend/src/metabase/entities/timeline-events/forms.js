@@ -1,5 +1,6 @@
 import { t } from "ttag";
-import { getDefaultTimezone, getTimelineIcons } from "metabase/lib/timeline";
+import { getDefaultTimezone } from "metabase/lib/time";
+import { getTimelineIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
 const FORM_FIELDS = [
@@ -15,6 +16,8 @@ const FORM_FIELDS = [
     title: t`Date`,
     type: "date",
     hasTime: true,
+    hasTimezone: true,
+    timezoneFieldName: "timezone",
     validate: validate.required(),
   },
   {

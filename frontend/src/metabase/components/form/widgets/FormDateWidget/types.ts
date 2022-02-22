@@ -8,3 +8,7 @@ export interface FormField {
   onFocus?: (value?: string) => void;
   onBlur?: (value?: string) => void;
 }
+
+export interface FormValues {
+  timezone?: string;
+}

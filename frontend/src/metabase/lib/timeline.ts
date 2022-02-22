@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { t } from "ttag";
 import { Collection, Timeline } from "metabase-types/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -11,10 +10,6 @@ export const getDefaultTimeline = (
     collection_id: canonicalCollectionId(collection.id),
     icon: "star",
   };
-};
-
-export const getDefaultTimezone = () => {
-  return moment.tz.guess();
 };
 
 export const getTimelineIcons = () => {
