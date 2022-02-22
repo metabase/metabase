@@ -11,11 +11,7 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import {
-  getDateStyleFromSettings,
-  getTimeStyleFromSettings,
-  hasTimePart,
-} from "metabase/lib/time";
+import { hasTimePart } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";
@@ -30,6 +26,8 @@ export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   inputRef?: Ref<HTMLInputElement>;
   hasTime?: boolean;
+  dateFormat?: string;
+  timeFormat?: string;
   error?: boolean;
   fullWidth?: boolean;
   hasCalendar?: boolean;
@@ -43,6 +41,8 @@ const DateInput = forwardRef(function DateInput(
     inputRef,
     placeholder,
     hasTime,
+    dateFormat = DATE_FORMAT,
+    timeFormat = TIME_FORMAT,
     error,
     fullWidth,
     hasCalendar,
@@ -56,8 +56,6 @@ const DateInput = forwardRef(function DateInput(
 ) {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const dateFormat = getDateStyleFromSettings() || DATE_FORMAT;
-  const timeFormat = getTimeStyleFromSettings() || TIME_FORMAT;
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
   const now = useMemo(() => {
