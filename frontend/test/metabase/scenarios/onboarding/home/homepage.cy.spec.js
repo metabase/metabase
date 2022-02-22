@@ -10,6 +10,18 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
     });
 
+    it.skip("should handle server errors on load (metabase#20469)", () => {
+      cy.intercept("GET", "/api/database", req => {
+        req.reply({
+          statusCode: 500,
+        });
+      });
+
+      cy.visit("/");
+      // Even if we don't receive a list of our databases, we should still be able to load all items in the root collection
+      cy.findByText("Browse all items");
+    });
+
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByText("Add my data").click();
