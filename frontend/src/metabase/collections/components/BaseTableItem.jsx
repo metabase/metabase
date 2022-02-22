@@ -31,6 +31,7 @@ BaseTableItem.propTypes = {
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
   onToggleSelected: PropTypes.func,
+  toggleQuestionBookmark: PropTypes.func,
 };
 
 export function BaseTableItem({
@@ -46,6 +47,7 @@ export function BaseTableItem({
   onMove,
   onDrop,
   onToggleSelected,
+  toggleQuestionBookmark,
 }) {
   const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
 
@@ -124,6 +126,7 @@ export function BaseTableItem({
             collection={collection}
             onCopy={onCopy}
             onMove={onMove}
+            toggleBookmark={toggleQuestionBookmark}
           />
         </ItemCell>
       </tr>
@@ -139,6 +142,7 @@ export function BaseTableItem({
     collection,
     onCopy,
     onMove,
+    toggleQuestionBookmark,
   ]);
 
   if (!draggable) {

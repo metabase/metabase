@@ -73,6 +73,7 @@ BaseItemsTable.propTypes = {
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
   getIsSelected: PropTypes.func,
+  toggleQuestionBookmark: PropTypes.func,
 
   // Used for dragging
   headless: PropTypes.bool,
@@ -98,6 +99,7 @@ function BaseItemsTable({
   onToggleSelected,
   getIsSelected = () => false,
   headless = false,
+  toggleQuestionBookmark,
   ...props
 }) {
   const itemRenderer = item =>
@@ -111,6 +113,7 @@ function BaseItemsTable({
       onMove,
       onDrop,
       onToggleSelected,
+      toggleQuestionBookmark,
     });
 
   return (

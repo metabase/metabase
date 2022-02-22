@@ -41,7 +41,7 @@ function ActionMenu({
 
   const handleBookmark = useCallback(
     (id, shouldBookmark) => {
-      toggleBookmark(id, shouldBookmark);
+      toggleBookmark(3, true);
       // item.setArchived(true);
     },
     [/*item, */ toggleBookmark],
