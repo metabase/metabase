@@ -64,7 +64,7 @@ export function isDashboardParameterWithoutMapping(parameter, dashboard) {
 }
 
 function getMappingTargetField(card, mapping, metadata) {
-  if (!card) {
+  if (!card || !card.dataset_query) {
     return null;
   }
 
