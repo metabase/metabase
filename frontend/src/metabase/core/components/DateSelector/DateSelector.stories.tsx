@@ -34,14 +34,5 @@ export const WithTimezone = Template.bind({});
 WithTimezone.args = {
   hasTime: true,
   timezone: "US/Central",
-  timezones: [
-    {
-      name: "Canada/Central",
-      value: "Canada/Central",
-    },
-    {
-      name: "US/Central",
-      value: "US/Central",
-    },
-  ],
+  timezones: ["Canada/Central", "US/Central"],
 };
