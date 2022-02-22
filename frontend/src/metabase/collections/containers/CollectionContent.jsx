@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
+import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -46,6 +47,8 @@ function mapDispatchToProps() {
   return {
     toggleQuestionBookmark: (id, shouldBeBookmarked) =>
       Questions.objectActions.setFavorited(id, shouldBeBookmarked),
+    toggleDashboardBookmark: (id, shouldBeBookmarked) =>
+      Dashboards.objectActions.setFavorited(id, shouldBeBookmarked),
   };
 }
 
@@ -58,6 +61,7 @@ function CollectionContent({
   handleToggleMobileSidebar,
   metadata,
   toggleQuestionBookmark,
+  toggleDashboardBookmark,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
@@ -222,6 +226,7 @@ function CollectionContent({
                         onMove={handleMove}
                         onCopy={handleCopy}
                         toggleQuestionBookmark={toggleQuestionBookmark}
+                        toggleDashboardBookmark={toggleDashboardBookmark}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (

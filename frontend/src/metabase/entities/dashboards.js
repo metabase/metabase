@@ -66,7 +66,7 @@ const Dashboards = createEntity({
         opts,
       ),
 
-    setFavorited: async ({ id }, favorite) => {
+    setFavorited: async (id, favorite) => {
       if (favorite) {
         await Dashboards.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };
