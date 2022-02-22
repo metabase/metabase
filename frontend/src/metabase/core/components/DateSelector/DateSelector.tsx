@@ -54,6 +54,10 @@ const DateSelector = forwardRef(function DateSelector(
 ): JSX.Element {
   const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(date));
 
+  const today = useMemo(() => {
+    return moment.tz(timezone).startOf("date");
+  }, [timezone]);
+
   const time = useMemo(() => {
     return moment.duration({
       hours: date?.hours(),
@@ -77,26 +81,29 @@ const DateSelector = forwardRef(function DateSelector(
 
   const handleTimeChange = useCallback(
     (newTime?: Duration) => {
-      const newDate = date ? date.clone() : moment.tz(timezone).startOf("date");
+      const newDate = date ? date.clone() : today.clone();
       newDate.hours(newTime ? newTime.hours() : 0);
       newDate.minutes(newTime ? newTime.minutes() : 0);
       onChangeDate?.(newDate);
       setIsTimeShown(newTime != null);
     },
-    [date, timezone, onChangeDate],
+    [date, today, onChangeDate],
   );
 
   const handleTimeClick = useCallback(() => {
-    const newDate = date ? date.clone() : moment.tz(timezone).startOf("date");
+    const newDate = date ?? today;
     onChangeDate?.(newDate);
     setIsTimeShown(true);
-  }, [date, timezone, onChangeDate]);
+  }, [date, today, onChangeDate]);
 
   const handleTimezoneChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
+      const newDate = date ? date.clone() : today.clone();
+      newDate.tz(timezone, true);
+      onChangeDate?.(newDate);
       onChangeTimezone?.(event.target.value);
     },
-    [onChangeTimezone],
+    [date, today, timezone, onChangeDate, onChangeTimezone],
   );
 
   return (

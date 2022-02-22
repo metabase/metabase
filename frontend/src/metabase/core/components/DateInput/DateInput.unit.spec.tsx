@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DateInput, { DateInputProps } from "./DateInput";

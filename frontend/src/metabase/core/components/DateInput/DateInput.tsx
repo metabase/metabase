@@ -60,13 +60,13 @@ const DateInput = forwardRef(function DateInput(
   const [isFocused, setIsFocused] = useState(false);
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
-  const now = useMemo(() => {
-    return moment.tz(timezone);
+  const today = useMemo(() => {
+    return moment.tz(timezone).startOf("date");
   }, [timezone]);
 
-  const nowText = useMemo(() => {
-    return now.format(dateFormat);
-  }, [now, dateFormat]);
+  const todayText = useMemo(() => {
+    return today.format(dateFormat);
+  }, [today, dateFormat]);
 
   const valueText = useMemo(() => {
     if (!value) {
@@ -117,7 +117,7 @@ const DateInput = forwardRef(function DateInput(
       {...props}
       ref={ref}
       value={isFocused ? inputText : valueText}
-      placeholder={nowText}
+      placeholder={todayText}
       error={error}
       fullWidth={fullWidth}
       rightIcon={hasCalendar ? "calendar" : undefined}
