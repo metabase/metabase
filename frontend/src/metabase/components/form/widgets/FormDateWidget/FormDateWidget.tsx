@@ -1,5 +1,6 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
-import moment, { Moment } from "moment";
+import { Moment } from "moment";
+import { parseTimestamp } from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
 import { FormField } from "./types";
 
@@ -24,7 +25,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   ref: Ref<HTMLDivElement>,
 ) {
   const value = useMemo(() => {
-    return field.value ? moment.parseZone(field.value) : undefined;
+    return field.value ? parseTimestamp(field.value) : undefined;
   }, [field]);
 
   const handleChange = useCallback(

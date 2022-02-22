@@ -1,6 +1,5 @@
-import moment from "moment";
 import { t } from "ttag";
-import { hasTimePart } from "metabase/lib/time";
+import { hasTimePart, parseTimestamp } from "metabase/lib/time";
 import { getTimelineIcons } from "metabase/lib/timeline";
 import validate from "metabase/lib/validate";
 
@@ -53,7 +52,7 @@ const createForm = () => {
 };
 
 const normalizeForm = timeline => {
-  const timestamp = moment.parseZone(timeline.timestamp);
+  const timestamp = parseTimestamp(timeline.timestamp);
 
   return {
     ...timeline,
