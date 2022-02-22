@@ -1,34 +1,46 @@
-import React, { useState } from "react";
-import { Duration } from "moment";
+import React, { useCallback, useState } from "react";
+import { duration, Duration } from "moment";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TimeInput, { TimeInputProps } from "./TimeInput";
 
-const TestTimeInput = (props: TimeInputProps) => {
+const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
   const [value, setValue] = useState<Duration>();
-  return <TimeInput {...props} value={value} onChange={setValue} />;
+
+  const handleChange = useCallback(
+    (value?: Duration) => {
+      setValue(value);
+      onChange?.(value);
+    },
+    [onChange],
+  );
+
+  return <TimeInput {...props} value={value} onChange={handleChange} />;
 };
 
 describe("TimeInput", () => {
   it("should set hours and minutes", () => {
-    render(<TestTimeInput />);
+    const onChange = jest.fn();
+
+    render(<TestTimeInput onChange={onChange} />);
 
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
-    userEvent.tab();
 
-    expect(screen.getByLabelText("Hours")).toHaveValue("05");
-    expect(screen.getByLabelText("Minutes")).toHaveValue("20");
+    expect(onChange).toHaveBeenLastCalledWith(
+      duration({ hours: 5, minutes: 20 }),
+    );
   });
 
   it("should remove time", () => {
-    render(<TestTimeInput />);
+    const onChange = jest.fn();
+
+    render(<TestTimeInput onChange={onChange} />);
 
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
     userEvent.click(screen.getByLabelText("Remove time"));
 
-    expect(screen.getByLabelText("Hours")).toHaveValue("");
-    expect(screen.getByLabelText("Minutes")).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 });
