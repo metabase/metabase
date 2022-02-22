@@ -20,22 +20,28 @@ const DateInputTest = ({ onChange, ...props }: DateInputProps) => {
 
 describe("DateInput", () => {
   it("should set date", () => {
+    const timezone = moment.tz.guess();
     const onChange = jest.fn();
 
     render(<DateInputTest onChange={onChange} />);
     userEvent.type(screen.getByRole("textbox"), "10/20/21");
 
-    const expected = moment("10/20/21", ["MM/DD/YYYY"]);
+    const expected = moment.tz("10/20/21", ["MM/DD/YYYY"], timezone);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
   it("should set date with time", () => {
+    const timezone = moment.tz.guess();
     const onChange = jest.fn();
 
     render(<DateInputTest hasTime onChange={onChange} />);
     userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15");
 
-    const expected = moment("10/20/21 9:15", ["MM/DD/YYYY, HH:mm"]);
+    const expected = moment.tz(
+      "10/20/21 9:15",
+      ["MM/DD/YYYY, HH:mm"],
+      timezone,
+    );
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
