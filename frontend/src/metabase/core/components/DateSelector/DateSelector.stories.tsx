@@ -9,8 +9,18 @@ export default {
 };
 
 const Template: ComponentStory<typeof DateSelector> = args => {
-  const [value, setValue] = useState<Moment>();
-  return <DateSelector {...args} value={value} onChange={setValue} />;
+  const [date, setDate] = useState<Moment>();
+  const [timezone, setTimezone] = useState("US/Central");
+
+  return (
+    <DateSelector
+      {...args}
+      date={date}
+      timezone={timezone}
+      onChangeDate={setDate}
+      onChangeTimezone={setTimezone}
+    />
+  );
 };
 
 export const Default = Template.bind({});

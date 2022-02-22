@@ -1,4 +1,5 @@
 import React, {
+  ChangeEvent,
   CSSProperties,
   forwardRef,
   Ref,
@@ -24,11 +25,11 @@ import Select from "metabase/core/components/Select";
 export interface DateSelectorProps {
   className?: string;
   style?: CSSProperties;
-  value?: Moment;
+  date?: Moment;
   hasTime?: boolean;
   timezone?: string;
   timezones?: TimezoneOption[];
-  onChange?: (date?: Moment) => void;
+  onChangeDate?: (date?: Moment) => void;
   onChangeTimezone?: (timezone: string) => void;
   onSubmit?: () => void;
 }
@@ -42,57 +43,64 @@ const DateSelector = forwardRef(function DateSelector(
   {
     className,
     style,
-    value,
+    date,
     hasTime,
     timezone,
     timezones,
-    onChange,
+    onChangeDate,
     onChangeTimezone,
     onSubmit,
   }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
+  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(date));
 
   const time = useMemo(() => {
     return moment.duration({
-      hours: value?.hours(),
-      minutes: value?.minutes(),
+      hours: date?.hours(),
+      minutes: date?.minutes(),
     });
-  }, [value]);
+  }, [date]);
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, dateStart: Moment) => {
       const newDate = dateStart.clone().local();
-      newDate.hours(value ? value.hours() : 0);
-      newDate.minutes(value ? value.minutes() : 0);
-      onChange?.(newDate);
+      newDate.hours(date ? date.hours() : 0);
+      newDate.minutes(date ? date.minutes() : 0);
+      onChangeDate?.(newDate);
     },
-    [value, onChange],
+    [date, onChangeDate],
   );
 
   const handleTimeChange = useCallback(
     (newTime?: Duration) => {
-      const newDate = value ? value.clone() : moment().startOf("date");
+      const newDate = date ? date.clone() : moment().startOf("date");
       newDate.hours(newTime ? newTime.hours() : 0);
       newDate.minutes(newTime ? newTime.minutes() : 0);
-      onChange?.(newDate);
+      onChangeDate?.(newDate);
       setIsTimeShown(newTime != null);
     },
-    [value, onChange],
+    [date, onChangeDate],
   );
 
   const handleTimeClick = useCallback(() => {
-    const newDate = value ? value.clone() : moment().startOf("date");
-    onChange?.(newDate);
+    const newDate = date ? date.clone() : moment().startOf("date");
+    onChangeDate?.(newDate);
     setIsTimeShown(true);
-  }, [value, onChange]);
+  }, [date, onChangeDate]);
+
+  const handleTimezoneChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      onChangeTimezone?.(event.target.value);
+    },
+    [onChangeTimezone],
+  );
 
   return (
     <div ref={ref} className={className} style={style}>
       <Calendar
-        initial={value}
-        selected={value}
+        initial={date}
+        selected={date}
         isRangePicker={false}
         onChange={handleDateChange}
       />
@@ -108,7 +116,7 @@ const DateSelector = forwardRef(function DateSelector(
             <Select
               value={timezone}
               options={timezones}
-              onChange={onChangeTimezone}
+              onChange={handleTimezoneChange}
             />
           </SelectorField>
         )}
