@@ -266,7 +266,7 @@
 
 (defmulti describe-nested-field-columns
   "Return information about the nestable columns in a `table`. Required for drivers that support `:nested-field-columns`. Results
-  should match the [[metabase.sync.interface/JSONMetadata]] schema."
+  should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
   {:added "0.43.0", :arglists '([this database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

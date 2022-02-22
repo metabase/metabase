@@ -54,6 +54,23 @@
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
 
+(def NestedFCMetadataEntry
+  "Schema for the expected output of `describe-nested-field-columns`.
+  This one doesn't use the `nested-fields` key because we are flattening nested keys."
+  {:name                               su/NonBlankString
+   :parents                            [s/Keyword]
+   :base-type                          su/FieldType
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
+   s/Keyword                           s/Any}
+  )
+
+(def NestedFCMetadata
+  "Schema for the expected output of `describe-nested-field-columns`."
+  (s/maybe #{NestedFCMetadataEntry}))
+
 (def TimeZoneId
   "Schema predicate ensuring a valid time zone string"
   (s/pred (fn [tz-str]
