@@ -1,7 +1,9 @@
-import React from "react";
+import React, { memo } from "react";
+import { msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Collection, Timeline } from "metabase-types/api";
 import {
+  CardAside,
   CardBody,
   CardDescription,
   CardIcon,
@@ -18,6 +20,9 @@ const TimelineCard = ({
   timeline,
   collection,
 }: TimelineCardProps): JSX.Element => {
+  const eventsCount = timeline.events?.length;
+  const hasDescription = Boolean(timeline.description);
+
   return (
     <CardRoot to={Urls.timelineInCollection(timeline, collection)}>
       <CardIcon name={timeline.icon} />
@@ -25,8 +30,17 @@ const TimelineCard = ({
         <CardTitle>{timeline.name}</CardTitle>
         <CardDescription>{timeline.description}</CardDescription>
       </CardBody>
+      {eventsCount != null && (
+        <CardAside isTopAligned={hasDescription}>
+          {ngettext(
+            msgid`${eventsCount} event`,
+            `${eventsCount} events`,
+            eventsCount,
+          )}
+        </CardAside>
+      )}
     </CardRoot>
   );
 };
 
-export default TimelineCard;
+export default memo(TimelineCard);

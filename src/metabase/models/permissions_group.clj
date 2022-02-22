@@ -9,12 +9,11 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -23,46 +22,52 @@
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
-(defn- get-or-create-magic-group! [group-name]
+(defn- magic-group [group-name]
+  ;; these are memoized by the application DB in case it gets swapped out/mocked
+  (let [f (memoize
+           (fn [_ _]
+             (u/prog1 (db/select-one PermissionsGroup :name group-name)
+               ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
+               ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
+               ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
+               (when-not <>
+                 (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
+                                 {:name group-name}))))))]
+    (fn []
+      (f (mdb.connection/db-type) (mdb.connection/data-source)))))
+
+(def all-users-group-name
+  "The name of the \"All Users\" magic group."
+  "All Users")
+
+(def ^{:arglists '([])} all-users
+  "Fetch the `All Users` permissions group, creating it if needed."
+  (magic-group all-users-group-name))
+
+(def admin-group-name
+  "The name of the \"Administrators\" magic group."
+  "Administrators")
+
+(def ^{:arglists '([])} admin
+  "Fetch the `Administrators` permissions group, creating it if needed."
+  (magic-group admin-group-name))
+
+(defn- ^:deprecated get-or-create-magic-group! [group-name]
   ;; these are memoized by the application DB in case it gets swapped out/mocked
   (let [f (memoize
            (fn [_ _]
              (or (db/select-one PermissionsGroup
                    :name group-name)
-                 (u/prog1 (db/insert! PermissionsGroup
-                            :name group-name)
-                   (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
-                                                         group-name (:id <>))))))))]
+                 (db/insert! PermissionsGroup
+                   :name group-name))))]
     (fn []
       (f (mdb.connection/db-type) (mdb.connection/data-source)))))
 
-(def ^{:const true
-       :doc   "The name of the \"All Users\" magic group."
-       :added "0.41.0"} all-users-group-name
-  "All Users")
-
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  all-users
-  "Fetch the `All Users` permissions group, creating it if needed."
-  (get-or-create-magic-group! all-users-group-name))
-
-(def ^{:const true
-       :doc   "The name of the \"Administrators\" magic group."
-       :added "0.41.0"} admin-group-name
-  "Administrators")
-
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  admin
-  "Fetch the `Administators` permissions group, creating it if needed."
-  (get-or-create-magic-group! admin-group-name))
-
-(def ^{:const true
-       :doc   "The name of the \"MetaBot\" magic group."
-       :added "0.41.0"} metabot-group-name
+(def ^:deprecated metabot-group-name
+  "The name of the \"MetaBot\" magic group."
   "MetaBot")
 
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  metabot
+(def ^{:arglists '([])} ^:deprecated metabot
   "Fetch the `MetaBot` permissions group, creating it if needed."
   (get-or-create-magic-group! metabot-group-name))
 

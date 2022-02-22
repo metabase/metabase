@@ -546,7 +546,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- test-data-graph [group]
-  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
+  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))
 
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
@@ -559,7 +559,7 @@
       (testing "after"
         ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
         ;; retained (#3888)
-        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
+        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas "PUBLIC" (mt/id :categories)] :all)
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
@@ -569,11 +569,11 @@
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
       ;; try to grant idential permissions to the table twice
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
-             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
+             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :data :schemas]))))))
 
 (deftest metabot-graph-test
   (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
@@ -598,7 +598,7 @@
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas]
+      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas]
                                       {"PUBLIC"
                                        {(mt/id :venues)
                                         {:read :all, :query :segmented}}})
@@ -610,8 +610,9 @@
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
       (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
-        (is (= {db-id {:native  :write
-                       :schemas :all}}
+        (is (= {db-id {:data
+                       {:native  :write
+                        :schemas :all}}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))
@@ -620,7 +621,7 @@
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
       (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id]]
+      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
         (letfn [(perms []
                   (get-in (perms/data-perms-graph) ks))
                 (set-perms! [new-perms]

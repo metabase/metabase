@@ -35,6 +35,8 @@
             [metabase.api.task :as task]
             [metabase.api.testing :as testing]
             [metabase.api.tiles :as tiles]
+            [metabase.api.timeline :as timeline]
+            [metabase.api.timeline-event :as timeline-event]
             [metabase.api.transform :as transform]
             [metabase.api.user :as user]
             [metabase.api.util :as util]
@@ -93,6 +95,8 @@
                                         testing/routes
                                         (fn [_ respond _] (respond nil))))
   (context "/tiles"                [] (+auth tiles/routes))
+  (context "/timeline"             [] (+auth timeline/routes))
+  (context "/timeline-event"       [] (+auth timeline-event/routes))
   (context "/transform"            [] (+auth transform/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

@@ -310,7 +310,11 @@ export function newTimelineInCollection(collection) {
 }
 
 export function editTimelineInCollection(timeline, collection) {
-  return `${timelineInCollection(collection, timeline)}/edit`;
+  return `${timelineInCollection(timeline, collection)}/edit`;
+}
+
+export function timelineArchiveInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/archive`;
 }
 
 export function newEventInCollection(timeline, collection) {
@@ -319,6 +323,16 @@ export function newEventInCollection(timeline, collection) {
 
 export function newEventAndTimelineInCollection(collection) {
   return `${timelinesInCollection(collection)}/new/events/new`;
+}
+
+export function editEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/edit`;
+}
+
+export function deleteEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/delete`;
 }
 
 export function extractEntityId(slug) {

@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import { updateIn } from "icepick";
+import _ from "underscore";
+import { TimelineSchema } from "metabase/schema";
 import { TimelineApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline } from "metabase/lib/timeline";
@@ -9,6 +12,7 @@ const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
+  schema: TimelineSchema,
   forms,
 
   api: {
@@ -48,6 +52,24 @@ const Timelines = createEntity({
         { archived },
         undo(opts, t`timeline`, archived ? t`archived` : t`unarchived`),
       ),
+  },
+
+  reducer: (state = {}, action) => {
+    if (action.type === TimelineEvents.actionTypes.CREATE) {
+      const event = TimelineEvents.HACK_getObjectFromAction(action);
+      return updateIn(state, [event.timeline_id, "events"], (events = []) => {
+        return [...events, event.id];
+      });
+    }
+
+    if (action.type === TimelineEvents.actionTypes.DELETE) {
+      const eventId = action.payload.result;
+      return _.mapObject(state, timeline =>
+        updateIn(timeline, ["events"], events => _.without(events, eventId)),
+      );
+    }
+
+    return state;
   },
 });
 

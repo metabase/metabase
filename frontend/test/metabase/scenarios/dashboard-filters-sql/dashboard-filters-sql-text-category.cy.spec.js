@@ -55,7 +55,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         });
       });
 
-      it(`should work for "${filter}" when set as the default filter`, () => {
+      it(`should work for "${filter}" when set as the default filter and when that filter is removed (metabase#20493)`, () => {
         cy.findByText("Default value")
           .next()
           .click();
@@ -67,6 +67,14 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
         });
+
+        filterWidget()
+          .find(".Icon-close")
+          .click();
+
+        cy.url().should("not.include", value);
+
+        cy.findByText("Rustic Paper Wallet");
       });
     });
   },

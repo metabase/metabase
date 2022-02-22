@@ -57,7 +57,9 @@ function VisiblePropExample() {
   return (
     <TippyPopover
       visible={visible}
-      onHide={() => setVisible(false)}
+      onHide={() => {
+        setVisible(false);
+      }}
       placement="left-end"
       content={content}
     >

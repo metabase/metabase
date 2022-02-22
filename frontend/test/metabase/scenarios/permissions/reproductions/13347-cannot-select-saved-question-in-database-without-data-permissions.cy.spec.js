@@ -14,8 +14,8 @@ describe.skip("issue 13347", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        1: { schemas: "all", native: "write" },
-        [PG_DB_ID]: { schemas: "none", native: "none" },
+        1: { data: { schemas: "all", native: "write" } },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
     });
 

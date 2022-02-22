@@ -1,10 +1,14 @@
 import React, { Fragment } from "react";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import DeleteEventModal from "./containers/DeleteEventModal";
+import EditEventModal from "./containers/EditEventModal";
+import EditTimelineModal from "./containers/EditTimelineModal";
 import NewEventModal from "./containers/NewEventModal";
 import NewEventWithTimelineModal from "./containers/NewEventWithTimelineModal";
 import NewTimelineModal from "./containers/NewTimelineModal";
-import TimelineListModal from "./containers/TimelineListModal";
-import TimelineModal from "./containers/TimelineModal";
+import TimelineArchiveModal from "./containers/TimelineArchiveModal";
+import TimelineDetailsModal from "./containers/TimelineDetailsModal";
+import TimelineEntryModal from "./containers/TimelineEntryModal";
 
 const getRoutes = () => {
   return (
@@ -12,7 +16,7 @@ const getRoutes = () => {
       <ModalRoute
         {...{
           path: "timelines",
-          modal: TimelineListModal,
+          modal: TimelineEntryModal,
         }}
       />
       <ModalRoute
@@ -24,7 +28,19 @@ const getRoutes = () => {
       <ModalRoute
         {...{
           path: "timelines/:timelineId",
-          modal: TimelineModal,
+          modal: TimelineDetailsModal,
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/edit",
+          modal: EditTimelineModal,
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/archive",
+          modal: TimelineArchiveModal,
         }}
       />
       <ModalRoute
@@ -37,6 +53,18 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/events/new",
           modal: NewEventModal,
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/events/:timelineEventId/edit",
+          modal: EditEventModal,
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/events/:timelineEventId/delete",
+          modal: DeleteEventModal,
         }}
       />
     </Fragment>

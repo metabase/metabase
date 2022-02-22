@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss]
+        edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -61,7 +61,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss]
+        edition: [oss, ee]
         folder:
           - "custom-column"
           - "dashboard"
@@ -70,6 +70,8 @@ jobs:
           - "downloads"
           - "moderation"
           - "native"
+          - "permissions"
+          - "sharing"
           - "smoketest"
     services:
       maildev:

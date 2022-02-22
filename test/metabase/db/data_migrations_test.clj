@@ -12,37 +12,12 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.util.password :as u.password]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
-
-(deftest clear-ldap-user-local-passwords-test
-  (testing "Test clearing of LDAP user local passwords"
-    (mt/with-temp* [User [ldap-user {:email     "ldapuser@metabase.com"
-                                     :password  "something secret"
-                                     :ldap_auth true}]
-                    User [user      {:email    "notanldapuser@metabase.com"
-                                     :password "no change"}]]
-      (#'migrations/clear-ldap-user-local-passwords)
-      (let [get-pass-and-salt          #(db/select-one [User :password :password_salt] :id (u/the-id %))
-            {ldap-pass :password,
-             ldap-salt :password_salt} (get-pass-and-salt ldap-user)
-            {user-pass :password,
-             user-salt :password_salt} (get-pass-and-salt user)]
-        (testing "The LDAP user password should be no good now that it's been cleared and replaced"
-          (is (= false
-                 (u.password/verify-password "something secret" ldap-salt ldap-pass))))
-        (testing "There should be no change for a non ldap user"
-          (is (= true
-                 (u.password/verify-password "no change" user-salt user-pass))))))))
-
-
-;;; -------------------------------------------- add-migrated-collections --------------------------------------------
 
 (def ^:private migrated-collection-names #{"Migrated Dashboards" "Migrated Pulses" "Migrated Questions"})
 

@@ -1,16 +1,25 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Collections from "metabase/entities/collections";
+import { MetabaseApi } from "metabase/services";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useOnUnmount } from "metabase/hooks/use-on-unmount";
+import { usePrevious } from "metabase/hooks/use-previous";
+
 import fitViewport from "metabase/hoc/FitViewPort";
-
-import View from "../components/view/View";
-// import Notebook from "../components/notebook/Notebook";
-
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+
+import View from "../components/view/View";
 
 import {
   getCard,
@@ -53,15 +62,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
 } from "../selectors";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
 import * as actions from "../actions";
-import { push } from "react-router-redux";
-
-import Collections from "metabase/entities/collections";
-import { MetabaseApi } from "metabase/services";
 
 function autocompleteResults(card, prefix) {
   const databaseId = card && card.dataset_query && card.dataset_query.database;
@@ -90,11 +91,9 @@ const mapStateToProps = (state, props) => {
 
     parameterValues: getParameterValues(state),
 
-    // TODO: data ref
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
-    // TODO: legacy
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
@@ -102,7 +101,6 @@ const mapStateToProps = (state, props) => {
     tables: getTables(state),
     tableMetadata: getTableMetadata(state),
 
-    // TODO: redundant, accessible through question
     query: getQuery(state),
     metadata: getMetadata(state),
 
@@ -154,140 +152,146 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => (card && card.name) || t`Question`)
-@titleWithLoadingTime("queryStartTime")
-@fitViewport
-export default class QueryBuilder extends Component {
-  constructor(props, context) {
-    super(props, context);
+function QueryBuilder(props) {
+  const {
+    question,
+    location,
+    params,
+    fromUrl,
+    uiControls,
+    initializeQB,
+    apiCreateQuestion,
+    apiUpdateQuestion,
+    updateQuestion,
+    updateUrl,
+    locationChanged,
+    onChangeLocation,
+    setUIControls,
+    cancelQuery,
+  } = props;
 
-    // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
-    this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
-  }
+  const forceUpdate = useForceUpdate();
+  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
+    forceUpdate,
+  ]);
+  const timeout = useRef(null);
 
-  UNSAFE_componentWillMount() {
-    this.props.initializeQB(this.props.location, this.props.params);
-  }
+  const previousUIControls = usePrevious(uiControls);
+  const previousLocation = usePrevious(location);
 
-  componentDidMount() {
-    window.addEventListener("resize", this.handleResize);
-  }
+  const openModal = useCallback(modal => setUIControls({ modal }), [
+    setUIControls,
+  ]);
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  const closeModal = useCallback(() => setUIControls({ modal: null }), [
+    setUIControls,
+  ]);
+
+  const setRecentlySaved = useCallback(
+    recentlySaved => {
+      setUIControls({ recentlySaved });
+      clearTimeout(timeout.current);
+      timeout.current = setTimeout(() => {
+        setUIControls({ recentlySaved: null });
+      }, 5000);
+    },
+    [setUIControls],
+  );
+
+  const handleCreate = useCallback(
+    async card => {
+      const questionWithUpdatedCard = question.setCard(card);
+      await apiCreateQuestion(questionWithUpdatedCard);
+      setRecentlySaved("created");
+    },
+    [question, apiCreateQuestion, setRecentlySaved],
+  );
+
+  const handleSave = useCallback(
+    async (card, { rerunQuery = false } = {}) => {
+      const questionWithUpdatedCard = question.setCard(card);
+      await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+      if (!rerunQuery) {
+        await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+      }
+      if (fromUrl) {
+        onChangeLocation(fromUrl);
+      } else {
+        setRecentlySaved("updated");
+      }
+    },
+    [
+      question,
+      fromUrl,
+      apiUpdateQuestion,
+      updateUrl,
+      onChangeLocation,
+      setRecentlySaved,
+    ],
+  );
+
+  useOnMount(() => {
+    initializeQB(location, params);
+  }, []);
+
+  useOnMount(() => {
+    window.addEventListener("resize", forceUpdateDebounced);
+    return () => window.removeEventListener("resize", forceUpdateDebounced);
+  }, []);
+
+  useOnUnmount(() => {
+    cancelQuery();
+    closeModal();
+    clearTimeout(timeout.current);
+  });
+
+  useEffect(() => {
+    const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
+    const {
+      isShowingDataReference: wasShowingDataReference,
+      isShowingTemplateTagsEditor: wasShowingTemplateTagsEditor,
+    } = previousUIControls ?? {};
+
     if (
-      nextProps.uiControls.isShowingDataReference !==
-        this.props.uiControls.isShowingDataReference ||
-      nextProps.uiControls.isShowingTemplateTagsEditor !==
-        this.props.uiControls.isShowingTemplateTagsEditor
+      isShowingDataReference !== wasShowingDataReference ||
+      isShowingTemplateTagsEditor !== wasShowingTemplateTagsEditor
     ) {
       // when the data reference is toggled we need to trigger a rerender after a short delay in order to
       // ensure that some components are updated after the animation completes (e.g. card visualization)
-      window.setTimeout(this.forceUpdateDebounced, 300);
+      timeout.current = setTimeout(forceUpdateDebounced, 300);
     }
+  }, [uiControls, previousUIControls, forceUpdateDebounced]);
 
-    if (nextProps.location !== this.props.location) {
-      nextProps.locationChanged(
-        this.props.location,
-        nextProps.location,
-        nextProps.params,
-      );
+  useEffect(() => {
+    if (previousLocation && location !== previousLocation) {
+      locationChanged(previousLocation, location, params);
     }
+  }, [location, params, previousLocation, locationChanged]);
 
-    // NOTE: not sure if there's a better way to bind an action to something returned in mapStateToProps
-    // Could stack like so  and do it in a selector but ugh
-    //    @connect(null, { updateQuestion })
-    //    @connect(mapStateToProps, mapDispatchToProps)
-    if (nextProps.question) {
-      nextProps.question._update = nextProps.updateQuestion;
+  useEffect(() => {
+    if (question) {
+      question._update = updateQuestion;
     }
-  }
+  });
 
-  componentWillUnmount() {
-    // cancel the query if one is running
-    this.props.cancelQuery();
-
-    window.removeEventListener("resize", this.handleResize);
-
-    clearTimeout(this.timeout);
-
-    this.closeModal(); // close any modal that might be open
-  }
-
-  // When the window is resized we need to re-render, mainly so that our visualization pane updates
-  // Debounce the function to improve resizing performance.
-  handleResize = e => {
-    this.forceUpdateDebounced();
-  };
-
-  // NOTE: these were lifted from QueryHeader. Move to Redux?
-  openModal = modal => {
-    this.props.setUIControls({ modal });
-  };
-  closeModal = () => {
-    this.props.setUIControls({ modal: null });
-  };
-
-  setRecentlySaved = recentlySaved => {
-    this.props.setUIControls({ recentlySaved });
-    clearTimeout(this.timeout);
-    this.timeout = setTimeout(() => {
-      this.props.setUIControls({ recentlySaved: null });
-    }, 5000);
-  };
-
-  handleCreate = async card => {
-    const { question, apiCreateQuestion } = this.props;
-    const questionWithUpdatedCard = question.setCard(card);
-    await apiCreateQuestion(questionWithUpdatedCard);
-
-    this.setRecentlySaved("created");
-  };
-
-  handleSave = async (card, { rerunQuery = false } = {}) => {
-    const { question, apiUpdateQuestion, updateUrl } = this.props;
-    const questionWithUpdatedCard = question.setCard(card);
-    await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
-    if (!rerunQuery) {
-      await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
-    }
-
-    if (this.props.fromUrl) {
-      this.props.onChangeLocation(this.props.fromUrl);
-    } else {
-      this.setRecentlySaved("updated");
-    }
-  };
-
-  resetStateOnTimeout = () => {
-    // clear any previously set timeouts then start a new one
-    clearTimeout(this.timeout);
-    this.timeout = setTimeout(() => {
-      this.props.onSetRecentlySaved(null);
-      this.timeout = null;
-    }, 5000);
-  };
-
-  render() {
-    const {
-      uiControls: { modal, recentlySaved },
-    } = this.props;
-
-    return (
-      <View
-        {...this.props}
-        // NOTE: these were lifted from QueryHeader. Move to Redux?
-        modal={modal}
-        onOpenModal={this.openModal}
-        onCloseModal={this.closeModal}
-        // recently saved indication
-        recentlySaved={recentlySaved}
-        onSetRecentlySaved={this.setRecentlySaved}
-        // save/create actions
-        onSave={this.handleSave}
-        onCreate={this.handleCreate}
-        handleResize={this.handleResize}
-      />
-    );
-  }
+  return (
+    <View
+      {...props}
+      modal={uiControls.modal}
+      recentlySaved={uiControls.recentlySaved}
+      onOpenModal={openModal}
+      onCloseModal={closeModal}
+      onSetRecentlySaved={setRecentlySaved}
+      onSave={handleSave}
+      onCreate={handleCreate}
+      handleResize={forceUpdateDebounced}
+    />
+  );
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ card }) => card?.name ?? t`Question`),
+  titleWithLoadingTime("queryStartTime"),
+  fitViewport,
+)(QueryBuilder);

@@ -17,11 +17,13 @@ describeWithToken("postgres > user > query", () => {
     // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [PG_DB_ID]: { schemas: "none", native: "none" },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
-      [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
+      [DATA_GROUP]: {
+        [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+      },
       [COLLECTION_GROUP]: {
-        [PG_DB_ID]: { schemas: "none", native: "none" },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
     });
 

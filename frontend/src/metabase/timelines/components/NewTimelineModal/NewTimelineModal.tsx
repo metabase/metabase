@@ -25,8 +25,8 @@ const NewTimelineModal = ({
   }, [collection]);
 
   const handleSubmit = useCallback(
-    (values: Partial<Timeline>) => {
-      onSubmit(values, collection);
+    async (values: Partial<Timeline>) => {
+      await onSubmit(values, collection);
     },
     [collection, onSubmit],
   );
