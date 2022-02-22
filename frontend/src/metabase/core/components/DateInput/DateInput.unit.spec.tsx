@@ -23,7 +23,6 @@ describe("DateInput", () => {
     const onChange = jest.fn();
 
     render(<DateInputTest onChange={onChange} />);
-
     userEvent.type(screen.getByRole("textbox"), "10/20/21");
 
     const expected = moment("10/20/21", ["MM/DD/YYYY"]);
@@ -34,10 +33,19 @@ describe("DateInput", () => {
     const onChange = jest.fn();
 
     render(<DateInputTest hasTime onChange={onChange} />);
-
     userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15");
 
     const expected = moment("10/20/21 9:15", ["MM/DD/YYYY, HH:mm"]);
     expect(onChange).toHaveBeenLastCalledWith(expected);
+  });
+
+  it("should clear date", () => {
+    const onChange = jest.fn();
+
+    render(<DateInputTest onChange={onChange} />);
+    userEvent.type(screen.getByRole("textbox"), "10/20/21");
+    userEvent.clear(screen.getByRole("textbox"));
+
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 });

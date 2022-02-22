@@ -1,31 +1,39 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NumericInput, { NumericInputProps } from "./NumericInput";
 
-const NumericInputTest = (props: NumericInputProps) => {
+const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {
   const [value, setValue] = useState<number>();
-  return <NumericInput {...props} value={value} onChange={setValue} />;
+
+  const handleChange = useCallback(
+    (value?: number) => {
+      setValue(value);
+      onChange?.(value);
+    },
+    [onChange],
+  );
+
+  return <NumericInput {...props} value={value} onChange={handleChange} />;
 };
 
 describe("NumericInput", () => {
-  it("should accept test input", () => {
-    render(<NumericInputTest />);
+  it("should set number", () => {
+    const onChange = jest.fn();
 
+    render(<NumericInputTest onChange={onChange} />);
     userEvent.type(screen.getByRole("textbox"), "123");
-    expect(screen.getByDisplayValue("123")).toBeInTheDocument();
 
-    userEvent.tab();
-    expect(screen.getByDisplayValue("123")).toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith(123);
   });
 
-  it("should reject invalid input", () => {
-    render(<NumericInputTest />);
+  it("should clear number", () => {
+    const onChange = jest.fn();
 
-    userEvent.type(screen.getByRole("textbox"), "abc");
-    expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
+    render(<NumericInputTest onChange={onChange} />);
+    userEvent.type(screen.getByRole("textbox"), "123");
+    userEvent.clear(screen.getByRole("textbox"));
 
-    userEvent.tab();
-    expect(screen.getByDisplayValue("")).toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 });

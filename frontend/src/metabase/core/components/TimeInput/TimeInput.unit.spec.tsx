@@ -19,11 +19,10 @@ const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
 };
 
 describe("TimeInput", () => {
-  it("should set hours and minutes", () => {
+  it("should set time", () => {
     const onChange = jest.fn();
 
     render(<TestTimeInput onChange={onChange} />);
-
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
 
@@ -31,11 +30,10 @@ describe("TimeInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should remove time", () => {
+  it("should clear time", () => {
     const onChange = jest.fn();
 
     render(<TestTimeInput onChange={onChange} />);
-
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
     userEvent.click(screen.getByLabelText("Remove time"));
