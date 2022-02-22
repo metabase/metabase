@@ -27,9 +27,8 @@ describe("TimeInput", () => {
     userEvent.type(screen.getByLabelText("Hours"), "5");
     userEvent.type(screen.getByLabelText("Minutes"), "20");
 
-    expect(onChange).toHaveBeenLastCalledWith(
-      duration({ hours: 5, minutes: 20 }),
-    );
+    const expected = duration({ hours: 5, minutes: 20 });
+    expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
   it("should remove time", () => {

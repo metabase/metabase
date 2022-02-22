@@ -1,53 +1,43 @@
-import React, { useState } from "react";
-import { Moment } from "moment";
+import React, { useCallback, useState } from "react";
+import moment, { Moment } from "moment";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DateInput, { DateInputProps } from "./DateInput";
 
-const DateInputTest = (props: DateInputProps) => {
+const DateInputTest = ({ onChange, ...props }: DateInputProps) => {
   const [value, setValue] = useState<Moment>();
-  return <DateInput {...props} value={value} onChange={setValue} />;
+
+  const handleChange = useCallback(
+    (value?: Moment) => {
+      setValue(value);
+      onChange?.(value);
+    },
+    [onChange],
+  );
+
+  return <DateInput {...props} value={value} onChange={handleChange} />;
 };
 
 describe("DateInput", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2015, 0, 10));
-  });
+  it("should set date", () => {
+    const onChange = jest.fn();
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("should accept text input", () => {
-    render(<DateInputTest />);
+    render(<DateInputTest onChange={onChange} />);
 
     userEvent.type(screen.getByRole("textbox"), "10/20/21");
-    expect(screen.getByDisplayValue("10/20/21")).toBeInTheDocument();
 
-    userEvent.tab();
-    expect(screen.getByDisplayValue("10/20/2021")).toBeInTheDocument();
+    const expected = moment("10/20/21", ["MM/DD/YYYY"]);
+    expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should reject invalid input", () => {
-    render(<DateInputTest />);
+  it("should set date with time", () => {
+    const onChange = jest.fn();
 
-    userEvent.type(screen.getByRole("textbox"), "abc");
-    expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
+    render(<DateInputTest hasTime onChange={onChange} />);
 
-    userEvent.tab();
-    expect(screen.getByDisplayValue("")).toBeInTheDocument();
-  });
+    userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15");
 
-  it("should set a placeholder", () => {
-    render(<DateInputTest />);
-
-    expect(screen.getByPlaceholderText("01/10/2015")).toBeInTheDocument();
-  });
-
-  it("should set a label", () => {
-    render(<DateInputTest aria-label="Date" />);
-
-    expect(screen.getByLabelText("Date")).toBeInTheDocument();
+    const expected = moment("10/20/21 9:15", ["MM/DD/YYYY, HH:mm"]);
+    expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 });
