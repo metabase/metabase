@@ -224,7 +224,7 @@ describe("NativeQuery", () => {
         expect(q.canRun()).toBe(false);
       });
 
-      it("dimension type with a widget-type of none", () => {
+      it("should treat a widget-type of 'none` as valid", () => {
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
             type: "dimension",
@@ -233,7 +233,7 @@ describe("NativeQuery", () => {
           }),
         );
 
-        expect(q.canRun()).toBe(false);
+        expect(q.canRun()).toBe(true);
       });
 
       it("dimension type without a dimension", () => {

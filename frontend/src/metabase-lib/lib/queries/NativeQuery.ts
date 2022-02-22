@@ -292,8 +292,7 @@ export default class NativeQuery extends AtomicQuery {
       }
 
       const isDimensionType = t.type === "dimension";
-      const hasDefinedWidgetType =
-        t["widget-type"] && t["widget-type"] !== "none";
+      const hasDefinedWidgetType = t["widget-type"] != null;
       const hasDefinedDimension = t.dimension != null;
 
       return isDimensionType && hasDefinedWidgetType && hasDefinedDimension;
