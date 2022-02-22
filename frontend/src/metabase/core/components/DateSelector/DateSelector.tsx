@@ -117,6 +117,7 @@ const DateSelector = forwardRef(function DateSelector(
             <Select
               value={timezone}
               options={timezoneOptions}
+              searchProp="name"
               onChange={handleTimezoneChange}
             />
           </SelectorField>

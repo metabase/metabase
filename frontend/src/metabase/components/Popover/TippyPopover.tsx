@@ -19,6 +19,7 @@ export interface ITippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
+const Z_INDEX = 4;
 
 const propTypes = {
   disablContentSandbox: PropTypes.bool,
@@ -96,6 +97,7 @@ function TippyPopover({
       {...props}
       duration={animationDuration}
       delay={delay}
+      zIndex={Z_INDEX}
       content={
         shouldShowContent ? (
           <EventSandbox disabled={disableContentSandbox}>
