@@ -1,8 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import PropTypes from "prop-types";
 import _ from "underscore";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
+import Icon from "metabase/components/Icon";
 
 import {
   TreeNodeRoot,
@@ -10,31 +10,23 @@ import {
   ExpandToggleIcon,
   NameContainer,
   IconContainer,
-  RightArrowContainer,
 } from "./TreeNode.styled";
+import { ITreeNodeItem } from "./types";
 
-const propTypes = {
-  isExpanded: PropTypes.bool.isRequired,
-  isSelected: PropTypes.bool.isRequired,
-  hasChildren: PropTypes.bool.isRequired,
-  onToggleExpand: PropTypes.func,
-  onSelect: PropTypes.func.isRequired,
-  depth: PropTypes.number.isRequired,
-  item: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    icon: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.shape(iconPropTypes),
-    ]),
-    hasRightArrow: PropTypes.string,
-    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  }).isRequired,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
-};
+export interface TreeNodeProps {
+  item: ITreeNodeItem;
+  depth: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  isSelected: boolean;
+  colorScheme: "default" | "admin";
+  onSelect: (item: ITreeNodeItem) => void;
+  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+}
 
 // eslint-disable-next-line react/display-name
 export const TreeNode = React.memo(
-  React.forwardRef(function TreeNode(
+  React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
     {
       isExpanded,
       isSelected,
@@ -47,7 +39,7 @@ export const TreeNode = React.memo(
     },
     ref,
   ) {
-    const { name, icon, hasRightArrow, id } = item;
+    const { name, icon, id } = item;
 
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
@@ -56,7 +48,7 @@ export const TreeNode = React.memo(
       onToggleExpand(id);
     };
 
-    const handleKeyDown = ({ key }) => {
+    const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
         case "Enter":
           onSelect(item);
@@ -82,24 +74,20 @@ export const TreeNode = React.memo(
         onKeyDown={handleKeyDown}
       >
         <ExpandToggleButton hidden={!hasChildren}>
-          <ExpandToggleIcon isExpanded={isExpanded} />
+          <ExpandToggleIcon
+            isExpanded={isExpanded}
+            name="chevronright"
+            size={12}
+          />
         </ExpandToggleButton>
 
         {icon && (
-          <IconContainer colorScheme={colorScheme}>
-            <Icon {...iconProps} />
+          <IconContainer>
+            <Icon {...(iconProps as any)} />
           </IconContainer>
         )}
         <NameContainer>{name}</NameContainer>
-
-        {hasRightArrow && (
-          <RightArrowContainer isSelected={isSelected}>
-            <Icon name="chevronright" size={14} />
-          </RightArrowContainer>
-        )}
       </TreeNodeRoot>
     );
   }),
 );
-
-TreeNode.propTypes = propTypes;

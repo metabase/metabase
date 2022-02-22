@@ -1,20 +1,19 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+import { ColorScheme, ITreeNodeItem } from "./types";
+import { TreeNode } from "./TreeNode";
 
-const propTypes = {
-  TreeNodeComponent: PropTypes.object.isRequired,
-  items: PropTypes.array.isRequired,
-  onToggleExpand: PropTypes.func,
-  onSelect: PropTypes.func.isRequired,
-  expandedIds: PropTypes.instanceOf(Set),
-  selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  depth: PropTypes.number.isRequired,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
-};
+interface TreeNodeListProps {
+  items: ITreeNodeItem[];
+  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+  onSelect: (item: ITreeNodeItem) => void;
+  expandedIds: Set<ITreeNodeItem["id"]>;
+  selectedId: ITreeNodeItem["id"];
+  depth: number;
+  colorScheme: ColorScheme;
+}
 
 export function TreeNodeList({
-  TreeNodeComponent,
   items,
   onToggleExpand,
   onSelect,
@@ -22,7 +21,7 @@ export function TreeNodeList({
   selectedId,
   depth,
   colorScheme,
-}) {
+}: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
   return (
@@ -35,7 +34,7 @@ export function TreeNodeList({
 
         return (
           <React.Fragment key={item.id}>
-            <TreeNodeComponent
+            <TreeNode
               ref={isSelected ? selectedRef : null}
               colorScheme={colorScheme}
               item={item}
@@ -49,7 +48,6 @@ export function TreeNodeList({
             {isExpanded && (
               <TreeNodeList
                 colorScheme={colorScheme}
-                TreeNodeComponent={TreeNodeComponent}
                 items={item.children}
                 onToggleExpand={onToggleExpand}
                 onSelect={onSelect}
@@ -64,5 +62,3 @@ export function TreeNodeList({
     </ul>
   );
 }
-
-TreeNodeList.propTypes = propTypes;
