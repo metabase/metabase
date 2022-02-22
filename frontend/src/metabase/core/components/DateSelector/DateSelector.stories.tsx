@@ -33,6 +33,7 @@ WithTime.args = {
 export const WithTimezone = Template.bind({});
 WithTimezone.args = {
   hasTime: true,
+  hasTimezone: true,
   timezone: "US/Central",
   timezones: ["Canada/Central", "US/Central"],
 };
