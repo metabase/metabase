@@ -21,7 +21,6 @@ import {
   SelectorSubmitButton,
   SelectorTimeButton,
 } from "./DateSelector.styled";
-import { TimezoneOption } from "./types";
 
 export interface DateSelectorProps {
   className?: string;
@@ -29,7 +28,7 @@ export interface DateSelectorProps {
   date?: Moment;
   hasTime?: boolean;
   timezone?: string;
-  timezones?: TimezoneOption[];
+  timezones?: string[];
   hasTimezone?: boolean;
   onChangeDate?: (date?: Moment) => void;
   onChangeTimezone?: (timezone: string) => void;
@@ -59,6 +58,10 @@ const DateSelector = forwardRef(function DateSelector(
       minutes: date?.minutes(),
     });
   }, [date]);
+
+  const timezoneOptions = useMemo(() => {
+    return timezones?.map(timezone => ({ name: timezone, value: timezone }));
+  }, [timezones]);
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, dateStart: Moment) => {
@@ -113,7 +116,7 @@ const DateSelector = forwardRef(function DateSelector(
             <SelectorFieldLabel>{t`Timezone`}</SelectorFieldLabel>
             <Select
               value={timezone}
-              options={timezones}
+              options={timezoneOptions}
               onChange={handleTimezoneChange}
             />
           </SelectorField>

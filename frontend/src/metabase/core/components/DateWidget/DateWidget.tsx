@@ -9,7 +9,6 @@ import { Moment } from "moment";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { TimezoneOption } from "./types";
 
 export type DateWidgetAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -20,7 +19,7 @@ export interface DateWidgetProps extends DateWidgetAttributes {
   date?: Moment;
   hasTime?: boolean;
   timezone?: string;
-  timezones?: TimezoneOption[];
+  timezones?: string[];
   hasTimezone?: boolean;
   dateFormat?: string;
   timeFormat?: string;
