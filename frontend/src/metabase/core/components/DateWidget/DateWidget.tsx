@@ -9,6 +9,7 @@ import { Moment } from "moment";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { TimezoneOption } from "./types";
 
 export type DateWidgetAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -16,24 +17,30 @@ export type DateWidgetAttributes = Omit<
 >;
 
 export interface DateWidgetProps extends DateWidgetAttributes {
-  value?: Moment;
+  date?: Moment;
   hasTime?: boolean;
+  timezone?: string;
+  timezones?: TimezoneOption[];
   dateFormat?: string;
   timeFormat?: string;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (date?: Moment) => void;
+  onChangeDate?: (date?: Moment) => void;
+  onChangeTimezone?: (timezone: string) => void;
 }
 
 const DateWidget = forwardRef(function DateWidget(
   {
-    value,
+    date,
     hasTime,
+    timezone,
+    timezones,
     dateFormat,
     timeFormat,
     error,
     fullWidth,
-    onChange,
+    onChangeDate,
+    onChangeTimezone,
     ...props
   }: DateWidgetProps,
   ref: Ref<HTMLDivElement>,
@@ -56,9 +63,12 @@ const DateWidget = forwardRef(function DateWidget(
       interactive
       content={
         <DateSelector
-          value={value}
+          date={date}
           hasTime={hasTime}
-          onChange={onChange}
+          timezone={timezone}
+          timezones={timezones}
+          onChangeDate={onChangeDate}
+          onChangeTimezone={onChangeTimezone}
           onSubmit={handleClose}
         />
       }
@@ -67,14 +77,14 @@ const DateWidget = forwardRef(function DateWidget(
       <DateInput
         {...props}
         ref={ref}
-        value={value}
+        value={date}
         hasTime={hasTime}
         hasCalendar={true}
         dateFormat={dateFormat}
         timeFormat={timeFormat}
         error={error}
         fullWidth={fullWidth}
-        onChange={onChange}
+        onChange={onChangeDate}
         onCalendarClick={handleOpen}
       />
     </TippyPopover>

@@ -10,6 +10,7 @@ import React, {
 import moment, { Duration, Moment } from "moment";
 import { t } from "ttag";
 import { hasTimePart } from "metabase/lib/time";
+import Select from "metabase/core/components/Select";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
@@ -20,7 +21,7 @@ import {
   SelectorSubmitButton,
   SelectorTimeButton,
 } from "./DateSelector.styled";
-import Select from "metabase/core/components/Select";
+import { TimezoneOption } from "./types";
 
 export interface DateSelectorProps {
   className?: string;
@@ -32,11 +33,6 @@ export interface DateSelectorProps {
   onChangeDate?: (date?: Moment) => void;
   onChangeTimezone?: (timezone: string) => void;
   onSubmit?: () => void;
-}
-
-export interface TimezoneOption {
-  name: string;
-  value: string;
 }
 
 const DateSelector = forwardRef(function DateSelector(
