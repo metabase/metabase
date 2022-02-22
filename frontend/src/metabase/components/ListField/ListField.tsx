@@ -77,8 +77,7 @@ export const ListField = ({
     }
 
     return augmentedOptions.filter(option =>
-      option[0]
-        .toString()
+      String(option[0])
         .toLowerCase()
         .includes(trimmedFilter),
     );
