@@ -10491,7 +10491,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: 'ID of the Use who bookmarked the Dashboard'
+                  remarks: 'ID of the User who bookmarked the Dashboard'
                   constraints:
                     nullable: false
                     references: core_user(id)
@@ -10525,7 +10525,7 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-032
       author: dpsutton
-      comment: Added 0.43.0 - Dashboard bookmarks table index on dashboard_id
+      comment: Added 0.43.0 - Dashboard bookmarks table index on user_id
       changes:
         - createIndex:
             tableName: dashboard_bookmark
@@ -10564,7 +10564,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: 'ID of the Use who bookmarked the Card'
+                  remarks: 'ID of the User who bookmarked the Card'
                   constraints:
                     nullable: false
                     references: core_user(id)
@@ -10598,7 +10598,7 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-036
       author: dpsutton
-      comment: Added 0.43.0 - Card bookmarks table index on card_id
+      comment: Added 0.43.0 - Card bookmarks table index on user_id
       changes:
         - createIndex:
             tableName: card_bookmark
@@ -10637,7 +10637,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: 'ID of the Use who bookmarked the Collection'
+                  remarks: 'ID of the User who bookmarked the Collection'
                   constraints:
                     nullable: false
                     references: core_user(id)
@@ -10671,7 +10671,7 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-040
       author: dpsutton
-      comment: Added 0.43.0 - Collection bookmarks table index on card_id
+      comment: Added 0.43.0 - Collection bookmarks table index on user_id
       changes:
         - createIndex:
             tableName: collection_bookmark
