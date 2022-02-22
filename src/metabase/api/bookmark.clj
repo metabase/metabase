@@ -1,4 +1,9 @@
 (ns metabase.api.bookmark
+  "Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
+  model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
+  necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
+  underlying tables the id on the actual bookmark itself is not unique among \"bookmarks\" and is not a good
+  identifier for using in the API."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.bookmark :as bookmarks
@@ -23,9 +28,9 @@
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
 
-(api/defendpoint POST "/"
+(api/defendpoint POST "/:model/:id"
   "Create a new bookmark for user."
-  [:as {{:keys [model id]} :body}]
+  [model id]
   {model Models
    id    su/IntGreaterThanZero}
   (let [[item-model bookmark-model item-key] (lookup model)]
@@ -37,6 +42,7 @@
   [model id]
   {model Models
    id    su/IntGreaterThanZero}
+  ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (db/delete! bookmark-model
                 :user_id api/*current-user-id*
