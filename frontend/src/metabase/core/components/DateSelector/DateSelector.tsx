@@ -42,7 +42,7 @@ const DateSelector = forwardRef(function DateSelector(
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, dateStart: Moment) => {
-      const newDate = dateStart.clone();
+      const newDate = dateStart.clone().local();
       newDate.hours(value ? value.hours() : 0);
       newDate.minutes(value ? value.minutes() : 0);
       onChange?.(newDate);
