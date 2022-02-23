@@ -162,32 +162,7 @@ describe("scenarios > admin > settings", () => {
     restore(); // avoid leaving https site url
   });
 
-  it("should update the formatting", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
-
-    // update the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("17:24 (24-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the new formatting in a question
-    openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/);
-
-    // reset the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("5:24 PM (12-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the reset formatting in a question
-    openOrdersTable();
-
-    cy.findByText("Created At").should("be.visible");
-    cy.contains(/^February 11, 2019, 9:40 PM$/);
-  });
-
-  it("should correctly apply the globalized date formats (metabase#11394)", () => {
+  it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
     cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
@@ -208,6 +183,16 @@ describe("scenarios > admin > settings", () => {
     cy.get(".cellData")
       .should("contain", "Created At")
       .and("contain", "2019/2/11, 21:40");
+
+    // Go back to the settings and reset the time formatting
+    cy.visit("/admin/settings/localization");
+
+    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.wait("@saveFormatting");
+
+    openOrdersTable({ limit: 2 });
+
+    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {
