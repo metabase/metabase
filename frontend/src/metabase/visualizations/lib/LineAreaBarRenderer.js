@@ -811,7 +811,14 @@ function doHistogramBarStuff(parent) {
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
 export default function lineAreaBar(element, props) {
-  const { onRender, isScalarSeries, eventTimelines, settings, series } = props;
+  const {
+    onRender,
+    onHoverChange,
+    isScalarSeries,
+    eventTimelines,
+    settings,
+    series,
+  } = props;
 
   const warnings = {};
   // `text` is displayed to users, but we deduplicate based on `key`
@@ -915,6 +922,7 @@ export default function lineAreaBar(element, props) {
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
     onGoalHover,
+    onHoverChange,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
     xDomain: xAxisProps.xDomain,

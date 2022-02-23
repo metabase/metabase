@@ -429,7 +429,10 @@ function parseTranslateStyleValue(value) {
   return [parseFloat(x), parseFloat(y)];
 }
 
-function onRenderAddEventsTimeline(chart, { events, xInterval, xDomain }) {
+function onRenderAddEventsTimeline(
+  chart,
+  { events, xInterval, xDomain, onHoverChange },
+) {
   const eventsByDate = groupEvents(events, xInterval.interval);
   const eventDates = Object.keys(eventsByDate).map(
     dateISOString => new Date(dateISOString),
@@ -487,7 +490,7 @@ function onRenderAddEventsTimeline(chart, { events, xInterval, xDomain }) {
       .attr("class", "event-tick")
       .attr("transform", transformStyle);
 
-    eventIconContainer
+    const eventIcon = eventIconContainer
       .append("path")
       .attr("class", "event-icon")
       .attr("d", iconPath)
@@ -495,6 +498,19 @@ function onRenderAddEventsTimeline(chart, { events, xInterval, xDomain }) {
         "transform",
         `scale(${scale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
       );
+
+    eventIconContainer
+      .on("mousemove", () => {
+        onHoverChange({
+          element: getUnderlyingDOMElement(eventIcon),
+          timelineEvents: group,
+        });
+        eventIconContainer.classed("hover", true);
+      })
+      .on("mouseleave", () => {
+        onHoverChange(null);
+        eventIconContainer.classed("hover", false);
+      });
   });
 
   // Move main x axis ticks lower
@@ -515,6 +531,7 @@ function onRender(
     isTimeseries,
     eventTimelines,
     onGoalHover,
+    onHoverChange,
     isSplitAxis,
     xInterval,
     xDomain,
@@ -547,6 +564,7 @@ function onRender(
     if (events.length > 0) {
       onRenderAddEventsTimeline(chart, {
         events,
+        onHoverChange,
         xInterval,
         xDomain,
       });
