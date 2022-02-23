@@ -1,10 +1,16 @@
 import d3 from "d3";
 import _ from "underscore";
+import moment from "moment";
 
+import { ICON_PATHS } from "metabase/icon_paths";
 import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
-import { adjustYAxisTicksIfNeeded } from "./apply_axis";
+import {
+  adjustYAxisTicksIfNeeded,
+  stretchTimeseriesDomain,
+} from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
+import timeseriesScale from "./timeseriesScale";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -387,13 +393,131 @@ function onRenderSetZeroGridLineClassName(chart) {
     .attr("class", "zero");
 }
 
+function getEventsFromTimelines(timelines, { xDomain }) {
+  const [minDateMoment, maxDateMoment] = xDomain;
+  const events = timelines
+    .map(t => t.events)
+    .flat()
+    .filter(Boolean);
+  return events.filter(event => {
+    const m = moment(event.timestamp);
+    return (
+      m.isSame(minDateMoment) ||
+      m.isBetween(minDateMoment, maxDateMoment) ||
+      m.isSame(maxDateMoment)
+    );
+  });
+}
+
+function groupEvents(events, interval) {
+  return _.groupBy(events, event =>
+    moment(event.timestamp)
+      .clone()
+      .startOf(interval)
+      .toISOString(),
+  );
+}
+
+function getUnderlyingDOMElement(chartElement) {
+  const [[domElement]] = chartElement;
+  return domElement;
+}
+
+function parseTranslateStyleValue(value) {
+  const style = value.replace("translate(", "").replace(")", "");
+  const [x, y] = style.split(",");
+  return [parseFloat(x), parseFloat(y)];
+}
+
+function onRenderAddEventsTimeline(chart, { events, xInterval, xDomain }) {
+  const eventsByDate = groupEvents(events, xInterval.interval);
+  const eventDates = Object.keys(eventsByDate).map(
+    dateISOString => new Date(dateISOString),
+  );
+
+  const xAxis = chart.svg().select(".axis.x");
+  const xAxisDomainLine = getUnderlyingDOMElement(xAxis.select("path.domain"));
+
+  const { width: X_AXIS_WIDTH } = xAxisDomainLine.getBoundingClientRect();
+
+  const EVENT_AXIS_WIDTH = X_AXIS_WIDTH;
+  const EVENT_ICON_MARGIN_TOP = 10;
+
+  // Event icons are resized with "transform: scale"
+  // and it creates an offset we need to correct
+  const EVENT_ICON_OFFSET_X = -16;
+
+  const X_AXIS_TICK_EXTRA_MARGIN_TOP = 20;
+
+  const scale = timeseriesScale(xInterval)
+    .domain(stretchTimeseriesDomain(xDomain, xInterval))
+    .range([0, EVENT_AXIS_WIDTH]);
+
+  const eventsAxisGenerator = d3.svg
+    .axis()
+    .scale(scale)
+    .orient("bottom")
+    .ticks(eventDates.length)
+    .tickValues(eventDates);
+
+  const eventsAxis = xAxis
+    .append("g")
+    .attr("class", "events-axis")
+    .call(eventsAxisGenerator);
+
+  eventsAxis.select("path.domain").remove();
+
+  Object.values(eventsByDate).forEach(group => {
+    const defaultTick = eventsAxis.select(".tick");
+    const transformStyle = defaultTick.attr("transform");
+    defaultTick.remove();
+
+    const isOnlyOneEvent = group.length === 1;
+    const iconName = isOnlyOneEvent ? group[0].icon : "star";
+
+    const iconPath =
+      typeof ICON_PATHS[iconName] === "string"
+        ? ICON_PATHS[iconName]
+        : ICON_PATHS[iconName].path;
+
+    const scale = iconName === "mail" ? 0.45 : 0.5;
+
+    const eventIconContainer = eventsAxis
+      .append("g")
+      .attr("class", "event-tick")
+      .attr("transform", transformStyle);
+
+    eventIconContainer
+      .append("path")
+      .attr("class", "event-icon")
+      .attr("d", iconPath)
+      .attr(
+        "transform",
+        `scale(${scale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
+      );
+  });
+
+  // Move main x axis ticks lower
+  xAxis.selectAll(".tick")[0].forEach((tick, i) => {
+    const style = tick.getAttribute("transform");
+    const [x, y] = parseTranslateStyleValue(style);
+    tick.setAttribute(
+      "transform",
+      `translate(${x},${y + X_AXIS_TICK_EXTRA_MARGIN_TOP})`,
+    );
+  });
+}
+
 // the various steps that get called
 function onRender(
   chart,
   {
+    isTimeseries,
+    eventTimelines,
     onGoalHover,
     isSplitAxis,
     xInterval,
+    xDomain,
     yAxisSplit,
     isStacked,
     formatYValue,
@@ -418,6 +542,16 @@ function onRender(
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
+  if (isTimeseries) {
+    const events = getEventsFromTimelines(eventTimelines, { xDomain });
+    if (events.length > 0) {
+      onRenderAddEventsTimeline(chart, {
+        events,
+        xInterval,
+        xDomain,
+      });
+    }
+  }
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -433,7 +567,8 @@ function beforeRenderHideDisabledAxesAndLabels(chart) {
 
 // min margin
 const MARGIN_TOP_MIN = 20; // needs to be large enough for goal line text
-const MARGIN_BOTTOM_MIN = 10;
+const MARGIN_BOTTOM_MIN_NORMAL = 10;
+const MARGIN_BOTTOM_MIN_WITH_TIMELINE_AXIS = 80;
 const MARGIN_HORIZONTAL_MIN = 20;
 
 // extra padding for axis
@@ -583,7 +718,7 @@ function beforeRenderComputeXAxisLabelType(chart) {
   }
 }
 
-function beforeRenderFixMargins(chart) {
+function beforeRenderFixMargins(chart, { isTimeseries }) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
   const xAxisMargin = computeXAxisMargin(chart);
@@ -630,14 +765,19 @@ function beforeRenderFixMargins(chart) {
     chart.margins().right,
     mins.right,
   );
-  chart.margins().bottom = Math.max(MARGIN_BOTTOM_MIN, chart.margins().bottom);
+  chart.margins().bottom = Math.max(
+    isTimeseries
+      ? MARGIN_BOTTOM_MIN_WITH_TIMELINE_AXIS
+      : MARGIN_BOTTOM_MIN_NORMAL,
+    chart.margins().bottom,
+  );
 }
 
 // collection of function calls that get made *before* we tell the Chart to render
-function beforeRender(chart) {
+function beforeRender(chart, { isTimeseries }) {
   beforeRenderComputeXAxisLabelType(chart);
   beforeRenderHideDisabledAxesAndLabels(chart);
-  beforeRenderFixMargins(chart);
+  beforeRenderFixMargins(chart, { isTimeseries });
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -646,7 +786,7 @@ function beforeRender(chart) {
 
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 export default function lineAndBarOnRender(chart, args) {
-  beforeRender(chart);
+  beforeRender(chart, args);
   chart.on("renderlet.on-render", () => onRender(chart, args));
   chart.render();
 }

@@ -245,3 +245,10 @@ text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
 }
+
+/* timeline events */
+
+.dc-chart .events-axis .event-tick .event-icon {
+  stroke: var(--color-text-light);
+  fill: var(--color-text-light);
+}
