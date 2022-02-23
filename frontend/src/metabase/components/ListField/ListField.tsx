@@ -50,7 +50,7 @@ export const ListField = ({
   );
 
   const augmentedOptions = useMemo(() => {
-    return [...options, ...addedOptions];
+    return [...options.filter(option => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
   const sortedOptions = useMemo(() => {
