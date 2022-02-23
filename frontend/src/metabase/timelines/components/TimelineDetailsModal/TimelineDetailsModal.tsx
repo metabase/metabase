@@ -59,7 +59,7 @@ const TimelineDetailsModal = ({
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {!isArchive && <EntityMenu items={menuItems} triggerIcon="kebab" />}
+        {!isArchive && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
         <ModalToolbar>

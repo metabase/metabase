@@ -75,7 +75,7 @@ const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
     [collection],
   );
 
-  return <EntityMenu items={items} triggerIcon="kebab" />;
+  return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };
 
 export default TimelineListModal;
