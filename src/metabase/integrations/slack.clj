@@ -188,7 +188,8 @@
        (filter (complement :is_bot))
        vec))
 
-(defn refresh-caches!
+(defn refresh-cache!
+  "Refreshes users and conversations in slack-cache. If called with no args, finds both in paralell, and sets the cache."
   ([]
    (let [users (future (users-list))
          conversations (future (conversations-list))]
