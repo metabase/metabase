@@ -450,6 +450,9 @@ function onRenderAddEventsTimeline(
   // and it creates an offset we need to correct
   const EVENT_ICON_OFFSET_X = -16;
 
+  const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
+  const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
+
   const X_AXIS_TICK_EXTRA_MARGIN_TOP = 20;
 
   const scale = timeseriesScale(xInterval)
@@ -498,6 +501,16 @@ function onRenderAddEventsTimeline(
         "transform",
         `scale(${scale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
       );
+
+    if (!isOnlyOneEvent) {
+      eventIconContainer
+        .append("text")
+        .text(group.length)
+        .attr(
+          "transform",
+          `translate(${EVENT_GROUP_COUNT_MARGIN_LEFT},${EVENT_GROUP_COUNT_MARGIN_TOP})`,
+        );
+    }
 
     eventIconContainer
       .on("mousemove", () => {

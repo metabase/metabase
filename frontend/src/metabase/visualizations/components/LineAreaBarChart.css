@@ -261,3 +261,11 @@ text.value-label-white {
   stroke: var(--color-brand);
   fill: var(--color-brand);
 }
+
+.dc-chart .events-axis .event-tick text {
+  fill: var(--color-text-light);
+}
+
+.dc-chart .events-axis .event-tick.hover text {
+  fill: var(--color-brand);
+}
