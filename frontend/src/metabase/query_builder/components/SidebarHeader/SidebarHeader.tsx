@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import {
@@ -17,18 +17,29 @@ type Props = {
   onClose?: () => void;
 };
 
-function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
-  const hasDefaultBackButton = useMemo(() => !title && onBack, [title, onBack]);
+function getHeaderVariant({
+  hasDefaultBackButton,
+  hasOnBackHandler,
+}: {
+  hasDefaultBackButton: boolean;
+  hasOnBackHandler: boolean;
+}): HeaderTitleContainerVariant {
+  if (hasDefaultBackButton) {
+    return "default-back-button";
+  }
+  if (hasOnBackHandler) {
+    return "back-button";
+  }
+  return "default";
+}
 
-  const headerVariant = useMemo<HeaderTitleContainerVariant>(() => {
-    if (hasDefaultBackButton) {
-      return "default-back-button";
-    }
-    if (onBack) {
-      return "back-button";
-    }
-    return "default";
-  }, [hasDefaultBackButton, onBack]);
+function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
+  const hasDefaultBackButton = !title && !!onBack;
+
+  const headerVariant = getHeaderVariant({
+    hasDefaultBackButton,
+    hasOnBackHandler: !!onBack,
+  });
 
   const hasHeaderIcon = onBack || icon;
 
