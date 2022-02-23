@@ -2,6 +2,7 @@ import {
   restore,
   withDatabase,
   describeWithToken,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -51,8 +52,6 @@ describeWithToken("postgres > user > query", () => {
         },
         database: PG_DB_ID,
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         cy.sandboxTable({
           table_id: PEOPLE_ID,
           attribute_remappings: {
@@ -63,11 +62,7 @@ describeWithToken("postgres > user > query", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);
