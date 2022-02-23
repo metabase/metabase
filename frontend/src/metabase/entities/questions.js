@@ -14,8 +14,8 @@ import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
 
-const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
+const ADD_BOOKMARK_ACTION = `metabase/entities/questions/ADD_BOOKMARK`;
+const REMOVE_BOOKMARK_ACTION = `metabase/entities/questions/DELETE_BOOKMARK`;
 
 const Questions = createEntity({
   name: "questions",
@@ -58,11 +58,11 @@ const Questions = createEntity({
 
     toggleBookmark: async (id, favorite) => {
       if (favorite) {
-        await Questions.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
+        // await Questions.api.favorite({ id });
+        return { type: ADD_BOOKMARK_ACTION, payload: id };
       } else {
-        await Questions.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
+        // await Questions.api.unfavorite({ id });
+        return { type: REMOVE_BOOKMARK_ACTION, payload: id };
       }
     },
   },
@@ -77,9 +77,11 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
+    if (type === ADD_BOOKMARK_ACTION && !error) {
+      console.log("🚀", "State before", { state });
+      console.log("🚀", assocIn(state, [payload, "favorite"], true));
       return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
+    } else if (type === REMOVE_BOOKMARK_ACTION && !error) {
       return assocIn(state, [payload, "favorite"], false);
     }
     return state;

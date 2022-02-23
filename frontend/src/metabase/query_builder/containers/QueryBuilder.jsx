@@ -62,6 +62,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getIsBookmarked,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -114,6 +115,7 @@ const mapStateToProps = (state, props) => {
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 
+    isBookmarked: getIsBookmarked(state),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),

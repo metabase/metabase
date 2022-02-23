@@ -453,6 +453,11 @@ export const getIsDirty = createSelector(
   },
 );
 
+export const getIsBookmarked = createSelector(
+  [getQuestion],
+  question => question?.isBookmarked || false,
+);
+
 export const getQuery = createSelector(
   [getQuestion],
   question => question && question.query(),
