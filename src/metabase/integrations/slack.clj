@@ -148,17 +148,16 @@
           (lazy-seq
            (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(def ^:private api-timeout-ms
-  "Slack api calls where we walk through many pages of results can take a long time, so use this to determine when to
-  return a cached value early. (Note: The underlying page walking will continue, and update the cached value
-  accordingly)."
-  500)
-
 (defonce
   ^{:private true
     :doc "This is a map from query-parameters -> conversation-list. Usually query-parameters are nil"}
   *cached-conversations
   (atom {}))
+
+(defn conversations-cached
+  "Returns the cached slack channels for nil query-parameters"
+  []
+  (get @*cached-conversations nil))
 
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
@@ -168,31 +167,6 @@
         result (vec (paged-list-request "conversations.list" :channels params))]
     (swap! *cached-conversations assoc query-parameters result)
     result))
-
-(defn conversations-list-timeout
-  "Calls paginated Slack API via [[conversations-list]] and returns list of available 'conversations' (channels and
-  direct messages). By default only fetches unarchived public channels. After [[slack-api-timeout-ms]] milliseconds,
-  returns the cached value from *cached-conversations for query-parameters"
-  [& {:as query-parameters}]
-  (let [result-chan (async/chan)]
-      (async/go (async/>! result-chan
-                          (try (conversations-list)
-                               (catch Exception e
-                                 e))))
-      (let [[result _chan] (async/alts!! [result-chan (async/timeout api-timeout-ms)])]
-        (cond
-          (instance? Throwable result)
-          (throw result)
-
-          ;; timed out, so return the cached version continue walking the requests in the go block, which will
-          ;; eventually fill in the cache.
-          (nil? result)
-          {:timeout true
-           :result (get @*cached-conversations query-parameters)}
-
-          ;; conversations-list finished before the timeout
-          :else
-          {:result result}))))
 
 (defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
@@ -214,9 +188,14 @@
         (throw e)))))
 
 (defonce
-  ^{:doc "This is a map from query-parameters -> users list. Usually query-parameters are nil"
+  ^{:doc "This is a map from query-parameters -> users list. Usually query-parameters are nil."
     :private true}
   *cached-users (atom {}))
+
+(defn users-cached
+  "Returns the cached slack users for nil query-parameters"
+  []
+  (get @*cached-users nil))
 
 (defn users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users without the @ prefix."
@@ -229,35 +208,9 @@
     (swap! *cached-users assoc query-parameters result)
     result))
 
-(defn users-list-timeout
-  "Calls paginated Slack API via [[users-list]]. After [[slack-api-timeout-ms]] milliseconds, returns the cached value
-  for query-parameters in *cached-users. The long-running slack request continues in the background, eventually
-  re-filling the cache."
-  [& {:as query-parameters}]
-  (let [result-chan (async/chan)]
-    (async/go (async/>! result-chan
-                        (try (users-list)
-                             (catch Exception e
-                               e))))
-    (let [[result _chan] (async/alts!! [result-chan (async/timeout api-timeout-ms)])]
-      (cond
-        (instance? Throwable result)
-        (throw result)
-
-        ;; timed out, so return the cached version continue walking the requests in the go block, which will
-        ;; eventually fill in the cache.
-        (nil? result)
-        {:timeout true
-         :result (get @*cached-users query-parameters)}
-
-        ;; users-list finished before the timeout
-        :else
-        {:result result}))))
-
-
 (defn refresh-caches! []
-  (conversations-list)
-  (users-list))
+  (future (conversations-list))
+  (future (users-list)))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need

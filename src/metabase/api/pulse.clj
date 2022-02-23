@@ -134,6 +134,8 @@
                  (not (get-in chan-types [:slack :configured]))
                  chan-types
 
+                 ;; if we have Slack enabled, block until we gather the entire list of conversations + users (can be
+                 ;; quite a while).
                  :else
                  (try
                    (let [[conversations users] (map deref [(future (slack/conversations-list))
@@ -159,17 +161,13 @@
                  (not (get-in chan-types [:slack :configured]))
                  chan-types
 
+                 ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [[conversations users] (map deref [(future (slack/conversations-list-timeout))
-                                                           (future (slack/users-list-timeout))])
-                         slack-channels        (for [channel (:result conversations)] (str \# (:name channel)))
-                         slack-users           (for [user (:result users)] (str \@ (:name user)))
-                         timeout?              (or (:timeout conversations) (:timeout users))]
-                     (cond-> (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))
-                             timeout?
-                             (assoc-in [:slack :warning]
-                                       (tru "You have a lot of slack channels, please check back here in a minute if you don't see the channel or user you are looking for."))))
+                   (slack/refresh-caches!)
+                   (assoc-in chan-types
+                             [:slack :fields 0 :options]
+                             (concat (slack/conversations-cached) (slack/users-cached)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
