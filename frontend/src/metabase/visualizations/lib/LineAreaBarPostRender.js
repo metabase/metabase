@@ -431,7 +431,7 @@ function parseTranslateStyleValue(value) {
 
 function onRenderAddEventsTimeline(
   chart,
-  { events, xInterval, xDomain, onHoverChange },
+  { events, xInterval, xDomain, onHoverChange, onOpenEventTimelines },
 ) {
   const eventsByDate = groupEvents(events, xInterval.interval);
   const eventDates = Object.keys(eventsByDate).map(
@@ -540,6 +540,9 @@ function onRenderAddEventsTimeline(
         onHoverChange(null);
         eventIconContainer.classed("hover", false);
         eventPointerLine.classed("hover", false);
+      })
+      .on("click", () => {
+        onOpenEventTimelines();
       });
   });
 
@@ -572,6 +575,9 @@ function onRenderAddEventsTimeline(
       })
       .on("mouseleave", () => {
         calendarIcon.classed("hover", false);
+      })
+      .on("click", () => {
+        onOpenEventTimelines();
       });
   });
 }
@@ -584,6 +590,7 @@ function onRender(
     eventTimelines,
     onGoalHover,
     onHoverChange,
+    onOpenEventTimelines,
     isSplitAxis,
     xInterval,
     xDomain,
@@ -617,6 +624,7 @@ function onRender(
       onRenderAddEventsTimeline(chart, {
         events,
         onHoverChange,
+        onOpenEventTimelines,
         xInterval,
         xDomain,
       });

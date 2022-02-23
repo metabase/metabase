@@ -814,6 +814,7 @@ export default function lineAreaBar(element, props) {
   const {
     onRender,
     onHoverChange,
+    onOpenEventTimelines,
     isScalarSeries,
     eventTimelines,
     settings,
@@ -923,6 +924,7 @@ export default function lineAreaBar(element, props) {
   lineAndBarOnRender(parent, {
     onGoalHover,
     onHoverChange,
+    onOpenEventTimelines,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
     xDomain: xAxisProps.xDomain,
