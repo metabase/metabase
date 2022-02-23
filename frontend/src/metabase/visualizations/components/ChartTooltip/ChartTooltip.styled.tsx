@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import DateTime from "metabase/components/DateTime";
 
 export const TimelineEventsList = styled.ul`
-  li:not(:first-child) {
+  li:not(:first-of-type) {
     margin-top: 8px;
   }
 `;
