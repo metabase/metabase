@@ -1,6 +1,7 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   RESET_QB,
@@ -41,6 +42,8 @@ import {
   SET_METADATA_DIFF,
   ZOOM_IN_ROW,
   RESET_ROW_ZOOM,
+  SHOW_EVENT_TIMELINE,
+  HIDE_EVENT_TIMELINE,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -54,6 +57,8 @@ import {
   onCloseQuestionDetails,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
+  onOpenEventTimelines,
+  onCloseEventTimelines,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -82,6 +87,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingEventTimelinesSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -266,6 +272,15 @@ export const uiControls = handleActions(
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
+    }),
+    [onOpenEventTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingEventTimelinesSidebar: true,
+    }),
+    [onCloseEventTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
     [onCloseSidebars]: state => ({
       ...state,
@@ -481,4 +496,19 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const hiddenTimelines = handleActions(
+  {
+    [INITIALIZE_QB]: () => [],
+    [SHOW_EVENT_TIMELINE]: {
+      next: (state, { payload: timelineId }) => _.without(state, timelineId),
+    },
+    [HIDE_EVENT_TIMELINE]: {
+      next: (state, { payload: timelineId }) =>
+        state.includes(timelineId) ? state : [...state, timelineId],
+    },
+    [RESET_QB]: () => [],
+  },
+  [],
 );

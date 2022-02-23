@@ -146,6 +146,12 @@ export const onOpenQuestionHistory = createAction(
 export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
+export const onOpenEventTimelines = createAction(
+  "metabase/qb/OPEN_EVENT_TIMELINES",
+);
+export const onCloseEventTimelines = createAction(
+  "metabase/qb/CLOSE_EVENT_TIMELINES",
+);
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
@@ -1658,3 +1664,9 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
+
+export const SHOW_EVENT_TIMELINE = "metabase/qb/SHOW_EVENT_TIMELINE";
+export const showEventTimeline = createAction(SHOW_EVENT_TIMELINE);
+
+export const HIDE_EVENT_TIMELINE = "metabase/qb/HIDE_EVENT_TIMELINE";
+export const hideEventTimeline = createAction(HIDE_EVENT_TIMELINE);

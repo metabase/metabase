@@ -686,3 +686,5 @@ export const isBasedOnExistingQuestion = createSelector(
     return originalQuestion != null;
   },
 );
+
+export const getHiddenTimelines = state => state.qb.hiddenTimelines;
