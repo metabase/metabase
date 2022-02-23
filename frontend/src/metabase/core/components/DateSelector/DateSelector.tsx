@@ -34,6 +34,20 @@ const DateSelector = forwardRef(function DateSelector(
   const today = useMemo(() => moment().startOf("date"), []);
   const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
 
+  const handleDateChange = useCallback(
+    (unused1: string, unused2: string, date: Moment) => {
+      const newDate = moment({
+        year: date.year(),
+        month: date.month(),
+        day: date.day(),
+        hours: value?.hours(),
+        minutes: value?.minutes(),
+      });
+      onChange?.(newDate);
+    },
+    [value, onChange],
+  );
+
   const handleTimeClick = useCallback(() => {
     const newValue = value ?? today;
     onChange?.(newValue);
@@ -50,7 +64,12 @@ const DateSelector = forwardRef(function DateSelector(
 
   return (
     <div ref={ref} className={className} style={style}>
-      <Calendar initial={value} selected={value} isRangePicker={false} />
+      <Calendar
+        initial={value}
+        selected={value}
+        isRangePicker={false}
+        onChange={handleDateChange}
+      />
       {value && isTimeShown && (
         <SelectorTimeContainer>
           <TimeInput
