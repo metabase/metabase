@@ -151,12 +151,13 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
-  setBookmarked: (id, shouldBeBookmarked) =>
+  toggleBookmark: (id, shouldBeBookmarked) =>
     Questions.objectActions.setFavorited(id, shouldBeBookmarked),
 };
 
 function QueryBuilder(props) {
   const {
+    isBookmarked,
     question,
     location,
     params,
@@ -171,7 +172,10 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    toggleBookmark,
   } = props;
+
+  console.log("🚀", props);
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
@@ -201,14 +205,12 @@ function QueryBuilder(props) {
     [setUIControls],
   );
 
-  const toggleBookmark = () => {
+  const onClickBookmark = () => {
     const {
       card: { id },
-      isBookmarked,
-      setBookmarked,
-    } = this.props;
+    } = props;
 
-    setBookmarked(id, !isBookmarked);
+    toggleBookmark(id, !isBookmarked);
   };
 
   const handleCreate = useCallback(
@@ -298,7 +300,7 @@ function QueryBuilder(props) {
       onSave={handleSave}
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
-      toggleBookmark={toggleBookmark}
+      toggleBookmark={onClickBookmark}
     />
   );
 }
