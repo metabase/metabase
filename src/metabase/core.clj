@@ -125,7 +125,7 @@
 
   (when (slack/slack-configured?)
     (slack/refresh-caches!))
-  
+
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
 
