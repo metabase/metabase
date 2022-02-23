@@ -249,6 +249,23 @@ text.value-label-white {
 
 /* timeline events */
 
+.dc-chart .calendar-icon-container {
+  fill: var(--color-bg-white);
+  stroke: var(--color-text-light);
+  cursor: pointer;
+}
+
+.dc-chart path.calendar-icon {
+  fill: var(--color-text-light);
+  stroke: var(--color-text-light);
+  cursor: pointer;
+}
+
+.dc-chart path.calendar-icon.hover {
+  fill: var(--color-brand);
+  stroke: var(--color-brand);
+}
+
 .dc-chart .events-axis .event-tick {
   cursor: pointer;
 }

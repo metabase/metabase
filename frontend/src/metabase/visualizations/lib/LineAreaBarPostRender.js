@@ -453,6 +453,9 @@ function onRenderAddEventsTimeline(
   const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
   const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
 
+  const CALENDAR_ICON_CONTAINER_X = X_AXIS_WIDTH;
+  const CALENDAR_ICON_X = X_AXIS_WIDTH - 7;
+
   const X_AXIS_TICK_EXTRA_MARGIN_TOP = 20;
 
   const scale = timeseriesScale(xInterval)
@@ -548,6 +551,28 @@ function onRenderAddEventsTimeline(
       "transform",
       `translate(${x},${y + X_AXIS_TICK_EXTRA_MARGIN_TOP})`,
     );
+  });
+
+  const calendarIconContainer = xAxis
+    .append("circle")
+    .attr("class", "calendar-icon-container")
+    .attr("r", 14)
+    .attr("transform", `translate(${CALENDAR_ICON_CONTAINER_X},-2)`);
+
+  const calendarIcon = xAxis
+    .append("path")
+    .attr("class", "calendar-icon")
+    .attr("d", ICON_PATHS.calendar.path)
+    .attr("transform", `translate(${CALENDAR_ICON_X},-9) scale(0.6)`);
+
+  [calendarIconContainer, calendarIcon].forEach(element => {
+    element
+      .on("mousemove", () => {
+        calendarIcon.classed("hover", true);
+      })
+      .on("mouseleave", () => {
+        calendarIcon.classed("hover", false);
+      });
   });
 }
 
