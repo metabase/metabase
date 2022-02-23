@@ -7,6 +7,7 @@ import {
   visitQuestionAdhoc,
   visualize,
   summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -487,17 +488,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "bar",
       }).then(({ body: { id: QUESTION_ID } }) => {
-        // Prepare to wait for certain imporatnt queries
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
         cy.signInAsNormalUser();
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.wait("@cardQuery");
         cy.get(".Visualization .bar")
           .eq(4)
           .click({ force: true });

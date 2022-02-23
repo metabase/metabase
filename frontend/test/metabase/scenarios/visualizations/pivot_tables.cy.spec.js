@@ -3,6 +3,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -612,7 +613,8 @@ describe("scenarios > visualizations > pivot tables", () => {
             });
           },
         );
-        cy.visit(`/question/${QUESTION_ID}`);
+
+        visitQuestion(QUESTION_ID);
       });
     });
 
@@ -690,7 +692,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.signIn("nodata");
-      cy.visit(`/question/${QUESTION_ID}`);
+      visitQuestion(QUESTION_ID);
     });
 
     cy.findByText("Grand totals");
