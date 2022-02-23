@@ -241,28 +241,29 @@
   (with-open [conn (.getConnection target-data-source)
               stmt (.createStatement conn)]
     (with-disabled-db-constraints target-db-type {:connection conn}
-      (let [save-point (.setSavepoint conn)]
-        (try
-          (.setAutoCommit conn false)
-          (letfn [(add-batch! [^String sql]
-                    (log/debug (u/colorize :yellow sql))
-                    (.addBatch stmt sql))]
-            ;; do these in reverse order so child rows get deleted before parents
-            (doseq [{table-name :table} (reverse entities)]
-              (add-batch! (format (if (= target-db-type :postgres)
-                                    "TRUNCATE TABLE %s CASCADE;"
-                                    "TRUNCATE TABLE %s;")
-                                  (name table-name)))))
-          (.executeBatch stmt)
-          (.commit conn)
-          (catch Throwable e
-            (try
-              (.rollback conn save-point)
-              (catch Throwable e2
-                (throw (Exception. (ex-message e2) e))))
-            (throw e))
-          (finally
-            (.setAutoCommit conn true)))))))
+      (try
+        (.setAutoCommit conn false)
+        (let [save-point (.setSavepoint conn)]
+          (try
+            (letfn [(add-batch! [^String sql]
+                      (log/debug (u/colorize :yellow sql))
+                      (.addBatch stmt sql))]
+              ;; do these in reverse order so child rows get deleted before parents
+              (doseq [{table-name :table} (reverse entities)]
+                (add-batch! (format (if (= target-db-type :postgres)
+                                      "TRUNCATE TABLE %s CASCADE;"
+                                      "TRUNCATE TABLE %s;")
+                                    (name table-name)))))
+            (.executeBatch stmt)
+            (.commit conn)
+            (catch Throwable e
+              (try
+                (.rollback conn save-point)
+                (catch Throwable e2
+                  (throw (Exception. (ex-message e2) e))))
+              (throw e))))
+        (finally
+          (.setAutoCommit conn true))))))
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
