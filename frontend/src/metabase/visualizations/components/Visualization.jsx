@@ -81,7 +81,8 @@ export default class Visualization extends React.PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !Utils.equals(newProps.settings, this.props.settings)
+      !Utils.equals(newProps.settings, this.props.settings) ||
+      newProps.eventTimelines !== this.props.eventTimelines
     ) {
       this.transform(newProps);
     }
@@ -147,9 +148,10 @@ export default class Visualization extends React.PureComponent {
       error: null,
       warnings: [],
       yAxisSplit: null,
-      series: series,
-      visualization: visualization,
-      computedSettings: computedSettings,
+      series,
+      visualization,
+      computedSettings,
+      eventTimelines: newProps.eventTimelines,
     });
   }
 
@@ -312,7 +314,7 @@ export default class Visualization extends React.PureComponent {
     const small = width < 330;
 
     // these may be overridden below
-    let { series, hovered, clicked } = this.state;
+    let { series, hovered, clicked, eventTimelines } = this.state;
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
@@ -520,6 +522,7 @@ export default class Visualization extends React.PureComponent {
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
             clicked={clicked}
+            eventTimelines={eventTimelines}
             headerIcon={hasHeader ? null : headerIcon}
             onHoverChange={this.handleHoverChange}
             onVisualizationClick={this.handleVisualizationClick}
