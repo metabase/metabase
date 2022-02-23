@@ -205,8 +205,9 @@ describe("scenarios > admin > settings", () => {
 
     openOrdersTable({ limit: 2 });
 
-    cy.findByText("Created At").should("be.visible");
-    cy.contains(/^2019\/2\/11, 21:40$/);
+    cy.get(".cellData")
+      .should("contain", "Created At")
+      .and("contain", "2019/2/11, 21:40");
   });
 
   it("should search for and select a new timezone", () => {
