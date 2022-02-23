@@ -63,6 +63,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getHiddenTimelines,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -146,6 +147,8 @@ const mapStateToProps = (state, props) => {
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
+
+    hiddenTimelines: getHiddenTimelines(state),
   };
 };
 
