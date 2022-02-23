@@ -140,8 +140,8 @@
                  (try
                    (let [[conversations users] (map deref [(future (slack/conversations-list))
                                                            (future (slack/users-list))])
-                         slack-channels        (for [channel (:result conversations)] (str \# (:name channel)))
-                         slack-users           (for [user (:result users)] (str \@ (:name user)))]
+                         slack-channels        (for [channel conversations] (str \# (:name channel)))
+                         slack-users           (for [user users] (str \@ (:name user)))]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
@@ -164,10 +164,9 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (slack/refresh-caches!)
-                   (assoc-in chan-types
-                             [:slack :fields 0 :options]
-                             (concat (slack/conversations-cached) (slack/users-cached)))
+                   (let [slack-channels        (for [channel (slack/conversations-cached)] (str \# (:name channel)))
+                         slack-users           (for [user (slack/users-cached)] (str \@ (:name user)))]
+                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 

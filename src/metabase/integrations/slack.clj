@@ -204,7 +204,8 @@
                     ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
                     ;; itself so we need to do it after the fact.
                     (filter (complement :deleted))
-                    (filter (complement :is_bot)))]
+                    (filter (complement :is_bot))
+                    vec)]
     (swap! *cached-users assoc query-parameters result)
     result))
 
