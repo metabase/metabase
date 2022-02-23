@@ -15,7 +15,6 @@
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
                                      Timeline TimelineEvent User ViewLog]]
-            [metabase.models.permissions-group :as group]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
