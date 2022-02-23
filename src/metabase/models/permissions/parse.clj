@@ -73,7 +73,7 @@
     [:native]                      [:data :native :write]
     ;; download perms
     [:download
-     [:limited db-node]]           (append-to-all (path db-node) :limited)
+     [:dl-limited db-node]]        (append-to-all (path db-node) :limited)
     [:download db-node]            (append-to-all (path db-node) :full)
     [:dl-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      #{[:db db-id :download :native]
@@ -81,10 +81,10 @@
     [:dl-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
                                      (into [:db db-id] (path db-node)))
     [:dl-schemas]                  [:download :schemas]
-    [:dl-schemas schema]           (into [:data :schemas] (path schema))
+    [:dl-schemas schema]           (into [:download :schemas] (path schema))
     [:dl-schema schema-name]       [schema-name]
     [:dl-schema schema-name table] (into [schema-name] (path table))
-    [:dl-table table-id]           [(Long/parseUnsignedLong table-id) :all]
+    [:dl-table table-id]           [(Long/parseUnsignedLong table-id)]
     [:dl-native]                   [:download :native]
     ;; collection perms
     [:collection id]               [:collection (collection-id id) :write]
