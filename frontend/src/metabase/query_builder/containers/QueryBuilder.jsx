@@ -10,6 +10,8 @@ import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
+import QuestionTimelineEventsLoader from "metabase/containers/QuestionTimelineEventsLoader";
+
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
@@ -275,17 +277,22 @@ function QueryBuilder(props) {
   });
 
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-    />
+    <QuestionTimelineEventsLoader question={question}>
+      {({ ...eventTimelinesLoader }) => (
+        <View
+          {...props}
+          eventTimelinesLoader={eventTimelinesLoader}
+          modal={uiControls.modal}
+          recentlySaved={uiControls.recentlySaved}
+          onOpenModal={openModal}
+          onCloseModal={closeModal}
+          onSetRecentlySaved={setRecentlySaved}
+          onSave={handleSave}
+          onCreate={handleCreate}
+          handleResize={forceUpdateDebounced}
+        />
+      )}
+    </QuestionTimelineEventsLoader>
   );
 }
 
