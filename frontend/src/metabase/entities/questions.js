@@ -56,7 +56,7 @@ const Questions = createEntity({
         opts,
       ),
 
-    setFavorited: async (id, favorite) => {
+    toggleBookmark: async (id, favorite) => {
       if (favorite) {
         await Questions.api.favorite({ id });
         return { type: FAVORITE_ACTION, payload: id };

@@ -140,7 +140,7 @@ function QuestionActionButtons({
           onlyIcon
           icon="bookmark"
           iconSize={ICON_SIZE}
-          onClick={() => toggleBookmark()}
+          onClick={toggleBookmark}
           style={{ color: bookmarkButtonColor }}
         />
       </Tooltip>

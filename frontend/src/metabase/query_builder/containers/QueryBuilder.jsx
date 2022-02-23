@@ -151,8 +151,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
-  toggleBookmark: (id, shouldBeBookmarked) =>
-    Questions.objectActions.setFavorited(id, shouldBeBookmarked),
+  toggleBookmark: Questions.objectActions.toggleBookmark,
 };
 
 function QueryBuilder(props) {
@@ -174,8 +173,6 @@ function QueryBuilder(props) {
     cancelQuery,
     toggleBookmark,
   } = props;
-
-  console.log("🚀", props);
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
