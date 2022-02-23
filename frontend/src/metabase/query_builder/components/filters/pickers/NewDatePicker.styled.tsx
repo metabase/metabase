@@ -9,6 +9,23 @@ export const PickerButton = styled(Button)`
   border: none;
 `;
 
+export const TabContainer = styled.div`
+  display: flex;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid ${color("text-light")};
+`;
+
+type TabButtonProps = {
+  selected?: boolean;
+  primaryColor: string;
+};
+
+export const TabButton = styled(Button)<TabButtonProps>`
+  border: none;
+  border-bottom: ${props =>
+    props.selected ? `2px solid ${props.primaryColor}` : "none"};
+`;
+
 export const Separator = styled.div`
   margin: 1rem;
   border-top: solid 1px ${color("text-light")};

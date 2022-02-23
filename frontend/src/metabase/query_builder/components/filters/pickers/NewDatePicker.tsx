@@ -7,13 +7,35 @@ import moment from "moment";
 import _ from "underscore";
 
 import SpecificDatePicker from "./SpecificDatePicker";
-import { PickerButton, Separator } from "./NewDatePicker.styled";
+import {
+  PickerButton,
+  Separator,
+  TabContainer,
+  TabButton,
+} from "./NewDatePicker.styled";
 import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 type Filter = any;
 type Field = any;
+
+const getIntervals = ([op, field, value, unit]: Filter) =>
+  op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
+const getUnit = ([op, field, value, unit]: Filter) =>
+  op === "time-interval" && unit ? unit : "day";
+const getOptions = ([op, field, value, unit, options]: Filter) =>
+  (op === "time-interval" && options) || {};
+
+const getDate = (value: string | Date) => {
+  if (typeof value !== "string" || !moment(value).isValid()) {
+    value = moment().format("YYYY-MM-DD");
+  }
+  return value;
+};
+
+const hasTime = (value: string) =>
+  typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
 
 function getDateTimeField(field: Field, bucketing?: string) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
@@ -25,6 +47,15 @@ function getDateTimeField(field: Field, bucketing?: string) {
     }
   }
   return field;
+}
+
+function getDateTimeFieldAndValues(filter: Filter, count: number) {
+  const values = filter
+    .slice(2, 2 + count)
+    .map((value: any) => value && getDate(value));
+  const bucketing = _.any(values, hasTime) ? "minute" : undefined;
+  const field = getDateTimeField(filter[1], bucketing);
+  return [field, ...values];
 }
 
 type Option = {
@@ -152,26 +183,83 @@ const MISC_OPTIONS: Option[] = [
 ];
 
 type Operator = {
-  test: (filter: any) => boolean;
-  widget: React.ReactNode;
+  displayName: string;
+  init: (filter: Filter) => Filter;
+  test: (filter: Filter) => boolean;
+  options?: any;
 };
 
-export const DATE_OPERATORS: Operator[] = [
+export const RELATIVE_OPERATORS: Operator[] = [
   {
-    test: ([op]) => op === "<" || op === ">" || op === "=" || op === "between",
-    widget: SpecificDatePicker,
+    displayName: t`Previous`,
+    init: filter => [
+      "time-interval",
+      getDateTimeField(filter[1]),
+      -getIntervals(filter),
+      getUnit(filter),
+      getOptions(filter),
+    ],
+    test: ([op, field, value]) =>
+      (op === "time-interval" && value < 0) || Object.is(value, -0),
+    options: { "include-current": true },
   },
   {
-    test: ([op]) => op === "time-interval",
-    widget: RelativeDatePicker,
+    displayName: t`Next`,
+    init: filter => [
+      "time-interval",
+      getDateTimeField(filter[1]),
+      getIntervals(filter),
+      getUnit(filter),
+      getOptions(filter),
+    ],
+    test: ([op, field, value]) => op === "time-interval" && value >= 0,
+    options: { "include-current": true },
+  },
+  {
+    displayName: t`Current`,
+    init: filter => [
+      "time-interval",
+      getDateTimeField(filter[1]),
+      "current",
+      getUnit(filter),
+    ],
+    test: ([op, field, value]) => op === "time-interval" && value === "current",
   },
 ];
 
-export function getOperator(filter: Filter) {
-  return _.find(DATE_OPERATORS, o => o.test(filter));
+export const SPECIFIC_OPERATORS: Operator[] = [
+  {
+    displayName: t`Before`,
+    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+    test: ([op]) => op === "<",
+  },
+  {
+    displayName: t`After`,
+    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+    test: ([op]) => op === ">",
+  },
+  {
+    displayName: t`On`,
+    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+    test: ([op]) => op === "=",
+  },
+  {
+    displayName: t`Between`,
+    init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
+    test: ([op]) => op === "between",
+  },
+];
+
+const isSpecificFilter = ([op]: Filter) =>
+  op === "<" || op === ">" || op === "=" || op === "between";
+const isRelativeFilter = ([op]: Filter) => op === "time-interval";
+
+export function getOperator(filter: Filter, operators: any[]) {
+  return _.find(operators, o => o.test(filter));
 }
 
 type Props = {
+  primaryColor: string;
   filter: Filter;
   onFilterChange: (filter: Filter) => void;
   className?: string;
@@ -217,12 +305,48 @@ function DatePickerMenu({ onFilterChange, filter }: Props) {
   );
 }
 
+type TabProps = Props & {
+  operators: Operator[];
+  showMenu: (value: boolean) => void;
+};
+
+function DatePickerTabs({
+  operators,
+  filter,
+  primaryColor,
+  onFilterChange,
+}: TabProps) {
+  return (
+    <TabContainer>
+      {operators.map(({ test, displayName, init }) => (
+        <TabButton
+          selected={!!test(filter)}
+          primaryColor={primaryColor}
+          key={displayName}
+          onClick={() => {
+            onFilterChange(init(filter));
+          }}
+        >
+          {displayName}
+        </TabButton>
+      ))}
+    </TabContainer>
+  );
+}
+
 function DatePicker(props: Props) {
   const { className, isSidebar, onFilterChange, filter } = props;
   const [menuVisible, showMenu] = React.useState(false);
 
-  const operator = getOperator(filter);
-  const Widget: any = operator && operator.widget;
+  let Widget: any = null;
+  let operators: Operator[] | null = null;
+  if (isSpecificFilter(filter)) {
+    Widget = SpecificDatePicker;
+    operators = SPECIFIC_OPERATORS;
+  } else if (isRelativeFilter(filter)) {
+    Widget = RelativeDatePicker;
+    operators = RELATIVE_OPERATORS;
+  }
 
   return (
     <div
@@ -231,8 +355,15 @@ function DatePicker(props: Props) {
       })}
       style={{ minWidth: 300 }}
     >
-      {Widget && !menuVisible ? (
-        <Widget {...props} showMenu={showMenu} />
+      {Widget && operators && !menuVisible ? (
+        <>
+          <DatePickerTabs
+            {...props}
+            operators={operators}
+            showMenu={showMenu}
+          />
+          <Widget {...props} showMenu={showMenu} />
+        </>
       ) : (
         <DatePickerMenu
           {...props}
