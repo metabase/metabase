@@ -182,6 +182,8 @@ describe("scenarios > admin > settings", () => {
 
     // check the reset formatting in a question
     openOrdersTable();
+
+    cy.findByText("Created At").should("be.visible");
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 
@@ -205,6 +207,8 @@ describe("scenarios > admin > settings", () => {
     cy.wait("@saveFormatting");
 
     openOrdersTable();
+
+    cy.findByText("Created At").should("be.visible");
     cy.contains(/^2019\/2\/11, 21:40$/);
   });
 
