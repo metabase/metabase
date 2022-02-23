@@ -204,8 +204,8 @@
     (cond-> form
       (seq required-joins) (update :joins (fn [existing-joins]
                                             (m/distinct-by
-                                              :alias
-                                              (concat existing-joins required-joins))))
+                                             :alias
+                                             (concat existing-joins required-joins))))
       true                 add-join-alias-to-fields-with-source-field
       true                 (add-fields-to-source reused-joins)
       (seq required-joins) (update :joins topologically-sort-joins))))
