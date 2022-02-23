@@ -80,7 +80,7 @@
 
 (deftest conversations-list-test
   (testing "conversations-list"
-    (test-auth conversations-endpoint (fn [] (:result (slack/conversations-list))))
+    (test-auth conversations-endpoint slack/conversations-list)
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -131,7 +131,7 @@
 
 (deftest users-list-test
   (testing "users-list"
-    (test-auth users-endpoint (fn [] (slack/users-list)))
+    (test-auth users-endpoint slack/users-list)
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
