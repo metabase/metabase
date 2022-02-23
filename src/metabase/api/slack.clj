@@ -17,7 +17,9 @@
   (api/check-superuser)
   (try
     (when (and slack-app-token (not config/is-test?))
-      (when-not (slack/valid-token? slack-app-token)
+      (if (slack/valid-token? slack-app-token)
+        ;; When the user updates or creates their token, that is a good time to reseed the db
+        (slack/refresh-cache!)
         (throw (ex-info (tru "Invalid Slack token.")
                         {:errors {:slack-app-token (tru "invalid token")}}))))
     (slack/slack-app-token slack-app-token)
