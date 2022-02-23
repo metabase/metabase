@@ -67,4 +67,6 @@ function CollapseSection({
 
 CollapseSection.propTypes = propTypes;
 
-export default CollapseSection;
+export default Object.assign(CollapseSection, {
+  Header: HeaderContainer,
+});
