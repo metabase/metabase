@@ -968,7 +968,8 @@
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack-token "something"]
+      (mt/with-temporary-setting-values [slack-token nil
+                                         slack-app-token "something"]
         (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
                       slack/users-list         (constantly [{:name "bar"}])]
           (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
@@ -976,7 +977,8 @@
                      (get-in [:channels :slack :fields])))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil]
+      (mt/with-temporary-setting-values [slack-token nil
+                                         slack-app-token nil]
         (is (empty?
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields])
