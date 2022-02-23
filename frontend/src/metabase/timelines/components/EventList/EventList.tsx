@@ -7,6 +7,7 @@ import {
   ListIcon,
   ListIconContainer,
   ListIconText,
+  ListRoot,
   ListThread,
   ListThreadContainer,
 } from "./EventList.styled";
@@ -27,7 +28,7 @@ const EventList = ({
   onUnarchive,
 }: EventListProps): JSX.Element => {
   return (
-    <div>
+    <ListRoot>
       {events.map(event => (
         <EventCard
           key={event.id}
@@ -47,7 +48,7 @@ const EventList = ({
           <ListIconText>{t`The Paleozoic Era`}</ListIconText>
         </ListIconContainer>
       </ListFooter>
-    </div>
+    </ListRoot>
   );
 };
 

@@ -31,6 +31,8 @@ export const ModalToolbarLink = styled(Link)`
 `;
 
 export const ModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   padding: 2rem;
   overflow-y: auto;
