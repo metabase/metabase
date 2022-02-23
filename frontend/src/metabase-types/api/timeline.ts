@@ -17,6 +17,8 @@ export interface TimelineEvent {
   description: string | null;
   icon: string;
   timestamp: string;
+  timezone: string;
+  time_matters: boolean;
   archived: boolean;
   creator: User;
   created_at: string;

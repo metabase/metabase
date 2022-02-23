@@ -215,3 +215,7 @@ export function has24HourModeSetting() {
 export function hasTimePart(date) {
   return date != null && (date.hours() !== 0 || date.minutes() !== 0);
 }
+
+export function getDefaultTimezone() {
+  return moment.tz.guess();
+}
