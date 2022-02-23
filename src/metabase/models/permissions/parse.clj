@@ -41,10 +41,11 @@
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
 
-(defn- append
+(defn- append-to-all
+  "If `path-or-paths` is a single path, append `x` to the end of it. If it's a vector of paths, append `x` to each path."
   [path-or-paths x]
   (if (seqable? (first path-or-paths))
-    (map (fn [path] (append path x)) (seq path-or-paths))
+    (map (fn [path] (append-to-all path x)) (seq path-or-paths))
     (into path-or-paths [x])))
 
 (defn- path
@@ -72,8 +73,8 @@
     [:native]                      [:data :native :write]
     ;; download perms
     [:download
-     [:limited db-node]]           (append (path db-node) :limited)
-    [:download db-node]            (append (path db-node) :full)
+     [:limited db-node]]           (append-to-all (path db-node) :limited)
+    [:download db-node]            (append-to-all (path db-node) :full)
     [:dl-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      #{[:db db-id :download :native]
                                        [:db db-id :download :schemas]})
