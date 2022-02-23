@@ -123,7 +123,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".List-item-title")
       .contains("Product ID")
       .click();
-    cy.get(".scroll-y")
+    cy.findByTestId("sidebar-content")
       .contains("Aerodynamic Linen Coat")
       .click();
     cy.findByText("Add filter").click();
