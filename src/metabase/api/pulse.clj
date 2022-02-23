@@ -18,7 +18,6 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -85,7 +84,6 @@
       (api/check-500
        (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
@@ -140,6 +138,7 @@
                  (try
                    (let [[conversations users] (map deref [(future (slack/conversations-list))
                                                            (future (slack/users-list))])
+                         _                     (slack/slack-cache {:conversations conversations :users users})
                          slack-channels        (for [channel conversations] (str \# (:name channel)))
                          slack-users           (for [user users] (str \@ (:name user)))]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
@@ -164,8 +163,9 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [slack-channels        (for [channel (slack/conversations-cached)] (str \# (:name channel)))
-                         slack-users           (for [user (slack/users-cached)] (str \@ (:name user)))]
+                   (let [{:keys [users conversations]} (slack/slack-cache)
+                         slack-channels                (for [channel conversations] (str \# (:name channel)))
+                         slack-users                   (for [user users] (str \@ (:name user)))]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))

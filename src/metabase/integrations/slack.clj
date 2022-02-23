@@ -1,7 +1,6 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.core.async :as async]
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -36,6 +35,11 @@
   [channel-name]
   (when-not (str/blank? channel-name)
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
+
+(defsetting slack-cache
+  "A cache shared between instances for storing a user's slack channels and users."
+  :visibility :internal
+  :type :json)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
@@ -148,25 +152,12 @@
           (lazy-seq
            (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(defonce
-  ^{:private true
-    :doc "This is a map from query-parameters -> conversation-list. Usually query-parameters are nil"}
-  *cached-conversations
-  (atom {}))
-
-(defn conversations-cached
-  "Returns the cached slack channels for nil query-parameters"
-  []
-  (get @*cached-conversations nil))
-
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
   default only fetches channels."
   [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)
-        result (vec (paged-list-request "conversations.list" :channels params))]
-    (swap! *cached-conversations assoc query-parameters result)
-    result))
+  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
+    (vec (paged-list-request "conversations.list" :channels params))))
 
 (defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
@@ -187,33 +178,25 @@
         false
         (throw e)))))
 
-(defonce
-  ^{:doc "This is a map from query-parameters -> users list. Usually query-parameters are nil."
-    :private true}
-  *cached-users (atom {}))
-
-(defn users-cached
-  "Returns the cached slack users for nil query-parameters"
-  []
-  (get @*cached-users nil))
-
 (defn users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users without the @ prefix."
   [& {:as query-parameters}]
-  (let [result (->> (paged-list-request "users.list" :members query-parameters)
-                    ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
-                    ;; itself so we need to do it after the fact.
-                    (filter (complement :deleted))
-                    (filter (complement :is_bot))
-                    vec)]
-    (swap! *cached-users assoc query-parameters result)
-    result))
+  (->> (paged-list-request "users.list" :members query-parameters)
+       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
+       ;; itself so we need to do it after the fact.
+       (filter (complement :deleted))
+       (filter (complement :is_bot))
+       vec))
 
 (defn refresh-caches!
-  "Refreshes slack caches asynchronistically"
-  []
-  (future (conversations-list))
-  (future (users-list)))
+  ([]
+   (let [users (future (users-list))
+         conversations (future (conversations-list))]
+     (slack-cache {:users @users
+                   :conversations @conversations})))
+  ([users conversations]
+   (slack-cache {:users users
+                 :conversations conversations})))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
