@@ -1300,3 +1300,27 @@
               (is (= [["2016-04-01T00:00:00Z" 175]]
                      (mt/formatted-rows [str int]
                        (qp/process-query query)))))))))))
+
+(deftest really-really-long-identifiers-test
+  (testing "Should correctly handle really really long table and column names (#20627)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+      (mt/dataset sample-dataset
+        (let [table-alias "Products with a very long name - Product ID with a very long name"
+              query       (mt/mbql-query orders
+                            {:source-query {:source-table $$orders
+                                            :joins        [{:source-table $$products
+                                                            :alias        table-alias
+                                                            :condition    [:=
+                                                                           $product_id
+                                                                           [:field %products.id {:join-alias table-alias}]]
+                                                            :fields       :all}]
+                                            :breakout     [[:field %products.category {:join-alias table-alias}]]
+                                            :aggregation  [[:count]]}
+                             :filter       [:> *count/Integer 0]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey" 3976]
+                    ["Gadget"    4939]
+                    ["Gizmo"     4784]
+                    ["Widget"    5061]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))

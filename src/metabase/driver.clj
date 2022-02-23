@@ -471,10 +471,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;; TODO -- I have a PR to add some truncation logic for this so we don't end up with crazy-long identifiers -- see
-;; #19659
-;;
-;; TODO -- we should probably also remove diacritical marks like we do for BigQuery
 (defmethod escape-alias ::driver
   [_driver alias-name]
   (impl/truncate-alias alias-name))
