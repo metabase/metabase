@@ -126,20 +126,6 @@ const getRouteParams = (_state, props) => {
   };
 };
 
-const getEntitySwitch = value => ({
-  value,
-  options: [
-    {
-      name: t`Groups`,
-      value: "group",
-    },
-    {
-      name: t`Databases`,
-      value: "database",
-    },
-  ],
-});
-
 const getSchemaId = name => `schema:${name}`;
 const getTableId = id => `table:${id}`;
 
@@ -155,7 +141,7 @@ const getDatabasesSidebar = metadata => {
 
   return {
     entityGroups: [entities],
-    entitySwitch: getEntitySwitch("database"),
+    entityViewFocus: "database",
     filterPlaceholder: t`Search for a database`,
   };
 };
@@ -642,7 +628,7 @@ export const getGroupsSidebar = createSelector(
     return {
       selectedId: parseInt(groupId),
       entityGroups: [pinnedGroupItems, unpinnedGroupItems],
-      entitySwitch: getEntitySwitch("group"),
+      entityViewFocus: "group",
       filterPlaceholder: t`Search for a group`,
     };
   },

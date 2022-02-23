@@ -1,4 +1,4 @@
-export const searchItems = (items, filter) => {
+export const searchItems = (items: any[], filter: string) => {
   const matchingItems = items.filter(item =>
     item.name.toLowerCase().includes(filter),
   );
@@ -8,7 +8,7 @@ export const searchItems = (items, filter) => {
     .filter(Boolean)
     .flat();
 
-  const childrenMatches =
+  const childrenMatches: any =
     children.length > 0 ? searchItems(children, filter) : [];
 
   return [...matchingItems, ...childrenMatches].map(
