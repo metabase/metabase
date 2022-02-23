@@ -3,6 +3,7 @@ import { Moment } from "moment";
 import {
   getDateStyleFromSettings,
   getTimeStyleFromSettings,
+  has24HourModeSetting,
   parseTimestamp,
 } from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
@@ -55,6 +56,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       hasTime={hasTime}
       dateFormat={getDateStyleFromSettings()}
       timeFormat={getTimeStyleFromSettings()}
+      is24HourMode={has24HourModeSetting()}
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}

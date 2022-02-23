@@ -23,12 +23,21 @@ export interface DateSelectorProps {
   style?: CSSProperties;
   value?: Moment;
   hasTime?: boolean;
+  is24HourMode?: boolean;
   onChange?: (date?: Moment) => void;
   onSubmit?: () => void;
 }
 
 const DateSelector = forwardRef(function DateSelector(
-  { className, style, value, hasTime, onChange, onSubmit }: DateSelectorProps,
+  {
+    className,
+    style,
+    value,
+    hasTime,
+    is24HourMode,
+    onChange,
+    onSubmit,
+  }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const today = useMemo(() => moment().startOf("date"), []);
@@ -74,6 +83,7 @@ const DateSelector = forwardRef(function DateSelector(
         <SelectorTimeContainer>
           <TimeInput
             value={value}
+            is24HourMode={is24HourMode}
             onChange={onChange}
             onClear={handleTimeClear}
           />

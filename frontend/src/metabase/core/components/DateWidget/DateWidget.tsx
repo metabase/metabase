@@ -20,6 +20,7 @@ export interface DateWidgetProps extends DateWidgetAttributes {
   hasTime?: boolean;
   dateFormat?: string;
   timeFormat?: string;
+  is24HourMode?: boolean;
   error?: boolean;
   fullWidth?: boolean;
   onChange?: (date?: Moment) => void;
@@ -31,6 +32,7 @@ const DateWidget = forwardRef(function DateWidget(
     hasTime,
     dateFormat,
     timeFormat,
+    is24HourMode,
     error,
     fullWidth,
     onChange,
@@ -57,6 +59,7 @@ const DateWidget = forwardRef(function DateWidget(
         <DateSelector
           value={value}
           hasTime={hasTime}
+          is24HourMode={is24HourMode}
           onChange={onChange}
           onSubmit={handleClose}
         />
