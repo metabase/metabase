@@ -29,7 +29,7 @@
     (f)
     (catch Throwable e
       (log/error (u/colorize 'red "[FAIL]\n"))
-      (throw (ex-info (trs "ERROR {0}" msg)
+      (throw (ex-info (trs "ERROR {0}: {1}" msg (ex-message e))
                       {}
                       e))))
   (log-ok))
@@ -84,6 +84,25 @@
    ;; above this line)
    DataMigrations])
 
+(defn- clear-existing-rows!
+  "Make sure the target database is empty -- rows created by migrations (such as the magic permissions groups and
+  default perms entries) need to be deleted so we can copy everything over from the source DB without running into
+  conflicts."
+  [target-db-type ^javax.sql.DataSource target-data-source]
+  (with-open [conn (.getConnection target-data-source)
+              stmt (.createStatement conn)]
+    (letfn [(add-batch! [^String sql]
+              (log/debug (u/colorize :yellow sql))
+              (.addBatch stmt sql))]
+      (add-batch! "BEGIN;")
+      (doseq [{table-name :table} entities]
+        (add-batch! (format (if (= target-db-type :postgres)
+                              "TRUNCATE TABLE %s CASCADE;"
+                              "TRUNCATE TABLE %s;")
+                            (name table-name))))
+      (add-batch! "COMMIT;"))
+    (.executeBatch stmt)))
+
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
@@ -130,13 +149,6 @@
                                                            (name table-name)
                                                            (when fragment (str " " fragment)))
                                              results (jdbc/reducible-query {:connection source-conn} sql)]]
-      ;; delete any existing rows in the target DB (e.g. the default permissions entries that get created by migrations)
-      (let [statement (format (if (= target-db-type :postgres)
-                                "TRUNCATE TABLE %s CASCADE;"
-                                "TRUNCATE TABLE %s;")
-                              (name table-name))]
-        (log/debug (u/colorize :yellow statement))
-        (jdbc/execute! target-db-conn-spec statement))
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
@@ -282,6 +294,9 @@
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-db-empty target-data-source))
+  ;; clear any rows created by the Liquibase migrations.
+  (step (trs "Clearing default entries created by Liquibase migrations...")
+    (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
   (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
