@@ -25,6 +25,7 @@ import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import EventTimelinesSidebar from "./sidebars/EventTimelinesSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
@@ -148,12 +149,18 @@ export default class View extends React.Component {
   getRightSidebarForStructuredQuery = () => {
     const {
       question,
+      eventTimelinesLoader,
+      hiddenTimelines,
       isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
+      isShowingEventTimelinesSidebar,
       runQuestionQuery,
+      showEventTimeline,
+      hideEventTimeline,
       onCloseSummary,
       onCloseFilter,
+      onCloseEventTimelines,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -169,6 +176,18 @@ export default class View extends React.Component {
 
     if (isShowingFilterSidebar) {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
+    }
+
+    if (isShowingEventTimelinesSidebar) {
+      return (
+        <EventTimelinesSidebar
+          timelines={eventTimelinesLoader.timelines}
+          hiddenTimelines={hiddenTimelines}
+          onShowTimeline={showEventTimeline}
+          onHideTimeline={hideEventTimeline}
+          onClose={onCloseEventTimelines}
+        />
+      );
     }
 
     return null;
