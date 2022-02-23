@@ -198,7 +198,9 @@ describe("scenarios > admin > settings", () => {
 
     cy.findByText("January 7, 2018").click({ force: true });
     cy.findByText("2018/1/7").click({ force: true });
-    cy.contains("17:24 (24-hour clock)").click();
+    cy.wait("@saveFormatting");
+
+    cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
     openOrdersTable();
