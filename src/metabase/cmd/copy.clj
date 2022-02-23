@@ -123,7 +123,6 @@
    "metabase_field" "ORDER BY id ASC"})
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
-  (println "target-db-conn-spec:" target-db-conn-spec) ; NOCOMMIT
   (with-open [source-conn (.getConnection source-data-source)]
     (doseq [{table-name :table, :as entity} entities
             :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
