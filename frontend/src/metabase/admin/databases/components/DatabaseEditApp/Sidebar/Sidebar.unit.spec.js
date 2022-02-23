@@ -98,19 +98,12 @@ it("removes database", () => {
   expect(deleteDatabase).toHaveBeenCalled();
 });
 
-it("hides syncing actions until the initial sync", () => {
+it("shows loading indicator when a sync is in progress", () => {
   const databaseId = 1;
   const database = { id: databaseId, initial_sync_status: "incomplete" };
 
   render(<Sidebar database={database} />);
 
   const statusButton = screen.getByText("Syncing database…");
-  const syncButton = screen.queryByText("Sync database schema now");
-  const rescanButton = screen.queryByText("Re-scan field values now");
-  const discardButton = screen.queryByText("Discard saved field values");
-
   expect(statusButton).toBeInTheDocument();
-  expect(syncButton).not.toBeInTheDocument();
-  expect(rescanButton).not.toBeInTheDocument();
-  expect(discardButton).not.toBeInTheDocument();
 });
