@@ -209,7 +209,9 @@
     (swap! *cached-users assoc query-parameters result)
     result))
 
-(defn refresh-caches! []
+(defn refresh-caches!
+  "Refreshes slack caches asynchronistically"
+  []
   (future (conversations-list))
   (future (users-list)))
 
