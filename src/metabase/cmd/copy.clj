@@ -84,25 +84,6 @@
    ;; above this line)
    DataMigrations])
 
-(defn- clear-existing-rows!
-  "Make sure the target database is empty -- rows created by migrations (such as the magic permissions groups and
-  default perms entries) need to be deleted so we can copy everything over from the source DB without running into
-  conflicts."
-  [target-db-type ^javax.sql.DataSource target-data-source]
-  (with-open [conn (.getConnection target-data-source)
-              stmt (.createStatement conn)]
-    (letfn [(add-batch! [^String sql]
-              (log/debug (u/colorize :yellow sql))
-              (.addBatch stmt sql))]
-      (add-batch! "BEGIN;")
-      (doseq [{table-name :table} entities]
-        (add-batch! (format (if (= target-db-type :postgres)
-                              "TRUNCATE TABLE %s CASCADE;"
-                              "TRUNCATE TABLE %s;")
-                            (name table-name))))
-      (add-batch! "COMMIT;"))
-    (.executeBatch stmt)))
-
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
@@ -195,7 +176,7 @@
   `(do-with-connection-rollback-only ~conn (fn [] ~@body)))
 
 (defmulti ^:private disable-db-constraints!
-  {:arglists '([db-type conn])}
+  {:arglists '([db-type conn-spec])}
   (fn [db-type _]
     db-type))
 
@@ -222,7 +203,7 @@
   (jdbc/execute! conn "SET REFERENTIAL_INTEGRITY FALSE"))
 
 (defmulti ^:private reenable-db-constraints!
-  {:arglists '([db-type conn])}
+  {:arglists '([db-type conn-spec])}
   (fn [db-type _]
     db-type))
 
@@ -251,6 +232,37 @@
   {:style/indent 2}
   [db-type conn & body]
   `(do-with-disabled-db-constraints ~db-type ~conn (fn [] ~@body)))
+
+(defn- clear-existing-rows!
+  "Make sure the target database is empty -- rows created by migrations (such as the magic permissions groups and
+  default perms entries) need to be deleted so we can copy everything over from the source DB without running into
+  conflicts."
+  [target-db-type ^javax.sql.DataSource target-data-source]
+  (with-open [conn (.getConnection target-data-source)
+              stmt (.createStatement conn)]
+    (with-disabled-db-constraints target-db-type {:connection conn}
+      (let [save-point (.setSavepoint conn)]
+        (try
+          (.setAutoCommit conn false)
+          (letfn [(add-batch! [^String sql]
+                    (log/debug (u/colorize :yellow sql))
+                    (.addBatch stmt sql))]
+            ;; do these in reverse order so child rows get deleted before parents
+            (doseq [{table-name :table} (reverse entities)]
+              (add-batch! (format (if (= target-db-type :postgres)
+                                    "TRUNCATE TABLE %s CASCADE;"
+                                    "TRUNCATE TABLE %s;")
+                                  (name table-name)))))
+          (.executeBatch stmt)
+          (.commit conn)
+          (catch Throwable e
+            (try
+              (.rollback conn save-point)
+              (catch Throwable e2
+                (throw (Exception. (ex-message e2) e))))
+            (throw e))
+          (finally
+            (.setAutoCommit conn true)))))))
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
