@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -150,7 +150,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
       // wait for question to load/run
       cy.contains("Test Question");
       cy.contains("2,500");
