@@ -203,7 +203,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
-    openOrdersTable();
+    openOrdersTable({ limit: 2 });
 
     cy.findByText("Created At").should("be.visible");
     cy.contains(/^2019\/2\/11, 21:40$/);
