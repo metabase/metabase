@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 export const ModalRoot = styled.div`
   min-height: 565px;
-  max-height: calc(100vh - 64px);
+  max-height: 90vh;
 `;
 
 export const ModalBody = styled.div`
