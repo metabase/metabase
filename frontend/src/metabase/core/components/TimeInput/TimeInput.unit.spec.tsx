@@ -1,14 +1,14 @@
 import React, { useCallback, useState } from "react";
-import { duration, Duration } from "moment";
+import moment, { Moment } from "moment";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TimeInput, { TimeInputProps } from "./TimeInput";
 
 const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
-  const [value, setValue] = useState<Duration>();
+  const [value, setValue] = useState(props.value);
 
   const handleChange = useCallback(
-    (value?: Duration) => {
+    (value: Moment) => {
       setValue(value);
       onChange?.(value);
     },
@@ -20,24 +20,35 @@ const TestTimeInput = ({ onChange, ...props }: TimeInputProps) => {
 
 describe("TimeInput", () => {
   it("should set time", () => {
+    const value = moment({ hours: 0, minutes: 0 });
     const onChange = jest.fn();
 
-    render(<TestTimeInput onChange={onChange} />);
+    render(<TestTimeInput value={value} onChange={onChange} />);
+    userEvent.clear(screen.getByLabelText("Hours"));
     userEvent.type(screen.getByLabelText("Hours"), "5");
+    userEvent.clear(screen.getByLabelText("Minutes"));
     userEvent.type(screen.getByLabelText("Minutes"), "20");
 
-    const expected = duration({ hours: 5, minutes: 20 });
+    const expected = value.clone();
+    expected.hours(5);
+    expected.minutes(20);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
   it("should clear time", () => {
-    const onChange = jest.fn();
+    const value = moment({ hours: 2, minutes: 10 });
+    const onClear = jest.fn();
 
-    render(<TestTimeInput onChange={onChange} />);
+    render(<TestTimeInput value={value} onClear={onClear} />);
+    userEvent.clear(screen.getByLabelText("Hours"));
     userEvent.type(screen.getByLabelText("Hours"), "5");
+    userEvent.clear(screen.getByLabelText("Minutes"));
     userEvent.type(screen.getByLabelText("Minutes"), "20");
     userEvent.click(screen.getByLabelText("Remove time"));
 
-    expect(onChange).toHaveBeenLastCalledWith(undefined);
+    const expected = value.clone();
+    expected.hours(0);
+    expected.minutes(0);
+    expect(onClear).toHaveBeenCalledWith(expected);
   });
 });
