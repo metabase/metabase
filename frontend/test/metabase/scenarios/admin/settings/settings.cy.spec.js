@@ -188,8 +188,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should correctly apply the globalized date formats (metabase#11394)", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+    cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
