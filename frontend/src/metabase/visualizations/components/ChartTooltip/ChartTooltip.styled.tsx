@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 import DateTime from "metabase/components/DateTime";
 
 export const TimelineEventsList = styled.ul`
+  max-width: 300px;
+
   li:not(:first-of-type) {
     margin-top: 8px;
   }
