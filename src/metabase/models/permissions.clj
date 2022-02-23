@@ -618,6 +618,7 @@
                                             [:or
                                              [:= :object (hx/literal "/")]
                                              [:like :object (hx/literal "/db/%")]
+                                             [:like :object (hx/literal "/download/%")]
                                              [:like :object (hx/literal "/block/db/%")]]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
