@@ -124,7 +124,7 @@
       (sample-data/update-sample-database-if-needed!)))
 
   (when (slack/slack-configured?)
-    (slack/refresh-caches!))
+    (slack/refresh-cache!))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
