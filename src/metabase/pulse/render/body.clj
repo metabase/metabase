@@ -487,12 +487,18 @@
 
 (defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
-  You kind of hope there's only two but here's for the eventuality"
-  [viz-settings]
-  (if (:stackable.stack_type viz-settings)
-    (repeat "left")
-    (conj (repeat "right")
-          "left")))
+  This is basically a portion of the fiddly logic in FE visualizations,
+  corresponding to visualizations/lib/LineAreaBarRender.js"
+  [viz-settings & grouped-rows]
+  (let [grouped-metrics (into {} (for [[k v] (first grouped-rows)] [k (map ffirst v)]))
+        metrics-same?   (and (some? grouped-rows) (apply = (vals grouped-metrics)))
+        is-stacked?     (some? (:stackable.stack_type viz-settings))
+        no-split?       (= false (:graph.y_axis.auto_split viz-settings))
+        should-split    (not-any? identity [metrics-same? is-stacked? no-split?])]
+    (if should-split
+      (conj (repeat "right")
+            "left")
+      (repeat "left"))))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -593,7 +599,7 @@
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos viz-settings) idx))]
+                                   (nth (default-y-pos viz-settings grouped-rows) idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
