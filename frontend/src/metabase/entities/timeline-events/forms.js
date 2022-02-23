@@ -18,7 +18,6 @@ const createForm = () => {
       type: "date",
       hasTime: true,
       hasTimezone: true,
-      timezoneFieldName: "timezone",
       validate: validate.required(),
     },
     {

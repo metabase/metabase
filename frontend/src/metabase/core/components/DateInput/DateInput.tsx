@@ -11,15 +11,11 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import {
-  getDateStyleFromSettings,
-  getTimeStyleFromSettings,
-  hasTimePart,
-} from "metabase/lib/time";
+import { hasTimePart } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";
-const TIME_FORMAT = "HH:mm";
+const TIME_FORMAT = "h:mm A";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -30,9 +26,11 @@ export interface DateInputProps extends DateInputAttributes {
   value?: Moment;
   inputRef?: Ref<HTMLInputElement>;
   hasTime?: boolean;
+  hasCalendar?: boolean;
+  dateFormat?: string;
+  timeFormat?: string;
   error?: boolean;
   fullWidth?: boolean;
-  hasCalendar?: boolean;
   onChange?: (value?: Moment) => void;
   onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
@@ -43,9 +41,11 @@ const DateInput = forwardRef(function DateInput(
     inputRef,
     placeholder,
     hasTime,
+    hasCalendar,
+    dateFormat = DATE_FORMAT,
+    timeFormat = TIME_FORMAT,
     error,
     fullWidth,
-    hasCalendar,
     onFocus,
     onBlur,
     onChange,
@@ -56,8 +56,6 @@ const DateInput = forwardRef(function DateInput(
 ) {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const dateFormat = getDateStyleFromSettings() || DATE_FORMAT;
-  const timeFormat = getTimeStyleFromSettings() || TIME_FORMAT;
   const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
   const now = useMemo(() => {

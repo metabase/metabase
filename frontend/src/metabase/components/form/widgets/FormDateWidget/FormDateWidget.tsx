@@ -1,6 +1,10 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import { Moment } from "moment";
-import { parseTimestamp } from "metabase/lib/time";
+import {
+  getDateStyleFromSettings,
+  getTimeStyleFromSettings,
+  parseTimestamp,
+} from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
 import { FormField } from "./types";
 
@@ -49,6 +53,8 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       value={value}
       placeholder={placeholder}
       hasTime={hasTime}
+      dateFormat={getDateStyleFromSettings()}
+      timeFormat={getTimeStyleFromSettings()}
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}
