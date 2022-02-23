@@ -13,7 +13,7 @@ const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const newColumnName = "Product ID with a very long name";
 const newTableName = "Products with a very long name";
 
-describe.skip("issue 20627", () => {
+describe("issue 20627", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
