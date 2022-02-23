@@ -82,7 +82,8 @@ export default class Visualization extends React.PureComponent {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
       !Utils.equals(newProps.settings, this.props.settings) ||
-      newProps.eventTimelines !== this.props.eventTimelines
+      newProps.eventTimelines !== this.props.eventTimelines ||
+      newProps.hiddenTimelines !== this.props.hiddenTimelines
     ) {
       this.transform(newProps);
     }
@@ -142,6 +143,9 @@ export default class Visualization extends React.PureComponent {
     const computedSettings = series
       ? getComputedSettingsForSeries(series)
       : null;
+    const eventTimelines = newProps.eventTimelines.filter(
+      timeline => !newProps.hiddenTimelines.includes(timeline.id),
+    );
     this.setState({
       hovered: null,
       clicked: null,
@@ -151,7 +155,7 @@ export default class Visualization extends React.PureComponent {
       series,
       visualization,
       computedSettings,
-      eventTimelines: newProps.eventTimelines,
+      eventTimelines,
     });
   }
 
