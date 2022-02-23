@@ -6,7 +6,7 @@ import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import TimelineCard from "../TimelineCard";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { ListRoot, ModalBody } from "./TimelineListModal.styled";
+import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
@@ -23,7 +23,7 @@ const TimelineListModal = ({
   const title = hasTimelines ? t`Events` : t`${collection.name} events`;
 
   return (
-    <div>
+    <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
         {hasTimelines && <TimelineMenu collection={collection} />}
       </ModalHeader>
@@ -34,7 +34,7 @@ const TimelineListModal = ({
           <TimelineEmptyState collection={collection} />
         )}
       </ModalBody>
-    </div>
+    </ModalRoot>
   );
 };
 
