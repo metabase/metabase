@@ -8,21 +8,22 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.db.schema-migrations-test.impl :as impl]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db])
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as group]
+   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db])
   (:import java.sql.Connection
            java.util.UUID))
 
@@ -514,3 +515,26 @@
           (migrate!)
           (is (= [{:object "/collection/root/"}]
                  (all-user-perms))))))))
+
+(deftest clear-ldap-user-passwords-test
+  (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
+    (impl/test-migrations ["v43.00-029"] [migrate!]
+      (db/execute! {:insert-into User
+                    :values      [{:first_name    "Cam"
+                                   :last_name     "Era"
+                                   :email         "cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     false}
+                                  {:first_name    "LDAP Cam"
+                                   :last_name     "Era"
+                                   :email         "ldap_cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     true}]})
+      (migrate!)
+      (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
+              {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
+             (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))

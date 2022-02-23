@@ -3,6 +3,7 @@ import React, {
   FocusEvent,
   forwardRef,
   InputHTMLAttributes,
+  MouseEvent,
   Ref,
   useCallback,
   useMemo,
@@ -10,16 +11,15 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+import {
+  getDateStyleFromSettings,
+  getTimeStyleFromSettings,
+  hasTimePart,
+} from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
-import Icon from "metabase/components/Icon";
-import Calendar from "metabase/components/Calendar";
-import Tooltip from "metabase/components/Tooltip";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { CalendarFooter, InputIconButton, InputRoot } from "./DateInput.styled";
 
-const INPUT_FORMAT = "MM/DD/YYYY";
-const CALENDAR_FORMAT = "YYYY-MM-DD";
+const DATE_FORMAT = "MM/DD/YYYY";
+const TIME_FORMAT = "HH:mm";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -27,39 +27,58 @@ export type DateInputAttributes = Omit<
 >;
 
 export interface DateInputProps extends DateInputAttributes {
-  inputRef?: Ref<HTMLInputElement>;
   value?: Moment;
+  inputRef?: Ref<HTMLInputElement>;
+  hasTime?: boolean;
   error?: boolean;
   fullWidth?: boolean;
-  onChange?: (value: Moment | undefined) => void;
+  hasCalendar?: boolean;
+  onChange?: (value?: Moment) => void;
+  onCalendarClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 const DateInput = forwardRef(function DateInput(
   {
-    className,
-    style,
-    inputRef,
     value,
+    inputRef,
     placeholder,
-    readOnly,
-    disabled,
+    hasTime,
     error,
     fullWidth,
+    hasCalendar,
     onFocus,
     onBlur,
     onChange,
+    onCalendarClick,
     ...props
   }: DateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const now = useMemo(() => moment(), []);
-  const nowText = useMemo(() => now.format(INPUT_FORMAT), [now]);
-  const valueText = useMemo(() => value?.format(INPUT_FORMAT) ?? "", [value]);
-  const [inputText, setInputText] = useState(valueText);
-  const [isOpened, setIsOpened] = useState(false);
+  const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const dateFormat = getDateStyleFromSettings() || DATE_FORMAT;
+  const timeFormat = getTimeStyleFromSettings() || TIME_FORMAT;
+  const dateTimeFormat = `${dateFormat}, ${timeFormat}`;
 
-  const handleInputFocus = useCallback(
+  const now = useMemo(() => {
+    return moment();
+  }, []);
+
+  const nowText = useMemo(() => {
+    return now.format(dateFormat);
+  }, [now, dateFormat]);
+
+  const valueText = useMemo(() => {
+    if (!value) {
+      return "";
+    } else if (hasTime && hasTimePart(value)) {
+      return value.format(dateTimeFormat);
+    } else {
+      return value.format(dateFormat);
+    }
+  }, [value, hasTime, dateFormat, dateTimeFormat]);
+
+  const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
       setInputText(valueText);
@@ -68,7 +87,7 @@ const DateInput = forwardRef(function DateInput(
     [valueText, onFocus],
   );
 
-  const handleInputBlur = useCallback(
+  const handleBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       setIsFocused(false);
       onBlur?.(event);
@@ -76,11 +95,13 @@ const DateInput = forwardRef(function DateInput(
     [onBlur],
   );
 
-  const handleInputChange = useCallback(
+  const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = moment(newText, INPUT_FORMAT);
       setInputText(newText);
+
+      const formats = hasTime ? [dateTimeFormat, dateFormat] : [dateFormat];
+      const newValue = moment(newText, formats);
 
       if (newValue.isValid()) {
         onChange?.(newValue);
@@ -88,77 +109,24 @@ const DateInput = forwardRef(function DateInput(
         onChange?.(undefined);
       }
     },
-    [onChange],
-  );
-
-  const handlePopoverOpen = useCallback(() => {
-    setIsOpened(true);
-  }, []);
-
-  const handlePopoverClose = useCallback(() => {
-    setIsOpened(false);
-  }, []);
-
-  const handleCalendarChange = useCallback(
-    (valueText: string) => {
-      const value = moment(valueText, CALENDAR_FORMAT);
-      onChange?.(value);
-    },
-    [onChange],
+    [hasTime, dateFormat, dateTimeFormat, onChange],
   );
 
   return (
-    <TippyPopover
-      trigger="manual"
-      placement="bottom-start"
-      visible={isOpened}
-      interactive
-      content={
-        <div>
-          <Calendar
-            selected={value}
-            initial={value ?? now}
-            onChange={handleCalendarChange}
-            isRangePicker={false}
-          />
-          <CalendarFooter>
-            <Button primary onClick={handlePopoverClose}>{t`Save`}</Button>
-          </CalendarFooter>
-        </div>
-      }
-      onHide={handlePopoverClose}
-    >
-      <InputRoot
-        ref={ref}
-        className={className}
-        style={style}
-        readOnly={readOnly}
-        error={error}
-        fullWidth={fullWidth}
-      >
-        <Input
-          {...props}
-          ref={inputRef}
-          value={isFocused ? inputText : valueText}
-          placeholder={nowText}
-          readOnly={readOnly}
-          disabled={disabled}
-          error={error}
-          fullWidth={fullWidth}
-          borderless
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          onChange={handleInputChange}
-        />
-        {!readOnly && !disabled && (
-          <Tooltip tooltip={t`Show calendar`}>
-            <InputIconButton tabIndex={-1} onClick={handlePopoverOpen}>
-              <Icon name="calendar" />
-            </InputIconButton>
-          </Tooltip>
-        )}
-      </InputRoot>
-    </TippyPopover>
+    <Input
+      {...props}
+      ref={ref}
+      value={isFocused ? inputText : valueText}
+      placeholder={nowText}
+      error={error}
+      fullWidth={fullWidth}
+      rightIcon={hasCalendar ? "calendar" : undefined}
+      rightIconTooltip={t`Show calendar`}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onChange={handleChange}
+      onRightIconClick={onCalendarClick}
+    />
   );
 });
 

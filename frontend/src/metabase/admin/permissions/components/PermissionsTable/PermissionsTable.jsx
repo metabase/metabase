@@ -11,7 +11,6 @@ import {
   PermissionsTableRow,
   PermissionsTableCell,
   PermissionTableHeaderCell,
-  EntityNameCell,
   EntityNameLink,
   EntityName,
   HintIcon,
@@ -88,7 +87,7 @@ export function PermissionsTable({
           {entities.map(entity => {
             return (
               <PermissionsTableRow key={entity.id}>
-                <EntityNameCell>
+                <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
                       {entity.name}
@@ -102,7 +101,7 @@ export function PermissionsTable({
                       <HintIcon />
                     </Tooltip>
                   )}
-                </EntityNameCell>
+                </PermissionsTableCell>
 
                 {entity.permissions.map(permission => {
                   return (

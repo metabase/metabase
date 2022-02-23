@@ -1,7 +1,7 @@
 import { TimelineEvent, Timeline } from "../timeline";
 import { createMockUser } from "./user";
 
-export const createMockTimeline = (opts: Partial<Timeline>): Timeline => ({
+export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   id: 1,
   collection_id: 1,
   name: "Events",

@@ -1,31 +1,42 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment";
-import DateInput from "metabase/core/components/DateInput";
+import DateWidget from "metabase/core/components/DateWidget";
 import { FormField } from "./types";
 
 const DATE_FORMAT = "YYYY-MM-DD";
+const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export interface FormDateWidgetProps {
   field: FormField;
   placeholder?: string;
+  hasTime?: boolean;
   readOnly?: boolean;
   autoFocus?: boolean;
   tabIndex?: number;
 }
 
 const FormDateWidget = forwardRef(function FormDateWidget(
-  { field, placeholder, readOnly, autoFocus, tabIndex }: FormDateWidgetProps,
+  {
+    field,
+    placeholder,
+    hasTime,
+    readOnly,
+    autoFocus,
+    tabIndex,
+  }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const format = hasTime ? DATE_TIME_FORMAT : DATE_FORMAT;
+
   const value = useMemo(() => {
-    return field.value ? moment(field.value, DATE_FORMAT) : undefined;
-  }, [field]);
+    return field.value ? moment(field.value, format) : undefined;
+  }, [field, format]);
 
   const handleChange = useCallback(
     (newValue?: Moment) => {
-      field.onChange?.(newValue?.format(DATE_FORMAT));
+      field.onChange?.(newValue?.format(format));
     },
-    [field],
+    [field, format],
   );
 
   const handleFocus = useCallback(() => {
@@ -37,10 +48,11 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   }, [field]);
 
   return (
-    <DateInput
+    <DateWidget
       ref={ref}
       value={value}
       placeholder={placeholder}
+      hasTime={hasTime}
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}

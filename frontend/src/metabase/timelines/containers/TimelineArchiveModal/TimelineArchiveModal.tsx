@@ -6,7 +6,7 @@ import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import TimelineModal from "../../components/TimelineModal";
+import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -20,6 +20,10 @@ const collectionProps = {
     Urls.extractCollectionId(props.params.slug),
 };
 
+const mapStateToProps = () => ({
+  isArchive: true,
+});
+
 const mapDispatchToProps = (dispatch: any) => ({
   onUnarchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, false));
@@ -29,5 +33,5 @@ const mapDispatchToProps = (dispatch: any) => ({
 export default _.compose(
   Timelines.load(timelineProps),
   Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(TimelineModal);
+  connect(mapStateToProps, mapDispatchToProps),
+)(TimelineDetailsModal);

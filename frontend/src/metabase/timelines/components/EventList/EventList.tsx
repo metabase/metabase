@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { t } from "ttag";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
@@ -51,4 +51,4 @@ const EventList = ({
   );
 };
 
-export default EventList;
+export default memo(EventList);

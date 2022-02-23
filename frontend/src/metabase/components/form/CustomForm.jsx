@@ -309,7 +309,7 @@ export const CustomFormFooter = (
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
-        <Button className="mx1" onClick={onCancel}>
+        <Button className="mx1" type="button" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}

@@ -6,13 +6,11 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [cemerick.friend.credentials :as creds]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -60,14 +58,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
-;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
-;; disable passwords for Google authenticated users
-(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
-  (db/transaction
-    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (java.util.UUID/randomUUID)))))))
 
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
