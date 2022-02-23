@@ -168,7 +168,8 @@
 .LineAreaBarChart .dc-chart .line,
 .LineAreaBarChart .dc-chart .dot,
 .LineAreaBarChart .dc-chart .row,
-.LineAreaBarChart .dc-chart .bubble {
+.LineAreaBarChart .dc-chart .bubble,
+.LineAreaBarChart .dc-chart .event-line {
   transition: opacity 0.15s linear;
 }
 
@@ -268,4 +269,14 @@ text.value-label-white {
 
 .dc-chart .events-axis .event-tick.hover text {
   fill: var(--color-brand);
+}
+
+.dc-chart .event-line {
+  stroke: var(--color-brand);
+  stroke-width: 2;
+  opacity: 0.2;
+}
+
+.dc-chart .event-line.hover {
+  opacity: 1;
 }

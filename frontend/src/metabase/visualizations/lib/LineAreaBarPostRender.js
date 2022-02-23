@@ -473,9 +473,13 @@ function onRenderAddEventsTimeline(
 
   eventsAxis.select("path.domain").remove();
 
+  const brushLayer = chart.svg().select("g.brush");
+  const brushLayerHeight = brushLayer.select("rect.background").attr("height");
+
   Object.values(eventsByDate).forEach(group => {
     const defaultTick = eventsAxis.select(".tick");
     const transformStyle = defaultTick.attr("transform");
+    const [tickX] = parseTranslateStyleValue(transformStyle);
     defaultTick.remove();
 
     const isOnlyOneEvent = group.length === 1;
@@ -487,6 +491,14 @@ function onRenderAddEventsTimeline(
         : ICON_PATHS[iconName].path;
 
     const scale = iconName === "mail" ? 0.45 : 0.5;
+
+    const eventPointerLine = brushLayer
+      .append("line")
+      .attr("class", "event-line")
+      .attr("x1", tickX)
+      .attr("x2", tickX)
+      .attr("y1", "0")
+      .attr("y2", brushLayerHeight);
 
     const eventIconContainer = eventsAxis
       .append("g")
@@ -519,10 +531,12 @@ function onRenderAddEventsTimeline(
           timelineEvents: group,
         });
         eventIconContainer.classed("hover", true);
+        eventPointerLine.classed("hover", true);
       })
       .on("mouseleave", () => {
         onHoverChange(null);
         eventIconContainer.classed("hover", false);
+        eventPointerLine.classed("hover", false);
       });
   });
 
