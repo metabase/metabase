@@ -3,7 +3,7 @@ Cypress.Commands.add(
   ({
     attribute_remappings = {},
     card_id = null,
-    group_id = 4,
+    group_id = 3,
     table_id = 2,
   } = {}) => {
     // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`

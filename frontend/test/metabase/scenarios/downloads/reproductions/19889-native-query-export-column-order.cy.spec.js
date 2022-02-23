@@ -1,4 +1,8 @@
-import { restore, downloadAndAssert } from "__support__/e2e/cypress";
+import {
+  restore,
+  downloadAndAssert,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 const questionDetails = {
   name: "19889",
@@ -60,8 +64,7 @@ describe("issue 19889", () => {
       saveAndOverwrite();
 
       cy.get("@questionId").then(questionId => {
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery");
+        visitQuestion(questionId);
 
         downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
           expect(sheet["A1"].v).to.equal("column x");

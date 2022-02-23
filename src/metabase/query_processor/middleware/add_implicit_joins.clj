@@ -3,6 +3,7 @@
   in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
   (:require [clojure.set :as set]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
@@ -145,27 +146,79 @@
             add-condition-fields-to-source
             (add-referenced-fields-to-source reused-joins))))))
 
+(defn- join-dependencies
+  "Get a set of join aliases that `join` has an immediate dependency on."
+  [join]
+  (set
+   (mbql.u/match (:condition join)
+     [:field _ (opts :guard :join-alias)]
+     (let [{:keys [join-alias]} opts]
+       (when-not (= join-alias (:alias join))
+         join-alias)))))
+
+(defn- topologically-sort-joins
+  "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted
+  first. If no dependencies exist between joins, preserve the existing order."
+  [joins]
+  (let [ ;; make a map of join alias -> immediate dependencies
+        join->immediate-deps (into {}
+                                   (map (fn [join]
+                                          [(:alias join) (join-dependencies join)]))
+                                   joins)
+        ;; make a map of join alias -> immediate and transient dependencies
+        all-deps             (fn all-deps [join-alias]
+                               (let [immediate-deps (set (get join->immediate-deps join-alias))]
+                                 (into immediate-deps
+                                       (mapcat all-deps)
+                                       immediate-deps)))
+        join->all-deps       (into {}
+                                   (map (fn [[join-alias]]
+                                          [join-alias (all-deps join-alias)]))
+                                   join->immediate-deps)
+        ;; now we can create a function to decide if one join depends on another
+        depends-on?          (fn [join-1 join-2]
+                               (contains? (join->all-deps (:alias join-1))
+                                          (:alias join-2)))]
+    (->> ;; add a key to each join to record its original position
+         (map-indexed (fn [i join]
+                        (assoc join ::original-position i)) joins)
+         ;; sort the joins by topological order falling back to preserving original position
+         (sort (fn [join-1 join-2]
+                 (cond
+                   (depends-on? join-1 join-2) 1
+                   (depends-on? join-2 join-1) -1
+                   :else                       (compare (::original-position join-1)
+                                                        (::original-position join-2)))))
+         ;; remove the keys we used to record original position
+         (mapv (fn [join]
+                 (dissoc join ::original-position))))))
+
 (defn- resolve-implicit-joins-this-level
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
   [form]
-  (let [implicitly-joined-fields  (implicitly-joined-fields form)
-        new-joins      (implicitly-joined-fields->joins implicitly-joined-fields)
-        required-joins (remove (partial already-has-join? form) new-joins)
-        reused-joins   (set/difference (set new-joins) (set required-joins))]
+  (let [implicitly-joined-fields (implicitly-joined-fields form)
+        new-joins                (implicitly-joined-fields->joins implicitly-joined-fields)
+        required-joins           (remove (partial already-has-join? form) new-joins)
+        reused-joins             (set/difference (set new-joins) (set required-joins))]
     (cond-> form
       (seq required-joins) (update :joins (fn [existing-joins]
                                             (m/distinct-by
                                              :alias
                                              (concat existing-joins required-joins))))
       true                 add-join-alias-to-fields-with-source-field
-      true                 (add-fields-to-source reused-joins))))
+      true                 (add-fields-to-source reused-joins)
+      (seq required-joins) (update :joins topologically-sort-joins))))
 
-(defn- resolve-implicit-joins [{:keys [source-query joins], :as inner-query}]
-  (let [recursively-resolved (cond-> inner-query
-                               source-query (update :source-query resolve-implicit-joins)
-                               (seq joins)  (update :joins (partial map resolve-implicit-joins)))]
-    (resolve-implicit-joins-this-level recursively-resolved)))
+(defn- resolve-implicit-joins [query]
+  (walk/postwalk
+   (fn [form]
+     (if (and (map? form)
+              ((some-fn :source-query :source-table) form)
+              (not (:condition form)))
+       (resolve-implicit-joins-this-level form)
+       form))
+   query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,7 +234,7 @@
   [query]
   (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/supports? driver/*driver* :foreign-keys)
+      (when-not (driver/database-supports? driver/*driver* :foreign-keys (qp.store/database))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   error-type/unsupported-feature})))

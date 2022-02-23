@@ -34,7 +34,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "updatePermissionsSchemas",
-  ({ schemas = {}, user_group = 4, database_id = 1 } = {}) => {
+  ({ schemas = {}, user_group = 3, database_id = 1 } = {}) => {
     if (typeof schemas !== "object") {
       throw new Error("`schemas` must be an object!");
     }
