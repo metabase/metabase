@@ -5,11 +5,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { createBookmark, deleteBookmark } from "../actions";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -153,7 +153,8 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
-  toggleBookmark: Questions.objectActions.toggleBookmark,
+  createBookmark,
+  deleteBookmark,
 };
 
 function QueryBuilder(props) {
@@ -173,7 +174,8 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
-    toggleBookmark,
+    createBookmark,
+    deleteBookmark,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -209,7 +211,8 @@ function QueryBuilder(props) {
       card: { id },
     } = props;
 
-    toggleBookmark(id, !isBookmarked);
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    toggleBookmark(id);
   };
 
   const handleCreate = useCallback(

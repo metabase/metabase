@@ -49,6 +49,11 @@ export const getMetadataDiff = state => state.qb.metadataDiff;
 
 const getRawQueryResults = state => state.qb.queryResults;
 
+export const getIsBookmarked = createSelector(
+  [getUiControls],
+  uiControls => uiControls?.isBookmarked,
+);
+
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],
   (queryResults, metadataDiff) => {
@@ -451,11 +456,6 @@ export const getIsDirty = createSelector(
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
   },
-);
-
-export const getIsBookmarked = createSelector(
-  [getQuestion],
-  question => question?.isBookmarked || false,
 );
 
 export const getQuery = createSelector(
