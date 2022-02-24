@@ -37,7 +37,7 @@
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
 
 (defsetting slack-cache
-  "A cache shared between instances for storing a user's slack channels and users."
+  "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
   :type :json)
 
@@ -189,15 +189,13 @@
        vec))
 
 (defn refresh-cache!
-  "Refreshes users and conversations in slack-cache. If called with no args, finds both in paralell, and sets the cache."
-  ([]
-   (let [users (future (users-list))
-         conversations (future (conversations-list))]
-     (slack-cache {:users @users
-                   :conversations @conversations})))
-  ([users conversations]
-   (slack-cache {:users users
-                 :conversations conversations})))
+  "Refreshes users and conversations in slack-cache. If called with no args, finds both in parallel, and sets the
+  cache."
+  []
+  (let [users (future (users-list))
+        conversations (future (conversations-list))]
+    (slack-cache {:users @users
+                  :conversations @conversations})))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
