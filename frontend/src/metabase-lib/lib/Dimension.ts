@@ -1128,7 +1128,7 @@ const isFieldDimension = dimension => dimension instanceof FieldDimension;
  * Expression reference, `["expression", expression-name]`
  */
 export class ExpressionDimension extends Dimension {
-  tag = "Custom";
+  _expressionName: ExpressionName;
 
   static parseMBQL(
     mbql: any,
@@ -1136,24 +1136,50 @@ export class ExpressionDimension extends Dimension {
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
     if (Array.isArray(mbql) && mbql[0] === "expression") {
-      return new ExpressionDimension(null, mbql.slice(1), metadata, query);
+      const [expressionName, options] = mbql.slice(1);
+      return new ExpressionDimension(expressionName, options, metadata, query);
     }
   }
 
+  constructor(
+    expressionName,
+    options = null,
+    metadata = null,
+    query = null,
+    additionalProperties = null,
+  ) {
+    super(
+      null,
+      [expressionName, options],
+      metadata,
+      query,
+      Object.freeze(Dimension.normalizeOptions(options)),
+    );
+    this._expressionName = expressionName;
+
+    if (additionalProperties) {
+      Object.keys(additionalProperties).forEach(k => {
+        this[k] = additionalProperties[k];
+      });
+    }
+
+    Object.freeze(this);
+  }
+
   mbql(): ExpressionReference {
-    return ["expression", this._args[0]];
+    return ["expression", this._expressionName, this._options];
   }
 
   name() {
-    return this._args[0];
+    return this._expressionName;
   }
 
   displayName(): string {
-    return this._args[0];
+    return this._expressionName;
   }
 
   columnName() {
-    return this._args[0];
+    return this._expressionName;
   }
 
   field() {
@@ -1176,7 +1202,7 @@ export class ExpressionDimension extends Dimension {
 
       type = infer(expressions[this.name()], env);
     } else {
-      type = infer(this._args[0]);
+      type = infer(this._expressionName);
     }
 
     let base_type = type;
@@ -1232,18 +1258,51 @@ const UNAGGREGATED_SEMANTIC_TYPES = new Set([TYPE.FK, TYPE.PK]);
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
 export class AggregationDimension extends Dimension {
+  _aggregationIndex: number;
+
   static parseMBQL(
     mbql: any,
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
     if (Array.isArray(mbql) && mbql[0] === "aggregation") {
-      return new AggregationDimension(null, mbql.slice(1), metadata, query);
+      const [aggregationIndex, options] = mbql.slice(1);
+      return new AggregationDimension(
+        aggregationIndex,
+        options,
+        metadata,
+        query,
+      );
     }
   }
 
+  constructor(
+    aggregationIndex,
+    options = null,
+    metadata = null,
+    query = null,
+    additionalProperties = null,
+  ) {
+    super(
+      null,
+      [aggregationIndex, options],
+      metadata,
+      query,
+      Object.freeze(Dimension.normalizeOptions(options)),
+    );
+    this._aggregationIndex = aggregationIndex;
+
+    if (additionalProperties) {
+      Object.keys(additionalProperties).forEach(k => {
+        this[k] = additionalProperties[k];
+      });
+    }
+
+    Object.freeze(this);
+  }
+
   aggregationIndex(): number {
-    return this._args[0];
+    return this._aggregationIndex;
   }
 
   column(extra = {}) {
@@ -1314,7 +1373,7 @@ export class AggregationDimension extends Dimension {
   }
 
   mbql() {
-    return ["aggregation", this._args[0]];
+    return ["aggregation", this._aggregationIndex, this._options];
   }
 
   icon() {
