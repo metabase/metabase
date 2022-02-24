@@ -1210,17 +1210,8 @@ export class ExpressionDimension extends Dimension {
   }
 
   icon(): IconName {
-    const { base_type } = this.field();
-
-    switch (base_type) {
-      case "type/Text":
-        return "string";
-
-      default:
-        break;
-    }
-
-    return "int";
+    const field = this.field();
+    return field ? field.icon() : "unknown";
   }
 }
 // These types aren't aggregated. e.g. if you take the distinct count of a FK
