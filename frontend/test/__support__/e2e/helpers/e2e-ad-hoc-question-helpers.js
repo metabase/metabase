@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+
 export function adhocQuestionHash(question) {
   if (question.display) {
     // without "locking" the display, the QB will run its picking logic and override the setting
@@ -32,7 +34,7 @@ export function visitQuestionAdhoc(question, { callback, mode } = {}) {
  * @param {{database:number, table: number, mode: (undefined|"notebook"), limit: number, callback: function}} config
  */
 export function openTable({
-  database = 1,
+  database = SAMPLE_DB_ID,
   table,
   mode = null,
   limit,
@@ -74,7 +76,7 @@ function getInterceptDetails(question, mode) {
   // Therefore, there is no `dataset` to wait for.
   // But we need to make sure the schema for our database is loaded before we can proceed.
   if (mode === "notebook") {
-    return ["/api/database/1/schema/PUBLIC", "publicSchema"];
+    return [`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`, "publicSchema"];
   }
 
   const {
