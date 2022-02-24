@@ -9,6 +9,7 @@
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
@@ -303,7 +304,7 @@
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= (into (sorted-map) (driver/describe-nested-field-columns :postgres database {:name "describe_json_table"}))
+          (is (= (into (sorted-map) (sql-jdbc.sync/describe-nested-field-columns :postgres database {:name "describe_json_table"}))
                  (into (sorted-map) {:types {:coherent_json_val {["a"] java.lang.Integer, ["b"] java.lang.Integer} :incoherent_json_val nil}}))))))))
 
 (mt/defdataset with-uuid
