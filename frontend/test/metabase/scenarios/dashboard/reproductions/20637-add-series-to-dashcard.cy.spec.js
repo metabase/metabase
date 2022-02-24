@@ -30,8 +30,7 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
 
     // refresh the page and make sure the dashcard query endpoint was used
     cy.reload();
-    cy.wait("@dashcardQuery");
-    cy.wait("@additionalSeriesDashcardQuery");
+    cy.wait(["@dashcardQuery", "@additionalSeriesDashcardQuery"]);
   });
 });
 
