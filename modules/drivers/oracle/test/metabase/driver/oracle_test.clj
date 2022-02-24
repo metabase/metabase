@@ -19,7 +19,7 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
             [metabase.sync :as sync]
-            [metabase.sync.util]
+            metabase.sync.util
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
