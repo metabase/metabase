@@ -1313,6 +1313,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "embedding",
                   "joins",
                   "models",
                   "moderation",
