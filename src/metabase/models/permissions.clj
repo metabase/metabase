@@ -587,7 +587,7 @@
                  check-native-and-schemas-permissions-allowed-together
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
-(def ^:private DownloadPermissionsGraph
+(def DownloadPermissionsGraph
   s/Any)
 
 (def ^:private StrictDBPermissionsGraph
@@ -648,7 +648,7 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(s/defn ^:private delete-related-permissions!
+(s/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
 
@@ -810,7 +810,9 @@
    new-table-perms :- TablePermissionsGraph]
   (cond
     (= new-table-perms :all)
-    (grant-permissions! group-id db-id schema table-id)
+    (do
+      (revoke-data-access-permissions! group-id db-id schema table-id)
+      (grant-permissions! group-id db-id schema table-id))
 
     (= new-table-perms :none)
     (revoke-data-access-permissions! group-id db-id schema table-id)
@@ -830,7 +832,7 @@
    new-schema-perms :- SchemaPermissionsGraph]
   (cond
     (= new-schema-perms :all)  (do (revoke-data-access-permissions! group-id db-id schema)  ; clear out any existing related permissions
-                                   (grant-permissions!  group-id db-id schema)) ; then grant full perms for the schema
+                                   (grant-permissions! group-id db-id schema)) ; then grant full perms for the schema
     (= new-schema-perms :none) (revoke-data-access-permissions! group-id db-id schema)
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
                                  (update-table-data-access-permissions! group-id db-id schema table-id table-perms))))
@@ -886,7 +888,17 @@
     (doseq [[perm-type new-perms] new-db-perms]
       (case perm-type
         :data
-        (update-db-data-access-permissions! group-id db-id new-perms)))))
+        (update-db-data-access-permissions! group-id db-id new-perms)
+
+        :download
+        (do
+          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
+           group-id db-id new-perms))))))
+
+(update-group-permissions! 1
+                           {1 {:data {:schemas {"PUBLIC" {1 :all, 2 :all, 3 :none, 4 :none}}}
+                               :download {:schemas {"PUBLIC" {1 :limited, 2 :limited, 3 :limited, 4 :limited}}}}})
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
