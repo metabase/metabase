@@ -9,6 +9,7 @@ import {
   hasMatchingParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
+  getMappingTargetField,
 } from "metabase/parameters/utils/dashboards";
 import { metadata } from "__support__/sample_database_fixture";
 
@@ -691,6 +692,56 @@ describe("meta/Dashboard", () => {
       ).toEqual(
         "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
       );
+    });
+  });
+
+  describe("getMappingTargetField", () => {
+    const mapping = {
+      parameter_id: "dbe38f17",
+      card_id: 1,
+      target: ["dimension", ["field", 4, null]],
+    };
+
+    const metadata = {
+      field: jest.fn(),
+    };
+
+    it("should return null when not given a card", () => {
+      expect(getMappingTargetField(null, mapping, metadata)).toBe(null);
+    });
+
+    it("should return null when given a card without a `dataset_query`", () => {
+      const card = {
+        id: 1,
+      };
+
+      expect(getMappingTargetField(card, mapping, metadata)).toBe(null);
+    });
+
+    it("should return the field that maps to the mapping target", () => {
+      const field = {
+        id: 4,
+        name: "foo",
+      };
+
+      metadata.field.mockImplementation(id => {
+        if (id === 4) {
+          return field;
+        }
+      });
+
+      const card = {
+        id: 1,
+        dataset_query: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+          },
+        },
+      };
+
+      expect(getMappingTargetField(card, mapping, metadata)).toEqual(field);
     });
   });
 });
