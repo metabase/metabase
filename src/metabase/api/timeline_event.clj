@@ -54,7 +54,9 @@
    icon         (s/maybe timeline-event/Icons)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
-  (let [existing (api/write-check TimelineEvent id)]
+  (let [existing (api/write-check TimelineEvent id)
+        timeline-event-updates (cond-> timeline-event-updates
+                                 (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (db/update! TimelineEvent id
