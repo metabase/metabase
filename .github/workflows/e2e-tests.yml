@@ -134,7 +134,7 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }}
       name: Run Cypress tests on ${{ matrix.folder }}
       env:
         TERM: xterm
