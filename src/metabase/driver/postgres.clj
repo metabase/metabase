@@ -221,8 +221,8 @@
 ;; including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
-;; Every single database major is fiddly and weird and different about JSON so this one doesn't go in sql.jdbc.
-(defmethod driver/describe-nested-field-columns :postgres
+;; Every single database major is fiddly and weird and different about JSON so there's only a trivial default impl in sql.jdbc
+(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (describe-nested-field-columns* driver spec table)))
