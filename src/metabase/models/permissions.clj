@@ -587,8 +587,13 @@
                  check-native-and-schemas-permissions-allowed-together
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
+(def ^:private DownloadPermissionsGraph
+  s/Any)
+
 (def ^:private StrictDBPermissionsGraph
-  {su/IntGreaterThanZero {:data StrictDataPermissionsGraph}})
+  ;; TODO: expand schema for download permissions
+  {su/IntGreaterThanZero {:data StrictDataPermissionsGraph
+                          (s/optional-key :download) DownloadPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -674,7 +679,7 @@
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
-(defn revoke-data-perms!
+(defn revoke-data-access-permissions!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
   permissions that grant full or partial access to the object in question).
 
@@ -776,7 +781,7 @@
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
-(s/defn ^:private update-table-read-perms!
+(s/defn ^:private update-table-read-permissions!
   [group-id       :- su/IntGreaterThanZero
    db-id          :- su/IntGreaterThanZero
    schema         :- s/Str
@@ -784,9 +789,9 @@
    new-read-perms :- (s/enum :all :none)]
   ((case new-read-perms
      :all  grant-permissions!
-     :none revoke-data-perms!) group-id (table-read-path db-id schema table-id)))
+     :none revoke-data-access-permissions!) group-id (table-read-path db-id schema table-id)))
 
-(s/defn ^:private update-table-query-perms!
+(s/defn ^:private update-table-query-permissions!
   [group-id        :- su/IntGreaterThanZero
    db-id           :- su/IntGreaterThanZero
    schema          :- s/Str
@@ -795,9 +800,9 @@
   (case new-query-perms
     :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
     :segmented (grant-permissions!  group-id (table-segmented-query-path db-id schema table-id))
-    :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
+    :none      (revoke-data-access-permissions! group-id (table-query-path           db-id schema table-id))))
 
-(s/defn ^:private update-table-perms!
+(s/defn ^:private update-table-data-access-permissions!
   [group-id        :- su/IntGreaterThanZero
    db-id           :- su/IntGreaterThanZero
    schema          :- s/Str
@@ -808,29 +813,29 @@
     (grant-permissions! group-id db-id schema table-id)
 
     (= new-table-perms :none)
-    (revoke-data-perms! group-id db-id schema table-id)
+    (revoke-data-access-permissions! group-id db-id schema table-id)
 
     (map? new-table-perms)
     (let [{new-read-perms :read, new-query-perms :query} new-table-perms]
       ;; clear out any existing permissions
-      (revoke-data-perms! group-id db-id schema table-id)
+      (revoke-data-access-permissions! group-id db-id schema table-id)
       ;; then grant/revoke read and query perms as appropriate
-      (when new-read-perms  (update-table-read-perms!  group-id db-id schema table-id new-read-perms))
-      (when new-query-perms (update-table-query-perms! group-id db-id schema table-id new-query-perms)))))
+      (when new-read-perms  (update-table-read-permissions!  group-id db-id schema table-id new-read-perms))
+      (when new-query-perms (update-table-query-permissions! group-id db-id schema table-id new-query-perms)))))
 
-(s/defn ^:private update-schema-perms!
+(s/defn ^:private update-schema-data-access-permissions!
   [group-id         :- su/IntGreaterThanZero
    db-id            :- su/IntGreaterThanZero
    schema           :- s/Str
    new-schema-perms :- SchemaPermissionsGraph]
   (cond
-    (= new-schema-perms :all)  (do (revoke-data-perms! group-id db-id schema)  ; clear out any existing related permissions
+    (= new-schema-perms :all)  (do (revoke-data-access-permissions! group-id db-id schema)  ; clear out any existing related permissions
                                    (grant-permissions!  group-id db-id schema)) ; then grant full perms for the schema
-    (= new-schema-perms :none) (revoke-data-perms! group-id db-id schema)
+    (= new-schema-perms :none) (revoke-data-access-permissions! group-id db-id schema)
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
-                                 (update-table-perms! group-id db-id schema table-id table-perms))))
+                                 (update-table-data-access-permissions! group-id db-id schema table-id table-perms))))
 
-(s/defn ^:private update-native-permissions!
+(s/defn ^:private update-native-data-access-permissions!
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
   ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
@@ -843,10 +848,10 @@
     :write (grant-native-readwrite-permissions! group-id db-id)
     :none  nil))
 
-(s/defn ^:private update-db-permissions!
+(s/defn ^:private update-db-data-access-permissions!
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
-    (update-native-permissions! group-id db-id new-native-perms))
+    (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
     ;; TODO -- consider whether `delete-block-perms-for-this-db!` should be enterprise-only... not sure how to make it
     ;; work, especially if you downgraded from enterprise... FWIW the sandboxing code (for updating the graph) is not enterprise only.
@@ -868,17 +873,20 @@
                     (ex-info
                      (tru "Can''t use block permissions without having the advanced-permissions premium feature")
                      {:status-code 402})))
-                 (revoke-data-perms! group-id db-id)
+                 (revoke-data-access-permissions! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
           (doseq [schema (keys schemas)]
-            (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+            (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
-  (doseq [[db-id {new-db-perms :data}] new-group-perms]
-    (update-db-permissions! group-id db-id new-db-perms)))
+  (doseq [[db-id new-db-perms] new-group-perms]
+    (doseq [[perm-type new-perms] new-db-perms]
+      (case perm-type
+        :data
+        (update-db-data-access-permissions! group-id db-id new-perms)))))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
