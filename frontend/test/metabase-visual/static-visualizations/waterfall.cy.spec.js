@@ -4,7 +4,8 @@ import {
   openEmailPage,
   sendSubscriptionsEmail,
 } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
@@ -46,7 +47,7 @@ function createWaterfallQuestion({ showTotal } = {}) {
     },
     visualization_settings: {},
     display: "waterfall",
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 
   if (typeof showTotal !== "undefined") {
