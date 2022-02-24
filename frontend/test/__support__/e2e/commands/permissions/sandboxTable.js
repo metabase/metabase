@@ -1,9 +1,6 @@
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { COLLECTION_GROUP } = USER_GROUPS;
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 Cypress.Commands.add(
   "sandboxTable",
@@ -11,7 +8,7 @@ Cypress.Commands.add(
     attribute_remappings = {},
     card_id = null,
     group_id = COLLECTION_GROUP,
-    table_id = ORDERS_ID,
+    table_id = 2,
   } = {}) => {
     // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`
     cy.request("GET", "/api/table").then(({ body: tables }) => {

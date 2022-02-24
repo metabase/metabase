@@ -1,7 +1,4 @@
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
-
-const { PRODUCTS_ID, ORDERS_ID, REVIEWS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 export function adhocQuestionHash(question) {
   if (question.display) {
@@ -59,19 +56,19 @@ export function openTable({
 }
 
 export function openProductsTable({ mode, limit, callback } = {}) {
-  return openTable({ table: PRODUCTS_ID, mode, limit, callback });
+  return openTable({ table: 1, mode, limit, callback });
 }
 
 export function openOrdersTable({ mode, limit, callback } = {}) {
-  return openTable({ table: ORDERS_ID, mode, limit, callback });
+  return openTable({ table: 2, mode, limit, callback });
 }
 
 export function openPeopleTable({ mode, limit, callback } = {}) {
-  return openTable({ table: PEOPLE_ID, mode, limit, callback });
+  return openTable({ table: 3, mode, limit, callback });
 }
 
 export function openReviewsTable({ mode, limit, callback } = {}) {
-  return openTable({ table: REVIEWS_ID, mode, limit, callback });
+  return openTable({ table: 4, mode, limit, callback });
 }
 
 function getInterceptDetails(question, mode) {
