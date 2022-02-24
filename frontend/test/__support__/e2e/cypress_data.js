@@ -1,3 +1,5 @@
+export const SAMPLE_DB_ID = 1;
+
 export const USER_GROUPS = {
   ALL_USERS_GROUP: 1,
   ADMIN_GROUP: 2,
