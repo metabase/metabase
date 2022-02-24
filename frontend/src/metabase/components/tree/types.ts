@@ -1,7 +1,9 @@
+import { IconProps } from "../Icon";
+
 export interface ITreeNodeItem {
   id: string | number;
   name: string;
-  icon: string | { name: string; color: string };
+  icon: string | IconProps;
   children?: ITreeNodeItem[];
 }
 
