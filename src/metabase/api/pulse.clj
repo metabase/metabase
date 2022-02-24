@@ -164,7 +164,7 @@
                  :else
                  (try
                    (let [{:keys [users conversations]} (slack/slack-cache)
-                         _                             (slack/refresh-cache!)
+                         _                             (future (slack/refresh-cache!))
                          slack-channels                (for [channel conversations] (str \# (:name channel)))
                          slack-users                   (for [user users] (str \@ (:name user)))]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
