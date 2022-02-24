@@ -1,7 +1,7 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3
-                                                  test-user-local-only-setting test-user-local-allowed-setting]]
+                                                  test-user-local-allowed-setting test-user-local-only-setting]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
