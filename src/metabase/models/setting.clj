@@ -981,10 +981,19 @@
   excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
   be included with their site-wide value, if a site-wide value is set.
 
+  `options` are passed to [[user-facing-value]].
+
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
-  [& options]
-  (binding [*user-local-values* (delay (atom nil))]
-    (apply admin-writable-settings options)))
+  [& {:as options}]
+  (binding [*user-local-values* (delay (atom nil))
+            *database-local-values* nil]
+    (into
+     []
+     (comp (filter (fn [setting]
+                     (and (not= (:visibility setting) :internal)
+                          (allows-site-wide-values? setting))))
+           (map #(m/mapply user-facing-info % options)))
+     (sort-by :name (vals @registered-settings)))))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
