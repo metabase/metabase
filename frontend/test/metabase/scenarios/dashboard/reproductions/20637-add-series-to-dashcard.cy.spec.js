@@ -26,13 +26,23 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
     cy.get(".AddSeriesModal").within(() => {
       cy.findByText("Done").click();
     });
-    cy.findByText("Save").click();
+    saveDashboard();
 
     // refresh the page and make sure the dashcard query endpoint was used
     cy.reload();
     cy.wait(["@dashcardQuery", "@additionalSeriesDashcardQuery"]);
   });
 });
+
+function saveDashboard() {
+  cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+  cy.intercept("PUT", "/api/dashboard/*/cards").as("updateDashCards");
+  cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
+
+  cy.findByText("Save").click();
+
+  cy.wait(["@updateDashboard", "@updateDashCards", "@loadDashboard"]);
+}
 
 function createQuestionsAndDashboard() {
   const dashcardQuestion = {
