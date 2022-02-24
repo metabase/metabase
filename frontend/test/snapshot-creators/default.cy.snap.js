@@ -20,7 +20,7 @@ describe("snapshots", () => {
       addUsersAndGroups();
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {
-        createQuestionAndDashboard(SAMPLE_DATABASE);
+        createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
           "frontend/test/__support__/e2e/cypress_sample_database.json",
           SAMPLE_DATABASE,
@@ -143,7 +143,7 @@ describe("snapshots", () => {
     );
   }
 
-  function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
+  function createQuestionsAndDashboards({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
     cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
 
