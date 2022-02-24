@@ -1,9 +1,9 @@
-name: E2E Tests
+name: E2E Tests Recorded
 
 on:
   push:
     branches:
-      - 'master'
+      - 'cy2'
 
 jobs:
 
