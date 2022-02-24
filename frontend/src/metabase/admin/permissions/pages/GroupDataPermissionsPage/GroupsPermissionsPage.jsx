@@ -8,10 +8,10 @@ import { connect } from "react-redux";
 
 import {
   getDatabasesPermissionEditor,
-  getGroupsSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
+import { getGroupsSidebar } from "../../selectors/data-permissions/group-sidebar";
 import { updateDataPermission } from "../../permissions";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
