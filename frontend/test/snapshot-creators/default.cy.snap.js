@@ -145,33 +145,21 @@ describe("snapshots", () => {
 
   function createQuestionsAndDashboards({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
-    cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
-
-    // question 2: Orders, Count
-    cy.createQuestion({
-      name: "Orders, Count",
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    });
-
-    cy.createQuestion({
-      name: "Orders, Count, Grouped by Created At (year)",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "line",
-    });
+    const questionDetails = {
+      name: "Orders",
+      query: { "source-table": ORDERS_ID },
+    };
 
     // dashboard 1: Orders in a dashboard
-    cy.createDashboard({ name: "Orders in a dashboard" });
-    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
-      ({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/1/cards`, {
+    const dashboardDetails = { name: "Orders in a dashboard" };
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
             {
-              id: dashCardId,
-              card_id: 1,
+              id,
+              card_id,
               row: 0,
               col: 0,
               sizeX: 12,
@@ -181,6 +169,23 @@ describe("snapshots", () => {
         });
       },
     );
+
+    // question 2: Orders, Count
+    cy.createQuestion({
+      name: "Orders, Count",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    });
+
+    // question 3: Orders, Count, Grouped by Created At (year)
+    cy.createQuestion({
+      name: "Orders, Count, Grouped by Created At (year)",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    });
   }
 
   // TODO: It'd be nice to have one file per snapshot.
