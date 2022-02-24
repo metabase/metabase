@@ -259,13 +259,15 @@ export const updateEmbeddingParams = createAction(
 export const CREATE_QUESTION_BOOKMARK = `metabase/entities/questions/ADD_BOOKMARK`;
 export const createBookmark = createAction(
   CREATE_QUESTION_BOOKMARK,
-  // ({ id }, embedding_params) => CardApi.update({ id, embedding_params }),
+  ({ id }) => {
+    console.log("🚀", { id });
+    return CardApi.bookmark.create({ id });
+  },
 );
 
 export const DELETE_QUESTION_BOOKMARK = `metabase/entities/questions/DELETE_BOOKMARK`;
-export const deleteBookmark = createAction(
-  DELETE_QUESTION_BOOKMARK,
-  // ({ id }, embedding_params) => CardApi.update({ id, embedding_params }),
+export const deleteBookmark = createAction(DELETE_QUESTION_BOOKMARK, ({ id }) =>
+  CardApi.bookmark.delete({ id }),
 );
 
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";

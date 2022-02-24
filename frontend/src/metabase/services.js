@@ -104,9 +104,10 @@ export const CardApi = {
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
-  favorite: POST("/api/card/:cardId/favorite"),
-  unfavorite: DELETE("/api/card/:cardId/favorite"),
-
+  bookmark: {
+    create: POST("/api/card/:cardId/favorite"),
+    delete: DELETE("/api/card/:cardId/favorite"),
+  },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),

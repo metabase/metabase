@@ -120,7 +120,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => {
         // This is hard-coded to simulate
         // what we would get from the back-end
-        payload.uiControls.isBookmarked = true;
+        payload.uiControls.isBookmarked = false;
 
         return {
           ...state,
