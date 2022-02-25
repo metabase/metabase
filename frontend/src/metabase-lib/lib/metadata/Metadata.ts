@@ -3,6 +3,8 @@
 import _ from "underscore";
 import Base from "./Base";
 import Question from "../Question";
+import { DatabaseMetadata } from "metabase-types/types/Metadata";
+import Database from "./Database";
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
  * @typedef { import("./metadata").SchemaId } SchemaId
@@ -17,6 +19,8 @@ import Question from "../Question";
  */
 
 export default class Metadata extends Base {
+  databases: Database[];
+
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Database[]}
@@ -116,7 +120,7 @@ export default class Metadata extends Base {
    */
 
   /* istanbul ignore next */
-  _constructor(databases, tables, fields, metrics, segments) {
+  _constructor(databases: Database[], tables, fields, metrics, segments) {
     this.databases = databases;
     this.tables = tables;
     this.fields = fields;

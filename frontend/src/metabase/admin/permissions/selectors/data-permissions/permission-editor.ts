@@ -1,0 +1,320 @@
+import { createSelector } from "reselect";
+import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
+
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+
+import Groups from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
+
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import {
+  getTableEntityId,
+  getSchemaEntityId,
+  getDatabaseEntityId,
+} from "../../utils/data-entity-id";
+
+import { buildFieldsPermissions } from "./fields";
+import { buildTablesPermissions } from "./tables";
+import { buildSchemasPermissions } from "./schemas";
+import {
+  getDatabasesEditorBreadcrumbs,
+  getGroupsDataEditorBreadcrumbs,
+} from "./breadcrumbs";
+import { Group } from "metabase-types/types/Permissions";
+import { SchemaMetadata, TableMetadata } from "metabase-types/types/Metadata";
+import Schema from "metabase-lib/lib/metadata/Schema";
+import { DataRouteParams, RawGroupRouteParams } from "../types";
+import { State } from "metabase-types/store";
+
+export const getIsLoadingDatabaseTables = (
+  state: State,
+  props: { params: DataRouteParams },
+) => {
+  const dbId = props.params.databaseId;
+
+  return Tables.selectors.getLoading(state, {
+    entityQuery: {
+      dbId,
+      include_hidden: true,
+    },
+  });
+};
+
+export const getLoadingDatabaseTablesError = (
+  state: State,
+  props: { params: DataRouteParams },
+) => {
+  const dbId = props.params.databaseId;
+
+  return Tables.selectors.getError(state, {
+    entityQuery: {
+      dbId,
+      include_hidden: true,
+    },
+  });
+};
+
+const getRouteParams = (_state: State, props: { params: DataRouteParams }) => {
+  const { databaseId, schemaName, tableId } = props.params;
+  return {
+    databaseId,
+    schemaName,
+    tableId,
+  };
+};
+
+const getDataPermissions = (state: State) =>
+  state.admin.permissions.dataPermissions;
+
+const getGroupRouteParams = (
+  _state: State,
+  props: { params: RawGroupRouteParams },
+) => {
+  const { groupId, databaseId, schemaName } = props.params;
+  return {
+    groupId: groupId != null ? parseInt(groupId) : null,
+    databaseId: parseInt(databaseId),
+    schemaName,
+  };
+};
+
+const getEditorEntityName = (
+  { databaseId, schemaName }: DataRouteParams,
+  hasSingleSchema: boolean,
+) => {
+  if (schemaName != null || hasSingleSchema) {
+    return t`Table name`;
+  } else if (databaseId) {
+    return t`Schema name`;
+  } else {
+    return t`Database name`;
+  }
+};
+
+const getFilterPlaceholder = (
+  { databaseId, schemaName }: DataRouteParams,
+  hasSingleSchema: boolean,
+) => {
+  if (schemaName != null || hasSingleSchema) {
+    return t`Search for a table`;
+  } else if (databaseId) {
+    return t`Search for a schema`;
+  } else {
+    return t`Search for a database`;
+  }
+};
+
+const getGroup = (state: State, props: { params: RawGroupRouteParams }) =>
+  Groups.selectors.getObject(state, {
+    entityId: parseInt(props.params.groupId),
+  });
+
+export const getDatabasesPermissionEditor = createSelector(
+  getMetadataWithHiddenTables,
+  getGroupRouteParams,
+  getDataPermissions,
+  getGroup,
+  Groups.selectors.getList,
+  getIsLoadingDatabaseTables,
+  (
+    metadata,
+    params,
+    permissions,
+    group: Group,
+    groups: Group[],
+    isLoading: boolean,
+  ) => {
+    const { groupId, databaseId, schemaName } = params;
+
+    if (isLoading || !permissions || groupId == null) {
+      return null;
+    }
+
+    const isAdmin = isAdminGroup(group);
+    const defaultGroup = _.find(groups, isDefaultGroup);
+
+    if (!defaultGroup) {
+      throw new Error("Default group is not found");
+    }
+
+    const hasSingleSchema =
+      databaseId != null &&
+      metadata.database(databaseId)?.getSchemas().length === 1;
+
+    const columns = [
+      getEditorEntityName(params, hasSingleSchema),
+      t`Data access`,
+      t`Native query editing`,
+    ];
+
+    let entities: any = [];
+
+    if (schemaName != null || hasSingleSchema) {
+      const schema: Schema = hasSingleSchema
+        ? metadata?.database(databaseId)?.getSchemas()[0]
+        : metadata?.database(databaseId)?.schema(schemaName);
+
+      entities = schema
+        .getTables()
+        .sort((a, b) => a.display_name.localeCompare(b.display_name))
+        .map(table => {
+          const entityId = getTableEntityId(table);
+          return {
+            id: table.id,
+            name: table.display_name,
+            entityId,
+            permissions: buildFieldsPermissions(
+              entityId,
+              groupId,
+              isAdmin,
+              permissions,
+              defaultGroup,
+              metadata.database(databaseId),
+            ),
+          };
+        });
+    } else if (databaseId != null) {
+      entities = metadata
+        ?.database(databaseId)
+        ?.getSchemas()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(schema => {
+          const entityId = getSchemaEntityId(schema);
+          return {
+            id: schema.id,
+            name: schema.name,
+            entityId,
+            canSelect: true,
+            permissions: buildTablesPermissions(
+              entityId,
+              groupId,
+              isAdmin,
+              permissions,
+              defaultGroup,
+            ),
+          };
+        });
+    } else if (groupId != null) {
+      entities = metadata
+        .databasesList({ savedQuestions: false })
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(database => {
+          const entityId = getDatabaseEntityId(database);
+          return {
+            id: database.id,
+            name: database.name,
+            entityId,
+            canSelect: true,
+            permissions: buildSchemasPermissions(
+              entityId,
+              groupId,
+              isAdmin,
+              permissions,
+              defaultGroup,
+            ),
+          };
+        });
+    }
+
+    const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
+    const title = t`Permissions for the `;
+
+    return {
+      title,
+      breadcrumbs,
+      description:
+        group != null
+          ? ngettext(
+              msgid`${group.member_count} person`,
+              `${group.member_count} people`,
+              group.member_count,
+            )
+          : null,
+      filterPlaceholder: getFilterPlaceholder(params, hasSingleSchema),
+      columns,
+      entities,
+    };
+  },
+);
+
+export const getGroupsDataPermissionEditor = createSelector(
+  getMetadataWithHiddenTables,
+  getRouteParams,
+  getDataPermissions,
+  Groups.selectors.getList,
+  (metadata, params, permissions, groups: Group[]) => {
+    const { databaseId, schemaName, tableId } = params;
+
+    if (!permissions || databaseId == null) {
+      return null;
+    }
+
+    const defaultGroup = _.find(groups, isDefaultGroup);
+
+    if (!defaultGroup) {
+      throw new Error("No default group found");
+    }
+
+    const columns = [t`Group name`, t`Data access`, t`Native query editing`];
+
+    const entities = groups.map(group => {
+      const isAdmin = isAdminGroup(group);
+      let groupPermissions;
+
+      if (tableId != null) {
+        groupPermissions = buildFieldsPermissions(
+          {
+            databaseId,
+            schemaName,
+            tableId,
+          },
+          group.id,
+          isAdmin,
+          permissions,
+          defaultGroup,
+          metadata.database(databaseId),
+        );
+      } else if (schemaName != null) {
+        groupPermissions = buildTablesPermissions(
+          {
+            databaseId,
+            schemaName,
+          },
+          group.id,
+          isAdmin,
+          permissions,
+          defaultGroup,
+        );
+      } else if (databaseId != null) {
+        groupPermissions = buildSchemasPermissions(
+          {
+            databaseId,
+          },
+          group.id,
+          isAdmin,
+          permissions,
+          defaultGroup,
+        );
+      }
+
+      return {
+        id: group.id,
+        name: group.name,
+        hint: isAdmin
+          ? t`The Administrators group is special, and always has Unrestricted access.`
+          : null,
+        entityId: params,
+        permissions: groupPermissions,
+      };
+    });
+
+    return {
+      title: t`Permissions for`,
+      filterPlaceholder: t`Search for a group`,
+      breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
+      columns,
+      entities,
+    };
+  },
+);

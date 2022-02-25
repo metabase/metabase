@@ -5,17 +5,39 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
+import {
+  DatabasePermissions,
+  Group,
+  GroupsPermissions,
+} from "metabase-types/types/Permissions";
+import { Metadata } from "metabase-types/types/Metadata";
+import { Table } from "metabase-types/types/Table";
+import { Database } from "metabase-types/types/Database";
 
-export const isRestrictivePermission = value =>
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+export type EntityId = DatabaseEntityId | SchemaEntityId | TableEntityId;
+
+export const isRestrictivePermission = (value: string) =>
   PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value) || value === "none";
 
 export function getPermission(
-  permissions,
-  groupId,
-  path,
+  permissions: GroupsPermissions,
+  groupId: number,
+  path: Array<number | string>,
   isControlledType = false,
 ) {
-  const value = getIn(permissions, [groupId].concat(path));
+  const value = getIn(permissions, [groupId, ...path]);
   if (isControlledType) {
     if (!value) {
       return "none";
@@ -31,8 +53,14 @@ export function getPermission(
   }
 }
 
-export function updatePermission(permissions, groupId, path, value, entityIds) {
-  const fullPath = [groupId].concat(path);
+export function updatePermission(
+  permissions: GroupsPermissions,
+  groupId: number,
+  path: Array<number | string>,
+  value: string | number,
+  entityIds?: any[],
+) {
+  const fullPath = [groupId, ...path];
   const current = getIn(permissions, fullPath);
   if (
     current === value ||
@@ -40,7 +68,7 @@ export function updatePermission(permissions, groupId, path, value, entityIds) {
   ) {
     return permissions;
   }
-  let newValue;
+  let newValue: any;
   if (value === "controlled") {
     newValue = {};
     if (entityIds) {
@@ -59,25 +87,65 @@ export function updatePermission(permissions, groupId, path, value, entityIds) {
   return setIn(permissions, fullPath, newValue);
 }
 
-export const getSchemasPermission = (permissions, groupId, { databaseId }) => {
+export const getSchemasPermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
+  permission: "data" | "download",
+) => {
   return getPermission(
     permissions,
     groupId,
-    [databaseId, "data", "schemas"],
+    [databaseId, permission, "schemas"],
     true,
   );
 };
 
-export const getNativePermission = (permissions, groupId, { databaseId }) => {
+export const getSchemasDataPermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: DatabaseEntityId,
+) => {
+  return getSchemasPermission(permissions, groupId, entityId, "data");
+};
+
+export const getSchemasDownloadPermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: DatabaseEntityId,
+) => {
+  return getSchemasPermission(permissions, groupId, entityId, "download");
+};
+
+export const getNativePermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
+) => {
   return getPermission(permissions, groupId, [databaseId, "data", "native"]);
 };
 
-export const getTablesPermission = (
-  permissions,
-  groupId,
-  { databaseId, schemaName },
+export const getDownloadSchemasPermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
 ) => {
-  const schemas = getSchemasPermission(permissions, groupId, { databaseId });
+  return getPermission(
+    permissions,
+    groupId,
+    [databaseId, "download", "schemas"],
+    true,
+  );
+};
+
+export const getTablesPermission = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId, schemaName }: SchemaEntityId,
+) => {
+  const schemas = getSchemasDataPermission(permissions, groupId, {
+    databaseId,
+  });
   if (schemas === "controlled") {
     return getPermission(
       permissions,
@@ -91,9 +159,9 @@ export const getTablesPermission = (
 };
 
 export const getFieldsPermission = (
-  permissions,
-  groupId,
-  { databaseId, schemaName, tableId },
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId, schemaName, tableId }: TableEntityId,
 ) => {
   const tables = getTablesPermission(permissions, groupId, {
     databaseId,
@@ -103,7 +171,7 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "data", "schemas", schemaName || "", tableId],
+      [databaseId, "data", "schemas", schemaName ?? "", tableId],
       true,
     );
   } else {
@@ -112,13 +180,13 @@ export const getFieldsPermission = (
 };
 
 export function downgradeNativePermissionsIfNeeded(
-  permissions,
-  groupId,
-  { databaseId },
-  value,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
+  value: any,
+  metadata: Metadata,
 ) {
-  const currentSchemas = getSchemasPermission(permissions, groupId, {
+  const currentSchemas = getSchemasDataPermission(permissions, groupId, {
     databaseId,
   });
   const currentNative = getNativePermission(permissions, groupId, {
@@ -152,14 +220,14 @@ export function downgradeNativePermissionsIfNeeded(
   }
 }
 
-const metadataTableToTableEntityId = table => ({
+const metadataTableToTableEntityId = (table: Table) => ({
   databaseId: table.db_id,
   schemaName: table.schema_name || "",
   tableId: table.id,
 });
 
 // TODO Atte Keinänen 6/24/17 See if this method could be simplified
-const entityIdToMetadataTableFields = entityId => ({
+const entityIdToMetadataTableFields = (entityId: Partial<TableEntityId>) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
   // Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
@@ -169,10 +237,10 @@ const entityIdToMetadataTableFields = entityId => ({
 });
 
 function inferEntityPermissionValueFromChildTables(
-  permissions,
-  groupId,
-  entityId,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  metadata: Metadata,
 ) {
   const { databaseId } = entityId;
   const database = metadata && metadata.database(databaseId);
@@ -201,13 +269,13 @@ function inferEntityPermissionValueFromChildTables(
 // Checks the child tables of a given entityId and updates the shared table and/or schema permission values according to table permissions
 // This method was added for keeping the UI in sync when modifying child permissions
 export function inferAndUpdateEntityPermissions(
-  permissions,
-  groupId,
-  entityId,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  metadata: Metadata,
 ) {
   const { databaseId } = entityId;
-  const schemaName = entityId.schemaName || "";
+  const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
 
   if (schemaName) {
     // Check all tables for current schema if their shared schema-level permission value should be updated
@@ -254,11 +322,11 @@ export function inferAndUpdateEntityPermissions(
 }
 
 export function updateFieldsPermission(
-  permissions,
-  groupId,
-  entityId,
-  value,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: TableEntityId,
+  value: any,
+  metadata: Metadata,
 ) {
   const { databaseId, tableId } = entityId;
   const schemaName = entityId.schemaName || "";
@@ -274,21 +342,23 @@ export function updateFieldsPermission(
     permissions,
     groupId,
     [databaseId, "data", "schemas", schemaName, tableId],
-    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE[value] || value,
+    ((PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE as any)[
+      value
+    ] as any) || value,
   );
 
   return permissions;
 }
 
 export function updateTablesPermission(
-  permissions,
-  groupId,
-  { databaseId, schemaName },
-  value,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId, schemaName }: SchemaEntityId,
+  value: any,
+  metadata: Metadata,
 ) {
-  const schema = metadata && metadata.database(databaseId).schema(schemaName);
-  const tableIds = schema && schema.tables.map(t => t.id);
+  const schema = metadata?.database(databaseId).schema(schemaName);
+  const tableIds = schema?.tables.map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -309,13 +379,13 @@ export function updateTablesPermission(
 }
 
 export function updateSchemasPermission(
-  permissions,
-  groupId,
-  { databaseId },
-  value,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
+  value: any,
+  metadata: Metadata,
 ) {
-  const database = metadata.database(databaseId);
+  const database = metadata.database(databaseId) as any;
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
     schemaNames &&
@@ -341,11 +411,11 @@ export function updateSchemasPermission(
 }
 
 export function updateNativePermission(
-  permissions,
-  groupId,
-  { databaseId },
-  value,
-  metadata,
+  permissions: GroupsPermissions,
+  groupId: number,
+  { databaseId }: DatabaseEntityId,
+  value: any,
+  metadata: Metadata,
 ) {
   // if enabling native query write access, give access to all schemas since they are equivalent
   if (value === "write") {
@@ -365,14 +435,23 @@ export function updateNativePermission(
   );
 }
 
-function deleteIfEmpty(object, key) {
+function deleteIfEmpty(object: any, key: string | number) {
   if (Object.keys(object[key]).length === 0) {
     delete object[key];
   }
 }
 
-function diffDatabasePermissions(newPerms, oldPerms, groupId, database) {
-  const databaseDiff = {
+function diffDatabasePermissions(
+  newPerms: GroupsPermissions,
+  oldPerms: GroupsPermissions,
+  groupId: number,
+  database: Database,
+) {
+  const databaseDiff: {
+    grantedTables: any;
+    revokedTables: any;
+    native?: any;
+  } = {
     grantedTables: {},
     revokedTables: {},
   };
@@ -413,8 +492,13 @@ function diffDatabasePermissions(newPerms, oldPerms, groupId, database) {
   return databaseDiff;
 }
 
-function diffGroupPermissions(newPerms, oldPerms, groupId, databases) {
-  const groupDiff = { databases: {} };
+function diffGroupPermissions(
+  newPerms: GroupsPermissions,
+  oldPerms: GroupsPermissions,
+  groupId: number,
+  databases: Database[],
+) {
+  const groupDiff: { databases: any } = { databases: {} };
   for (const database of databases) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
@@ -431,8 +515,13 @@ function diffGroupPermissions(newPerms, oldPerms, groupId, databases) {
   return groupDiff;
 }
 
-export function diffDataPermissions(newPerms, oldPerms, groups, databases) {
-  const permissionsDiff = { groups: {} };
+export function diffDataPermissions(
+  newPerms: GroupsPermissions,
+  oldPerms: GroupsPermissions,
+  groups: Group[],
+  databases: Database[],
+) {
+  const permissionsDiff: { groups: any } = { groups: {} };
   if (newPerms && oldPerms && databases) {
     for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
