@@ -1,3 +1,5 @@
+import { Metadata } from "metabase-types/types/Metadata";
+import { Group } from "metabase-types/types/Permissions";
 import _ from "underscore";
 
 import {
@@ -8,8 +10,13 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
+import { DataRouteParams } from "../types";
 
-export const getDatabasesEditorBreadcrumbs = (params, metadata, group) => {
+export const getDatabasesEditorBreadcrumbs = (
+  params: DataRouteParams,
+  metadata: Metadata,
+  group: Group,
+) => {
   const { groupId, databaseId, schemaName } = params;
 
   if (groupId == null) {
