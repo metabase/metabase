@@ -1,5 +1,11 @@
 export const SAMPLE_DB_ID = 1;
 
+export const SAMPLE_DB_TABLES = {
+  STATIC_PRODUCTS_ID: 1,
+  STATIC_ORDERS_ID: 2,
+  STATIC_PEOPLE_ID: 3,
+  STATIC_REVIEWS_ID: 4,
+};
 export const USER_GROUPS = {
   ALL_USERS_GROUP: 1,
   ADMIN_GROUP: 2,
