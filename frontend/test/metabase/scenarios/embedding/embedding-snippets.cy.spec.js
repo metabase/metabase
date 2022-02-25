@@ -1,17 +1,22 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
-describe("scenarios > dashboard > embed", () => {
+describe("scenarios > embedding > code snippets", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should have the correct embed snippet", () => {
+  it("dashboard should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");
     cy.icon("share").click();
     cy.findByText("Sharing and embedding").click();
     cy.contains(/Embed this .* in an application/).click();
     cy.contains("Code").click();
+
+    cy.findByText("To embed this dashboard in your application:");
+    cy.findByText(
+      "Insert this code snippet in your server code to generate the signed embedding URL",
+    );
 
     const JS_CODE = new RegExp(
       `// you will need to install via 'npm install jsonwebtoken' or in your package.json
@@ -49,8 +54,31 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .first()
       .invoke("text")
       .should("match", JS_CODE);
+
     cy.get(".ace_content")
       .last()
       .should("have.text", IFRAME_CODE);
+
+    cy.findAllByTestId("select-button")
+      .first()
+      .should("contain", "Node.js")
+      .click();
+
+    popover()
+      .should("contain", "Node.js")
+      .and("contain", "Ruby")
+      .and("contain", "Python")
+      .and("contain", "Clojure");
+
+    cy.findAllByTestId("select-button")
+      .last()
+      .should("contain", "Mustache")
+      .click();
+
+    popover()
+      .should("contain", "Mustache")
+      .and("contain", "Pug / Jade")
+      .and("contain", "ERB")
+      .and("contain", "JSX");
   });
 });
