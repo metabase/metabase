@@ -1085,6 +1085,7 @@
                            :template-tags {"names_list" {:name         "names_list"
                                                          :display-name "Names List"
                                                          :type         :dimension
+                                                         :widget-type  :category
                                                          :dimension    [:field 49 nil]}}}
               :parameters [{:type   :text
                             :target [:dimension [:template-tag "names_list"]]
