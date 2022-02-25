@@ -404,12 +404,12 @@
       ;; don't add if this isn't a Field filter (`:type` is not `:dimension`)
       {:database 1
        :type     :native
-       :native   {:template-tags {"x" {:name        "x"
-                                       :type        :nonsense}}}}
+       :native   {:template-tags {"x" {:name "x"
+                                       :type :nonsense}}}}
       {:database 1
        :type     :native
-       :native   {:template-tags {"x" {:name        "x"
-                                       :type        :nonsense}}}}})))
+       :native   {:template-tags {"x" {:name "x"
+                                       :type :nonsense}}}}})))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
