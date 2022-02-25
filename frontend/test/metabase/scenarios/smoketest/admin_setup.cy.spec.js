@@ -380,7 +380,7 @@ describe("smoketest > admin_setup", () => {
 
     it("should reflect changes to column name, visibility, and formatting in the notebook editor for admin", () => {
       // Navigate
-      cy.findByText("Exit admin").click();
+      cy.findByText("Exit admin").click({ force: true });
 
       // Checking table name
 
