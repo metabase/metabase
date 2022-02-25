@@ -10,7 +10,7 @@ print_usage_and_exit () {
     exit 1
 }
 
-if [ -z "$1" ] || { [ $1 != 'no' ] && [ $1 != 'yes' ] ;} ; then
+if [ -z "$1" ] ; then
     echo 'Error: Argument IMAGE_VERSION is required in position 1.'
     print_usage_and_exit
 fi

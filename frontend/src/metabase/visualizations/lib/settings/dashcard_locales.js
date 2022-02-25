@@ -26,11 +26,11 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.room.condition': {
       'en': 'Condition of Rooms',
-      'bn': 'শ্রেণীকক্ষের অবস্থা'
+      'bn': 'কক্ষের অবস্থা'
   },
-  'admin.dashboard.toilet.condition': {
-      'en': 'Condition of toilets',
-      'bn': 'টয়লেটের অবস্থা'
+  'admin.dashboard.toilet.users': {
+      'en': 'Users of toilets',
+      'bn': 'টয়লেটের ব্যবহারকারী'
   },
   'admin.dashboard.school.profile.completion': {
       'en': 'Profile completion percentage of schools',
@@ -65,8 +65,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'বয়সের গ্রুপের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.c-in-ed.bp-in-ed': {
-      'en': 'Statistics of C-in-Ed and Dp-in-Ed Training',
-      'bn': 'সি-ইন-এড এবং ডিপি-ইন-এড ট্রেনিং এর পরিসংখ্যান'
+      'en': 'Statistics of C-in-Ed and DPED Training',
+      'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
   },
   'admin.dashboard.teacher.training': {
       'en': 'Statistics of Training',
@@ -109,8 +109,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'বয়সের গ্রুপের পরিসংখ্যান'
   },
   'school.dashboard.teacher.c-in-ed.bp-in-ed': {
-      'en': 'Statistics of C-in-Ed and Dp-in-Ed Training',
-      'bn': 'সি-ইন-এড এবং ডিপি-ইন-এড ট্রেনিং এর পরিসংখ্যান'
+      'en': 'Statistics of C-in-Ed and DPED Training',
+      'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
   },
   'school.dashboard.teacher.training': {
       'en': 'Statistics of Training',
@@ -180,9 +180,9 @@ const TITLE_LOCALES_BN = {
     'en': 'Source of water',
     'bn': 'পানির উৎস্য'
   },
-  'school.dashboard.toilet.condition': {
-    'en': 'Condition of toilets',
-    'bn': 'টয়লেটের অবস্থা'
+  'school.dashboard.toilet.attachment': {
+    'en': 'Attachment with building',
+    'bn': 'বিল্ডিং এর সাথে সংযুক্ত কি?'
   },
   'school.dashboard.toilet.construction-type': {
     'en': 'Construction types of toilets',
@@ -206,7 +206,7 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.student.preprimarycompletion': {
     'en': 'Statistics of Admission in Class One from Pre primary',
-    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
+    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
   'admin.dashboard.student.disability': {
     'en': 'Statistics of Special Needs',
@@ -242,7 +242,7 @@ const TITLE_LOCALES_BN = {
   },
   'school.dashboard.student.preprimarycompletion': {
     'en': 'Statistics of Admission in Class One from Pre primary',
-    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
+    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
   'school.dashboard.student.disability': {
     'en': 'Statistics of Special Needs',
