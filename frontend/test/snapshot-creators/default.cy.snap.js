@@ -1,6 +1,18 @@
 import _ from "underscore";
 import { snapshot, restore, withSampleDatabase } from "__support__/e2e/cypress";
-import { USERS, USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import {
+  USERS,
+  USER_GROUPS,
+  SAMPLE_DB_ID,
+  SAMPLE_DB_TABLES,
+} from "__support__/e2e/cypress_data";
+
+const {
+  STATIC_ORDERS_ID,
+  STATIC_PRODUCTS_ID,
+  STATIC_REVIEWS_ID,
+  STATIC_PEOPLE_ID,
+} = SAMPLE_DB_TABLES;
 
 const {
   ALL_USERS_GROUP,
@@ -20,6 +32,7 @@ describe("snapshots", () => {
       addUsersAndGroups();
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {
+        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
           "frontend/test/__support__/e2e/cypress_sample_database.json",
@@ -186,6 +199,18 @@ describe("snapshots", () => {
       },
       display: "line",
     });
+  }
+
+  function ensureTableIdsAreCorrect({
+    ORDERS_ID,
+    PRODUCTS_ID,
+    REVIEWS_ID,
+    PEOPLE_ID,
+  }) {
+    expect(ORDERS_ID).to.eq(STATIC_ORDERS_ID);
+    expect(PEOPLE_ID).to.eq(STATIC_PEOPLE_ID);
+    expect(REVIEWS_ID).to.eq(STATIC_REVIEWS_ID);
+    expect(PRODUCTS_ID).to.eq(STATIC_PRODUCTS_ID);
   }
 
   // TODO: It'd be nice to have one file per snapshot.
