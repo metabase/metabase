@@ -1,4 +1,6 @@
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 const { COLLECTION_GROUP } = USER_GROUPS;
 
@@ -8,7 +10,7 @@ Cypress.Commands.add(
     attribute_remappings = {},
     card_id = null,
     group_id = COLLECTION_GROUP,
-    table_id = 2,
+    table_id = STATIC_ORDERS_ID,
   } = {}) => {
     // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`
     cy.request("GET", "/api/table").then(({ body: tables }) => {
