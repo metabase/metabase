@@ -1,5 +1,6 @@
 import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -335,7 +336,7 @@ const createQuestion = () =>
           },
         },
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     },
     display: "scalar",
     description: null,

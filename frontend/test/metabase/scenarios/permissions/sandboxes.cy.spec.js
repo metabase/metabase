@@ -13,7 +13,7 @@ import {
   filter,
   visitQuestion,
 } from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -878,7 +878,7 @@ describeEE("formatting > sandboxes", () => {
               ],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
         visualization_settings: {},

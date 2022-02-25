@@ -6,6 +6,8 @@ import {
   getBinningButtonForDimension,
   summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -35,7 +37,7 @@ const ordersJoinPeopleQuery = {
     ],
     fields: [["field", ORDERS.ID, null]],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 const ordersJoinProductsQuery = {
@@ -56,7 +58,7 @@ const ordersJoinProductsQuery = {
     ],
     fields: [["field", ORDERS.ID, null]],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 const NUMBER_BUCKETS = [

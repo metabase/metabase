@@ -8,6 +8,8 @@ import {
   openNotebookEditor,
   summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -43,7 +45,7 @@ describe("binning related reproductions", () => {
   it("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
