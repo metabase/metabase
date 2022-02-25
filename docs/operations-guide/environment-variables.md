@@ -727,13 +727,6 @@ Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_METABOT_ENABLED`
-
-Type: boolean<br>
-Default: `false`
-
-Enable MetaBot, which lets you search for and view your saved questions directly via Slack.
-
 ### `MB_NS_TRACE`
 
 Type: string<br>

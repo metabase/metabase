@@ -1,7 +1,6 @@
 import {
   restore,
   openOrdersTable,
-  version,
   popover,
   describeWithToken,
   setupMetabaseCloud,
@@ -162,32 +161,8 @@ describe("scenarios > admin > settings", () => {
     restore(); // avoid leaving https site url
   });
 
-  it("should update the formatting", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
-
-    // update the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("17:24 (24-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the new formatting in a question
-    openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/);
-
-    // reset the formatting
-    cy.visit("/admin/settings/localization");
-    cy.contains("5:24 PM (12-hour clock)").click();
-    cy.wait("@saveFormatting");
-
-    // check the reset formatting in a question
-    openOrdersTable();
-    cy.contains(/^February 11, 2019, 9:40 PM$/);
-  });
-
-  it("should correctly apply the globalized date formats (metabase#11394)", () => {
-    cy.server();
-    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+  it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
+    cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
@@ -195,17 +170,28 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    cy.contains("Date style")
-      .closest("li")
-      .find("[data-testid='select-button']")
-      .first()
-      .click();
+    cy.findByText("January 7, 2018").click({ force: true });
     cy.findByText("2018/1/7").click({ force: true });
-    cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
-    openOrdersTable();
-    cy.contains(/^2019\/2\/11, 21:40$/);
+    cy.findByText("17:24 (24-hour clock)").click();
+    cy.wait("@saveFormatting");
+
+    openOrdersTable({ limit: 2 });
+
+    cy.get(".cellData")
+      .should("contain", "Created At")
+      .and("contain", "2019/2/11, 21:40");
+
+    // Go back to the settings and reset the time formatting
+    cy.visit("/admin/settings/localization");
+
+    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.wait("@saveFormatting");
+
+    openOrdersTable({ limit: 2 });
+
+    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {
@@ -224,97 +210,6 @@ describe("scenarios > admin > settings", () => {
     cy.wait("@reportTimezone");
     cy.contains("US/Central");
   });
-
-  if (version.edition !== "enterprise") {
-    describe(" > embedding settings", () => {
-      it("should validate a premium embedding token has a valid format", () => {
-        cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
-          "saveEmbeddingToken",
-        );
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        // Try an invalid token format
-        cy.contains("Enter the token")
-          .next()
-          .type("Hi")
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(
-            "Token format is invalid. Token should be 64 hexadecimal characters.",
-          );
-        });
-        cy.contains("Token format is invalid.");
-      });
-
-      it("should validate a premium embedding token exists", () => {
-        cy.server();
-        cy.route("PUT", "/api/setting/premium-embedding-token").as(
-          "saveEmbeddingToken",
-        );
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        // Try a valid format, but an invalid token
-        cy.contains("Enter the token")
-          .next()
-          .type(
-            "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a",
-          )
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(
-            "Unable to validate token: 404 not found.",
-          );
-        });
-        cy.contains("Unable to validate token: 404 not found.");
-      });
-
-      it("should be able to set a premium embedding token", () => {
-        // A random embedding token with valid format
-        const embeddingToken =
-          "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
-
-        cy.server();
-        cy.route({
-          method: "PUT",
-          url: "/api/setting/premium-embedding-token",
-          response: embeddingToken,
-        }).as("saveEmbeddingToken");
-
-        cy.visit("/admin/settings/embedding_in_other_applications");
-        cy.contains("Premium embedding");
-        cy.contains("Enter a token").click();
-
-        cy.route("GET", "/api/session/properties").as("getSessionProperties");
-        cy.route({
-          method: "GET",
-          url: "/api/setting",
-          response: [
-            { key: "enable-embedding", value: true },
-            { key: "embedding-secret-key", value: embeddingToken },
-            { key: "premium-embedding-token", value: embeddingToken },
-          ],
-        }).as("getSettings");
-
-        cy.contains("Enter the token")
-          .next()
-          .type(embeddingToken)
-          .blur();
-        cy.wait("@saveEmbeddingToken").then(({ response }) => {
-          expect(response.body).to.equal(embeddingToken);
-        });
-        cy.wait("@getSessionProperties");
-        cy.wait("@getSettings");
-        cy.contains("Premium embedding enabled");
-      });
-    });
-  }
 
   it("'General' admin settings should handle setup via `MB_SITE_ULR` environment variable (metabase#14900)", () => {
     cy.server();

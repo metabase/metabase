@@ -11,8 +11,9 @@ import {
   visualize,
   summarize,
   filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -263,18 +264,11 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         // Assertion phase starts here
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
         cy.findByText(QUESTION_NAME);
 
         cy.log("Reported failing since v1.36.4");
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-
         cy.contains(CC_NAME);
       });
     });
@@ -808,7 +802,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Settings").click();
@@ -884,24 +878,15 @@ describeWithToken("formatting > sandboxes", () => {
               ],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/pivot/${QUESTION_ID}/query`).as(
-          "cardQuery",
-        );
-
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.cause).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Twitter");

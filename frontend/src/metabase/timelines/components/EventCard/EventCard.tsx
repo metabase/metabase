@@ -104,10 +104,10 @@ const getDateMessage = (event: TimelineEvent) => {
   const date = parseTimestamp(event.timestamp);
   const options = Settings.formattingOptions();
 
-  if (date.hours() === 0 && date.minutes() === 0) {
-    return formatDateTimeWithUnit(date, "day", options);
-  } else {
+  if (event.time_matters) {
     return formatDateTimeWithUnit(date, "default", options);
+  } else {
+    return formatDateTimeWithUnit(date, "day", options);
   }
 };
 

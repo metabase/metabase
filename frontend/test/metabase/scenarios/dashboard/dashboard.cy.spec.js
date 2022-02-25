@@ -10,6 +10,7 @@ import {
   openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -92,7 +93,7 @@ describe("scenarios > dashboard", () => {
     cy.request("POST", "/api/card", {
       name: "11007",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
         query: {
           "source-table": ORDERS_ID,

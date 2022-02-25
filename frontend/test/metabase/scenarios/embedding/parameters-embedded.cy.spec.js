@@ -1,5 +1,6 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -98,7 +99,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       });
     });
 
-    it("should let parameters be locked to a specific value", () => {
+    it("should let parameters be locked to a specific value (metabase#20357)", () => {
       cy.visit("/dashboard/2");
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
@@ -150,7 +151,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
       // wait for question to load/run
       cy.contains("Test Question");
       cy.contains("2,500");
@@ -335,7 +336,7 @@ const createQuestion = () =>
           },
         },
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     },
     display: "scalar",
     description: null,

@@ -1,4 +1,6 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -65,7 +67,7 @@ describe("scenarios > visualizations > scalar", () => {
           query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "scalar",
     });

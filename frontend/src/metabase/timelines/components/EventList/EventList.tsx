@@ -44,7 +44,7 @@ const EventList = ({
         </ListThreadContainer>
         <ListIconContainer>
           <ListIcon name="dyno" />
-          <ListIconText>{t`The Paleozoic Era`}</ListIconText>
+          <ListIconText>{t`The Mesozoic era`}</ListIconText>
         </ListIconContainer>
       </ListFooter>
     </div>

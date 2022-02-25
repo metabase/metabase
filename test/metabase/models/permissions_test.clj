@@ -33,6 +33,15 @@
              "/db/1/schema/1234/table/1/"
              "/db/1/schema/PUBLIC/table/1/query/"
              "/db/1/schema/PUBLIC/table/1/query/segmented/"
+             ;; download permissions
+             "/download/db/1/"
+             "/download/limited/db/1/"
+             "/download/db/1/native/"
+             "/download/limited/db/1/native/"
+             "/download/db/1/schema/PUBLIC/"
+             "/download/limited/db/1/schema/PUBLIC/"
+             "/download/db/1/schema/PUBLIC/table/1/"
+             "/download/limited/db/1/schema/PUBLIC/table/1/"
              ;; block permissions
              "/block/db/1/"
              "/block/db/1000/"
@@ -43,7 +52,7 @@
                (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-      (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+      (doseq [path [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
                     "/db/16/schema/COMPANY-NET\\\\john.doe/"
                     ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
                     "/db/16/schema/COMPANY-NET\\/john.doe/"
@@ -156,7 +165,14 @@
               "/block/db/1/schema/PUBLIC/"
               "/block/db/1/schema/PUBLIC/table/"
               "/block/db/1/schema/PUBLIC/table/2/"
-              "/block/collection/1/"]}]
+              "/block/collection/1/"]
+
+             "invalid download permissions"
+             ["/download/"
+              "/download/limited/"
+              "/download/db/1/schema/PUBLIC/table/1/query/"
+              "/download/db/1/schema/PUBLIC/table/1/query/segmented/"]}]
+
       (testing reason
         (doseq [path paths]
           (testing (str "\n" (pr-str path))
@@ -574,16 +590,6 @@
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
              (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :data :schemas]))))))
-
-(deftest metabot-graph-test
-  (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
-                "only have Collection permissions")
-    ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
-    (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
-      (mt/with-temp* [Database    [db]
-                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/data-perms-path db)}]]
-        (is (= false
-               (contains? (:groups (perms/data-perms-graph)) (u/the-id (group/metabot)))))))))
 
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"

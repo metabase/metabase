@@ -84,34 +84,44 @@
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
-;; all legacy (numeric) IDs should come before all `v___` IDs so just convert them to prefixed strings so we can do
-;; string comparison.
-(defn- migration-id->str [id]
-  (cond
-    (and (string? id)
-         (re-matches #"^\d+$" id))
-    (recur (Integer/parseUnsignedInt id))
+(defn- migration->number [id]
+  (if (integer? id)
+    id
+    (or (when-let [[_ major-version minor-version migration-num] (re-matches #"^v(\d+)\.(\d+)-(\d+)$" id)]
+          (+ (* (Integer/parseUnsignedInt major-version) 100)
+             (Integer/parseUnsignedInt minor-version)
+             (/ (Integer/parseUnsignedInt migration-num)
+                1000.0)))
+        (when (re-matches #"^\d+$" id)
+          (Integer/parseUnsignedInt id))
+        (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
-    (integer? id)
-    (format "legacy-%03d" id)
-
-    (string? id)
-    id))
+(deftest migration->number-test
+  (is (= 356
+         (migration->number 356)
+         (migration->number "356")))
+  (is (= 4301.009
+         (migration->number "v43.01-009")))
+  (is (= 4301.01
+         (migration->number "v43.01-010"))))
 
 (defn- migration-id-in-range?
   "Whether `id` should be considered to be between `start-id` and `end-id`, inclusive. Handles both legacy plain-integer
   and new-style `vMM.mm-NNN` style IDs."
   [start-id id end-id & [{:keys [inclusive-end?]
                           :or   {inclusive-end? true}}]]
-  (let [start-id (migration-id->str start-id)
-        end-id   (migration-id->str end-id)
-        id       (migration-id->str id)]
-    ;; end-id can be nil (meaning, unbounded), and sort will put nils first by default
-    ;; simply remove nils from both vectors when comparing to concisely deal with that
-    (and (= (sort (filter some? [start-id id end-id]))
-            (filter some? [start-id id end-id]))
-         (or inclusive-end?
-             (not= id end-id)))))
+
+  (let [start (migration->number start-id)
+        id    (migration->number id)
+        ;; end-id can be nil (meaning, unbounded)
+        end   (if end-id
+                (migration->number end-id)
+                Integer/MAX_VALUE)]
+    (and
+     (<= start id)
+     (if inclusive-end?
+       (<= id end)
+       (< id end)))))
 
 (deftest migration-id-in-range?-test
   (testing "legacy IDs"
@@ -140,7 +150,12 @@
     (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003")))
     (is (not (migration-id-in-range? "v42.00-002" 1000 "v42.00-003" {:inclusive-end? false})))
     (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
-    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))))
+    (is (not (migration-id-in-range? 1 "v42.00-001" 1000)))
+    (is (migration-id-in-range? 1 "v42.00-000" "v43.00-000"))
+    (is (migration-id-in-range? 1 "v42.00-001" "v43.00-000"))
+    (is (migration-id-in-range? 1 "v42.00-000" "v43.00-014"))
+    (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
+    (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
@@ -156,7 +171,11 @@
                               (.setPhysicalFilePath (.getPhysicalFilePath change-log)))]
       ;; add the relevant migrations (change sets) to our subset change log
       (doseq [^ChangeSet change-set (.getChangeSets change-log)
-              :let                  [id (.getId change-set)]
+              :let                  [id (.getId change-set)
+                                     _ (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                                   id start-id end-id
+                                                   (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                                   (migration-id-in-range? start-id id end-id range-options))]
               :when                 (migration-id-in-range? start-id id end-id range-options)]
         (.addChangeSet subset-change-log change-set))
       ;; now create a new instance of Liquibase that will run just the subset change log
@@ -177,8 +196,12 @@
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
+    (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
-    (f #(run-migrations-in-range! conn [start-id end-id])))
+    (f
+     (fn migrate! []
+       (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+       (run-migrations-in-range! conn [start-id end-id]))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations
@@ -189,7 +212,7 @@
   (let [[start-id end-id] (if (sequential? migration-range)
                             migration-range
                             [migration-range migration-range])]
-    (testing (format "Migrations %s thru %s" start-id end-id)
+    (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
       (mt/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 

@@ -358,8 +358,11 @@
     ;; Does this database support foreign key relationships?
     :foreign-keys
 
-    ;; Does this database support nested fields (e.g. Mongo)?
+    ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
+
+    ;; Does this database support nested fields but only for certain field types (e.g. Postgres and JSON / JSONB columns)?
+    :nested-field-columns
 
     ;; Does this driver support setting a timezone for the query?
     :set-timezone
@@ -486,10 +489,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;; TODO -- I have a PR to add some truncation logic for this so we don't end up with crazy-long identifiers -- see
-;; #19659
-;;
-;; TODO -- we should probably also remove diacritical marks like we do for BigQuery
 (defmethod escape-alias ::driver
   [_driver alias-name]
   (impl/truncate-alias alias-name))

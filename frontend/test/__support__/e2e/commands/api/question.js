@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+
 Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   const { name, query } = questionDetails;
 
@@ -50,7 +52,7 @@ function question(
     dataset = false,
     native,
     query,
-    database = 1,
+    database = SAMPLE_DB_ID,
     display = "table",
     visualization_settings = {},
     collection_id,
