@@ -21,6 +21,7 @@ export default class Table extends Base {
   description?: string;
   fks?: any[];
   schema?: Schema;
+  display_name: string;
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;

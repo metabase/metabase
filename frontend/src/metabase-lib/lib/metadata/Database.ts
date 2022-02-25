@@ -4,6 +4,9 @@ import Question from "../Question";
 import Base from "./Base";
 import { generateSchemaId } from "metabase/lib/schema";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import Table from "./Table";
+import Schema from "./Schema";
+import Metadata from "./Metadata";
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  */
@@ -15,6 +18,13 @@ import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
  */
 
 export default class Database extends Base {
+  id: number;
+  name: string;
+  description: string;
+  tables: Table[];
+  schemas: Schema[];
+  metadata: Metadata;
+
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {
     return this.name;

@@ -6,6 +6,7 @@ export type GroupId = number;
 export type Group = {
   id: GroupId;
   name: string;
+  member_count: number;
 };
 
 export type PermissionsGraph = {
@@ -21,7 +22,26 @@ export type GroupPermissions = {
   [key: DatabaseId]: DatabasePermissions;
 };
 
+export type DownloadPermission = "full" | "limited" | "none";
+
+export type DownloadAccessPermission = {
+  schemas: DownloadSchemasPermission;
+};
+
+export type DownloadSchemasPermission =
+  | DownloadPermission
+  | { [key: SchemaName]: DownloadTablePermission };
+
+export type DownloadTablePermission =
+  | DownloadPermission
+  | { [key: TableId]: DownloadPermission };
+
 export type DatabasePermissions = {
+  data: DatabaseAccessPermissions;
+  download: DownloadAccessPermission;
+};
+
+export type DatabaseAccessPermissions = {
   native: NativePermissions;
   schemas: SchemasPermissions;
 };
