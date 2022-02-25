@@ -1,4 +1,5 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > visualizations > funnel", () => {
   beforeEach(() => {
@@ -15,7 +16,7 @@ describe("visual tests > visualizations > funnel", () => {
           "select 'b', 0 union all\n" +
           "select 'c', 0",
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     };
 
     visitQuestionAdhoc({
@@ -40,7 +41,7 @@ describe("visual tests > visualizations > funnel", () => {
           "select 'd', 155 union all\n" +
           "select 'e', 0",
       },
-      database: 1,
+      database: SAMPLE_DB_ID,
     };
 
     visitQuestionAdhoc({

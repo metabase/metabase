@@ -1,4 +1,6 @@
 import { restore, adhocQuestionHash } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // This is really a test of the QuestionLoader component
@@ -24,7 +26,7 @@ describe("scenarios > internal > question", () => {
       dataset_query: {
         type: "query",
         query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
       visualization_settings: {},
