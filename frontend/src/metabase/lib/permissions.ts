@@ -10,9 +10,9 @@ import {
   Group,
   GroupsPermissions,
 } from "metabase-types/types/Permissions";
-import { Metadata } from "metabase-types/types/Metadata";
 import { Table } from "metabase-types/types/Table";
 import { Database } from "metabase-types/types/Database";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 export type DatabaseEntityId = {
   databaseId: number;
@@ -357,7 +357,7 @@ export function updateTablesPermission(
   value: any,
   metadata: Metadata,
 ) {
-  const schema = metadata?.database(databaseId).schema(schemaName);
+  const schema = metadata.database(databaseId).schema(schemaName);
   const tableIds = schema?.tables.map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
