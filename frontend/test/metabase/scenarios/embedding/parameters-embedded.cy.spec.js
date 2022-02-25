@@ -98,7 +98,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       });
     });
 
-    it("should let parameters be locked to a specific value", () => {
+    it("should let parameters be locked to a specific value (metabase#20357)", () => {
       cy.visit("/dashboard/2");
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
