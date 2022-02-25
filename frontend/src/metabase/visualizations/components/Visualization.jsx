@@ -152,7 +152,9 @@ export default class Visualization extends React.PureComponent {
       });
     } catch (error) {
       this.setState({
-        error: new Error(error.message || t`Could not display this chart with this data.`),
+        error: new Error(
+          error.message || t`Could not display this chart with this data.`,
+        ),
       });
     }
   }
