@@ -68,10 +68,13 @@ function newDashboard(before, after, isDirty) {
 const dashboards = handleActions(
   {
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...payload.entities.dashboard,
-      }),
+      next: (state, { payload }) => {
+        payload.entities.dashboard[1].isBookmarked = true;
+        return {
+          ...state,
+          ...payload.entities.dashboard,
+        };
+      },
     },
     [SET_DASHBOARD_ATTRIBUTES]: {
       next: (state, { payload: { id, attributes, isDirty } }) => {

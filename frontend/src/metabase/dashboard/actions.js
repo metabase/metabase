@@ -139,6 +139,9 @@ export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
+export const CREATE_DASHBOARD_BOOKMARK = "metabase/dashboard/ADD_BOOKMARK";
+export const DELETE_DASHBOARD_BOOKMARK = "metabase/dashboard/DELETE_BOOKMARK";
+
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
@@ -201,6 +204,18 @@ export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 export const setMultipleDashCardAttributes = createAction(
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
+);
+
+export const createBookmark = createAction(
+  CREATE_DASHBOARD_BOOKMARK,
+  ({ id }) => {
+    return DashboardApi.bookmark.create({ id });
+  },
+);
+
+export const deleteBookmark = createAction(
+  DELETE_DASHBOARD_BOOKMARK,
+  ({ id }) => DashboardApi.bookmark.delete({ id }),
 );
 
 function generateTemporaryDashcardId() {

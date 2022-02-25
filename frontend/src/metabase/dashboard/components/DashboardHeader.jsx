@@ -54,13 +54,24 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
+
+    createBookmark: PropTypes.func.isRequired,
+    deleteBookmark: PropTypes.func.isRequired,
   };
 
-  handleBookmark(e) {
+  handleBookmarkClicked(e) {
     e.preventDefault();
 
-    const { dashboard, isBookmarked, setBookmark } = this.props;
-    setBookmark(dashboard.id, !isBookmarked);
+    const {
+      dashboard: { id },
+      isBookmarked,
+      createBookmark,
+      deleteBookmark,
+    } = this.props;
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+    toggleBookmark({ id });
   }
 
   handleEdit(dashboard) {
@@ -265,10 +276,10 @@ export default class DashboardHeader extends Component {
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
-          onClick={e => this.handleBookmark(e)}
+          onClick={e => this.handleBookmarkClicked(e)}
           data-metabase-event={"Dashboard;Bookmark"}
         >
-          {this.props.isBookmarked ? t`Remove Bookmark` : t`Bookmark`}
+          {this.props.isBookmarked ? t`Remove bookmark` : t`Bookmark`}
         </Link>,
       );
       extraButtons.push(

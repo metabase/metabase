@@ -128,8 +128,10 @@ export const DashboardApi = {
   addcard: POST("/api/dashboard/:dashId/cards"),
   removecard: DELETE("/api/dashboard/:dashId/cards"),
   reposition_cards: PUT("/api/dashboard/:dashId/cards"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
+  bookmark: {
+    create: POST("/api/dashboard/:id/favorite"),
+    delete: DELETE("/api/dashboard/:id/favorite"),
+  },
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
