@@ -25,7 +25,7 @@
     (when (and slack-app-token
                (not config/is-test?)
                (not (slack/valid-token? slack-app-token)))
-      (slack/slack-cache {})
+      (slack/cached-channel-and-user-names {})
       (throw (ex-info (tru "Invalid Slack token.")
                       {:errors {:slack-app-token (tru "invalid token")}})))
     (slack/slack-app-token slack-app-token)
@@ -36,7 +36,7 @@
           ;; refresh their token when it is valid
           (future (slack/refresh-cache!)))
       ;; app-token set to nil => clear user/conversation cache
-      (slack/slack-cache {}))
+      (slack/cached-channel-and-user-names {}))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
       (when (and processed-files-channel (not (slack/channel-with-name processed-files-channel)))
         (throw (ex-info (tru "Slack channel not found.")

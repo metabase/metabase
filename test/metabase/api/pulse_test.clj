@@ -972,7 +972,7 @@
                                          slack-app-token "something"]
         (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
                       slack/users-list         (constantly [{:name "bar"}])]
-          (slack/slack-cache {:users (slack/users-list)
+          (slack/cached-channel-and-user-names {:users (slack/users-list)
                               :conversations (slack/conversations-list)})
           (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
                  (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")

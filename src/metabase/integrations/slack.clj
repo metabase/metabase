@@ -36,7 +36,7 @@
   (when-not (str/blank? channel-name)
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
 
-(defsetting slack-cache
+(defsetting cached-channel-and-user-names
   "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
   :type :json)
@@ -194,7 +194,7 @@
   []
   (let [users (future (users-list))
         conversations (future (conversations-list))]
-    (slack-cache {:users @users
+    (cached-channel-and-user-names {:users @users
                   :conversations @conversations})))
 
 (def ^:private ^{:arglists '([channel-name])} files-channel*

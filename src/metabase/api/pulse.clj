@@ -138,7 +138,7 @@
                  (try
                    (let [[conversations users] (map deref [(future (slack/conversations-list))
                                                            (future (slack/users-list))])
-                         _                     (slack/slack-cache {:conversations conversations :users users})
+                         _                     (slack/cached-channel-and-user-names {:conversations conversations :users users})
                          slack-channels        (for [channel conversations] (str \# (:name channel)))
                          slack-users           (for [user users] (str \@ (:name user)))]
                      (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
@@ -163,7 +163,7 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [{:keys [users conversations]} (slack/slack-cache)
+                   (let [{:keys [users conversations]} (slack/cached-channel-and-user-names)
                          _                             (future (slack/refresh-cache!))
                          slack-channels                (for [channel conversations] (str \# (:name channel)))
                          slack-users                   (for [user users] (str \@ (:name user)))]
