@@ -14,6 +14,7 @@
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -46,16 +47,16 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn hydrate-favorites
-  "Efficiently add `favorite` status for a large collection of `Cards`."
-  {:batched-hydrate :favorite}
+(defn hydrate-is-bookmarked
+  "Efficiently add `is_bookmarked` status for a large collection of `Cards`."
+  {:batched-hydrate :is_bookmarked}
   [cards]
   (when (seq cards)
-    (let [favorite-card-ids (db/select-field :card_id CardFavorite
-                              :owner_id api/*current-user-id*
-                              :card_id  [:in (map :id cards)])]
+    (let [bookmarked-card-ids (db/select-field :card_id CardBookmark
+                                :user_id api/*current-user-id*
+                                :card_id  [:in (map :id cards)])]
       (for [card cards]
-        (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
+           (assoc card :is_bookmarked (contains? bookmarked-card-ids (:id card)))))))
 
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
@@ -167,6 +168,7 @@
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator
+                        :is_bookmarked
                         :dashboard_count
                         :can_write
                         :average_query_time
