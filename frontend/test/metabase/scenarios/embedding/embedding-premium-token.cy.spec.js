@@ -95,7 +95,7 @@ describeWithoutToken("scenarios > embedding > premium embedding token", () => {
 
     cy.wait("@getSettings");
     cy.findByText(
-      "Your Premium Embedding license is active until Dec 31, 2122.",
+      /Your Premium Embedding license is active until Dec 3(0|1), 2122\./,
     );
   });
 });
