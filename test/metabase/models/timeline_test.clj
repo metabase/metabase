@@ -15,9 +15,9 @@
       (mt/with-temp* [Timeline [tl-a {:name "tl-a" :collection_id coll-id}]
                       Timeline [tl-b {:name "tl-b" :collection_id coll-id}]
                       TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "e-a"}]
-                      TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}]
-                      TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "e-c"}]
-                      TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]]
+                      TimelineEvent [e-b {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}]
+                      TimelineEvent [e-c {:timeline_id (u/the-id tl-b) :name "e-c"}]
+                      TimelineEvent [e-d {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]]
         (testing "Fetching timelines"
           (testing "don't include events by default"
             (is (= #{}

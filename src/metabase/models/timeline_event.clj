@@ -2,11 +2,18 @@
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
+
+;;;; schemas
+
+(def Icons
+  "Timeline and TimelineEvent icon string Schema"
+  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
 
 ;;;; permissions
 
