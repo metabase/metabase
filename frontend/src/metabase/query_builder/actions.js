@@ -260,7 +260,6 @@ export const CREATE_QUESTION_BOOKMARK = `metabase/entities/questions/ADD_BOOKMAR
 export const createBookmark = createAction(
   CREATE_QUESTION_BOOKMARK,
   ({ id }) => {
-    console.log("🚀", { id });
     return CardApi.bookmark.create({ id });
   },
 );

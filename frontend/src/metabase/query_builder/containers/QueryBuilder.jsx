@@ -212,7 +212,8 @@ function QueryBuilder(props) {
     } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(id);
+
+    toggleBookmark({ id });
   };
 
   const handleCreate = useCallback(
