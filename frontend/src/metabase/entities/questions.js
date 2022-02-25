@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -13,9 +11,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
-
-const ADD_BOOKMARK_ACTION = `metabase/entities/questions/ADD_BOOKMARK`;
-const REMOVE_BOOKMARK_ACTION = `metabase/entities/questions/DELETE_BOOKMARK`;
 
 const Questions = createEntity({
   name: "questions",
@@ -55,16 +50,6 @@ const Questions = createEntity({
         },
         opts,
       ),
-
-    toggleBookmark: async (id, favorite) => {
-      if (favorite) {
-        // await Questions.api.favorite({ id });
-        return { type: ADD_BOOKMARK_ACTION, payload: id };
-      } else {
-        // await Questions.api.unfavorite({ id });
-        return { type: REMOVE_BOOKMARK_ACTION, payload: id };
-      }
-    },
   },
 
   objectSelectors: {
@@ -77,13 +62,6 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === ADD_BOOKMARK_ACTION && !error) {
-      console.log("🚀", "State before", { state });
-      console.log("🚀", assocIn(state, [payload, "favorite"], true));
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === REMOVE_BOOKMARK_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    }
     return state;
   },
 
