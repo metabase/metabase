@@ -679,7 +679,7 @@ describe("Dimension", () => {
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Text",
-          semantic_type: null,
+          semantic_type: "type/Text",
           field_ref: ["expression", "Hello World", null],
         });
       });
