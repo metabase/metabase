@@ -7,14 +7,14 @@ import Groups from "metabase/entities/groups";
 import { State } from "metabase-types/store";
 import { Group } from "metabase-types/types/Permissions";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { GroupRouteParams } from "../types";
+import { RawGroupRouteParams } from "../types";
 
 const isPinnedGroup = (group: Group) =>
   isAdminGroup(group) || isDefaultGroup(group);
 
 const getGroupRouteParams = (
   _state: State,
-  props: { params: GroupRouteParams },
+  props: { params: RawGroupRouteParams },
 ) => {
   const { groupId, databaseId, schemaName } = props.params;
   return {
