@@ -52,6 +52,30 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.");
   });
 
+  it("should update the name and description", () => {
+    cy.visit("/dashboard/1");
+
+    cy.icon("ellipsis").click();
+    // update title
+    popover().within(() => cy.findByText("Edit dashboard details").click());
+
+    modal().within(() => {
+      cy.findByText("Edit dashboard details");
+      cy.findByLabelText("Name").type("{selectall}Orders per year");
+      cy.findByLabelText("Description").type(
+        "{selectall}How many orders were placed in each year?",
+      );
+      cy.findByText("Update").click();
+    });
+
+    // refresh page and check that title/desc were updated
+    cy.visit("/dashboard/1");
+    cy.findByText("Orders per year")
+      .next()
+      .trigger("mouseenter");
+    cy.findByText("How many orders were placed in each year?");
+  });
+
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
