@@ -1,7 +1,7 @@
 (ns metabase.models
   (:require [metabase.models.activity :as activity]
+            [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
-            [metabase.models.card-favorite :as card-favorite]
             [metabase.models.collection :as collection]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision]
             [metabase.models.dashboard :as dashboard]
@@ -44,7 +44,7 @@
 ;; Fool the linter
 (comment activity/keep-me
          card/keep-me
-         card-favorite/keep-me
+         bookmark/keep-me
          collection/keep-me
          c-perm-revision/keep-me
          dashboard/keep-me
@@ -85,8 +85,10 @@
 
 (p/import-vars
  [activity Activity]
+ [bookmark CardBookmark]
+ [bookmark DashboardBookmark]
+ [bookmark CollectionBookmark]
  [card Card]
- [card-favorite CardFavorite]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]
