@@ -97,6 +97,7 @@ export default class DashboardApp extends Component {
 
   render() {
     const { editingOnLoad, addCardOnLoad } = this.state;
+    console.log("🚀", "is bookmarkd?", this.props.isBookmarked, this.props);
 
     return (
       <div className="shrink-below-content-size full-height">

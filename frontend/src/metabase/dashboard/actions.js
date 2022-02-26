@@ -208,14 +208,16 @@ export const setMultipleDashCardAttributes = createAction(
 
 export const createBookmark = createAction(
   CREATE_DASHBOARD_BOOKMARK,
-  ({ id }) => {
-    return DashboardApi.bookmark.create({ id });
-  },
+  // ({ id }) => {
+  ({ id }) => console.log("🚀", { id }),
+  // return DashboardApi.bookmark.create({ id });
+  // },
 );
 
 export const deleteBookmark = createAction(
   DELETE_DASHBOARD_BOOKMARK,
-  ({ id }) => DashboardApi.bookmark.delete({ id }),
+  ({ id }) => console.log("🚀", { id }),
+  // ({ id }) => DashboardApi.bookmark.delete({ id }),
 );
 
 function generateTemporaryDashcardId() {

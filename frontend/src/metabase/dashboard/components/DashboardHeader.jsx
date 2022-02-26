@@ -63,8 +63,7 @@ export default class DashboardHeader extends Component {
     e.preventDefault();
 
     const {
-      dashboard: { id },
-      isBookmarked,
+      dashboard: { id, isBookmarked },
       createBookmark,
       deleteBookmark,
     } = this.props;
@@ -366,7 +365,3 @@ export default class DashboardHeader extends Component {
     );
   }
 }
-
-DashboardHeader.defaultProps = {
-  isBookmarked: true,
-};

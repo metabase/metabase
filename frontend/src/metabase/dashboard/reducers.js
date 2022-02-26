@@ -32,6 +32,8 @@ import {
   CLOSE_SIDEBAR,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
   SAVE_DASHBOARD_AND_CARDS,
+  CREATE_DASHBOARD_BOOKMARK,
+  DELETE_DASHBOARD_BOOKMARK,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -69,7 +71,7 @@ const dashboards = handleActions(
   {
     [FETCH_DASHBOARD]: {
       next: (state, { payload }) => {
-        payload.entities.dashboard[1].isBookmarked = true;
+        payload.entities.dashboard[1].isBookmarked = false;
         return {
           ...state,
           ...payload.entities.dashboard,
@@ -117,6 +119,20 @@ const dashboards = handleActions(
           [payload.id, "enable_embedding"],
           payload.enable_embedding,
         ),
+    },
+    [CREATE_DASHBOARD_BOOKMARK]: {
+      next: (state, { payload }) => {
+        console.log("🚀", { state, payload });
+        state[1].isBookmarked = true;
+        return state;
+      },
+    },
+    [DELETE_DASHBOARD_BOOKMARK]: {
+      next: (state, { payload }) => {
+        console.log("🚀", { state, payload });
+        state[1].isBookmarked = false;
+        return state;
+      },
     },
   },
   {},
