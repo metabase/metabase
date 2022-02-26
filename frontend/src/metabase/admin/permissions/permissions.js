@@ -206,6 +206,8 @@ const dataPermissions = handleActions(
           return state;
         }
 
+        const database = metadata.database(entityId.databaseId);
+
         const { value, groupId, entityId, metadata, permission } = payload;
 
         if (entityId.tableId != null) {
@@ -215,13 +217,13 @@ const dataPermissions = handleActions(
             groupId,
             entityId,
             value,
-            metadata,
+            database,
           );
           return inferAndUpdateEntityPermissions(
             updatedPermissions,
             groupId,
             entityId,
-            metadata,
+            database,
           );
         } else if (entityId.schemaName != null) {
           MetabaseAnalytics.trackStructEvent("Permissions", "tables", value);
@@ -230,7 +232,7 @@ const dataPermissions = handleActions(
             groupId,
             entityId,
             value,
-            metadata,
+            database,
           );
         } else if (permission.name === "native") {
           MetabaseAnalytics.trackStructEvent("Permissions", "native", value);
@@ -239,7 +241,7 @@ const dataPermissions = handleActions(
             groupId,
             entityId,
             value,
-            metadata,
+            database,
           );
         } else {
           MetabaseAnalytics.trackStructEvent("Permissions", "schemas", value);
@@ -248,7 +250,7 @@ const dataPermissions = handleActions(
             groupId,
             entityId,
             value,
-            metadata,
+            database,
           );
         }
       },

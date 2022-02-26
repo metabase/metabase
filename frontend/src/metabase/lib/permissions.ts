@@ -5,14 +5,9 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
-import {
-  DatabasePermissions,
-  Group,
-  GroupsPermissions,
-} from "metabase-types/types/Permissions";
-import { Table } from "metabase-types/types/Table";
-import { Database } from "metabase-types/types/Database";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import Database from "metabase-lib/lib/metadata/Database";
+import Table from "metabase-lib/lib/metadata/Table";
 
 export type DatabaseEntityId = {
   databaseId: number;
@@ -184,7 +179,7 @@ export function downgradeNativePermissionsIfNeeded(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: any,
-  metadata: Metadata,
+  database: Database,
 ) {
   const currentSchemas = getSchemasDataPermission(permissions, groupId, {
     databaseId,
@@ -200,7 +195,7 @@ export function downgradeNativePermissionsIfNeeded(
       groupId,
       { databaseId },
       "none",
-      metadata,
+      database,
     );
   } else if (
     value === "controlled" &&
@@ -213,7 +208,7 @@ export function downgradeNativePermissionsIfNeeded(
       groupId,
       { databaseId },
       "none",
-      metadata,
+      database,
     );
   } else {
     return permissions;
@@ -240,11 +235,8 @@ function inferEntityPermissionValueFromChildTables(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
-  metadata: Metadata,
+  database: Database,
 ) {
-  const { databaseId } = entityId;
-  const database = metadata && metadata.database(databaseId);
-
   const entityIdsForDescendantTables = _.chain(database.tables)
     .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
     .map(metadataTableToTableEntityId)
@@ -272,7 +264,7 @@ export function inferAndUpdateEntityPermissions(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
-  metadata: Metadata,
+  database: Database,
 ) {
   const { databaseId } = entityId;
   const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
@@ -283,14 +275,14 @@ export function inferAndUpdateEntityPermissions(
       permissions,
       groupId,
       { databaseId, schemaName },
-      metadata,
+      database,
     );
     permissions = updateTablesPermission(
       permissions,
       groupId,
       { databaseId, schemaName },
       tablesPermissionValue,
-      metadata,
+      database,
     );
   }
 
@@ -300,21 +292,21 @@ export function inferAndUpdateEntityPermissions(
       permissions,
       groupId,
       { databaseId },
-      metadata,
+      database,
     );
     permissions = updateSchemasPermission(
       permissions,
       groupId,
       { databaseId },
       schemasPermissionValue,
-      metadata,
+      database,
     );
     permissions = downgradeNativePermissionsIfNeeded(
       permissions,
       groupId,
       { databaseId },
       schemasPermissionValue,
-      metadata,
+      database,
     );
   }
 
@@ -326,7 +318,7 @@ export function updateFieldsPermission(
   groupId: number,
   entityId: TableEntityId,
   value: any,
-  metadata: Metadata,
+  database: Database,
 ) {
   const { databaseId, tableId } = entityId;
   const schemaName = entityId.schemaName || "";
@@ -336,7 +328,7 @@ export function updateFieldsPermission(
     groupId,
     { databaseId, schemaName },
     "controlled",
-    metadata,
+    database,
   );
   permissions = updatePermission(
     permissions,
@@ -355,9 +347,9 @@ export function updateTablesPermission(
   groupId: number,
   { databaseId, schemaName }: SchemaEntityId,
   value: any,
-  metadata: Metadata,
+  database: Database,
 ) {
-  const schema = metadata.database(databaseId).schema(schemaName);
+  const schema = database.schema(schemaName);
   const tableIds = schema?.tables.map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
@@ -365,7 +357,7 @@ export function updateTablesPermission(
     groupId,
     { databaseId },
     "controlled",
-    metadata,
+    database,
   );
   permissions = updatePermission(
     permissions,
@@ -383,9 +375,8 @@ export function updateSchemasPermission(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: any,
-  metadata: Metadata,
+  database: Database,
 ) {
-  const database = metadata.database(databaseId) as any;
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
     schemaNames &&
@@ -399,7 +390,7 @@ export function updateSchemasPermission(
     groupId,
     { databaseId },
     value,
-    metadata,
+    database,
   );
   return updatePermission(
     permissions,
@@ -415,7 +406,7 @@ export function updateNativePermission(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: any,
-  metadata: Metadata,
+  database: Database,
 ) {
   // if enabling native query write access, give access to all schemas since they are equivalent
   if (value === "write") {
@@ -424,7 +415,7 @@ export function updateNativePermission(
       groupId,
       { databaseId },
       "all",
-      metadata,
+      database,
     );
   }
   return updatePermission(

@@ -1,4 +1,4 @@
-import { Metadata } from "metabase-types/types/Metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { Group } from "metabase-types/types/Permissions";
 import _ from "underscore";
 
@@ -6,14 +6,15 @@ import {
   getSchemaEntityId,
   getDatabaseEntityId,
 } from "../../utils/data-entity-id";
+import { getDatabase } from "../../utils/metadata";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
-import { DataRouteParams } from "../types";
+import { DataRouteParams, GroupRouteParams } from "../types";
 
 export const getDatabasesEditorBreadcrumbs = (
-  params: DataRouteParams,
+  params: GroupRouteParams,
   metadata: Metadata,
   group: Group,
 ) => {
@@ -33,7 +34,8 @@ export const getDatabasesEditorBreadcrumbs = (
     return [groupItem];
   }
 
-  const database = metadata.database(databaseId);
+  const database = getDatabase(metadata, databaseId);
+
   const databaseItem = {
     id: database.id,
     text: database.name,
@@ -52,14 +54,17 @@ export const getDatabasesEditorBreadcrumbs = (
   return [groupItem, databaseItem, schemaItem];
 };
 
-export const getGroupsDataEditorBreadcrumbs = (params, metadata) => {
+export const getGroupsDataEditorBreadcrumbs = (
+  params: DataRouteParams,
+  metadata: Metadata,
+) => {
   const { databaseId, schemaName, tableId } = params;
 
   if (databaseId == null) {
     return null;
   }
 
-  const database = metadata.database(databaseId);
+  const database = getDatabase(metadata, databaseId);
 
   const databaseItem = {
     text: database.name,

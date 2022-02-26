@@ -12,8 +12,6 @@ export type Metadata = {
   fields: { [id: FieldId]: FieldMetadata };
   metrics: { [id: MetricId]: MetricMetadata };
   segments: { [id: SegmentId]: SegmentMetadata };
-
-  database: (id: number) => DatabaseMetadata;
 };
 
 export type DatabaseMetadata = Database & {

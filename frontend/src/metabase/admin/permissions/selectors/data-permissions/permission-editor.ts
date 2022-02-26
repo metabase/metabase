@@ -21,21 +21,18 @@ import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
-import { Group } from "metabase-types/types/Permissions";
-import { SchemaMetadata, TableMetadata } from "metabase-types/types/Metadata";
+import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
 import Schema from "metabase-lib/lib/metadata/Schema";
 import { DataRouteParams, RawGroupRouteParams } from "../types";
 import { State } from "metabase-types/store";
 
 export const getIsLoadingDatabaseTables = (
   state: State,
-  props: { params: DataRouteParams },
+  { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
 ) => {
-  const dbId = props.params.databaseId;
-
   return Tables.selectors.getLoading(state, {
     entityQuery: {
-      dbId,
+      dbId: params.databaseId,
       include_hidden: true,
     },
   });
@@ -43,13 +40,11 @@ export const getIsLoadingDatabaseTables = (
 
 export const getLoadingDatabaseTablesError = (
   state: State,
-  props: { params: DataRouteParams },
+  { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
 ) => {
-  const dbId = props.params.databaseId;
-
   return Tables.selectors.getError(state, {
     entityQuery: {
-      dbId,
+      dbId: params.databaseId,
       include_hidden: true,
     },
   });
@@ -73,7 +68,7 @@ const getGroupRouteParams = (
 ) => {
   const { groupId, databaseId, schemaName } = props.params;
   return {
-    groupId: groupId != null ? parseInt(groupId) : null,
+    groupId: parseInt(groupId),
     databaseId: parseInt(databaseId),
     schemaName,
   };
@@ -120,10 +115,10 @@ export const getDatabasesPermissionEditor = createSelector(
   (
     metadata,
     params,
-    permissions,
+    permissions: GroupsPermissions,
     group: Group,
     groups: Group[],
-    isLoading: boolean,
+    isLoading,
   ) => {
     const { groupId, databaseId, schemaName } = params;
 
@@ -135,7 +130,7 @@ export const getDatabasesPermissionEditor = createSelector(
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     if (!defaultGroup) {
-      throw new Error("Default group is not found");
+      throw new Error("No default group found");
     }
 
     const hasSingleSchema =

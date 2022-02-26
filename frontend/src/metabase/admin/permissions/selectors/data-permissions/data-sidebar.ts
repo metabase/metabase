@@ -13,9 +13,15 @@ import { State } from "metabase-types/store";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 import Database from "metabase-lib/lib/metadata/Database";
-import { DataRouteParams } from "../types";
+import { DataRouteParams, RawDataRouteParams } from "../types";
+import { ITreeNodeItem } from "metabase/components/tree/types";
+import { EntityId } from "metabase/lib/permissions";
+import { getDatabase } from "../../utils/metadata";
 
-const getRouteParams = (_state: State, props: { params: DataRouteParams }) => {
+const getRouteParams = (
+  _state: State,
+  props: { params: RawDataRouteParams },
+) => {
   const { databaseId, schemaName, tableId } = props.params;
   return {
     databaseId,
@@ -44,10 +50,15 @@ const getDatabasesSidebar = (metadata: Metadata) => {
   };
 };
 
+type DataTreeNodeItem = {
+  entityId: EntityId;
+  children?: DataTreeNodeItem[];
+} & ITreeNodeItem;
+
 const getTablesSidebar = (
   database: Database,
-  schemaName: string,
-  tableId: string,
+  schemaName?: string,
+  tableId?: string,
 ) => {
   let selectedId = null;
 
@@ -57,7 +68,7 @@ const getTablesSidebar = (
     selectedId = getSchemaId(schemaName);
   }
 
-  let entities = database
+  let entities: DataTreeNodeItem[] = database
     .getSchemas()
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(schema => {
@@ -79,7 +90,7 @@ const getTablesSidebar = (
     });
 
   const shouldIncludeSchemas = database.schemasCount() > 1;
-  if (!shouldIncludeSchemas) {
+  if (!shouldIncludeSchemas && entities[0]?.children != null) {
     entities = entities[0]?.children;
   }
 
@@ -107,6 +118,8 @@ export const getDataFocusSidebar = createSelector(
       return getDatabasesSidebar(metadata);
     }
 
-    return getTablesSidebar(metadata.database(databaseId), schemaName, tableId);
+    const database = getDatabase(metadata, databaseId);
+
+    return getTablesSidebar(database, schemaName, tableId);
   },
 );
