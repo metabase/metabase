@@ -274,7 +274,8 @@
                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                 :display-name "Checkin Date"
                                                 :type         :dimension
-                                                :dimension    [:field 14 nil]}}}}}
+                                                :dimension    [:field 14 nil]
+                                                :widget-type  :category}}}}}
 
      "Don't try to normalize template-tag name/display name. Names should get converted to strings."
      {(query-with-template-tags
@@ -286,7 +287,8 @@
        {"checkin_date" {:name         "checkin_date"
                         :display-name "looks/like-a-keyword"
                         :type         :dimension
-                        :dimension    [:field 14 nil]}})
+                        :dimension    [:field 14 nil]
+                        :widget-type  :category}})
 
       (query-with-template-tags
        {:checkin_date {:name         :checkin_date
@@ -297,7 +299,8 @@
        {"checkin_date" {:name         "checkin_date"
                         :display-name "Checkin Date"
                         :type         :dimension
-                        :dimension    [:field 14 nil]}})}
+                        :dimension    [:field 14 nil]
+                        :widget-type  :category}})}
 
      "Actually, `:name` should just get copied over from the map key if it's missing or different"
      {(query-with-template-tags
@@ -308,7 +311,8 @@
        {"checkin_date" {:name         "checkin_date"
                         :display-name "Checkin Date"
                         :type         :dimension
-                        :dimension    [:field 14 nil]}})
+                        :dimension    [:field 14 nil]
+                        :widget-type  :category}})
 
       (query-with-template-tags
        {"checkin_date" {:name         "something_else"
@@ -319,7 +323,8 @@
        {"checkin_date" {:name         "checkin_date"
                         :display-name "Checkin Date"
                         :type         :dimension
-                        :dimension    [:field 14 nil]}})}
+                        :dimension    [:field 14 nil]
+                        :widget-type  :category}})}
 
      "`:type` should get normalized"
      {(query-with-template-tags
@@ -331,7 +336,8 @@
        {"names_list" {:name         "names_list"
                       :display-name "Names List"
                       :type         :dimension
-                      :dimension    [:field-id 49]}})}
+                      :dimension    [:field-id 49]
+                      :widget-type  :category}})}
 
      "`:widget-type` should get normalized"
      {(query-with-template-tags
@@ -358,7 +364,8 @@
        {"checkin_date" {:name         "checkin_date"
                         :display-name "Checkin Date"
                         :type         :dimension
-                        :dimension    [:field-id 14]}})}
+                        :dimension    [:field-id 14]
+                        :widget-type  :category}})}
 
      "Don't normalize `:default` values"
      {(query-with-template-tags
@@ -384,7 +391,37 @@
       ;; `:name` still gets copied over from the map key.
       {:database 1
        :type     :native
-       :native   {:template-tags {"x" {:name "x"}}}}})))
+       :native   {:template-tags {"x" {:name "x"}}}}}
+
+     ":dimension (Field filter) template tags with no :widget-type should get :category as a default type (#20643)"
+     {{:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name "x", :type :dimension}}}}
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name        "x"
+                                       :type        :dimension
+                                       :widget-type :category}}}}
+      ;; don't add if there's already an existing `:widget-type`
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name        "x"
+                                       :type        :dimension
+                                       :widget-type :string/=}}}}
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name        "x"
+                                       :type        :dimension
+                                       :widget-type :string/=}}}}
+      ;; don't add if this isn't a Field filter (`:type` is not `:dimension`)
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name "x"
+                                       :type :nonsense}}}}
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name "x"
+                                       :type :nonsense}}}}})))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
@@ -1034,6 +1071,7 @@
                            :template-tags {"names_list" {:name         "names_list"
                                                          :display-name "Names List"
                                                          :type         :dimension
+                                                         :widget-type  :category
                                                          :dimension    [:field 49 nil]}}}
               :parameters [{:type   :text
                             :target [:dimension [:template-tag "names_list"]]

@@ -219,3 +219,16 @@
                                                                         {:source-field (mt/id :venues :category_id)}]]}]))
                  (m/dissoc-in [:data :native_form :params])
                  (m/dissoc-in [:data :results_metadata :checksum])))))))
+
+(deftest legacy-parameters-with-no-widget-type-test
+  (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
+    (mt/dataset sample-dataset
+        (let [query (mt/native-query
+                     {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                      :template-tags {"cat" {:id           "__MY_CAT__"
+                                             :name         "cat"
+                                             :display-name "Cat"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :products :category) nil]}}})]
+        (is (= [200]
+               (mt/first-row (qp/process-query query))))))))
