@@ -664,7 +664,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
         });
       });
       describe("displayName()", () => {
@@ -675,12 +675,12 @@ describe("Dimension", () => {
 
       describe("column()", () => {
         expect(dimension.column()).toEqual({
-          id: ["expression", "Hello World"],
+          id: ["expression", "Hello World", null],
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Text",
-          semantic_type: null,
-          field_ref: ["expression", "Hello World"],
+          semantic_type: "type/Text",
+          field_ref: ["expression", "Hello World", null],
         });
       });
 
@@ -781,7 +781,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "aggregation" clause', () => {
-          expect(dimension.mbql()).toEqual(["aggregation", 1]);
+          expect(dimension.mbql()).toEqual(["aggregation", 1, null]);
         });
       });
 

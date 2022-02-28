@@ -33,6 +33,15 @@
              "/db/1/schema/1234/table/1/"
              "/db/1/schema/PUBLIC/table/1/query/"
              "/db/1/schema/PUBLIC/table/1/query/segmented/"
+             ;; download permissions
+             "/download/db/1/"
+             "/download/limited/db/1/"
+             "/download/db/1/native/"
+             "/download/limited/db/1/native/"
+             "/download/db/1/schema/PUBLIC/"
+             "/download/limited/db/1/schema/PUBLIC/"
+             "/download/db/1/schema/PUBLIC/table/1/"
+             "/download/limited/db/1/schema/PUBLIC/table/1/"
              ;; block permissions
              "/block/db/1/"
              "/block/db/1000/"
@@ -43,7 +52,7 @@
                (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-      (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+      (doseq [path [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
                     "/db/16/schema/COMPANY-NET\\\\john.doe/"
                     ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
                     "/db/16/schema/COMPANY-NET\\/john.doe/"
@@ -156,7 +165,14 @@
               "/block/db/1/schema/PUBLIC/"
               "/block/db/1/schema/PUBLIC/table/"
               "/block/db/1/schema/PUBLIC/table/2/"
-              "/block/collection/1/"]}]
+              "/block/collection/1/"]
+
+             "invalid download permissions"
+             ["/download/"
+              "/download/limited/"
+              "/download/db/1/schema/PUBLIC/table/1/query/"
+              "/download/db/1/schema/PUBLIC/table/1/query/segmented/"]}]
+
       (testing reason
         (doseq [path paths]
           (testing (str "\n" (pr-str path))

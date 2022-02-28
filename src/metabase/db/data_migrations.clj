@@ -10,15 +10,8 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
-            [metabase.models.pulse :refer [Pulse]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -65,49 +58,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
-;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
-;; Else" area where they can currently be saved).
-;;
-;; Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
-;; when users upgrade their instance to 0.30 from a previous version.
-;;
-;; The user feedback we've received points to a UX that would do the following:
-;;
-;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
-;;
-;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
-;;    questions."
-;;
-;; 3. The permissions settings for these new collections should be set to No Access for all user groups except
-;;    Administrators.
-;;
-;; 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
-;;    new collections.
-;;
-(defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
-  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/the-id (perm-group/admin))])]
-    ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
-    ;; perms, and we don't want to put extra entries in there that confuse things
-    (doseq [group-id non-admin-group-ids]
-      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
-    ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
-                                         Pulse     (trs "Migrated Pulses")
-                                         Card      (trs "Migrated Questions")}
-            :when                       (db/exists? model :collection_id nil)
-            :let                        [new-collection (db/insert! Collection
-                                                          :name  new-collection-name
-                                                          :color "#509ee3")]] ; MB brand color
-      ;; 3. make sure the non-admin groups don't have any perms for this Collection.
-      (doseq [group-id non-admin-group-ids]
-        (perms/revoke-collection-permissions! group-id new-collection))
-      ;; 4. move everything not in this Collection to a new Collection
-      (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
-                     (name model) new-collection-name (u/the-id new-collection)))
-      (db/update-where! model {:collection_id nil}
-        :collection_id (u/the-id new-collection)))))
 
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:

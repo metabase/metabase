@@ -10266,6 +10266,233 @@ databaseChangeLog:
                   'type/Title'
                 );
 
+  #
+  # The following migrations replace metabase.db.migrations/add-migrated-collections, added in 0.30.0
+  #
+  # In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
+  # will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
+  # Else" area where they can currently be saved).
+  #
+  # Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
+  # when users upgrade their instance to 0.30 from a previous version.
+  #
+  # The user feedback we've received points to a UX that would do the following:
+  #
+  # 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+  #
+  # 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
+  #    questions."
+  #
+  # 3. The permissions settings for these new collections should be set to No Access for all user groups except
+  #    Administrators.
+  #
+  # 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
+  #    new collections.
+
+  # [add-migrated-collections part 1 of 7] Create 'Migrated Dashboards' Collection if needed
+  - changeSet:
+      id: v43.00-014
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Dashboards' Collection if needed and there are any Dashboards not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Dashboards';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM report_dashboard
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Dashboards', '#509ee3', 'migrated_dashboards');
+
+  # [add-migrated-collections part 2 of 7] Create 'Migrated Pulses' Collection if needed
+  - changeSet:
+      id: v43.00-015
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Pulses' Collection if needed and there are any Pulses not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Pulses';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM pulse
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Pulses', '#509ee3', 'migrated_pulses');
+
+  # [add-migrated-collections part 3 of 7] Create 'Migrated Questions' Collection if needed
+  - changeSet:
+      id: v43.00-016
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Questions' Collection if needed and there are any Cards not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Questions';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM report_card
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Questions', '#509ee3', 'migrated_questions');
+
+  # [add-migrated-collections part 4 of 7] Move Dashboards not in a Collection to 'Migrated Dashboards'
+  - changeSet:
+      id: v43.00-017
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Dashboards not in a Collection to 'Migrated Dashboards'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Dashboards')
+              WHERE collection_id IS NULL;
+
+
+  # [add-migrated-collections part 5 of 7] Move Pulses not in a Collection to 'Migrated Pulses'
+  - changeSet:
+      id: v43.00-018
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Pulses not in a Collection to 'Migrated Pulses'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE pulse
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Pulses')
+              WHERE collection_id IS NULL;
+
+  # [add-migrated-collections part 6 of 7] Move Cards not in a Collection to 'Migrated Questions'
+  - changeSet:
+      id: v43.00-019
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Cards not in a Collection to 'Migrated Questions'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Questions')
+              WHERE collection_id IS NULL;
+
+  # [add-migrated-collections part 7 of 7] Grant All Users readwrite perms for the Root Collection.
+  - changeSet:
+      id: v43.00-020
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                     ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/root/'
+              WHERE p.object IS NULL;
+
   - changeSet:
       id: v43.00-021
       author: adam-james

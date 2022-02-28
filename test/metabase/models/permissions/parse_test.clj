@@ -5,15 +5,27 @@
 (deftest permissions->graph
   (testing "Parses each permission string to the correct graph"
     (are [x y] (= y (parse/permissions->graph [x]))
-      "/db/3/"                                       {:db {3 {:data {:native  :write
-                                                                     :schemas :all}}}}
-      "/db/3/native/"                                {:db {3 {:data {:native :write}}}}
-      "/db/3/schema/"                                {:db {3 {:data {:schemas :all}}}}
-      "/db/3/schema/PUBLIC/"                         {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
-      "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
-      "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
-      "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
-      "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}})))
+      "/db/3/"                                        {:db {3 {:data {:native  :write
+                                                                       :schemas :all}}}}
+      "/db/3/native/"                                 {:db {3 {:data {:native :write}}}}
+      "/db/3/schema/"                                 {:db {3 {:data {:schemas :all}}}}
+      "/db/3/schema/PUBLIC/"                          {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
+      "/db/3/schema/PUBLIC/table/4/"                  {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
+      "/db/3/schema/PUBLIC/table/4/read/"             {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
+      "/db/3/schema/PUBLIC/table/4/query/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
+      "/db/3/schema/PUBLIC/table/4/query/segmented/"  {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}}
+      "/download/db/3/"                               {:db {3 {:download {:native  :full
+                                                                          :schemas :full}}}}
+      "/download/limited/db/3/"                       {:db {3 {:download {:native  :limited
+                                                                          :schemas :limited}}}}
+      "/download/db/3/native/"                        {:db {3 {:download {:native :full}}}}
+      "/download/limited/db/3/native/"                {:db {3 {:download {:native :limited}}}}
+      "/download/db/3/schema/"                        {:db {3 {:download {:schemas :full}}}}
+      "/download/limited/db/3/schema/"                {:db {3 {:download {:schemas :limited}}}}
+      "/download/db/3/schema/PUBLIC/"                 {:db {3 {:download {:schemas {"PUBLIC" :full}}}}}
+      "/download/limited/db/3/schema/PUBLIC/"         {:db {3 {:download {:schemas {"PUBLIC" :limited}}}}}
+      "/download/db/3/schema/PUBLIC/table/4/"         {:db {3 {:download {:schemas {"PUBLIC" {4 :full}}}}}}
+      "/download/limited/db/3/schema/PUBLIC/table/4/" {:db {3 {:download {:schemas {"PUBLIC" {4 :limited}}}}}})))
 
 
 (deftest combines-permissions-for-graph

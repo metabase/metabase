@@ -122,6 +122,7 @@
               :query-type  ::druid.qp/topN
               :mbql?       true}
              (query->native
+              #_:clj-kondo/ignore
               {:aggregation [[:* [:count $id] 10]]
                :breakout    [$venue_price]}))))))
 
@@ -145,6 +146,7 @@
               :query-type  ::druid.qp/topN
               :mbql?       true}
              (query->native
+              #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))
@@ -171,6 +173,7 @@
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
              (query->native
+              #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))

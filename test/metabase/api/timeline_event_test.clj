@@ -55,7 +55,11 @@
                                                :collection_id (u/the-id collection)}]
                       TimelineEvent [event {:name         "Very Important Event"
                                             :timeline_id  (u/the-id timeline)}]]
-        (testing "check that we get the timeline-event with `id`"
+        (testing "check that we can adjust the timestamp for timeline-event with `id`"
+          (is (= "2022-01-01T00:00:00Z"
+                 (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:timestamp "2022-01-01"})
+                      :timestamp))))
+        (testing "check that we have archived the timeline-event with `id`"
           (is (true?
                (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
                     :archived))))))))

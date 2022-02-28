@@ -6,8 +6,6 @@ import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
 
-export const version = require("../../../../version.json");
-
 export * from "./helpers/e2e-setup-helpers";
 export * from "./helpers/e2e-ui-elements-helpers";
 export * from "./helpers/e2e-dashboard-helpers";

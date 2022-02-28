@@ -4,7 +4,8 @@ import {
   openEmailPage,
   sendSubscriptionsEmail,
 } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -55,7 +56,7 @@ function createOneDimensionTwoMetricsQuestion(display) {
       "graph.metrics": ["count", "avg"],
     },
     display: display,
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 }
 
@@ -75,6 +76,6 @@ function createOneMetricTwoDimensionsQuestion(display) {
       "graph.metrics": ["count"],
     },
     display: display,
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 }

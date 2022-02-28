@@ -11,7 +11,7 @@ const filter = {
   sectionId: "id",
 };
 
-describe.skip("issue 20656", () => {
+describe("issue 20656", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -55,6 +55,6 @@ describe.skip("issue 20656", () => {
     // Make sure the filter widget is there
     filterWidget();
 
-    cy.findByText("Sorry, you don't have permissions to see this card.");
+    cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });
