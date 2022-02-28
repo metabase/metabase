@@ -30,9 +30,13 @@ describe("scenarios > filters > sql filters > field filter > None", () => {
     filterWidget().should("not.exist");
   });
 
-  it("should disallow the running of the query and the saving of the question", () => {
-    cy.get(".RunButton").should("be.disabled");
-    cy.findByText("Save").should("have.class", "disabled");
+  it("should be runnable with the None filter being ignored (metabase#20643)", () => {
+    cy.get(".RunButton")
+      .first()
+      .click();
+
+    cy.wait("@dataset");
+    cy.findByText("Hudson Borer");
   });
 
   it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
