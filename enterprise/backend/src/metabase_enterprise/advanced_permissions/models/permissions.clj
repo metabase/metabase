@@ -81,19 +81,19 @@
     :full
     (do
       (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited db-id schema)
+      (revoke-permissions! :download :limited group-id db-id schema)
       (perms/grant-permissions! group-id (data-perms-path :download :full db-id schema)))
 
     :limited
     (do
       (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited db-id schema)
+      (revoke-permissions! :download :limited group-id db-id schema)
       (perms/grant-permissions! group-id (data-perms-path :download :limited db-id schema)))
 
     :none
     (do
       (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited db-id schema))
+      (revoke-permissions! :download :limited group-id db-id schema))
 
     (when (map? new-schema-perms)
       (doseq [[table-id table-perms] new-schema-perms]
