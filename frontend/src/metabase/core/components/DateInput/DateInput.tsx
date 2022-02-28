@@ -15,7 +15,8 @@ import { hasTimePart } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";
-const TIME_FORMAT = "h:mm A";
+const TIME_FORMAT_12 = "h:mm A";
+const TIME_FORMAT_24 = "HH:mm";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
@@ -43,7 +44,7 @@ const DateInput = forwardRef(function DateInput(
     hasTime,
     hasCalendar,
     dateFormat = DATE_FORMAT,
-    timeFormat = TIME_FORMAT,
+    timeFormat = TIME_FORMAT_12,
     error,
     fullWidth,
     onFocus,
@@ -76,6 +77,16 @@ const DateInput = forwardRef(function DateInput(
     }
   }, [value, hasTime, dateFormat, dateTimeFormat]);
 
+  const mixedTimeFormats = useMemo(
+    () => [
+      dateFormat,
+      dateTimeFormat,
+      `${dateFormat}, ${TIME_FORMAT_12}`,
+      `${dateFormat}, ${TIME_FORMAT_24}`,
+    ],
+    [dateFormat, dateTimeFormat],
+  );
+
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
@@ -98,7 +109,7 @@ const DateInput = forwardRef(function DateInput(
       const newText = event.target.value;
       setInputText(newText);
 
-      const formats = hasTime ? [dateTimeFormat, dateFormat] : [dateFormat];
+      const formats = hasTime ? mixedTimeFormats : [dateFormat];
       const newValue = moment(newText, formats);
 
       if (newValue.isValid()) {
@@ -107,7 +118,7 @@ const DateInput = forwardRef(function DateInput(
         onChange?.(undefined);
       }
     },
-    [hasTime, dateFormat, dateTimeFormat, onChange],
+    [hasTime, dateFormat, mixedTimeFormats, onChange],
   );
 
   return (
