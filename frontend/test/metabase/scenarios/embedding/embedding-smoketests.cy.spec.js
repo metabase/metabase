@@ -122,10 +122,14 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText("Embed this dashboard in an application").closest(".disabled");
+  cy.findByText(/Embed this (question|dashboard) in an application/).closest(
+    ".disabled",
+  );
 
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
 
-  cy.findByText("Embed this dashboard in an application").closest(".disabled");
+  cy.findByText(/Embed this (question|dashboard) in an application/).closest(
+    ".disabled",
+  );
 }
