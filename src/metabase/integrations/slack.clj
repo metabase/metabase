@@ -148,7 +148,7 @@
   [endpoint response->data params]
   ;; use default limit (page size) of 1000 instead of 100 so we don't end up making a hundred API requests for orgs
   ;; with a huge number of channels or users.
-  (let [default-params {:limit 1} ;; TODO FIXME
+  (let [default-params {:limit 1000}
         response       (m/mapply GET endpoint (merge default-params params))
         data           (response->data response)]
     (when (seq response)
