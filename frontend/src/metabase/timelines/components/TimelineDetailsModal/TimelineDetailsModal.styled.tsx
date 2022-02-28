@@ -16,7 +16,6 @@ export const ModalToolbar = styled.div`
 
 export const ModalToolbarInput = styled(TextInput)`
   flex: 1 1 auto;
-  margin-right: 1rem;
 
   ${TextInput.Input} {
     height: 2.5rem;
@@ -28,6 +27,7 @@ export const ModalToolbarLink = styled(Link)`
   flex: 0 0 auto;
   align-items: center;
   height: 2.5rem;
+  margin-left: 1rem;
 `;
 
 export const ModalBody = styled.div`
