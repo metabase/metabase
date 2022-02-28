@@ -60,6 +60,11 @@ export const getDashboardComplete = createSelector(
     },
 );
 
+export const getIsBookmarked = createSelector(
+  [getDashboard],
+  dashboard => dashboard?.["is_bookmarked"],
+);
+
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) =>

@@ -71,13 +71,16 @@ const dashboards = handleActions(
   {
     [FETCH_DASHBOARD]: {
       next: (state, { payload }) => {
-        payload.entities.dashboard[1].isBookmarked = false;
+        // TODO: `is_bookmarked` or equivalent should come from the back-end
+        payload.entities.dashboard[payload.dashboardId]["is_bookmarked"] = true;
+
         return {
           ...state,
           ...payload.entities.dashboard,
         };
       },
     },
+
     [SET_DASHBOARD_ATTRIBUTES]: {
       next: (state, { payload: { id, attributes, isDirty } }) => {
         return {
@@ -122,17 +125,15 @@ const dashboards = handleActions(
     },
     [CREATE_DASHBOARD_BOOKMARK]: {
       next: (state, { payload }) => {
-        console.log("🚀", { state, payload });
-        state[1].isBookmarked = true;
+        const id = Object.keys(state)[0];
+        state[id]["is_bookmarked"] = true;
+        console.log("🚀", { state, payload, id });
         return state;
       },
     },
     [DELETE_DASHBOARD_BOOKMARK]: {
-      next: (state, { payload }) => {
-        console.log("🚀", { state, payload });
-        state[1].isBookmarked = false;
-        return state;
-      },
+      next: (state, { payload }) =>
+        assocIn(state, [Object.keys(state)[0], "is_bookmarked"], true),
     },
   },
   {},

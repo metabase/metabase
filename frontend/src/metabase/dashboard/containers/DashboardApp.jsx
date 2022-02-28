@@ -15,6 +15,7 @@ import {
   getIsEditing,
   getIsSharing,
   getDashboardBeforeEditing,
+  getIsBookmarked,
   getIsEditingParameter,
   getIsDirty,
   getDashboardComplete,
@@ -46,6 +47,7 @@ const mapStateToProps = (state, props) => {
     isEditing: getIsEditing(state, props),
     isSharing: getIsSharing(state, props),
     dashboardBeforeEditing: getDashboardBeforeEditing(state, props),
+    isBookmarked: getIsBookmarked(state, props),
     isEditingParameter: getIsEditingParameter(state, props),
     isDirty: getIsDirty(state, props),
     dashboard: getDashboardComplete(state, props),
@@ -97,7 +99,8 @@ export default class DashboardApp extends Component {
 
   render() {
     const { editingOnLoad, addCardOnLoad } = this.state;
-    console.log("🚀", "is bookmarkd?", this.props.isBookmarked, this.props);
+    console.log("🚀", "this.props.dashboard", this.props.dashboard);
+    console.log("🚀", "isBookmarked", this.props.isBookmarked);
 
     return (
       <div className="shrink-below-content-size full-height">

@@ -62,15 +62,13 @@ export default class DashboardHeader extends Component {
   handleBookmarkClicked(e) {
     e.preventDefault();
 
-    const {
-      dashboard: { id, isBookmarked },
-      createBookmark,
-      deleteBookmark,
-    } = this.props;
+    const { dashboard, createBookmark, deleteBookmark } = this.props;
 
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    const toggleBookmark = dashboard["is_bookmarked"]
+      ? deleteBookmark
+      : createBookmark;
 
-    toggleBookmark({ id });
+    toggleBookmark({ id: dashboard.id });
   }
 
   handleEdit(dashboard) {
@@ -278,7 +276,7 @@ export default class DashboardHeader extends Component {
           onClick={e => this.handleBookmarkClicked(e)}
           data-metabase-event={"Dashboard;Bookmark"}
         >
-          {this.props.isBookmarked ? t`Remove bookmark` : t`Bookmark`}
+          {dashboard["is_bookmarked"] ? t`Remove bookmark` : t`Bookmark`}
         </Link>,
       );
       extraButtons.push(
