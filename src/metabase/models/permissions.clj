@@ -896,10 +896,6 @@
           ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
            group-id db-id new-perms))))))
 
-(update-group-permissions! 1
-                           {1 {:data {:schemas {"PUBLIC" {1 :all, 2 :all, 3 :none, 4 :none}}}
-                               :download {:schemas {"PUBLIC" {1 :limited, 2 :limited, 3 :limited, 4 :limited}}}}})
-
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
   make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
