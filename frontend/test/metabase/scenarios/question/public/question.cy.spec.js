@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitQuestion } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -47,7 +47,7 @@ describe("scenarios > question > public", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
       enableSharingQuestion(id);
 
-      cy.visit(`/question/${id}`);
+      visitQuestion(id);
       // Make sure metadata fully loaded before we continue
       cy.wait("@cardQuery");
     });

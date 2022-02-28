@@ -1,13 +1,9 @@
 import _ from "underscore";
-import { restore, describeWithToken } from "__support__/e2e/cypress";
-
-const visitQuestion = id => {
-  cy.visit(`/question/${id}`);
-
-  // Visualization button is visible means
-  // that we waited enough to fetch the question data
-  cy.findByText("Visualization");
-};
+import {
+  restore,
+  describeWithToken,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 describeWithToken("audit > auditing > questions", () => {
   beforeEach(() => {
