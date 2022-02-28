@@ -286,18 +286,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   allTemplateTagsAreValid() {
-    return this.templateTags().every(t => {
-      if (["text", "number", "date", "card", "snippet"].includes(t.type)) {
-        return true;
-      }
-
-      const isDimensionType = t.type === "dimension";
-      const hasDefinedWidgetType =
-        t["widget-type"] && t["widget-type"] !== "none";
-      const hasDefinedDimension = t.dimension != null;
-
-      return isDimensionType && hasDefinedWidgetType && hasDefinedDimension;
-    });
+    return this.templateTags().every(
+      // field filters require a field
+      t => !(t.type === "dimension" && t.dimension == null),
+    );
   }
 
   setTemplateTag(name, tag) {
