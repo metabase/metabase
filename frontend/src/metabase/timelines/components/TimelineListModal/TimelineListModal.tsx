@@ -19,13 +19,14 @@ const TimelineListModal = ({
   collection,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
+  const canWrite = collection.can_write;
   const hasTimelines = timelines.length > 0;
   const title = hasTimelines ? t`Events` : t`${collection.name} events`;
 
   return (
     <div>
       <ModalHeader title={title} onClose={onClose}>
-        {hasTimelines && <TimelineMenu collection={collection} />}
+        {canWrite && hasTimelines && <TimelineMenu collection={collection} />}
       </ModalHeader>
       <ModalBody>
         {hasTimelines ? (

@@ -66,9 +66,11 @@ const TimelineEmptyState = ({
         <EmptyStateMessage>
           {t`Add events to Metabase to open important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateMessage>
-        <Link className="Button Button--primary" to={link}>
-          {t`Add an event`}
-        </Link>
+        {collection.can_write && (
+          <Link className="Button Button--primary" to={link}>
+            {t`Add an event`}
+          </Link>
+        )}
       </EmptyStateBody>
     </EmptyStateRoot>
   );

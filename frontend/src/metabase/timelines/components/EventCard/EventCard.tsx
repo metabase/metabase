@@ -61,9 +61,11 @@ const EventCard = ({
         )}
         <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
-      <CardAside>
-        <EntityMenu items={menuItems} triggerIcon="ellipsis" />
-      </CardAside>
+      {menuItems.length > 0 && (
+        <CardAside>
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        </CardAside>
+      )}
     </CardRoot>
   );
 };
@@ -75,7 +77,9 @@ const getMenuItems = (
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!event.archived) {
+  if (!collection.can_write) {
+    return [];
+  } else if (!event.archived) {
     return [
       {
         title: t`Edit event`,
