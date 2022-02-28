@@ -6,7 +6,6 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-;; TODO make all these path functions share more code
 (defn- perms-path
   [perm-type perm-value base-path]
   (case [perm-type perm-value]

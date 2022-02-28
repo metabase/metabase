@@ -2,10 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
             [metabase.models :refer [Permissions PermissionsGroup]]
+            [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
-
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (defn- test-download-perms [group-id]
   (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :download]))
@@ -36,4 +37,42 @@
                  (test-download-perms group-id)))
 
           (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" :none}})
-          (is (nil? (test-download-perms group-id))))))))
+          (is (nil? (test-download-perms group-id))))
+
+        (testing "Download perms for individual tables can be set and revoked"
+          (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :full
+                                                                                            id-2 :full
+                                                                                            id-3 :full
+                                                                                            id-4 :full}}})
+            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
+                    :native :full}
+                   (test-download-perms group-id)))
+
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :limited}}})
+            (is (= {:schemas {"PUBLIC" {id-1 :limited id-2 :full id-3 :full id-4 :full}}
+                    :native :limited}
+                   (test-download-perms group-id)))
+
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :none}}})
+            (is (= {:schemas {"PUBLIC" {id-2 :full id-3 :full id-4 :full}}}
+                   (test-download-perms group-id)))
+
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-2 :none
+                                                                                            id-3 :none
+                                                                                            id-4 :none}}})
+            (is (nil? (test-download-perms group-id)))
+
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :full
+                                                                                            id-2 :full
+                                                                                            id-3 :limited
+                                                                                            id-4 :limited}}})
+            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :limited id-4 :limited}}
+                    :native :limited}
+                   (test-download-perms group-id)))
+
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-3 :full
+                                                                                            id-4 :full}}})
+            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
+                    :native :full}
+                   (test-download-perms group-id)))))))))
