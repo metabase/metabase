@@ -5,6 +5,7 @@ import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
+export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");

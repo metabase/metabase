@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import { getUser } from "metabase/selectors/user";
 
@@ -11,6 +12,7 @@ import {
   LoadingContainer,
   LoadingTitle,
   Sidebar,
+  SidebarHeading,
   ToggleMobileSidebarIcon,
 } from "./CollectionSidebar.styled";
 
@@ -99,6 +101,7 @@ function CollectionSidebar({
     >
       {allFetched ? (
         <React.Fragment>
+          <SidebarHeading>{t`Collections`}</SidebarHeading>
           <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           <RootCollectionLink
             isRoot={isRoot}
@@ -133,5 +136,6 @@ function LoadingView() {
 
 export default _.compose(
   Collection.loadList(collectionEntityQuery),
+  Bookmark.loadList(),
   connect(mapStateToProps),
 )(CollectionSidebar);
