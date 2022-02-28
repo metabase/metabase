@@ -95,6 +95,78 @@ describe("scenarios > embedding > smoke tests", () => {
       ensureEmbeddingIsDisabled();
     });
   });
+
+  context("embedding enabled", () => {
+    ["question", "dashboard"].forEach(object => {
+      it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
+        const embeddableObject = object === "question" ? "card" : "dashboard";
+        const objectName =
+          object === "question" ? "Orders" : "Orders in a dashboard";
+
+        cy.intercept("PUT", `/api/${embeddableObject}/1`).as("embedObject");
+        cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
+          "currentlyEmbeddedObject",
+        );
+
+        visitAndEnableSharing(object);
+
+        cy.findByText("Parameters");
+        cy.findByText(
+          /This (question|dashboard) doesn't have any parameters to configure yet./,
+        );
+
+        cy.findByText(
+          /You will need to publish this (question|dashboard) before you can embed it in another application./,
+        );
+
+        cy.button("Publish").click();
+        cy.wait("@embedObject");
+
+        visitIframe();
+
+        cy.contains(objectName);
+        cy.contains("37.65");
+
+        if (isOSS) {
+          cy.contains("Powered by Metabase")
+            .closest("a")
+            .should("have.attr", "href")
+            .and("eq", "https://metabase.com/");
+        } else {
+          cy.contains("Powered by Metabase").should("not.exist");
+        }
+
+        cy.visit(embeddingPage);
+        cy.wait("@currentlyEmbeddedObject");
+
+        const sectionName = new RegExp(`Embedded ${object}s`, "i");
+
+        cy.contains(sectionName)
+          .closest("li")
+          .find("tbody tr")
+          .should("have.length", 1)
+          .and("contain", objectName);
+
+        visitAndEnableSharing(object);
+
+        cy.findByText("Danger zone");
+        cy.findByText(
+          /This will disable embedding for this (question|dashboard)./,
+        );
+
+        cy.button("Unpublish").click();
+        cy.wait("@embedObject");
+
+        visitIframe();
+        cy.findByText("Embedding is not enabled for this object.");
+
+        cy.visit(embeddingPage);
+        cy.wait("@currentlyEmbeddedObject");
+
+        cy.contains(/No (questions|dashboards) have been embedded yet./);
+      });
+    });
+  });
 });
 
 function resetEmbedding() {
@@ -132,4 +204,27 @@ function ensureEmbeddingIsDisabled() {
   cy.findByText(/Embed this (question|dashboard) in an application/).closest(
     ".disabled",
   );
+}
+
+function visitIframe() {
+  cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+    cy.visit(iframe.src);
+  });
+}
+
+function visitAndEnableSharing(object) {
+  if (object === "question") {
+    visitQuestion("1");
+    cy.icon("share").click();
+    cy.findByText(/Embed this (question|dashboard) in an application/).click();
+  }
+
+  if (object === "dashboard") {
+    cy.visit("/dashboard/1");
+
+    cy.icon("share").click();
+    cy.findByText("Sharing and embedding").click();
+    cy.findByText(/Embed this (question|dashboard) in an application/).click();
+  }
 }
