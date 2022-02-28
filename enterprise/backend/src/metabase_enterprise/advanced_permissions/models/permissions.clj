@@ -6,7 +6,14 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Shared Util Functions                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn- perms-path
+  "Returns the permissions path to use for a given permission type (e.g. download) and value (e.g. full or limited),
+  given the 'base' permissions path for an entity (the base path is equivalent to the one used for data access
+  permissions)."
   [perm-type perm-value base-path]
   (case [perm-type perm-value]
     [:download :full]
@@ -16,9 +23,8 @@
     (str "/download/limited" base-path)))
 
 (defn- data-perms-path
-  [perm-type perm-value db-id & [schema-name table-id]]
-  (perms-path perm-type perm-value (apply perms/data-perms-path
-                                          (remove nil? [db-id schema-name table-id]))))
+  [perm-type perm-value & path-components]
+  (perms-path perm-type perm-value (apply perms/data-perms-path path-components)))
 
 (defn- native-perms-path
   [perm-type perm-value db-id]
@@ -29,18 +35,12 @@
   (perms-path perm-type perm-value (perms/all-schemas-path db-id)))
 
 (defn- revoke-permissions!
-  {:arglists '([perm-type perm-value group-id database-or-id]
-               [perm-type perm-value group-id database-or-id schema-name]
-               [perm-type perm-value group-id database-or-id schema-name table-or-id])}
+  {:arglists '([perm-type perm-value group-id db-id]
+               [perm-type perm-value group-id db-id schema-name]
+               [perm-type perm-value group-id db-id schema-name table-or-id])}
   [perm-type perm-value group-id & path-components]
-  (perms/delete-related-permissions! group-id (apply (partial data-perms-path perm-type perm-value)
-                                                     path-components)))
-
-(defn- revoke-schema-permissions!
-  [perm-type perm-value group-id db-id]
   (perms/delete-related-permissions! group-id
-                                     (data-perms-path perm-type perm-value db-id)
-                                     [:not= :object (native-perms-path perm-type perm-value db-id)]))
+                                     (apply (partial data-perms-path perm-type perm-value) path-components)))
 
 (defn- revoke-native-permissions!
   [perm-type perm-value group-id db-id]
@@ -54,45 +54,49 @@
   [perm-type perm-value group-id db-id]
   (perms/grant-permissions! group-id (native-perms-path perm-type perm-value db-id)))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Shared Util Functions                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- revoke-download-permissions!
+  {:arglists '([group-id db-id]
+               [group-id db-id schema-name]
+               [group-id db-id schema-name table-or-id])}
+  [group-id & path-components]
+  (apply (partial revoke-permissions! :download :full group-id) path-components)
+  (apply (partial revoke-permissions! :download :limited group-id) path-components))
+
 (defn- update-table-download-permissions!
   [group-id db-id schema table-id new-table-perms]
   (condp = new-table-perms
     :full
     (do
-      (revoke-permissions! :download :full group-id db-id schema table-id)
-      (revoke-permissions! :download :limited group-id db-id schema table-id)
+      (revoke-download-permissions! group-id db-id schema table-id)
       (perms/grant-permissions! group-id (data-perms-path :download :full db-id schema table-id)))
 
     :limited
     (do
-      (revoke-permissions! :download :full group-id db-id schema table-id)
-      (revoke-permissions! :download :limited group-id db-id schema table-id)
+      (revoke-download-permissions! group-id db-id schema table-id)
       (perms/grant-permissions! group-id (data-perms-path :download :limited db-id schema table-id)))
 
     :none
-    (do
-      (revoke-permissions! :download :full group-id db-id schema table-id)
-      (revoke-permissions! :download :limited group-id db-id schema table-id))))
+    (revoke-download-permissions! group-id db-id schema table-id)))
 
 (defn- update-schema-download-permissions!
   [group-id db-id schema new-schema-perms]
   (condp = new-schema-perms
     :full
     (do
-      (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited group-id db-id schema)
+      (revoke-download-permissions! group-id db-id schema)
       (perms/grant-permissions! group-id (data-perms-path :download :full db-id schema)))
 
     :limited
     (do
-      (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited group-id db-id schema)
+      (revoke-download-permissions! group-id db-id schema)
       (perms/grant-permissions! group-id (data-perms-path :download :limited db-id schema)))
 
     :none
-    (do
-      (revoke-permissions! :download :full group-id db-id schema)
-      (revoke-permissions! :download :limited group-id db-id schema))
+    (revoke-download-permissions! group-id db-id schema)
 
     (when (map? new-schema-perms)
       (doseq [[table-id table-perms] new-schema-perms]
@@ -166,20 +170,16 @@
     (condp = schemas
       :full
       (do
-        (revoke-schema-permissions! :download :full group-id db-id)
-        (revoke-schema-permissions! :download :limited group-id db-id)
+        (revoke-download-permissions! group-id db-id)
         (grant-permissions-for-all-schemas! :download :full group-id db-id))
 
       :limited
       (do
-        (revoke-schema-permissions! :download :full group-id db-id)
-        (revoke-schema-permissions! :download :limited group-id db-id)
+        (revoke-download-permissions! group-id db-id)
         (grant-permissions-for-all-schemas! :download :limited group-id db-id))
 
       :none
-      (do
-        (revoke-schema-permissions! :download :full group-id db-id)
-        (revoke-schema-permissions! :download :limited group-id db-id))
+      (revoke-download-permissions! group-id db-id)
 
       (when (map? schemas)
         (doseq [[schema new-schema-perms] (seq schemas)]
