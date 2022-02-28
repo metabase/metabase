@@ -49,8 +49,8 @@
   (http-fake/with-fake-routes {endpoint (fn [_]
                                           (throw (Exception. "Failure, route should not have been invoked")))}
     (testing "should return nil if no Slack token has been configured"
-      (tu/with-temporary-setting-values [slack-app-token nil
-                                         slack-token nil]
+      (tu/with-temporary-setting-values [#_:clj-kondo/ignore slack-app-token nil
+                                         #_:clj-kondo/ignore slack-token nil]
         (is (= nil
                (not-empty (thunk))))))))
 
@@ -214,7 +214,7 @@
 (deftest slack-token-error-test
   (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
     (tu/with-temporary-setting-values [slack-app-token    "test-token"
-                                       slack-token-valid? true]
+                                       #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
                                      (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}

@@ -2,6 +2,7 @@
   "/api/pulse endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
+            [java-time :as t]
             [metabase.api.common :as api]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
@@ -18,6 +19,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -116,35 +118,6 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-(api/defendpoint GET "/form_input_refresh"
-  "Provides relevant configuration information and user choices for creating/updating Pulses, can block for quite a long
-  amount of time if the conversations-list or the users-list is huge."
-  []
-  (let [chan-types (-> channel-types
-                       (assoc-in [:slack :configured] (slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?)))]
-    {:channels (cond
-                 (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                   (segmented-user?))
-                 (dissoc chan-types :slack)
-
-                 ;; no Slack integration, so we are g2g
-                 (not (get-in chan-types [:slack :configured]))
-                 chan-types
-
-                 ;; if we have Slack enabled, block until we gather the entire list of conversations + users (can be
-                 ;; quite a while).
-                 :else
-                 (try
-                   (let [[conversations users] (map deref [(future (slack/conversations-list))
-                                                           (future (slack/users-list))])
-                         _                     (slack/cached-channel-and-user-names {:conversations conversations :users users})
-                         slack-channels        (for [channel conversations] (str \# (:name channel)))
-                         slack-users           (for [user users] (str \@ (:name user)))]
-                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
-                   (catch Throwable e
-                     (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
-
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -163,11 +136,11 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [{:keys [users conversations]} (slack/cached-channel-and-user-names)
-                         _                             (future (slack/refresh-cache!))
-                         slack-channels                (for [channel conversations] (str \# (:name channel)))
-                         slack-users                   (for [user users] (str \@ (:name user)))]
-                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (when (u.date/older-than? (slack/slack-channels-and-usernames-last-updated) (t/minutes 10))
+                     (future (slack/refresh-channels-and-usernames!)))
+                   (assoc-in chan-types
+                             [:slack :fields 0 :options]
+                             (slack/slack-cached-channels-and-usernames))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
