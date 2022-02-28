@@ -155,10 +155,14 @@
       (grant-native-permissions! :download native-perm-level group-id db-id))))
 
 (s/defn update-db-download-permissions!
+  "Update the download permissions graph for a database.
+
+  This mostly works similar to [[metabase.models.permission/update-db-data-access-permissions!]], with a few key
+  differences:
+    - Permissions have three levels: full, limited, and none.
+    - Native query download permissions are fully inferred from the non-native download permissions. For more details,
+      see the docstring for [[update-native-download-permissions!]]."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
-  (def my-db-id2 db-id)
-  (def my-group-id group-id)
-  (def my-new-download-perms new-download-perms)
   (when-let [schemas (:schemas new-download-perms)]
     (condp = schemas
       :full

@@ -588,6 +588,7 @@
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
 (def DownloadPermissionsGraph
+  "Schema for a download permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
   s/Any)
 
 (def ^:private StrictDBPermissionsGraph
@@ -679,7 +680,8 @@
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
-(defn revoke-data-access-permissions!
+;; TODO: rename this function to `revoke-data-access-permissions!` for consistency with the other helper functions
+(defn revoke-data-perms!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
   permissions that grant full or partial access to the object in question).
 
@@ -789,7 +791,7 @@
    new-read-perms :- (s/enum :all :none)]
   ((case new-read-perms
      :all  grant-permissions!
-     :none revoke-data-access-permissions!) group-id (table-read-path db-id schema table-id)))
+     :none revoke-data-perms!) group-id (table-read-path db-id schema table-id)))
 
 (s/defn ^:private update-table-query-permissions!
   [group-id        :- su/IntGreaterThanZero
@@ -800,7 +802,7 @@
   (case new-query-perms
     :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
     :segmented (grant-permissions!  group-id (table-segmented-query-path db-id schema table-id))
-    :none      (revoke-data-access-permissions! group-id (table-query-path           db-id schema table-id))))
+    :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
 
 (s/defn ^:private update-table-data-access-permissions!
   [group-id        :- su/IntGreaterThanZero
@@ -811,16 +813,16 @@
   (cond
     (= new-table-perms :all)
     (do
-      (revoke-data-access-permissions! group-id db-id schema table-id)
+      (revoke-data-perms! group-id db-id schema table-id)
       (grant-permissions! group-id db-id schema table-id))
 
     (= new-table-perms :none)
-    (revoke-data-access-permissions! group-id db-id schema table-id)
+    (revoke-data-perms! group-id db-id schema table-id)
 
     (map? new-table-perms)
     (let [{new-read-perms :read, new-query-perms :query} new-table-perms]
       ;; clear out any existing permissions
-      (revoke-data-access-permissions! group-id db-id schema table-id)
+      (revoke-data-perms! group-id db-id schema table-id)
       ;; then grant/revoke read and query perms as appropriate
       (when new-read-perms  (update-table-read-permissions!  group-id db-id schema table-id new-read-perms))
       (when new-query-perms (update-table-query-permissions! group-id db-id schema table-id new-query-perms)))))
@@ -831,9 +833,9 @@
    schema           :- s/Str
    new-schema-perms :- SchemaPermissionsGraph]
   (cond
-    (= new-schema-perms :all)  (do (revoke-data-access-permissions! group-id db-id schema)  ; clear out any existing related permissions
+    (= new-schema-perms :all)  (do (revoke-data-perms! group-id db-id schema)  ; clear out any existing related permissions
                                    (grant-permissions! group-id db-id schema)) ; then grant full perms for the schema
-    (= new-schema-perms :none) (revoke-data-access-permissions! group-id db-id schema)
+    (= new-schema-perms :none) (revoke-data-perms! group-id db-id schema)
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
                                  (update-table-data-access-permissions! group-id db-id schema table-id table-perms))))
 
@@ -875,7 +877,7 @@
                     (ex-info
                      (tru "Can''t use block permissions without having the advanced-permissions premium feature")
                      {:status-code 402})))
-                 (revoke-data-access-permissions! group-id db-id)
+                 (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
