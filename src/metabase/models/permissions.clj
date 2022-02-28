@@ -587,13 +587,26 @@
                  check-native-and-schemas-permissions-allowed-together
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
+(def ^:private DownloadTablePermissionsGraph
+  (s/named
+   (s/enum :full :limited :none)
+   "Valid download perms graph for a table"))
+
+(def ^:private DownloadSchemaPermissionsGraph
+  (s/named
+   (s/cond-pre (s/enum :full :limited :none)
+               {su/IntGreaterThanZero DownloadTablePermissionsGraph})
+   "Valid download perms graph for a schema"))
+
 (def DownloadPermissionsGraph
   "Schema for a download permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
-  s/Any)
+  (s/named
+   {:schemas (s/cond-pre (s/enum :full :limited :none)
+                         {s/Str DownloadSchemaPermissionsGraph})}
+   "Valid download perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
-  ;; TODO: expand schema for download permissions
-  {su/IntGreaterThanZero {:data StrictDataPermissionsGraph
+  {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
                           (s/optional-key :download) DownloadPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
