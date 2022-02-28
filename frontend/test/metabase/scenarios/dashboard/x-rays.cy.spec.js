@@ -5,6 +5,8 @@ import {
   popover,
   summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -120,7 +122,7 @@ describe("scenarios > x-rays", () => {
       visitQuestionAdhoc({
         name: "15737",
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PEOPLE_ID,
             aggregation: [["count"]],

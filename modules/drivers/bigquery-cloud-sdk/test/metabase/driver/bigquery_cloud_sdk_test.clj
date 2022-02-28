@@ -93,6 +93,7 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
+             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
@@ -197,7 +198,7 @@
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
-    (with-view [view-name]
+    (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
@@ -286,7 +287,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [tbl-nm]
+    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")

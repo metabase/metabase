@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import colors, { lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
+import { ColorScheme } from "./types";
 
 const COLOR_SCHEMES = {
   admin: {
@@ -14,7 +15,13 @@ const COLOR_SCHEMES = {
   },
 };
 
-export const TreeNodeRoot = styled.li`
+interface TreeNodeRootProps {
+  isSelected: boolean;
+  depth: number;
+  colorScheme: ColorScheme;
+}
+
+export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${props =>
@@ -45,7 +52,11 @@ export const ExpandToggleButton = styled.button`
   visibility: ${props => (props.hidden ? "hidden" : "visible")};
 `;
 
-export const ExpandToggleIcon = styled(Icon)`
+interface ExpandToggleIconProps {
+  isExpanded: boolean;
+}
+
+export const ExpandToggleIcon = styled(Icon)<ExpandToggleIconProps & IconProps>`
   transition: transform 200ms;
 
   ${props =>
@@ -71,13 +82,4 @@ export const IconContainer = styled.div`
   align-items: center;
   padding: 0.25rem;
   opacity: 0.5;
-`;
-
-export const RightArrowContainer = styled.div`
-  display: flex;
-  align-items: center;
-  color: ${props =>
-    props.isSelected
-      ? colors["white"]
-      : COLOR_SCHEMES[props.colorScheme].text()};
 `;

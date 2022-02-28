@@ -70,7 +70,10 @@ jobs:
           - "downloads"
           - "moderation"
           - "native"
+          - "native-filters"
+          - "native"
           - "permissions"
+          - "question"
           - "sharing"
           - "smoketest"
     services:

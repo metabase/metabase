@@ -50,7 +50,7 @@ export const ListField = ({
   );
 
   const augmentedOptions = useMemo(() => {
-    return [...options, ...addedOptions];
+    return [...options.filter(option => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
   const sortedOptions = useMemo(() => {
@@ -77,8 +77,7 @@ export const ListField = ({
     }
 
     return augmentedOptions.filter(option =>
-      option[0]
-        .toString()
+      String(option[0])
         .toLowerCase()
         .includes(trimmedFilter),
     );

@@ -13,6 +13,7 @@
   column->semantic-type
   database-type->base-type
   db-default-timezone
+  describe-nested-field-columns
   excluded-schemas
   fallback-metadata-query
   filtered-syncable-schemas

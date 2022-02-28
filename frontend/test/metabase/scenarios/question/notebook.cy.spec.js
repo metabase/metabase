@@ -13,6 +13,7 @@ import {
   filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -82,7 +83,7 @@ describe("scenarios > question > notebook", () => {
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           filter: ["between", ["field", ORDERS.ID, null], 96, 97],
