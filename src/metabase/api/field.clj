@@ -164,29 +164,29 @@
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
    dimension-name          (su/api-param "name" su/NonBlankString)
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
-  (let [field (api/write-check Field id)]
-    (api/check (or (= dimension-type "internal")
-                   (and (= dimension-type "external")
-                        human_readable_field_id))
-      [400 "Foreign key based remappings require a human readable field id"])
-    (if-let [dimension (Dimension :field_id id)]
-      (db/update! Dimension (u/the-id dimension)
-        {:type                    dimension-type
-         :name                    dimension-name
-         :human_readable_field_id human_readable_field_id})
-      (db/insert! Dimension
-        {:field_id                id
-         :type                    dimension-type
-         :name                    dimension-name
-         :human_readable_field_id human_readable_field_id}))
-    (Dimension :field_id id)))
+  (api/write-check Field id)
+  (api/check (or (= dimension-type "internal")
+                 (and (= dimension-type "external")
+                      human_readable_field_id))
+             [400 "Foreign key based remappings require a human readable field id"])
+  (if-let [dimension (Dimension :field_id id)]
+    (db/update! Dimension (u/the-id dimension)
+      {:type                    dimension-type
+       :name                    dimension-name
+       :human_readable_field_id human_readable_field_id})
+    (db/insert! Dimension
+                {:field_id                id
+                 :type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id}))
+  (Dimension :field_id id))
 
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
-  (let [field (api/write-check Field id)]
-    (db/delete! Dimension :field_id id)
-    api/generic-204-no-content))
+  (api/write-check Field id)
+  (db/delete! Dimension :field_id id)
+  api/generic-204-no-content)
 
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
