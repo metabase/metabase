@@ -290,7 +290,11 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // } else
   if (action.url) {
     return (
-      <div>
+      <div
+        className={cx({
+          full: action.buttonType === "horizontal",
+        })}
+      >
         <Link
           to={action.url()}
           className={className}
