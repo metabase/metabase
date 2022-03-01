@@ -69,7 +69,7 @@ const getGroupRouteParams = (
   const { groupId, databaseId, schemaName } = props.params;
   return {
     groupId: parseInt(groupId),
-    databaseId: databaseId != null ? parseInt(databaseId) : null,
+    databaseId: databaseId != null ? parseInt(databaseId) : undefined,
     schemaName,
   };
 };

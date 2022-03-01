@@ -11,7 +11,7 @@ export type RawGroupRouteParams = {
 };
 
 export type DataRouteParams = {
-  databaseId: number;
+  databaseId?: number;
   schemaName?: string;
   tableId?: number;
 };

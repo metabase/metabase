@@ -33,10 +33,6 @@ export const buildFieldsPermissions = (
   defaultGroup: Group,
   database: Database | null,
 ) => {
-  if (!database) {
-    return [];
-  }
-
   const value = getFieldsPermission(permissions, groupId, entityId);
   const defaultGroupValue = getFieldsPermission(
     permissions,
