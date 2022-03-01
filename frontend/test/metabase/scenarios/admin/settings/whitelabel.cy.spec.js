@@ -1,7 +1,7 @@
 import {
   restore,
   openOrdersTable,
-  describeWithToken,
+  describeEE,
   summarize,
 } from "__support__/e2e/cypress";
 
@@ -41,7 +41,7 @@ function checkLogo() {
   );
 }
 
-describeWithToken("formatting > whitelabel", () => {
+describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   modal,
   openOrdersTable,
   openPeopleTable,
@@ -30,7 +30,7 @@ const {
 
 const { DATA_GROUP } = USER_GROUPS;
 
-describeWithToken("formatting > sandboxes", () => {
+describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       restore();

@@ -1,10 +1,6 @@
-import {
-  restore,
-  describeWithToken,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, describeEE, openNativeEditor } from "__support__/e2e/cypress";
 
-describeWithToken("audit > ad-hoc", () => {
+describeEE("audit > ad-hoc", () => {
   describe("native query", () => {
     beforeEach(() => {
       restore();

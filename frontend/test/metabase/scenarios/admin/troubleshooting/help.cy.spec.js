@@ -1,6 +1,6 @@
 import {
-  describeWithoutToken,
-  describeWithToken,
+  describeOSS,
+  describeEE,
   restore,
   setupMetabaseCloud,
 } from "__support__/e2e/cypress";
@@ -21,7 +21,7 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeWithoutToken("scenarios > admin > troubleshooting > help", () => {
+describeOSS("scenarios > admin > troubleshooting > help", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -35,7 +35,7 @@ describeWithoutToken("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeWithToken("scenarios > admin > troubleshooting > help (EE)", () => {
+describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
