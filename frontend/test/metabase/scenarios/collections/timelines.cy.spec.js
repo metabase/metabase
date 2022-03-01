@@ -36,6 +36,33 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("balloons icon");
     });
 
+    it("should search for events", () => {
+      cy.createTimelineWithEvents({
+        events: [
+          { name: "RC1" },
+          { name: "RC2" },
+          { name: "v1.0" },
+          { name: "v1.1" },
+        ],
+      });
+
+      cy.visit("/collection/root/timelines");
+
+      cy.findByPlaceholderText("Search for an event").type("V1");
+      cy.findByText("v1.0");
+      cy.findByText("v1.1");
+      cy.findByText("RC1").should("not.exist");
+      cy.findByText("RC2").should("not.exist");
+
+      cy.findByPlaceholderText("Search for an event").type(".0");
+      cy.findByText("v1.0");
+      cy.findByText("v1.1").should("not.exist");
+
+      cy.findByPlaceholderText("Search for an event").type(".1");
+      cy.findByText("v1.0").should("not.exist");
+      cy.findByText("No events found");
+    });
+
     it("should edit an event", () => {
       cy.createTimelineWithEvents({ events: [{ name: "RC1" }] });
       cy.visit("/collection/root/timelines");
