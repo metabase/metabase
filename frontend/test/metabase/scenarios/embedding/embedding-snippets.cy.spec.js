@@ -59,10 +59,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .last()
       .should("have.text", IFRAME_CODE);
 
-    cy.findAllByTestId("select-button")
-      .first()
-      .should("contain", "Node.js")
-      .click();
+    cy.findByText("Node.js").click();
 
     popover()
       .should("contain", "Node.js")
@@ -70,10 +67,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .and("contain", "Python")
       .and("contain", "Clojure");
 
-    cy.findAllByTestId("select-button")
-      .last()
-      .should("contain", "Mustache")
-      .click();
+    cy.findByText("Mustache").click();
 
     popover()
       .should("contain", "Mustache")
