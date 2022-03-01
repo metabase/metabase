@@ -1,6 +1,6 @@
 import { restore } from "__support__/e2e/cypress";
 
-describe("timelines", () => {
+describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
     restore();
   });
@@ -35,5 +35,27 @@ describe("timelines", () => {
       cy.findByText("May 12, 2021");
       cy.findByLabelText("balloons icon");
     });
+
+    it("should edit an event", () => {
+      cy.createTimelineWithEvents({ events: [{ name: "v1.0" }] });
+      cy.visit("/collection/root/timelines");
+
+      openEventMenu("v1.0");
+      cy.findByText("Edit event").click();
+      cy.findByLabelText("Event name")
+        .clear()
+        .type("v2.0");
+      cy.button("Update").click();
+
+      cy.findByText("v2.0");
+    });
   });
 });
+
+const openEventMenu = name => {
+  return cy
+    .findByText(name)
+    .parent()
+    .parent()
+    .within(() => cy.findByLabelText("ellipsis icon").click());
+};
