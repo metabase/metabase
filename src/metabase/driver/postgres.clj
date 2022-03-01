@@ -203,6 +203,8 @@
              [json-column nil])))))
 
 (def ^:const field-type-map
+  "We deserialize the JSON in order to determine types,
+  so the java / clojure types we get have to be matched to MBQL types"
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
