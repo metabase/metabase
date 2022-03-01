@@ -23,3 +23,10 @@
   (let [driver (driver.u/database->driver database)]
     (when (driver/supports? driver :foreign-keys)
       (driver/describe-table-fks driver database table))))
+
+;; (s/defn nested-field-column-metadata :- i/NestedFCMetadata
+;;   "Get information about the contents of the nested field columns belonging to `table`."
+;;   [database :- i/DatabaseInstance, table :- i/TableInstance]
+;;   (let [driver (driver.u/database->driver database)]
+;;     (when (driver/supports? driver :nested-field-columns)
+;;       (driver/describe-nested-field-columns driver database table))))
