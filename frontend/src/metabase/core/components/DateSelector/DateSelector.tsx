@@ -96,7 +96,7 @@ const DateSelector = forwardRef(function DateSelector(
           </SelectorTimeButton>
         )}
         <SelectorSubmitButton primary onClick={onSubmit}>
-          {t`Save`}
+          {t`Done`}
         </SelectorSubmitButton>
       </SelectorFooter>
     </div>
