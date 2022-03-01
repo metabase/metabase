@@ -91,6 +91,7 @@ TimelineSchema.define({
 
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
+  bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,
