@@ -59,7 +59,7 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 ## Further reading
 
-- [Permissions track][permissions] in Learn Metabase
+- [Permissions guide][permissions] in Learn Metabase
 - [Troubleshooting permissions][troubleshooting-permissions]
 
 ---
