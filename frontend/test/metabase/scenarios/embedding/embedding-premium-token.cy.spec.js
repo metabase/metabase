@@ -1,4 +1,4 @@
-import { restore, describeWithoutToken } from "__support__/e2e/cypress";
+import { restore, describeOSS } from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licensePage = "/admin/settings/premium-embedding-license";
@@ -13,7 +13,7 @@ const invalidTokenMessage =
 const discountedWarning =
   "Our Premium Embedding product has been discontinued, but if you already have a license you can activate it here. You’ll continue to receive support for the duration of your license.";
 
-describeWithoutToken("scenarios > embedding > premium embedding token", () => {
+describeOSS("scenarios > embedding > premium embedding token", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

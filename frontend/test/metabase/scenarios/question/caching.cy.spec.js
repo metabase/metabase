@@ -1,11 +1,11 @@
 import {
   restore,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
   modal,
 } from "__support__/e2e/cypress";
 
-describeWithToken("scenarios > question > caching", () => {
+describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
     mockSessionProperty("enable-query-caching", true);
