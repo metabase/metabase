@@ -42,7 +42,9 @@ describe("scenarios > collections > timelines", () => {
 
       openEventMenu("RC1");
       cy.findByText("Edit event").click();
-      cy.findByLabelText("Event name").type("{backspace}2");
+      cy.findByLabelText("Event name")
+        .clear()
+        .type("RC2");
       cy.button("Update").click();
 
       cy.findByText("RC2");
@@ -113,6 +115,58 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Delete event").click();
       cy.findByText("Delete").click();
       cy.findByText("No events found");
+    });
+
+    it("should create an additional timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openTimelineMenu("Releases");
+      cy.findByText("New timeline").click();
+      cy.findByLabelText("Timeline name").type("Launches");
+      cy.findByText("Create").click();
+
+      cy.findByText("Launches");
+      cy.findByText("Add an event");
+    });
+
+    it("should edit a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openTimelineMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByLabelText("Timeline name")
+        .clear()
+        .type("Launches");
+      cy.findByText("Update").click();
+
+      cy.findByText("Launches");
+    });
+
+    it("should archive and unarchive a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }, { name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openTimelineMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByText("Archive timeline and all events").click();
+      cy.findByText("Our analytics events");
+      cy.findByText("Add an event");
+
+      cy.findByText("Undo").click();
+      cy.findByText("Releases");
+      cy.findByText("RC1");
+      cy.findByText("RC2");
     });
   });
 });
