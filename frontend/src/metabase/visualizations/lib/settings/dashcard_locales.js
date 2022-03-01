@@ -323,8 +323,23 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.nsa.student.performance.level.details': {
     'en': 'Students\' Performance level by Test, Grade and Year',
     'bn': 'পরীক্ষা, গ্রেড এবং বছর অনুসারে শিক্ষার্থীদের পারফরম্যান্সের লেভেল'
+  }, 
+  'admin.dashboard.book.distribution.progress.submitted' : {
+    'en': 'Submitted Book Demand',
+    'bn': 'বইয়ের চাহিদা জমা হয়েছে'
+  },
+  'admin.dashboard.book.distribution.progress.approved' : {
+    'en': 'Approved Book Demand',
+    'bn': 'অনুমোদিত বইয়ের চাহিদা'
+  },
+  'admin.dashboard.book.distribution.progress.pending' : {
+    'en': 'Pending Book Demand',
+    'bn': 'পেন্ডিং বইয়ের চাহিদা'
+  },
+  'admin.dashboard.book.distribution.progress.rejected' : {
+    'en': 'Rejected Book Demand',
+    'bn': 'প্রত্যাখ্যাত বইয়ের চাহিদা'
   }
-  
 }
 
 export function dashcard_locale_title (locale, title_key) {
