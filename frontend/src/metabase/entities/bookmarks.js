@@ -8,18 +8,10 @@ const Bookmarks = createEntity({
   schema: BookmarkSchema,
 
   api: {
-    list: async () => [{ aKey: "aValue" }],
-    // list: () =>
-    //   new Promise(resolve => {
-    //     setTimeout(() => {
-    //       resolve([{ aKey: "aValue" }]);
-    //     });
-    //   }),
-    // list: new Promise(resolve => {
-    //   setTimeout(() => {
-    //     resolve([{ aKey: "AValue" }]);
-    //   }, 300);
-    // }),
+    list: async () => [
+      { id: 1, aKey: "aValue" },
+      { id: 2, aKey: "anotherValue" },
+    ],
   },
 });
 

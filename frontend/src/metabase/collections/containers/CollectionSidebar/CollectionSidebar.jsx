@@ -54,6 +54,7 @@ CollectionSidebar.propTypes = {
 };
 
 function CollectionSidebar({
+  bookmarks,
   currentUser,
   collectionId,
   collections,
@@ -63,7 +64,6 @@ function CollectionSidebar({
   list,
   shouldDisplayMobileSidebar,
   handleToggleMobileSidebar,
-  ...props
 }) {
   const [openCollections, setOpenCollections] = useState([]);
 
@@ -88,7 +88,6 @@ function CollectionSidebar({
 
   useEffect(() => {
     if (!loading && collectionId) {
-      console.log("🚀", { props });
       const ancestors = getParentPath(collections || [], collectionId) || [];
       setOpenCollections(ancestors);
     }
@@ -102,19 +101,11 @@ function CollectionSidebar({
       role="tree"
       shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
     >
-      <Bookmark.ListLoader query={{}} wrapped>
-        {({ list, metadata }) => {
-          console.log("🚀", { list, metadata });
-          if (list.length === 0) {
-            return <div>Empty</div>;
-          }
-
-          return <div>Something is here</div>;
-        }}
-      </Bookmark.ListLoader>
-
       {allFetched ? (
         <React.Fragment>
+          {bookmarks.map((bookmark, index) => (
+            <div key={`bookmark-${index}`}>{bookmark.aKey}</div>
+          ))}
           <SidebarHeading>{t`Collections`}</SidebarHeading>
           <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           <RootCollectionLink
@@ -149,6 +140,7 @@ function LoadingView() {
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   Collection.loadList(collectionEntityQuery),
   connect(mapStateToProps),
 )(CollectionSidebar);
