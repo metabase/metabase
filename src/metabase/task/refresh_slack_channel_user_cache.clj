@@ -1,12 +1,12 @@
 (ns metabase.task.refresh-slack-channel-user-cache
-  (:require [metabase.integrations.slack :as slack]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.schedule.simple :as simple]
             [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.task :as task]))
+            [metabase.integrations.slack :as slack]
+            [metabase.task :as task]
+            [metabase.util.i18n :refer [trs]]))
 
 (defn ^:private job []
   (if (slack/slack-configured?)
