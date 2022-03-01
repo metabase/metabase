@@ -45,22 +45,6 @@
            java.util.UUID
            metabase.models.card.CardInstance))
 
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn hydrate-is-bookmarked
-  "Efficiently add `is_bookmarked` status for a large collection of `Cards`."
-  {:batched-hydrate :is_bookmarked}
-  [cards]
-  (when (seq cards)
-    (let [bookmarked-card-ids (db/select-field :card_id CardBookmark
-                                :user_id api/*current-user-id*
-                                :card_id  [:in (map :id cards)])]
-      (for [card cards]
-        (let [bookmarked? (contains? bookmarked-card-ids (:id card))]
-          (if bookmarked?
-            (assoc card :is_bookmarked bookmarked?)
-            card))))))
-
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
 (defmulti ^:private cards-for-filter-option*
@@ -599,15 +583,15 @@
   "Bookmark a Card for the current user."
   [id]
   (api/read-check Card id)
-  (db/insert! CardBookmark :card_id id, :user_id api/*current-user-id*))
+  (db/insert! CardBookmark :card_id id :user_id api/*current-user-id*))
 
 
 (api/defendpoint DELETE "/:id/bookmark"
   "Un-Bookmark a Card for the current user."
   [id]
   (api/read-check Card id)
-  (api/let-404 [id (db/select-one-id CardBookmark :card_id id, :user_id api/*current-user-id*)]
-    (db/delete! CardBookmark, :card_id id))
+  (api/let-404 [id (db/select-one-id CardBookmark :card_id id :user_id api/*current-user-id*)]
+    (db/delete! CardBookmark :id id))
   api/generic-204-no-content)
 
 

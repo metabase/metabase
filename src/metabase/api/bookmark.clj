@@ -17,16 +17,36 @@
 
 (def Models (s/enum "card" "dashboard" "collection"))
 
-(api/defendpoint GET "/"
-  "Fetch all bookmarks for the user"
-  []
-  (bookmarks/bookmarks-for-user api/*current-user-id*))
-
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
   {"card"       [Card       CardBookmark       :card_id]
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
+
+(defn hydrate-is-bookmarked
+  "Efficiently add `is_bookmarked` status for a sequence of `Cards`, `Dashboards`, or `Collections`."
+  {:batched-hydrate :is_bookmarked}
+  [items]
+  (when (seq items)
+    (let [klass (class (first items))
+          ;; todo: there must be a cleaner way to do this?
+          model-string (cond (isa? (class Card) klass) "card"
+                             (isa? (class Dashboard) klass) "dashboard"
+                             (isa? (class Collection) klass) "collection")
+          [_ bookmark-model id-key] (lookup model-string)
+          bookmarked-item-ids (db/select-field id-key bookmark-model
+                                :user_id api/*current-user-id*
+                                id-key  [:in (map :id items)])]
+      (for [item items]
+        (let [bookmarked? (contains? bookmarked-item-ids (:id item))]
+          (if bookmarked?
+            (assoc item :is_bookmarked bookmarked?)
+            item))))))
+
+(api/defendpoint GET "/"
+  "Fetch all bookmarks for the user"
+  []
+  (bookmarks/bookmarks-for-user api/*current-user-id*))
 
 (api/defendpoint POST "/:model/:id"
   "Create a new bookmark for user."
