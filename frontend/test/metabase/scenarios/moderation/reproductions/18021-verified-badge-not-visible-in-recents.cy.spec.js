@@ -1,9 +1,9 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, isEE } from "__support__/e2e/cypress";
 
 describe.skip("issue 18021", () => {
   beforeEach(() => {
     // Run the test only for EE version
-    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(isEE);
 
     restore();
     cy.signInAsAdmin();
