@@ -23,6 +23,22 @@ export const InputClearIcon = styled(Icon)`
   color: ${color("text-light")};
 `;
 
+interface InputPeriodButtonProps {
+  isSelected?: boolean;
+}
+
+export const InputMeridiemContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+`;
+
+export const InputMeridiemButton = styled.button<InputPeriodButtonProps>`
+  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
+  cursor: ${props => (props.isSelected ? "" : "pointer")};
+  font-weight: ${props => (props.isSelected ? "bold" : "")};
+`;
+
 export const InputClearButton = styled(IconButtonWrapper)`
   margin-left: auto;
 `;

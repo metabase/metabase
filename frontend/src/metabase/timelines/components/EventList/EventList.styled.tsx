@@ -2,7 +2,16 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
+export const ListRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+`;
+
 export const ListFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   margin-top: 0.5rem;
 `;
 
@@ -15,6 +24,7 @@ export const ListThreadContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 1 1 auto;
   width: 2rem;
   height: 2rem;
 `;

@@ -2,9 +2,11 @@ import {
   restore,
   openOrdersTable,
   popover,
-  describeWithToken,
+  describeEE,
   setupMetabaseCloud,
-  describeWithoutToken,
+  describeOSS,
+  isOSS,
+  isEE,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -17,7 +19,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should prompt admin to migrate to the hosted instance", () => {
-    cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(isOSS);
     cy.visit("/admin/settings/setup");
     cy.findByText("Have your server maintained for you.");
     cy.findByText("Migrate to Metabase Cloud.");
@@ -240,9 +242,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
-    const lastItem = Cypress.env("HAS_ENTERPRISE_TOKEN")
-      ? "Whitelabel"
-      : "Caching";
+    const lastItem = isEE ? "Whitelabel" : "Caching";
 
     cy.visit("/admin/settings/setup");
     cy.get(".AdminList .AdminList-item")
@@ -289,7 +289,7 @@ describe("scenarios > admin > settings", () => {
   });
 });
 
-describeWithoutToken("scenarios > admin > settings (OSS)", () => {
+describeOSS("scenarios > admin > settings (OSS)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -303,7 +303,7 @@ describeWithoutToken("scenarios > admin > settings (OSS)", () => {
   });
 });
 
-describeWithToken("scenarios > admin > settings (EE)", () => {
+describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

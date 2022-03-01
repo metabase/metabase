@@ -1,26 +1,23 @@
 import React, { useState, useCallback } from "react";
-import PropTypes from "prop-types";
 import { TreeNodeList } from "./TreeNodeList";
-import { TreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
+import { ColorScheme, ITreeNodeItem } from "./types";
 
-const propTypes = {
-  TreeNodeComponent: PropTypes.object,
-  data: PropTypes.array.isRequired,
-  onSelect: PropTypes.func.isRequired,
-  colorScheme: PropTypes.oneOf(["default", "admin"]),
-  selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  emptyState: PropTypes.node,
-};
+interface TreeProps {
+  data: ITreeNodeItem[];
+  onSelect: (item: ITreeNodeItem) => void;
+  selectedId?: ITreeNodeItem["id"];
+  colorScheme?: ColorScheme;
+  emptyState?: React.ReactNode;
+}
 
 export function Tree({
-  TreeNodeComponent = TreeNode,
   data,
   onSelect,
   selectedId,
   colorScheme = "default",
   emptyState = null,
-}) {
+}: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
@@ -43,7 +40,6 @@ export function Tree({
   return (
     <TreeNodeList
       colorScheme={colorScheme}
-      TreeNodeComponent={TreeNodeComponent}
       items={data}
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
@@ -53,5 +49,3 @@ export function Tree({
     />
   );
 }
-
-Tree.propTypes = propTypes;

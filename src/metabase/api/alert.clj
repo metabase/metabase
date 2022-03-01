@@ -147,7 +147,7 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition card channels alert_first_only alert_above_goal card channels archived]
+  [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
   {alert_condition  (s/maybe pulse/AlertConditions)
    alert_first_only (s/maybe s/Bool)

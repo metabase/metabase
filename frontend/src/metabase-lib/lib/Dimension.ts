@@ -1185,28 +1185,32 @@ export class ExpressionDimension extends Dimension {
   field() {
     const query = this._query;
     const table = query ? query.table() : null;
-    let type = MONOTYPE.Number; // fallback
+
+    // fallback
+    let type = MONOTYPE.Number;
+    let semantic_type = null;
 
     if (query) {
       const datasetQuery = query.query();
       const expressions = datasetQuery?.expressions ?? {};
+      const expr = expressions[this.name()];
 
-      const env = mbql => {
+      const field = mbql => {
         const dimension = Dimension.parseMBQL(
           mbql,
           this._metadata,
           this._query,
         );
-        return dimension.field().base_type;
+        return dimension?.field();
       };
 
-      type = infer(expressions[this.name()], env);
+      type = infer(expr, mbql => field(mbql)?.base_type);
+      semantic_type = infer(expr, mbql => field(mbql)?.semantic_type);
     } else {
       type = infer(this._expressionName);
     }
 
     let base_type = type;
-
     if (!type.startsWith("type/")) {
       base_type = "type/Float"; // fallback
 
@@ -1222,14 +1226,15 @@ export class ExpressionDimension extends Dimension {
         default:
           break;
       }
+      semantic_type = base_type;
     }
 
     return new Field({
       id: this.mbql(),
       name: this.name(),
       display_name: this.displayName(),
-      semantic_type: null,
       base_type,
+      semantic_type,
       query,
       table,
     });
