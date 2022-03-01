@@ -11,7 +11,7 @@
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
-  There are 3 cases where we alter the slack-cache:
+  There are 3 cases where we alter the slack channel/user cache:
   1. falsy token           -> clear
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
@@ -23,7 +23,7 @@
     (when (and slack-app-token
                (not config/is-test?)
                (not (slack/valid-token? slack-app-token)))
-      (slack/slack-cached-channels-and-usernames {})
+      (slack/slack-cached-channels-and-usernames [])
       (throw (ex-info (tru "Invalid Slack token.")
                       {:errors {:slack-app-token (tru "invalid token")}})))
     (slack/slack-app-token slack-app-token)
@@ -31,10 +31,10 @@
       (do (slack/slack-token-valid? true)
           ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
           (slack/slack-token nil)
-          ;; refresh their token when it is valid
-          (future (slack/refresh-channels-and-usernames!)))
-      ;; app-token set to nil => clear user/conversation cache
-      (slack/slack-cached-channels-and-usernames {}))
+          ;; refresh user/conversation cache when token is newly valid
+          (slack/refresh-channels-and-usernames!))
+      ;; clear user/conversation cache when token is newly empty
+      (slack/slack-cached-channels-and-usernames []))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
       (when (and processed-files-channel (not (slack/channel-exists? processed-files-channel)))
         (throw (ex-info (tru "Slack channel not found.")

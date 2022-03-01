@@ -214,6 +214,7 @@
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
   []
   (when (slack-configured?)
+    (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
           conversations (future (vec (conversations-list)))]
       (slack-cached-channels-and-usernames (concat @conversations @users))
