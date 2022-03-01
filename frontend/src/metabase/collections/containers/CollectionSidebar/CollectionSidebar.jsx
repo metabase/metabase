@@ -14,11 +14,12 @@ import {
   Sidebar,
   SidebarHeading,
   ToggleMobileSidebarIcon,
-} from "./CollectionSidebar.styled";
+} from "metabase/components/CollectionSidebar/CollectionSidebar.styled";
 
 import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
 import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
+import Bookmarks from "metabase/components/CollectionSidebar/Bookmarks/Bookmarks.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { getParentPath } from "metabase/collections/utils";
@@ -103,9 +104,7 @@ function CollectionSidebar({
     >
       {allFetched ? (
         <React.Fragment>
-          {bookmarks.map((bookmark, index) => (
-            <div key={`bookmark-${index}`}>{bookmark.aKey}</div>
-          ))}
+          <Bookmarks bookmarks={bookmarks} />
           <SidebarHeading>{t`Collections`}</SidebarHeading>
           <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           <RootCollectionLink

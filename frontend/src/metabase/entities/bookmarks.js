@@ -9,8 +9,8 @@ const Bookmarks = createEntity({
 
   api: {
     list: async () => [
-      { id: 1, aKey: "aValue" },
-      { id: 2, aKey: "anotherValue" },
+      { id: 1, name: "A name", type: "card", item_id: "2" },
+      { id: 2, name: "Another name", type: "card", item_id: "3" },
     ],
   },
 });
