@@ -10751,6 +10751,7 @@ databaseChangeLog:
                 password_salt = NULL
               WHERE ldap_auth IS TRUE;
 
+   - changeSet:
       id: v43.00-030
       author: dpsutton
       comment: Added 0.43.0 - Dashboard bookmarks table
