@@ -79,7 +79,8 @@
 
 ## Permissions
 
-- [Data permissions](./administration-guide/05-setting-permissions.html)
+- [Permissions overview](./administration-guide/05-setting-permissions.html)
+- [Data permissions](./administration-guide/data-permissions.html)
 - [Collection permissions](./administration-guide/06-collections.html)
 - [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.html)
 - [SQL snippets folder permissions](./enterprise-guide/sql-snippets.html)
