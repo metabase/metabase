@@ -54,11 +54,11 @@
                     :native :limited}
                    (test-download-perms group-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :none}}})
-            (is (= {:schemas {"PUBLIC" {id-2 :full id-3 :full id-4 :full}}}
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-2 :none}}})
+            (is (= {:schemas {"PUBLIC" {id-1 :limited id-3 :full id-4 :full}}}
                    (test-download-perms group-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-2 :none
+            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :none
                                                                                             id-3 :none
                                                                                             id-4 :none}}})
             (is (nil? (test-download-perms group-id)))

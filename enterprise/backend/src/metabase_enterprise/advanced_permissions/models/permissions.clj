@@ -142,9 +142,8 @@
                                                                                        table-schema
                                                                                        table-id)]
                                       (cond
-                                        (or (= highest-seen-perm-level :none)
-                                            (= table-perm-level :none))
-                                        :none
+                                        (= table-perm-level :none)
+                                        (reduced :none)
 
                                         (or (= highest-seen-perm-level :limited)
                                             (= table-perm-level :limited))
