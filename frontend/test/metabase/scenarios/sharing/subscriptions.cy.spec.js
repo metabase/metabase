@@ -1,7 +1,7 @@
 import {
   restore,
   setupSMTP,
-  describeWithToken,
+  describeEE,
   popover,
   sidebar,
   mockSlackConfigured,
@@ -297,7 +297,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describeWithToken("EE email subscriptions", () => {
+  describeEE("EE email subscriptions", () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
       setupSMTP();

@@ -1,11 +1,7 @@
 import _ from "underscore";
-import {
-  restore,
-  describeWithToken,
-  visitQuestion,
-} from "__support__/e2e/cypress";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/cypress";
 
-describeWithToken("audit > auditing > questions", () => {
+describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

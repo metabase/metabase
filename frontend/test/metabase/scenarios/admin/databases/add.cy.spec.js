@@ -1,7 +1,7 @@
 import {
   restore,
   popover,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
   isEE,
 } from "__support__/e2e/cypress";
@@ -305,7 +305,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  describeWithToken("caching", () => {
+  describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
     });
