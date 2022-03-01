@@ -32,17 +32,11 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  function getColumnDisplayName(col, colIndex, card) {
-    // `visualization_settings.series_settings` use `card.name` and
-    // not `column.name` for renamed series when the `seriesIndex > 0`;
-    // check for `columnIndex === 1` because only the first metric column
-    // should be renamed by this setting
-    const colKey = seriesIndex > 0 && colIndex === 1 ? card.name : col.name;
-    const colTitle = getIn(settings, ["series_settings", colKey, "title"]);
-
+  function getColumnDisplayName(col) {
+    const title = getIn(settings, ["series_settings", col.name, "title"]);
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (!isBreakoutMultiseries && colTitle) {
-      return colTitle;
+    if (!isBreakoutMultiseries && title) {
+      return title;
     }
 
     return getFriendlyName(col);
@@ -120,7 +114,7 @@ export function getClickHoverObject(
           };
         }
         return {
-          key: getColumnDisplayName(col, i, card),
+          key: getColumnDisplayName(col),
           value: formatNull(aggregatedRow[i]),
           col: col,
         };

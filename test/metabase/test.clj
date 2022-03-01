@@ -3,6 +3,7 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
+  (:refer-clojure :exclude [compile])
   (:require clojure.data
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
@@ -11,6 +12,7 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.email-test :as et]
             [metabase.http-client :as http]
             [metabase.plugins.classloader :as classloader]
@@ -20,6 +22,7 @@
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
@@ -61,6 +64,8 @@
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
+  sql.qp-test-util/keep-me
+  test-runner.assert-exprs/keep-me
   test-users/keep-me
   tt/keep-me
   tu/keep-me
@@ -101,6 +106,8 @@
   email-to
   fake-inbox-email-fn
   inbox
+  received-email-body?
+  received-email-subject?
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
@@ -111,8 +118,7 @@
   authenticate
   build-url
   client
-  client-full-response
-  derecordize]
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -125,9 +131,9 @@
   with-current-user]
 
  [qp
-  process-query
-  query->native
-  query->preprocessed]
+  compile
+  preprocess
+  process-query]
 
  [qp.test
   col
@@ -154,6 +160,12 @@
  [sql-jdbc.tu
   sql-jdbc-drivers]
 
+ [sql.qp-test-util
+  with-native-query-testing-context]
+
+ [test-runner.assert-exprs
+  derecordize]
+
  [test-users
   fetch-user
   test-user?
@@ -175,6 +187,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  file->bytes
   is-uuid-string?
   obj->json->obj
   postwalk-pred
@@ -182,6 +195,8 @@
   random-name
   round-all-decimals
   scheduler-current-tasks
+  secret-value-equals?
+  select-keys-sequentially
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
@@ -203,8 +218,9 @@
   with-open-channels]
 
  [tu.log
+  ns-log-level
+  set-ns-log-level!
   suppress-output
-  with-log-messages
   with-log-messages-for-level
   with-log-level]
 
@@ -254,7 +270,7 @@
         (thunk)))))
 
 (defmacro with-clock
-  "Same as `t/with-clock`, but adds `testing` context, and also supports using `ZonedDateTime` instances
+  "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
   directly (converting them to a mock clock automatically).
 
     (mt/with-clock #t \"2019-12-10T00:00-08:00[US/Pacific]\"
@@ -264,7 +280,7 @@
 
 ;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn test-qp-middleware
+(defn ^:deprecated test-qp-middleware
   "Helper for testing QP middleware. Changes are returned in a map with keys:
 
     * `:result`   ­ final result
@@ -359,3 +375,13 @@
            :let [~argv args#]]
      (is ~expr
          (str (are+-message '~expr '~argv args#)))))
+
+(defmacro disable-flaky-test-when-running-driver-tests-in-ci
+  "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
+  disabling those damn flaky tests that cause CI to fail all the time. You should obviously only do this for things
+  that have nothing to do with drivers but tend to flake anyway."
+  {:style/indent 0}
+  [& body]
+  `(when (and (not (seq (env/env :drivers)))
+              (not (seq (env/env :ci))))
+     ~@body))

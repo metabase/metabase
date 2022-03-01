@@ -23,8 +23,8 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
       // Although the endpoint was fixed, we want to always be able to test these issues separately and independently of each other.
       cy.intercept("PUT", "/api/**").as("update");
 
-      cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
-      cy.findByPlaceholderText("389").type(port);
+      cy.findByLabelText("LDAP Host").type("foobar");
+      cy.findByLabelText("LDAP Port").type(port);
       cy.button("Save changes").click();
       cy.wait("@update").then(interception => {
         expect(interception.response.statusCode).to.eq(500);
@@ -35,8 +35,8 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
 
   it("should use the correct endpoint (metabase#16173)", () => {
     cy.intercept("PUT", "/api/ldap/settings").as("ldapUpdate");
-    cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
-    cy.findByPlaceholderText("389").type("888");
+    cy.findByLabelText("LDAP Host").type("foobar");
+    cy.findByLabelText("LDAP Port").type("888");
     cy.findByText(/Username or DN/i)
       .closest("li")
       .find("input")
@@ -53,8 +53,8 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
   });
 
   it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
-    cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
-    cy.findByPlaceholderText("389").type("baz");
+    cy.findByLabelText("LDAP Host").type("foobar");
+    cy.findByLabelText("LDAP Port").type("baz");
     cy.button("Save changes").click();
 
     cy.findByText('For input string: "baz"'); // The error message

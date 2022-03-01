@@ -29,7 +29,7 @@
       :field_id (u/the-id field)})
    ;; TODO -- shouldn't we return sandboxed human-readable values as well??
    ;;
-   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
+   ;; Expire entries older than 30 days so we don't have entries for users and/or fields that
    ;; no longer exists hanging around.
    ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
    ;; every cache miss)

@@ -12,9 +12,6 @@ const args = arg(
 const folder = args["--folder"];
 const isFolder = !!folder;
 
-const supportedDatabases = ["mongo", "mysql", "postgres"];
-const isQaDatabase = supportedDatabases.includes(folder);
-
 const isOpenMode = args["--open"];
 const isCI = process.env["CI"];
 
@@ -33,13 +30,8 @@ const parseArguments = async () => {
   return await cypress.cli.parseRunArguments(cliArgs);
 };
 
-// This overly complicated logic will not be needed once we merge "db" specs with the rest of the "normal" Cypress files.
-// Alternatively we can use the official `--project` flag to isolate "db" files but that would require a major refactor.
-const getSourceFolder = () => {
-  const defaultPath = `./frontend/test/metabase/scenarios/${folder}/**/*.cy.spec.js`;
-  const QaDatabasePath = `./frontend/test/metabase-db/${folder}/**/*.cy.spec.js`;
-
-  return isQaDatabase ? QaDatabasePath : defaultPath;
+const getSourceFolder = folder => {
+  return `./frontend/test/metabase/scenarios/${folder}/**/*.cy.spec.js`;
 };
 
 const getReporterConfig = isCI => {
@@ -57,7 +49,7 @@ const runCypress = async (baseUrl, exitFunction) => {
     config: {
       baseUrl,
     },
-    spec: isFolder && getSourceFolder(),
+    spec: isFolder && getSourceFolder(folder),
   };
 
   const reporterConfig = getReporterConfig(isCI);

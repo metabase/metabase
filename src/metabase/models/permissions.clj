@@ -9,9 +9,8 @@
   Permissions are granted to individual [[metabase.models.permissions-group]]s, and Users are members of one or more
   Permissions Groups. Permissions Groups are like 'roles' in other permissions systems. There are a few 'magic'
   Permissions Groups: the [[metabase.models.permissions-group/all-users]] Group, of which every User is a member and
-  cannot be removed; the [[metabase.models.permissions-group/admin]] Group, of which every superuser (i.e., every User
-  with `is_superuser`) is a member; and the [[metabase.models.permissions-group/metabot]] Group, which defines
-  permissions for the MetaBot.
+  cannot be removed; and the [[metabase.models.permissions-group/admin]] Group, of which every superuser (i.e., every
+  User with `is_superuser`) is a member.
 
   The permissions needed to perform an action are represented as slash-delimited path strings, for example
   `/db/1/schema/PUBLIC/`. Each slash represents a different part of the permissions path, and each permissions path
@@ -30,7 +29,7 @@
   The union of all permissions the current User's gets from all groups of which they are a member are automatically
   bound to [[metabase.api.common/*current-user-permissions-set*]] by
   [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
-  queries are ran in a non-API thread (e.g. for MetaBot or scheduled Dashboard Subscriptions).
+  queries are ran in a non-API thread (e.g. for scheduled Dashboard Subscriptions).
 
   ### Different types of permissions
 
@@ -125,7 +124,7 @@
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
   [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
-  [[metabase-enterprise.enhancements.models.permissions.block-permissions]] determines whether the current
+  [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
@@ -181,6 +180,7 @@
             [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -222,7 +222,8 @@
   "Regex for a valid permissions path. The [[metabase.util.regex/rx]] macro is used to make the big-and-hairy regex
   somewhat readable."
   (u.regex/rx "^/"
-              ;; any path starting with /db/ is a DATA PERMISSIONS path
+              ;; any path containing /db/ is a DATA permissions path
+              ;; any path starting with /db/ is a DATA ACCESS permissions path
               (or
                ;; /db/:id/ -> permissions for the entire DB -- native and all schemas
                (and #"db/\d+/"
@@ -243,6 +244,17 @@
                                                               ;; .../segmented/ -> Permissions to run a query against
                                                               ;; a Table using GTAP
                                                               (opt "segmented/"))))))))))))
+               ;; any path starting with /download/ is a DOWNLOAD permissions path
+               ;; /download/db/:id/ -> permissions to download 1M rows in query results
+               ;; /download/limited/db/:id/ -> permissions to download 1k rows in query results
+               (and "download/"
+                    (opt "limited/")
+                    (and #"db/\d+/"
+                         (opt (or
+                               "native/"
+                               (and "schema/"
+                                    (opt (and path-char "*/"
+                                              (opt #"table/\d+/"))))))))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -312,22 +324,12 @@
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400, :path object}))))
 
-(defn- assert-valid-metabot-permissions
-  "MetaBot permissions can only be created for Collections, since MetaBot can only interact with objects that are always
-  in Collections (such as Cards)."
-  [{:keys [object group_id]}]
-  (when (and (= group_id (:id (group/metabot)))
-             (not (str/starts-with? object "/collection/")))
-    (throw (ex-info (tru "MetaBot can only have Collection permissions.")
-             {:status-code 400}))))
-
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
    path and it's not for the admin group)."
   [permissions]
   (doseq [f [assert-not-admin-group
-             assert-valid-object
-             assert-valid-metabot-permissions]]
+             assert-valid-object]]
     (f permissions)))
 
 
@@ -396,6 +398,7 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/")))
 
+;; TODO -- consider renaming this to `table-sandboxed-query-path`  since that terminology is used more frequently
 (s/defn table-segmented-query-path :- Path
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
   the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,
@@ -555,7 +558,7 @@
    (s/enum :write :none)
    "Valid native perms option for a database"))
 
-(def ^:private DBPermissionsGraph
+(def ^:private DataPermissionsGraph
   (s/named
    {(s/optional-key :native)  NativePermissionsGraph
     (s/optional-key :schemas) (s/cond-pre (s/enum :all :none :block)
@@ -579,17 +582,17 @@
         nil)
     :ok))
 
-(def ^:private StrictDBPermissionsGraph
-  (s/constrained DBPermissionsGraph
+(def ^:private StrictDataPermissionsGraph
+  (s/constrained DataPermissionsGraph
                  check-native-and-schemas-permissions-allowed-together
                  "DB permissions with a valid combination of values for :native and :schemas"))
 
-(def ^:private StrictGroupPermissionsGraph
-  {su/IntGreaterThanZero StrictDBPermissionsGraph})
+(def ^:private StrictDBPermissionsGraph
+  {su/IntGreaterThanZero {:data StrictDataPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
-   :groups   {su/IntGreaterThanZero StrictGroupPermissionsGraph}})
+   :groups   {su/IntGreaterThanZero StrictDBPermissionsGraph}})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -600,8 +603,9 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g db-id {:native  :write
-                            :schemas :all}))
+            (assoc g db-id {:data
+                            {:native  :write
+                             :schemas :all}}))
           {}
           db-ids))
 
@@ -609,28 +613,28 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
-                      {:where [:and
-                               [:not= :group_id (:id (group/metabot))]
-                               [:or
-                                [:= :object (hx/literal "/")]
-                                [:like :object (hx/literal "/db/%")]
-                                [:like :object (hx/literal "/block/db/%")]]]})
-        db-ids      (delay (db/select-ids 'Database))]
-    (let [group-id->paths (reduce
-                           (fn [m {:keys [group-id path]}]
-                             (update m group-id conj path))
-                           {}
-                           permissions)
-          group-id->graph (m/map-vals
-                           (fn [paths]
-                             (let [permissions-graph (perms-parse/permissions->graph paths)]
-                               (if (= :all permissions-graph)
-                                 (all-permissions @db-ids)
-                                 (:db permissions-graph))))
-                           group-id->paths)]
-      {:revision (perms-revision/latest-id)
-       :groups   group-id->graph})))
+  (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
+                                   {:where [:and
+                                            [:or
+                                             [:= :object (hx/literal "/")]
+                                             [:like :object (hx/literal "/db/%")]
+                                             [:like :object (hx/literal "/download/%")]
+                                             [:like :object (hx/literal "/block/db/%")]]]})
+        db-ids          (delay (db/select-ids 'Database))
+        group-id->paths (reduce
+                         (fn [m {:keys [group-id path]}]
+                           (update m group-id conj path))
+                         {}
+                         permissions)
+        group-id->graph (m/map-vals
+                         (fn [paths]
+                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                             (if (= :all permissions-graph)
+                               (all-permissions @db-ids)
+                               (:db permissions-graph))))
+                         group-id->paths)]
+    {:revision (perms-revision/latest-id)
+     :groups   group-id->graph}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -713,7 +717,7 @@
   (grant-permissions! group-or-id (adhoc-native-query-path database-or-id)))
 
 (defn revoke-db-schema-permissions!
-  "Remove all permissions entires for a DB and *any* child objects.
+  "Remove all permissions entries for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-or-id]
   ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
@@ -828,7 +832,7 @@
 
 (s/defn ^:private update-native-permissions!
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
-  ;; revoke-native-permissions! will delete all entires that would give permissions for native access. Thus if you had
+  ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
   (let [has-full-access? (db/exists? Permissions :group_id group-id, :object (data-perms-path db-id))]
@@ -840,7 +844,7 @@
     :none  nil))
 
 (s/defn ^:private update-db-permissions!
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDBPermissionsGraph]
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-db-perms :- StrictDataPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -859,6 +863,11 @@
                  (delete-block-perms-for-this-db!))
         ;; TODO -- should this code be enterprise only?
         :block (do
+                 (when-not (premium-features/has-feature? :advanced-permissions)
+                   (throw
+                    (ex-info
+                     (tru "Can''t use block permissions without having the advanced-permissions premium feature")
+                     {:status-code 402})))
                  (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
@@ -867,8 +876,8 @@
             (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
 
 (s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictGroupPermissionsGraph]
-  (doseq [[db-id new-db-perms] new-group-perms]
+  [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
+  (doseq [[db-id {new-db-perms :data}] new-group-perms]
     (update-db-permissions! group-id db-id new-db-perms)))
 
 (defn check-revision-numbers

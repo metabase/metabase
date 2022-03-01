@@ -148,20 +148,19 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 ## Is the person who can't see the sandboxed data in multiple groups?
 
-**Root cause:** We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
+**Root cause:** We only allow one sandbox per table: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule.
 
 **Steps to take:**
 
-The administrator can [create a new group][group] to capture precisely who's allowed access to what.
+The administrator can [create a new group][groups] to capture precisely who's allowed access to what.
 
 [authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
 [locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/05-setting-permissions.html#group
+[groups]: ../administration-guide/05-setting-permissions.html#groups
 [jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
-[one-sandbox-per-table]: ../enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [permissions]: /learn/permissions/data-permissions.html
 [prepared-statement]: /glossary.html#prepared_statement
 [public-sharing]: ../administration-guide/12-public-links.html

@@ -29,6 +29,7 @@ function getModalContent(props) {
 export class WindowModal extends Component {
   static propTypes = {
     isOpen: PropTypes.bool,
+    enableMouseEvents: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -77,12 +78,15 @@ export class WindowModal extends Component {
   }
 
   render() {
-    const { backdropClassName, isOpen, style } = this.props;
+    const { enableMouseEvents, backdropClassName, isOpen, style } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
 
     return (
-      <SandboxedPortal container={this._modalElement}>
+      <SandboxedPortal
+        container={this._modalElement}
+        enableMouseEvents={enableMouseEvents}
+      >
         <CSSTransitionGroup
           transitionName="Modal"
           transitionAppear={true}

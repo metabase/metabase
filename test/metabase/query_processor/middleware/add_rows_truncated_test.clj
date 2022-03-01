@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.add-rows-truncated-test
   (:require [clojure.test :refer :all]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
             [metabase.test :as mt]))
 
 (defn- add-rows-truncated [query rows]
-  (:result
-   (mt/test-qp-middleware add-rows-truncated/add-rows-truncated query rows)))
+  (let [rff (add-rows-truncated/add-rows-truncated query context.default/default-rff)
+        rf  (rff nil)]
+    (transduce identity rf rows)))
 
 (deftest add-rows-truncated-test
   (testing "the default behavior is to treat the query as no aggregation and use :max-results-bare-rows"

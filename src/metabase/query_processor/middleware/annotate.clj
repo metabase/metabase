@@ -12,6 +12,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
@@ -71,9 +72,7 @@
                   :first-row        (first rows)
                   :type             error-type/qp}))))))
 
-(defmethod column-info :native
-  [_ {:keys [cols rows]}]
-  (check-driver-native-columns cols rows)
+(defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
     (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
@@ -87,6 +86,11 @@
               (when-not (str/blank? col-name)
                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
               driver-col-metadata))))))
+
+(defmethod column-info :native
+  [_query {:keys [cols rows] :as _results}]
+  (check-driver-native-columns cols rows)
+  (annotate-native-cols cols))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -119,6 +123,11 @@
 
 (declare col-info-for-field-clause)
 
+(def type-info-columns
+  "Columns to select from a field to get its type information without getting information that is specific to that
+  column."
+  [:base_type :effective_type :coercion_strategy :semantic_type])
+
 (defn infer-expression-type
   "Infer base-type/semantic-type information about an `expression` clause."
   [expression]
@@ -133,7 +142,7 @@
     (col-info-for-field-clause {} expression)
 
     (mbql.u/is-clause? :coalesce expression)
-    (infer-expression-type (second expression))
+    (select-keys (infer-expression-type (second expression)) type-info-columns)
 
     (mbql.u/is-clause? :length expression)
     {:base_type :type/BigInteger}
@@ -147,7 +156,7 @@
                     (or (not (mbql.u/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
-           (infer-expression-type expression)))
+           (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
     (mbql.u/datetime-arithmetics? expression)
@@ -173,14 +182,27 @@
     :field_ref       clause}))
 
 (s/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join (when (:join-alias opts)
-               (join-with-alias inner-query (:join-alias opts)))]
+  [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [join                      (when (:join-alias opts)
+                                    (join-with-alias inner-query (:join-alias opts)))
+        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+        ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
+        ;; needs to add extra info to track things that it did (e.g. the
+        ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
+        ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
+        ;; remapping based on that info)
+        namespaced-options        (not-empty (into {}
+                                                   (filter (fn [[k _v]]
+                                                             (and (keyword? k) (namespace k))))
+                                                   opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref clause}
+    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
+
+      namespaced-options
+      (assoc :options namespaced-options)
 
       (string? id-or-name)
       (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
@@ -228,7 +250,14 @@
       (or (:source-field opts)
           (:fk-field-id join))
       (assoc :fk_field_id (or (:source-field opts)
-                              (:fk-field-id join))))))
+                              (:fk-field-id join)))
+
+      ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
+      ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
+      ;; removing `:join-alias` from fields from the right side of the join.
+      (and source-card-id
+           (not join-is-at-current-level?))
+      (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
@@ -271,7 +300,7 @@
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
+  [ag-clause :- mbql.s/Aggregation]
   (when-not driver/*driver*
     (throw (Exception. (tru "*driver* is unbound."))))
   (mbql.u/match-one ag-clause
@@ -279,6 +308,7 @@
     (:name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
@@ -320,6 +350,7 @@
     (:display-name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     [(operator :guard #{:+ :- :/ :*}) & args]
@@ -352,7 +383,7 @@
     (:display_name (col-info-for-field-clause inner-query ag-clause))
 
     _
-    (aggregation-name ag-clause {:recursive-name-fn (partial aggregation-arg-display-name inner-query)})))
+    (aggregation-name ag-clause)))
 
 (defn- ag->name-info [inner-query ag]
   {:name         (aggregation-name ag)
@@ -458,7 +489,7 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(declare mbql-cols)
+
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
@@ -482,30 +513,37 @@
 
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
-  [source-metadata cols]
-  (let [field-id->metadata (u/key-by :id source-metadata)]
+  [source-metadata cols dataset?]
+  (let [index           (fn [col] (or (:id col) (:name col "")))
+        index->metadata (u/key-by index source-metadata)]
     (for [col cols]
-      (if-let [source-metadata-for-field (-> col :id field-id->metadata)]
-        (merge-source-metadata-col source-metadata-for-field col)
+      (if-let [source-metadata-for-field (-> col index index->metadata)]
+        (merge-source-metadata-col source-metadata-for-field
+                                   (merge col
+                                          (when dataset?
+                                            (select-keys source-metadata-for-field qputil/preserved-keys))))
         col))))
+
+(declare mbql-cols)
 
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
-  (if native-source-query
-    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
-    (mbql-cols source-query results)))
+  (let [columns       (if native-source-query
+                        (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
+                        (mbql-cols source-query results))]
+    (qputil/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query fields], :as inner-query}, results]
+  [{:keys [source-metadata source-query :source-query/dataset? fields], :as inner-query}, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
 
       source-query
-      (flow-field-metadata (cols-for-source-query inner-query results) cols)
+      (flow-field-metadata (cols-for-source-query inner-query results) cols dataset?)
 
       (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -514,7 +552,7 @@
       cols)))
 
 (defmethod column-info :query
-  [{inner-query :query, :as query} results]
+  [{inner-query :query} results]
   (u/prog1 (mbql-cols inner-query results)
     (check-correct-number-of-columns-returned <> results)))
 
@@ -578,10 +616,8 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   [query {cols-returned-by-driver :cols, :as result}]
-  ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
-  ;; the FE uses it as a key for stuff like column settings
   (deduplicate-cols-names
-   (merge-cols-returned-by-driver (map (partial into {}) (column-info query result)) cols-returned-by-driver)))
+   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
@@ -600,24 +636,39 @@
    [(base-type-inferer metadata)
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
-     (let [metadata (update metadata :cols (partial map (fn [col base-type]
-                                                          (assoc col :base_type base-type)))
-                            base-types)]
+     (let [metadata (update metadata :cols
+                            (comp annotate-native-cols
+                                  (fn [cols]
+                                    (map (fn [col base-type]
+                                           (-> col
+                                               (assoc :base_type base-type)
+                                               ;; annotate will add a field ref with type info
+                                               (dissoc :field_ref)))
+                                         cols
+                                         base-types))))]
        (rf (cond-> result
-             (map? result) (assoc-in [:data :cols] (merged-column-info
-                                                    query
-                                                    (assoc metadata :rows truncated-rows)))))))))
+             (map? result)
+             (assoc-in [:data :cols]
+                       (merged-column-info
+                        query
+                        (assoc metadata :rows truncated-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [qp]
-  (fn [{query-type :type, :as query} rff context]
-    (qp
-     query
-     (fn [metadata]
-       (if (= query-type :query)
-         (rff (assoc metadata :cols (merged-column-info query metadata)))
-         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
-         ;; queries...
-         (add-column-info-xform query metadata (rff metadata))))
-     context)))
+  [{query-type :type, :as query
+    {:keys [:metadata/dataset-metadata]} :info} rff]
+  (fn add-column-info-rff* [metadata]
+    (if (= query-type :query)
+      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+             (seq dataset-metadata)
+             (update :cols qputil/combine-metadata dataset-metadata)))
+      ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+      ;; queries...
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+                       ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+                       (seq dataset-metadata)
+                       (update :cols qputil/combine-metadata dataset-metadata)
+                       ;; but we want those column refs removed since they have type info which we don't know yet
+                       :always
+                       (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (add-column-info-xform query metadata (rff metadata))))))

@@ -27,7 +27,7 @@
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qputil/query-hash query))))
 
-(defn- async-result-metadata-reducedf [_ result context]
+(defn- async-result-metadata-reducedf [result context]
   (let [results-metdata (or (get-in result [:data :results_metadata :columns])
                             [])]
     (context/resultf results-metdata context)))

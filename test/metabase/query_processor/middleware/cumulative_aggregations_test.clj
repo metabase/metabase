@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]
-            [metabase.test :as mt]))
+            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]))
 
 (deftest add-values-from-last-row-test
   (are [expected indecies] (= expected
@@ -80,15 +79,14 @@
 
 
 (defn- handle-cumulative-aggregations [query]
-  (-> (mt/test-qp-middleware
-       cumulative-aggregations/handle-cumulative-aggregations
-       query
-       [[1 1]
-        [2 2]
-        [3 3]
-        [4 4]
-        [5 5]])
-      :post))
+  (let [query (#'cumulative-aggregations/rewrite-cumulative-aggregations query)
+        rff   (cumulative-aggregations/sum-cumulative-aggregation-columns query (constantly conj))
+        rf    (rff nil)]
+    (transduce identity rf [[1 1]
+                            [2 2]
+                            [3 3]
+                            [4 4]
+                            [5 5]])))
 
 (deftest e2e-test
   (testing "make sure we take breakout fields into account"

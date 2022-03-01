@@ -4,6 +4,7 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
@@ -193,6 +194,7 @@
    :zeroDateTimeBehavior "convertToNull"
    :user                 "cam"
    :subname              "//localhost:3306/my_db"
+   :connectionAttributes (str "program_name:" config/mb-version-and-process-identifier)
    :useCompression       true
    :useUnicode           true})
 
@@ -207,11 +209,21 @@
            (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))))
 
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (= (assoc sample-jdbc-spec :useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
+    (is (= (assoc sample-jdbc-spec :useSSL  true
+                                   :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
            (sql-jdbc.conn/connection-details->spec :mysql
              (assoc sample-connection-details
                     :ssl false
-                    :additional-options "useSSL=true&trustServerCertificate=true"))))))
+                    :additional-options "useSSL=true&trustServerCertificate=true")))))
+  (testing "A program_name specified in additional-options is not overwritten by us"
+    (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
+      (is (= (-> sample-jdbc-spec
+                 (assoc :subname (str "//localhost:3306/my_db?" conn-attrs), :useSSL false)
+                 ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
+                 (dissoc :connectionAttributes))
+             (sql-jdbc.conn/connection-details->spec
+              :mysql
+              (assoc sample-connection-details :additional-options conn-attrs)))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql
@@ -319,7 +331,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]

@@ -5,17 +5,16 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 import * as Table from "./table";
 
 import { TYPE } from "metabase/lib/types";
-import type { FieldId, FieldReference } from "metabase-types/types/Query";
 
-export function isLocalField(field: FieldReference): boolean {
+export function isLocalField(field) {
   return Array.isArray(field) && field[0] === "field";
 }
 
-export function isExpressionField(field: FieldReference): boolean {
+export function isExpressionField(field) {
   return Array.isArray(field) && field[0] === "expression";
 }
 
-export function isAggregateField(field: FieldReference): boolean {
+export function isAggregateField(field) {
   return Array.isArray(field) && field[0] === "aggregation";
 }
 
@@ -39,7 +38,7 @@ export function isSameField(fieldA, fieldB, exact = false) {
  * Get the target field ID (recursively) from a Field clause. For Field clauses that use string Field names, this
  * returns the Field clause directly. FIXME !!!
  */
-export function getFieldTargetId(field: FieldReference): ?FieldId {
+export function getFieldTargetId(field) {
   if (isLocalField(field)) {
     const type = typeof field[1];
     return type === "number" || type === "string" ? field[1] : field;
@@ -100,6 +99,14 @@ export function getFieldTarget(fieldClause, tableDef, path = []) {
   }
 
   return info;
+}
+
+export function isFieldLiteral(fieldClause) {
+  return (
+    isValidField(fieldClause) &&
+    isLocalField(fieldClause) &&
+    typeof fieldClause[1] === "string"
+  );
 }
 
 export function getDatetimeUnit(fieldClause) {

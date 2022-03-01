@@ -4,6 +4,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -160,8 +161,8 @@
           (is (= (mt/$ids [$venues.id
                            (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                            $venues.category_id->categories.name])
-                 (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
-                         [:pre :query :fields]))))))))
+                 (get-in (add-implicit-clauses/add-implicit-clauses query)
+                         [:query :fields]))))))))
 
 (deftest add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
@@ -194,7 +195,58 @@
         (is (= (mt/$ids orders
                  [$product_id->products.title
                   *sum/Float])
-               (-> (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
-                   :pre
+               (-> (add-implicit-clauses/add-implicit-clauses query)
                    :query
                    :fields)))))))
+
+(deftest add-implicit-fields-for-source-query-inside-join-test
+  (testing "Should add implicit `:fields` for `:source-query` inside a join"
+    (is (query= (mt/mbql-query venues
+                  {:joins    [{:source-query {:source-table $$categories
+                                              :fields       [$categories.id
+                                                             $categories.name]}
+                               :alias        "cat"
+                               :condition    [:= $venues.category_id &cat.*ID/BigInteger]}]
+                   :fields   [$venues.id
+                              $venues.name
+                              $venues.category_id
+                              $venues.latitude
+                              $venues.longitude
+                              $venues.price]
+                   :order-by [[:asc $venues.name]]
+                   :limit    3})
+                (add-implicit-clauses/add-implicit-clauses
+                 (mt/mbql-query venues
+                   {:joins    [{:alias        "cat"
+                                :source-query {:source-table $$categories}
+                                :condition    [:= $category_id &cat.*categories.id]}]
+                    :order-by [[:asc $name]]
+                    :limit    3}))))))
+
+(deftest add-implicit-fields-skip-join-test
+  (testing "Don't add implicit `:fields` clause to a JOIN even if we have source metadata"
+    (mt/with-everything-store
+      (is (query= (add-source-metadata/add-source-metadata-for-source-queries
+                   (mt/mbql-query venues
+                     {:joins    [{:source-query {:source-table $$categories
+                                                 :fields       [$categories.id
+                                                                $categories.name]}
+                                  :alias        "cat"
+                                  :condition    [:= $venues.category_id &cat.*ID/BigInteger]}]
+                      :fields   [$venues.id
+                                 $venues.name
+                                 $venues.category_id
+                                 $venues.latitude
+                                 $venues.longitude
+                                 $venues.price]
+                      :order-by [[:asc $venues.name]]
+                      :limit    3}))
+                  (add-implicit-clauses/add-implicit-mbql-clauses
+                   (add-source-metadata/add-source-metadata-for-source-queries
+                    (mt/mbql-query venues
+                      {:source-table $$venues
+                       :joins        [{:alias        "cat"
+                                       :source-query {:source-table $$categories}
+                                       :condition    [:= $category_id &cat.*categories.id]}]
+                       :order-by     [[:asc $name]]
+                       :limit        3}))))))))

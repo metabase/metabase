@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Snippets from "metabase/entities/snippets";
 
 const ICON_SIZE = 16;
@@ -14,8 +14,6 @@ const ICON_SIZE = 16;
   wrapped: true,
 })
 class SnippetRow extends React.Component {
-  state: { isOpen: boolean };
-
   constructor(props) {
     super(props);
     this.state = { isOpen: false };

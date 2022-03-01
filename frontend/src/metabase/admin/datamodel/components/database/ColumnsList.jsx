@@ -3,13 +3,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+
 import {
   SortableContainer,
   SortableElement,
   SortableHandle,
-} from "react-sortable-hoc";
-
-import AccordionList from "metabase/components/AccordionList";
+} from "metabase/components/sortable";
+import AccordionList from "metabase/core/components/AccordionList";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import Grabber from "metabase/components/Grabber";

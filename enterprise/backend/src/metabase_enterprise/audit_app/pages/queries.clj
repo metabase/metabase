@@ -3,6 +3,7 @@
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
+            [metabase.db.connection :as mdb.connection]
             [metabase.util.honeysql-extensions :as hx]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries chart with number of queries ran and average query
@@ -53,14 +54,6 @@
                :order-by [[:avg_running_time :desc]]
                :limit    10})})
 
-(def latest-qe-subq
-  "QE subquery for only getting the latest QE. Needed to make the QE table blank out properly after running."
-  [:not [:exists {:select [1]
-                  :from [[:query_execution :qe1]]
-                  :where [:and
-                          [:= :card.id :qe1.card_id]
-                          [:> :qe1.started_at :qe.started_at]]}]])
-
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
   ([_]
@@ -78,6 +71,7 @@
               [:collection_name {:display_name "Collection",         :base_type :type/Text    :remapped_from :collection_id}]
               [:database_id     {:display_name "Database ID",        :base_type :type/Integer :remapped_to   :database_name}]
               [:database_name   {:display_name "Database",           :base_type :type/Text    :remapped_from :database_id}]
+              [:schema_name     {:display_name "Schema",             :base_type :type/Text}]
               [:table_id        {:display_name "Table ID",           :base_type :type/Integer :remapped_to   :table_name}]
               [:table_name      {:display_name "Table",              :base_type :type/Text    :remapped_from :table_id}]
               [:last_run_at     {:display_name "Last run at",        :base_type :type/DateTime}]
@@ -88,46 +82,50 @@
               [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
               [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
    :results (common/reducible-query
-              (->
-                {:select    [[:card.id :card_id]
-                             [:card.name :card_name]
-                             [(hsql/call :concat (hsql/call :substring :qe.error 0 60) "...") :error_substr]
-                             :collection_id
-                             [:coll.name :collection_name]
-                             :card.database_id
-                             [:db.name :database_name]
-                             :card.table_id
-                             [:t.name :table_name]
-                             [(hsql/call :max :qe.started_at) :last_run_at]
-                             [:%distinct-count.qe.id :total_runs]
-                             [:%distinct-count.dash_card.card_id :num_dashboards]
-                             [:card.creator_id :user_id]
-                             [(common/user-full-name :u) :user_name]
-                             [(hsql/call :max :card.updated_at) :updated_at]]
-                 :from      [[:report_card :card]]
-                 :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
-                             [:metabase_database :db]           [:= :card.database_id :db.id]
-                             [:metabase_table :t]               [:= :card.table_id :t.id]
-                             [:core_user :u]                    [:= :card.creator_id :u.id]
-                             [:report_dashboardcard :dash_card] [:= :card.id :dash_card.card_id]
-                             [:query_execution :qe]             [:and [:= :card.id :qe.card_id]
-                                                                 latest-qe-subq]]
-                 :group-by  [(common/user-full-name :u)
-                             :card.id
-                             :card.creator_id
-                             :coll.name
-                             :db.name
-                             :t.name
-                             :qe.error]
-                 :where     [:and
-                             [:= :card.archived false]
-                             [:<> :qe.error nil]]}
-                (common/add-search-clause error-filter :qe.error)
-                (common/add-search-clause db-filter :db.name)
-                (common/add-search-clause collection-filter :coll.name)
-                (common/add-sort-clause
-                  (or sort-column "card.name")
-                  (or sort-direction "asc"))))}))
+              (let [coll-name    (hsql/call :coalesce :coll.name "Our Analytics")
+                    error-substr (hsql/call :concat
+                                            (hsql/call :substring :latest_qe.error
+                                              (if (= (mdb.connection/db-type) :mysql) 1 0)
+                                              60)
+                                            "...")
+                    dash-count   (hsql/call :coalesce :dash_card.count 0)]
+                (->
+                  {:with      [cards/query-runs
+                               cards/latest-qe
+                               cards/dashboards-count]
+                   :select    [[:card.id :card_id]
+                               [:card.name :card_name]
+                               [error-substr :error_substr]
+                               :collection_id
+                               [coll-name :collection_name]
+                               :card.database_id
+                               [:db.name :database_name]
+                               [:t.schema :schema_name]
+                               :card.table_id
+                               [:t.name :table_name]
+                               [:latest_qe.started_at :last_run_at]
+                               [:query_runs.count :total_runs]
+                               [dash-count :num_dashboards]
+                               [:card.creator_id :user_id]
+                               [(common/user-full-name :u) :user_name]
+                               [:card.updated_at :updated_at]]
+                   :from      [[:report_card :card]]
+                   :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
+                               [:metabase_database :db]           [:= :card.database_id :db.id]
+                               [:metabase_table :t]               [:= :card.table_id :t.id]
+                               [:core_user :u]                    [:= :card.creator_id :u.id]
+                               :latest_qe                         [:= :card.id :latest_qe.card_id]
+                               :query_runs                        [:= :card.id :query_runs.card_id]
+                               :dash_card                         [:= :card.id :dash_card.card_id]]
+                   :where     [:and
+                               [:= :card.archived false]
+                               [:<> :latest_qe.error nil]]}
+                  (common/add-search-clause error-filter :latest_qe.error)
+                  (common/add-search-clause db-filter :db.name)
+                  (common/add-search-clause collection-filter coll-name)
+                  (common/add-sort-clause
+                    (or sort-column "card.name")
+                    (or sort-direction "asc")))))}))
 
 ;; A list of all questions.
 ;;
@@ -174,11 +172,11 @@
                [:table_name      {:display_name "Table",                :base_type :type/Text,    :remapped_from :table_id}]
                [:user_id         {:display_name "Created By ID",        :base_type :type/Integer, :remapped_to   :user_name}]
                [:user_name       {:display_name "Created By",           :base_type :type/Text,    :remapped_from :user_id}]
-               [:public_link     {:display_name "Public Link",          :base_type :type/URL}]
-               [:cache_ttl       {:display_name "Cache Duration",       :base_type :type/Number}]
+               [:cache_ttl       {:display_name "Cache Duration",       :base_type :type/Integer}]
                [:avg_exec_time   {:display_name "Average Runtime (ms)", :base_type :type/Integer}]
-               [:total_runtime   {:display_name "Total Runtime (ms)",   :base_type :type/Number}]
-               [:query_runs      {:display_name "Query Runs",           :base_type :type/Integer}]]
+               [:total_runtime   {:display_name "Total Runtime (ms)",   :base_type :type/Integer}]
+               [:query_runs      {:display_name "Query Runs",           :base_type :type/Integer}]
+               [:public_link     {:display_name "Public Link",          :base_type :type/URL}]]
     :results  (common/reducible-query
                (->
                 {:with      [cards/avg-exec-time-45
@@ -194,18 +192,18 @@
                              [:t.name :table_name]
                              [:card.creator_id :user_id]
                              [(common/user-full-name :u) :user_name]
-                             [(common/card-public-url :card.public_uuid) :public_link]
                              :card.cache_ttl
-                             [:avg_exec_time.avg_running_time_ms :avg_exec_time]
-                             [:total_runtime.total_running_time_ms :total_runtime]
-                             [:query_runs.count :query_runs]]
+                             [:avg_exec_time_45.avg_running_time_ms :avg_exec_time]
+                             [:total_runtime_45.total_running_time_ms :total_runtime]
+                             [(common/zero-if-null :query_runs.count) :query_runs]
+                             [(common/card-public-url :card.public_uuid) :public_link]]
                  :from      [[:report_card :card]]
                  :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
                              [:metabase_database :db] [:= :card.database_id :db.id]
                              [:metabase_table :t]     [:= :card.table_id :t.id]
                              [:core_user :u]          [:= :card.creator_id :u.id]
-                             :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
-                             :total_runtime           [:= :card.id :total_runtime.card_id]
+                             :avg_exec_time_45        [:= :card.id :avg_exec_time_45.card_id]
+                             :total_runtime_45        [:= :card.id :total_runtime_45.card_id]
                              :query_runs              [:= :card.id :query_runs.card_id]]
                  :where     [:= :card.archived false]}
                 (common/add-search-clause question-filter :card.name)

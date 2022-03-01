@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 
 it("syncs database schema", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const syncDatabaseSchema = jest.fn();
 
   render(
@@ -22,7 +22,7 @@ it("syncs database schema", () => {
 
 it("rescans database field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const rescanDatabaseFields = jest.fn();
 
   render(
@@ -38,7 +38,7 @@ it("rescans database field values", () => {
 
 it("discards saved field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const discardSavedFieldValues = jest.fn();
 
   render(
@@ -96,4 +96,14 @@ it("removes database", () => {
   fireEvent.click(deleteButton);
 
   expect(deleteDatabase).toHaveBeenCalled();
+});
+
+it("shows loading indicator when a sync is in progress", () => {
+  const databaseId = 1;
+  const database = { id: databaseId, initial_sync_status: "incomplete" };
+
+  render(<Sidebar database={database} />);
+
+  const statusButton = screen.getByText("Syncing database…");
+  expect(statusButton).toBeInTheDocument();
 });

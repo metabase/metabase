@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -40,4 +40,8 @@ export const BackButton = styled.a`
   &:hover {
     color: ${color("brand")};
   }
+`;
+
+export const TreeContainer = styled.div`
+  margin: 0.5rem 0;
 `;

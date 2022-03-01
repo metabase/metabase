@@ -5,8 +5,8 @@ import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, { Option } from "metabase/components/Select";
-import Button from "metabase/components/Button";
+import Select, { Option } from "metabase/core/components/Select";
+import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isCurrency } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
@@ -17,8 +17,7 @@ import { currency } from "cljs/metabase.shared.util.currency";
 import _ from "underscore";
 import cx from "classnames";
 
-import type { Field } from "metabase-types/types/Field";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter
 export default class Column extends Component {
@@ -86,9 +85,9 @@ export default class Column extends Component {
               </div>
             </div>
           </div>
-          <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
+          <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
             <InputBlurChange
-              className="AdminInput TableEditor-field-description"
+              className="AdminInput TableEditor-field-description bordered rounded"
               type="text"
               value={this.props.field.description || ""}
               onBlurChange={this.handleChangeDescription}
@@ -105,12 +104,6 @@ export default class Column extends Component {
 // FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
 
 export class FieldVisibilityPicker extends Component {
-  props: {
-    field: Field,
-    updateField: Field => void,
-    className?: string,
-  };
-
   handleChangeVisibility = ({ target: { value: visibility_type } }) => {
     this.props.updateField({ visibility_type });
   };
@@ -132,13 +125,6 @@ export class FieldVisibilityPicker extends Component {
 }
 
 export class SemanticTypeAndTargetPicker extends Component {
-  props: {
-    field: Field,
-    updateField: Field => void,
-    className?: string,
-    selectSeparator?: React.Element,
-  };
-
   handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 
@@ -152,7 +138,7 @@ export class SemanticTypeAndTargetPicker extends Component {
       await updateField({ semantic_type });
     }
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Data Model",
       "Update Field Special-Type",
       semantic_type,
@@ -167,7 +153,7 @@ export class SemanticTypeAndTargetPicker extends Component {
         currency,
       },
     });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Data Model",
       "Update Currency Type",
       currency,
@@ -176,7 +162,7 @@ export class SemanticTypeAndTargetPicker extends Component {
 
   handleChangeTarget = async ({ target: { value: fk_target_field_id } }) => {
     await this.props.updateField({ fk_target_field_id });
-    MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
+    MetabaseAnalytics.trackStructEvent("Data Model", "Update Field Target");
   };
 
   render() {
@@ -197,7 +183,7 @@ export class SemanticTypeAndTargetPicker extends Component {
 
     let { idfields } = this.props;
 
-    // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
+    // If all FK target fields are in the same schema (like `PUBLIC` for sample database)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
       _.uniq(idfields.map(idField => idField.table.schema_name)).length > 1;

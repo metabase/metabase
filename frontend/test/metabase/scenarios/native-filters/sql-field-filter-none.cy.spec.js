@@ -1,6 +1,5 @@
 import {
   restore,
-  mockSessionProperty,
   openNativeEditor,
   filterWidget,
 } from "__support__/e2e/cypress";
@@ -14,47 +13,45 @@ describe("scenarios > filters > sql filters > field filter > None", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardless of the environment where this is running
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    SQLFilter.enterParameterizedQuery(
-      "SELECT * FROM products WHERE {{filter}}",
-    );
+    SQLFilter.enterParameterizedQuery("SELECT * FROM people WHERE {{filter}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
 
     FieldFilter.mapTo({
-      table: "Products",
-      field: "Category",
+      table: "People",
+      field: "Longitude",
     });
 
-    FieldFilter.setWidgetType("None");
+    cy.findByText("None").should("be.visible");
 
     filterWidget().should("not.exist");
   });
 
-  it("should successfully run the query and show all results", () => {
-    SQLFilter.runQuery();
+  it("should be runnable with the None filter being ignored (metabase#20643)", () => {
+    cy.get(".RunButton")
+      .first()
+      .click();
 
-    cy.get(".Visualization").within(() => {
-      cy.findByText("Rustic Paper Wallet");
-    });
-
-    cy.findByText("Showing 200 rows");
+    cy.wait("@dataset");
+    cy.findByText("Hudson Borer");
   });
 
   it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
+    cy.findByText("Longitude").click();
+    cy.findByText("Address").click();
+
     FieldFilter.setWidgetType("String contains");
 
     FieldFilter.openEntryForm();
-    FieldFilter.addWidgetStringFilter("zm");
+    FieldFilter.addWidgetStringFilter("111 L");
 
     SQLFilter.runQuery();
 
     cy.get(".Visualization").within(() => {
-      cy.findByText("Rustic Paper Wallet");
+      cy.findByText("111 Leupp Road");
     });
   });
 });

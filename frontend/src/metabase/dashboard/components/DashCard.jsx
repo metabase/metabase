@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -29,7 +29,7 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-import { getParameterValuesBySlug } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -43,10 +43,7 @@ const HEADER_ACTION_STYLE = {
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
 const WrappedVisualization = WithVizSettingsData(
-  connect(
-    null,
-    dispatch => ({ dispatch }),
-  )(Visualization),
+  connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
 export default class DashCard extends Component {
@@ -390,6 +387,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       </Tooltip>
     }
     triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    enableMouseEvents
   >
     <ChartSettingsWithState
       className="spread"
@@ -413,6 +411,7 @@ const RemoveButton = ({ onRemove }) => (
 
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
+    data-testid="add-series-button"
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}

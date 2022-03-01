@@ -6,6 +6,7 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.events :as events]
+            [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
@@ -21,7 +22,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -54,10 +56,13 @@
       (events/publish-event! :table-read (assoc (Table table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
-        info           {:executed-by api/*current-user-id*
-                        :context     context
-                        :card-id     source-card-id
-                        :nested?     (boolean source-card-id)}]
+        source-card    (when source-card-id
+                         (db/select-one [Card :result_metadata :dataset] :id source-card-id))
+        info           (cond-> {:executed-by api/*current-user-id*
+                                :context     context
+                                :card-id     source-card-id}
+                         (:dataset source-card)
+                         (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
@@ -107,7 +112,9 @@
    visualization_settings su/JSONString
    export-format          ExportFormat}
   (let [query        (json/parse-string query keyword)
-        viz-settings (mb.viz/db->norm (json/parse-string visualization_settings viz-setting-key-fn))
+        viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
+                         (update-in [:table.columns] normalize/normalize)
+                         mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true
                                 :viz-settings viz-settings)
@@ -143,7 +150,7 @@
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-  (qp/query->native-with-spliced-params query))
+  (qp/compile-and-splice-parameters query))
 
 (api/defendpoint ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

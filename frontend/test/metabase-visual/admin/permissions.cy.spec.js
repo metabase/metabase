@@ -16,6 +16,7 @@ describe("visual tests > admin > permissions", () => {
     it("database focused view > table", () => {
       cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/1");
       cy.findByPlaceholderText("Search for a group");
+      cy.findByPlaceholderText("Search for a table");
       cy.percySnapshot();
     });
 

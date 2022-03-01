@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.dates :as date-params]
+  (:require [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.common.parameters.operators :as ops]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -46,7 +45,7 @@
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (ops/operator? param-type)
-    (ops/to-clause (i/throw-if-field-filter-operators-not-enabled param))
+    (ops/to-clause param)
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter

@@ -15,11 +15,11 @@ There are two main ways to visualize data side by side:
 
 2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
 
-### Ask a question that involves multiple dimensions 
+### Ask a question that involves multiple dimensions
 
 If you’re creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two groups.
 
-As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Dataset** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
+As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Database** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
 
 To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](04-asking-questions.md).
 
@@ -40,7 +40,7 @@ If you already have two or more saved questions you’d like to compare, and the
 
 1. Add a question with a dimension like time or category to a dashboard. In practice, these will usually be line charts or bar charts.
 
-2. While in edit mode on the dashboard, hovering over a card will display some editing options in the upper right of the question, including an option to **add a line**, as well as a **gear** icon. Click on the add a line option (the **+** with a line and the word "Add" next to it). 
+2. While in edit mode on the dashboard, hovering over a card will display some editing options in the upper right of the question, including an option to **add a line**, as well as a **gear** icon. Click on the add a line option (the **+** with a line and the word "Add" next to it).
 
 ![add multi-series](images/multi-series-charts/add_series.png)
 
@@ -60,9 +60,9 @@ Once you have your chart looking how you’d like, hit done. Metabase will show 
 
 ### Combining Number charts
 
-If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple number charts into a bar chart. 
+If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple number charts into a bar chart.
 
-As above, while editing a dashboard, hover over a number chart of your choice, and click on the icon with the **+** and bar chart icon to add a saved question. 
+As above, while editing a dashboard, hover over a number chart of your choice, and click on the icon with the **+** and bar chart icon to add a saved question.
 
 ![Add bar chart](images/multi-series-charts/add_bar_chart.png)
 
@@ -76,13 +76,13 @@ When displaying multiple series, it’s important to keep legibility in mind. Co
 
 Metabase allows you to add values to multi-series charts, but go easy on this feature, especially on charts with lots of data points. Adding values to multiple series, each with many data points, can make charts more difficult to read.
 
-From the **Visualization -> Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**. 
+From the **Visualization -> Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**.
 
 ![add values to multi-series chart](images/multi-series-charts/add_values.gif)
 
 You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values. You can also toggle values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
 
-Additionally, there is an option to configure the formatting of the values: 
+Additionally, there is an option to configure the formatting of the values:
 
 - **Auto**. Metabase selects the appropriate style for you
 - **Compact**. Metabase abbreviates values, e.g., 1,000 becomes 1K.

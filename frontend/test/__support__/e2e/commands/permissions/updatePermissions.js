@@ -1,3 +1,7 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+
+const { COLLECTION_GROUP } = USER_GROUPS;
+
 /**
  * PERMISSIONS
  *
@@ -34,7 +38,11 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "updatePermissionsSchemas",
-  ({ schemas = {}, user_group = 4, database_id = 1 } = {}) => {
+  ({
+    schemas = {},
+    user_group = COLLECTION_GROUP,
+    database_id = SAMPLE_DB_ID,
+  } = {}) => {
     if (typeof schemas !== "object") {
       throw new Error("`schemas` must be an object!");
     }
@@ -44,7 +52,9 @@ Cypress.Commands.add(
         const UPDATED_GROUPS = Object.assign(groups, {
           [user_group]: {
             [database_id]: {
-              schemas,
+              data: {
+                schemas,
+              },
             },
           },
         });

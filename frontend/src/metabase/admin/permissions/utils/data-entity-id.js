@@ -8,8 +8,8 @@ export const getSchemaEntityId = schemaEntity => ({
 });
 
 export const getTableEntityId = tableEntity => ({
-  databaseId: tableEntity.database.id,
-  schemaName: tableEntity.schema.name,
+  databaseId: tableEntity.db_id,
+  schemaName: tableEntity.schema_name,
   tableId: tableEntity.id,
 });
 

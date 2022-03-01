@@ -35,6 +35,7 @@
   ;; instead of one call to `define-clojure-indent'
   (eval . (put-clojure-indent 'c/step 1))
   (eval . (put-clojure-indent 'db/insert-many! 1))
+  (eval . (put-clojure-indent 'db/update! 2))
   (eval . (put-clojure-indent 'impl/test-migrations 2))
   (eval . (put-clojure-indent 'let-404 0))
   (eval . (put-clojure-indent 'macros/case 0))
@@ -44,10 +45,13 @@
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
   (eval . (put-clojure-indent 'mt/dataset 1))
+  (eval . (put-clojure-indent 'mt/format-rows-by 1))
   (eval . (put-clojure-indent 'mt/query 1))
   (eval . (put-clojure-indent 'mt/test-drivers 1))
   (eval . (put-clojure-indent 'prop/for-all 1))
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
+  (eval . (put-clojure-indent 'u/select-keys-when 1))
+  (eval . (put-clojure-indent 'u/strict-extend 1))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
   ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
@@ -60,6 +64,8 @@
             (p.types/deftype+ '(2 nil nil (:defn)))
             (p/def-map-type '(2 nil nil (:defn)))
             (p/defprotocol+ '(1 (:defn)))
+            (p/defrecord+ '(2 nil nil (:defn)))
+            (p/deftype+ '(2 nil nil (:defn)))
             (tools.macro/macrolet '(1 ((:defn)) :form))))
   (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
   (clojure-indent-style . always-align)

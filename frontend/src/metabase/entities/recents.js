@@ -1,5 +1,6 @@
 import { createEntity } from "metabase/lib/entities";
-import { RecentsSchema, entityTypeForObject } from "metabase/schema";
+import { entityTypeForObject } from "metabase/lib/schema";
+import { RecentsSchema } from "metabase/schema";
 
 const Recents = createEntity({
   name: "recents",

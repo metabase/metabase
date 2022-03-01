@@ -5,7 +5,7 @@ import {
   keyForColumn,
 } from "metabase/lib/dataset";
 
-import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {
@@ -214,7 +214,7 @@ describe("metabase/util/dataset", () => {
               expression_name: "foo",
               field_ref: fieldRefEnabled ? ["expression", "foo"] : undefined,
             }),
-          ).toEqual(JSON.stringify(["ref", ["expression", "foo"]]));
+          ).toEqual(JSON.stringify(["ref", ["expression", "foo", null]]));
         });
         it("should return [name ...] for aggregation", () => {
           const col = {

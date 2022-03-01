@@ -6,8 +6,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
-import EmbeddingLevel from "metabase/admin/settings/components/widgets/EmbeddingLevel";
-
 if (hasPremiumFeature("embedding")) {
   MetabaseSettings.hideEmbedBranding = () => true;
 }
@@ -33,9 +31,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     sections,
     ["embedding_in_other_applications", "settings"],
     settings => {
-      // remove the embedding level widget from EE
-      settings = settings.filter(s => s.widget !== EmbeddingLevel);
-
       // insert the app origin setting right after the secret key widget
       const itemIndex = settings.findIndex(
         s => s.key === "embedding-secret-key",

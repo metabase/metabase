@@ -1,33 +1,20 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
-import { DragDropContextProvider } from "react-dnd";
-import HTML5Backend from "react-dnd-html5-backend";
-import { Router, Route } from "react-router";
-import { createMemoryHistory } from "history";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
+import { setupEnterpriseTest } from "__support__/enterprise";
 import CollectionsList from "./CollectionsList";
 
 describe("CollectionsList", () => {
   function setup({ collections = [], openCollections = [], ...props } = {}) {
-    const Page = () => (
-      <DragDropContextProvider backend={HTML5Backend}>
-        <CollectionsList
-          collections={collections}
-          openCollections={openCollections}
-          filter={() => true}
-          handleToggleMobileSidebar={() => false}
-          {...props}
-        />
-      </DragDropContextProvider>
-    );
-
-    render(
-      <Router history={createMemoryHistory()}>
-        <Route path="/" component={Page} />
-      </Router>,
+    renderWithProviders(
+      <CollectionsList
+        collections={collections}
+        openCollections={openCollections}
+        filter={() => true}
+        handleToggleMobileSidebar={() => false}
+        {...props}
+      />,
+      { withRouter: true, withDND: true },
     );
   }
 
@@ -103,25 +90,8 @@ describe("CollectionsList", () => {
     });
 
     describe("EE", () => {
-      const ORIGINAL_COLLECTIONS_PLUGIN = {
-        ...PLUGIN_COLLECTIONS,
-      };
-
       beforeAll(() => {
-        PLUGIN_COLLECTIONS.isRegularCollection = c => !c.authority_level;
-        PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
-          ...ORIGINAL_COLLECTIONS_PLUGIN,
-          official: {
-            icon: "badge",
-          },
-        };
-      });
-
-      afterAll(() => {
-        PLUGIN_COLLECTIONS.isRegularCollection =
-          ORIGINAL_COLLECTIONS_PLUGIN.isRegularCollection;
-        PLUGIN_COLLECTIONS.AUTHORITY_LEVEL =
-          ORIGINAL_COLLECTIONS_PLUGIN.AUTHORITY_LEVEL;
+        setupEnterpriseTest();
       });
 
       it("displays folder icon for regular collections", () => {

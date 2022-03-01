@@ -1,13 +1,9 @@
 import _ from "underscore";
-import { restore, describeWithToken } from "__support__/e2e/cypress";
-
-const visitQuestion = id => {
-  cy.visit(`/question/${id}`);
-
-  // Visualization button is visible means
-  // that we waited enough to fetch the question data
-  cy.findByText("Visualization");
-};
+import {
+  restore,
+  describeWithToken,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 describeWithToken("audit > auditing > questions", () => {
   beforeEach(() => {
@@ -69,6 +65,20 @@ describeWithToken("audit > auditing > questions", () => {
 
       cy.get("tbody > tr").should("have.length", 1);
       cy.findByText("My question");
+    });
+
+    it("should display total runtime correctly (metabase#18317)", () => {
+      const runtimeIndex = 7;
+
+      cy.visit("/admin/audit/questions/all");
+
+      cy.get("th")
+        .eq(runtimeIndex)
+        .should("contain", "Total Runtime (ms)");
+
+      cy.get("td")
+        .eq(runtimeIndex)
+        .should("not.contain", "Link");
     });
   });
 });

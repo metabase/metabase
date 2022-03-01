@@ -15,6 +15,7 @@ describe("DateRangeWidget", () => {
     fireEvent.click(NEXT);
     screen.getByText("January 2019");
     fireEvent.click(screen.getByText("26"));
+    fireEvent.click(screen.getByText("Update filter"));
 
     expect(setValue).toHaveBeenCalledWith("2018-12-15~2019-01-26");
   });

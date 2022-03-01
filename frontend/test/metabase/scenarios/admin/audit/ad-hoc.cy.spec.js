@@ -5,7 +5,7 @@ import {
 } from "__support__/e2e/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
-  describe("native query with JOIN", () => {
+  describe("native query", () => {
     beforeEach(() => {
       restore();
 
@@ -24,10 +24,11 @@ describeWithToken("audit > ad-hoc", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should appear in audit log (metabase-enterprise#486)", () => {
+    it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
       cy.visit("/admin/audit/members/log");
 
       cy.findByText("Native")
+        .parent()
         .parent()
         .within(() => {
           cy.findByText("Ad-hoc").click();
@@ -38,6 +39,7 @@ describeWithToken("audit > ad-hoc", () => {
 
       cy.get(".PageTitle").contains("Query");
       cy.findByText("Open in Metabase");
+      cy.get(".ace_content").contains("SELECT 123");
     });
   });
 });

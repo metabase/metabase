@@ -14,12 +14,12 @@ describeWithToken("scenarios > admin > settings > SSO > JWT", () => {
       .closest("li")
       .within(() => {
         cy.findByText("Disabled")
-          .siblings("a")
+          .siblings("input")
           .click();
       });
     cy.findByText("Enabled");
 
-    cy.findByPlaceholderText("https://jwt.yourdomain.org")
+    cy.findByLabelText("JWT Identity Provider URI")
       .type("localhost")
       .blur();
     cy.button("Save changes").click();

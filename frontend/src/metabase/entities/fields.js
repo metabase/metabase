@@ -62,6 +62,10 @@ const Fields = createEntity({
         }
       );
     },
+    getFieldValues: (state, { entityId }) => {
+      const field = state.entities.fields[entityId];
+      return field ? getFieldValues(field) : [];
+    },
   },
 
   // ACTION CREATORS
@@ -72,6 +76,7 @@ const Fields = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Fields.getObjectStatePath(id)],
         ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+        entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
     )(({ id: fieldId }) => async (dispatch, getState) => {

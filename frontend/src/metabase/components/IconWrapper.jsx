@@ -1,9 +1,11 @@
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
 import { color } from "styled-system";
 import { color as metabaseColors } from "metabase/lib/colors";
 
-const IconWrapper = styled(Flex)`
+const IconWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
   ${color};
   border-radius: ${props => props.borderRadius};
 `;
@@ -11,8 +13,6 @@ const IconWrapper = styled(Flex)`
 IconWrapper.defaultProps = {
   borderRadius: 6,
   bg: metabaseColors("bg-medium"),
-  align: "center",
-  justify: "center",
 };
 
 export default IconWrapper;

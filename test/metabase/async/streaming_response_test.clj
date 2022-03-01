@@ -8,6 +8,7 @@
             [metabase.http-client :as test-client]
             [metabase.models :refer [Database]]
             [metabase.query-processor.context :as context]
+            [metabase.server.protocols :as server.protocols]
             [metabase.test :as mt]
             [metabase.util :as u])
   (:import java.util.concurrent.Executors
@@ -138,3 +139,30 @@
                          (when wait
                            (Thread/sleep wait)
                            (recur more))))))))))))
+
+(def ^:private ^:dynamic *number-of-cans* nil)
+
+(deftest preserve-bindings-test
+  (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
+    (with-open [os (java.io.ByteArrayOutputStream.)]
+      (let [streaming-response (binding [*number-of-cans* 2]
+                                 (streaming-response/streaming-response nil [os _]
+                                   (.write os (.getBytes (format "%s cans" *number-of-cans*) "UTF-8"))))
+            complete-promise   (promise)]
+        (server.protocols/respond streaming-response
+                                  {:response      (reify javax.servlet.http.HttpServletResponse
+                                                    (setStatus [_ _])
+                                                    (getOutputStream [_]
+                                                      (proxy [javax.servlet.ServletOutputStream] []
+                                                        (write
+                                                          ([byytes]
+                                                           (.write os ^bytes byytes))
+                                                          ([byytes offset length]
+                                                           (.write os ^bytes byytes offset length))))))
+                                   :async-context (reify javax.servlet.AsyncContext
+                                                    (complete [_]
+                                                      (deliver complete-promise true)))})
+        (is (= true
+               (deref complete-promise 1000 ::timed-out)))
+        (is (= "2 cans"
+               (String. (.toByteArray os) "UTF-8")))))))

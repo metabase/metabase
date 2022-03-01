@@ -4,7 +4,6 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import Group from "metabase/entities/groups";
-import { diffPermissions } from "metabase/lib/permissions";
 import Collections, {
   getCollectionIcon,
   ROOT_COLLECTION,
@@ -17,6 +16,8 @@ import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
 
+export const collectionsQuery = { tree: true, "exclude-archived": true };
+
 export const getIsDirty = createSelector(
   state => state.admin.permissions.collectionPermissions,
   state => state.admin.permissions.originalCollectionPermissions,
@@ -24,18 +25,15 @@ export const getIsDirty = createSelector(
     JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
 );
 
-export const getDiff = createSelector(
-  Group.selectors.getList,
-  state => state.admin.permissions.collectionPermissions,
-  state => state.admin.permissions.originalCollectionPermissions,
-  (groups, permissions, originalPermissions) =>
-    diffPermissions(permissions, originalPermissions, groups),
-);
+export const getCurrentCollectionId = (_state, props) => {
+  if (props.params.collectionId == null) {
+    return null;
+  }
 
-export const getCurrentCollectionId = (_state, props) =>
-  props.params.collectionId === ROOT_COLLECTION.id
+  return props.params.collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
     : parseInt(props.params.collectionId);
+};
 
 const getRootCollectionTreeItem = () => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
@@ -46,20 +44,16 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollectionsTree = (state, _props) => {
-  const collections =
+const getCollections = state =>
+  (
     Collections.selectors.getList(state, {
-      entityQuery: { tree: true },
-    }) || [];
-  const nonPersonalCollections = collections.filter(
-    nonPersonalOrArchivedCollection,
-  );
+      entityQuery: collectionsQuery,
+    }) ?? []
+  ).filter(nonPersonalOrArchivedCollection);
 
-  return [
-    getRootCollectionTreeItem(),
-    ...buildCollectionTree(nonPersonalCollections),
-  ];
-};
+const getCollectionsTree = createSelector([getCollections], collections => {
+  return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
+});
 
 export function buildCollectionTree(collections) {
   if (collections == null) {
@@ -110,21 +104,23 @@ const findCollection = (collections, collectionId) => {
   );
 };
 
-const getCollection = (state, props) => {
-  const collectionId = getCurrentCollectionId(state, props);
-  const collections = Collections.selectors.getList(state, {
-    entityQuery: { tree: true },
-  });
+const getCollection = createSelector(
+  [getCurrentCollectionId, getCollections],
+  (collectionId, collections) => {
+    if (collectionId == null) {
+      return null;
+    }
 
-  if (collectionId === ROOT_COLLECTION.id) {
-    return {
-      ...ROOT_COLLECTION,
-      children: collections,
-    };
-  }
+    if (collectionId === ROOT_COLLECTION.id) {
+      return {
+        ...ROOT_COLLECTION,
+        children: collections,
+      };
+    }
 
-  return findCollection(collections, collectionId);
-};
+    return findCollection(collections, collectionId);
+  },
+);
 
 const getFolder = (state, props) => {
   const folderId = getCurrentCollectionId(state, props);

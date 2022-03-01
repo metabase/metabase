@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory User]]
+                                     PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -21,7 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -33,13 +33,14 @@
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
-  (:import java.net.ServerSocket
+  (:import [java.io File FileInputStream]
+           java.net.ServerSocket
            java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -49,7 +50,6 @@
 (p/import-vars
  [tu.log
   with-log-level
-  with-log-messages
   with-log-messages-for-level])
 
 (defn- random-uppercase-letter []
@@ -97,6 +97,7 @@
 (def ^:private with-temp-defaults-fns
   {Card
    (fn [_] {:creator_id             (rasta-id)
+            :database_id            (data/id)
             :dataset_query          {}
             :display                :table
             :name                   (random-name)
@@ -107,8 +108,8 @@
             :color "#ABCDEF"})
 
    Dashboard
-   (fn [_] {:creator_id   (rasta-id)
-            :name         (random-name)})
+   (fn [_] {:creator_id (rasta-id)
+            :name       (random-name)})
 
    DashboardCardSeries
    (constantly {:position 0})
@@ -171,7 +172,7 @@
             :is_reversion false})
 
    Segment
-   (fn [_] {:creator_id (rasta-id)
+   (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
@@ -193,6 +194,19 @@
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
+
+   Timeline
+   (fn [_]
+     {:name       "Timeline of bird squawks"
+      :creator_id (rasta-id)})
+
+   TimelineEvent
+   (fn [_]
+     {:name         "default timeline event"
+      :timestamp    (t/zoned-date-time)
+      :timezone     "US/Pacific"
+      :time_matters true
+      :creator_id   (rasta-id)})
 
    User
    (fn [_] {:first_name (random-name)
@@ -257,7 +271,7 @@
       keyword))
 
 (defn do-with-temp-env-var-value
-  "Impl for `with-temp-env-var-value` macro."
+  "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
@@ -330,42 +344,49 @@
 
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
-  the original value. This works much the same way as `binding`.
+  the original value. This works much the same way as [[binding]].
 
-  If an env var value is set for the setting, this acts as a wrapper around `do-with-temp-env-var-value`.
+  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
 
-  Prefer the macro `with-temporary-setting-values` over using this function directly."
-  {:style/indent 2}
+  Prefer the macro [[with-temporary-setting-values]] over using this function directly."
   [setting-k value thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
-  (let [setting                    (#'setting/resolve-setting setting-k)
-        env-var-value              (#'setting/env-var-value setting)
-        original-db-or-cache-value (#'setting/db-or-cache-value setting)]
+  (let [setting       (#'setting/resolve-setting setting-k)
+        env-var-value (#'setting/env-var-value setting)]
     (if env-var-value
       (do-with-temp-env-var-value setting env-var-value thunk)
-      (try
-        (setting/set! setting-k value)
-        (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-          (thunk))
-        (catch Throwable e
-          (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                          {:setting setting-k
-                           :value   value}
-                          e)))
-        (finally
-          (setting/set! setting-k original-db-or-cache-value))))))
+      (let [original-value (setting/get setting-k)]
+        (try
+          (setting/set! setting-k value)
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (catch Throwable e
+            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                            {:setting  setting-k
+                             :location (symbol (name (:namespace setting)) (name setting-k))
+                             :value    value}
+                            e)))
+          (finally
+            (try
+              (setting/set! setting-k original-value)
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) (name setting-k))
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
-  "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
-  works much the same way as `binding`.
+  "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
+  This works much the same way as `binding`.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
   If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`."
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -822,10 +843,10 @@
           (let [remapped (db/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
-                                          :name                    (:display_name original)
+                                          :name                    (format "%s [external remap]" (:display_name original))
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
-                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
           (let [values-map (if (sequential? remap)
@@ -834,12 +855,12 @@
                              remap)]
             (fn []
               (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (:display_name original)
+                                              :name     (format "%s [internal remap]" (:display_name original))
                                               :type     :internal}]
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)
                                               :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s"
+                (testing (format "With human readable values remapping %s -> %s\n"
                                  (describe-field original) (pr-str values-map))
                   (thunk)))))))))
    orig->remapped))
@@ -865,16 +886,23 @@
   "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
   \"internal\" remappings:
 
-    ;; FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+  FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+
     (with-column-remappings [reviews.product_id products.title]
       ...)
 
-    ;; human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n`
-    ;; values starting with 1 (for common cases where the column is an FK ID column)
+  Symbols are normally converted to [[metabase.test/id]] forms e.g.
+
+    reviews.product_id -> (mt/id :reviews :product_id)
+
+  human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n` values
+  starting with 1 (for common cases where the column is an FK ID column)
+
     (with-column-remappings [venues.category_id [\"My Cat 1\" \"My Cat 2\"]]
       ...)
 
-    ;; equivalent to:
+  equivalent to:
+
     (with-column-remappings [venues.category_id {1 \"My Cat 1\", 2 \"My Cat 2\"}]
       ...)
 
@@ -1002,3 +1030,60 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn secret-value-equals?
+  "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are
+  interpreted as a UTF-8 encoded string, then compared to `expected. Otherwise, the individual bytes of each are
+  compared."
+  {:added "0.42.0"}
+  [expected ^bytes value]
+  (cond (string? expected)
+        (= expected (String. value "UTF-8"))
+
+        (bytes? expected)
+        (= (seq expected) (seq value))
+
+        :else
+        (throw (ex-info "expected parameter must be a string or bytes" {:expected expected :value value}))))
+
+(defn select-keys-sequentially
+  "`expected` is a vector of maps, and `actual` is a sequence of maps.  Maps a function over all items in `actual` that
+  performs `select-keys` on the map at the equivalent index from `expected`.  Note the actual values of the maps in
+  `expected` don't matter here, only the keys.
+
+  Sample invocation:
+  (select-keys-sequentially [{:a nil :b nil}
+                             {:a nil :b nil}
+                             {:b nil :x nil}] [{:a 1 :b 2}
+                                               {:a 3 :b 4 :c 5 :d 6}
+                                               {:b 7 :x 10 :y 11}])
+  => ({:a 1, :b 2} {:a 3, :b 4} {:b 7, :x 10})
+
+  This function can be used to help assert that certain (but not necessarily all) key/value pairs in a
+  `connection-properties` vector match against some expected data."
+  [expected actual]
+  (cond (vector? expected)
+    (map-indexed (fn [idx prop]
+                   (reduce-kv (fn [acc k v]
+                                (assoc acc k (if (map? v)
+                                               (select-keys-sequentially (get (nth expected idx) k) v)
+                                               v)))
+                              {}
+                              (select-keys prop (keys (nth expected idx)))))
+                 actual)
+
+    (map? expected)
+    ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
+    (select-keys actual (keys expected))
+
+    :else
+    actual))
+
+(defn file->bytes
+  "Reads a file at `file-path` completely into a byte array, returning that array."
+  [^String file-path]
+  (let [f   (File. file-path)
+        ary (byte-array (.length f))]
+    (with-open [is (FileInputStream. f)]
+      (.read is ary)
+      ary)))

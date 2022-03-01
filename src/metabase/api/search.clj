@@ -7,16 +7,12 @@
             [honeysql.helpers :as h]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models.card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as coll :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
-            [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.permissions :as perms]
-            [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
             [metabase.search.config :as search-config]
@@ -39,7 +35,10 @@
    (s/optional-key :offset-int)  (s/maybe s/Int)})
 
 (def ^:private SearchableModel
-  (apply s/enum search-config/searchable-models))
+  (apply s/enum search-config/all-models))
+
+(def ^:private DBModel
+  (apply s/enum search-config/searchable-db-models))
 
 (def ^:private HoneySQLColumn
   (s/cond-pre
@@ -65,7 +64,7 @@
   are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
   `UNION` two columns of two different types.)"
   (ordered-map/ordered-map
-   ;; returned for all models
+   ;; returned for all models. Important to be first for changing model for dataset
    :model               :text
    :id                  :integer
    :name                :text
@@ -90,7 +89,9 @@
    :database_id         :integer
    :table_schema        :text
    :table_name          :text
-   :table_description   :text))
+   :table_description   :text
+   ;; returned for Database and Table
+   :initial_sync_status :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -98,7 +99,7 @@
 
 (s/defn ^:private model->alias :- s/Keyword
   [model :- SearchableModel]
-  (keyword (str/lower-case (name model))))
+  (keyword model))
 
 (s/defn ^:private ->column-alias :- s/Keyword
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
@@ -117,7 +118,7 @@
         :let                  [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
       (= search-col :model)
-      [(hx/literal (name (model->alias model))) :model]
+      [(hx/literal model) :model]
 
       ;; This is an aliased column, no need to include the table alias
       (sequential? maybe-aliased-col)
@@ -148,26 +149,27 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(s/defn ^:private from-clause-for-model :- [(s/one [(s/one SearchableModel "model") (s/one s/Keyword "alias")]
+(s/defn ^:private from-clause-for-model :- [(s/one [(s/one DBModel "model") (s/one s/Keyword "alias")]
                                                    "from clause")]
   [model :- SearchableModel]
-  [[model (model->alias model)]])
+  (let [db-model (get search-config/model-to-db-model model)]
+    [[db-model (-> db-model name str/lower-case keyword)]]))
 
 (defmulti ^:private archived-where-clause
   {:arglists '([model archived?])}
-  (fn [model _] (class model)))
+  (fn [model _] model))
 
 (defmethod archived-where-clause :default
   [model archived?]
   [:= (hsql/qualify (model->alias model) :archived) archived?])
 
 ;; Databases can't be archived
-(defmethod archived-where-clause (class Database)
+(defmethod archived-where-clause "database"
   [model archived?]
   [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
-(defmethod archived-where-clause (class Table)
+(defmethod archived-where-clause "table"
   [model archived?]
   (if archived?
     [:= 1 0]  ; No tables should appear in archive searches
@@ -246,11 +248,11 @@
 
 (defmulti ^:private search-query-for-model
   {:arglists '([model search-context])}
-  (fn [model _] (class model)))
+  (fn [model _] model))
 
-(s/defmethod search-query-for-model (class Card)
-  [_ search-ctx :- SearchContext]
-  (-> (base-query-for-model Card search-ctx)
+(s/defn ^:private shared-card-impl [dataset? :- s/Bool search-ctx :- SearchContext]
+  (-> (base-query-for-model "card" search-ctx)
+      (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
       (h/left-join [CardFavorite :fave]
                    [:and
                     [:= :card.id :fave.card_id]
@@ -258,48 +260,58 @@
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
 
-(s/defmethod search-query-for-model (class Collection)
-  [_ search-ctx :- SearchContext]
-  (-> (base-query-for-model Collection search-ctx)
+(s/defmethod search-query-for-model "card"
+  [_model search-ctx :- SearchContext]
+  (shared-card-impl false search-ctx))
+
+(s/defmethod search-query-for-model "dataset"
+  [_model search-ctx :- SearchContext]
+  (-> (shared-card-impl true search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal "dataset") :model] (rest columns))))))
+
+(s/defmethod search-query-for-model "collection"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
-(s/defmethod search-query-for-model (class Database)
-  [_ search-ctx :- SearchContext]
-  (base-query-for-model Database search-ctx))
+(s/defmethod search-query-for-model "database"
+  [model search-ctx :- SearchContext]
+  (base-query-for-model model search-ctx))
 
-(s/defmethod search-query-for-model (class Dashboard)
-  [_ search-ctx :- SearchContext]
-  (-> (base-query-for-model Dashboard search-ctx)
+(s/defmethod search-query-for-model "dashboard"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
       (h/left-join [DashboardFavorite :fave]
                    [:and
                     [:= :dashboard.id :fave.dashboard_id]
                     [:= :fave.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
-(s/defmethod search-query-for-model (class Pulse)
-  [_ search-ctx :- SearchContext]
+(s/defmethod search-query-for-model "pulse"
+  [model search-ctx :- SearchContext]
   ;; Pulses don't currently support being archived, omit if archived is true
-  (-> (base-query-for-model Pulse search-ctx)
+  (-> (base-query-for-model model search-ctx)
       (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
       ;; We don't want alerts included in pulse results
       (h/merge-where [:and
                       [:= :alert_condition nil]
                       [:= :pulse.dashboard_id nil]])))
 
-(s/defmethod search-query-for-model (class Metric)
-  [_ search-ctx :- SearchContext]
-  (-> (base-query-for-model Metric search-ctx)
+(s/defmethod search-query-for-model "metric"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
       (h/left-join [Table :table] [:= :metric.table_id :table.id])))
 
-(s/defmethod search-query-for-model (class Segment)
-  [_ search-ctx :- SearchContext]
-  (-> (base-query-for-model Segment search-ctx)
+(s/defmethod search-query-for-model "segment"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
-(s/defmethod search-query-for-model (class Table)
-  [_ {:keys [current-user-perms table-db-id], :as search-ctx} :- SearchContext]
+(s/defmethod search-query-for-model "table"
+  [model {:keys [current-user-perms table-db-id], :as search-ctx} :- SearchContext]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model Table search-ctx)]
+    (let [base-query (base-query-for-model model search-ctx)]
       (add-table-db-id-clause
        (if (contains? current-user-perms "/")
          base-query
@@ -307,7 +319,7 @@
            {:select (:select base-query)
             :from   [[(merge
                        base-query
-                       {:select [:id :schema :db_id :name :description :display_name :updated_at
+                       {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
                                  [(hx/concat (hx/literal "/db/")
                                              :db_id
                                              (hx/literal "/schema/")
@@ -331,7 +343,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status}))
+                               (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))
@@ -355,18 +367,12 @@
   [{:keys [id]}]
   (-> id Segment mi/can-read?))
 
-(defn- models-to-search
-  [{:keys [models]} default]
-  (if models
-    (vec (map search-config/model-name->instance models))
-    default))
-
 (defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
   [search-ctx]
   (map #((first %) :model)
        (filter not-empty
-               (for [model search-config/searchable-models]
+               (for [model search-config/all-models]
                  (let [search-query (search-query-for-model model search-ctx)
                        query-with-limit (h/limit search-query 1)]
                    (db/query query-with-limit))))))
@@ -376,7 +382,8 @@
   to make the union-all degenerate down to trivial case of one model without errors.
   Therefore, we degenerate it down for it"
   [search-ctx]
-  (let [models       (models-to-search search-ctx search-config/searchable-models)
+  (let [models       (or (:models search-ctx)
+                         search-config/all-models)
         sql-alias    :alias_is_required_by_sql_but_not_needed_here
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
@@ -387,7 +394,6 @@
                                  :when (seq query)]
                              query)} sql-alias]]
        :order-by order-clause})))
-
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
@@ -410,15 +416,15 @@
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      { :total             (count total-results)
-        :data              (cond->> total-results
-                             (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                             (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-        :available_models  (query-model-set search-ctx)
-        :limit             (:limit-int search-ctx)
-        :offset            (:offset-int search-ctx)
-        :table_db_id       (:table-db-id search-ctx)
-        :models            (:models search-ctx)})))
+      {:total             (count total-results)
+       :data              (cond->> total-results
+                            (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                            (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+       :available_models  (query-model-set search-ctx)
+       :limit             (:limit-int search-ctx)
+       :offset            (:offset-int search-ctx)
+       :table_db_id       (:table-db-id search-ctx)
+       :models            (:models search-ctx)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
@@ -434,7 +440,7 @@
    models :-          (s/maybe models-schema)
    limit :-           (s/maybe su/IntGreaterThanZero)
    offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
-  (cond-> {:search-string     search-string
+  (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
@@ -449,7 +455,7 @@
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
-  For the list of models, check `metabase.search.config/searchable-models.
+  For the list of models, check `metabase.search.config/all-models.
 
   To search in archived portions of models, pass in `archived=true`.
   If you want, while searching tables, only tables of a certain DB id,

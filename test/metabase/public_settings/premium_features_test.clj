@@ -3,7 +3,9 @@
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
+            [metabase.test :as mt]
             [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
@@ -29,7 +31,8 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token)
-      :query-params {:users (str (#'premium-features/active-user-count))}}
+      :query-params {:users     (str (#'premium-features/active-user-count))
+                     :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
 
@@ -40,8 +43,17 @@
                 :trial    false}))
 
 (deftest fetch-token-status-test
-  (tt/with-temp User [user {:email "admin@example.com"}]
-    (let [token "fa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3e"]
+  (tt/with-temp User [_user {:email "admin@example.com"}]
+    (let [token       "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611"
+          print-token "d7ad...c611"]
+
+      (testing "Do not log the token (#18249)"
+        (let [logs        (mt/with-log-messages-for-level :info
+                            (#'premium-features/fetch-token-status* token))
+              pr-str-logs (mapv pr-str logs)]
+          (is (every? (complement #(re-find (re-pattern token) %)) pr-str-logs))
+          (is (= 1 (count (filter #(re-find (re-pattern print-token) %) pr-str-logs))))))
+
       (testing "With the backend unavailable"
         (let [result (token-status-response token {:status 500})]
           (is (false? (:valid result)))))

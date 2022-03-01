@@ -20,8 +20,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :timezone])
-   (dissoc (mt/object-defaults Database) :details)
+   (select-keys (mt/db) [:id :timezone :initial_sync_status])
+   (dissoc (mt/object-defaults Database) :details :initial_sync_status)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -36,7 +36,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
+                                    (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -44,7 +44,6 @@
                                      :schema                  "PUBLIC"
                                      :name                    "USERS"
                                      :display_name            "Users"
-                                     :entity_name             nil
                                      :active                  true
                                      :id                      (mt/id :users)
                                      :db_id                   (mt/id)
@@ -63,7 +62,7 @@
                  :has_field_values "list"
                  :dimensions       []
                  :name_field       nil})
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))))))
 
@@ -197,6 +196,7 @@
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
           (db/update! FieldValues id :human_readable_values nil))
+        (db/update! Field (mt/id :venues :price) :has_field_values "list")
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
                (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
@@ -207,7 +207,16 @@
 
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
-             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
+             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
+
+    (testing "External remapping"
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:has_field_values "list"}
+          (is (partial= {:field_id (mt/id :venues :category_id)
+                         :values   [[1 "African"]
+                                    [2 "American"]
+                                    [3 "Artisan"]]}
+                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
@@ -528,7 +537,7 @@
                 :fk_target_field_id false}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
-                                                                             :fk_target_field_id field-id-1})
+                                                                                :fk_target_field_id field-id-1})
       (testing "after change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -657,3 +666,28 @@
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"
                                       nil))))))
+
+(deftest field-values-remapped-fields-test
+  (testing "GET /api/field/:id/values"
+    (testing "Should return tuples of [original remapped] for a remapped Field (#13235)"
+      (mt/dataset sample-dataset
+        (mt/with-temp-copy-of-db
+          ;; create a human-readable-values remapping. Do this via the API because the crazy things may or may not be
+          ;; happening
+          (is (partial= {:field_id                (mt/id :orders :product_id)
+                         :human_readable_field_id (mt/id :products :title)
+                         :type                    "external"}
+                        (mt/user-http-request :crowberto :post 200
+                                              (format "field/%d/dimension" (mt/id :orders :product_id))
+                                              {:human_readable_field_id (mt/id :products :title)
+                                               :name                    "Product ID"
+                                               :type                    :external})))
+          ;; trigger a field values rescan (this API endpoint is synchronous)
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
+          ;; mark the Field as has_field_values = list
+          (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
+            (is (partial= {:values [[1 "Rustic Paper Wallet"]
+                                    [2 "Small Marble Shoes"]
+                                    [3 "Synergistic Granite Chair"]]}
+                          (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))

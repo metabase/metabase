@@ -17,17 +17,27 @@ const mapDispatchToProps = {
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
     const { question, archive, router } = this.props;
+
     const card = question.card();
     archive(card.id);
     router.push(Urls.collection(card.collection));
   };
 
   render() {
-    const { onClose } = this.props;
+    const { onClose, question } = this.props;
+
+    const isModel = question.isDataset();
+
+    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
+
+    const message = isModel
+      ? t`This model will be removed from any dashboards or pulses using it.`
+      : t`This question will be removed from any dashboards or pulses using it.`;
+
     return (
       <ArchiveModal
-        title={t`Archive this question?`}
-        message={t`This question will be removed from any dashboards or pulses using it.`}
+        title={title}
+        message={message}
         onArchive={this.onArchive}
         onClose={onClose}
       />

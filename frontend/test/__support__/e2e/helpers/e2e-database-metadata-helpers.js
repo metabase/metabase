@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+
 export function withDatabase(databaseId, f) {
   cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
     const database = {};
@@ -13,6 +15,6 @@ export function withDatabase(databaseId, f) {
   });
 }
 
-export function withSampleDataset(f) {
-  return withDatabase(1, f);
+export function withSampleDatabase(f) {
+  return withDatabase(SAMPLE_DB_ID, f);
 }

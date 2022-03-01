@@ -10,7 +10,7 @@
 
 (defmethod tx/has-questionable-timezone-support? :postgres [_] true) ; TODO - What?
 
-(defmethod tx/sorts-nil-first? :postgres [_] false)
+(defmethod tx/sorts-nil-first? :postgres [_ _] false)
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
 

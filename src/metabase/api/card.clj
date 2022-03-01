@@ -2,11 +2,15 @@
   "/api/card endpoints."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
+            [clojure.data :as data]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as dataset-api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -14,27 +18,24 @@
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
+            [metabase.models.moderation-review :as moderation-review]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
+            [metabase.models.timeline :as timeline]
             [metabase.models.view-log :refer [ViewLog]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -176,28 +177,62 @@
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
+(api/defendpoint GET "/:id/timelines"
+  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
+  [id include start end]
+  {include (s/maybe timeline-api/Include)
+   start   (s/maybe su/TemporalString)
+   end     (s/maybe su/TemporalString)}
+  (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
+    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
+    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
+    ;; the read-checks are particularly fast on multiple items
+    (timeline/timelines-for-collection collection_id
+                                       {:timeline/events? (= include "events")
+                                        :events/start     (when start (u.date/parse start))
+                                        :events/end       (when end (u.date/parse end))})))
+
+
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
-;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is
-;; ran.  As a workaround, we'll calculate this metadata and return it with all query responses, and then let the
-;; frontend pass it back to us when saving or updating a Card.  As a basic step to make sure the Metadata is valid
-;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
-;; middleware namespace for more details
-
 (s/defn ^:private result-metadata-async :- ManyToManyChannel
-  "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the
-  `metadata` passed in seems valid,and, if so, return a channel that returns the value as-is; otherwise, we'll run the
-  query ourselves to get the right values, and return a channel where you can listen for the results."
-  [query metadata checksum]
-  (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate qr/ResultsMetadata metadata))]
-    (log/info
-     (cond
-       valid-metadata? (trs "Card results metadata passed in to API is VALID. Thanks!")
-       metadata        (trs "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata.")
-       :else           (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
-    (if valid-metadata?
-      (a/to-chan [metadata])
+  "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
+  `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
+  fresh metadata to preserve metadata edits from the dataset.
+
+  Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
+  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
+
+  This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
+  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
+  [{:keys [original-query query metadata original-metadata dataset?]}]
+  (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
+    (cond
+      (or
+       ;; query didn't change, preserve existing metadata
+       (and (= (mbql.normalize/normalize original-query)
+               (mbql.normalize/normalize query))
+            valid-metadata?)
+       ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
+       (and (nil? query)
+            valid-metadata?))
+      (a/to-chan! [metadata])
+
+      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; means the metadata won't be updated at all.
+      (nil? query)
+      (doto (a/chan) a/close!)
+
+      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
+      ;; re-run and blend the saved into the new metadata
+      (and dataset? (or valid-metadata? (seq original-metadata)))
+      (a/go (let [metadata' (if valid-metadata?
+                              (map mbql.normalize/normalize-source-metadata metadata)
+                              original-metadata)
+                  fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+              (qputil/combine-metadata fresh metadata')))
+      :else
+      ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
@@ -245,14 +280,17 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata metadata_checksum], :as card-data}]
+  [{:keys [dataset_query result_metadata dataset], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*)
-        result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
+                                    :creator_id api/*current-user-id*
+                                    :dataset (boolean (:dataset card-data)))
+        result-metadata-chan (result-metadata-async {:query dataset_query
+                                                     :metadata result_metadata
+                                                     :dataset? dataset})
         out-chan             (a/promise-chan)]
     (a/go
       (try
@@ -269,7 +307,7 @@
 
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
+  [:as {{:keys [collection_id collection_position dataset_query description display name
                 result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
@@ -278,7 +316,6 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
@@ -286,6 +323,16 @@
   (collection/check-write-perms-for-collection collection_id)
   ;; Return a channel that can be used to fetch the results asynchronously
   (create-card-async! body))
+
+(api/defendpoint ^:returns-chan POST "/:id/copy"
+  "Copy a `Card`, with the new name 'Copy of _name_'"
+  [id]
+  {id (s/maybe su/IntGreaterThanZero)}
+  (let [orig-card (api/read-check Card id)
+        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-card  (assoc orig-card :name new-name)]
+    ;; Return a channel that can be used to fetch the results asynchronously
+    (create-card-async! new-card)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -303,22 +350,8 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
-
-(defn- result-metadata-for-updating-async
-  "If `card`'s query is being updated, return the value that should be saved for `result_metadata`. This *should* be
-  passed in to the API; if so, verifiy that it was correct (the checksum is valid); if not, go fetch it. If the query
-  has not changed, this returns a closed channel (so you will get `nil` when you attempt to fetch the result, and
-  will know not to update the value in the DB.)
-
-  Either way, results are returned asynchronously on a channel."
-  [card query metadata checksum]
-  (if (and query
-             (not= query (:dataset_query card)))
-    (result-metadata-async query metadata checksum)
-    (u/prog1 (a/chan)
-      (a/close! <>))))
 
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
@@ -415,6 +448,45 @@
       :else
       nil)))
 
+(defn- card-is-verified?
+  "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
+  is the first. This is the case from the hydration function for moderation_reviews."
+  [card]
+  (-> card :moderation_reviews first :status #{"verified"} boolean))
+
+(defn- changed?
+  "Return whether there were any changes in the objects at the keys for `consider`.
+
+  returns false because changes to collection_id are ignored:
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"foo\"})
+
+  returns true:
+  (changed? #{:description}
+            {:collection_id 1 :description \"foo\"}
+            {:collection_id 2 :description \"diff\"})"
+  [consider card-before updates]
+  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
+  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
+                                                                        (name x)
+                                                                        x))
+                                                              card))
+        before               (prepare (select-keys card-before consider))
+        after                (prepare (select-keys updates consider))
+        [_ changes-in-after] (data/diff before after)]
+    (boolean (seq changes-in-after))))
+
+
+
+(def card-compare-keys
+  "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
+  query."
+  #{:table_id
+    :database_id
+    :query_type ;; these first three may not even be changeable
+    :dataset_query})
+
 (defn- update-card-async!
   "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
@@ -424,12 +496,21 @@
     (db/transaction
       (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
+      (when (and (card-is-verified? card-before-update)
+                 (changed? card-compare-keys card-before-update card-updates))
+        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+        ;; to remove it regardless if enterprise edition is present at the moment.
+        (moderation-review/create-review! {:moderated_item_id   id
+                                           :moderated_item_type "card"
+                                           :moderator_id        api/*current-user-id*
+                                           :status              nil
+                                           :text                (tru "Unverified due to edit")}))
       ;; ok, now save the Card
       (db/update! Card id
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
         (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description :cache_ttl}
+          :present #{:collection_id :collection_position :description :cache_ttl :dataset}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                      :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
@@ -450,10 +531,12 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum cache_ttl]
+                   collection_position enable_embedding embedding_params result_metadata
+                   cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
+   dataset                (s/maybe s/Bool)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
@@ -463,20 +546,25 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
-  (let [card-before-update (api/write-check Card id)]
+  (let [card-before-update (hydrate (api/write-check Card id)
+                                    [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan (result-metadata-for-updating-async
-                                card-before-update
-                                dataset_query
-                                result_metadata
-                                metadata_checksum)
-          out-chan             (a/promise-chan)]
+    (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
+                                                       :query             dataset_query
+                                                       :metadata          result_metadata
+                                                       :original-metadata (:result_metadata card-before-update)
+                                                       :dataset?          (if (some? dataset)
+                                                                            dataset
+                                                                            (:dataset card-before-update))})
+          out-chan             (a/promise-chan)
+          card-updates         (merge card-updates
+                                      (when dataset
+                                        {:display :table}))]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
@@ -599,94 +687,33 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(defn- query-magic-ttl
-  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the
-  `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
-  utilized.)"
-  [query]
-  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
-    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
-                                            1000.0)))]
-      (when-not (zero? ttl-seconds)
-        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
-                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
-                  (u/emoji "💾"))
-        ttl-seconds))))
-
-(defn- ttl-hierarchy
-  [card dashboard database query]
-  (when (public-settings/enable-query-caching)
-    (let [ttls (map :cache_ttl [card dashboard database])
-          most-granular-ttl (first (filter some? ttls))]
-      (or most-granular-ttl
-          (query-magic-ttl query)))))
-
-(defn query-for-card
-  "Generate a query for a saved Card"
-  [{query :dataset_query
-    :as   card} parameters constraints middleware & [ids]]
-  (let [query     (-> query
-                      ;; don't want default constraints overridding anything that's already there
-                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                      (assoc :constraints constraints
-                             :parameters  parameters
-                             :middleware  middleware))
-        dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl       (ttl-hierarchy card dashboard database query)]
-    (assoc query :cache-ttl ttl)))
-
-(defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
-  be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
-  not met before returning the `StreamingResponse`."
-  [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints constraints/default-query-constraints
-             context     :question
-             qp-runner   qp/process-query-and-save-execution!}}]
-  {:pre [(u/maybe? sequential? parameters)]}
-  (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                     (binding [qp.perms/*card-id* card-id]
-                       (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                         :async? true)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                         middleware))))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               :card-name    (:name card)
-               :dashboard-id dashboard-id}]
-    (api/check-not-archived card)
-    (run query info)))
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
-  (run-query-for-card-async
+  ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
+  ;;
+  ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
+  ;;
+  ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
+  (qp.card/run-query-for-card-async
    card-id :api
-   :parameters parameters,
+   :parameters   parameters
    :ignore_cache ignore_cache
    :dashboard-id dashboard_id
-   :middleware {:process-viz-settings? false}))
+   :middleware   {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
-  "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
-  expects the parameters as serialized JSON in the 'parameters' parameter"
+  "Run the query associated with a Card, and return its results as a file in the specified format.
+
+  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
+  is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (run-query-for-card-async
+  (qp.card/run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
@@ -706,7 +733,7 @@
   be enabled."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -718,7 +745,7 @@
   "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
     :public_uuid       nil
@@ -729,7 +756,7 @@
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -737,7 +764,7 @@
   and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"
@@ -755,7 +782,7 @@
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (run-query-for-card-async card-id :api
+  (qp.card/run-query-for-card-async card-id :api
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))

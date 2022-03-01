@@ -1,7 +1,7 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
 
-import { SAMPLE_DATASET } from "__support__/sample_dataset_fixture";
+import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
 
 import ChartSettingsSidebar from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
 
@@ -14,7 +14,7 @@ describe("ChartSettingsSidebar", () => {
   it("should hide title and section picker when viewing column settings", () => {
     const { container, getByText, queryByText } = render(
       <ChartSettingsSidebar
-        question={SAMPLE_DATASET.question()}
+        question={SAMPLE_DATABASE.question()}
         result={{ data }}
       />,
     );
@@ -28,7 +28,7 @@ describe("ChartSettingsSidebar", () => {
   it("should not hide the title for gauge charts", () => {
     const { getByText } = render(
       <ChartSettingsSidebar
-        question={SAMPLE_DATASET.question().setDisplay("gauge")}
+        question={SAMPLE_DATABASE.question().setDisplay("gauge")}
         result={{ data }}
       />,
     );
@@ -51,7 +51,7 @@ describe("ChartSettingsSidebar", () => {
   it("should not hide the title for scalar charts", () => {
     const { getByText } = render(
       <ChartSettingsSidebar
-        question={SAMPLE_DATASET.question().setDisplay("scalar")}
+        question={SAMPLE_DATABASE.question().setDisplay("scalar")}
         result={{ data }}
       />,
     );

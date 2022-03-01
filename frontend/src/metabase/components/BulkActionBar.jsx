@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import styled from "styled-components";
-import { Box } from "grid-styled";
+import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
-const FixedBottomBar = styled(Box)`
+const FixedBottomBar = styled.div`
   position: fixed;
   bottom: 0;
   left: 0;

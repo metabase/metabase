@@ -11,10 +11,12 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
-            [metabase.db.env :as mdb.env]
+            [metabase.api.timeline :as timeline-api]
+            [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as collection.graph]
+            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
@@ -23,6 +25,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -64,22 +67,42 @@
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
     [{:name     \"A\"
+      :below    #{:card :dataset}
       :children [{:name \"B\"}
                  {:name     \"C\"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     \"D\"
+                              :here     #{:dataset}
                               :children [{:name \"E\"}]}
                              {:name     \"F\"
+                              :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
-     {:name \"H\"}]"
-  [namespace]
-  {namespace (s/maybe su/NonBlankString)}
-  (collection/collections->tree
-   (db/select Collection
-     {:where [:and
-              [:= :namespace namespace]
-              (collection/visible-collection-ids->honeysql-filter-clause
-               :id
-               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})))
+     {:name \"H\"}]
+
+  The here and below keys indicate the types of items at this particular level of the tree (here) and in its
+  subtree (below)."
+  [exclude-archived namespace]
+  {exclude-archived (s/maybe su/BooleanString)
+   namespace        (s/maybe su/NonBlankString)}
+  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                (update acc (if dataset :dataset :card) conj collection_id))
+                              {:dataset #{}
+                               :card    #{}}
+                              (db/reducible-query {:select    [:collection_id :dataset]
+                                                   :modifiers [:distinct]
+                                                   :from      [:report_card]
+                                                   :where     [:= :archived false]}))]
+    (collection/collections->tree
+     coll-type-ids
+     (db/select Collection
+                {:where [:and
+                         (when exclude-archived
+                           [:= :archived false])
+                         [:= :namespace namespace]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -87,13 +110,13 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "collection" "dashboard" "pulse" "snippet" "no_models"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [ModelString] :else ModelString))
+(def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -137,6 +160,14 @@
      :is_not_pinned [:= col nil]
      [:= 1 1])))
 
+(defn- poison-when-pinned-clause
+  "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
+  pinning so that no results return when asking for pinned items."
+  [pinned-state]
+  (if (= pinned-state :is_pinned)
+    [:= 1 2]
+    [:= 1 1]))
+
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
   (fn [model _]
@@ -167,24 +198,40 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status)))
+    (dissoc row :description :display :authority_level :moderated_status :icon)))
 
 (defmethod collection-children-query :snippet
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived?]}]
   {:select [:id :name [(hx/literal "snippet") :model]]
-       :from   [[NativeQuerySnippet :nqs]]
-       :where  [:and
-                [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]})
+   :from   [[NativeQuerySnippet :nqs]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod collection-children-query :timeline
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+   :from   [[Timeline :timeline]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :timeline
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
-    (dissoc row :description :collection_position :display :authority_level :moderated_status)))
+    (dissoc row
+            :description :collection_position :display :authority_level
+            :moderated_status :icon)))
 
-(defmethod collection-children-query :card
-  [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
+(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
+                   [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]
@@ -214,12 +261,25 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
-                   [:= :archived (boolean archived?)]]}
+                   [:= :archived (boolean archived?)]
+                   [:= :dataset dataset?]]}
       (h/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod collection-children-query :dataset
+  [_ collection options]
+  (card-query true collection options))
+
+(defmethod post-process-collection-children :dataset
+  [_ rows]
+  (post-process-collection-children :card rows))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query false collection options))
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level) rows) :favorite))
+  (hydrate (map #(dissoc % :authority_level :icon) rows) :favorite))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -246,7 +306,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -271,7 +331,7 @@
     ;; don't get models back from ulterior over-query
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
-    (assoc (dissoc row :collection_position :display :moderated_status)
+    (assoc (dissoc row :collection_position :display :moderated_status :icon)
            :can_write
            (mi/can-write? Collection (:id row)))))
 
@@ -309,9 +369,11 @@
   (case (keyword model-name)
     :collection Collection
     :card       Card
+    :dataset    Card
     :dashboard  Dashboard
     :pulse      Pulse
-    :snippet    NativeQuerySnippet))
+    :snippet    NativeQuerySnippet
+    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -330,7 +392,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :display :model :collection_position :authority_level
-   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status
+   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
 (defn- add-missing-columns
@@ -339,7 +401,7 @@
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
            (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= @mdb.env/db-type :postgres))
+             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
                                      [(hx/cast typpe nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
@@ -348,9 +410,11 @@
   [select-clause model]
   (let [rankings {:dashboard  1
                   :pulse      2
-                  :card       3
-                  :snippet    4
-                  :collection 5}]
+                  :dataset    3
+                  :card       4
+                  :snippet    5
+                  :collection 6
+                  :timeline   7}]
     (conj select-clause [(get rankings model 100)
                          :model_ranking])))
 
@@ -407,8 +471,8 @@
     [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
-  [collection models {:keys [collection-namespace sort-info] :as options}]
-  (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
+  [collection models {:keys [sort-info] :as options}]
+  (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)
@@ -441,9 +505,9 @@
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
+  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models], :as options}                     :- CollectionChildrenOptions]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -470,6 +534,24 @@
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
+
+(api/defendpoint GET "/root/timelines"
+  "Fetch the root Collection's timelines."
+  [include archived]
+  {include  (s/maybe timeline-api/Include)
+   archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                            :timeline/archived? archived?})))
+
+(api/defendpoint GET "/:id/timelines"
+  "Fetch a specific Collection's timelines."
+  [id include archived]
+  {include  (s/maybe timeline-api/Include)
+   archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                           :timeline/archived? archived?})))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:

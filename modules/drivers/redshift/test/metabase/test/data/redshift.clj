@@ -18,7 +18,11 @@
                                    :type/Decimal    "DECIMAL"
                                    :type/Float      "FLOAT8"
                                    :type/Integer    "INTEGER"
-                                   :type/Text       "TEXT"}]
+                                   ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
+                                   ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
+                                   ;; But don't use VARCHAR(MAX) either because of performance impact
+                                   ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
+                                   :type/Text       "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
@@ -78,18 +82,19 @@
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
 
-(defonce ^:private ^{:arglists '([driver connection metadata])} original-syncable-schemas
-  (get-method sql-jdbc.sync/syncable-schemas :redshift))
+(defonce ^:private ^{:arglists '([driver connection metadata _ _])}
+  original-filtered-syncable-schemas
+  (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))
 
-(def ^:dynamic *use-original-syncable-schemas-impl?*
-  "Whether to use the actual prod impl for `syncable-schemas` rather than the special test one that only syncs the test
-  schema."
+(def ^:dynamic *use-original-filtered-syncable-schemas-impl?*
+  "Whether to use the actual prod impl for `filtered-syncable-schemas` rather than the special test one that only syncs
+  the test schema."
   false)
 
 ;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
 ;; schema used for a specific test.
-(defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [driver conn metadata]
-  (if *use-original-syncable-schemas-impl?*
-    (original-syncable-schemas driver conn metadata)
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
+  [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
+  (if *use-original-filtered-syncable-schemas-impl?*
+    (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
     #{session-schema-name "spectrum"}))

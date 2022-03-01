@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc } from "icepick";
+import { assoc, dissoc, merge } from "icepick";
 
 import {
   RESET_QB,
@@ -18,7 +18,7 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  UPDATE_TEMPLATE_TAG,
+  SET_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
   UPDATE_QUESTION,
   RUN_QUERY,
@@ -36,6 +36,11 @@ import {
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
+  CANCEL_DATASET_CHANGES,
+  SET_RESULTS_METADATA,
+  SET_METADATA_DIFF,
+  ZOOM_IN_ROW,
+  RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -65,8 +70,10 @@ const DEFAULT_UI_CONTROLS = {
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" or "notebook"
+  queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  previousQueryBuilderMode: false,
   snippetCollectionId: null,
+  datasetEditorTab: "query", // "query" / "metadata"
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -89,7 +96,18 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
+      next: (
+        { queryBuilderMode: currentQBMode, ...state },
+        { payload: { queryBuilderMode: nextQBMode, ...payload } },
+      ) => ({
+        ...state,
+        ...payload,
+        queryBuilderMode: nextQBMode || currentQBMode,
+        previousQueryBuilderMode:
+          nextQBMode && currentQBMode !== nextQBMode
+            ? currentQBMode
+            : state.previousQueryBuilderMode,
+      }),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -220,11 +238,23 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: undefined,
     }),
-    [onCloseQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onCloseQuestionDetails]: (
+      state,
+      { payload: { closeOtherSidebars } = {} } = {},
+    ) => {
+      if (closeOtherSidebars) {
+        return {
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          questionDetailsTimelineDrawerState: undefined,
+        };
+      }
+      return {
+        ...state,
+        isShowingQuestionDetailsSidebar: false,
+        questionDetailsTimelineDrawerState: undefined,
+      };
+    },
     [onOpenQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -245,6 +275,20 @@ export const uiControls = handleActions(
   DEFAULT_UI_CONTROLS,
 );
 
+export const zoomedRowObjectId = handleActions(
+  {
+    [INITIALIZE_QB]: {
+      next: (state, { payload }) => payload?.objectId ?? null,
+    },
+    [ZOOM_IN_ROW]: {
+      next: (state, { payload }) => payload.objectId,
+    },
+    [RESET_ROW_ZOOM]: { next: () => null },
+    [RESET_QB]: { next: () => null },
+  },
+  null,
+);
+
 // the card that is actively being worked on
 export const card = handleActions(
   {
@@ -258,7 +302,9 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
+    [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
+
+    [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
@@ -266,6 +312,7 @@ export const card = handleActions(
       next: (state, { payload: { card } }) => ({
         ...state,
         display: card.display,
+        result_metadata: card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -335,6 +382,7 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
@@ -349,9 +397,46 @@ export const queryResults = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
+    [SET_RESULTS_METADATA]: {
+      next: (state, { payload: results_metadata }) => {
+        const [result] = state;
+        const { columns } = results_metadata;
+        return [
+          {
+            ...result,
+            data: {
+              ...result.data,
+              cols: columns,
+              results_metadata,
+            },
+          },
+        ];
+      },
+    },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
+);
+
+export const metadataDiff = handleActions(
+  {
+    [RESET_QB]: { next: () => ({}) },
+    [API_UPDATE_QUESTION]: { next: () => ({}) },
+    [SET_METADATA_DIFF]: {
+      next: (state, { payload }) => {
+        const { field_ref, changes } = payload;
+        return {
+          ...state,
+          [field_ref]: state[field_ref]
+            ? merge(state[field_ref], changes)
+            : changes,
+        };
+      },
+    },
+    [CANCEL_DATASET_CHANGES]: { next: () => ({}) },
+  },
+  {},
 );
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
@@ -380,6 +465,9 @@ export const queryStartTime = handleActions(
 
 export const parameterValues = handleActions(
   {
+    [INITIALIZE_QB]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
         value == null ? dissoc(state, id) : assoc(state, id, value),

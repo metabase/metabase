@@ -5,15 +5,27 @@
 (deftest permissions->graph
   (testing "Parses each permission string to the correct graph"
     (are [x y] (= y (parse/permissions->graph [x]))
-      "/db/3/"                                       {:db {3 {:native  :write
-                                                              :schemas :all}}}
-      "/db/3/native/"                                {:db {3 {:native :write}}}
-      "/db/3/schema/"                                {:db {3 {:schemas :all}}}
-      "/db/3/schema/PUBLIC/"                         {:db {3 {:schemas {"PUBLIC" :all}}}}
-      "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:schemas {"PUBLIC" {4 :all}}}}}
-      "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}
-      "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:query :all}}}}}}
-      "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:query :segmented}}}}}})))
+      "/db/3/"                                        {:db {3 {:data {:native  :write
+                                                                       :schemas :all}}}}
+      "/db/3/native/"                                 {:db {3 {:data {:native :write}}}}
+      "/db/3/schema/"                                 {:db {3 {:data {:schemas :all}}}}
+      "/db/3/schema/PUBLIC/"                          {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
+      "/db/3/schema/PUBLIC/table/4/"                  {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
+      "/db/3/schema/PUBLIC/table/4/read/"             {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
+      "/db/3/schema/PUBLIC/table/4/query/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :all}}}}}}}
+      "/db/3/schema/PUBLIC/table/4/query/segmented/"  {:db {3 {:data {:schemas {"PUBLIC" {4 {:query :segmented}}}}}}}
+      "/download/db/3/"                               {:db {3 {:download {:native  :full
+                                                                          :schemas :full}}}}
+      "/download/limited/db/3/"                       {:db {3 {:download {:native  :limited
+                                                                          :schemas :limited}}}}
+      "/download/db/3/native/"                        {:db {3 {:download {:native :full}}}}
+      "/download/limited/db/3/native/"                {:db {3 {:download {:native :limited}}}}
+      "/download/db/3/schema/"                        {:db {3 {:download {:schemas :full}}}}
+      "/download/limited/db/3/schema/"                {:db {3 {:download {:schemas :limited}}}}
+      "/download/db/3/schema/PUBLIC/"                 {:db {3 {:download {:schemas {"PUBLIC" :full}}}}}
+      "/download/limited/db/3/schema/PUBLIC/"         {:db {3 {:download {:schemas {"PUBLIC" :limited}}}}}
+      "/download/db/3/schema/PUBLIC/table/4/"         {:db {3 {:download {:schemas {"PUBLIC" {4 :full}}}}}}
+      "/download/limited/db/3/schema/PUBLIC/table/4/" {:db {3 {:download {:schemas {"PUBLIC" {4 :limited}}}}}})))
 
 
 (deftest combines-permissions-for-graph
@@ -33,17 +45,16 @@
     ;;
     ;; Visually, the map is structured to mean "When the permission set includes only this key and the ones below it,
     ;; the permission graph for this key should be returned"
-    (doseq [group (let [groups (->> {"/db/3/"                                       {:db {3 {:native  :write
-                                                                                             :schemas :all}}}
+    (doseq [group (let [groups (->> {"/db/3/"                                       {:db {3 {:data {:native  :write :schemas :all}}}}
 
-                                     "/db/3/schema/"                                {:db {3 {:schemas :all}}}
-                                     "/db/3/schema/PUBLIC/"                         {:db {3 {:schemas {"PUBLIC" :all}}}}
-                                     "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:schemas {"PUBLIC" {4 :all}}}}}
-                                     "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
-                                                                                                                    :query :all}}}}}}
-                                     "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
-                                                                                                                    :query :segmented}}}}}}
-                                     "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
+                                     "/db/3/schema/"                                {:db {3 {:data {:schemas :all}}}}
+                                     "/db/3/schema/PUBLIC/"                         {:db {3 {:data {:schemas {"PUBLIC" :all}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:data {:schemas {"PUBLIC" {4 :all}}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:data {:schemas {"PUBLIC" {4 {:read  :all
+                                                                                                                           :query :all}}}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:data {:schemas {"PUBLIC" {4 {:read  :all
+                                                                                                                           :query :segmented}}}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:data {:schemas {"PUBLIC" {4 {:read :all}}}}}}}}
                                     (into [])
                                     (sort-by first))]
                     (->> groups
@@ -61,9 +72,9 @@
 
 (deftest combines-all-permissions
   (testing "Permision graph includes broadest permissions for all dbs in permission set"
-    (is (= {:db         {3 {:native  :write
-                            :schemas :all}
-                         5 {:schemas {"PUBLIC" {10 {:read :all}}}}}
+    (is (= {:db         {3 {:data {:native  :write
+                                   :schemas :all}}
+                         5 {:data {:schemas {"PUBLIC" {10 {:read :all}}}}}}
             :collection {:root :write
                          1     :read}}
            (parse/permissions->graph #{"/db/3/"
@@ -73,8 +84,8 @@
 
 (deftest block-permissions-test
   (testing "Should parse block permissions entries correctly"
-    (is (= {:db {1 {:schemas :block}
-                 2 {:schemas :block}}}
+    (is (= {:db {1 {:data {:schemas :block}}
+                 2 {:data {:schemas :block}}}}
            (parse/permissions->graph #{"/block/db/1/" "/block/db/2/"}))))
   (testing (str "Block perms and data perms shouldn't exist together at the same time for a given DB, but if they do "
                 "for some  reason, ignore the data perms and return the block perms")
@@ -88,10 +99,10 @@
             :let  [paths ["/block/db/1/" path]]
             paths [paths (reverse paths)]]
       (testing (format "\nPaths = %s" (pr-str paths))
-        (is (= {:db {1 (merge {:schemas :block}
-                              ;; block permissions should only affect the `:schema` key. `/db/1/` also sets the
-                              ;; `:native` key. In reality, it makes no sense to have block perms AND allow native
-                              ;; access but that's not the parsing code's concern.
-                              (when (= path "/db/1/")
-                                {:native :write}))}}
+        (is (= {:db {1 {:data (merge {:schemas :block}
+                                     ;; block permissions should only affect the `:schema` key. `/db/1/` also sets the
+                                     ;; `:native` key. In reality, it makes no sense to have block perms AND allow native
+                                     ;; access but that's not the parsing code's concern.
+                                     (when (= path "/db/1/")
+                                       {:native :write}))}}}
                (parse/permissions->graph paths)))))))

@@ -420,10 +420,12 @@
   (set/map-invert db->norm-param-ref-keys))
 
 (def ^:private db->norm-table-columns-keys
-  {:name     ::table-column-name
+  {:name      ::table-column-name
    ; for now, do not translate the value of this key (the field vector)
-   :fieldRef ::table-column-field-ref
-   :enabled  ::table-column-enabled})
+   :fieldref  ::table-column-field-ref
+   :field_ref ::table-column-field-ref
+   :fieldRef  ::table-column-field-ref
+   :enabled   ::table-column-enabled})
 
 (def ^:private norm->db-table-columns-keys
   (set/map-invert db->norm-table-columns-keys))
@@ -519,6 +521,13 @@
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-time-style
+  "Converts the deprecated k:mm format to HH:mm (#18112)"
+  [v]
+  (if (= v "k:mm")
+    "HH:mm"
+    v))
+
 (defn- db->norm-table-columns [v]
   (-> v
     (assoc ::table-columns (mapv (fn [tbl-col]
@@ -531,7 +540,12 @@
   `norm->db-column-settings-entry`."
   [m k v]
   (case k
-    :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
+    :click_behavior
+    (assoc m ::click-behavior (db->norm-click-behavior v))
+
+    :time_style
+    (assoc m ::time-style (db->norm-time-style v))
+
     (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn db->norm-column-settings-entries
@@ -540,13 +554,17 @@
   (reduce-kv db->norm-column-settings-entry {} entries))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
   [settings]
-  (m/map-kv (fn [k v]
-              (let [k1 (parse-db-column-ref k)
-                    v1 (db->norm-column-settings-entries v)]
-                [k1 v1]))
-            settings))
+  (reduce-kv (fn [m k v]
+               (try
+                 (let [k1 (parse-db-column-ref k)
+                       v1 (db->norm-column-settings-entries v)]
+                   (assoc m k1 v1))
+                 (catch #?(:clj Throwable :cljs js/Error) _e
+                   m)))
+             {}
+             settings))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent

@@ -3,9 +3,9 @@ import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 
 const ICON_SIZE = 16;

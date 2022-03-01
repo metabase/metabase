@@ -4,7 +4,7 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 export default function FieldsPicker({
@@ -17,6 +17,7 @@ export default function FieldsPicker({
   onSelectNone,
   onToggleDimension,
   triggerElement = t`Columns`,
+  disableSelected,
   ...props
 }) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
@@ -31,7 +32,7 @@ export default function FieldsPicker({
         {(onSelectAll || onSelectNone) && (
           <li className="px1 pb1 flex align-center border-bottom mb1">
             <StackedCheckBox
-              label={isAll && onSelectNone ? t`Select None` : t`Select All`}
+              label={isAll && onSelectNone ? t`Select none` : t`Select all`}
               checked={isAll}
               indeterminate={!isAll && !isNone}
               disabled={isAll && !onSelectNone}
@@ -49,6 +50,7 @@ export default function FieldsPicker({
         {dimensions.map(dimension => (
           <li key={dimension.key()} className="px1 pb1 flex align-center">
             <CheckBox
+              disabled={disableSelected && selected.has(dimension.key())}
               checked={selected.has(dimension.key())}
               label={dimension.displayName()}
               onChange={() => {

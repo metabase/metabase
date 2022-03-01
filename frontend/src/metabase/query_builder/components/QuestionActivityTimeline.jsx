@@ -16,11 +16,10 @@ import { getQuestionDetailsTimelineDrawerState } from "metabase/query_builder/se
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
-import Timeline from "metabase/components/Timeline";
 import DrawerSection, {
   STATES as DRAWER_STATES,
 } from "metabase/components/DrawerSection/DrawerSection";
-import { RevertButton } from "./QuestionActivityTimeline.styled";
+import { Timeline, RevertButton } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
@@ -46,10 +45,7 @@ export default _.compose(
     }),
     wrapped: true,
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(QuestionActivityTimeline);
 
 RevisionEventFooter.propTypes = {
@@ -102,7 +98,10 @@ export function QuestionActivityTimeline({
       usersById,
       currentUser,
     );
-    const revisionEvents = getRevisionEventsForTimeline(revisions, canWrite);
+    const revisionEvents = getRevisionEventsForTimeline(revisions, {
+      currentUser,
+      canWrite,
+    });
     return [...revisionEvents, ...moderationEvents];
   }, [canWrite, moderationReviews, revisions, usersById, currentUser]);
 

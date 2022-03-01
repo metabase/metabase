@@ -15,7 +15,7 @@ import { USERS } from "__support__/e2e/cypress_data";
         user === "admin" ? Object.entries(USERS).length : 1;
 
       cy.findByPlaceholderText("Search…").type("pers");
-      cy.get(".LoadingSpinner").should("not.exist");
+      cy.findByTestId("loading-spinner").should("not.exist");
       cy.findAllByText(/personal collection$/i).should(
         "have.length",
         personalCollectionsLength,

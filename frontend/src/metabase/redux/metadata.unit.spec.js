@@ -129,9 +129,9 @@ describe("deprecated metadata actions", () => {
 
       loadMetadataForQuery(query)(dispatch);
       expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith({ id: 1 });
-      expect(Tables.actions.fetchMetadataAndForeignTables).toHaveBeenCalledWith(
-        { id: 2 },
-      );
+      expect(
+        Tables.actions.fetchMetadataAndForeignTables,
+      ).toHaveBeenCalledWith({ id: 2 });
       expect(Tables.actions.fetchMetadata.mock.calls.length).toBe(1);
 
       expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 });

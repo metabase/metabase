@@ -19,10 +19,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 @Dashboard.load({
   id: (state, props) => Urls.extractCollectionId(props.params.slug),
 })

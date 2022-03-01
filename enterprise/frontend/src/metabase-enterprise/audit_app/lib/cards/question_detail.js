@@ -40,7 +40,7 @@ export const averageExecutionTime = questionId => ({
   },
 });
 
-export const revisionHistory = (questionId: number) => ({
+export const revisionHistory = questionId => ({
   card: {
     name: "Revision history",
     display: "table",
@@ -61,7 +61,7 @@ export const revisionHistory = (questionId: number) => ({
   },
 });
 
-export const auditLog = (questionId: number) => ({
+export const auditLog = questionId => ({
   card: {
     name: "Audit log",
     display: "table",
@@ -74,6 +74,17 @@ export const auditLog = (questionId: number) => ({
       "table.columns": [
         { name: "user_id", enabled: true },
         { name: "when", enabled: true },
+        {
+          name: "what",
+          enabled: true,
+          // This needs to combinatorially explore the metadata boolean space: if n grows above 2, replace mustache
+          markdown_template: `
+{{#json.ignore_cache}}Requested un-cached results{{/json.ignore_cache}}
+{{^json.ignore_cache}}
+{{#json.cached}}Viewed (cached){{/json.cached}}
+{{^json.cached}}Viewed{{/json.cached}}
+{{/json.ignore_cache}}`,
+        },
       ],
     },
   },

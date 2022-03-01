@@ -1,11 +1,13 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import ActionButton from "metabase/components/ActionButton";
+import DefaultTimeline from "metabase/components/Timeline";
 
-export const RevertButton = styled(ActionButton).attrs({
-  successClassName: "",
-  failedClassName: "",
-})`
+export const Timeline = styled(DefaultTimeline)`
+  padding-bottom: 1em;
+`;
+
+export const RevertButton = styled(ActionButton)`
   padding: 0;
   border: none;
   color: ${color("text-dark")};
@@ -16,3 +18,8 @@ export const RevertButton = styled(ActionButton).attrs({
     color: ${color("accent3")};
   }
 `;
+
+RevertButton.defaultProps = {
+  successClassName: "",
+  failedClassName: "",
+};

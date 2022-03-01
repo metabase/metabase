@@ -21,28 +21,9 @@ import { color } from "metabase/lib/colors";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
+
 import Search from "metabase/entities/search";
-
-import type { Snippet } from "metabase-types/types/Snippet";
-
-type Props = {
-  onClose: () => void,
-  setModalSnippet: () => void,
-  openSnippetModalWithSelectedText: () => void,
-  insertSnippet: () => void,
-  snippets: Snippet[],
-  snippetCollection: any,
-  snippetCollections: any[],
-  search: any[],
-  setSnippetCollectionId: () => void,
-};
-
-type State = {
-  showSearch: boolean,
-  searchString: string,
-  showArchived: boolean,
-};
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 18;
@@ -63,13 +44,11 @@ const MIN_SNIPPETS_FOR_SEARCH = 15;
   }),
 })
 export default class SnippetSidebar extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     showSearch: false,
     searchString: "",
     showArchived: false,
   };
-  searchBox: ?HTMLInputElement;
 
   static propTypes = {
     onClose: PropTypes.func.isRequired,

@@ -7,8 +7,6 @@ import HoursMinutesInput from "./HoursMinutesInput";
 
 import { parseTime } from "metabase/lib/time";
 
-import type { Operator } from "./DatePicker";
-
 const TimeInput = ({ value, onChange }) => {
   const time = parseTime(value);
   return (
@@ -70,7 +68,7 @@ const getTime = value => {
   }
 };
 
-export const TIME_OPERATORS: Operator[] = [
+export const TIME_OPERATORS = [
   {
     name: "before",
     displayName: t`Before`,

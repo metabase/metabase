@@ -1,7 +1,8 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -17,11 +18,13 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models :refer [Field]]
+            [metabase.models.secret :as secret]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]
+            [metabase.util.i18n :refer [trs]]
+            [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
@@ -35,9 +38,12 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defn- ->timestamp [honeysql-form]
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form)
+  (hx/+ (->timestamp hsql-form)
         (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -79,15 +85,63 @@
 
 (defmethod driver/connection-properties :postgres
   [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :placeholder 5432)
-     driver.common/default-dbname-details
-     driver.common/default-user-details
-     driver.common/default-password-details
-     driver.common/default-ssl-details
-     (assoc driver.common/default-additional-options-details
-            :placeholder "prepareThreshold=0")]))
+  (->>
+   [driver.common/default-host-details
+    (assoc driver.common/default-port-details :placeholder 5432)
+    driver.common/default-dbname-details
+    driver.common/default-user-details
+    driver.common/default-password-details
+    driver.common/cloud-ip-address-info
+    driver.common/default-ssl-details
+    {:name         "ssl-mode"
+     :display-name (trs "SSL Mode")
+     :type         :select
+     :options [{:name  "allow"
+                :value "allow"}
+               {:name  "prefer"
+                :value "prefer"}
+               {:name  "require"
+                :value "require"}
+               {:name  "verify-ca"
+                :value "verify-ca"}
+               {:name  "verify-full"
+                :value "verify-full"}]
+     :default "require"
+     :visible-if {"ssl" true}}
+    {:name         "ssl-root-cert"
+     :display-name (trs "SSL Root Certificate (PEM)")
+     :type         :secret
+     :secret-kind  :pem-cert
+     ;; only need to specify the root CA if we are doing one of the verify modes
+     :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+    {:name         "ssl-use-client-auth"
+     :display-name (trs "Authenticate client certificate?")
+     :type         :boolean
+     ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+     :visible-if   {"ssl" true}}
+    {:name         "ssl-client-cert"
+     :display-name (trs "SSL Client Certificate (PEM)")
+     :type         :secret
+     :secret-kind  :pem-cert
+     :visible-if   {"ssl-use-client-auth" true}}
+    {:name         "ssl-key"
+     :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+     :type         :secret
+     ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+     :secret-kind  :binary-blob
+     :visible-if   {"ssl-use-client-auth" true}}
+    {:name         "ssl-key-password"
+     :display-name (trs "SSL Client Key Password")
+     :type         :secret
+     :secret-kind  :password
+     :visible-if   {"ssl-use-client-auth" true}}
+    driver.common/ssh-tunnel-preferences
+    driver.common/advanced-options-start
+    (assoc driver.common/additional-options
+           :placeholder "prepareThreshold=0")
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod driver/db-start-of-week :postgres
   [_]
@@ -112,6 +166,67 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
+(def ^:const nested-field-sample-limit
+  "Number of rows to sample for describe-nested-field-columns"
+  10000)
+
+(defn- flatten-row [row]
+  (letfn [(flatten-row [row path]
+            (lazy-seq
+              (when-let [[[k v] & xs] (seq row)]
+                (cond (and (map? v) (not-empty v))
+                      (into (flatten-row v (conj path k))
+                            (flatten-row xs path))
+                      :else
+                      (cons [(conj path k) v]
+                            (flatten-row xs path))))))]
+    (into {} (flatten-row row []))))
+
+(defn- row->types [row]
+  (into {} (for [[field-name field-val] row]
+             [field-name (let [flattened-row (flatten-row field-val)]
+                           (into {} (map (fn [[k v]] [k (type v)]) flattened-row)))])))
+
+(defn- describe-json-xform [member]
+  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+         (map #(into {} %))
+         (map row->types)) member))
+
+(defn- describe-json-rf
+  ([] nil)
+  ([fst] fst)
+  ([fst snd]
+   (into {}
+         (for [json-column (keys snd)]
+           (if (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
+             [json-column (snd json-column)]
+             [json-column nil])))))
+
+(defn- describe-nested-field-columns*
+  [driver spec table]
+  (with-open [conn (jdbc/get-connection spec)]
+    (let [map-inner        (fn [f xs] (map #(into {}
+                                                  (for [[k v] %]
+                                                    [k (f v)])) xs))
+          table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+          json-field-names (mapv (comp keyword :name) json-fields)
+          sql-args         (hsql/format {:select json-field-names
+                                         :from   [(keyword (:name table))]
+                                         :limit  nested-field-sample-limit} {:quoting :ansi})
+          query            (jdbc/reducible-query spec sql-args)]
+      {:types (transduce describe-json-xform describe-json-rf query)})))
+
+;; Describe the nested fields present in a table (currently and maybe forever just JSON),
+;; including if they have proper keyword and type stability.
+;; Not to be confused with existing nested field functionality for mongo,
+;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
+;; Every single database major is fiddly and weird and different about JSON so there's only a trivial default impl in sql.jdbc
+(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
+  [driver database table]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (describe-nested-field-columns* driver spec table)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -130,8 +245,8 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :convert_from expr (hx/literal "UTF8"))))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -171,13 +286,15 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
+(p/defrecord+ RegexMatchFirst [identifier pattern]
+  hformat/ToSql
+  (to-sql [_]
+    (str "substring(" (hformat/to-sql identifier) " FROM " (hformat/to-sql pattern) ")")))
+
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (let [col-name (hformat/to-sql (sql.qp/->honeysql driver arg))]
-    (reify
-      hformat/ToSql
-      (to-sql [_]
-        (str "substring(" col-name " FROM " (hformat/to-sql pattern) ")")))))
+  (let [identifier (sql.qp/->honeysql driver arg)]
+    (->RegexMatchFirst identifier pattern)))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
@@ -196,10 +313,12 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defmethod sql.qp/->honeysql [:postgres (class Field)]
-  [driver {database-type :database_type, :as field}]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
-        identifier    (parent-method driver field)]
+(defmethod sql.qp/->honeysql [:postgres :field]
+  [driver [_ id-or-name _opts :as clause]]
+  (let [{database-type :database_type} (when (integer? id-or-name)
+                                         (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
     (if (= database-type "money")
       (pg-conversion identifier :numeric)
       identifier)))
@@ -282,7 +401,7 @@
    (keyword "timestamp without timezone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
-  [driver column]
+  [_driver column]
   (if (contains? *enum-types* column)
     :type/PostgresEnum
     (default-base-types column)))
@@ -297,10 +416,41 @@
     "inet"  :type/IPAddress
     nil))
 
-(def ^:private ssl-params
-  "Params to include in the JDBC connection spec for an SSL connection."
-  {:ssl        true
-   :sslmode    "require"})
+(defn- ssl-params
+  "Builds the params to include in the JDBC connection spec for an SSL connection."
+  [db-details]
+  (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
+                          (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
+        ssl-client-key  (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-client-key"))
+        ssl-client-cert (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
+        ssl-key-pw      (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-key-password"))
+        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
+        has-value?      (comp some? :value)]
+    (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
+      ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
+      (nil? (:ssl-mode db-details))
+      (assoc :sslmode "require")
+
+      (has-value? ssl-root-cert)
+      (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
+
+      (has-value? ssl-client-key)
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
+
+      (has-value? ssl-client-cert)
+      (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
+
+      (has-value? ssl-key-pw)
+      (assoc :sslpassword (secret/value->string ssl-key-pw))
+
+      true
+      (as-> params ;; from outer cond->
+        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                       :ssl-use-client-auth)
+        (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -315,16 +465,19 @@
                                     port)))
                   ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
                   (dissoc :ssl))
-        ;; this happens via ->> so that the users props will override the ssl-params stuff.
-        ;; if the user has specified a sslmode, it must always take precedence over our default.
-        props (->> props
-                   (merge (if ssl?
-                            ssl-params
-                            disable-ssl-params)))
-        props (-> props
-                  (set/rename-keys {:dbname :db})
-                  db.spec/postgres
-                  (sql-jdbc.common/handle-additional-options details-map))]
+        props (if ssl?
+                (let [ssl-prms (ssl-params details-map)]
+                  ;; if the user happened to specify any of the SSL options directly, allow those to take
+                  ;; precedence, but only if they match a key from our own
+                  ;; our `ssl-params` function is also removing various internal properties, ex: for secret resolution,
+                  ;; so we can't just merge the entire `props` map back in here because it will bring all those
+                  ;; internal property values back; only merge in the ones the driver might recognize
+                  (merge ssl-prms (select-keys props (keys ssl-prms))))
+                (merge disable-ssl-params props))
+        props (as-> props it
+                (set/rename-keys it {:dbname :db})
+                (db.spec/spec :postgres it)
+                (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
@@ -358,7 +511,7 @@
 ;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
 ;; BigDecimal if so; otherwise, proceeding as normal
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/DOUBLE]
-  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
     (fn []
       (some-> (.getString rs i) u/parse-currency))

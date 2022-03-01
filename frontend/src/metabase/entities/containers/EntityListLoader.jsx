@@ -13,10 +13,12 @@ const propTypes = {
   entityType: PropTypes.string,
   entityQuery: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   reload: PropTypes.bool,
+  reloadInterval: PropTypes.oneOfType([PropTypes.number, PropTypes.func]),
   wrapped: PropTypes.bool,
   debounced: PropTypes.bool,
   loadingAndErrorWrapper: PropTypes.bool,
   keepListWhileLoading: PropTypes.bool,
+  listName: PropTypes.string,
   selectorName: PropTypes.string,
   children: PropTypes.func,
 
@@ -50,6 +52,7 @@ const CONSUMED_PROPS = [
   "entityType",
   "entityQuery",
   // "reload", // Masked by `reload` function. Should we rename that?
+  "reloadInterval",
   "wrapped",
   "debounced",
   "loadingAndErrorWrapper",
@@ -76,6 +79,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   let {
     entityDef,
     entityQuery,
+    reloadInterval,
     page,
     pageSize,
     allLoading,
@@ -92,6 +96,11 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   }
   entityQuery = getMemoizedEntityQuery(state, { entityQuery });
 
+  const list = entityDef.selectors[selectorName](state, { entityQuery });
+  if (typeof reloadInterval === "function") {
+    reloadInterval = reloadInterval(state, props, list);
+  }
+
   const loading = entityDef.selectors.getLoading(state, { entityQuery });
   const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
   const fetched = entityDef.selectors.getFetched(state, { entityQuery });
@@ -99,8 +108,9 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   const metadata = entityDef.selectors.getListMetadata(state, { entityQuery });
 
   return {
+    list,
     entityQuery,
-    list: entityDef.selectors[selectorName](state, { entityQuery }),
+    reloadInterval,
     metadata,
     loading,
     loaded,
@@ -156,8 +166,13 @@ class EntityListLoader extends React.Component {
     250,
   );
 
-  UNSAFE_componentWillMount() {
-    this.fetchList(this.props, { reload: this.props.reload });
+  componentDidMount() {
+    const { loaded, reload, reloadInterval } = this.props;
+    this.fetchList(this.props, { reload });
+
+    if (loaded && reloadInterval) {
+      this.reloadTimeout = setTimeout(this.reload, reloadInterval);
+    }
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -173,7 +188,7 @@ class EntityListLoader extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { keepListWhileLoading } = this.props;
+    const { loaded, reloadInterval, keepListWhileLoading } = this.props;
     const { previousList } = this.state;
 
     const shouldUpdatePrevList =
@@ -184,6 +199,18 @@ class EntityListLoader extends React.Component {
     if (shouldUpdatePrevList) {
       this.setState({ previousList: prevProps.list });
     }
+
+    if (loaded && !prevProps.loaded) {
+      clearTimeout(this.reloadTimeout);
+
+      if (reloadInterval) {
+        this.reloadTimeout = setTimeout(this.reload, reloadInterval);
+      }
+    }
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.reloadTimeout);
   }
 
   renderChildren = () => {
@@ -192,6 +219,7 @@ class EntityListLoader extends React.Component {
       entityDef,
       wrapped,
       list: currentList,
+      listName = entityDef.nameMany,
       loading,
       reload, // eslint-disable-line no-unused-vars
       keepListWhileLoading,
@@ -211,7 +239,7 @@ class EntityListLoader extends React.Component {
       list,
       loading,
       // alias the entities name:
-      [entityDef.nameMany]: list,
+      [listName]: list,
       reload: this.reload,
     });
   };

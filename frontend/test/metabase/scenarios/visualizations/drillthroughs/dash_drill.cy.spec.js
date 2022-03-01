@@ -1,8 +1,10 @@
 // Imported from drillthroughs.e2e.spec.js
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
@@ -47,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         // Convert Q2 to a scalar with a filter applied
         cy.request("PUT", `/api/card/${Q2.id}`, {
           dataset_query: {
-            database: 1,
+            database: SAMPLE_DB_ID,
             query: {
               aggregation: [["count"]],
               filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -95,7 +97,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
               // Cypress was complaining it cannot click on a detached element.
               cy.server();
-              cy.route("POST", `/api/card/${CARD_ID}/query`).as("cardQuery");
+              cy.route(
+                "POST",
+                `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${CARD_ID}/query`,
+              ).as("cardQuery");
 
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -176,7 +181,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                         card_id: QUESTION_ID,
                         target: [
                           "dimension",
-                          ["field", PRODUCTS.CATEGORY, null],
+                          [
+                            "field",
+                            PRODUCTS.CATEGORY,
+                            { "source-field": ORDERS.PRODUCT_ID },
+                          ],
                         ],
                       },
                     ],
@@ -185,7 +194,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               });
             });
             cy.server();
-            cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+            cy.route(
+              "POST",
+              `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
+            ).as("cardQuery");
             cy.route("POST", `/api/dataset`).as("dataset");
 
             cy.visit(`/dashboard/${DASHBOARD_ID}`);

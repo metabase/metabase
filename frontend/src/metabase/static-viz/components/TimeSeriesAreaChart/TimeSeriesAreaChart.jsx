@@ -5,12 +5,14 @@ import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
 import {
+  getLabelProps,
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { sortTimeSeries } from "../../lib/sort";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -21,6 +23,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -49,12 +52,16 @@ const layout = {
   },
   numTicks: 5,
   strokeWidth: 2,
+  labelFontWeight: 700,
   labelPadding: 12,
+  areaOpacity: 0.2,
   strokeDasharray: "4",
 };
 
 const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  data = sortTimeSeries(data);
+  const colors = settings?.colors;
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
@@ -62,6 +69,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
   const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleTime({
     domain: [
@@ -88,13 +96,14 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
       <AreaClosed
         data={data}
         yScale={yScale}
-        fill={layout.colors.brandLight}
+        fill={palette.brand}
+        opacity={layout.areaOpacity}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
       />
       <LinePath
         data={data}
-        stroke={layout.colors.brand}
+        stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
         x={d => xScale(accessors.x(d))}
         y={d => yScale(accessors.y(d))}
@@ -106,6 +115,7 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -114,8 +124,9 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />

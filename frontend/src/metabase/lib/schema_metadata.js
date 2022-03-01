@@ -6,6 +6,7 @@ import {
   isPK as isTypePK,
   TYPE,
 } from "metabase/lib/types";
+import { field_semantic_types_map } from "metabase/lib/core";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -21,6 +22,7 @@ export const PRIMARY_KEY = "PRIMARY_KEY";
 // other types used for various purporses
 export const ENTITY = "ENTITY";
 export const SUMMABLE = "SUMMABLE";
+export const SCOPE = "SCOPE";
 export const CATEGORY = "CATEGORY";
 export const DIMENSION = "DIMENSION";
 
@@ -70,6 +72,10 @@ const TYPES = {
   [SUMMABLE]: {
     include: [NUMBER],
     exclude: [ENTITY, LOCATION, TEMPORAL],
+  },
+  [SCOPE]: {
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    exclude: [LOCATION],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
@@ -147,6 +153,7 @@ export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
+export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
@@ -170,6 +177,17 @@ export const isNumericBaseType = field => {
     return isa(field.effective_type, TYPE.Number);
   } else {
     return isa(field.base_type, TYPE.Number);
+  }
+};
+
+export const isDateWithoutTime = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Date);
+  } else {
+    return isa(field.base_type, TYPE.Date);
   }
 };
 
@@ -258,7 +276,10 @@ function equivalentArgument(field, table) {
   if (isBoolean(field)) {
     return {
       type: "select",
-      values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
+      values: [
+        { key: true, name: t`True` },
+        { key: false, name: t`False` },
+      ],
       default: true,
     };
   }
@@ -567,6 +588,10 @@ function summableFields(fields) {
   return _.filter(fields, isSummable);
 }
 
+function scopeFields(fields) {
+  return _.filter(fields, isScope);
+}
+
 const AGGREGATION_OPERATORS = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations
@@ -645,7 +670,7 @@ const AGGREGATION_OPERATORS = [
     name: t`Minimum of ...`,
     columnName: t`Min`,
     description: t`Minimum value of a column`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [scopeFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -654,7 +679,7 @@ const AGGREGATION_OPERATORS = [
     name: t`Maximum of ...`,
     columnName: t`Max`,
     description: t`Maximum value of a column`,
-    validFieldsFilters: [summableFields],
+    validFieldsFilters: [scopeFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
@@ -759,10 +784,21 @@ export const ICON_MAPPING = {
   [NUMBER]: "int",
   [BOOLEAN]: "io",
   [FOREIGN_KEY]: "connections",
+  [PRIMARY_KEY]: "label",
 };
 
 export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
+}
+
+export function getSemanticTypeIcon(semanticType, fallback) {
+  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  return semanticTypeMetadata?.icon ?? fallback;
+}
+
+export function getSemanticTypeName(semanticType) {
+  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  return semanticTypeMetadata?.name;
 }
 
 export function getFilterArgumentFormatOptions(filterOperator, index) {

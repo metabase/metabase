@@ -1,16 +1,16 @@
-## Working with MySQL in Metabase
+# Working with MySQL in Metabase
 
 This page includes some helpful info for connecting Metabase to your MySQL database.
 
-- [Conneting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
-- [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
-- [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
+  - [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
+  - [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
+  - [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
 
-### Connecting to MySQL 8+ servers
+## Connecting to MySQL 8+ servers
 
 Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to `mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';`
 
-### Unable to log in with correct credentials
+## Unable to log in with correct credentials
 
 **How to detect this:** Metabase fails to connect to your MySQL server with the error message "Looks like the username or password is incorrect", but you're sure that the username and password is correct. You may have created the MySQL user with an allowed host other than the host you're connecting from.
 
@@ -31,7 +31,7 @@ FLUSH PRIVILEGES;
 
 Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
 
-### Raising a MySQL Docker container of MySQL 8+
+## Raising a MySQL Docker container of MySQL 8+
 
 If you are spinning up a new MySQL container, and:
 

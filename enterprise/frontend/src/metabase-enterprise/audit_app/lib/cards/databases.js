@@ -54,7 +54,7 @@ export const queryExecutionsByTime = () => ({
   },
 });
 
-export const table = (searchString?: string) => ({
+export const table = searchString => ({
   card: {
     name: "Databases",
     display: "table",

@@ -8,12 +8,12 @@ describe("scenarios > reference > databases", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");
-    cy.contains("Sample Dataset");
+    cy.contains("Sample Database");
   });
 
   xit("should let the user navigate to details", () => {
     cy.visit("/reference/databases");
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Why this database is interesting");
   });
 
@@ -56,7 +56,7 @@ describe("scenarios > reference > databases", () => {
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach(name => {
-        cy.addH2SampleDataset({ name });
+        cy.addH2SampleDatabase({ name });
       });
     });
 
@@ -86,7 +86,7 @@ function checkReferenceDatabasesOrder() {
     .should("have.text", "a");
   cy.get("@databaseCard")
     .last()
-    .should("have.text", "Sample Dataset");
+    .should("have.text", "Sample Database");
 }
 
 function checkQuestionSourceDatabasesOrder(question_type) {
@@ -106,6 +106,6 @@ function checkQuestionSourceDatabasesOrder(question_type) {
       .should("have.text", "a");
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
-      .should("have.text", "Sample Dataset");
+      .should("have.text", "Sample Database");
   });
 }

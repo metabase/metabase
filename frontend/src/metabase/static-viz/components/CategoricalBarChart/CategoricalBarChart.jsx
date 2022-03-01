@@ -10,7 +10,8 @@ import {
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
-  getXTickHeight,
+  getRotatedXTickHeight,
+  getLabelProps,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
 import { truncateText } from "../../lib/text";
@@ -24,6 +25,7 @@ const propTypes = {
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
+    colors: PropTypes.object,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -50,16 +52,23 @@ const layout = {
     textMedium: "#949aab",
   },
   barPadding: 0.2,
+  labelFontWeight: 700,
   labelPadding: 12,
   maxTickWidth: 100,
   strokeDasharray: "4",
 };
 
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
+  const colors = settings?.colors;
   const isVertical = data.length > 10;
-  const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
-  const xTickHeight = getXTickHeight(xTickWidth);
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const xTickWidth = getXTickWidth(
+    data,
+    accessors,
+    layout.maxTickWidth,
+    layout.font.size,
+  );
+  const xTickHeight = getRotatedXTickHeight(xTickWidth);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -71,6 +80,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const textBaseline = Math.floor(layout.font.size / 2);
   const leftLabel = labels?.left;
   const bottomLabel = !isVertical ? labels?.bottom : undefined;
+  const palette = { ...layout.colors, ...colors };
 
   const xScale = scaleBand({
     domain: data.map(accessors.x),
@@ -91,12 +101,16 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
     const x = xScale(accessors.x(d));
     const y = yMax - height;
 
-    return { x, y, width, height, fill: layout.colors.brand };
+    return { x, y, width, height, fill: palette.brand };
   };
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
     const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
-    const truncatedText = truncateText(formattedValue, textWidth);
+    const truncatedText = truncateText(
+      formattedValue,
+      textWidth,
+      layout.font.size,
+    );
     const transform = isVertical
       ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
       : undefined;
@@ -122,6 +136,7 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -130,8 +145,9 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
         top={yMax}
         label={bottomLabel}
         numTicks={data.length}
-        stroke={layout.colors.textLight}
-        tickStroke={layout.colors.textLight}
+        stroke={palette.textLight}
+        tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
         tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
       />

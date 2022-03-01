@@ -13,7 +13,7 @@ import Table from "metabase/visualizations/visualizations/Table";
 
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import { RemoveRowButton } from "./AuditTableVisualization.styled";
 import { getRowValuesByColumns, getColumnName } from "../lib/mode";
 
@@ -32,10 +32,12 @@ const propTypes = {
     isAscending: PropTypes.bool.isRequired,
   }),
   isSelectable: PropTypes.bool,
-  selectHeader: PropTypes.string,
   rowChecked: PropTypes.object,
+  onAllSelectClick: PropTypes.func,
   onRowSelectClick: PropTypes.func,
 };
+
+const ROW_ID_IDX = 0;
 
 export default class AuditTableVisualization extends React.Component {
   static identifier = "audit-table";
@@ -69,6 +71,12 @@ export default class AuditTableVisualization extends React.Component {
     });
   };
 
+  handleAllSelectClick = (e, rows) => {
+    const { onAllSelectClick } = this.props;
+    this.setState({ rerender: {} });
+    onAllSelectClick({ ...e, rows });
+  };
+
   handleRowSelectClick = (e, row, rowIndex) => {
     const { onRowSelectClick } = this.props;
     this.setState({ rerender: {} });
@@ -93,7 +101,6 @@ export default class AuditTableVisualization extends React.Component {
       settings,
       isSortable,
       isSelectable,
-      selectHeader,
       rowChecked,
       onRemoveRow,
     } = this.props;
@@ -115,7 +122,14 @@ export default class AuditTableVisualization extends React.Component {
       <table className="ContentTable">
         <thead>
           <tr>
-            {isSelectable && <th>{selectHeader}</th>}
+            {isSelectable && (
+              <th>
+                <CheckBox
+                  checked={Object.values(rowChecked).some(elem => elem)}
+                  onChange={e => this.handleAllSelectClick(e, rows)}
+                />
+              </th>
+            )}
             {columnIndexes.map(colIndex => {
               const column = cols[colIndex];
               const isSortedByColumn =
@@ -150,7 +164,7 @@ export default class AuditTableVisualization extends React.Component {
               {isSelectable && (
                 <td>
                   <CheckBox
-                    checked={rowChecked[rowIndex]}
+                    checked={rowChecked[row[ROW_ID_IDX]] || false}
                     onChange={e =>
                       this.handleRowSelectClick(
                         { ...e, originRow: rowIndex },
@@ -167,29 +181,38 @@ export default class AuditTableVisualization extends React.Component {
                 const column = cols[colIndex];
                 const clicked = { column, value, origin: { row, cols } };
                 const clickable = visualizationIsClickable(clicked);
-                const columnSettings = settings.column(column);
+                const columnSettings = {
+                  ...settings.column(column),
+                  ...settings["table.columns"][colIndex],
+                };
 
                 return (
                   <td
                     key={colIndex}
                     className={cx({
                       "text-brand cursor-pointer": clickable,
-                      "text-code": column["code"],
                       "text-right": isColumnRightAligned(column),
                     })}
                     onClick={
                       clickable ? () => onVisualizationClick(clicked) : null
                     }
                   >
-                    {formatValue(value, {
-                      ...columnSettings,
-                      type: "cell",
-                      jsx: true,
-                      rich: true,
-                      clicked: clicked,
-                      // always show timestamps in local time for the audit app
-                      local: true,
-                    })}
+                    <div
+                      className={cx({
+                        "rounded p1 text-dark text-monospace text-small bg-light":
+                          column["code"],
+                      })}
+                    >
+                      {formatValue(value, {
+                        ...columnSettings,
+                        type: "cell",
+                        jsx: true,
+                        rich: true,
+                        clicked: clicked,
+                        // always show timestamps in local time for the audit app
+                        local: true,
+                      })}
+                    </div>
                   </td>
                 );
               })}

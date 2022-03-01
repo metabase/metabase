@@ -4,16 +4,19 @@ You have told Metabase to send email notifications, but:
 
 - the notifications aren't arriving.
 
-## Are the email credentials correct?
+Before any other troubleshooting, try sending a test email to isolate the problem. 
+
+## Can you successfully send a test email?
 
 **Root cause:** The host, port, email address, or password may have been set up incorrectly, or the email server's host and port have been set up incorrectly.
 
 **Steps to take:**
 
-1. In the Admin Panel, select **Email Settings** and check the settings.
-2. If they seem correct, click **Send test email**.
-3. Verify that the email is delivered to the test account.
-4. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. If they do, you may have found a bug---please [report it][bugs].
+1. Navigate to the __Admin Panel__ and click __Email__ in the left sidebar. 
+2. Confirm that your host, port, email address, and password are entered correctly. If they are, click __Save changes__. If your changes have successfully saved, you'll see an option to __Send test email__.
+3. Click __Send test email__. The test email will go the address associated with your Metabase account.
+4. Verify that the email is delivered to your account.
+5. If the message is not sent or an error message is displayed in Metabase, try to use the same account credentials in another email program and see if they work. See the logs for more detailed error by navigating to __Troubleshooting__ and click __Logs__ in the left sidebar.
 
 ## Is the mail server actually sending the message?
 

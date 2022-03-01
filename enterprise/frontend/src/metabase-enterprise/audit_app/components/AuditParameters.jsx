@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import _ from "underscore";
 import { AuditParametersInput } from "./AuditParameters.styled";
@@ -23,6 +23,7 @@ const propTypes = {
     }),
   ),
   children: PropTypes.func,
+  hasResults: PropTypes.bool,
 };
 
 export default class AuditParameters extends React.Component {
@@ -48,25 +49,38 @@ export default class AuditParameters extends React.Component {
   }, DEBOUNCE_PERIOD);
 
   render() {
-    const { parameters, children, buttons } = this.props;
+    const { parameters, children, buttons, hasResults } = this.props;
     const { inputValues, committedValues } = this.state;
+
+    const isEmpty =
+      hasResults === false &&
+      inputValues &&
+      Object.values(inputValues).every(v => v === "");
+
     return (
       <div>
         <div className="pt4">
-          {parameters.map(({ key, placeholder, icon }) => (
+          {parameters.map(({ key, placeholder, icon, disabled }) => (
             <AuditParametersInput
               key={key}
               type="text"
               value={inputValues[key] || ""}
               placeholder={placeholder}
+              disabled={isEmpty || disabled}
               onChange={value => {
                 this.changeValue(key, value);
               }}
               icon={icon}
             />
           ))}
-          {buttons?.map(({ key, onClick, label }) => (
-            <Button primary key={key} onClick={onClick} className="ml2">
+          {buttons?.map(({ key, label, disabled, onClick }) => (
+            <Button
+              className="ml2"
+              key={key}
+              primary
+              disabled={isEmpty || disabled}
+              onClick={onClick}
+            >
               {label}
             </Button>
           ))}

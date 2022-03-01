@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 const propTypes = {
   tab: PropTypes.oneOf(["data", "collections"]).isRequired,
@@ -12,7 +12,7 @@ const propTypes = {
 export const PermissionsTabs = ({ tab, onChangeTab }) => (
   <div className="px3 mt1">
     <Radio
-      colorScheme="admin"
+      colorScheme="accent7"
       value={tab}
       options={[
         { name: t`Data permissions`, value: `data` },
@@ -20,7 +20,6 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       ]}
       onOptionClick={onChangeTab}
       variant="underlined"
-      py={2}
     />
   </div>
 );

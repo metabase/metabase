@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/cypress";
 
 describe("issue 17658", () => {
   beforeEach(() => {
@@ -6,7 +6,7 @@ describe("issue 17658", () => {
     restore();
     cy.signInAsAdmin();
 
-    setUpEmail();
+    setupSMTP();
 
     moveDashboardToCollection("First collection");
   });
@@ -87,15 +87,4 @@ function moveDashboardToCollection(collectionName) {
       });
     },
   );
-}
-
-function setUpEmail() {
-  cy.request("PUT", "/api/setting", {
-    "email-smtp-host": "localhost",
-    "email-smtp-port": "25",
-    "email-smtp-username": "admin",
-    "email-smtp-password": "admin",
-    "email-smtp-security": "none",
-    "email-from-address": "mailer@metabase.test",
-  });
 }

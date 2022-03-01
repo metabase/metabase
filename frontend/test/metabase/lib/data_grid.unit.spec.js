@@ -510,7 +510,14 @@ describe("data_grid", () => {
       });
 
       it("should sort letters with accents correctly", () => {
-        const data = makePivotData([["a", 0], ["à", 0], ["b", 0]], [D1, M]);
+        const data = makePivotData(
+          [
+            ["a", 0],
+            ["à", 0],
+            ["b", 0],
+          ],
+          [D1, M],
+        );
 
         let { leftHeaderItems } = multiLevelPivotForIndexes(
           data,
@@ -535,7 +542,14 @@ describe("data_grid", () => {
           source: "breakout",
         };
 
-        const data = makePivotData([[0, 0], [1, 0], [2, 0]], [D, M]);
+        const data = makePivotData(
+          [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+          ],
+          [D, M],
+        );
 
         let { leftHeaderItems } = multiLevelPivotForIndexes(
           data,

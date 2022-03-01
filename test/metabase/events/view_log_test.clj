@@ -28,6 +28,19 @@
            (mt/derecordize
             (db/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
 
+(deftest card-query-test
+  (mt/with-temp* [User [user]
+                  Card [card {:creator_id (:id user)}]]
+
+    (view-log/handle-view-event! {:topic :card-query
+                                  :item  (assoc card :cached false :ignore_cache true)})
+    (is (= {:user_id  (:id user)
+            :model    "card"
+            :model_id (:id card)
+            :metadata {:cached false :ignore_cache true}}
+           (mt/derecordize
+            (db/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user)))))))
+
 (deftest table-read-test
   (mt/with-temp* [User  [user]
                   Table [table]]

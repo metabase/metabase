@@ -80,7 +80,8 @@
                       :template-tags {(name field) {:name         (name field)
                                                     :display-name (name field)
                                                     :type         :dimension
-                                                    :dimension    [:field-id (mt/id table field)]}})
+                                                    :widget-type  value-type
+                                                    :dimension    [:field (mt/id table field) nil]}})
    :parameters [{:type   value-type
                  :name   (name field)
                  :target [:dimension [:template-tag (name field)]]
@@ -147,7 +148,7 @@
 (deftest filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/native-query (qp/query->native (mt/mbql-query checkins)))}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options
@@ -172,14 +173,14 @@
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
                 :params nil}
-               (qp/query->native-with-spliced-params
+               (qp/compile-and-splice-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field-id (mt/id :country :name)]
+                                               :dimension    [:field (mt/id :country :name) nil]
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -189,14 +190,14 @@
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/query->native-with-spliced-params
+             (qp/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field-id (mt/id :venues :price)]
+                                             :dimension    [:field (mt/id :venues :price) nil]
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category
@@ -218,3 +219,16 @@
                                                                         {:source-field (mt/id :venues :category_id)}]]}]))
                  (m/dissoc-in [:data :native_form :params])
                  (m/dissoc-in [:data :results_metadata :checksum])))))))
+
+(deftest legacy-parameters-with-no-widget-type-test
+  (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
+    (mt/dataset sample-dataset
+        (let [query (mt/native-query
+                     {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                      :template-tags {"cat" {:id           "__MY_CAT__"
+                                             :name         "cat"
+                                             :display-name "Cat"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :products :category) nil]}}})]
+        (is (= [200]
+               (mt/first-row (qp/process-query query))))))))

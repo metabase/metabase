@@ -74,7 +74,7 @@
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
 (defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
+  "Re-sync the frontend integration test DB's metadata for the Sample Database."
   []
   (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
   ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
@@ -168,7 +168,7 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable e
+    (catch Throwable _e
       (log/error "ERROR ROTATING KEY.")
       (system-exit! 1))))
 

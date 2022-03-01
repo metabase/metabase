@@ -100,8 +100,14 @@ export function computeSplit(extents, left = [], right = []) {
   const favorUnsplit = right.length > 0;
 
   const cost = split =>
-    axisCost(split[0].map(i => extents[i]), favorUnsplit) +
-    axisCost(split[1].map(i => extents[i]), favorUnsplit);
+    axisCost(
+      split[0].map(i => extents[i]),
+      favorUnsplit,
+    ) +
+    axisCost(
+      split[1].map(i => extents[i]),
+      favorUnsplit,
+    );
 
   const splits = generateSplits(unassigned, left, right);
 
@@ -153,7 +159,7 @@ export function isSameSeries(seriesA, seriesB) {
       const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
-      return acc && (sameData && sameDisplay && sameVizSettings);
+      return acc && sameData && sameDisplay && sameVizSettings;
     }, true)
   );
 }
@@ -206,7 +212,10 @@ const extentCache = new WeakMap();
 export function getColumnExtent(cols, rows, index) {
   const col = cols[index];
   if (!extentCache.has(col)) {
-    extentCache.set(col, d3.extent(rows, row => row[index]));
+    extentCache.set(
+      col,
+      d3.extent(rows, row => row[index]),
+    );
   }
   return extentCache.get(col);
 }
@@ -335,3 +344,39 @@ export function computeMaxDecimalsForValues(values, options) {
     return undefined;
   }
 }
+
+export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
+  if (!prevColumns || prevColumns.length === 0) {
+    return newColumns;
+  }
+
+  const newSet = new Set(newColumns);
+  const prevSet = new Set(prevColumns);
+
+  const addedColumns = newColumns.filter(column => !prevSet.has(column));
+  const prevOrderedColumnsExceptRemoved = prevColumns.map(column =>
+    newSet.has(column) ? column : null,
+  );
+
+  const mergedColumnsResult = [];
+
+  while (
+    prevOrderedColumnsExceptRemoved.length > 0 ||
+    addedColumns.length > 0
+  ) {
+    const column = prevOrderedColumnsExceptRemoved.shift();
+
+    if (column != null) {
+      mergedColumnsResult.push(column);
+      continue;
+    }
+
+    const addedColumn = addedColumns.shift();
+
+    if (addedColumn != null) {
+      mergedColumnsResult.push(addedColumn);
+    }
+  }
+
+  return mergedColumnsResult;
+};

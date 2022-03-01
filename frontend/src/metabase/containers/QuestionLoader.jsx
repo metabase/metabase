@@ -1,24 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
 
-import Question from "metabase-lib/lib/Question";
 import { serializeCardForUrl } from "metabase/lib/card";
-
-export type ChildProps = {
-  loading: boolean,
-  error: ?any,
-  question: ?Question,
-};
-
-type Props = {
-  questionObject?: any, // FIXME: minimal card
-  questionId?: ?number,
-  questionHash?: ?string,
-  children?: (props: ChildProps) => React.Element,
-};
 
 /*
  * QuestionLoader
@@ -62,7 +49,7 @@ const QuestionLoader = ({
   questionId,
   questionHash,
   children,
-}: Props) =>
+}) =>
   questionObject != null ? (
     <AdHocQuestionLoader questionHash={serializeCardForUrl(questionObject)}>
       {children}

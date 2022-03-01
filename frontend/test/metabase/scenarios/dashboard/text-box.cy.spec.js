@@ -1,4 +1,8 @@
-import { restore, showDashboardCardActions } from "__support__/e2e/cypress";
+import {
+  restore,
+  showDashboardCardActions,
+  popover,
+} from "__support__/e2e/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();
@@ -70,7 +74,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.reload();
 
       // Page should still load
-      cy.findByText("Ask a question");
+      cy.findByText("New");
       cy.findByText("Loading...").should("not.exist");
       cy.findByText("Cannot read property 'type' of undefined").should(
         "not.exist",
@@ -94,5 +98,41 @@ describe("scenarios > dashboard > text-box", () => {
         .should("have.css", "overflow", "auto")
         .scrollTo("bottom");
     });
+
+    it("should render html links, and not just the markdown flavor of them (metabase#18114)", () => {
+      addTextBox(
+        "- Visit https://www.metabase.com{enter}- Or go to [Metabase](https://www.metabase.com)",
+      );
+
+      cy.findByText("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+
+      cy.get(".Card")
+        .findAllByRole("link")
+        .should("be.visible")
+        .and("have.length", 2);
+    });
+  });
+
+  it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
+    cy.visit("/dashboard/1");
+    // click pencil icon to edit
+    cy.icon("pencil").click();
+    // add text box with text
+    cy.icon("string").click();
+    cy.get(".DashCard")
+      .last()
+      .find("textarea")
+      .type("text text text");
+    cy.icon("filter").click();
+    popover().within(() => {
+      cy.findByText("Text or Category").click();
+      cy.findByText("Dropdown").click();
+    });
+    cy.findByText("Save").click();
+
+    // confirm text box and filter are still there
+    cy.findByText("text text text");
+    cy.findByPlaceholderText("Text");
   });
 });

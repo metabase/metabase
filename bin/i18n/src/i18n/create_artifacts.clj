@@ -25,6 +25,9 @@
     (u/announce "Artifacts for locale %s created successfully." (pr-str locale))))
 
 (defn- create-artifacts-for-all-locales! []
+  ;; Empty directory in case some locales were removed
+  (u/delete-file-if-exists! backend/target-directory)
+  (u/delete-file-if-exists! frontend/target-directory)
   (doseq [locale (i18n/locales)]
     (create-artifacts-for-locale! locale)))
 

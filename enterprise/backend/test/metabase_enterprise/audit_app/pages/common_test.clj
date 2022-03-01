@@ -66,7 +66,7 @@
 
 (deftest add-search-clause-test
   (testing "add search clause"
-    (is (= {:where '(:or [:like :%lower.t.name "%birds%"] [:like :%lower.db.name "%birds%"])}
+    (is (= {:where `(:or [:like ~(hsql/call :lower :t.name) "%birds%"] [:like ~(hsql/call :lower :db.name) "%birds%"])}
            (#'pages.common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test

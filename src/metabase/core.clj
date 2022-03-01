@@ -6,8 +6,10 @@
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
+            metabase.driver.h2
+            metabase.driver.mysql
+            metabase.driver.postgres
             [metabase.events :as events]
-            [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -20,6 +22,11 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
+
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
+(comment metabase.driver.h2/keep-me
+         metabase.driver.mysql/keep-me
+         metabase.driver.postgres/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info
@@ -37,10 +44,9 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- -init-create-setup-token
-  "Create and set a new setup token and log it."
+(defn- print-setup-url
+  "Print the setup url during instance initialization."
   []
-  (setup/create-token!)                 ; we need this here to create the initial token
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
         setup-url (str "http://"
@@ -52,6 +58,12 @@
                                    "\n\n"
                                    setup-url
                                    "\n\n")))))
+
+(defn- create-setup-token-and-log-setup-url!
+  "Create and set a new setup token and log it."
+  []
+  (setup/create-token!)   ; we need this here to create the initial token
+  (print-setup-url))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
@@ -78,10 +90,6 @@
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
 
-  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-  (classloader/require 'metabase.driver.h2 'metabase.driver.postgres 'metabase.driver.mysql)
-  (init-status/set-progress! 0.4)
-
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)
@@ -102,20 +110,17 @@
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
-      (-init-create-setup-token)
+      (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
 
-    ;; deal with our sample dataset as needed
+    ;; deal with our sample database as needed
     (if new-install?
-      ;; add the sample dataset DB for fresh installs
-      (sample-data/add-sample-dataset!)
+      ;; add the sample database DB for fresh installs
+      (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!))
-
-    ;; start the metabot thread
-    (metabot/start-metabot!))
+      (sample-data/update-sample-database-if-needed!)))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
@@ -144,9 +149,9 @@
 
 (defn- maybe-enable-tracing
   []
-  (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
   (let [mb-trace-str (config/config-str :mb-ns-trace)]
     (when (not-empty mb-trace-str)
+      (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
         (try (require namespace)
              (catch Throwable _

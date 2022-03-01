@@ -1,12 +1,12 @@
 import { restore } from "__support__/e2e/helpers/e2e-setup-helpers";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   modal,
   popover,
 } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 import { describeWithToken } from "__support__/e2e/cypress";
 
-const { ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const getQuestionDetails = () => ({
   name: "Test Question",
@@ -67,9 +67,6 @@ describeWithToken("audit > auditing > subscriptions", () => {
 
   describe("subscriptions", () => {
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
@@ -118,9 +115,6 @@ describeWithToken("audit > auditing > subscriptions", () => {
 
   describe("alerts", () => {
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestion(getQuestionDetails()).then(
           ({ body: { id: card_id } }) => {

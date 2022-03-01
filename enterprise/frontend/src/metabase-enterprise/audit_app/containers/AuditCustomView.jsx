@@ -19,10 +19,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class AuditTable extends React.Component {
   render() {
     const { metadata, card } = this.props;

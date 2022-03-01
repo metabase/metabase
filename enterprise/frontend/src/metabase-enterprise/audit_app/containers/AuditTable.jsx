@@ -30,18 +30,30 @@ AuditTable.propTypes = {
   reload: PropTypes.bool,
   children: PropTypes.node,
   dispatch: PropTypes.func.isRequired,
+  onLoad: PropTypes.func,
+  mode: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    drills: PropTypes.func.isRequired,
+  }),
 };
 
 function AuditTable({
   metadata,
   table,
   pageSize = DEFAULT_PAGE_SIZE,
+  mode = AuditMode,
   children,
   dispatch,
+  onLoad,
   ...rest
 }) {
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
+
+  const handleOnLoad = results => {
+    setLoadedCount(results[0].row_count);
+    onLoad(results);
+  };
 
   const card = chain(table.card)
     .assoc("display", "audit-table")
@@ -60,10 +72,10 @@ function AuditTable({
         className="mt3"
         question={question}
         metadata={metadata}
-        mode={AuditMode}
+        mode={mode}
         onChangeLocation={handleChangeLocation}
         onChangeCardAndRun={() => {}}
-        onLoad={results => setLoadedCount(results[0].row_count)}
+        onLoad={handleOnLoad}
         dispatch={dispatch}
         {...rest}
       />

@@ -5,22 +5,6 @@ import EventEmitter from "events";
 import { delay } from "metabase/lib/promise";
 import { IFRAMED } from "metabase/lib/dom";
 
-type TransformFn = (o: any) => any;
-
-export type Options = {
-  noEvent?: boolean,
-  json?: boolean,
-  retry?: boolean,
-  retryCount?: number,
-  retryDelayIntervals?: number[],
-  transformResponse?: TransformFn,
-  cancelled?: Promise<any>,
-  raw?: { [key: string]: boolean },
-  headers?: { [key: string]: string },
-  hasBody?: boolean,
-  bodyParamName?: string,
-};
-
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
@@ -28,11 +12,7 @@ const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 
 let ANTI_CSRF_TOKEN = null;
 
-export type Data = {
-  [key: string]: any,
-};
-
-const DEFAULT_OPTIONS: Options = {
+const DEFAULT_OPTIONS = {
   json: true,
   hasBody: false,
   noEvent: false,
@@ -48,16 +28,13 @@ const DEFAULT_OPTIONS: Options = {
     .reverse(),
 };
 
-export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
-export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
-
 export class Api extends EventEmitter {
   basename = "";
 
-  GET: APICreator;
-  POST: APICreator;
-  PUT: APICreator;
-  DELETE: APICreator;
+  GET;
+  POST;
+  PUT;
+  DELETE;
 
   constructor() {
     super();
@@ -67,11 +44,8 @@ export class Api extends EventEmitter {
     this.PUT = this._makeMethod("PUT", { hasBody: true });
   }
 
-  _makeMethod(method: string, creatorOptions?: Options = {}): APICreator {
-    return (
-      urlTemplate: string,
-      methodOptions?: Options | TransformFn = {},
-    ) => {
+  _makeMethod(method, creatorOptions = {}) {
+    return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
       }
@@ -82,11 +56,8 @@ export class Api extends EventEmitter {
         ...methodOptions,
       };
 
-      return async (
-        data?: Data,
-        invocationOptions?: Options = {},
-      ): Promise<any> => {
-        const options: Options = { ...defaultOptions, ...invocationOptions };
+      return async (data, invocationOptions = {}) => {
+        const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         data = { ...data };
         for (const tag of url.match(/:\w+/g) || []) {
@@ -109,7 +80,7 @@ export class Api extends EventEmitter {
           }
         }
 
-        const headers: { [key: string]: string } = options.json
+        const headers = options.json
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
@@ -154,9 +125,9 @@ export class Api extends EventEmitter {
   async _makeRequestWithRetries(method, url, headers, body, data, options) {
     // Get a copy of the delay intervals that we can remove items from as we retry
     const retryDelays = options.retryDelayIntervals.slice();
-    let retryCount: number = 0;
+    let retryCount = 0;
     // maxAttempts is the first attempt followed by the number of retries
-    const maxAttempts: number = options.retryCount + 1;
+    const maxAttempts = options.retryCount + 1;
     // Make the first attempt for the request, then loop incrementing the retryCount
     do {
       try {

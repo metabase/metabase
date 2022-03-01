@@ -1,42 +1,54 @@
 import {
-  getDatabasesSidebar,
+  getDataFocusSidebar,
   getGroupsDataPermissionEditor,
 } from "./data-permissions";
 import { normalizedMetadata } from "./data-permissions.unit.spec.fixtures";
 
 const initialPermissions = {
   1: {
-    // Sample dataset
+    // Sample database
     1: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary multi-schema
     2: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
     // Imaginary schemaless
     3: {
-      native: "write",
-      schemas: "all",
+      data: {
+        native: "write",
+        schemas: "all",
+      },
     },
   },
   2: {
-    // Sample dataset
+    // Sample database
     1: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary multi-schema
     2: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
     // Imaginary schemaless
     3: {
-      native: "none",
-      schemas: "none",
+      data: {
+        native: "none",
+        schemas: "none",
+      },
     },
   },
 };
@@ -60,22 +72,22 @@ const getProps = ({ databaseId, schemaName, tableId, groupId }) => ({
   },
 });
 
-describe("getDatabasesSidebar", () => {
+describe("getDataFocusSidebar", () => {
   describe("when database is not selected", () => {
     it("returns a correct placeholder for databases list search", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.filterPlaceholder).toEqual("Search for a database");
     });
 
     it("returns entity switch value = database", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.entitySwitch.value).toEqual("database");
     });
 
     it("returns list of databases", () => {
-      const sidebarData = getDatabasesSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state, getProps({}));
 
       expect(sidebarData.entityGroups).toEqual([
         [
@@ -102,7 +114,7 @@ describe("getDatabasesSidebar", () => {
 
   describe("when a database is selected", () => {
     it("returns a correct placeholder for databases list search", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 2 }),
       );
@@ -111,7 +123,7 @@ describe("getDatabasesSidebar", () => {
     });
 
     it("returns tree of schemas and tables for a database with schemas", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 2 }),
       );
@@ -195,7 +207,7 @@ describe("getDatabasesSidebar", () => {
     });
 
     it("returns flat list of tables for a schemaless database", () => {
-      const sidebarData = getDatabasesSidebar(
+      const sidebarData = getDataFocusSidebar(
         state,
         getProps({ databaseId: 3 }),
       );

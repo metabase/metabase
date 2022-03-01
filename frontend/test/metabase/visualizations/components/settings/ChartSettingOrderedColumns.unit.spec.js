@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import { ORDERS } from "__support__/sample_dataset_fixture.js";
+import { ORDERS } from "__support__/sample_database_fixture.js";
 
 function renderChartSettingOrderedColumns(props) {
   render(
@@ -17,7 +17,10 @@ function renderChartSettingOrderedColumns(props) {
 describe("ChartSettingOrderedColumns", () => {
   it("should have the correct add and remove buttons", () => {
     renderChartSettingOrderedColumns({
-      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
+      value: [
+        { name: "Foo", enabled: true },
+        { name: "Bar", enabled: false },
+      ],
     });
     screen.getByRole("img", { name: /add/i });
     screen.getByRole("img", { name: /close/i });
@@ -26,28 +29,44 @@ describe("ChartSettingOrderedColumns", () => {
   it("should add a column", () => {
     const onChange = jest.fn();
     renderChartSettingOrderedColumns({
-      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
+      value: [
+        { name: "Foo", enabled: true },
+        { name: "Bar", enabled: false },
+      ],
       onChange,
     });
     const ADD = screen.getByRole("img", { name: /add/i });
 
     fireEvent.click(ADD);
     expect(onChange.mock.calls).toEqual([
-      [[{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }]],
+      [
+        [
+          { name: "Foo", enabled: true },
+          { name: "Bar", enabled: true },
+        ],
+      ],
     ]);
   });
 
   it("should remove a column", () => {
     const onChange = jest.fn();
     renderChartSettingOrderedColumns({
-      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
+      value: [
+        { name: "Foo", enabled: true },
+        { name: "Bar", enabled: false },
+      ],
       onChange,
     });
     const CLOSE = screen.getByRole("img", { name: /close/i });
 
     fireEvent.click(CLOSE);
     expect(onChange.mock.calls).toEqual([
-      [[{ name: "Foo", enabled: false }, { name: "Bar", enabled: false }]],
+      [
+        [
+          { name: "Foo", enabled: false },
+          { name: "Bar", enabled: false },
+        ],
+      ],
     ]);
   });
 

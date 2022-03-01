@@ -1,5 +1,13 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  getDimensionByName,
+  visitQuestionAdhoc,
+  popover,
+  summarize,
+} from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -8,7 +16,7 @@ const {
   PRODUCTS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > x-rays", () => {
   beforeEach(() => {
@@ -38,53 +46,52 @@ describe("scenarios > x-rays", () => {
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.createQuestion({
-      name: "13112",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
-            ],
-            alias: PRODUCTS_ALIAS,
-          },
-        ],
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
-        ],
+    cy.createQuestion(
+      {
+        name: "13112",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+              ],
+              alias: PRODUCTS_ALIAS,
+            },
+          ],
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+          ],
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
+      { visitQuestion: true },
+    );
 
-      cy.visit(`/question/${QUESTION_ID}`);
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.wait("@cardQuery");
-      cy.get(".dot")
-        .eq(23) // Random dot
-        .click({ force: true });
-      cy.findByText("X-ray").click();
+    cy.get(".dot")
+      .eq(23) // Random dot
+      .click({ force: true });
+    cy.findByText("X-ray").click();
 
-      // x-rays take long time even locally - that can timeout in CI so we have to extend it
-      cy.wait("@dataset", { timeout: 30000 });
-      cy.findByText(
-        "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
-      );
-      cy.icon("warning").should("not.exist");
-    });
+    // x-rays take long time even locally - that can timeout in CI so we have to extend it
+    cy.wait("@dataset", { timeout: 30000 });
+    cy.findByText(
+      "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
+    );
+    cy.icon("warning").should("not.exist");
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
-    it.skip(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+    it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+      cy.skipOn(action === "Compare to the rest");
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
       cy.createNativeQuestion({
         name: "15655",
@@ -95,10 +102,9 @@ describe("scenarios > x-rays", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
-      cy.findByText("Summarize").click();
-      cy.get(".List-item-title")
-        .contains(/Source/i)
-        .click();
+      summarize();
+      getDimensionByName({ name: "SOURCE" }).click();
+      cy.button("Done").click();
       cy.get(".bar")
         .first()
         .click({ force: true });
@@ -107,16 +113,16 @@ describe("scenarios > x-rays", () => {
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
-      cy.findByText("A look at the number of People");
+      cy.findByText(/A closer look at the number of/);
       cy.get(".DashCard");
     });
 
-    it.skip(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
+    it(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
       visitQuestionAdhoc({
         name: "15737",
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PEOPLE_ID,
             aggregation: [["count"]],
@@ -136,12 +142,12 @@ describe("scenarios > x-rays", () => {
     });
   });
 
-  it.skip("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
+  it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
     cy.visit("/");
     cy.contains("A look at your Orders table").click();
 
     // There are a lot of spinners in this dashboard. Give them some time to disappear.
-    cy.get(".LoadingSpinner", { timeout: 10000 }).should("not.exist");
+    cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
 
     cy.button("Save this").click();
 
@@ -152,5 +158,38 @@ describe("scenarios > x-rays", () => {
 
     cy.get(".Card").contains("18,760");
     cy.findByText("How these transactions are distributed");
+  });
+
+  it("should be able to click the title of an x-ray dashcard to see it in the query builder", () => {
+    const timeout = { timeout: 10000 };
+
+    cy.visit("/");
+    cy.contains("A look at your Orders table").click();
+
+    // confirm results of "Total transactions" card are present
+    cy.findByText("18,760", timeout);
+    cy.findByText("Total transactions").click();
+
+    // confirm we're in the query builder with the same results
+    cy.url().should("contain", "/question");
+    cy.findByText("18,760");
+
+    cy.go("back");
+
+    // add a parameter filter to the auto dashboard
+    cy.findByText("State", timeout).click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type("GA{enter}");
+      cy.findByText("GA").click();
+      cy.findByText("Add filter").click();
+    });
+
+    // confirm results of "Total transactions" card were updated
+    cy.findByText("463", timeout);
+    cy.findByText("Total transactions").click();
+
+    // confirm parameter filter is applied as filter in query builder
+    cy.findByText("State is GA");
+    cy.findByText("463");
   });
 });

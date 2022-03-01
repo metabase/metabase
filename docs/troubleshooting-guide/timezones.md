@@ -70,7 +70,7 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 **Root cause:** You're comparing or doing arithmetic on two dates where one has an explicit time zone and one doesn't.
 
-** Steps to take:**
+**Steps to take:**
 
 1. This typically happens with a question that uses multiple fields: for example, you're filtering on one timestamp and grouping by another. Check the time zones of each of the dates or times you are using in your question.
 2. You''ll need to explicitly set the time zone for any value that doesn't have an explicit time zone. This will need to be done either in a SQL query or by transforming the data in your database to ensure both timestamps have time zones.

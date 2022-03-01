@@ -1,8 +1,9 @@
 (ns metabase.config
-  (:require [clojure.java.io :as io]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [environ.core :as environ]
+            [environ.core :as env]
             [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword
            java.util.UUID))
@@ -57,7 +58,7 @@
    3.  hard coded `app-defaults`"
   [k]
   (let [k       (keyword k)
-        env-val (k environ/env)]
+        env-val (k env/env)]
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
@@ -143,3 +144,9 @@
         "Environ will use values from it in preference to env var or Java system properties you've specified.\n"
         "You should delete it; it will be recreated as needed when switching to a branch still using Leiningen.\n"
         "See https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#custom-env-var-values for more details.")))
+
+(defn mb-user-defaults
+  "Default user details provided as a JSON string at launch time for first-user setup flow."
+  []
+  (when-let [user-json (env/env :mb-user-defaults)]
+    (json/parse-string user-json true)))

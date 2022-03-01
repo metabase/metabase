@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+import { t } from "ttag";
 import Pulses from "metabase/entities/pulses";
 import Users from "metabase/entities/users";
 import AuditNotificationEditModal from "../../components/AuditNotificationEditModal";
@@ -8,6 +9,8 @@ import AuditNotificationEditModal from "../../components/AuditNotificationEditMo
 const mapStateToProps = (state, { pulse }) => ({
   item: pulse,
   type: "pulse",
+  invalidRecipientText: domains =>
+    t`You're only allowed to email subscriptions to addresses ending in ${domains}`,
 });
 
 const mapDispatchToProps = {
@@ -21,8 +24,5 @@ export default _.compose(
     id: (state, props) => Number.parseInt(props.params.pulseId),
   }),
   Users.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(AuditNotificationEditModal);

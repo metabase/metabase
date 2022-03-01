@@ -1,16 +1,11 @@
 name: Backend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.clj*'
-    - '**.edn'
-    - '**.java'
-    - '**/metabase-plugin.yaml'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 
@@ -27,25 +22,14 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare JDK 11
-      uses: actions/setup-java@v1
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
       with:
-        java-version: 11
-    - name: Install Clojure CLI
-      run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
-        sudo bash ./linux-install-1.10.3.933.sh
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ runner.os }}-eastwood-${{ hashFiles('**/deps.edn') }}
+        m2-cache-key: 'eastwood'
     - name: Compile Java & AOT Sources
       run: |
         source ./bin/prep.sh && prep_deps
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
       name: Run Eastwood linter
 
   be-linter-namespace-decls:
@@ -53,23 +37,12 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare JDK 11
-      uses: actions/setup-java@v1
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
       with:
-        java-version: 11
-    - name: Install Clojure CLI
-      run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
-        sudo bash ./linux-install-1.10.3.933.sh
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/deps.edn') }}
+        m2-cache-key: 'namespace-decls'
     - name: Compile Java & AOT Sources
       run: |
         source ./bin/prep.sh && prep_deps
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
       name: Check ns forms

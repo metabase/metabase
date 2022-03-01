@@ -60,12 +60,14 @@
   [token :- ValidToken]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
+  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
+                 ;; ValidToken will ensure the length of token is 64 chars long
+                 (str (subs token 0 4) "..." (subs token 60 64))))
   (deref
    (future
-     (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users (active-user-count)}})
+                  (http/get {:query-params {:users     (active-user-count)
+                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
                   (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the
@@ -130,7 +132,7 @@
                    {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
-      (setting/set-string! :premium-embedding-token new-value)
+      (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (catch Throwable e
         (log/error e (trs "Error setting premium features token"))
         (throw (ex-info (.getMessage e) (merge
@@ -153,30 +155,13 @@
   []
   (boolean (seq (token-features))))
 
-(def ^:private ^:deprecated PLACEHOLDER-DO-NOT-RELEASE-new-41-features
-  "The following features are not yet live and thus no actual tokens have them. Until they're live (see
-  https://github.com/metabase/harbormaster/issues/2006) we will 'simulate' these features by pretending we have them
-  if we have a token with _any_ other features.
-
-  This is temporary code and needs to be removed entirely before the 0.41.0 release.
-
-  DO NOT RELEASE 0.41.0 WITH THIS CODE STILL IN PLACE!!!
-
-  @camsaul will remove this in the next week or so unless he dies. If he dies, please remove it in memory of him and
-  bury him with it."
-  #{:advanced-config
-    :advanced-permissions
-    :content-management})
-
 (defn has-feature?
   "Does this instance's premium token have `feature`?
 
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (if (PLACEHOLDER-DO-NOT-RELEASE-new-41-features (keyword feature))
-    (has-any-features?)
-    (contains? (token-features) (name feature))))
+  (contains? (token-features) (name feature)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -234,6 +219,13 @@
   "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
   etc.)?"
   :content-management)
+
+(defsetting is-hosted?
+  "Is the Metabase instance running in the cloud?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "hosting"))))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the

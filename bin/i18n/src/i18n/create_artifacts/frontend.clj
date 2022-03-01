@@ -43,7 +43,7 @@
 (defn- i18n-map [locale]
   (->i18n-map (i18n/po-contents locale)))
 
-(def ^:private target-directory
+(def target-directory
   (u/filename u/project-root-directory "resources" "frontend_client" "app" "locales"))
 
 (defn- target-filename [locale]

@@ -10,7 +10,8 @@ import {
 } from "metabase/lib/redux";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import Tables from "metabase/entities/tables";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
@@ -18,8 +19,9 @@ import {
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/lib/permissions";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -88,7 +90,16 @@ export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
   ({ groupId, permission, value, entityId, view }) => {
     return (dispatch, getState) => {
-      const metadata = getMetadata(getState());
+      if (isDatabaseEntityId(entityId)) {
+        dispatch(
+          Tables.actions.fetchList({
+            dbId: entityId.databaseId,
+            include_hidden: true,
+          }),
+        );
+      }
+
+      const metadata = getMetadataWithHiddenTables(getState(), null);
       if (permission.postActions) {
         const action = permission.postActions?.[value]?.(
           entityId,
@@ -111,7 +122,7 @@ const SAVE_DATA_PERMISSIONS =
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackEvent("Permissions", "save");
+    MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const {
       dataPermissions,
       dataPermissionsRevision,
@@ -136,7 +147,7 @@ const SAVE_COLLECTION_PERMISSIONS =
 export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackEvent("Permissions", "save");
+    MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const {
       collectionPermissions,
       collectionPermissionsRevision,
@@ -198,7 +209,7 @@ const dataPermissions = handleActions(
         const { value, groupId, entityId, metadata, permission } = payload;
 
         if (entityId.tableId != null) {
-          MetabaseAnalytics.trackEvent("Permissions", "fields", value);
+          MetabaseAnalytics.trackStructEvent("Permissions", "fields", value);
           const updatedPermissions = updateFieldsPermission(
             state,
             groupId,
@@ -213,7 +224,7 @@ const dataPermissions = handleActions(
             metadata,
           );
         } else if (entityId.schemaName != null) {
-          MetabaseAnalytics.trackEvent("Permissions", "tables", value);
+          MetabaseAnalytics.trackStructEvent("Permissions", "tables", value);
           return updateTablesPermission(
             state,
             groupId,
@@ -222,7 +233,7 @@ const dataPermissions = handleActions(
             metadata,
           );
         } else if (permission.name === "native") {
-          MetabaseAnalytics.trackEvent("Permissions", "native", value);
+          MetabaseAnalytics.trackStructEvent("Permissions", "native", value);
           return updateNativePermission(
             state,
             groupId,
@@ -231,7 +242,7 @@ const dataPermissions = handleActions(
             metadata,
           );
         } else {
-          MetabaseAnalytics.trackEvent("Permissions", "schemas", value);
+          MetabaseAnalytics.trackStructEvent("Permissions", "schemas", value);
           return updateSchemasPermission(
             state,
             groupId,

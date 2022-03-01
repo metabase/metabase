@@ -43,7 +43,7 @@
       (log/warn (str filename " is about to be overwritten."))
       (log/debug (str "With object: " (pr-str entity))))
 
-      (spit-yaml filename (serialize entity))))
+    (spit-yaml filename (serialize entity))))
 
 (defn dump
   "Serialize entities into a directory structure of YAMLs at `path`."
@@ -66,7 +66,8 @@
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/settings.yaml")
-             (into {} (for [{:keys [key value]} (setting/all :getter setting/get-string)]
+             (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
+                                                 :getter (partial setting/get-value-of-type :string))]
                         [key value]))))
 
 (defn dump-dimensions

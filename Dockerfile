@@ -1,19 +1,5 @@
 ###################
-# STAGE 1.1: builder frontend
-###################
-
-FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as frontend
-
-ARG MB_EDITION=oss
-
-WORKDIR /home/circleci
-
-COPY --chown=circleci . .
-RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && \
-    yarn build && yarn build-static-viz && bin/i18n/build-translation-resources
-
-###################
-# STAGE 1.4: main builder
+# STAGE 1: builder
 ###################
 
 FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as builder
@@ -22,12 +8,8 @@ ARG MB_EDITION=oss
 
 WORKDIR /home/circleci
 
-# try to reuse caching as much as possible
-COPY --from=frontend /home/circleci/.m2/repository/. /home/circleci/.m2/repository/.
-COPY --from=frontend /home/circleci/. .
-
-# build the app
-RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version drivers uberjar
+COPY --chown=circleci . .
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build
 
 # ###################
 # # STAGE 2: runner
@@ -36,12 +18,14 @@ RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version drivers uberjar
 ## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
 ## jar from the previous stage rather than the local build
 
-FROM adoptopenjdk/openjdk11:alpine-jre as runner
+FROM eclipse-temurin:11-jre-alpine as runner
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk upgrade && apk add --update-cache --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
+RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
+    apk upgrade && \
+    rm -rf /var/cache/apk/* && \
     mkdir -p /app/certs && \
     curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \

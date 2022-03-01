@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -7,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import { NotFound } from "metabase/containers/ErrorPages";
 import {
   isID,
   isPK,
@@ -14,7 +16,11 @@ import {
 } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { inflect } from "inflection";
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import {
+  formatValue,
+  formatColumn,
+  singularize,
+} from "metabase/lib/formatting";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -24,9 +30,14 @@ import {
   viewNextObjectDetail,
 } from "metabase/query_builder/actions";
 import {
+  getQuestion,
   getTableMetadata,
   getTableForeignKeys,
   getTableForeignKeyReferences,
+  getZoomRow,
+  getZoomedObjectId,
+  getCanZoomPreviousRow,
+  getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -34,41 +45,15 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { FieldId, Field } from "metabase-types/types/Field";
-import type Table from "metabase-lib/lib/metadata/Table";
-
-type ForeignKeyId = number;
-type ForeignKey = {
-  id: ForeignKeyId,
-  relationship: string,
-  origin: Field,
-  origin_id: FieldId,
-  destination: Field,
-  destination_id: FieldId,
-};
-
-type ForeignKeyCountInfo = {
-  status: number,
-  value: number,
-};
-
-type Props = VisualizationProps & {
-  table: ?Table,
-  tableForeignKeys: ?(ForeignKey[]),
-  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
-  fetchTableFks: () => void,
-  loadObjectDetailFKReferences: () => void,
-  fetchTableFks: (id: any) => void,
-  followForeignKey: (fk: any) => void,
-  viewNextObjectDetail: () => void,
-  viewPreviousObjectDetail: () => void,
-};
-
 const mapStateToProps = state => ({
+  question: getQuestion(state),
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
   tableForeignKeyReferences: getTableForeignKeyReferences(state),
+  zoomedRow: getZoomRow(state),
+  zoomedRowID: getZoomedObjectId(state),
+  canZoomPreviousRow: getCanZoomPreviousRow(state),
+  canZoomNextRow: getCanZoomNextRow(state),
 });
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
@@ -83,8 +68,6 @@ const mapDispatchToProps = dispatch => ({
 });
 
 export class ObjectDetail extends Component {
-  props: Props;
-
   static uiName = t`Object Detail`;
   static identifier = "object";
   static iconName = "document";
@@ -96,8 +79,18 @@ export class ObjectDetail extends Component {
     ...columnSettings({ hidden: true }),
   };
 
+  state = {
+    hasNotFoundError: false,
+  };
+
   componentDidMount() {
-    const { table } = this.props;
+    const { data, table, zoomedRow, zoomedRowID } = this.props;
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (data && notFoundObject) {
+      this.setState({ hasNotFoundError: true });
+      return;
+    }
+
     if (table && table.fks == null) {
       this.props.fetchTableFks(table.id);
     }
@@ -106,6 +99,16 @@ export class ObjectDetail extends Component {
       this.props.loadObjectDetailFKReferences();
     }
     window.addEventListener("keydown", this.onKeyDown, true);
+  }
+
+  componentDidUpdate(prevProps) {
+    const { data: prevData } = prevProps;
+    const { data, zoomedRow, zoomedRowID } = this.props;
+    const queryCompleted = !prevData && data;
+    const notFoundObject = zoomedRowID != null && !zoomedRow;
+    if (queryCompleted && notFoundObject) {
+      this.setState({ hasNotFoundError: true });
+    }
   }
 
   componentWillUnmount() {
@@ -122,13 +125,15 @@ export class ObjectDetail extends Component {
   }
 
   getIdValue() {
-    if (!this.props.data) {
+    const { data, zoomedRowID } = this.props;
+    if (!data) {
       return null;
     }
+    if (zoomedRowID) {
+      return zoomedRowID;
+    }
 
-    const {
-      data: { cols, rows },
-    } = this.props;
+    const { cols, rows } = data;
     const columnIndex = _.findIndex(cols, col => isPK(col));
     return rows[0][columnIndex];
   }
@@ -210,18 +215,20 @@ export class ObjectDetail extends Component {
 
   renderDetailsTable() {
     const {
-      data: { cols, rows },
+      zoomedRow,
+      data: { rows, cols },
     } = this.props;
+    const row = zoomedRow || rows[0];
     return cols.map((column, columnIndex) => (
       <div className="Grid Grid--1of2 mb2" key={columnIndex}>
         <div className="Grid-cell">
-          {this.cellRenderer(column, rows[0][columnIndex], true)}
+          {this.cellRenderer(column, row[columnIndex], true)}
         </div>
         <div
           style={{ wordWrap: "break-word" }}
           className="Grid-cell text-bold text-dark"
         >
-          {this.cellRenderer(column, rows[0][columnIndex], false)}
+          {this.cellRenderer(column, row[columnIndex], false)}
         </div>
       </div>
     ));
@@ -325,15 +332,30 @@ export class ObjectDetail extends Component {
     }
   };
 
+  getObjectName = () => {
+    const { question, table } = this.props;
+    const tableObjectName = table && table.objectName();
+    if (tableObjectName) {
+      return tableObjectName;
+    }
+    const questionName = question && question.displayName();
+    if (questionName) {
+      return singularize(questionName);
+    }
+    return t`Unknown`;
+  };
+
   render() {
-    const { data, table } = this.props;
+    const { data, zoomedRow, canZoomPreviousRow, canZoomNextRow } = this.props;
     if (!data) {
       return false;
     }
+    if (this.state.hasNotFoundError) {
+      return <NotFound />;
+    }
 
-    const tableName = table ? table.objectName() : t`Unknown`;
-    // TODO: once we nail down the "title" column of each table this should be something other than the id
-    const idValue = this.getIdValue();
+    const canZoom = !!zoomedRow;
+    const objectName = this.getObjectName();
 
     return (
       <div className="scroll-y pt2 px4">
@@ -341,8 +363,8 @@ export class ObjectDetail extends Component {
           <div className="Grid border-bottom relative">
             <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
               <div className="text-brand text-bold">
-                <span>{tableName}</span>
-                <h1>{idValue}</h1>
+                <span>{objectName}</span>
+                <h1>{this.getIdValue()}</h1>
               </div>
             </div>
             <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
@@ -350,39 +372,50 @@ export class ObjectDetail extends Component {
                 <Icon name="connections" size={17} />
                 <div className="ml2">
                   {jt`This ${(
-                    <span className="text-dark">{tableName}</span>
+                    <span className="text-dark">{objectName}</span>
                   )} is connected to:`}
                 </div>
               </div>
             </div>
 
-            <div
-              className={cx(
-                "absolute left cursor-pointer text-brand-hover lg-ml2",
-                { disabled: idValue <= 1 },
-              )}
-              style={{
-                top: "50%",
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <DirectionalButton
-                direction="left"
-                onClick={this.props.viewPreviousObjectDetail}
-              />
-            </div>
-            <div
-              className="absolute right cursor-pointer text-brand-hover lg-ml2"
-              style={{
-                top: "50%",
-                transform: "translate(50%, -50%)",
-              }}
-            >
-              <DirectionalButton
-                direction="right"
-                onClick={this.props.viewNextObjectDetail}
-              />
-            </div>
+            {canZoom && (
+              <div
+                className={cx(
+                  "absolute left cursor-pointer text-brand-hover lg-ml2",
+                  { disabled: !canZoomPreviousRow },
+                )}
+                aria-disabled={!canZoomPreviousRow}
+                style={{
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+                data-testid="view-previous-object-detail"
+              >
+                <DirectionalButton
+                  direction="left"
+                  onClick={this.props.viewPreviousObjectDetail}
+                />
+              </div>
+            )}
+            {canZoom && (
+              <div
+                className={cx(
+                  "absolute right cursor-pointer text-brand-hover lg-ml2",
+                  { disabled: !canZoomNextRow },
+                )}
+                aria-disabled={!canZoomNextRow}
+                style={{
+                  top: "50%",
+                  transform: "translate(50%, -50%)",
+                }}
+                data-testid="view-next-object-detail"
+              >
+                <DirectionalButton
+                  direction="right"
+                  onClick={this.props.viewNextObjectDetail}
+                />
+              </div>
+            )}
           </div>
           <div className="Grid">
             <div
@@ -401,7 +434,4 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);

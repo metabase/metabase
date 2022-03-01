@@ -166,3 +166,10 @@
   (let [user-perms @api/*current-user-permissions-set*]
     (or (perms/set-has-full-permissions-for-set? user-perms (perms-set query))
         (perms/set-has-full-permissions-for-set? user-perms (segmented-perms-set query)))))
+
+(defn can-query-table?
+  "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
+  [database-id table-id]
+  (can-run-query? {:database database-id
+                   :type     :query
+                   :query    {:source-table table-id}}))

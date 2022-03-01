@@ -3,6 +3,7 @@
   (:require [clojure.math.combinatorics :as math.combo]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
             [metabase.models.collection :as collection]
@@ -1478,21 +1479,28 @@
   (is (= [{:name     "A"
            :id       1
            :location "/"
+           :below    #{:dataset :card}
            :children [{:name "B", :id 2, :location "/1/", :children []}
                       {:name     "C"
                        :id       3
                        :location "/1/"
+                       :below    #{:dataset :card}
                        :children [{:name     "D"
                                    :id       4
                                    :location "/1/3/"
-                                   :children [{:name "E", :id 5, :location "/1/3/4/", :children []}]}
+                                   :here     #{:dataset}
+                                   :below    #{:dataset}
+                                   :children [{:name "E", :id 5, :location "/1/3/4/",
+                                               :children [] :here #{:dataset}}]}
                                   {:name     "F"
                                    :id       6
                                    :location "/1/3/"
+                                   :here     #{:card}
                                    :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
-          {:name "aaa", :id 9, :location "/", :children []}
+          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}
           {:name "H", :id 8, :location "/", :children []}]
          (collection/collections->tree
+          {:dataset #{4 5} :card #{6 9}}
           [{:name "A", :id 1, :location "/"}
            {:name "B", :id 2, :location "/1/"}
            {:name "C", :id 3, :location "/1/"}
@@ -1503,12 +1511,13 @@
            {:name "H", :id 8, :location "/"}
            {:name "aaa", :id 9, :location "/"}])))
   (is (= []
-         (collection/collections->tree nil)
-         (collection/collections->tree [])))
+         (collection/collections->tree {} nil)
+         (collection/collections->tree {} [])))
   (testing "Make sure it doesn't throw an NPE if Collection name is nil for some reason (FE test data?)"
     (is (= [{:name nil, :location "/", :id 1, :children []}
             {:name "a", :location "/", :id 2, :children []}]
-           (collection/collections->tree [{:name nil, :location "/", :id 1}
+           (collection/collections->tree {}
+                                         [{:name nil, :location "/", :id 1}
                                           {:name "a", :location "/", :id 2}])))))
 
 (deftest collections->tree-missing-parents-test
@@ -1522,8 +1531,11 @@
     (is (= [{:name     "Child"
              :location "/1/"
              :id       2
-             :children [{:name "Grandchild", :location "/1/2/", :id 3, :children []}]}]
-           (collection/collections->tree [{:name "Child", :location "/1/", :id 2}
+             :here     #{:card}
+             :below    #{:card}
+             :children [{:name "Grandchild", :location "/1/2/", :id 3, :children [] :here #{:card}}]}]
+           (collection/collections->tree {:card #{1 2 3}}
+                                         [{:name "Child", :location "/1/", :id 2}
                                           {:name "Grandchild", :location "/1/2/", :id 3}])))))
 
 (deftest collections->tree-permutations-test
@@ -1556,4 +1568,35 @@
                              :name     "a"
                              :location "/3/"
                              :children []}]}]
-               (collection/collections->tree collections)))))))
+               (collection/collections->tree {} collections)))))))
+
+(deftest annotate-collections-test
+  (let [collections [{:id 1, :name "a", :location "/"}
+                     {:id 2, :name "b", :location "/1/"}
+                     {:id 3, :name "c", :location "/1/2/"}
+                     {:id 4, :name "d", :location "/1/2/3/"}
+                     {:id 5, :name "e", :location "/1/"}]
+        clean      #(walk/prewalk
+                     (fn [x]
+                       ;; select important keys and remove empty children
+                       (if (map? x)
+                         (cond-> (select-keys x [:id :here :below :children])
+                           (not (seq (:children x))) (dissoc :children))
+                         x))
+                     %)]
+    (is (= [{:id 1 :name "a" :location "/"       :here #{:card}    :below #{:card :dataset}}
+            {:id 2 :name "b" :location "/1/"                       :below #{:dataset}}
+            {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
+            {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
+            {:id 5 :name "e" :location "/1/"     :here #{:card}}]
+           (collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
+    (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
+             :children
+             [{:id 2 :below #{:dataset}
+               :children
+               [{:id 3 :here #{:dataset} :below #{:dataset}
+                 :children
+                 [{:id 4 :here #{:dataset}}]}]}
+              {:id 5 :here #{:card}}]}]
+           (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
+                                                collections))))))

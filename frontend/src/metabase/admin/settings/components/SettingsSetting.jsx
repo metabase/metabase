@@ -14,6 +14,7 @@ import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
 import SettingColor from "./widgets/SettingColor";
+import { settingToFormFieldId } from "./../../settings/utils";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -48,6 +49,8 @@ export default class SettingsSetting extends Component {
 
   render() {
     const { setting, errorMessage } = this.props;
+    const settingId = settingToFormFieldId(setting);
+
     let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
     if (!Widget) {
       console.warn(
@@ -60,9 +63,12 @@ export default class SettingsSetting extends Component {
     return (
       // TODO - this formatting needs to be moved outside this component
       <li className="m2 mb4">
-        {!setting.noHeader && <SettingHeader setting={setting} />}
+        {!setting.noHeader && (
+          <SettingHeader id={settingId} setting={setting} />
+        )}
         <div className="flex">
           <Widget
+            id={settingId}
             {...(setting.props || {})}
             {...updatePlaceholderForEnvironmentVars(this.props)}
           />

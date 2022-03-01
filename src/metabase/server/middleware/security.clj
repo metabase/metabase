@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time :as t]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -51,9 +52,10 @@
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://apis.google.com"
-                                   "https://www.google-analytics.com" ; Safari requires the protocol
                                    "https://*.googleapis.com"
                                    "*.gstatic.com"
+                                   (when (public-settings/anon-tracking-enabled)
+                                     "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
                                      "localhost:8080")
@@ -76,6 +78,13 @@
                   :connect-src  ["'self'"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 ;; Google analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "www.google-analytics.com")
+                                 ;; Snowplow analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   (snowplow/snowplow-url))
+                                 ;; Webpack dev server
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]
                   :manifest-src ["'self'"]}]

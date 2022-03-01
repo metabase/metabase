@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 
@@ -11,10 +12,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import cx from "classnames";
 import _ from "underscore";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Column } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -39,8 +36,6 @@ const COMPACT_MIN_LENGTH = 6;
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
 export default class Scalar extends Component {
-  props: VisualizationProps;
-
   static uiName = t`Number`;
   static identifier = "scalar";
   static iconName = "number";
@@ -49,8 +44,6 @@ export default class Scalar extends Component {
   static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
-
-  _scalar: ?HTMLElement;
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
@@ -161,7 +154,7 @@ export default class Scalar extends Component {
     click_behavior: {},
   };
 
-  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
+  _getColumnIndex(cols, settings) {
     const columnIndex = _.findIndex(
       cols,
       col => col.name === settings["scalar.field"],

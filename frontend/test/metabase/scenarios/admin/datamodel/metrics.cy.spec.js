@@ -1,13 +1,80 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  popover,
+  modal,
+  openOrdersTable,
+  visualize,
+  summarize,
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
+  });
+
+  it("should be possible to sort by metric (metabase#8283)", () => {
+    cy.request("POST", "/api/metric", {
+      name: "Revenue",
+      description: "Sum of orders subtotal",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    });
+
+    openOrdersTable({ mode: "notebook" });
+
+    summarize({ mode: "notebook" });
+    cy.findByText("Common Metrics").click();
+    cy.findByText("Revenue").click();
+
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Created At").click();
+
+    cy.findByText("Sort").click();
+
+    // Sorts ascending by default
+    popover()
+      .contains("Revenue")
+      .click();
+
+    // Let's make sure it's possible to sort descending as well
+    cy.icon("arrow_up").click();
+
+    cy.icon("arrow_down")
+      .parent()
+      .contains("Revenue");
+
+    visualize();
+    // Visualization will render line chart by default. Switch to the table.
+    cy.icon("table2").click();
+
+    cy.findAllByRole("grid").as("table");
+    cy.get("@table")
+      .first()
+      .as("tableHeader")
+      .within(() => {
+        cy.get(".cellData")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "Revenue");
+      });
+
+    cy.get("@table")
+      .last()
+      .as("tableBody")
+      .within(() => {
+        cy.get(".cellData")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "50,072.98");
+      });
   });
 
   describe("with no metrics", () => {

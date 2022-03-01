@@ -189,7 +189,7 @@
     (reduce
      (partial merge-with merge)
      {}
-     (for [{:keys [t1 f1 t2 f2] :as m} rows]
+     (for [{:keys [t1 f1 t2 f2]} rows]
        (merge
         {t1 {t2 [{:lhs {:table t1, :field f1}, :rhs {:table t2, :field f2}}]}}
         (let [reverse-join {:lhs {:table t2, :field f2}, :rhs {:table t1, :field f1}}]
@@ -391,7 +391,8 @@
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))})
+                   (add-filters source-table-id joined-table-ids constraints)))
+   :middleware {:disable-remaps? true}})
 
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------

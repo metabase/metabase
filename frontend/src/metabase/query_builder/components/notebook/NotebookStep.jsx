@@ -4,16 +4,14 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color as c, lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
-
-import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
 
@@ -26,67 +24,76 @@ import BreakoutStep from "./steps/BreakoutStep";
 import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
+import {
+  StepActionsContainer,
+  StepBody,
+  StepContent,
+  StepHeader,
+  StepButtonContainer,
+  StepRoot,
+} from "./NotebookStep.styled";
 
+// TODO
 const STEP_UI = {
   data: {
     title: t`Data`,
-    color: c("brand"),
     component: DataStep,
+    getColor: () => c("brand"),
   },
   join: {
     title: t`Join data`,
-    color: c("brand"),
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
+    getColor: () => c("brand"),
   },
   expression: {
     title: t`Custom column`,
-    color: c("bg-dark"),
     icon: "add_data",
     component: ExpressionStep,
+    getColor: () => c("bg-dark"),
   },
   filter: {
     title: t`Filter`,
-    color: c("accent7"),
     icon: "filter",
     component: FilterStep,
     priority: 10,
+    getColor: () => c("accent7"),
   },
   summarize: {
     title: t`Summarize`,
-    color: c("accent1"),
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   aggregate: {
     title: t`Aggregate`,
-    color: c("accent1"),
     icon: "sum",
     component: AggregateStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   breakout: {
     title: t`Breakout`,
-    color: c("accent4"),
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
+    getColor: () => c("accent4"),
   },
   sort: {
     title: t`Sort`,
-    color: c("bg-dark"),
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
   limit: {
     title: t`Row limit`,
-    color: c("bg-dark"),
     icon: "list",
     component: LimitStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
 };
 
@@ -94,8 +101,6 @@ function getTestId(step) {
   const { type, stageIndex, itemIndex } = step;
   return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
 }
-
-const CONTENT_WIDTH = [11 / 12, 8 / 12];
 
 export default class NotebookStep extends React.Component {
   state = {
@@ -112,9 +117,10 @@ export default class NotebookStep extends React.Component {
     } = this.props;
     const { showPreview } = this.state;
 
-    const { title, color, component: NotebookStepComponent } =
+    const { title, getColor, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
+    const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 
@@ -124,19 +130,24 @@ export default class NotebookStep extends React.Component {
 
     const actions = [];
     actions.push(
-      ...step.actions.map(action => ({
-        priority: (STEP_UI[action.type] || {}).priority,
-        button: (
-          <ActionButton
-            mr={isLastStep ? 2 : 1}
-            mt={isLastStep ? 2 : null}
-            large={largeActionButtons}
-            {...(STEP_UI[action.type] || {})}
-            key={`actionButton_${STEP_UI[action.type].title}`}
-            onClick={() => action.action({ query: step.query, openStep })}
-          />
-        ),
-      })),
+      ...step.actions.map(action => {
+        const stepUi = STEP_UI[action.type];
+
+        return {
+          priority: stepUi.priority,
+          button: (
+            <ActionButton
+              mr={isLastStep ? 2 : 1}
+              mt={isLastStep ? 2 : null}
+              color={stepUi.getColor()}
+              large={largeActionButtons}
+              {...stepUi}
+              key={`actionButton_${stepUi.title}`}
+              onClick={() => action.action({ query: step.query, openStep })}
+            />
+          ),
+        };
+      }),
     );
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -144,18 +155,11 @@ export default class NotebookStep extends React.Component {
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box
-          mb={[1, 2]}
-          pb={[1, 2]}
+        <StepRoot
           className="hover-parent hover--visibility"
           data-testid={getTestId(step)}
         >
-          <Flex
-            mb={1}
-            width={CONTENT_WIDTH}
-            className="text-bold"
-            style={{ color }}
-          >
+          <StepHeader color={color}>
             {title}
             <Icon
               name="close"
@@ -164,11 +168,11 @@ export default class NotebookStep extends React.Component {
               onClick={() => step.revert(step.query).update(updateQuery)}
               data-testid="remove-step"
             />
-          </Flex>
+          </StepHeader>
 
           {NotebookStepComponent && (
-            <Flex align="center">
-              <Box width={CONTENT_WIDTH}>
+            <StepBody>
+              <StepContent>
                 <NotebookStepComponent
                   color={color}
                   step={step}
@@ -176,8 +180,8 @@ export default class NotebookStep extends React.Component {
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
                 />
-              </Box>
-              <Box width={[1 / 12]}>
+              </StepContent>
+              <StepButtonContainer>
                 <ActionButton
                   ml={[1, 2]}
                   className={
@@ -188,8 +192,8 @@ export default class NotebookStep extends React.Component {
                   color={c("text-light")}
                   onClick={() => this.setState({ showPreview: true })}
                 />
-              </Box>
-            </Flex>
+              </StepButtonContainer>
+            </StepBody>
           )}
 
           {showPreview && canPreview && (
@@ -200,11 +204,11 @@ export default class NotebookStep extends React.Component {
           )}
 
           {actionButtons.length > 0 && (
-            <Box mt={1} data-testid="action-buttons">
+            <StepActionsContainer data-testid="action-buttons">
               {actionButtons}
-            </Box>
+            </StepActionsContainer>
           )}
-        </Box>
+        </StepRoot>
       </ExpandingContent>
     );
   }

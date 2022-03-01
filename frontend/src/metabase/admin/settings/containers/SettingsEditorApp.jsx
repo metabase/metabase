@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -45,10 +45,7 @@ const mapDispatchToProps = {
   reloadSettings,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -65,7 +62,7 @@ export default class SettingsEditorApp extends Component {
     this.saveStatusRef = React.createRef();
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     this.props.initializeSettings();
   }
 
@@ -79,6 +76,15 @@ export default class SettingsEditorApp extends Component {
     // TODO: mutation bad!
     setting.value = newValue;
     try {
+      if (setting.onBeforeChanged) {
+        await setting.onBeforeChanged(
+          oldValue,
+          newValue,
+          settingValues,
+          this.handleChangeSetting,
+        );
+      }
+
       await updateSetting(setting);
 
       if (setting.onChanged) {
@@ -94,7 +100,7 @@ export default class SettingsEditorApp extends Component {
 
       const value = prepareAnalyticsValue(setting);
 
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name || setting.key,
         value,
@@ -105,7 +111,7 @@ export default class SettingsEditorApp extends Component {
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name,
         "error",

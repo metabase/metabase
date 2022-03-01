@@ -1,7 +1,7 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const categoryFilter = {
   id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
@@ -38,12 +38,7 @@ describe.skip("issue 13961", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-
-      cy.visit(`/question/${body.id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should clear default filter value in native questions (metabase#13961)", () => {

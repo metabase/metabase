@@ -111,7 +111,7 @@
   (doseq [database-id (set (keys changes))]
     (delete-gtaps-for-group-database!
      {:group-id group-id, :database-id database-id}
-     (get-in changes [database-id :schemas]))))
+     (get-in changes [database-id :data :schemas]))))
 
 (defn- delete-gtaps-if-needed-after-permissions-change! [changes]
   (log/debug "Permissions updated, deleting unneeded GTAPs...")

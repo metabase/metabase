@@ -95,11 +95,13 @@
   [model :- ModelName, model-id :- su/IntGreaterThanZero]
   {:metadata [[:when    {:display_name "When",    :base_type :type/DateTime}]
               [:user_id {:display_name "User ID", :base_type :type/Integer, :remapped_to   :who}]
-              [:who     {:display_name "Who",     :base_type :type/Name,    :remapped_from :user_id}]]
+              [:who     {:display_name "Who",     :base_type :type/Name,    :remapped_from :user_id}]
+              [:what    {:display_name "What",    :base_type :type/Text}]]
    :results (common/reducible-query
               {:select    [[:vl.timestamp :when]
                            :vl.user_id
-                           [(common/user-full-name :u) :who]]
+                           [(common/user-full-name :u) :who]
+                           [:vl.metadata :what]]
                :from      [[:view_log :vl]]
                :join     [[:core_user :u] [:= :vl.user_id :u.id]]
                :where     [:and

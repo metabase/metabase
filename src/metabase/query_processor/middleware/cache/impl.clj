@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.cache.impl
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs]]
             [taoensso.nippy :as nippy])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream EOFException FilterOutputStream InputStream OutputStream]
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
+            EOFException FilterOutputStream InputStream OutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]))
 
 (defn- max-bytes-output-stream ^OutputStream
@@ -30,101 +30,64 @@
          (check-total (swap! byte-count + len))
          (.write os ba off len))))))
 
-(def ^:private serialization-timeout-ms (u/minutes->ms 10))
-
-(defn- start-out-chan-close-block!
-  "When `out-chan` closes, close everything. Wait up to 10 minutes for `out-chan` to close, and throw an Exception if
-  it's not done by then."
-  [in-chan out-chan ^ByteArrayOutputStream bos ^DataOutputStream os]
-  (a/go
-    (let [timeout-chan (a/timeout serialization-timeout-ms)
-          [val port]   (a/alts! [out-chan timeout-chan])]
-      (when (= port timeout-chan)
-        (a/>! out-chan (ex-info (tru "Serialization timed out after {0}." (u/format-milliseconds serialization-timeout-ms))
-                                {}))))
-    (log/tracef "Closing core.async channels and output streams.")
-    (try
-      ;; don't really need to close both, probably
-      (.close os)
-      (.close bos)
-      (catch Throwable e
-        (a/>! out-chan e)))
-    (a/close! out-chan)
-    (a/close! in-chan)))
-
 (defn- freeze!
   [^OutputStream os obj]
-  (try
-    (nippy/freeze-to-out! os obj)
-    (.flush os)
-    :ok
-    (catch Throwable e
-      e)))
+  (log/tracef "Freezing %s" (pr-str obj))
+  (nippy/freeze-to-out! os obj)
+  (.flush os))
 
-(defn- start-input-loop!
-  "Listen for things sent to `in-chan`. When we get an object to `in-chan`, write it to the ouput stream (async), then
-  recur and wait for the next obj. When `in-chan` is closed, write the bytes to `out-chan` (async).
+(defn do-with-serialization
+  "Create output streams for serializing QP results and invoke `f`, a function of the form
 
-  If serialization fails, writes thrown Exception to `out-chan`."
-  [in-chan out-chan ^ByteArrayOutputStream bos ^DataOutputStream os]
-  (a/go-loop []
-    ;; we got a result
-    (if-let [obj (a/<! in-chan)]
-      (do
-        (log/tracef "Serializing %s" (pr-str obj))
-        (let [result (a/<! (a/thread (freeze! os obj)))]
-          (if (instance? Throwable result)
-            (do
-              ;; Serialization has failed, close the channel as there's no point in continuing writing to it
-              (a/close! in-chan)
-              ;; Drain the channel to unblock
-              (while (a/poll! in-chan))
-              (a/>! out-chan result))
-            (recur))))
-      ;; `in-chan` is closed
-      (a/thread
-        (try
-          (.flush os)
-          (let [result (.toByteArray bos)]
-            (a/>!! out-chan result))
-          (catch Throwable e
-            (a/>!! out-chan e)))))))
+    (f in-fn result-fn)
 
-(defn serialize-async
-  "Create output streams for serializing QP results. Returns a map of core.async channels, `in-chan` and `out-chan`.
-  Send all objects to be serialized to `in-chan`; then close it when finished; the result of `out-chan` will be the
-  serialized byte array (or an Exception, if one was thrown).
+  `in-fn` is of the form `(in-fn object)` and should be called once for each object that should be serialized. `in-fn`
+  will catch any exceptions thrown during serialization; these will be thrown later when invoking `result-fn`. After
+  the first exception `in-fn` will no-op for all subsequent calls.
 
-  `out-chan` is closed automatically upon receiving a result; all chans and output streams are closed thereafter.
+  When you have serialized *all* objects, call `result-fn` to get the serialized byte array. If an error was
+  encountered during serialization (such as the serialized bytes being longer than `max-bytes`), `result-fn` will
+  throw an Exception rather than returning a byte array; be sure to handle this case.
 
-    (let [{:keys [in-chan out-chan]} (serialize-async)]
-      (doseq [obj objects]
-        (a/put! in-chan obj))
-      (a/close! in-chan)
-      (let [[val] (a/alts!! [out-chan (a/timeout 1000)])]
-        (when (instance? Throwable val)
-          (throw val))
-         val))"
-  ([]
-   (serialize-async {:max-bytes (* (public-settings/query-caching-max-kb) 1024)}))
+    (do-with-serialization
+      (fn [in result]
+        (doseq [obj objects]
+          (in obj))
+        (result)))"
+  ([f]
+   (do-with-serialization f {:max-bytes (* (public-settings/query-caching-max-kb) 1024)}))
 
-  ([{:keys [max-bytes]}]
-   (let [in-chan  (a/chan 1)
-         out-chan (a/promise-chan)
-         bos      (ByteArrayOutputStream.)
-         os       (-> (max-bytes-output-stream max-bytes bos)
-                      BufferedOutputStream.
-                      (GZIPOutputStream. true)
-                      DataOutputStream.)]
-     (start-out-chan-close-block! in-chan out-chan bos os)
-     (start-input-loop! in-chan out-chan bos os)
-     {:in-chan in-chan, :out-chan out-chan})))
+  ([f {:keys [max-bytes]}]
+   (with-open [bos (ByteArrayOutputStream.)]
+     (let [os    (-> (max-bytes-output-stream max-bytes bos)
+                     BufferedOutputStream.
+                     (GZIPOutputStream. true)
+                     DataOutputStream.)
+           error (atom nil)]
+       (try
+         (f (fn in* [obj]
+              (when-not @error
+                (try
+                  (freeze! os obj)
+                  (catch Throwable e
+                    (log/trace e "Caught error when freezing object")
+                    (reset! error e))))
+              nil)
+            (fn result* []
+              (when @error
+                (throw @error))
+              (log/trace "Getting result byte array")
+              (.toByteArray bos)))
+         ;; this is done manually instead of `with-open` because it might throw an Exception when we close it if it's
+         ;; past the byte limit; that's fine and we can ignore it
+         (finally
+           (u/ignore-exceptions (.close os))))))))
 
 (defn- thaw!
   [^InputStream is]
   (try
     (nippy/thaw-from-in! is)
-    (catch EOFException e
+    (catch EOFException _e
       ::eof)))
 
 (defn- reducible-rows
@@ -132,15 +95,18 @@
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (loop [acc init]
-        (if (reduced? acc)
-          acc
-          (let [row (thaw! is)]
-            (if (= ::eof row)
-              acc
-              (recur (rf acc row)))))))))
+        ;; NORMALLY we would be checking whether `acc` is `reduced?` here and stop reading from the database if it was,
+        ;; but since we currently store the final metadata at the very end of the database entry as a special pseudo-row
+        ;; we actually have to keep reading the whole thing until we get to that last result. Don't worry, the reducing
+        ;; functions can just throw out everything we don't need. See
+        ;; [[metabase.query-processor.middleware.cache/cache-version]] for a description of our caching format.
+        (let [row (thaw! is)]
+          (if (= row ::eof)
+            acc
+            (recur (rf acc row))))))))
 
 (defn do-reducible-deserialized-results
-  "Impl for `with-reducible-deserialized-results`."
+  "Impl for [[with-reducible-deserialized-results]]."
   [^InputStream is f]
   (with-open [is (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
     (let [metadata (thaw! is)]

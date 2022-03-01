@@ -1,7 +1,10 @@
 (ns metabase.public-settings-test
-  (:require [clojure.test :refer :all]
+  (:require [clj-http.fake :as http-fake]
+            [clojure.core.memoize :as memoize]
+            [clojure.test :refer :all]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as i18n :refer [tru]]))
@@ -49,9 +52,9 @@
 (deftest site-url-settings-nil-getter-when-invalid
   (testing "if `site-url` in the database is invalid, the getter for `site-url` should return `nil` (#9849)"
     (mt/discard-setting-changes [site-url]
-      (setting/set-string! :site-url "https://&")
+      (setting/set-value-of-type! :string :site-url "https://&")
       (is (= "https://&"
-             (setting/get-string :site-url)))
+             (setting/get-value-of-type :string :site-url)))
       (is (= nil
              (mt/suppress-output (public-settings/site-url)))))))
 
@@ -60,7 +63,7 @@
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
       (mt/with-temporary-setting-values [site-url nil]
         (is (= "localhost:3000/"
-               (setting/get-string :site-url)))
+               (setting/get-value-of-type :string :site-url)))
         (is (= "http://localhost:3000"
                (public-settings/site-url)))))))
 
@@ -71,7 +74,7 @@
       (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
         (mt/with-temporary-setting-values [site-url nil]
           (is (= "asd_12w31%$;"
-                 (setting/get-string :site-url)))
+                 (setting/get-value-of-type :string :site-url)))
           (is (= nil
                  (public-settings/site-url))))))))
 
@@ -98,7 +101,8 @@
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (:display-name (first (get-in (setting/properties :public) [:engines :postgres :details-fields])))))))))
+             (str (get-in (setting/user-readable-values-map :public)
+                          [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
@@ -178,3 +182,33 @@
                  (public-settings/redirect-all-requests-to-https v)))
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
+
+(deftest cloud-gateway-ips-test
+  (with-redefs [premium-features/is-hosted? (constantly true)]
+    (testing "Setting calls Store URL to fetch IP addresses"
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+        (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))
+
+      (testing "Getter is memoized to avoid frequent HTTP calls"
+        (http-fake/with-fake-routes-in-isolation
+          {{:address (public-settings/cloud-gateway-ips-url)}
+           (constantly {:status 200 :body "{\"ip_addresses\": [\"0.0.0.0\"]}"})}
+          (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))))
+
+    (testing "Setting returns nil if URL is unreachable"
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 500})}
+        (is (= nil (public-settings/cloud-gateway-ips))))))
+
+  (testing "Setting returns nil in self-hosted environments"
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+        (is (= nil (public-settings/cloud-gateway-ips)))))))

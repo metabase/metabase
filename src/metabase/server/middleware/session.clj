@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
@@ -9,6 +10,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.session :refer [Session]]
+            [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
@@ -74,6 +76,7 @@
 (s/defmethod set-session-cookie :normal
   [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
   (let [response       (wrap-body-if-needed response)
+        is-https?      (request.u/https? request)
         cookie-options (merge
                         {:same-site config/mb-session-cookie-samesite
                          :http-only true
@@ -89,14 +92,13 @@
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when (request.u/https? request)
-                          {:secure true})
-                        (when (= config/mb-session-cookie-samesite :none)
-                          (log/warn
-                           (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
-                                (deferred-trs "served over an insecure connection. Some browsers will reject ")
-                                (deferred-trs "cookies under these conditions. ")
-                                (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
+                        (when is-https?
+                          {:secure true}))]
+    (when (and (= config/mb-session-cookie-samesite :none) (not is-https?))
+      (log/warn
+       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
+            " "
+            "https://www.chromestatus.com/feature/5633521622188032")))
     (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
 
 (s/defmethod set-session-cookie :full-app-embed
@@ -107,7 +109,12 @@
                         {:http-only true
                          :path      "/"}
                         (when (request.u/https? request)
-                          {:secure true}))]
+                          ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+                          ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+                          ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+                          ;; the cookie from being rejected in case of same-domain embedding.
+                          {:same-site :none
+                           :secure    true}))]
     (-> response
         (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
@@ -201,7 +208,7 @@
       (first (jdbc/query (db/connection) (cons sql params))))))
 
 (defn- merge-current-user-info
-  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]9
+  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
    (current-user-info-for-session metabase-session-id anti-csrf-token)
@@ -229,12 +236,13 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
+            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
+            *user-local-values*            (atom (or settings {}))]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request
@@ -242,15 +250,16 @@
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
-  `*current-user-permissions-set*`.
+  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
+  [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
+  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
     (with-current-user-for-request request
@@ -260,7 +269,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]]
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user

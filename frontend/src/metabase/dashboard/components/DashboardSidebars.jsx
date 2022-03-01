@@ -9,7 +9,7 @@ import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -75,7 +75,7 @@ export function DashboardSidebars({
         dashId: dashboard.id,
         cardId: cardId,
       });
-      MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
+      MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
     [addCardToDashboard, dashboard.id],
   );

@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import Databases from "metabase/entities/databases";
 
 import { getIsDirty, getDiff } from "../../selectors/data-permissions";
 import {
@@ -14,11 +14,17 @@ import {
   initializeDataPermissions,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 
 const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
   savePermissions: saveDataPermissions,
   initialize: initializeDataPermissions,
+  fetchTables: dbId =>
+    Tables.actions.fetchList({
+      dbId,
+      include_hidden: true,
+    }),
 };
 
 const mapStateToProps = (state, props) => ({
@@ -34,6 +40,10 @@ const propTypes = {
   loadPermissions: PropTypes.func.isRequired,
   initialize: PropTypes.func.isRequired,
   route: PropTypes.object,
+  params: PropTypes.shape({
+    databaseId: PropTypes.string,
+  }),
+  fetchTables: PropTypes.func,
 };
 
 function DataPermissionsPage({
@@ -43,11 +53,20 @@ function DataPermissionsPage({
   savePermissions,
   loadPermissions,
   route,
+  params,
   initialize,
+  fetchTables,
 }) {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    if (params.databaseId == null) {
+      return;
+    }
+    fetchTables(params.databaseId);
+  }, [params.databaseId, fetchTables]);
 
   return (
     <PermissionsPageLayout
@@ -57,11 +76,7 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
-      helpContent={
-        PLUGIN_ADVANCED_PERMISSIONS.DataPermissionsHelp && (
-          <PLUGIN_ADVANCED_PERMISSIONS.DataPermissionsHelp />
-        )
-      }
+      helpContent={<DataPermissionsHelp />}
     >
       {children}
     </PermissionsPageLayout>
@@ -71,10 +86,7 @@ function DataPermissionsPage({
 DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
-  Databases.loadList({ entityQuery: { include: "tables" } }),
   Groups.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  Databases.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

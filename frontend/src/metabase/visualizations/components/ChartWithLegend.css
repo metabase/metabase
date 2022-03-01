@@ -88,12 +88,12 @@
 /* DEBUG */
 /*
 :local .ChartWithLegend .Legend {
-  background-color: color(var(--color-bg-black) alpha(-90%));
+  background-color: color-mod(var(--color-bg-black) alpha(-90%));
 }
 :local .ChartWithLegend .Chart {
-  background-color: color(var(--color-success) alpha(-90%));
+  background-color: color-mod(var(--color-success) alpha(-90%));
 }
 :local .ChartWithLegend.flexChart .Chart {
-  background-color: color(var(--color-error) alpha(-90%));
+  background-color: color-mod(var(--color-error) alpha(-90%));
 }
 */

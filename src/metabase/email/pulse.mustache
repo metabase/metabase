@@ -58,13 +58,20 @@
       }
 
       {{!-- Emails on smaller devices should have less of our UI chrome to make the content easier to read --}}
-      @media screen and (max-width: 420px) {
+      @media screen and (max-width: 450px) {
         .background {
           background-color: #ffffff !important;
           padding: 0px !important;
         }
         .container {
           padding: 10px !important;
+        }
+
+        {{!-- Collapse filters to a single column on small screens --}}
+        .filter-cell {
+          width: 100% !important;
+          display: block !important;
+          line-height: 12px !important;
         }
       }
     </style>
@@ -76,7 +83,7 @@
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
             <table class="header">
               <tr>
-                <td>
+                <td width="28px">
                   <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{iconCid}}"/>
                 </td>
                 <td>
@@ -86,15 +93,25 @@
                 </td>
               </tr>
               {{#dashboardDescription}}
-              <tr>
-                <td>&#8202;</td>
-                <td>
-                  <div class="description" style="color: {{colorTextDark}}; font-size: 14px">
-                    {{dashboardDescription}}
-                  </div>
-                </td>
-              </tr>
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    <div class="description" style="color: {{colorTextDark}}; font-size: 14px">
+                      {{dashboardDescription}}
+                    </div>
+                  </td>
+                </tr>
               {{/dashboardDescription}}
+              {{#alertSchedule}}
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    <div style="color: {{colorTextDark}}; font-size: 14px">
+                      {{alertSchedule}}
+                    </div>
+                  </td>
+                </tr>
+              {{/alertSchedule}}
               <tr>
                 <td>&#8202;</td>
                 <td>
@@ -103,13 +120,26 @@
                   </div>
                 </td>
               </tr>
+              {{#filters}}
+                <tr>
+                  <td>&#8202;</td>
+                  <td>
+                    {{{filters}}}
+                  </td>
+                </tr>
+              {{/filters}}
             </table>
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             {{{pulse}}}
+            {{#alertCondition}}
+              <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+              {{alertCondition}}
+              </p>
+            {{/alertCondition}}
             {{#firstRunOnly?}}
-            <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
-            We’ll stop sending you alerts about this question now.
-            </p>
+              <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
+              We’ll stop sending you alerts about this question now.
+              </p>
             {{/firstRunOnly?}}
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">

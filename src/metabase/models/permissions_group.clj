@@ -2,19 +2,17 @@
   "A `PermissionsGroup` is a group (or role) that can be assigned certain permissions. Users can be members of one or
   more of these groups.
 
-  A few 'magic' groups exist: [[all-users]], which predicably contains All Users; [[admin]], which contains all
-  superusers, and [[metabot]], which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
-  that you cannot add users to them yourself, nor can you delete them; they are created automatically. You can,
-  however, set permissions for them.
+  A few 'magic' groups exist: [[all-users]], which predicably contains All Users; and [[admin]], which contains all
+  superusers. These groups are 'magic' in the sense that you cannot add users to them yourself, nor can you delete
+  them; they are created automatically. You can, however, set permissions for them.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -23,48 +21,35 @@
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
-(defn- get-or-create-magic-group! [group-name]
+(defn- magic-group [group-name]
   ;; these are memoized by the application DB in case it gets swapped out/mocked
   (let [f (memoize
            (fn [_ _]
-             (or (db/select-one PermissionsGroup
-                   :name group-name)
-                 (u/prog1 (db/insert! PermissionsGroup
-                            :name group-name)
-                   (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
-                                                         group-name (:id <>))))))))]
+             (u/prog1 (db/select-one PermissionsGroup :name group-name)
+               ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
+               ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
+               ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
+               (when-not <>
+                 (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
+                                 {:name group-name}))))))]
     (fn []
-      (f (mdb.connection/db-type) (mdb.connection/jdbc-spec)))))
+      (f (mdb.connection/db-type) (mdb.connection/data-source)))))
 
-(def ^{:const true
-       :doc   "The name of the \"All Users\" magic group."
-       :added "0.41.0"} all-users-group-name
+(def all-users-group-name
+  "The name of the \"All Users\" magic group."
   "All Users")
 
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  all-users
+(def ^{:arglists '([])} all-users
   "Fetch the `All Users` permissions group, creating it if needed."
-  (get-or-create-magic-group! all-users-group-name))
+  (magic-group all-users-group-name))
 
-(def ^{:const true
-       :doc   "The name of the \"Administrators\" magic group."
-       :added "0.41.0"} admin-group-name
+(def admin-group-name
+  "The name of the \"Administrators\" magic group."
   "Administrators")
 
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  admin
-  "Fetch the `Administators` permissions group, creating it if needed."
-  (get-or-create-magic-group! admin-group-name))
-
-(def ^{:const true
-       :doc   "The name of the \"MetaBot\" magic group."
-       :added "0.41.0"} metabot-group-name
-  "MetaBot")
-
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  metabot
-  "Fetch the `MetaBot` permissions group, creating it if needed."
-  (get-or-create-magic-group! metabot-group-name))
+(def ^{:arglists '([])} admin
+  "Fetch the `Administrators` permissions group, creating it if needed."
+  (magic-group admin-group-name))
 
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
@@ -86,8 +71,7 @@
   [{id :id}]
   {:pre [(integer? id)]}
   (doseq [magic-group [(all-users)
-                       (admin)
-                       (metabot)]]
+                       (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                {:status-code 400})))))
@@ -103,11 +87,12 @@
   (check-not-magic-group group)
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
-  (setting/set-json! :ldap-group-mappings
-    (when-let [mappings (setting/get-json :ldap-group-mappings)]
-      (zipmap (keys mappings)
-              (for [val (vals mappings)]
-                (remove (partial = id) val))))))
+  (setting/set-value-of-type!
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group

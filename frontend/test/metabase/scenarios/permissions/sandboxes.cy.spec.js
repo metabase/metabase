@@ -7,10 +7,15 @@ import {
   popover,
   restore,
   remapDisplayValueToFK,
+  setupSMTP,
+  visualize,
+  summarize,
+  filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -21,7 +26,7 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -137,15 +142,16 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
         popover().within(() => {
-          cy.findByText("Total").click();
+          cy.findByText("Total").click({ force: true });
         });
         cy.findByText("Equal to").click();
         cy.findByText("Greater than").click();
         cy.findByPlaceholderText("Enter a number").type("100");
         cy.findByText("Add filter").click();
-        cy.button("Visualize").click();
+
+        visualize();
 
         cy.log("Make sure user is still sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -195,7 +201,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 
@@ -218,7 +224,8 @@ describeWithToken("formatting > sandboxes", () => {
           .click();
       });
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.findByText("Count by User → ID");
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
@@ -257,18 +264,11 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         // Assertion phase starts here
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
         cy.findByText(QUESTION_NAME);
 
         cy.log("Reported failing since v1.36.4");
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-
         cy.contains(CC_NAME);
       });
     });
@@ -478,10 +478,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.get(".cellData")
@@ -636,11 +634,10 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
+
         // Title of the first order for User ID = 1
         cy.findByText("Awesome Concrete Shoes");
       });
@@ -775,10 +772,9 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText(/Products? → ID/).click();
-      cy.button("Visualize").click();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      visualize(response => {
+        expect(response.body.error).to.not.exist;
       });
 
       // Number of products with ID = 1 (and ID = 19)
@@ -806,7 +802,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Settings").click();
@@ -882,24 +878,15 @@ describeWithToken("formatting > sandboxes", () => {
               ],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/pivot/${QUESTION_ID}/query`).as(
-          "cardQuery",
-        );
-
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.cause).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Twitter");
@@ -966,10 +953,9 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openOrdersTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openOrdersTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       cy.contains("37.65");
@@ -1023,25 +1009,17 @@ describeWithToken("formatting > sandboxes", () => {
       });
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openReviewsTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openReviewsTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       // Add positive assertion once this issue is fixed
     });
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
-      cy.request("DELETE", "http://localhost:80/email/all");
-      cy.request("PUT", "/api/setting", {
-        "email-smtp-host": "localhost",
-        "email-smtp-port": "25",
-        "email-smtp-username": "admin",
-        "email-smtp-password": "admin",
-        "email-smtp-security": "none",
-        "email-from-address": "mailer@metabase.test",
-      });
+      setupSMTP();
+
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {

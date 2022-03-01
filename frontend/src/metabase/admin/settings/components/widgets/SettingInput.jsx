@@ -11,6 +11,7 @@ const SettingInput = ({
   autoFocus,
   errorMessage,
   fireOnChange,
+  id,
   type = "text",
 }) => (
   <InputBlurChange
@@ -19,6 +20,7 @@ const SettingInput = ({
       SettingsPassword: type === "password",
       "border-error bg-error-input": errorMessage,
     })}
+    id={id}
     type={type}
     value={setting.value || ""}
     placeholder={setting.placeholder}

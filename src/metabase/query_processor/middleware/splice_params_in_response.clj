@@ -27,9 +27,6 @@
   This feature is ultimately powered by the `metabase.driver/splice-parameters-into-native-query` method. For native
   queries without `:params` (which will be all of them for drivers that don't support the equivalent of prepared
   statement parameters, like Druid), this middleware does nothing."
-  [qp]
-  (fn [query rff context]
-    (qp query
-        (fn [metadata]
-          (rff (splice-params-in-metadata metadata)))
-        context)))
+  [_query rff]
+  (fn splice-params-in-response-rff* [metadata]
+    (rff (splice-params-in-metadata metadata))))

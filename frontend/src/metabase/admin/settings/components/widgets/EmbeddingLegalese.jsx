@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "ttag";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 const EmbeddingLegalese = ({ onChange }) => (
   <div className="bordered rounded text-measure p4">
@@ -24,7 +24,7 @@ const EmbeddingLegalese = ({ onChange }) => (
       <button
         className="Button Button--primary"
         onClick={() => {
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "Admin Embed Settings",
             "Embedding Enable Click",
           );

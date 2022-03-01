@@ -15,12 +15,12 @@
 - Use the [SQL editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html) for more complex queries. 
 - Build handsome, interactive [dashboards](https://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with filters, auto-refresh, fullscreen, and custom click behavior.
 - Create [models](https://www.metabase.com/learn/getting-started/models) that clean up, annotate, and/or combine raw tables.
-- Create canonical [segments and metrics](https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use.
+- Define canonical [segments and metrics](https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use.
 - Send data to Slack or email on a schedule with [dashboard subscriptions](https://www.metabase.com/docs/latest/users-guide/dashboard-subscriptions.html).
 - Set up [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html) to have Metabase notify you when your data changes.
 - [Embed charts and dashboards](https://www.metabase.com/docs/latest/administration-guide/13-embedding.html) in your app, or even [your entire Metabase](https://www.metabase.com/docs/latest/enterprise-guide/full-app-embedding.html).
 
-    Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase).
+Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase).
 
 ## Supported databases
 
@@ -39,7 +39,7 @@ To get started with a development installation of the Metabase, check out our [D
 
 We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [POEditor](https://poeditor.com/join/project/ynjQmwSsGh). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
 
-# Extending Metabase
+## Extending Metabase
 
 Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
 

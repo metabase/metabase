@@ -5,9 +5,11 @@
             [metabase.api.pulse :as pulse-api]
             [metabase.http-client :as http]
             [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel
+                                     PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
             [metabase.server.middleware.util :as middleware.u]
@@ -507,8 +509,9 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
+          (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                        s/Keyword s/Any}
+                       (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
   (testing "Can we change the Collection position of a Pulse?"
@@ -790,12 +793,12 @@
         (is (= #{"LuckyRecipient" "Other"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :rasta)))))))
         (is (= #{}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))))
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               GET /api/pulse/:id                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
+    (testing "excludes dashboard subscriptions associated with archived dashboards"
+      (mt/with-temp* [Dashboard [{dashboard-id :id} {:archived true}]
+                      Pulse     [_ {:dashboard_id dashboard-id}]]
+        (is (= [] (mt/user-http-request :rasta :get 200 "pulse")))))))
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"
@@ -813,12 +816,9 @@
                (with-pulses-in-readable-collection [pulse-id]
                  (mt/user-http-request :rasta :get 404 (str "pulse/" pulse-id)))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              POST /api/pulse/test                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest send-test-pulse-test
+  ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
+  ;; for additional EE-specific tests
   (testing "POST /api/pulse/test"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-fake-inbox
@@ -844,6 +844,75 @@
               (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
                                           :body    {"Daily Sad Toucans" true}})
                      (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
+
+(deftest send-test-pulse-validate-emails-test
+  (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
+    (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
+                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+        ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
+        ;; technically allow either right now
+        (doseq [channel [{:details {:emails ["test@metabase.com"]}}
+                         {:recipients [{:email "test@metabase.com"}]
+                          :details    {}}]
+                :let    [pulse-name   (mt/random-name)
+                         request-body {:name          pulse-name
+                                       :cards         [{:id                (u/the-id card)
+                                                        :include_csv       false
+                                                        :include_xls       false
+                                                        :dashboard_card_id nil}]
+                                       :channels      [(assoc channel
+                                                              :enabled       true
+                                                              :channel_type  "email"
+                                                              :schedule_type "daily"
+                                                              :schedule_hour 12
+                                                              :schedule_day  nil)]
+                                       :skip_if_empty false}]]
+          (testing (format "\nchannel =\n%s" (u/pprint-to-str channel))
+            (mt/with-fake-inbox
+              (is (= "Nope!"
+                     (mt/user-http-request :rasta :post 403 "pulse/test" request-body)))
+              (is (not (contains? (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))
+                                  "test@metabase.com"))))))))))
+
+(deftest send-test-pulse-native-query-default-parameters-test
+  (testing "POST /api/pulse/test should work with a native query with default parameters"
+    (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query         "SELECT {{x}}"
+                                                                    :template-tags {"x" {:id           "abc"
+                                                                                         :name         "x"
+                                                                                         :display-name "X"
+                                                                                         :type         :number
+                                                                                         :required     true}}}}}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name    "X"
+                                                                 :slug    "x"
+                                                                 :id      "__X__"
+                                                                 :type    :category
+                                                                 :default 3}]}]
+                    DashboardCard [_ {:card_id            card-id
+                                      :dashboard_id       dashboard-id
+                                      :parameter_mappings [{:parameter_id "__X__"
+                                                            :card_id      card-id
+                                                            :target       [:variable [:template-tag "x"]]}]}]]
+      (mt/with-fake-inbox
+        (is (= {:ok true}
+               (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :dashboard_id  dashboard-id
+                                                                    :cards         [{:id                card-id
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
+                                    :body    {"Daily Sad Toucans" true}})
+               (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
@@ -896,11 +965,6 @@
                                            :limit        1}
                                 :async?   true}})))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         GET /api/pulse/form_input                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
@@ -918,11 +982,6 @@
                    (get-in [:channels :slack :fields])
                    (first)
                    (:options))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        GET /api/pulse/preview_card/:id                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
@@ -950,11 +1009,6 @@
                             :via      s/Any
                             s/Keyword s/Any}
                      body)))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         DELETE /api/pulse/:id/subscription                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"

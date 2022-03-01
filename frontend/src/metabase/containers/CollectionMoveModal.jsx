@@ -3,11 +3,11 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
-import { Flex } from "grid-styled";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 
 import CollectionPicker from "metabase/containers/CollectionPicker";
+import { ButtonContainer } from "./CollectionMoveModal.styled";
 
 class CollectionMoveModal extends React.Component {
   constructor(props) {
@@ -47,7 +47,7 @@ class CollectionMoveModal extends React.Component {
             this.setState({ selectedCollectionId })
           }
         />
-        <Flex mt={2}>
+        <ButtonContainer>
           <Button
             primary
             className="ml-auto"
@@ -68,7 +68,7 @@ class CollectionMoveModal extends React.Component {
           >
             {t`Move`}
           </Button>
-        </Flex>
+        </ButtonContainer>
       </ModalContent>
     );
   }

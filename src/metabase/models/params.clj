@@ -8,7 +8,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -29,7 +29,7 @@
     (mbql.u/match-one field-form :field)))
 
 (defn wrap-field-id-if-needed
-  "Wrap a raw Field ID in a `:field-id` clause if needed."
+  "Wrap a raw Field ID in a `:field` clause if needed."
   [field-id-or-form]
   (cond
     (mbql.u/mbql-clause? field-id-or-form)
@@ -39,8 +39,7 @@
     [:field field-id-or-form nil]
 
     :else
-    (throw (ex-info (trs "Don''t know how to wrap Field ID.")
-                    {:form field-id-or-form}))))
+    field-id-or-form))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by

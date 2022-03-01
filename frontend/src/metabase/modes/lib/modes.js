@@ -7,14 +7,27 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-import type { QueryMode } from "metabase-types/types/Visualization";
-
-import type Question from "metabase-lib/lib/Question";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-export function getMode(question: ?Question): ?QueryMode {
+const isPKFilter = (filters, query) => {
+  const sourceTablePKFields =
+    query?.table()?.fields.filter(field => field.isPK()) || [];
+
+  if (sourceTablePKFields.length === 0) {
+    return false;
+  }
+
+  const hasEqualityFilterForEveryPK = sourceTablePKFields.every(pkField => {
+    const filter = filters.find(filter => filter.field()?.id === pkField.id);
+
+    return filter?.operatorName() === "=" && filter?.arguments().length === 1;
+  });
+
+  return hasEqualityFilterForEveryPK;
+};
+
+export function getMode(question) {
   if (!question) {
     return null;
   }
@@ -31,23 +44,7 @@ export function getMode(question: ?Question): ?QueryMode {
     const filters = query.filters();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
-      const isPKFilterWithOneID = filter => {
-        if (filter.isFieldFilter()) {
-          const field = filter.field();
-          if (
-            field &&
-            field.isPK() &&
-            field.table &&
-            field.table.id === query.sourceTableId() &&
-            filter.operatorName() === "=" &&
-            filter.arguments().length === 1
-          ) {
-            return true;
-          }
-        }
-        return false;
-      };
-      if (filters.some(isPKFilterWithOneID)) {
+      if (isPKFilter(filters, query)) {
         return ObjectMode;
       } else {
         return SegmentMode;

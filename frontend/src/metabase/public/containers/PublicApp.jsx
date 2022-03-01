@@ -1,13 +1,9 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";
 import PublicError from "metabase/public/components/PublicError";
-
-type Props = {
-  children: any,
-  errorPage?: { status: number },
-};
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
@@ -15,8 +11,6 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps)
 export default class PublicApp extends Component {
-  props: Props;
-
   render() {
     const { children, errorPage } = this.props;
     if (errorPage) {

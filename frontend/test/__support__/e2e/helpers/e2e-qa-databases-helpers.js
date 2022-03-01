@@ -58,10 +58,30 @@ function addQADatabase(engine, db_display_name, port) {
   });
 
   // Make sure we have all the metadata because we'll need to use it in tests
-  cy.request("POST", "/api/database/2/sync_schema").then(({ status }) => {
-    expect(status).to.equal(200);
+  assertOnDatabaseMetadata(engine);
+}
+
+function assertOnDatabaseMetadata(engine) {
+  cy.request("GET", "/api/database").then(({ body }) => {
+    const { id } = body.data.find(db => {
+      return db.engine === engine;
+    });
+
+    recursiveCheck(id);
   });
-  cy.request("POST", "/api/database/2/rescan_values").then(({ status }) => {
-    expect(status).to.equal(200);
+}
+
+function recursiveCheck(id, i = 0) {
+  // Let's not wait more than 2s for the sync to finish
+  if (i === 20) {
+    throw new Error();
+  }
+
+  cy.wait(100);
+
+  cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
+    if (database.initial_sync_status !== "complete") {
+      recursiveCheck(id, ++i);
+    }
   });
 }

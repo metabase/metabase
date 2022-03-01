@@ -1,17 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import styles from "./Text.css";
 
 import cx from "classnames";
 import { t } from "ttag";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-type State = {
-  isShowingRenderedOutput: boolean,
-  text: string,
-};
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -20,11 +14,10 @@ const getSettingsStyle = settings => ({
   "justify-end": settings["text.align_vertical"] === "bottom",
 });
 
-export default class Text extends Component {
-  props: VisualizationProps;
-  state: State;
+const REMARK_PLUGINS = [remarkGfm];
 
-  constructor(props: VisualizationProps) {
+export default class Text extends Component {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -94,7 +87,7 @@ export default class Text extends Component {
     },
   };
 
-  handleTextChange(text: string) {
+  handleTextChange(text) {
     this.props.onUpdateVisualizationSettings({ text: text });
   }
 
@@ -109,6 +102,7 @@ export default class Text extends Component {
         <div className={cx(className, styles.Text)}>
           {this.props.isPreviewing ? (
             <ReactMarkdown
+              remarkPlugins={REMARK_PLUGINS}
               className={cx(
                 "full flex-full flex flex-column text-card-markdown",
                 styles["text-card-markdown"],
@@ -145,6 +139,7 @@ export default class Text extends Component {
           })}
         >
           <ReactMarkdown
+            remarkPlugins={REMARK_PLUGINS}
             className={cx(
               "full flex-full flex flex-column text-card-markdown",
               styles["text-card-markdown"],

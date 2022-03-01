@@ -1,7 +1,9 @@
-import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > scalar", () => {
   beforeEach(() => {
@@ -55,5 +57,25 @@ describe("scenarios > visualizations > scalar", () => {
         });
       });
     });
+  });
+
+  it(`should render date without time (metabase#7494)`, () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
+          "template-tags": {},
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scalar",
+    });
+
+    cy.findByText("April 30, 2018");
+    cy.findByText("Settings").click();
+
+    cy.findByText("Show the time").should("be.hidden");
+    cy.findByText("Time style").should("be.hidden");
   });
 });

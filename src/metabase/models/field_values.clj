@@ -103,7 +103,7 @@
             (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn- values-less-than-total-max-length?
-  "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
+  "`true` if the combined length of all the values in [[distinct-values]] is below the threshold for what we'll allow in a
   FieldValues entry. Does some logging as well."
   [distinct-values]
   ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
@@ -122,7 +122,7 @@
                    (trs "FieldValues are NOT allowed for this Field."))))))
 
 (defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the `total-max-length` threshold. If the values are
+  "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
   past the threshold, this returns `nil`. (This function provides the values that normally get saved as a Field's
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
@@ -146,7 +146,7 @@
       (map #(get orig-remappings % (str %)) new-values))))
 
 (defn create-or-update-field-values!
-  "Create or update the FieldValues object for 'field`. If the FieldValues object already exists, then update values for
+  "Create or update the FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
@@ -157,7 +157,7 @@
       ;; If this Field is marked `auto-list`, and the number of values in now over the list threshold, we need to
       ;; unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues; this will
       ;; result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred by the
-      ;; `metabase.models.field/infer-has-field-values` hydration function (see that namespace for more detailed
+      ;; [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed
       ;; discussion)
       ;;
       ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
@@ -203,7 +203,7 @@
 (defn field-values->pairs
   "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
   `field-values` instance."
-  [{:keys [values human_readable_values] :as field-values}]
+  [{:keys [values human_readable_values]}]
   (if (seq human_readable_values)
     (map vector values human_readable_values)
     (map vector values)))

@@ -9,7 +9,10 @@ import { createSelector } from "reselect";
 import { GET } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
-import { isPersonalCollection } from "metabase/collections/utils";
+import {
+  isPersonalCollection,
+  canonicalCollectionId,
+} from "metabase/collections/utils";
 
 import { t } from "ttag";
 
@@ -158,15 +161,6 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
     : { name: "folder" };
 }
 
-// API requires items in "root" collection be persisted with a "null" collection ID
-// Also ensure it's parsed as a number
-export const canonicalCollectionId = (
-  collectionId: PseudoCollectionId,
-): CollectionId | null =>
-  collectionId == null || collectionId === "root"
-    ? null
-    : parseInt(collectionId, 10);
-
 export function normalizedCollection(collection) {
   if (canonicalCollectionId(collection.id) === null) {
     return ROOT_COLLECTION;
@@ -174,7 +168,7 @@ export function normalizedCollection(collection) {
   return collection;
 }
 
-export const getCollectionType = (collectionId: string, state: {}) =>
+export const getCollectionType = (collectionId, state) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
@@ -183,36 +177,18 @@ export const getCollectionType = (collectionId: string, state: {}) =>
     ? "other"
     : null;
 
-type UserId = number;
-
 // a "real" collection
-type CollectionId = number;
-
-type Collection = {
-  id: CollectionId,
-  location?: string,
-  personal_owner_id?: UserId,
-};
 
 // includes "root" and "personal" pseudo collection IDs
-type PseudoCollectionId = CollectionId | "root" | "personal";
-
-type ExpandedCollection = {
-  id: PseudoCollectionId,
-  path: ?(string[]),
-  parent: ?ExpandedCollection,
-  children: ExpandedCollection[],
-  is_personal?: boolean,
-};
 
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
 export function getExpandedCollectionsById(
-  collections: Collection[],
-  userPersonalCollectionId: ?CollectionId,
-): { [key: PseudoCollectionId]: ExpandedCollection } {
-  const collectionsById: { [key: PseudoCollectionId]: ExpandedCollection } = {};
+  collections,
+  userPersonalCollectionId,
+) {
+  const collectionsById = {};
   for (const c of collections) {
     collectionsById[c.id] = {
       ...c,
@@ -238,11 +214,12 @@ export function getExpandedCollectionsById(
 
   // "My personal collection"
   if (userPersonalCollectionId != null) {
+    const personalCollection = collectionsById[userPersonalCollectionId];
     collectionsById[ROOT_COLLECTION.id].children.push({
       ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
-      children: [],
+      children: personalCollection?.children || [],
       is_personal: true,
     });
   }

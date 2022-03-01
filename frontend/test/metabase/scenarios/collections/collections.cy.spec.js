@@ -1,7 +1,6 @@
 import _ from "underscore";
 import {
   restore,
-  setupLocalHostEmail,
   modal,
   popover,
   openOrdersTable,
@@ -29,7 +28,6 @@ const [admin, collection, sub_collection] = [
   },
 ];
 
-const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
 describe("scenarios > collection_defaults", () => {
@@ -179,29 +177,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      it("should be in the root collection", () => {
-        // Configure email
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection").then(() => {
-          cy.icon("pulse");
-        });
-
-        // cy.request("/api/pulse").then((response) => {
-        //     // *** Should the value here really be nll or should it be "root"?
-        //     expect(response.body[0].collection_id).to.have.value(null);
-        // });
-      });
-    });
-
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
@@ -217,24 +192,6 @@ describe("scenarios > collection_defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsNormalUser();
-    });
-
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      beforeEach(() => {
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-      });
-
-      it("should be in the root collection", () => {
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection");
-        cy.icon("pulse");
-      });
     });
 
     describe("a new dashboard", () => {
@@ -297,7 +254,7 @@ describe("scenarios > collection_defaults", () => {
       it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
         cy.visit("/collection/root");
         // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByText("Nothing to see yet.");
+        cy.findByTestId("collection-empty-state");
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
@@ -329,7 +286,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+    it("sub-collection should be available in save and move modals (#14122)", () => {
       const COLLECTION = "14122C";
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {
@@ -338,7 +295,7 @@ describe("scenarios > collection_defaults", () => {
         parent_id: 1,
       });
       cy.visit("/collection/root");
-      cy.get("[class*=CollectionSidebar]").as("sidebar");
+      cy.findByRole("tree").as("sidebar");
 
       displaySidebarChildOf("Your personal collection");
       cy.findByText(COLLECTION);
@@ -347,7 +304,9 @@ describe("scenarios > collection_defaults", () => {
         .click();
 
       openEllipsisMenuFor("Orders");
-      cy.findByText("Move this item").click();
+      popover().within(() => {
+        cy.findByText("Move").click();
+      });
 
       modal().within(() => {
         cy.findByText("My personal collection")
@@ -386,7 +345,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText(NEW_COLLECTION).click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains(NEW_COLLECTION);
+      cy.findAllByTestId("select-button-content").contains(NEW_COLLECTION);
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")
@@ -426,7 +385,7 @@ describe("scenarios > collection_defaults", () => {
           .click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains("Our analytics");
+      cy.findAllByTestId("select-button-content").contains("Our analytics");
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")
@@ -434,10 +393,7 @@ describe("scenarios > collection_defaults", () => {
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
-      // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
-      cy.icon("info").click();
-
-      cy.get("[class*=CollectionSidebar]")
+      cy.findByRole("tree")
         .as("sidebar")
         .within(() => {
           cy.findAllByText("Second collection").should("have.length", 1);
@@ -496,7 +452,7 @@ describe("scenarios > collection_defaults", () => {
         .should("not.exist");
     });
 
-    it.skip("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+    it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       cy.request("GET", "/api/collection").then(({ body }) => {
         // Get "Second collection's" id dynamically instead of hard-coding it
         const SECOND_COLLECTION = body.filter(collection => {
@@ -510,30 +466,20 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Everything Else");
-      cy.findByText("Second Collection").should("not.exist");
-      cy.findByText("First Collection");
-    });
+      cy.visit("/");
+      cy.findByText("New").click();
+      cy.findByText("Question")
+        .should("be.visible")
+        .click();
 
-    it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-      cy.visit("/collection/root");
-      openEllipsisMenuFor("Orders in a dashboard");
-      cy.findByText("Pin this item").click();
-      selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-      cy.findByText("1 item selected");
+      cy.findByText("Saved Questions").click();
+      cy.findByText("First collection");
+      cy.findByText("Second collection").should("not.exist");
     });
 
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          bulkSelectDeselectWorkflow();
-        });
-
-        it("should be possible to apply bulk selection when all items are pinned (metabase#16497)", () => {
-          pinAllRootItems();
           bulkSelectDeselectWorkflow();
         });
 
@@ -544,7 +490,7 @@ describe("scenarios > collection_defaults", () => {
 
           cy.findByTestId("bulk-action-bar").within(() => {
             // Select all
-            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
             cy.findByText("4 items selected");
@@ -609,24 +555,6 @@ describe("scenarios > collection_defaults", () => {
   });
 });
 
-function createPulse() {
-  cy.visit("/pulse/create");
-  cy.findByPlaceholderText("Important metrics").type(pulse_name);
-  cy.findByText("Select a question").click();
-  cy.findByText("Orders").click();
-  cy.findByPlaceholderText(
-    "Enter email addresses you'd like this data to go to",
-  )
-    .click()
-    .clear();
-  cy.contains("Bobby").click();
-  cy.findByText("To:").click();
-
-  cy.findByText("Robert Tableton").should("not.exist");
-  cy.findByText("Bobby Tables");
-  cy.findByText("Create pulse").click();
-}
-
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
     .closest("tr")
@@ -639,10 +567,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByTestId("checkbox-root")
-        .should("be.visible")
-        .findByRole("checkbox")
-        .click();
+      cy.findByRole("checkbox").click();
     });
 }
 
@@ -652,18 +577,4 @@ function getSidebarCollectionChildrenFor(item) {
     .closest("a")
     .parent()
     .parent();
-}
-
-function pinAllRootItems() {
-  cy.request("GET", "/api/collection/root/items").then(resp => {
-    const ALL_ITEMS = resp.body.data;
-
-    ALL_ITEMS.forEach(({ model, id }, index) => {
-      if (model !== "collection") {
-        cy.request("PUT", `/api/${model}/${id}`, {
-          collection_position: index++,
-        });
-      }
-    });
-  });
 }

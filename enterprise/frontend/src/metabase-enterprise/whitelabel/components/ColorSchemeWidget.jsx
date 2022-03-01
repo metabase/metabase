@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import { t } from "ttag";
+
 import ColorPicker from "metabase/components/ColorPicker";
 import Icon from "metabase/components/Icon";
 import { humanize } from "metabase/lib/formatting";
@@ -15,39 +17,35 @@ const THEMEABLE_COLORS = [
 
 const COLOR_DISPLAY_PROPERTIES = {
   brand: {
-    name: "Primary color",
-    description:
-      "The main color used throughout the app for buttons, links, and the default chart color.",
+    name: t`Primary color`,
+    description: t`The main color used throughout the app for buttons, links, and the default chart color.`,
   },
   nav: {
-    name: "Navigation bar color",
-    description:
-      "The top nav bar of Metabase. Defaults to the Primary Color if not set.",
+    name: t`Navigation bar color`,
+    description: t`The top nav bar of Metabase. Defaults to the Primary Color if not set.`,
   },
   accent1: {
-    name: "Accent 1",
-    description:
-      "The color of aggregations and breakouts in the graphical query builder.",
+    name: t`Accent 1`,
+    description: t`The color of aggregations and breakouts in the graphical query builder.`,
   },
   accent2: {
-    name: "Accent 2",
-    description:
-      "The color of filters in the query builder and buttons and links in filter widgets.",
+    name: t`Accent 2`,
+    description: t`The color of filters in the query builder and buttons and links in filter widgets.`,
   },
   accent3: {
-    name: "Additional chart color",
+    name: t`Additional chart color`,
   },
   accent4: {
-    name: "Additional chart color",
+    name: t`Additional chart color`,
   },
   accent5: {
-    name: "Additional chart color",
+    name: t`Additional chart color`,
   },
   accent6: {
-    name: "Additional chart color",
+    name: t`Additional chart color`,
   },
   accent7: {
-    name: "Additional chart color",
+    name: t`Additional chart color`,
   },
 };
 

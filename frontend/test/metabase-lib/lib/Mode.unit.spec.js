@@ -1,10 +1,10 @@
 import {
   metadata,
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   PRODUCTS,
   PEOPLE,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import Question from "metabase-lib/lib/Question";
 
@@ -130,7 +130,7 @@ describe("Mode", () => {
     // Action-specific tests would optimally be in their respective test files
     describe("for a question with an aggregation and a time breakout", () => {
       const timeBreakoutQuestionMode = Question.create({
-        databaseId: SAMPLE_DATASET.id,
+        databaseId: SAMPLE_DATABASE.id,
         tableId: ORDERS.id,
         metadata,
       })

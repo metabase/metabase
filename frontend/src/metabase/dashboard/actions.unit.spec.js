@@ -1,3 +1,5 @@
+import { DashboardApi } from "metabase/services";
+
 import {
   setSidebar,
   SET_SIDEBAR,
@@ -9,8 +11,13 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
+  fetchDashboardParameterValues,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
+
+DashboardApi.parameterSearch = jest.fn();
+DashboardApi.parameterValues = jest.fn();
 
 describe("dashboard actions", () => {
   let dispatch;
@@ -143,6 +150,150 @@ describe("dashboard actions", () => {
             parameters: getState().dashboard.dashboards[1].parameters,
           },
         },
+      });
+    });
+  });
+
+  describe("fetchDashboardParameterValues", () => {
+    const dashboardId = 1;
+    const parameter = { id: "a" };
+    const parameterWithFilteringParameters = {
+      id: "a",
+      filteringParameters: ["b", "c"],
+    };
+    const parameters = [
+      { id: "a", value: "aaa" },
+      { id: "b", value: "bbb" },
+      { id: "c", value: null },
+    ];
+
+    let parameterValuesSearchCache;
+    const getState = () => ({
+      dashboard: {
+        parameterValuesSearchCache,
+      },
+    });
+
+    beforeEach(() => {
+      DashboardApi.parameterSearch.mockReset();
+      DashboardApi.parameterSearch.mockResolvedValue([1, 2, 3]);
+      DashboardApi.parameterValues.mockReset();
+      DashboardApi.parameterValues.mockResolvedValue([4, 5, 6]);
+      parameterValuesSearchCache = {};
+    });
+
+    it("should fetch parameter values using the given query string", async () => {
+      const action = await fetchDashboardParameterValues({
+        dashboardId,
+        parameter,
+        parameters,
+        query: "foo",
+      })(dispatch, getState);
+
+      expect(DashboardApi.parameterSearch).toHaveBeenCalledWith({
+        dashId: 1,
+        paramId: "a",
+        query: "foo",
+      });
+      expect(action).toEqual({
+        payload: {
+          cacheKey:
+            "dashboardId: 1, parameterId: a, query: foo, filteringParameterValues: []",
+          results: [[1], [2], [3]],
+        },
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+      });
+    });
+
+    it("should fetch parameter values without a query string", async () => {
+      const action = await fetchDashboardParameterValues({
+        dashboardId,
+        parameter,
+        parameters,
+      })(dispatch, getState);
+
+      expect(DashboardApi.parameterValues).toHaveBeenCalledWith({
+        dashId: 1,
+        paramId: "a",
+        query: undefined,
+      });
+      expect(action).toEqual({
+        payload: {
+          cacheKey:
+            "dashboardId: 1, parameterId: a, query: null, filteringParameterValues: []",
+          results: [[4], [5], [6]],
+        },
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+      });
+    });
+
+    it("should fetch parameter values using a query string and filtering parameters", async () => {
+      const action = await fetchDashboardParameterValues({
+        dashboardId,
+        parameter: parameterWithFilteringParameters,
+        parameters,
+        query: "bar",
+      })(dispatch, getState);
+
+      expect(DashboardApi.parameterSearch).toHaveBeenCalledWith({
+        dashId: 1,
+        paramId: "a",
+        query: "bar",
+        b: "bbb",
+      });
+      expect(action).toEqual({
+        payload: {
+          cacheKey:
+            'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]',
+          results: [[1], [2], [3]],
+        },
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+      });
+    });
+
+    it("should fetch parameter values without a query string but with filtering parameters", async () => {
+      const action = await fetchDashboardParameterValues({
+        dashboardId,
+        parameter: parameterWithFilteringParameters,
+        parameters,
+      })(dispatch, getState);
+
+      expect(DashboardApi.parameterValues).toHaveBeenCalledWith({
+        dashId: 1,
+        paramId: "a",
+        query: undefined,
+        b: "bbb",
+      });
+      expect(action).toEqual({
+        payload: {
+          cacheKey:
+            'dashboardId: 1, parameterId: a, query: null, filteringParameterValues: [["b","bbb"]]',
+          results: [[4], [5], [6]],
+        },
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+      });
+    });
+
+    it("should not query when values exist in the cache", async () => {
+      const cacheKey =
+        'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]';
+      parameterValuesSearchCache = {
+        [cacheKey]: [[1], [2], [3]],
+      };
+
+      const action = await fetchDashboardParameterValues({
+        dashboardId,
+        parameter: parameterWithFilteringParameters,
+        parameters,
+        query: "bar",
+      })(dispatch, getState);
+
+      expect(DashboardApi.parameterSearch).not.toHaveBeenCalled();
+      expect(DashboardApi.parameterValues).not.toHaveBeenCalled();
+
+      expect(action).toEqual({
+        payload: undefined,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
       });
     });
   });

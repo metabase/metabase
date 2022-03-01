@@ -4,11 +4,11 @@ import {
   restore,
   openNativeEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -81,15 +81,6 @@ describe("scenarios > dashboard > parameters", () => {
     popover()
       .contains("Add filter")
       .click();
-
-    // There should be 0 orders from someone named "Gadget"
-    cy.get(".DashCard")
-      .first()
-      .contains("0");
-    // There should be 4939 orders for a product that is a gadget
-    cy.get(".DashCard")
-      .last()
-      .contains("4,939");
   });
 
   it("should query with a 2 argument parameter", () => {
@@ -240,12 +231,12 @@ describe("scenarios > dashboard > parameters", () => {
       parseSpecialCharSequences: false,
     });
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
-    cy.get(".AdminSelect")
+    cy.findAllByTestId("select-button")
       .contains("Text")
       .click();
     cy.findByText("Field Filter").click();
     popover().within(() => {
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Orders").click();
       cy.findByText("Created At").click();
     });
@@ -377,6 +368,73 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("No valid fields");
   });
 
+  it("should render other categories filter that allows selecting multiple values (metabase#18113)", () => {
+    const filter = {
+      id: "c2967a17",
+      name: "Category",
+      slug: "category",
+      type: "category",
+    };
+
+    cy.createNativeQuestion({
+      name: "Products SQL",
+      native: {
+        query: "select * from products",
+        "template-tags": {},
+      },
+      display: "table",
+    }).then(({ body: { id: card_id } }) => {
+      cy.createQuestion({
+        name: "Products use saved SQL question",
+        query: {
+          "source-table": `card__${card_id}`,
+          aggregation: [],
+          breakout: [],
+        },
+      }).then(({ body: { id: card_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+            cardId: card_id,
+          }).then(({ body: { id } }) => {
+            cy.addFilterToDashboard({ filter, dashboard_id });
+            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+              cards: [
+                {
+                  id,
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      card_id: 5,
+                      parameter_id: "c2967a17",
+                      target: [
+                        "dimension",
+                        ["field", "TITLE", { "base-type": "type/Text" }],
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${dashboard_id}`);
+        });
+      });
+    });
+
+    cy.findByText("Category").click();
+    cy.findByPlaceholderText("Enter some text").type(
+      "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
+    );
+    cy.button("Add filter").click();
+    cy.get("tbody > tr").should("have.length", 2);
+  });
+
   it("should be removable from dashboard", () => {
     cy.visit("/dashboard/1");
     // Add a filter
@@ -390,6 +448,23 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.findByText("Baker").should("not.exist");
+  });
+
+  describe("when the user does not have self service data permissions", () => {
+    beforeEach(() => {
+      cy.visit("/dashboard/1");
+      addCityFilterWithDefault();
+
+      cy.signIn("nodata");
+      cy.reload();
+    });
+
+    it("should not see mapping options", () => {
+      cy.icon("pencil").click();
+      cy.findByText("Location").click({ force: true });
+
+      cy.icon("key");
+    });
   });
 });
 

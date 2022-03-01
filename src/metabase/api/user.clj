@@ -1,8 +1,10 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
@@ -81,7 +83,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (clojure.string/lower-case query) "%"))
+(defn- wildcard-query [query] (str "%" (str/lower-case query) "%"))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
@@ -151,7 +153,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids)))
+      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
@@ -180,8 +182,11 @@
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
-                                 @api/*current-user*))]
+                                 @api/*current-user*
+                                 false))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
+                                                                           :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 
@@ -302,11 +307,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-(api/defendpoint PUT "/:id/qbnewb"
+(api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [id]
+  [id modal]
   (check-self-or-superuser id)
-  (api/check-500 (db/update! User id, :is_qbnewb false))
+  (let [k (or (get {"qbnewb"      :is_qbnewb
+                    "datasetnewb" :is_datasetnewb}
+                   modal)
+              (throw (ex-info (tru "Unrecognized modal: {0}" modal)
+                              {:modal modal
+                               :allowable-modals #{"qbnewb" "datasetnewb"}})))]
+    (api/check-500 (db/update! User id, k false)))
   {:success true})
 
 (api/defendpoint POST "/:id/send_invite"
@@ -317,7 +328,7 @@
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email! user @api/*current-user* join-url)))
+      (email/send-new-user-email! user @api/*current-user* join-url false)))
   {:success true})
 
 (api/define-routes)

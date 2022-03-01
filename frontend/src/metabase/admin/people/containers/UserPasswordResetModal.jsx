@@ -3,7 +3,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
 
 import User from "metabase/entities/users";
 import { clearTemporaryPassword } from "../people";
@@ -11,9 +10,10 @@ import { getUserTemporaryPassword } from "../selectors";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
 @User.load({
   id: (state, props) => props.params.userId,
@@ -54,7 +54,7 @@ export default class UserPasswordResetModal extends React.Component {
       >
         <p>{t`Are you sure you want to do this?`}</p>
 
-        <Flex>
+        <ButtonContainer>
           <Button
             ml="auto"
             onClick={async () => {
@@ -69,7 +69,7 @@ export default class UserPasswordResetModal extends React.Component {
           >
             {t`Reset password`}
           </Button>
-        </Flex>
+        </ButtonContainer>
       </ModalContent>
     );
   }

@@ -1,16 +1,9 @@
+/* eslint-disable react/prop-types */
 /* flow */
 import React, { Component } from "react";
 import CopyButton from "metabase/components/CopyButton";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
-
-type State = {
-  visible: boolean,
-};
-
-type Props = {
-  password: string,
-};
 
 const styles = {
   input: {
@@ -30,8 +23,7 @@ const Label = () => (
 );
 
 export default class PasswordReveal extends Component {
-  props: Props;
-  state: State = { visible: false };
+  state = { visible: false };
 
   render() {
     const { password } = this.props;

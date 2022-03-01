@@ -10,7 +10,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse :as p]
@@ -172,7 +172,7 @@
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
-        card-type (render/detect-pulse-chart-type card data)
+        card-type (render/detect-pulse-chart-type card nil data)
         card-html (html (binding [render/*include-title* true]
                           (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
     {:id              id
@@ -205,6 +205,9 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
+  ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
+  (doseq [channel channels]
+    (pulse-channel/validate-email-domains channel))
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 

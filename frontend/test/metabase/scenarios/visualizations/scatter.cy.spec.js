@@ -1,10 +1,12 @@
 import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const testQuery = {
-  database: 1,
+  database: SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [
@@ -23,8 +25,6 @@ describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
@@ -88,12 +88,11 @@ describe("scenarios > visualizations > scatter", () => {
 });
 
 function triggerPopoverForBubble(index = 13) {
-  cy.wait("@dataset");
   // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
   // See: https://github.com/metabase/metabase/pull/15235
-  cy.get("[class*=ViewFooter]").within(() => {
-    cy.icon("table2").click(); // Switch to the tabular view...
-    cy.icon("bubble").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
+  cy.findByTestId("view-footer").within(() => {
+    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+    cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
   cy.get(".bubble")

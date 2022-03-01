@@ -5,48 +5,18 @@
   we can have a uniform interface both via the API and code"
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+            [metabase-enterprise.sso.api.interface :as sso.i]
+            metabase-enterprise.sso.integrations.jwt
+            metabase-enterprise.sso.integrations.saml
             [metabase.api.common :as api]
-            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [stencil.core :as stencil]))
 
-(defn- sso-backend
-  "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
-  complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
-  [_]
-  ;; load the SSO integrations so their implementations for the multimethods below are available. Can't load in
-  ;; `:require` because it would cause a circular ref / those namespaces aren't used here at any rate
-  ;; (`cljr-clean-namespace` would remove them)
-  (classloader/require '[metabase-enterprise.sso.integrations jwt saml])
-  (cond
-    (sso-settings/saml-configured?) :saml
-    (sso-settings/jwt-enabled)      :jwt
-    :else                           nil))
-
-(defmulti sso-get
-  "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually
-  result in a redirect to an SSO backend"
-  sso-backend)
-
-(defmulti sso-post
-  "Multi-method for supporting a POST-back from an SSO signin request. An implementation of this method will need to
-  validate the POST from the SSO backend and successfully log the user into Metabase."
-  sso-backend)
-
-(defn- throw-not-configured-error []
-  (throw (ex-info (str (tru "SSO has not been enabled and/or configured"))
-           {:status-code 400})))
-
-(defmethod sso-get :default
-  [_]
-  (throw-not-configured-error))
-
-(defmethod sso-post :default
-  [_]
-  (throw-not-configured-error))
+;; load the SSO integrations so their implementations for the multimethods below are available.
+(comment metabase-enterprise.sso.integrations.jwt/keep-me
+         metabase-enterprise.sso.integrations.saml/keep-me)
 
 (defn- throw-if-no-premium-features-token []
   (when-not (premium-features/enable-sso?)
@@ -58,7 +28,7 @@
   {:as req}
   (throw-if-no-premium-features-token)
   (try
-    (sso-get req)
+    (sso.i/sso-get req)
     (catch Throwable e
       (log/error #_e (trs "Error returning SSO entry point"))
       (throw e))))
@@ -78,7 +48,7 @@
   {:as req}
   (throw-if-no-premium-features-token)
   (try
-    (sso-post req)
+    (sso.i/sso-post req)
     (catch Throwable e
       (log/error e (trs "Error logging in"))
       (sso-error-page e))))

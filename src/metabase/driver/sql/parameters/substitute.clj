@@ -1,12 +1,14 @@
 (ns metabase.driver.sql.parameters.substitute
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.sql.parameters.substitution :as substitution]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
-(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [field value], :as v}]
+(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= i/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -77,14 +79,16 @@
                  {\"bird_type\" \"Steller's Jay\"})
     ;; -> [\"select * from foobars where bird_type = ?\" [\"Steller's Jay\"]]"
   [parsed-query param->value]
+  (log/tracef "Substituting params\n%s\nin query:\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-query))
   (let [[sql args missing] (try
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
-                               (throw (ex-info (tru "Unable to substitute parameters")
+                               (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
                                         {:type         (or (:type (ex-data e)) error-type/qp)
                                          :params       param->value
                                          :parsed-query parsed-query}
                                         e))))]
+    (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
                {:type    error-type/missing-required-parameter

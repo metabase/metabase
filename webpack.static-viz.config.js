@@ -9,6 +9,10 @@ module.exports = {
   mode: "production",
   context: SRC_PATH,
 
+  performance: {
+    hints: false,
+  },
+
   entry: {
     "lib-static-viz": {
       import: "./static-viz/index.js",
@@ -27,30 +31,16 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
-      },
-      {
-        test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "eslint-loader",
-            options: {
-              rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
-            },
-          },
-        ],
       },
     ],
   },
   resolve: {
-    extensions: [".webpack.js", ".web.js", ".js", ".jsx"],
+    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
     alias: {
       metabase: SRC_PATH,
     },
   },
-
-}
-
+};

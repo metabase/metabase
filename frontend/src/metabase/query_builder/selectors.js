@@ -2,24 +2,24 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, assocIn, updateIn } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-import Visualization from "metabase/visualizations/components/Visualization";
 
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/meta/Card";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
-
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 
@@ -44,9 +44,75 @@ export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
-export const getQueryResults = state => state.qb.queryResults;
-export const getFirstQueryResult = state =>
-  state.qb.queryResults && state.qb.queryResults[0];
+
+export const getMetadataDiff = state => state.qb.metadataDiff;
+
+const getRawQueryResults = state => state.qb.queryResults;
+
+export const getQueryResults = createSelector(
+  [getRawQueryResults, getMetadataDiff],
+  (queryResults, metadataDiff) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return null;
+    }
+
+    const [result] = queryResults;
+    if (result.error || !result?.data?.results_metadata) {
+      return queryResults;
+    }
+    const { cols, results_metadata } = result.data;
+
+    function applyMetadataDiff(column) {
+      const columnDiff = metadataDiff[column.field_ref];
+      return columnDiff ? merge(column, columnDiff) : column;
+    }
+
+    return [
+      {
+        ...result,
+        data: {
+          ...result.data,
+          cols: cols.map(applyMetadataDiff),
+          results_metadata: {
+            ...results_metadata,
+            columns: results_metadata.columns.map(applyMetadataDiff),
+          },
+        },
+      },
+    ];
+  },
+);
+
+export const getFirstQueryResult = createSelector([getQueryResults], results =>
+  Array.isArray(results) ? results[0] : null,
+);
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult],
+  result => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+    return cols.findIndex(isPK);
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
+);
 
 // get instance settings, used for determining whether to display certain actions
 export const getSettings = state => state.settings.values;
@@ -60,9 +126,8 @@ export const getDatabaseId = createSelector(
   card => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector(
-  [getCard],
-  card => getIn(card, ["dataset_query", "query", "source-table"]),
+export const getTableId = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeyReferences = state =>
@@ -103,11 +168,11 @@ export const getTableForeignKeys = createSelector(
   table => table && table.fks,
 );
 
-export const getSampleDatasetId = createSelector(
+export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
   databases => {
-    const sampleDataset = _.findWhere(databases, { is_sample: true });
-    return sampleDataset && sampleDataset.id;
+    const sampleDatabase = _.findWhere(databases, { is_sample: true });
+    return sampleDatabase && sampleDatabase.id;
   },
 );
 
@@ -117,9 +182,13 @@ export const getDatabaseFields = createSelector(
 );
 
 export const getParameters = createSelector(
-  [getCard, getParameterValues],
-  (card, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(card, parameterValues),
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) =>
+    getValueAndFieldIdPopulatedParametersFromCard(
+      card,
+      metadata,
+      parameterValues,
+    ),
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -143,27 +212,70 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector(
-  [getParameters],
-  parameters =>
-    parameters
-      .filter(
-        // parameters with an empty value get filtered out before a query run,
-        // so in order to compare current parameters to previously-used parameters we need
-        // to filter them here as well
-        parameter => parameter.value != null,
-      )
-      .map(parameter =>
-        // parameters are "normalized" immediately before a query run, so in order
-        // to compare current parameters to previously-used parameters we need
-        // to run parameters through this normalization function
-        normalizeParameterValue(parameter.type, parameter.value),
-      )
-      .filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector([getParameters], parameters =>
+  parameters
+    .filter(
+      // parameters with an empty value get filtered out before a query run,
+      // so in order to compare current parameters to previously-used parameters we need
+      // to filter them here as well
+      parameter => parameter.value != null,
+    )
+    .map(parameter =>
+      // parameters are "normalized" immediately before a query run, so in order
+      // to compare current parameters to previously-used parameters we need
+      // to run parameters through this normalization function
+      normalizeParameterValue(parameter.type, parameter.value),
+    )
+    .filter(p => p !== undefined),
+);
+
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.previousQueryBuilderMode,
+);
+
+export const getDatasetEditorTab = createSelector(
+  [getUiControls],
+  uiControls => uiControls.datasetEditorTab,
+);
+
+export const getOriginalQuestion = createSelector(
+  [getMetadata, getOriginalCard],
+  (metadata, card) => metadata && card && new Question(card, metadata),
+);
+
+export const getQuestion = createSelector(
+  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
+  (metadata, card, parameterValues, queryBuilderMode) => {
+    if (!metadata || !card) {
+      return;
+    }
+    const question = new Question(card, metadata, parameterValues);
+
+    if (queryBuilderMode === "dataset") {
+      return question.lockDisplay();
+    }
+
+    // When opening a model, we swap it's `dataset_query`
+    // with clean query using the model as a source table,
+    // to enable "simple mode" like features
+    // This has to be skipped for users without data permissions
+    // as it would be blocked by the backend as an ad-hoc query
+    // see https://github.com/metabase/metabase/issues/20042
+    const hasDataPermission = !!question.database();
+    return question.isDataset() && hasDataPermission
+      ? question.composeDataset()
+      : question;
+  },
 );
 
 function normalizeClause(clause) {
-  return typeof clause.raw === "function" ? clause.raw() : clause;
+  return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
 
 // Certain differences in a query should be ignored. `normalizeQuery`
@@ -203,6 +315,8 @@ export function normalizeQuery(query, tableMetadata) {
 
 export const getIsResultDirty = createSelector(
   [
+    getQuestion,
+    getOriginalQuestion,
     getLastRunDatasetQuery,
     getNextRunDatasetQuery,
     getLastRunParameterValues,
@@ -210,12 +324,23 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
+    question,
+    originalQuestion,
     lastDatasetQuery,
     nextDatasetQuery,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
+    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // We need to escape the isDirty check as it will always be true in this case,
+    // and the page will always be covered with a 'rerun' overlay.
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (question && isAdHocModelQuestion(question, originalQuestion)) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
     return (
@@ -225,23 +350,75 @@ export const getIsResultDirty = createSelector(
   },
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    metadata && card && new Question(card, metadata, parameterValues),
-);
-
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
-    metadata && card && new Question(card, metadata),
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+
+const getZoomedObjectRowIndex = createSelector(
+  [getPKRowIndexMap, getZoomedObjectId],
+  (PKRowIndexMap, objectId) => {
+    if (!PKRowIndexMap) {
+      return;
+    }
+    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+  },
+);
+
+export const getPreviousRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex - 1][PKColumnIndex];
+  },
+);
+
+export const getNextRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex + 1][PKColumnIndex];
+  },
+);
+
+export const getCanZoomPreviousRow = createSelector(
+  [getZoomedObjectRowIndex],
+  rowIndex => rowIndex !== 0,
+);
+
+export const getCanZoomNextRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    const rowCount = queryResults[0].data.rows.length;
+    return rowIndex !== rowCount - 1;
+  },
+);
+
+export const getZoomRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    return queryResults[0].data.rows[rowIndex];
+  },
+);
+
+const isZoomingRow = createSelector(
+  [getZoomedObjectId],
+  index => index != null,
 );
 
 export const getMode = createSelector(
@@ -250,14 +427,30 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode],
-  mode => mode && mode.name() === "object",
+  [getMode, getQueryResults, isZoomingRow],
+  (mode, results, isZoomingSingleRow) => {
+    if (isZoomingSingleRow) {
+      return true;
+    }
+    // It handles filtering by a manually set PK column that is not unique
+    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
+    return mode?.name() === "object" && !hasMultipleRows;
+  },
 );
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) =>
-    question && question.isDirtyComparedToWithoutParameters(originalQuestion),
+  (question, originalQuestion) => {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // We need to escape the isDirty check as it will always be true in this case,
+    // and the page will always be covered with a 'rerun' overlay.
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
+      return false;
+    }
+    return question.isDirtyComparedToWithoutParameters(originalQuestion);
+  },
 );
 
 export const getQuery = createSelector(
@@ -282,6 +475,13 @@ export const getResultsMetadata = createSelector(
   result => result && result.data && result.data.results_metadata,
 );
 
+export const isResultsMetadataDirty = createSelector(
+  [getMetadataDiff],
+  metadataDiff => {
+    return Object.keys(metadataDiff).length > 0;
+  },
+);
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
@@ -302,6 +502,7 @@ export const getRawSeries = createSelector(
   ) => {
     let display = question && question.display();
     let settings = question && question.settings();
+
     if (isObjectDetail) {
       display = "object";
     } else if (isShowingRawTable) {
@@ -353,11 +554,6 @@ export const getTransformedVisualization = createSelector(
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
   series => series && getComputedSettingsForSeries(series),
-);
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
 );
 
 /**
@@ -482,4 +678,11 @@ export const getIsLiveResizable = createSelector(
 export const getQuestionDetailsTimelineDrawerState = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
+);
+
+export const isBasedOnExistingQuestion = createSelector(
+  [getOriginalQuestion],
+  originalQuestion => {
+    return originalQuestion != null;
+  },
 );

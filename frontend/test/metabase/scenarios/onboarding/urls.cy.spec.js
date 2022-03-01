@@ -1,5 +1,5 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 describe("URLs", () => {
   beforeEach(() => {
@@ -11,9 +11,9 @@ describe("URLs", () => {
     ["/", "/browse"].forEach(url => {
       it(`should slugify database name when opening it from "${url}"`, () => {
         cy.visit(url);
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Sample Dataset");
-        cy.location("pathname").should("eq", "/browse/1-sample-dataset");
+        cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByText("Sample Database");
+        cy.location("pathname").should("eq", "/browse/1-sample-database");
       });
     });
 
@@ -84,16 +84,19 @@ describe("URLs", () => {
 
     it("should open slugified URLs correctly", () => {
       cy.visit("/collection/9-first-collection");
-      cy.get("[class*=PageHeading]").should("have.text", "First collection");
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "First collection",
+      );
 
       cy.visit("/collection/1-bobby-tables-s-personal-collection");
-      cy.get("[class*=PageHeading]").should(
+      cy.findByTestId("collection-name-heading").should(
         "have.text",
         "Bobby Tables's Personal Collection",
       );
 
       cy.visit("/collection/8-robert-tableton-s-personal-collection");
-      cy.get("[class*=PageHeading]").should(
+      cy.findByTestId("collection-name-heading").should(
         "have.text",
         "Robert Tableton's Personal Collection",
       );

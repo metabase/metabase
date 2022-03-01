@@ -128,6 +128,7 @@ export default class LogoIcon extends Component {
           className,
         )}
         style={style}
+        data-testid="main-logo"
       />
     );
   }

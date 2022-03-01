@@ -95,7 +95,7 @@
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
   {:arglists '([field])}
-  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit], :as field}]
+  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit]}]
     [(cond
        (u.date/extract-units unit)
        :type/Integer

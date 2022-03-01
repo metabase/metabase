@@ -20,7 +20,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase-enterprise.sso.api.sso :as sso]
+            [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
@@ -107,7 +107,7 @@
   (api/check (sso-settings/saml-configured?)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defmethod sso/sso-get :saml
+(defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
   [req]
@@ -170,7 +170,7 @@
   (when (u/base64-string? s)
     (codecs/bytes->str (codec/base64-decode s))))
 
-(defmethod sso/sso-post :saml
+(defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]

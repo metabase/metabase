@@ -1,18 +1,11 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import cx from "classnames";
 
 import CopyButton from "./CopyButton";
 
-type Props = {
-  value: string,
-  onChange?: (value: string) => void,
-  style?: Object,
-};
-
 export default class CopyWidget extends Component {
-  props: Props;
-
   render() {
     const { value, onChange, style, ...props } = this.props;
     return (

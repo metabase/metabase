@@ -27,11 +27,11 @@ To change how the answer to your question is displayed, click on the **Visualiza
 
 If a particular visualization doesn’t really make sense for your answer, that option will appear grayed out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
 
-Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](07-dashboards.md) or [pulse](10-pulses.md).
+Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](07-dashboards.md).
 
 ## Visualization types and options
 
-Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type. 
+Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type.
 
 Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/basics/visualizing-data/guide.html).
 
@@ -148,22 +148,21 @@ This auto-pivoting is distinct from the pivot table visualization, which we cove
 
 ### Pivot table
 
-Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
+Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 Pivot tables are not currently available for the following databases in Metabase:
 
-- BigQuery
 - Druid
 - Google Analytics
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. See [Picking your starting data](custom-questions.md#picking-your-starting-data).
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. 
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
 - Fields to use for the table **rows**
 - Fields to use for the table **columns**
-- Fields to use for the table **values** 
+- Fields to use for the table **values**
 
 Let's say we ask the following question in the notebook editor:
 
@@ -175,7 +174,7 @@ From the `Orders` table, we've summarized by the count of orders and the average
 
 We've assigned the fields `User → State` and `Created At` to table rows, and assigned the `Product -> Category` field to generate our columns: Doohickey, Gadget, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
 
-You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field. 
+You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field.
 
 Where it makes sense, Metabase will automatically include subtotals for grouped rows. For example, as in the image above, because we've grouped our rows first by `State`, then by `Created At`, Metabase will list each year for each `State`, and aggregate the metric(s) for that subgroup. For orders placed in Wisconsin, Metabase would sum the count of orders for each category, and find the average annual order total in each product category in Wisconsin.
 
@@ -315,7 +314,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 ![Region map](images/visualizations/map.png)
 
-- **Pin Map**. If your results contains a latitude and longitude field, Metabase will try to display the results as a pin map of the world. Metabase will put one pin on the map for each row in your table, based on the latitude and longitude fields. You can try this with the Sample Dataset that's included in Metabase: start a new question and select the People table, use `raw data` for your view, and choose the Map option for your visualization. You'll see a map of the world, with each dot representing the latitude and longitude coordinates of a single person from the People table.
+- **Pin Map**. If your results contains a latitude and longitude field, Metabase will try to display the results as a pin map of the world. Metabase will put one pin on the map for each row in your table, based on the latitude and longitude fields. You can try this with the Sample Database that's included in Metabase: start a new question and select the People table, use `raw data` for your view, and choose the Map option for your visualization. You'll see a map of the world, with each dot representing the latitude and longitude coordinates of a single person from the People table.
 
 ![Pin map](images/visualizations/pin-map.png)
 
@@ -327,6 +326,6 @@ Learn more about [visualizing data with maps](https://www.metabase.com/learn/bas
 
 ---
 
-## Next: Sharing and organizing questions
+## Next: Sharing your questions
 
-Now let's learn about [sharing and organizing your saved questions](06-sharing-answers.md).
+Now let's learn about [saving, editing, and sharing your questions](06-sharing-answers.md).

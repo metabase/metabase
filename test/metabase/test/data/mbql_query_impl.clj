@@ -1,12 +1,23 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of `data/$ids` and `data/mbql-query` and related macros."
   (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.models.field :refer [Field]]
             [toucan.db :as db]))
 
+(defn- token->sigil [token]
+  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
+    sigil))
+
+(defmulti ^:private parse-token-by-sigil
+  {:arglists '([source-table-symb token])}
+  (fn [_ token]
+    (when (symbol? token)
+      (token->sigil token))))
+
 (defn- field-id-call
-  "Replace a token string like `field` or `table.field` with a call to `data/id`."
+  "Replace a token string like `field` or `table.field` with a call to [[metabase.test.data/id]]."
   [source-table-symb token-str]
   (let [parts (str/split token-str #"\.")]
     (cons
@@ -23,7 +34,7 @@
     [:normal token-str]))
 
 (defmulti ^:private mbql-field
-  "Convert `token-str` to MBQL and `data/id` calls using `strategy` for producing the result.
+  "Convert `token-str` to MBQL and [[metabase.test.data/id]] calls using `strategy` for producing the result.
 
   *  `:id`      = return `:field` with integer ID
   *  `:raw`     = return raw Integer Field ID
@@ -37,9 +48,11 @@
 
 (defmethod mbql-field [:id :->]
   [_ _ source-table-symb source-token-str dest-token-str]
-  [:field
-   (field-id-call source-table-symb dest-token-str)
-   {:source-field (field-id-call source-table-symb source-token-str)}])
+  ;; recursively parse the destination field, then add `:source-field` to it.
+  (let [[_ id-form options] (parse-token-by-sigil source-table-symb (symbol (if (token->sigil dest-token-str)
+                                                             dest-token-str
+                                                             (str \$ dest-token-str))))]
+    [:field id-form (assoc options :source-field (field-id-call source-table-symb source-token-str))]))
 
 (defmethod mbql-field [:raw :normal]
   [_ _ source-table-symb token-str]
@@ -48,9 +61,9 @@
 (defmethod mbql-field [:raw :->]
   [_ _ source-table-symb source-token-str dest-token-str]
   (throw (ex-info "Error: It doesn't make sense to have an 'raw' -> form. (Don't know which ID to use.)"
-           {:source-table-symb     source-table-symb
-            :source-token-str source-token-str
-            :dest-token-str   dest-token-str})))
+                  {:source-table-symb source-table-symb
+                   :source-token-str  source-token-str
+                   :dest-token-str    dest-token-str})))
 
 (defn field-name [field-id]
   (db/select-one-field :name Field :id field-id))
@@ -76,20 +89,9 @@
    (field-literal source-table-symb source-token-str)
    (field-literal source-table-symb dest-token-str)])
 
-
 (defn- mbql-field-with-strategy [strategy source-table-symb token-str]
   (let [[token-type & args] (token->type+args token-str)]
     (apply mbql-field strategy token-type source-table-symb args)))
-
-(defn- token->sigil [token]
-  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
-    sigil))
-
-(defmulti ^:private parse-token-by-sigil
-  {:arglists '([source-table-symb token])}
-  (fn [_ token]
-    (when (symbol? token)
-      (token->sigil token))))
 
 (defmethod parse-token-by-sigil :default [_ token] token)
 
@@ -134,7 +136,6 @@
   [_ token]
   (list 'metabase.test.data/id (keyword (.substring (str token) 2))))
 
-
 (defn parse-tokens
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
   to `id`.
@@ -158,3 +159,18 @@
   (if (some (partial contains? inner-query) #{:source-table :source-query})
     inner-query
     (assoc inner-query :source-table (list 'metabase.test.data/id (keyword table)))))
+
+(deftest parse-tokens-test
+  (is (= '[:field
+           (metabase.test.data/id :categories :name)
+           {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
+         (parse-tokens 'categories '&CATEGORIES__via__CATEGORY_ID.name)))
+  (is (= '[:field
+           (metabase.test.data/id :categories :name)
+           {:source-field (metabase.test.data/id :venues :category_id)}]
+         (parse-tokens 'venues '$category_id->categories.name)))
+  (is (= '[:field
+           (metabase.test.data/id :categories :name)
+           {:source-field (metabase.test.data/id :venues :category_id)
+            :join-alias   "CATEGORIES__via__CATEGORY_ID"}]
+         (parse-tokens 'venues '$category_id->&CATEGORIES__via__CATEGORY_ID.categories.name))))

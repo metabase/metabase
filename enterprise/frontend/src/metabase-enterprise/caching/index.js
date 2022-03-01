@@ -2,7 +2,7 @@ import React from "react";
 import { t, jt } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { CacheTTLField } from "./components/CacheTTLField";
 import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
 import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
@@ -41,6 +41,7 @@ if (hasPremiumFeature("advanced_config")) {
     descriptionPosition: "bottom",
     validate: validateCacheTTL,
     normalize: normalizeCacheTTL,
+    visibleIf: { "advanced-options": true },
   };
 
   PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;

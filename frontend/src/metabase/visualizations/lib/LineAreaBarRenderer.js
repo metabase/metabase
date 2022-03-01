@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
@@ -67,8 +68,7 @@ import {
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
+import { stack, stackOffsetDiverging } from "./graph/stack";
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -330,7 +330,7 @@ function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
 }
 
 function getIsSplitYAxis(left, right) {
-  return right && right.series.length && (left && left.series.length > 0);
+  return right && right.series.length && left && left.series.length > 0;
 }
 
 function getYAxisProps(props, yExtents, datas) {
@@ -439,6 +439,11 @@ function applyChartLineBarSettings(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
   }
+
+  // AREA/BAR:
+  if (settings["stackable.stack_type"] === "stacked") {
+    chart.stackLayout(stack().offset(stackOffsetDiverging));
+  }
 }
 
 // TODO - give this a good name when I figure out what it does
@@ -529,12 +534,12 @@ function getCharts(
   const { settings, chartType, series, onChangeCardAndRun } = props;
   const { yAxisSplit } = yAxisProps;
 
-  const isHeterogenous =
-    _.uniq(series.map(single => getSeriesDisplay(settings, single))).length > 1;
-  const isHeterogenousOrdinal =
-    settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
+  const displays = _.uniq(series.map(s => getSeriesDisplay(settings, s)));
+  const isMixedBar = displays.includes("bar") && displays.length > 1;
+  const isOrdinal = settings["graph.x_axis.scale"] === "ordinal";
+  const isMixedOrdinalBar = isMixedBar && isOrdinal;
 
-  if (isHeterogenousOrdinal) {
+  if (isMixedOrdinalBar) {
     // HACK: ordinal + mix of line and bar results in uncentered points, shift by
     // half the width
     parent.on("renderlet.shift", () => {
@@ -595,7 +600,7 @@ function getCharts(
       settings,
       seriesChartType,
       seriesSettings,
-      isHeterogenousOrdinal,
+      isMixedOrdinalBar,
     );
 
     return chart;
@@ -616,14 +621,19 @@ function addGoalChartAndGetOnGoalHover(
   }
 
   const goalValue = settings["graph.goal_value"];
-  const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+  const goalData = [
+    [xDomain[0], goalValue],
+    [xDomain[1], goalValue],
+  ];
   const goalDimension = crossfilter(goalData).dimension(d => d[0]);
 
   // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
   // has just a single row / datapoint
-  const goalGroup = goalDimension
-    .group()
-    .reduce((p, d) => d[1], (p, d) => p, () => 0);
+  const goalGroup = goalDimension.group().reduce(
+    (p, d) => d[1],
+    (p, d) => p,
+    () => 0,
+  );
   const goalIndex = charts.length;
 
   const goalChart = dc
@@ -674,39 +684,47 @@ function addTrendlineChart(
   const insights = rawSeries[0].data.insights || [];
 
   for (const insight of insights) {
-    if (insight.slope != null && insight.offset != null) {
-      const index = findSeriesIndexForColumnName(series, insight.col);
-      const seriesSettings = settings.series(series[index]);
-      const color = lighten(seriesSettings.color, 0.25);
+    const index = findSeriesIndexForColumnName(series, insight.col);
 
-      const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
-      const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
-      const trendDimension = crossfilter(trendData).dimension(d => d[0]);
+    const shouldShowSeries = index !== -1;
+    const hasTrendLineData = insight.slope != null && insight.offset != null;
 
-      // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
-      // has just a single row / datapoint
-      const trendGroup = trendDimension
-        .group()
-        .reduce((p, d) => d[1], (p, d) => p, () => 0);
-      const trendIndex = charts.length;
-
-      const trendChart = dc
-        .lineChart(parent)
-        .dimension(trendDimension)
-        .group(trendGroup)
-        .on("renderlet", function(chart) {
-          // remove "sub" class so the trend is not used in voronoi computation
-          chart
-            .select(".sub._" + trendIndex)
-            .classed("sub", false)
-            .classed("trend", true);
-        })
-        .colors([color])
-        .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
-        .interpolate("cardinal");
-
-      charts.push(trendChart);
+    if (!shouldShowSeries || !hasTrendLineData) {
+      continue;
     }
+
+    const seriesSettings = settings.series(series[index]);
+    const color = lighten(seriesSettings.color, 0.25);
+
+    const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
+    const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
+    const trendDimension = crossfilter(trendData).dimension(d => d[0]);
+
+    // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
+    // has just a single row / datapoint
+    const trendGroup = trendDimension.group().reduce(
+      (p, d) => d[1],
+      (p, d) => p,
+      () => 0,
+    );
+    const trendIndex = charts.length;
+
+    const trendChart = dc
+      .lineChart(parent)
+      .dimension(trendDimension)
+      .group(trendGroup)
+      .on("renderlet", function(chart) {
+        // remove "sub" class so the trend is not used in voronoi computation
+        chart
+          .select(".sub._" + trendIndex)
+          .classed("sub", false)
+          .classed("trend", true);
+      })
+      .colors([color])
+      .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+      .interpolate("cardinal");
+
+    charts.push(trendChart);
   }
 }
 
@@ -792,18 +810,7 @@ function doHistogramBarStuff(parent) {
 
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
-type LineAreaBarProps = VisualizationProps & {
-  chartType: "line" | "area" | "bar" | "waterfall" | "scatter",
-  isScalarSeries: boolean,
-  maxSeries: number,
-};
-
-type DeregisterFunction = () => void;
-
-export default function lineAreaBar(
-  element: Element,
-  props: LineAreaBarProps,
-): DeregisterFunction {
+export default function lineAreaBar(element, props) {
   const { onRender, isScalarSeries, settings, series } = props;
 
   const warnings = {};
@@ -924,7 +931,7 @@ export default function lineAreaBar(
   if (onRender) {
     onRender({
       yAxisSplit: yAxisProps.yAxisSplit,
-      warnings: (Object.values(warnings): string[]),
+      warnings: Object.values(warnings),
     });
   }
 

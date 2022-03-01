@@ -7,23 +7,12 @@ import { filterWidgetFilterRenderer } from "./filters/FilterWidget";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
-import type { Filter as FilterType } from "metabase-types/types/Query";
-import type { FilterRenderer } from "./Filter";
-
-type Props = {
-  filters: Array<FilterType>,
-  maxDisplayValues?: number,
-  filterRenderer?: FilterRenderer,
-};
-
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
 
 @connect(mapStateToProps)
 export default class FilterList extends Component {
-  props: Props;
-
   static defaultProps = {
     filterRenderer: filterWidgetFilterRenderer,
   };

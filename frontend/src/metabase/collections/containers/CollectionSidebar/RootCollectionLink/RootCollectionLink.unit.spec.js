@@ -1,18 +1,35 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { DragDropContextProvider } from "react-dnd";
-import HTML5Backend from "react-dnd-html5-backend";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
+import xhrMock from "xhr-mock";
 
 import RootCollectionLink from "./RootCollectionLink";
 
-it("displays link to main collection: Our Analytics", () => {
-  const root = { name: "name", id: "root" };
+async function setup() {
+  renderWithProviders(<RootCollectionLink isRoot={false} />, { withDND: true });
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+}
 
-  render(
-    <DragDropContextProvider backend={HTML5Backend}>
-      <RootCollectionLink isRoot={false} root={root} />
-    </DragDropContextProvider>,
-  );
+describe("RootCollectionLink", () => {
+  beforeEach(() => {
+    xhrMock.setup();
+    xhrMock.get("/api/collection/root", {
+      body: JSON.stringify({
+        id: "root",
+        name: "Our analytics",
+      }),
+    });
+  });
 
-  screen.getByText("Our analytics");
+  afterEach(() => {
+    xhrMock.teardown();
+  });
+
+  it("displays link to root collection", async () => {
+    await setup();
+    screen.getByText("Our analytics");
+  });
 });
