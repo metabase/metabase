@@ -29,14 +29,13 @@ import { State } from "metabase-types/store";
 export const getIsLoadingDatabaseTables = (
   state: State,
   { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
-) => {
-  return Tables.selectors.getLoading(state, {
+) =>
+  Tables.selectors.getLoading(state, {
     entityQuery: {
       dbId: params.databaseId,
       include_hidden: true,
     },
   });
-};
 
 export const getLoadingDatabaseTablesError = (
   state: State,
@@ -68,7 +67,7 @@ const getGroupRouteParams = (
 ) => {
   const { groupId, databaseId, schemaName } = props.params;
   return {
-    groupId: parseInt(groupId),
+    groupId: groupId != null ? parseInt(groupId) : undefined,
     databaseId: databaseId != null ? parseInt(databaseId) : undefined,
     schemaName,
   };
@@ -100,10 +99,17 @@ const getFilterPlaceholder = (
   }
 };
 
-const getGroup = (state: State, props: { params: RawGroupRouteParams }) =>
-  Groups.selectors.getObject(state, {
-    entityId: parseInt(props.params.groupId),
+const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
+  const groupId = props.params.groupId;
+
+  if (!groupId) {
+    return null;
+  }
+
+  return Groups.selectors.getObject(state, {
+    entityId: parseInt(groupId),
   });
+};
 
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,

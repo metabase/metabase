@@ -1,12 +1,12 @@
 export type GroupRouteParams = {
-  groupId: number;
+  groupId?: number;
   databaseId?: number;
   schemaName?: string;
 };
 
 export type RawGroupRouteParams = {
-  groupId: string;
-  databaseId: string;
+  groupId?: string;
+  databaseId?: string;
   schemaName?: string;
 };
 
@@ -17,7 +17,7 @@ export type DataRouteParams = {
 };
 
 export type RawDataRouteParams = {
-  databaseId: string;
+  databaseId?: string;
   schemaName?: string;
   tableId?: string;
 };

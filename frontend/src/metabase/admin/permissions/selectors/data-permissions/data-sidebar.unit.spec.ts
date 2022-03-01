@@ -1,92 +1,34 @@
-import { getDataFocusSidebar, getGroupsDataPermissionEditor } from ".";
-import { normalizedMetadata } from "./data-permissions.unit.spec.fixtures";
+import { getDataFocusSidebar } from ".";
+import { RawDataRouteParams } from "../types";
+import { state } from "./data-permissions.unit.spec.fixtures";
 
-const initialPermissions = {
-  1: {
-    // Sample database
-    1: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
-    },
-    // Imaginary multi-schema
-    2: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
-    },
-    // Imaginary schemaless
-    3: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
-    },
-  },
-  2: {
-    // Sample database
-    1: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
-    },
-    // Imaginary multi-schema
-    2: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
-    },
-    // Imaginary schemaless
-    3: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
-    },
-  },
-};
-
-const state = {
-  admin: {
-    permissions: {
-      dataPermissions: initialPermissions,
-      originalDataPermissions: initialPermissions,
-    },
-  },
-  entities: normalizedMetadata,
-};
-
-const getProps = ({ databaseId, schemaName, tableId, groupId }) => ({
+export const getRouteProps = ({
+  databaseId,
+  schemaName,
+  tableId,
+}: RawDataRouteParams) => ({
   params: {
     databaseId,
     schemaName,
     tableId,
-    groupId,
   },
 });
 
 describe("getDataFocusSidebar", () => {
   describe("when database is not selected", () => {
     it("returns a correct placeholder for databases list search", () => {
-      const sidebarData = getDataFocusSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(
+        state as any,
+        getRouteProps({ databaseId: undefined }),
+      );
 
-      expect(sidebarData.filterPlaceholder).toEqual("Search for a database");
-    });
-
-    it("returns entity switch value = database", () => {
-      const sidebarData = getDataFocusSidebar(state, getProps({}));
-
-      expect(sidebarData.entityViewFocus).toEqual("database");
+      expect(sidebarData?.filterPlaceholder).toEqual("Search for a database");
     });
 
     it("returns list of databases", () => {
-      const sidebarData = getDataFocusSidebar(state, getProps({}));
+      const sidebarData = getDataFocusSidebar(state as any, getRouteProps({}));
 
-      expect(sidebarData.entityGroups).toEqual([
+      expect(sidebarData?.entityGroups).toEqual([
         [
           {
             entityId: {
@@ -112,20 +54,20 @@ describe("getDataFocusSidebar", () => {
   describe("when a database is selected", () => {
     it("returns a correct placeholder for databases list search", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getProps({ databaseId: 2 }),
+        state as any,
+        getRouteProps({ databaseId: "2" }),
       );
 
-      expect(sidebarData.filterPlaceholder).toEqual("Search for a table");
+      expect(sidebarData?.filterPlaceholder).toEqual("Search for a table");
     });
 
     it("returns tree of schemas and tables for a database with schemas", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getProps({ databaseId: 2 }),
+        state as any,
+        getRouteProps({ databaseId: "2" }),
       );
 
-      expect(sidebarData.entityGroups).toEqual([
+      expect(sidebarData?.entityGroups).toEqual([
         [
           {
             children: [
@@ -205,11 +147,11 @@ describe("getDataFocusSidebar", () => {
 
     it("returns flat list of tables for a schemaless database", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getProps({ databaseId: 3 }),
+        state as any,
+        getRouteProps({ databaseId: "3" }),
       );
 
-      expect(sidebarData.entityGroups).toEqual([
+      expect(sidebarData?.entityGroups).toEqual([
         [
           {
             entityId: {
@@ -254,83 +196,5 @@ describe("getDataFocusSidebar", () => {
         ],
       ]);
     });
-  });
-});
-
-describe("getGroupsDataPermissionEditor", () => {
-  it("returns data for permission editor header", () => {
-    const permissionEditorData = getGroupsDataPermissionEditor(state, {
-      params: {
-        databaseId: 3,
-      },
-      entityQuery: null,
-    });
-
-    expect(permissionEditorData.title).toEqual("Permissions for");
-    expect(permissionEditorData.breadcrumbs).toEqual([
-      {
-        id: 3,
-        text: "Imaginary Schemaless Dataset",
-        url: "/admin/permissions/data/database/3",
-      },
-    ]);
-    expect(permissionEditorData.filterPlaceholder).toEqual(
-      "Search for a group",
-    );
-  });
-
-  it("returns entities list for permissions editor", () => {
-    const entities = getGroupsDataPermissionEditor(state, {
-      params: {
-        databaseId: 3,
-      },
-      entityQuery: null,
-    }).entities;
-
-    expect(entities).toHaveLength(3);
-    expect(entities.map(entity => entity.name)).toEqual([
-      "Group starting with full access",
-      "Group starting with no access at all",
-      "All Users",
-    ]);
-
-    const [accessPermission, nativeQueryPermission] = entities[0].permissions;
-    expect(accessPermission.value).toEqual("all");
-    expect(accessPermission.options).toEqual([
-      {
-        icon: "check",
-        iconColor: "success",
-        label: "Unrestricted",
-        value: "all",
-      },
-      {
-        icon: "permissions_limited",
-        iconColor: "warning",
-        label: "Granular",
-        value: "controlled",
-      },
-      {
-        icon: "eye",
-        iconColor: "accent5",
-        label: "No self-service",
-        value: "none",
-      },
-    ]);
-
-    expect(nativeQueryPermission.value).toEqual("write");
-    expect(nativeQueryPermission.options).toEqual([
-      {
-        icon: "check",
-        iconColor: "success",
-        label: "Yes",
-        value: "write",
-      },
-      {
-        icon: "close",
-        iconColor: "danger",
-        label: "No",
-        value: "none",
-      },
-    ]);
   });
 });
