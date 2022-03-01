@@ -1,11 +1,18 @@
 Cypress.Commands.add(
   "createTimeline",
-  ({ name = "Timeline", description, icon = "star", collection_id } = {}) => {
+  ({
+    name = "Timeline",
+    description,
+    icon = "star",
+    collection_id,
+    archived = false,
+  } = {}) => {
     return cy.request("POST", "/api/timeline", {
       name,
       description,
       icon,
       collection_id,
+      archived,
     });
   },
 );
@@ -20,6 +27,7 @@ Cypress.Commands.add(
     time_matters = false,
     timezone = "UTC",
     timeline_id,
+    archived = false,
   }) => {
     return cy.request("POST", "/api/timeline-event", {
       name,
@@ -29,6 +37,7 @@ Cypress.Commands.add(
       time_matters,
       timezone,
       timeline_id,
+      archived,
     });
   },
 );
