@@ -69,7 +69,7 @@ const getGroupRouteParams = (
   const { groupId, databaseId, schemaName } = props.params;
   return {
     groupId: parseInt(groupId),
-    databaseId: parseInt(databaseId),
+    databaseId: databaseId != null ? parseInt(databaseId) : null,
     schemaName,
   };
 };
@@ -122,7 +122,7 @@ export const getDatabasesPermissionEditor = createSelector(
   ) => {
     const { groupId, databaseId, schemaName } = params;
 
-    if (isLoading || !permissions || groupId == null) {
+    if (isLoading || !permissions || groupId == null || !group) {
       return null;
     }
 
