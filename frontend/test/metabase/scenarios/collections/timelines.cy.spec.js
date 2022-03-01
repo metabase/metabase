@@ -97,6 +97,23 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Undo").click();
       cy.findByText("RC1");
     });
+
+    it("should delete an event", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", archived: true }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openTimelineMenu("Releases");
+      cy.findByText("View archived events").click();
+
+      cy.findByText("Archived events");
+      openEventMenu("RC1");
+      cy.findByText("Delete event").click();
+      cy.findByText("Delete").click();
+      cy.findByText("No events found");
+    });
   });
 });
 
