@@ -29,7 +29,17 @@ describe("DateInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should set date with time", () => {
+  it("should set date with time with 12-hour clock", () => {
+    const onChange = jest.fn();
+
+    render(<DateInputTest hasTime onChange={onChange} />);
+    userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15 PM");
+
+    const expected = moment("10/20/21 9:15 PM", ["MM/DD/YYYY, h:mm A"]);
+    expect(onChange).toHaveBeenLastCalledWith(expected);
+  });
+
+  it("should set date with time with 24-hour clock", () => {
     const onChange = jest.fn();
 
     render(<DateInputTest hasTime onChange={onChange} />);

@@ -109,9 +109,8 @@
   returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
   [:as {{:keys                                          [token]
-         {:keys [name engine details is_full_sync
-                 is_on_demand schedules
-                 auto_run_queries]
+         {:keys [name engine details
+                 schedules auto_run_queries]
           :as   database}                               :database
          {:keys [first_name last_name email password]}  :user
          {invited_first_name :first_name,
@@ -175,11 +174,12 @@
   (let [engine           (keyword engine)
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
-                                                             {:message m})})]
-    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
-      (when error-or-nil (snowplow/track-event! ::snowplow/database-connection-failed
-                                                nil
-                                                {:database engine, :source :setup}))
+                                                             {:message m})})
+        error-or-nil     (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+    (when error-or-nil
+      (snowplow/track-event! ::snowplow/database-connection-failed
+                             nil
+                             {:database engine, :source :setup})
       error-or-nil)))
 
 

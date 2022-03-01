@@ -19,6 +19,7 @@ import {
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
+import { MenuItem } from "../../types";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
@@ -50,16 +51,19 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection);
-  }, [timeline, collection]);
+    return getMenuItems(timeline, collection, isArchive);
+  }, [timeline, collection, isArchive]);
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
+  const canWrite = collection.can_write;
 
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {!isArchive && <EntityMenu items={menuItems} triggerIcon="ellipsis" />}
+        {menuItems.length > 0 && (
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        )}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
         <ModalToolbar>
@@ -69,7 +73,7 @@ const TimelineDetailsModal = ({
             icon={<Icon name="search" />}
             onChange={setInputText}
           />
-          {!isArchive && (
+          {canWrite && !isArchive && (
             <ModalToolbarLink
               className="Button"
               to={Urls.newEventInCollection(timeline, collection)}
@@ -119,21 +123,34 @@ const isEventMatch = (event: TimelineEvent, searchText: string) => {
   );
 };
 
-const getMenuItems = (timeline: Timeline, collection: Collection) => {
-  return [
-    {
-      title: t`New timeline`,
-      link: Urls.newTimelineInCollection(collection),
-    },
-    {
-      title: t`Edit timeline details`,
-      link: Urls.editTimelineInCollection(timeline, collection),
-    },
-    {
+const getMenuItems = (
+  timeline: Timeline,
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  const items: MenuItem[] = [];
+
+  if (collection.can_write && !isArchive) {
+    items.push(
+      {
+        title: t`New timeline`,
+        link: Urls.newTimelineInCollection(collection),
+      },
+      {
+        title: t`Edit timeline details`,
+        link: Urls.editTimelineInCollection(timeline, collection),
+      },
+    );
+  }
+
+  if (!isArchive) {
+    items.push({
       title: t`View archived events`,
       link: Urls.timelineArchiveInCollection(timeline, collection),
-    },
-  ];
+    });
+  }
+
+  return items;
 };
 
 export default TimelineDetailsModal;

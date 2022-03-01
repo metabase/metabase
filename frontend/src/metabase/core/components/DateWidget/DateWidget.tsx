@@ -18,13 +18,26 @@ export type DateWidgetAttributes = Omit<
 export interface DateWidgetProps extends DateWidgetAttributes {
   value?: Moment;
   hasTime?: boolean;
+  dateFormat?: string;
+  timeFormat?: string;
+  is24HourMode?: boolean;
   error?: boolean;
   fullWidth?: boolean;
   onChange?: (date?: Moment) => void;
 }
 
 const DateWidget = forwardRef(function DateWidget(
-  { value, hasTime, error, fullWidth, onChange, ...props }: DateWidgetProps,
+  {
+    value,
+    hasTime,
+    dateFormat,
+    timeFormat,
+    is24HourMode,
+    error,
+    fullWidth,
+    onChange,
+    ...props
+  }: DateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const [isOpened, setIsOpened] = useState(false);
@@ -39,14 +52,14 @@ const DateWidget = forwardRef(function DateWidget(
 
   return (
     <TippyPopover
-      trigger="manual"
-      placement="bottom-start"
       visible={isOpened}
+      placement="bottom-start"
       interactive
       content={
         <DateSelector
           value={value}
           hasTime={hasTime}
+          is24HourMode={is24HourMode}
           onChange={onChange}
           onSubmit={handleClose}
         />
@@ -59,6 +72,8 @@ const DateWidget = forwardRef(function DateWidget(
         value={value}
         hasTime={hasTime}
         hasCalendar={true}
+        dateFormat={dateFormat}
+        timeFormat={timeFormat}
         error={error}
         fullWidth={fullWidth}
         onChange={onChange}
