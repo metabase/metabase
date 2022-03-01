@@ -348,7 +348,6 @@
                                          (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
-    ;;;; cond: if db-type money then do that. if semantic type is json and we have json path semantics in field do something else
     (if (= database-type "money")
       (pg-conversion identifier :numeric)
       identifier)))
