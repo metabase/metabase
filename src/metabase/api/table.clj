@@ -196,7 +196,7 @@
   (create-dim-index-seq "type/Coordinate"))
 
 (defn- dimension-index-for-type [dim-type pred]
-  (first (m/find-first (fn [[k v]]
+  (first (m/find-first (fn [[_k v]]
                          (and (= dim-type (:type v))
                               (pred v))) dimension-options-for-response)))
 

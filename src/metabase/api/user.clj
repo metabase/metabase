@@ -169,7 +169,7 @@
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email password group_ids login_attributes] :as body} :body}]
+  [:as {{:keys [first_name last_name email group_ids login_attributes] :as body} :body}]
   {first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email
