@@ -5,6 +5,7 @@ import {
   popover,
   sidebar,
   mockSlackConfigured,
+  isOSS,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -276,7 +277,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", () => {
     beforeEach(() => {
-      cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+      cy.onlyOn(isOSS);
       cy.visit(`/dashboard/1`);
       setupSMTP();
     });
