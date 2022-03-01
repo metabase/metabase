@@ -598,11 +598,17 @@
                {su/IntGreaterThanZero DownloadTablePermissionsGraph})
    "Valid download perms graph for a schema"))
 
+(def ^:private DownloadNativePermissionsGraph
+  (s/named
+   (s/enum :full :limited :none)
+   "Valid download perms option for native queries over a database"))
+
 (def DownloadPermissionsGraph
   "Schema for a download permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
   (s/named
-   {:schemas (s/cond-pre (s/enum :full :limited :none)
-                         {s/Str DownloadSchemaPermissionsGraph})}
+   {(s/optional-key :native)  DownloadNativePermissionsGraph
+    (s/optional-key :schemas) (s/cond-pre (s/enum :full :limited :none)
+                                      {s/Str DownloadSchemaPermissionsGraph})}
    "Valid download perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
