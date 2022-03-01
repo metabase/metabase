@@ -44,6 +44,7 @@ CollectionSidebar.propTypes = {
   currentUser: PropTypes.object.isRequired,
   collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,
+  bookmarks: PropTypes.arrayOf(PropTypes.object),
   isRoot: PropTypes.bool,
   allFetched: PropTypes.bool,
   loading: PropTypes.bool,
@@ -53,6 +54,7 @@ CollectionSidebar.propTypes = {
 };
 
 function CollectionSidebar({
+  bookmarks,
   currentUser,
   collectionId,
   collections,
@@ -86,6 +88,7 @@ function CollectionSidebar({
 
   useEffect(() => {
     if (!loading && collectionId) {
+      console.log("🚀", { bookmarks });
       const ancestors = getParentPath(collections || [], collectionId) || [];
       setOpenCollections(ancestors);
     }
@@ -135,7 +138,7 @@ function LoadingView() {
 }
 
 export default _.compose(
-  Collection.loadList(collectionEntityQuery),
   Bookmark.loadList(),
+  Collection.loadList(collectionEntityQuery),
   connect(mapStateToProps),
 )(CollectionSidebar);
