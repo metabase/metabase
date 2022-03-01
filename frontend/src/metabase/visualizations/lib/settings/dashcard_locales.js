@@ -339,6 +339,10 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.book.distribution.progress.rejected' : {
     'en': 'Rejected Book Demand',
     'bn': 'প্রত্যাখ্যাত বইয়ের চাহিদা'
+  },
+  'admin.dashboard.book.distribution.progress' : {
+    'en': 'Progress of Book Demand',
+    'bn': 'বইয়ের চাহিদার অগ্রগতি'
   }
 }
 
