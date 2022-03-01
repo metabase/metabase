@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { goBack, push } from "react-router-redux";
+import { goBack } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
@@ -19,7 +19,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     const action = Timelines.actions.createWithEvent(values, collection);
     const response = await dispatch(action);
     const timeline = Timelines.HACK_getObjectFromAction(response);
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(goBack());
   },
   onCancel: () => {
     dispatch(goBack());

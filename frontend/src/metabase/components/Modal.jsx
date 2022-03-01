@@ -63,7 +63,10 @@ export class WindowModal extends Component {
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
+      <OnClickOutsideWrapper
+        backdropElement={this._modalElement}
+        handleDismissal={this.handleDismissal}
+      >
         <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,

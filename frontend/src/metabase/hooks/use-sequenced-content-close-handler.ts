@@ -3,7 +3,8 @@ import _ from "underscore";
 
 type PopoverData = {
   contentEl: Element;
-  close: () => void;
+  backdropEl?: Element;
+  close: (e: MouseEvent | KeyboardEvent) => void;
 };
 
 export const RENDERED_POPOVERS: PopoverData[] = [];
@@ -12,8 +13,8 @@ function isElement(a: any): a is Element {
   return a instanceof Element;
 }
 
-function isEventOutsideOfElement(e: Event, el: Element) {
-  return isElement(e.target) && !el.contains(e.target);
+function isEventInsideElement(e: Event, el: Element) {
+  return isElement(e.target) && el.contains(e.target);
 }
 
 export function removePopoverData(popoverData: PopoverData) {
@@ -33,7 +34,9 @@ export function shouldClosePopover(
     return (
       mostRecentPopover &&
       mostRecentPopover === popoverData &&
-      isEventOutsideOfElement(e, mostRecentPopover.contentEl)
+      !isEventInsideElement(e, mostRecentPopover.contentEl) &&
+      (!popoverData.backdropEl ||
+        isEventInsideElement(e, popoverData.backdropEl))
     );
   }
 
@@ -57,7 +60,7 @@ export default function useSequencedContentCloseHandler() {
       popoverDataRef.current &&
       shouldClosePopover(e, popoverDataRef.current)
     ) {
-      popoverDataRef.current.close();
+      popoverDataRef.current.close(e);
     }
   }, []);
 

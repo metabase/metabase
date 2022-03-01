@@ -1,9 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import moment from "moment";
-import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -35,6 +33,7 @@ const TimelineEmptyState = ({
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
+  const canWrite = collection.can_write;
 
   return (
     <EmptyStateRoot>
@@ -64,9 +63,11 @@ const TimelineEmptyState = ({
           <EmptyStateThreadLine />
         </EmptyStateThread>
         <EmptyStateMessage>
-          {t`Add events to Metabase to open important milestones, launches, or anything else, right alongside your data.`}
+          {canWrite
+            ? t`Add events to Metabase to open important milestones, launches, or anything else, right alongside your data.`
+            : t`Events in Metabase let you see important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateMessage>
-        {collection.can_write && (
+        {canWrite && (
           <Link className="Button Button--primary" to={link}>
             {t`Add an event`}
           </Link>

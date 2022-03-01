@@ -22,13 +22,9 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (
-    values: Partial<TimelineEvent>,
-    collection: Collection,
-    timeline: Timeline,
-  ) => {
+  onSubmit: async (values: Partial<TimelineEvent>) => {
     await dispatch(TimelineEvents.actions.create(values));
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(goBack());
   },
   onCancel: () => {
     dispatch(goBack());

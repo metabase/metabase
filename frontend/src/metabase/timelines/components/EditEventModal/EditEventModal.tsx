@@ -2,32 +2,20 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { TimelineEvent } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import { ModalBody, ModalDangerButton } from "./EditEventModal.styled";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
-  timeline: Timeline;
-  collection: Collection;
-  onSubmit: (
-    values: Partial<TimelineEvent>,
-    timeline: Timeline,
-    collection: Collection,
-  ) => void;
-  onArchive: (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => void;
+  onSubmit: (values: Partial<TimelineEvent>) => void;
+  onArchive: (event: TimelineEvent) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
 
 const EditEventModal = ({
   event,
-  timeline,
-  collection,
   onSubmit,
   onArchive,
   onCancel,
@@ -35,14 +23,14 @@ const EditEventModal = ({
 }: EditEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, timeline, collection);
+      await onSubmit(values);
     },
-    [timeline, collection, onSubmit],
+    [onSubmit],
   );
 
   const handleArchive = useCallback(async () => {
-    await onArchive(event, timeline, collection);
-  }, [event, timeline, collection, onArchive]);
+    await onArchive(event);
+  }, [event, onArchive]);
 
   return (
     <div>

@@ -5,7 +5,8 @@ import TextInput from "metabase/components/TextInput";
 export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
-  max-height: 100vh;
+  min-height: 565px;
+  max-height: 90vh;
 `;
 
 export const ModalToolbar = styled.div`
@@ -30,7 +31,10 @@ export const ModalToolbarLink = styled(Link)`
 `;
 
 export const ModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
-  padding: 2rem;
+  margin: 1rem 0 0;
+  padding: 1rem 2rem 2rem;
   overflow-y: auto;
 `;
