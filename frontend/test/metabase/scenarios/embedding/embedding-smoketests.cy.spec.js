@@ -1,13 +1,10 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import { restore, visitQuestion, isEE, isOSS } from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade/";
 
 const licenseExplanation = `In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`;
-
-const isEE = Cypress.env("HAS_ENTERPRISE_TOKEN");
-const isOSS = !isEE;
 
 describe("scenarios > embedding > smoke tests", () => {
   beforeEach(() => {
