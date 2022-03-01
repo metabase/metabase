@@ -6,7 +6,7 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite
+             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
               Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
               Segment Table]]
             [metabase.models.permissions :as perms]
@@ -383,18 +383,18 @@
 (deftest favorites-test
   (testing "Favorites are per user, so other user's favorites don't cause search results to be favorited"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/the-id card)
-                                            :owner_id (mt/user->id :rasta)}]
-                      DashboardFavorite [_ {:dashboard_id (u/the-id dashboard)
+      (mt/with-temp* [CardBookmark      [_ {:card_id (u/the-id card)
+                                            :user_id (mt/user->id :rasta)}]
+                      DashboardBookmark [_ {:dashboard_id (u/the-id dashboard)
                                             :user_id      (mt/user->id :rasta)}]]
         (is (= (default-results-with-collection)
                (search-request-data :crowberto :q "test"))))))
 
   (testing "Basic search, should find 1 of each entity type and include favorites when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/the-id card)
-                                            :owner_id (mt/user->id :crowberto)}]
-                      DashboardFavorite [_ {:dashboard_id (u/the-id dashboard)
+      (mt/with-temp* [CardBookmark      [_ {:card_id (u/the-id card)
+                                            :user_id (mt/user->id :crowberto)}]
+                      DashboardBookmark [_ {:dashboard_id (u/the-id dashboard)
                                             :user_id      (mt/user->id :crowberto)}]]
         (is (= (on-search-types #{"dashboard" "card"}
                                 #(assoc % :favorite true)

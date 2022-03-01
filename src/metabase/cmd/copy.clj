@@ -9,7 +9,7 @@
             [metabase.db.connection :as mdb.conn]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity Card CardFavorite Collection CollectionPermissionGraphRevision Dashboard
+            [metabase.models :refer [Activity Card CardBookmark Collection CollectionBookmark CollectionPermissionGraphRevision Dashboard DashboardBookmark
                                      DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
                                      FieldValues LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
@@ -61,7 +61,9 @@
    CollectionPermissionGraphRevision
    Dashboard
    Card
-   CardFavorite
+   CardBookmark
+   DashboardBookmark
+   CollectionBookmark
    DashboardCard
    DashboardCardSeries
    Activity

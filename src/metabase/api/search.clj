@@ -7,9 +7,8 @@
             [honeysql.helpers :as h]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models.card-favorite :refer [CardFavorite]]
+            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
             [metabase.models.collection :as coll :refer [Collection]]
-            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.permissions :as perms]
@@ -253,10 +252,10 @@
 (s/defn ^:private shared-card-impl [dataset? :- s/Bool search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
-      (h/left-join [CardFavorite :fave]
+      (h/left-join [CardBookmark :bookmark]
                    [:and
-                    [:= :card.id :fave.card_id]
-                    [:= :fave.owner_id api/*current-user-id*]])
+                    [:= :card.id :bookmark.card_id]
+                    [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
 
@@ -282,10 +281,10 @@
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
-      (h/left-join [DashboardFavorite :fave]
+      (h/left-join [DashboardBookmark :bookmark]
                    [:and
-                    [:= :dashboard.id :fave.dashboard_id]
-                    [:= :fave.user_id api/*current-user-id*]])
+                    [:= :dashboard.id :bookmark.dashboard_id]
+                    [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "pulse"

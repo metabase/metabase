@@ -1,7 +1,9 @@
 (ns metabase.models.bookmark
   (:require [clojure.string :as str]
             [metabase.db.connection :as mdb]
-            [metabase.models :refer [Card Dashboard Collection]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.models :as models]))
