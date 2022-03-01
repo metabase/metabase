@@ -1,6 +1,6 @@
 # Data permissions
 
-This page covers permissions for databases and tables. If you haven't already, check out our [Permissions overview][permissons-overview].
+This page covers permissions for databases and tables. If you haven't already, check out our [Permissions overview][permissions-overview].
 
 ## Permissions view
 
@@ -66,7 +66,7 @@ If you have read-only access to a dashboard, you can also unsubscribe yourself f
 
 ## Further reading
 
-- [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html).
+- [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
 
