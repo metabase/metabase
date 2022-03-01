@@ -2,9 +2,9 @@ import {
   restore,
   openOrdersTable,
   popover,
-  describeWithToken,
+  describeEE,
   setupMetabaseCloud,
-  describeWithoutToken,
+  describeOSS,
   isOSS,
   isEE,
 } from "__support__/e2e/cypress";
@@ -302,7 +302,7 @@ describe("scenarios > admin > settings", () => {
   });
 });
 
-describeWithoutToken("scenarios > admin > settings (OSS)", () => {
+describeOSS("scenarios > admin > settings (OSS)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -316,7 +316,7 @@ describeWithoutToken("scenarios > admin > settings (OSS)", () => {
   });
 });
 
-describeWithToken("scenarios > admin > settings (EE)", () => {
+describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

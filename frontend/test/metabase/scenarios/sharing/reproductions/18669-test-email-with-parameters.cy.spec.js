@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   popover,
   restore,
   setupSMTP,
@@ -11,7 +11,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-describeWithToken("issue 18669", () => {
+describeEE("issue 18669", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

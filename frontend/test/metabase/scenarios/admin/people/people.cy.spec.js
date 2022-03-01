@@ -4,7 +4,7 @@ import {
   modal,
   popover,
   setupSMTP,
-  describeWithToken,
+  describeEE,
 } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -295,7 +295,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-describeWithToken("scenarios > admin > people", () => {
+describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
