@@ -55,7 +55,7 @@
   (perms/grant-permissions! group-id (native-perms-path perm-type perm-value db-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Shared Util Functions                                                 |
+;;; |                                          Download permissions                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- revoke-download-permissions!
