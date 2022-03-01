@@ -206,9 +206,9 @@ const dataPermissions = handleActions(
           return state;
         }
 
-        const database = metadata.database(entityId.databaseId);
-
         const { value, groupId, entityId, metadata, permission } = payload;
+
+        const database = metadata.database(entityId.databaseId);
 
         if (entityId.tableId != null) {
           MetabaseAnalytics.trackStructEvent("Permissions", "fields", value);
