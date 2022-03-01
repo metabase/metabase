@@ -14,17 +14,19 @@ Cypress.Commands.add(
   "createTimelineEvent",
   ({
     name = "Event",
-    timestamp = "2020-01-01T00:00:00Z",
     description,
     icon = "star",
+    timestamp = "2020-01-01T00:00:00Z",
+    time_matters = false,
     timezone = "UTC",
     timeline_id,
   }) => {
-    return cy.request("POST", "/api/timeline", {
+    return cy.request("POST", "/api/timeline-event", {
       name,
-      timestamp,
       description,
       icon,
+      timestamp,
+      time_matters,
       timezone,
       timeline_id,
     });
