@@ -5,14 +5,14 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [java-time :as t]))
+            [schema.core :as s]))
 
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")

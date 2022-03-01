@@ -6,8 +6,7 @@
             [clojurewerkz.quartzite.schedule.simple :as simple]
             [clojurewerkz.quartzite.triggers :as triggers]
             [metabase.util.i18n :refer [trs]]
-            [metabase.task :as task]
-            [clojure.string :as str]))
+            [metabase.task :as task]))
 
 (defn ^:private job []
   (if (slack/slack-configured?)
