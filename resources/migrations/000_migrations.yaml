@@ -10751,6 +10751,225 @@ databaseChangeLog:
                 password_salt = NULL
               WHERE ldap_auth IS TRUE;
 
+  - changeSet:
+      id: v43.00-030
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table
+      changes:
+        - createTable:
+            tableName: dashboard_bookmark
+            remarks: Table holding bookmarks on dashboards
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Dashboard'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_dashboard_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: report_dashboard(id)
+                    foreignKeyName: fk_dashboard_bookmark_dashboard_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-031
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: dashboard_bookmark
+            columnNames: user_id, dashboard_id
+            constraintName: unique_dashboard_bookmark_user_id_dashboard_id
+  - changeSet:
+      id: v43.00-032
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: dashboard_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_dashboard_bookmark_user_id
+  - changeSet:
+      id: v43.00-033
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table index on dashboard_id
+      changes:
+        - createIndex:
+            tableName: dashboard_bookmark
+            columns:
+              - column:
+                  name: dashboard_id
+            indexName: idx_dashboard_bookmark_dashboard_id
+
+  - changeSet:
+      id: v43.00-034
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table
+      changes:
+        - createTable:
+            tableName: card_bookmark
+            remarks: Table holding bookmarks on cards
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Card'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_card_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_card_bookmark_dashboard_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-035
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: card_bookmark
+            columnNames: user_id, card_id
+            constraintName: unique_card_bookmark_user_id_card_id
+  - changeSet:
+      id: v43.00-036
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: card_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_card_bookmark_user_id
+  - changeSet:
+      id: v43.00-037
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table index on card_id
+      changes:
+        - createIndex:
+            tableName: card_bookmark
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_card_bookmark_card_id
+
+  - changeSet:
+      id: v43.00-038
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table
+      changes:
+        - createTable:
+            tableName: collection_bookmark
+            remarks: Table holding bookmarks on collections
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Collection'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'ID of the Card bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: collection(id)
+                    foreignKeyName: fk_collection_bookmark_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-039
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: collection_bookmark
+            columnNames: user_id, collection_id
+            constraintName: unique_collection_bookmark_user_id_collection_id
+  - changeSet:
+      id: v43.00-040
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: collection_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_collection_bookmark_user_id
+  - changeSet:
+      id: v43.00-041
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table index on collection_id
+      changes:
+        - createIndex:
+            tableName: collection_bookmark
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_collection_bookmark_collection_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
