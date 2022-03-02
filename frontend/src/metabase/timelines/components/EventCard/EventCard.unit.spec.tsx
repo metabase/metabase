@@ -9,7 +9,7 @@ import EventCard, { EventCardProps } from "./EventCard";
 import userEvent from "@testing-library/user-event";
 
 describe("EventCard", () => {
-  it("should not render a menu for read-only users", () => {
+  it("should not render the menu for read-only users", () => {
     const props = getProps({
       collection: createMockCollection({
         can_write: false,
@@ -21,7 +21,7 @@ describe("EventCard", () => {
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
-  it("should render a menu for users with write permissions", async () => {
+  it("should render the menu for users with write permissions", async () => {
     const props = getProps({
       collection: createMockCollection({
         can_write: true,
