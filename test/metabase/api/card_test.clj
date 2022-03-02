@@ -289,10 +289,9 @@
                     CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
                     CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1", :is_bookmarked true}]
+        (is (= [{:name "Card 1"}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
-                 (select-keys card [:name :is_bookmarked]))))))))
-
+                 (select-keys card [:name]))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
