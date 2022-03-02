@@ -254,7 +254,7 @@
       (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
       (h/left-join [CardBookmark :bookmark]
                    [:and
-                    [:= :card.id :bookmark.card_id]
+                    [:= :bookmark.card_id :card.id]
                     [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))

@@ -281,7 +281,7 @@
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
-(deftest filter-by-fav-test
+(deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
     (mt/with-temp* [Card         [card-1 {:name "Card 1"}]
                     Card         [card-2 {:name "Card 2"}]
@@ -289,9 +289,9 @@
                     CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
                     CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1", :favorite true}]
-               (for [card (mt/user-http-request :rasta :get 200 "card", :f :fav)]
-                 (select-keys card [:name :favorite]))))))))
+        (is (= [{:name "Card 1", :is_bookmarked true}]
+               (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
+                 (select-keys card [:name :is_bookmarked]))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
