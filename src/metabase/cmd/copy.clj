@@ -75,7 +75,6 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   DashboardFavorite
    Dimension
    NativeQuerySnippet
    LoginHistory
