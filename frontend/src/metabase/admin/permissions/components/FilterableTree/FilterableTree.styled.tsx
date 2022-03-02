@@ -1,6 +1,16 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
+export const FilterableTreeRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+export const FilterableTreeContainer = styled.div`
+  overflow: auto;
+`;
+
 export const FilterInputContainer = styled.div`
   padding: 0.75rem 1.5rem;
 `;

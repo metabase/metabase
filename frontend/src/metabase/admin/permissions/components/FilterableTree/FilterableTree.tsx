@@ -8,6 +8,8 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import React, { useMemo, useState } from "react";
 import {
   EmptyStateContainer,
+  FilterableTreeContainer,
+  FilterableTreeRoot,
   FilterInputContainer,
   ItemGroupsDivider,
 } from "./FilterableTree.styled";
@@ -46,7 +48,7 @@ export const FilterableTree = ({
   }, [itemGroups, debouncedFilter]);
 
   return (
-    <div>
+    <FilterableTreeRoot>
       <FilterInputContainer>
         <TextInput
           hasClearButton
@@ -58,39 +60,41 @@ export const FilterableTree = ({
           icon={<Icon name="search" size={16} />}
         />
       </FilterInputContainer>
-      {filteredList && (
-        <Tree
-          colorScheme="admin"
-          data={filteredList}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          emptyState={
-            <EmptyStateContainer>
-              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-              {/* @ts-ignore */}
-              <EmptyState
-                message={emptyState?.text ?? t`Nothing here`}
-                icon={emptyState?.icon ?? "all"}
-              />
-            </EmptyStateContainer>
-          }
-        />
-      )}
-      {!filteredList &&
-        itemGroups.map((items, index) => {
-          const isLastGroup = index === itemGroups.length - 1;
-          return (
-            <React.Fragment key={index}>
-              <Tree
-                colorScheme="admin"
-                data={items}
-                selectedId={selectedId}
-                onSelect={onSelect}
-              />
-              {!isLastGroup && <ItemGroupsDivider />}
-            </React.Fragment>
-          );
-        })}
-    </div>
+      <FilterableTreeContainer>
+        {filteredList && (
+          <Tree
+            colorScheme="admin"
+            data={filteredList}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            emptyState={
+              <EmptyStateContainer>
+                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                {/* @ts-ignore */}
+                <EmptyState
+                  message={emptyState?.text ?? t`Nothing here`}
+                  icon={emptyState?.icon ?? "all"}
+                />
+              </EmptyStateContainer>
+            }
+          />
+        )}
+        {!filteredList &&
+          itemGroups.map((items, index) => {
+            const isLastGroup = index === itemGroups.length - 1;
+            return (
+              <React.Fragment key={index}>
+                <Tree
+                  colorScheme="admin"
+                  data={items}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                />
+                {!isLastGroup && <ItemGroupsDivider />}
+              </React.Fragment>
+            );
+          })}
+      </FilterableTreeContainer>
+    </FilterableTreeRoot>
   );
 };
