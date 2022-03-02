@@ -15,8 +15,8 @@
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
             [metabase.models.card :as card :refer [Card]]
-            [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
@@ -45,20 +45,6 @@
            java.util.UUID
            metabase.models.card.CardInstance))
 
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn hydrate-favorites
-  "Efficiently add `favorite` status for a large collection of `Cards`."
-  {:batched-hydrate :favorite}
-  [cards]
-  (when (seq cards)
-    (let [favorite-card-ids (db/select-field :card_id CardFavorite
-                              :owner_id api/*current-user-id*
-                              :card_id  [:in (map :id cards)])]
-      (for [card cards]
-        (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
-
-
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
 (defmulti ^:private cards-for-filter-option*
@@ -76,11 +62,11 @@
   [_]
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;; return all Cards favorited by the current user.
-(defmethod cards-for-filter-option* :fav
+;; return all Cards bookmarked by the current user.
+(defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardFavorite :card_id]
-                                                                    :owner_id api/*current-user-id*)
+  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardBookmark :card_id]
+                                                                    :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
                 card)]
@@ -131,7 +117,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
-      (hydrate :creator :collection :favorite)))
+      (hydrate :creator :collection :is_bookmarked)))
 
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -142,7 +128,7 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
@@ -168,6 +154,7 @@
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator
+                        :is_bookmarked
                         :dashboard_count
                         :can_write
                         :average_query_time
@@ -590,21 +577,21 @@
   api/generic-204-no-content)
 
 
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
+;;; --------------------------------------------------- Bookmarking ---------------------------------------------------
 
-(api/defendpoint POST "/:card-id/favorite"
-  "Favorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (db/insert! CardFavorite :card_id card-id, :owner_id api/*current-user-id*))
+(api/defendpoint POST "/:id/bookmark"
+  "Bookmark a Card for the current user."
+  [id]
+  (api/read-check Card id)
+  (db/insert! CardBookmark :card_id id :user_id api/*current-user-id*))
 
 
-(api/defendpoint DELETE "/:card-id/favorite"
-  "Unfavorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (api/let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id api/*current-user-id*)]
-    (db/delete! CardFavorite, :id id))
+(api/defendpoint DELETE "/:id/bookmark"
+  "Un-Bookmark a Card for the current user."
+  [id]
+  (api/read-check Card id)
+  (api/let-404 [id (db/select-one-id CardBookmark :card_id id :user_id api/*current-user-id*)]
+    (db/delete! CardBookmark :id id))
   api/generic-204-no-content)
 
 
