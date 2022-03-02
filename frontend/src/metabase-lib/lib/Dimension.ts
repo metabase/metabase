@@ -1185,7 +1185,7 @@ export class ExpressionDimension extends Dimension {
     }
 
     if (ExpressionDimension.isExpressionClause(somethingElse)) {
-      const dimension = Expression.parseMBQL(
+      const dimension = ExpressionDimension.parseMBQL(
         somethingElse,
         this._metadata,
         this._query,
