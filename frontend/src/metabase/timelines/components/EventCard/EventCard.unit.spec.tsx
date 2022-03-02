@@ -12,13 +12,27 @@ describe("EventCard", () => {
   it("should format a day-only event", () => {
     const props = getProps({
       event: createMockTimelineEvent({
-        timestamp: "2020-12-25T00:00:00Z",
+        timestamp: "2020-12-20T00:00:00Z",
+        time_matters: false,
       }),
     });
 
     render(<EventCard {...props} />);
 
-    expect(screen.getByText("December 25, 2020")).toBeInTheDocument();
+    expect(screen.getByText("December 20, 2020")).toBeInTheDocument();
+  });
+
+  it("should format a time-sensitive event", () => {
+    const props = getProps({
+      event: createMockTimelineEvent({
+        timestamp: "2020-12-20T10:00:00Z",
+        time_matters: true,
+      }),
+    });
+
+    render(<EventCard {...props} />);
+
+    expect(screen.getByText("December 20, 2020, 10:00 AM")).toBeInTheDocument();
   });
 
   it("should not render the menu for read-only users", () => {
