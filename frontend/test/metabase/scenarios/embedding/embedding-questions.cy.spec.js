@@ -1,35 +1,9 @@
 import { restore, visitQuestion, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+import { regularQuestion } from "./embedding-questions";
 
-const questionDetails = {
-  name: "Orders4t#7 t3",
-  description: "Foo",
-  query: {
-    "source-table": ORDERS_ID,
-    limit: 5,
-    expressions: { Math: ["+", 1, 1] },
-  },
-  visualization_settings: {
-    column_settings: {
-      [`["ref",["field",${ORDERS.CREATED_AT},null]]`]: {
-        date_abbreviate: true,
-        date_style: "dddd, MMMM D, YYYY",
-        time_enabled: "seconds",
-        time_style: "HH:mm",
-      },
-      [`["ref",["field",${ORDERS.TOTAL},null]]`]: {
-        column_title: "Billed",
-        number_style: "currency",
-        currency_in_header: false,
-        currency: "EUR",
-        currency_style: "symbol",
-      },
-      [`["ref",["field",${ORDERS.TAX},null]]`]: { show_mini_bar: true },
-    },
-  },
-};
+const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > questions ", () => {
   beforeEach(() => {
@@ -50,7 +24,9 @@ describe("scenarios > embedding > questions ", () => {
   });
 
   it("should display the regular GUI question correctly", () => {
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    const { name: title, description } = regularQuestion;
+
+    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       visitQuestion(id);
@@ -64,10 +40,10 @@ describe("scenarios > embedding > questions ", () => {
       cy.visit(iframe.src);
     });
 
-    cy.findByText(questionDetails.name);
+    cy.findByText(title);
 
     cy.icon("info").realHover();
-    popover().contains(questionDetails.description);
+    popover().contains(description);
 
     // Data model: Renamed column
     cy.findByText("Product ID as Title");
