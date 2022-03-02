@@ -49,8 +49,8 @@
   (http-fake/with-fake-routes {endpoint (fn [_]
                                           (throw (Exception. "Failure, route should not have been invoked")))}
     (testing "should return nil if no Slack token has been configured"
-      (tu/with-temporary-setting-values [#_:clj-kondo/ignore slack-app-token nil
-                                         #_:clj-kondo/ignore slack-token nil]
+      (tu/with-temporary-setting-values [slack-app-token nil
+                                         slack-token nil]
         (is (= nil
                (not-empty (thunk))))))))
 

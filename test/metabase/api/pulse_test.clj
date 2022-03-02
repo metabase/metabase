@@ -970,11 +970,10 @@
     (testing "Check that Slack channels come back when configured"
       (mt/with-temporary-setting-values [slack-token nil
                                          slack-app-token "something"]
-        (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
-                      slack/users-list         (constantly [{:name "bar"}])]
-          (slack/slack-cached-channels-and-usernames {:users (slack/users-list)
-                              :conversations (slack/conversations-list)})
-          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
+        (with-redefs [slack/conversations-list (constantly ["#foo" "#two" "#general"])
+                      slack/users-list         (constantly ["@bar" "@baz"])]
+          (slack/slack-cached-channels-and-usernames (concat (slack/conversations-list) (slack/users-list)))
+          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "#two" "#general" "@bar" "@baz"], :required true}]
                  (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                      (get-in [:channels :slack :fields])))))))
 

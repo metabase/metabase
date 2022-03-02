@@ -220,35 +220,21 @@
       (slack-cached-channels-and-usernames (concat @conversations @users))
       (slack-channels-and-usernames-last-updated (t/zoned-date-time)))))
 
-(def ^:private ^{:arglists '([channel-name])} files-channel*
-  ;; If the channel has successfully been created we can cache the information about it from the API response. We need
-  ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
-  ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
-  ;; https://github.com/metabase/metabase/issues/8967
-  ;;
-  ;; Of course, if `files-channel*` *fails* (because the channel is not created), this won't get cached; this is what
-  ;; we want -- to remind people to create it
-  ;;
-  ;; The memoized function is paramterized by the channel name so that if the name is changed, the cached channel details
-  ;; will be refetched.
-  (memoize/ttl
-   (fn [channel-name]
-     (or (channel-exists? channel-name)
-         (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                            " "
-                            (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                            " "
-                            (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-           (log/error (u/format-color 'red message))
-           (throw (ex-info message {:status-code 400})))))
-   :ttl/threshold (u/hours->ms 6)))
-
 (defn files-channel
-  "Calls Slack api `channels.info` to check whether a channel exists with the expected name from the
-  [[slack-files-channel]] setting. If it does, returns the channel details as a map. If it doesn't, throws an error
-  that advices an admin to create it."
+  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
+  [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
+  throws an error that advices an admin to create it."
   []
-  (files-channel* (slack-files-channel)))
+  (let [channel-name (slack-files-channel)]
+    (if (channel-exists? channel-name)
+      channel-name
+      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                         " "
+                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                         " "
+                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
+        (log/error (u/format-color 'red message))
+        (throw (ex-info message {:status-code 400}))))))
 
 (def ^:private NonEmptyByteArray
   (s/constrained
