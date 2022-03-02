@@ -6,6 +6,7 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 import EventCard, { EventCardProps } from "./EventCard";
+import userEvent from "@testing-library/user-event";
 
 describe("EventCard", () => {
   it("should not render a menu for read-only users", () => {
@@ -18,6 +19,20 @@ describe("EventCard", () => {
     render(<EventCard {...props} />);
 
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+  });
+
+  it("should render a menu for users with write permissions", async () => {
+    const props = getProps({
+      collection: createMockCollection({
+        can_write: true,
+      }),
+    });
+
+    render(<EventCard {...props} />);
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+
+    expect(screen.getByText("Edit event")).toBeInTheDocument();
+    expect(screen.getByText("Archive event")).toBeInTheDocument();
   });
 });
 
