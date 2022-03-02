@@ -27,7 +27,7 @@
    :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
-   :favorite                   nil
+   :bookmark                   nil
    :table_id                   false
    :database_id                false
    :dataset_query              nil
@@ -65,10 +65,10 @@
 
 (defn- default-search-results []
   (sorted-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
+   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
     test-collection
-    (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "dataset test dataset", :model "dataset", :favorite false, :dataset_query nil, :dashboardcard_count 0)
+    (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -256,7 +256,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :favorite false, :dataset_query nil))]
+                         :model "card", :bookmark false, :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -380,8 +380,8 @@
       (is (= []
              (search-request-data :rasta :q "test"))))))
 
-(deftest favorites-test
-  (testing "Favorites are per user, so other user's favorites don't cause search results to be favorited"
+(deftest bookmarks-test
+  (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp* [CardBookmark      [_ {:card_id (u/the-id card)
                                             :user_id (mt/user->id :rasta)}]
@@ -390,14 +390,14 @@
         (is (= (default-results-with-collection)
                (search-request-data :crowberto :q "test"))))))
 
-  (testing "Basic search, should find 1 of each entity type and include favorites when available"
+  (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp* [CardBookmark      [_ {:card_id (u/the-id card)
                                             :user_id (mt/user->id :crowberto)}]
                       DashboardBookmark [_ {:dashboard_id (u/the-id dashboard)
                                             :user_id      (mt/user->id :crowberto)}]]
         (is (= (on-search-types #{"dashboard" "card"}
-                                #(assoc % :favorite true)
+                                #(assoc % :bookmark true)
                                 (default-results-with-collection))
                (search-request-data :crowberto :q "test")))))))
 

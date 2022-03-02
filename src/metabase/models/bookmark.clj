@@ -1,9 +1,6 @@
 (ns metabase.models.bookmark
   (:require [clojure.string :as str]
             [metabase.db.connection :as mdb]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -33,9 +30,11 @@
                   first
                   lookup
                   keyword)
-        normalized-result (zipmap (map unqualify-key (keys result)) (vals result))]
+        normalized-result (zipmap (map unqualify-key (keys result)) (vals result))
+        item-id-str (str (:item_id normalized-result))]
     (-> normalized-result
         (assoc :type ttype)
+        (assoc :id (str (name ttype) "-" item-id-str))
         (dissoc :created_at))))
 
 (defn bookmarks-for-user
@@ -65,15 +64,15 @@
                                                     :from   [:collection_bookmark]
                                                     :where  [:= :user_id id]}]}]]
            :select        [[:bookmark.created_at :created_at]
-                           [:card.id (db/qualify Card :item_id)]
-                           [:card.name (db/qualify Card :name)]
-                           [:card.description (db/qualify Card :description)]
-                           [:dashboard.id (db/qualify Dashboard :item_id)]
-                           [:dashboard.name (db/qualify Dashboard :name)]
-                           [:dashboard.description (db/qualify Dashboard :description)]
-                           [:collection.id (db/qualify Collection :item_id)]
-                           [:collection.name (db/qualify Collection :name)]
-                           [:collection.description (db/qualify Collection :description)]]
+                           [:card.id (db/qualify 'Card :item_id)]
+                           [:card.name (db/qualify 'Card :name)]
+                           [:card.description (db/qualify 'Card :description)]
+                           [:dashboard.id (db/qualify 'Dashboard :item_id)]
+                           [:dashboard.name (db/qualify 'Dashboard :name)]
+                           [:dashboard.description (db/qualify 'Dashboard :description)]
+                           [:collection.id (db/qualify 'Collection :item_id)]
+                           [:collection.name (db/qualify 'Collection :name)]
+                           [:collection.description (db/qualify 'Collection :description)]]
            :from          [:bookmark]
            :left-join [[:report_card :card] [:= :bookmark.card_id :card.id]
                        [:report_dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]

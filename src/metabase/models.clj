@@ -94,7 +94,6 @@
  [dashboard Dashboard]
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]
- [dashboard-favorite DashboardFavorite]
  [database Database]
  [dependency Dependency]
  [dimension Dimension]

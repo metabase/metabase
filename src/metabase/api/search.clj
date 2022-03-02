@@ -76,7 +76,7 @@
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
-   :favorite            :boolean
+   :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
    ;; returned for Card only
@@ -406,8 +406,8 @@
           reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
           xf                (comp
                              (filter check-permissions-for-model)
-                             ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-                             (map #(update % :favorite bit->boolean))
+                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
+                             (map #(update % :bookmark bit->boolean))
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
                              (filter some?))
