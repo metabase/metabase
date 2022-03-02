@@ -29,3 +29,22 @@ export const regularQuestion = {
     },
   },
 };
+
+export const questionWithAggregation = {
+  ...regularQuestion,
+  query: {
+    ...regularQuestion.query,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "temporal-unit": "month",
+        },
+      ],
+      ["expression", "Math", null],
+    ],
+  },
+  display: "line",
+};

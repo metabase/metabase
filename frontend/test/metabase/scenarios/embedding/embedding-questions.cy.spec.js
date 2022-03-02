@@ -1,7 +1,10 @@
 import { restore, visitQuestion, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-import { regularQuestion } from "./embedding-questions";
+import {
+  regularQuestion,
+  questionWithAggregation,
+} from "./embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -63,4 +66,56 @@ describe("scenarios > embedding > questions ", () => {
     // Data model: Subtotal is turned off globally
     cy.findByText("Subtotal").should("not.exist");
   });
+
+  it("should display the GUI question with aggregation correctly", () => {
+    cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+
+      visitQuestion(id);
+    });
+
+    cy.icon("share").click();
+    cy.findByText("Embed this question in an application").click();
+
+    cy.document().then(doc => {
+      const iframe = doc.querySelector("iframe");
+      cy.visit(iframe.src);
+    });
+
+    assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
+
+    cy.get(".x.axis .tick")
+      .should("have.length", 5)
+      .and("contain", "Apr, 2016");
+
+    cy.get(".y.axis .tick").should("contain", "60");
+
+    // Check the tooltip for the last point on the line
+    cy.get(".dot")
+      .last()
+      .realHover();
+
+    popover().within(() => {
+      testPairedTooltipValues("Created At", "Aug, 2016");
+      testPairedTooltipValues("Math", "2");
+      testPairedTooltipValues("Count", "79");
+    });
+  });
 });
+
+function testPairedTooltipValues(val1, val2) {
+  cy.contains(val1)
+    .closest("td")
+    .siblings("td")
+    .findByText(val2);
+}
+
+function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
+  cy.get(".x-axis-label")
+    .invoke("text")
+    .should("eq", xLabel);
+
+  cy.get(".y-axis-label")
+    .invoke("text")
+    .should("eq", yLabel);
+}
