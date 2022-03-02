@@ -9,6 +9,18 @@ import EventCard, { EventCardProps } from "./EventCard";
 import userEvent from "@testing-library/user-event";
 
 describe("EventCard", () => {
+  it("should format a day-only event", () => {
+    const props = getProps({
+      event: createMockTimelineEvent({
+        timestamp: "2020-12-25T00:00:00Z",
+      }),
+    });
+
+    render(<EventCard {...props} />);
+
+    expect(screen.getByText("December 25, 2020")).toBeInTheDocument();
+  });
+
   it("should not render the menu for read-only users", () => {
     const props = getProps({
       collection: createMockCollection({
