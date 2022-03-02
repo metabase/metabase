@@ -45,13 +45,9 @@ const DateSelector = forwardRef(function DateSelector(
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, date: Moment) => {
-      const newDate = moment({
-        year: date.year(),
-        month: date.month(),
-        day: date.day(),
-        hours: value?.hours(),
-        minutes: value?.minutes(),
-      });
+      const newDate = date.clone();
+      newDate.hours(value?.hours() ?? 0);
+      newDate.minutes(value?.minutes() ?? 0);
       onChange?.(newDate);
     },
     [value, onChange],
