@@ -36,7 +36,7 @@
 - [List of expressions: aggregations and functions](./users-guide/expressions-list.html)
 - [Visualizing data](./users-guide/05-visualizing-results.html)
 - [Using results to ask new questions](./users-guide/referencing-saved-questions-in-queries.html)
-- [Joining data](join.md)
+- [Joining data](./users-guide/join.md)
 
 ### SQL and native queries
 
