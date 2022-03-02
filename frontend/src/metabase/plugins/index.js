@@ -106,3 +106,8 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
 };
+
+export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
+  getFeatureLevelDataPermissions: (_isAdmin, _value) => null,
+  dataColumns: [],
+};

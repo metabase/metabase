@@ -4,6 +4,7 @@ import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import {
   getFieldsPermission,
   getNativePermission,
+  getSchemasDownloadPermission,
   TableEntityId,
 } from "metabase/lib/permissions";
 import {
@@ -15,6 +16,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
   PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import {
   getPermissionWarning,
@@ -66,6 +68,12 @@ export const buildFieldsPermissions = (
     ),
   ];
 
+  const downloadPermissionValue = getSchemasDownloadPermission(
+    permissions,
+    groupId,
+    entityId,
+  );
+
   return [
     {
       name: "access",
@@ -97,5 +105,9 @@ export const buildFieldsPermissions = (
       value: getNativePermission(permissions, groupId, entityId),
       options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
     },
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+      isAdmin,
+      downloadPermissionValue,
+    ),
   ];
 };

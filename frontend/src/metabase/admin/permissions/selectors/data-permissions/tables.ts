@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import {
   getNativePermission,
+  getSchemasDownloadPermission,
   getTablesPermission,
   SchemaEntityId,
   TableEntityId,
@@ -12,7 +13,10 @@ import {
   DATA_ACCESS_IS_REQUIRED,
   UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
 } from "../../constants/messages";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -53,6 +57,12 @@ export const buildTablesPermissions = (
     getControlledDatabaseWarningModal(permissions, groupId, entityId),
   ];
 
+  const downloadPermissionValue = getSchemasDownloadPermission(
+    permissions,
+    groupId,
+    entityId,
+  );
+
   return [
     {
       name: "access",
@@ -88,5 +98,9 @@ export const buildTablesPermissions = (
       value: getNativePermission(permissions, groupId, entityId),
       options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
     },
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+      isAdmin,
+      downloadPermissionValue,
+    ),
   ];
 };
