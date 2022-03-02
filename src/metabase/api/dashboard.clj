@@ -12,11 +12,11 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.bookmark :as bookmark :refer [DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.field :refer [Field]]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
@@ -40,26 +40,14 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
-(defn- hydrate-favorites
-  "Efficiently hydrate the `:favorite` status (whether the current User has favorited it) for a group of Dashboards."
-  [dashboards]
-  (let [favorite-dashboard-ids (when (seq dashboards)
-                                 (db/select-field :dashboard_id DashboardFavorite
-                                   :user_id      api/*current-user-id*
-                                   :dashboard_id [:in (set (map u/the-id dashboards))]))]
-    (for [dashboard dashboards]
-      (assoc dashboard
-        :favorite (contains? favorite-dashboard-ids (u/the-id dashboard))))))
-
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
                                                 :mine [:= :creator_id api/*current-user-id*])
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
-    (hydrate <> :creator)
-    (filter mi/can-read? <>)
-    (hydrate-favorites <>)))
+    (hydrate <> :creator :is_bookmarked)
+    (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -77,7 +65,6 @@
                    (assoc dashboard :last-edit-info edit-info)
                    dashboard)))
           dashboards)))
-
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
@@ -262,7 +249,8 @@
   [id]
   (let [dashboard (get-dashboard id)]
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
-    (last-edit/with-last-edit-info dashboard :dashboard)))
+    (-> (last-edit/with-last-edit-info dashboard :dashboard)
+        (hydrate :is_bookmarked))))
 
 
 (defn- check-allowed-to-change-embedding
@@ -487,21 +475,20 @@
     :revision-id revision_id))
 
 
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
+;;; --------------------------------------------------- Bookmarking ---------------------------------------------------
 
-(api/defendpoint POST "/:id/favorite"
-  "Favorite a Dashboard."
+(api/defendpoint POST "/:id/bookmark"
+  "Bookmark a Dashboard."
   [id]
   (api/check-not-archived (api/read-check Dashboard id))
-  (db/insert! DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*))
+  (db/insert! DashboardBookmark :dashboard_id id :user_id api/*current-user-id*))
 
-
-(api/defendpoint DELETE "/:id/favorite"
-  "Unfavorite a Dashboard."
+(api/defendpoint DELETE "/:id/bookmark"
+  "Unbookmark a Dashboard."
   [id]
   (api/check-not-archived (api/read-check Dashboard id))
-  (api/let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*)]
-    (db/delete! DashboardFavorite, :id favorite-id))
+  (api/let-404 [id (db/select-one-id DashboardBookmark :dashboard_id id :user_id api/*current-user-id*)]
+    (db/delete! DashboardBookmark :id id))
   api/generic-204-no-content)
 
 

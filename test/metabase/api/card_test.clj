@@ -11,7 +11,7 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
+            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
@@ -281,18 +281,17 @@
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
-(deftest filter-by-fav-test
-  (testing "Filter by `fav`"
+(deftest filter-by-bookmarked-test
+  (testing "Filter by `bookmarked`"
     (mt/with-temp* [Card         [card-1 {:name "Card 1"}]
                     Card         [card-2 {:name "Card 2"}]
                     Card         [card-3 {:name "Card 3"}]
-                    CardFavorite [_ {:card_id (u/the-id card-1), :owner_id (mt/user->id :rasta)}]
-                    CardFavorite [_ {:card_id (u/the-id card-2), :owner_id (mt/user->id :crowberto)}]]
+                    CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
+                    CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1", :favorite true}]
-               (for [card (mt/user-http-request :rasta :get 200 "card", :f :fav)]
-                 (select-keys card [:name :favorite]))))))))
-
+        (is (= [{:name "Card 1"}]
+               (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
+                 (select-keys card [:name]))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
@@ -666,10 +665,10 @@
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]
-                          Revision [_ {:model "Card"
+                          Revision [_ {:model    "Card"
                                        :model_id (:id card)
-                                       :user_id user-id
-                                       :object (revision/serialize-instance card (:id card) card)}]]
+                                       :user_id  user-id
+                                       :object   (revision/serialize-instance card (:id card) card)}]]
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps
@@ -678,12 +677,12 @@
           (letfn [(clean [mr] (-> mr
                                   (update :user #(select-keys % [:id]))
                                   (select-keys [:status :text :user])))]
-            (mt/with-temp* [ModerationReview [review {:moderated_item_id (:id card)
+            (mt/with-temp* [ModerationReview [review {:moderated_item_id   (:id card)
                                                       :moderated_item_type "card"
-                                                      :moderator_id (mt/user->id :rasta)
-                                                      :most_recent true
-                                                      :status "verified"
-                                                      :text "lookin good"}]]
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :most_recent         true
+                                                      :status              "verified"
+                                                      :text                "lookin good"}]]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -1231,46 +1230,46 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Helper Functions
-(defn- fave? [card]
-  (db/exists? CardFavorite, :card_id (u/the-id card), :owner_id (mt/user->id :rasta)))
+(defn- bookmarked? [card]
+  (db/exists? CardBookmark, :card_id (u/the-id card), :user_id (mt/user->id :rasta)))
 
-(defn- fave! [card]
-  (mt/user-http-request :rasta :post 200 (format "card/%d/favorite" (u/the-id card))))
+(defn- bookmark! [card]
+  (mt/user-http-request :rasta :post 200 (format "card/%d/bookmark" (u/the-id card))))
 
-(defn- unfave! [card]
-  (mt/user-http-request :rasta :delete 204 (format "card/%d/favorite" (u/the-id card))))
+(defn- unbookmark! [card]
+  (mt/user-http-request :rasta :delete 204 (format "card/%d/bookmark" (u/the-id card))))
 
-;; ## GET /api/card/:id/favorite
-(deftest can-we-see-if-a-card-is-a-favorite--
+;; ## GET /api/card/:id/bookmark
+(deftest can-we-see-if-a-card-is-bookmarked
   (is (= false
          (mt/with-temp Card [card]
            (with-cards-in-readable-collection card
-             (fave? card))))))
+             (bookmarked? card))))))
 
-(deftest favorite-test
-  (testing "Can we favorite a Card?"
-    (testing "POST /api/card/:id/favorite"
+(deftest bookmark-test
+  (testing "Can we bookmark a Card?"
+    (testing "POST /api/card/:id/bookmark"
       (mt/with-temp Card [card]
         (with-cards-in-readable-collection card
           (is (= false
-                 (fave? card)))
-          (fave! card)
+                 (bookmarked? card)))
+          (bookmark! card)
           (is (= true
-                 (fave? card))))))))
+                 (bookmarked? card))))))))
 
-(deftest unfavorite-test
-  (testing "Can we unfavorite a Card?"
-    (testing "DELETE /api/card/:id/favorite"
+(deftest unbookmark-test
+  (testing "Can we unbookmark a Card?"
+    (testing "DELETE /api/card/:id/bookmark"
       (mt/with-temp Card [card]
         (with-cards-in-readable-collection card
           (is (= false
-                 (fave? card)))
-          (fave! card)
+                 (bookmarked? card)))
+          (bookmark! card)
           (is (= true
-                 (fave? card)))
-          (unfave! card)
+                 (bookmarked? card)))
+          (unbookmark! card)
           (is (= false
-                 (fave? card))))))))
+                 (bookmarked? card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Timelines                                                     |
