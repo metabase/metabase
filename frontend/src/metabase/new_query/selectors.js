@@ -4,9 +4,11 @@
  */
 
 import { createSelector } from "reselect";
+
 import { getMetadata, getDatabases } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
+import { getEngineNativeType } from "metabase/lib/engine";
 
 export const getPlainNativeQuery = state => {
   const metadata = getMetadata(state);
@@ -34,3 +36,10 @@ export const getHasNativeWrite = createSelector(
     databases &&
     Object.values(databases).some(d => d.native_permissions === "write"),
 );
+
+export const getHasDbWithJsonEngine = (state, props) => {
+  return (props.databases || []).some(database => {
+    const isJsonEngine = getEngineNativeType(database.engine) === "json";
+    return database.canWrite() && isJsonEngine;
+  });
+};

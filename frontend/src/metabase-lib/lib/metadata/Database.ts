@@ -86,6 +86,10 @@ export default class Database extends Base {
     return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
+  canWrite() {
+    return this.native_permissions === "write";
+  }
+
   // QUESTIONS
   newQuestion() {
     return this.question()
