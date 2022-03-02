@@ -74,6 +74,7 @@ else
     getent group metabase > /dev/null 2>&1
     group_exists=$?
     if [ $group_exists -ne 0 ]; then
+        sed -i "s/$MGID:/9999:/" /etc/group    
         addgroup -g $MGID -S metabase
     fi
 
