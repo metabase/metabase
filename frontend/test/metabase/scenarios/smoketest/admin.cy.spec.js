@@ -92,7 +92,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("New").click();
 
       cy.findByText("Question");
-      cy.findByText("Native query");
+      cy.findByText("SQL query");
 
       cy.findByText("Question").click();
       cy.findByTextEnsureVisible("Sample Database").click();
@@ -324,7 +324,7 @@ describe("metabase-smoketest > admin", () => {
         // =================
         cy.findByText("New").click();
 
-        cy.findByText("Native query");
+        cy.findByText("SQL query");
 
         cy.findByText("Visual question").click();
         cy.findByTextEnsureVisible("Sample Database").click();

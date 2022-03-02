@@ -587,9 +587,10 @@ describe("smoketest > admin_setup", () => {
       cy.contains("A look at your Test Table table");
       cy.findByText("A look at your Review table").should("not.exist");
 
-      // Access to Native queries as user
+      // Access to SQl queries as user
+
       cy.findByText("New").click();
-      cy.findByText("Native query");
+      cy.findByText("SQL query");
 
       // Cannot see Review table as no collection user
       cy.signOut();
