@@ -83,7 +83,7 @@ describe("getDataFocusSidebar", () => {
     it("returns entity switch value = database", () => {
       const sidebarData = getDataFocusSidebar(state, getProps({}));
 
-      expect(sidebarData.entitySwitch.value).toEqual("database");
+      expect(sidebarData.entityViewFocus).toEqual("database");
     });
 
     it("returns list of databases", () => {
