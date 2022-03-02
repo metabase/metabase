@@ -4,6 +4,7 @@ import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import EventCard, { EventCardProps } from "./EventCard";
 import userEvent from "@testing-library/user-event";
@@ -33,6 +34,23 @@ describe("EventCard", () => {
     render(<EventCard {...props} />);
 
     expect(screen.getByText("December 20, 2020, 10:00 AM")).toBeInTheDocument();
+  });
+
+  it("should format an event with the user who created the event", () => {
+    const props = getProps({
+      event: createMockTimelineEvent({
+        creator: createMockUser({
+          common_name: "Testy Test",
+        }),
+        created_at: "2020-12-20T10:00:00Z",
+      }),
+    });
+
+    render(<EventCard {...props} />);
+
+    expect(
+      screen.getByText("Testy Test added this on December 20, 2020"),
+    ).toBeInTheDocument();
   });
 
   it("should not render the menu for read-only users", () => {
