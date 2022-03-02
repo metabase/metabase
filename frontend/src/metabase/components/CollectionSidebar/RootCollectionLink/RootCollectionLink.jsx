@@ -6,7 +6,7 @@ import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import CollectionsList from "../Collections/CollectionsList/CollectionsList";
+import CollectionsList from "metabase/components/CollectionSidebar/Collections/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { Container } from "./RootCollectionLink.styled";

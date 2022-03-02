@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CollectionLink from "metabase/collections/components/CollectionLink";
+// import CollectionLink from "metabase/collections/components/CollectionLink";
 import { SidebarHeading } from "metabase/components/CollectionSidebar/CollectionSidebar.styled";
 
 const propTypes = {
@@ -19,26 +19,27 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
       {bookmarks.map(({ id, name }, index) => {
-        return (
-          <CollectionLink
-            key={`bookmark-${id}`}
-            to={"https://www.google.com"}
-            selected={false}
-            depth={0}
-            onClick={() => {}}
-            hovered={false}
-            highlighted={false}
-            role="sidebar-bookmark"
-          >
-            <Label
-              action={action}
-              collection={collection}
-              initialIcon={initialIcon}
-              isOpen={isOpen}
-              depth={depth}
-            />
-          </CollectionLink>
-        );
+        return <div key={id}>Yes</div>;
+        // return (
+        //   <CollectionLink
+        //     key={`bookmark-${id}`}
+        //     to={"https://www.google.com"}
+        //     selected={false}
+        //     depth={0}
+        //     onClick={() => {}}
+        //     hovered={false}
+        //     highlighted={false}
+        //     role="sidebar-bookmark"
+        //   >
+        //     <Label
+        //       action={action}
+        //       collection={collection}
+        //       initialIcon={initialIcon}
+        //       isOpen={isOpen}
+        //       depth={depth}
+        //     />
+        //   </CollectionLink>
+        // );
       })}
     </>
   );
