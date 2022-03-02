@@ -15,11 +15,16 @@ const questionDetails = {
     column_settings: {
       [`["ref",["field",${ORDERS.CREATED_AT},null]]`]: {
         date_abbreviate: true,
+        date_style: "dddd, MMMM D, YYYY",
+        time_enabled: "seconds",
+        time_style: "HH:mm",
       },
       [`["ref",["field",${ORDERS.TOTAL},null]]`]: {
         column_title: "Billed",
         number_style: "currency",
         currency_in_header: false,
+        currency: "EUR",
+        currency_style: "symbol",
       },
       [`["ref",["field",${ORDERS.TAX},null]]`]: { show_mini_bar: true },
     },
@@ -73,9 +78,9 @@ describe("scenarios > embedding > questions ", () => {
     // Question settings: Renamed column
     cy.findByText("Billed");
     // Question settings: Column formating
-    cy.findByText("$39.72");
-    // Question settings: Abbreviated date
-    cy.findByText("Feb 11, 2019, 9:40 PM");
+    cy.findByText("€39.72");
+    // Question settings: Abbreviated date, day enabled, 24H clock with seconds
+    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
     // Question settings: Show mini-bar
     cy.findAllByTestId("mini-bar");
 
