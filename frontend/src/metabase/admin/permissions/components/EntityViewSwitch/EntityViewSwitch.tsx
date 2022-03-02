@@ -7,7 +7,7 @@ type EntityView = "group" | "database";
 
 interface EntityViewSwitchProps {
   value: EntityView;
-  onChange: (value: EntityView) => void;
+  onChange: (value: string) => void;
 }
 
 export const EntityViewSwitch = ({
@@ -15,7 +15,7 @@ export const EntityViewSwitch = ({
   onChange,
 }: EntityViewSwitchProps) => (
   <EntityViewSwitchRoot>
-    <Radio
+    <Radio<string>
       variant="bubble"
       colorScheme="accent7"
       options={[
@@ -29,7 +29,7 @@ export const EntityViewSwitch = ({
         },
       ]}
       value={value}
-      onChange={onChange as any}
+      onChange={onChange}
     />
   </EntityViewSwitchRoot>
 );
