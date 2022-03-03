@@ -16,7 +16,6 @@ import { SidebarHeading } from "metabase/collections/components/CollectionSideba
 const LabelPropTypes = {
   itemId: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
-  slug: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
 };
 
@@ -45,8 +44,8 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
       <BookmarkLinkRoot>
-        {bookmarks.map(({ id, name, slug, type }, index) => {
-          const url = Urls.bookmark({ type, slug });
+        {bookmarks.map(({ id, name, type }, index) => {
+          const url = Urls.bookmark({ id, name, type });
           return (
             <Link
               key={`bookmark-${id}`}

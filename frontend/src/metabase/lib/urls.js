@@ -347,6 +347,9 @@ export function extractCollectionId(slug) {
   return extractEntityId(slug);
 }
 
-export function bookmark({ type, slug }) {
-  return `${type}/${slug}`;
+export function bookmark({ type, id, name }) {
+  const kebabCaseName = name.split(/[ ,]+/).join("-");
+  const [, idInteger] = id.split("-");
+
+  return `${type}/${idInteger}-${kebabCaseName}`;
 }
