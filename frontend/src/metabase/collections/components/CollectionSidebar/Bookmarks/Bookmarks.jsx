@@ -2,6 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
@@ -14,13 +16,15 @@ import { SidebarHeading } from "metabase/collections/components/CollectionSideba
 const LabelPropTypes = {
   itemId: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
+  slug: PropTypes.string.isRequired,
+  type: PropTypes.string.isRequired,
 };
 
 const BookmarksPropTypes = {
   bookmarks: PropTypes.object,
 };
 
-const Label = ({ itemId, name }) => {
+const Label = ({ name }) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon name="grid" />
@@ -41,11 +45,12 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
       <BookmarkLinkRoot>
-        {bookmarks.map(({ id, name }, index) => {
+        {bookmarks.map(({ id, name, slug, type }, index) => {
+          const url = Urls.bookmark({ type, slug });
           return (
             <Link
               key={`bookmark-${id}`}
-              to={"https://www.google.com"}
+              to={url}
               selected={false}
               onClick={() => {}}
               role="sidebar-bookmark"

@@ -346,3 +346,7 @@ export function extractCollectionId(slug) {
   }
   return extractEntityId(slug);
 }
+
+export function bookmark({ type, slug }) {
+  return `${type}/${slug}`;
+}
