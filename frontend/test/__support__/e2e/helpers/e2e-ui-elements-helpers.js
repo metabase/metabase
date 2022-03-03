@@ -7,7 +7,7 @@ export function popover() {
 }
 
 export function modal() {
-  return cy.get(".ModalContainer");
+  return cy.get(".ModalContainer .ModalContent");
 }
 
 export function sidebar() {
