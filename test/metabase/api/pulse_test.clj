@@ -1,6 +1,7 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.api.card-test :as card-api-test]
             [metabase.api.pulse :as pulse-api]
             [metabase.http-client :as http]
@@ -972,7 +973,10 @@
                                          slack-app-token "something"]
         (with-redefs [slack/conversations-list (constantly ["#foo" "#two" "#general"])
                       slack/users-list         (constantly ["@bar" "@baz"])]
+          ;; set the cache to these values
           (slack/slack-cached-channels-and-usernames (concat (slack/conversations-list) (slack/users-list)))
+          ;; don't let the cache refresh itself (it will refetch if it is too old)
+          (slack/slack-channels-and-usernames-last-updated (t/zoned-date-time))
           (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "#two" "#general" "@bar" "@baz"], :required true}]
                  (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                      (get-in [:channels :slack :fields])))))))

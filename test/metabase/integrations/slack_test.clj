@@ -83,7 +83,9 @@
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
-        (let [expected-result (concat (mock-conversations) (mock-conversations))]
+        (let [expected-result (map
+                               (comp #(str \# %) :name)
+                               (concat (mock-conversations) (mock-conversations)))]
           (tu/with-temporary-setting-values [slack-token "test-token"
                                              slack-app-token nil]
             (is (= expected-result
@@ -134,12 +136,17 @@
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
-        (tu/with-temporary-setting-values [slack-app-token "test-token"]
-          (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))
-        (tu/with-temporary-setting-values [slack-token "test-token"]
-          (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))))))
+        (let [expected-result (map
+                              (comp #(str \@ %) :name)
+                              (concat (mock-users) (mock-users)))]
+          (tu/with-temporary-setting-values [slack-token     nil
+                                             slack-app-token "test-token"]
+            (is (= expected-result
+                   (slack/users-list)))
+            (tu/with-temporary-setting-values [slack-app-token nil
+                                               slack-token     "test-token"]
+              (is (= expected-result
+                     (slack/users-list))))))))))
 
 (deftest files-channel-test
   (testing "files-channel"
