@@ -9,6 +9,8 @@ import EventSandbox from "metabase/components/EventSandbox";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
+import { DEFAULT_Z_INDEX } from "./constants";
+
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
 type TippyInstance = tippy.Instance;
@@ -90,6 +92,7 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", className)}
       theme="popover"
+      zIndex={DEFAULT_Z_INDEX}
       arrow={false}
       offset={OFFSET}
       appendTo={appendTo}
