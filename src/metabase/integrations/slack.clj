@@ -1,7 +1,6 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
