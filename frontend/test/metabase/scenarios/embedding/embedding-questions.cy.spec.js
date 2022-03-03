@@ -40,6 +40,8 @@ describe("scenarios > embedding > questions ", () => {
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
+
+      cy.signOut();
       cy.visit(iframe.src);
     });
 
@@ -79,6 +81,8 @@ describe("scenarios > embedding > questions ", () => {
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
+
+      cy.signOut();
       cy.visit(iframe.src);
     });
 
