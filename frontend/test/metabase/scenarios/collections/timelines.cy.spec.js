@@ -53,14 +53,48 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("v1.1");
       cy.findByText("RC1").should("not.exist");
       cy.findByText("RC2").should("not.exist");
+    });
 
-      cy.findByPlaceholderText("Search for an event").type(".0");
-      cy.findByText("v1.0");
-      cy.findByText("v1.1").should("not.exist");
+    it("should create an event with date", () => {
+      cy.visit("/collection/root");
 
-      cy.findByPlaceholderText("Search for an event").type(".1");
-      cy.findByText("v1.0").should("not.exist");
-      cy.findByText("No events found");
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("15").click();
+      cy.findByText("Done").click();
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events");
+      cy.findByText("RC1");
+      cy.findByText(/15/);
+    });
+
+    it("should create an event with date and time", () => {
+      cy.visit("/collection/root");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("15").click();
+      cy.findByText("Add time").click();
+      cy.findByLabelText("Hours")
+        .clear()
+        .type("10");
+      cy.findByLabelText("Minutes")
+        .clear()
+        .type("20");
+      cy.findByText("Done").click();
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events");
+      cy.findByText("RC1");
+      cy.findByText(/15/);
+      cy.findByText(/10:20 AM/);
     });
 
     it("should edit an event", () => {
