@@ -8,9 +8,9 @@ import { connect } from "react-redux";
 
 import {
   getDatabasesPermissionEditor,
-  getGroupsSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
+  getGroupsSidebar,
 } from "../../selectors/data-permissions";
 import { updateDataPermission } from "../../permissions";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";

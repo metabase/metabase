@@ -7,7 +7,7 @@ import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
-import { getIsDirty, getDiff } from "../../selectors/data-permissions";
+import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
   loadDataPermissions,
