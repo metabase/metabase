@@ -2,14 +2,16 @@ import { restore, modal } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("scenatios > question > native > mongo", () => {
+describe("scenarios > question > native > mongo", () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
 
     restore("mongo-4");
     cy.signInAsNormalUser();
 
-    cy.visit("/question/new");
+    cy.visit("/");
+    cy.findByText("New").click();
+    // Reproduces metabase#20499 issue
     cy.findByText("Native query").click();
     cy.findByText(MONGO_DB_NAME).click();
 
