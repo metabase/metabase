@@ -105,6 +105,47 @@ describe("scenarios > embedding > questions ", () => {
       testPairedTooltipValues("Count", "79");
     });
   });
+
+  it("should display the nested GUI question correctly", () => {
+    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+      const nestedQuestion = {
+        query: { "source-table": `card__${id}`, limit: 10 },
+      };
+
+      cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
+        cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
+
+        visitQuestion(nestedId);
+      });
+    });
+
+    cy.icon("share").click();
+    cy.findByText("Embed this question in an application").click();
+
+    cy.document().then(doc => {
+      const iframe = doc.querySelector("iframe");
+
+      cy.signOut();
+      cy.visit(iframe.src);
+    });
+
+    // Global (Data model) settings should be preserved
+    cy.findByText("Product ID as Title");
+    cy.findByText("Awesome Concrete Shoes");
+
+    // Custom column
+    cy.findByText("Math");
+
+    // Base question visualization settings should reset to the defaults (inherit global formatting)
+    cy.findByText("Total");
+    cy.findByText("39.72");
+    cy.findByText("February 11, 2019, 9:40 PM");
+
+    cy.findAllByTestId("mini-bar").should("not.exist");
+
+    // Data model: Subtotal is turned off globally
+    cy.findByText("Subtotal").should("not.exist");
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
