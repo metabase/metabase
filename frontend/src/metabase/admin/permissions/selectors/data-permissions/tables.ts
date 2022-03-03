@@ -18,7 +18,7 @@ import {
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
 } from "../confirmations";
-import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import { Group, GroupsPermissions } from "metabase-types/api";
 
 export const buildTablesPermissions = (
   entityId: SchemaEntityId,

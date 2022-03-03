@@ -3,7 +3,7 @@ import _ from "underscore";
 import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/lib/permissions";
-import { Group } from "metabase-types/types/Permissions";
+import { Group } from "metabase-types/api";
 
 const getDatabasesWithTables = createSelector(
   (state: State) => state.entities.databases,

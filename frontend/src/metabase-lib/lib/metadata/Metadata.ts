@@ -3,7 +3,6 @@
 import _ from "underscore";
 import Base from "./Base";
 import Question from "../Question";
-import { DatabaseMetadata } from "metabase-types/types/Metadata";
 import Database from "./Database";
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId

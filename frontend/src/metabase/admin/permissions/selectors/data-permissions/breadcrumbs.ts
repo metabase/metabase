@@ -1,5 +1,5 @@
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { Group } from "metabase-types/types/Permissions";
+import { Group } from "metabase-types/api";
 import _ from "underscore";
 
 import {

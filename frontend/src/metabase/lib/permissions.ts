@@ -5,7 +5,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
-import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import { Group, GroupsPermissions } from "metabase-types/api";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 

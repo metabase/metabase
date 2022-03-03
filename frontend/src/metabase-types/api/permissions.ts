@@ -1,13 +1,6 @@
 import { DatabaseId } from "metabase-types/types/Database";
 import { SchemaName, TableId } from "metabase-types/types/Table";
-
-export type GroupId = number;
-
-export type Group = {
-  id: GroupId;
-  name: string;
-  member_count: number;
-};
+import { GroupId } from "./group";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;

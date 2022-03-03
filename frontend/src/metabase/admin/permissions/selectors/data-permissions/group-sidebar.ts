@@ -5,7 +5,7 @@ import _ from "underscore";
 import Groups from "metabase/entities/groups";
 
 import { State } from "metabase-types/store";
-import { Group } from "metabase-types/types/Permissions";
+import { Group } from "metabase-types/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { RawGroupRouteParams } from "../types";
 

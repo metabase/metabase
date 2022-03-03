@@ -21,7 +21,7 @@ import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
-import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import { Group, GroupsPermissions } from "metabase-types/api";
 import Schema from "metabase-lib/lib/metadata/Schema";
 import { DataRouteParams, RawGroupRouteParams } from "../types";
 import { State } from "metabase-types/store";

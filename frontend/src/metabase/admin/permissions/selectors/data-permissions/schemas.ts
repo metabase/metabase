@@ -18,7 +18,7 @@ import {
   getRawQueryWarningModal,
 } from "../confirmations";
 import { limitDatabasePermission } from "../../permissions";
-import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import { Group, GroupsPermissions } from "metabase-types/api";
 
 export const buildSchemasPermissions = (
   entityId: DatabaseEntityId,

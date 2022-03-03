@@ -22,7 +22,7 @@ import {
   getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
 } from "../confirmations";
-import { Group, GroupsPermissions } from "metabase-types/types/Permissions";
+import { Group, GroupsPermissions } from "metabase-types/api";
 import Database from "metabase-lib/lib/metadata/Database";
 
 export const buildFieldsPermissions = (

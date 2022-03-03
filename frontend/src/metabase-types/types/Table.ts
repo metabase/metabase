@@ -16,7 +16,6 @@ export type Table = {
   db_id: DatabaseId;
 
   schema?: SchemaName;
-  schema_name: SchemaName;
   name: string;
   display_name: string;
 

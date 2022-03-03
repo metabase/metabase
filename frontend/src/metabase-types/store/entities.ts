@@ -1,5 +1,4 @@
-import { Database } from "metabase-types/types/Database";
-import { Table } from "metabase-types/types/Table";
+import { Database, Table } from "metabase-types/api";
 
 export interface EntitiesState {
   databases?: Record<number, Database>;

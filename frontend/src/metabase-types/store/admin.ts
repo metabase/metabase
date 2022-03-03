@@ -1,4 +1,4 @@
-import { GroupsPermissions } from "metabase-types/types/Permissions";
+import { GroupsPermissions } from "metabase-types/api";
 
 export interface AdminState {
   app: AdminAppState;

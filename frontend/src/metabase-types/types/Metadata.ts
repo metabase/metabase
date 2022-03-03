@@ -17,17 +17,6 @@ export type Metadata = {
 export type DatabaseMetadata = Database & {
   tables: TableMetadata[];
   tables_lookup: { [id: TableId]: TableMetadata };
-
-  schema: (name: string | null) => SchemaMetadata;
-  getSchemas: () => SchemaMetadata[];
-};
-
-export type SchemaMetadata = {
-  id: string;
-  name: string;
-  tables: TableMetadata[];
-
-  getTables: () => TableMetadata[];
 };
 
 export type TableMetadata = Table & {
