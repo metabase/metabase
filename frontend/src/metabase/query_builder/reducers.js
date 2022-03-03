@@ -118,15 +118,12 @@ export const uiControls = handleActions(
 
     [INITIALIZE_QB]: {
       next: (state, { payload }) => {
-        // This is hard-coded to simulate
-        // what we would get from the back-end
-        payload.uiControls.isBookmarked = false;
-
         return {
           ...state,
           ...DEFAULT_UI_CONTROLS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           ...payload.uiControls,
+          isBookmarked: payload.card["is_bookmarked"],
         };
       },
     },
