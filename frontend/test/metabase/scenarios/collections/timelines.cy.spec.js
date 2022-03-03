@@ -230,6 +230,32 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC2");
     });
   });
+
+  describe("as readonly user", () => {
+    it("should not allow creating new timelines in collections", () => {
+      cy.signIn("readonly");
+      cy.visit("/collection/root");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Our analytics events");
+      cy.findByText("Add an event").should("not.exist");
+    });
+
+    it("should not allow creating new events in existing timelines", () => {
+      cy.signInAsAdmin();
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }],
+      });
+      cy.signOut();
+
+      cy.signIn("readonly");
+      cy.visit("/collection/root");
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Releases");
+      cy.findByText("Add an event").should("not.exist");
+    });
+  });
 });
 
 const openEventMenu = name => {
