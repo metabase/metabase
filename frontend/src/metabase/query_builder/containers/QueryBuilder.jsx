@@ -9,6 +9,7 @@ import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { createBookmark, deleteBookmark } from "../actions";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -61,6 +62,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getIsBookmarked,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -113,6 +115,7 @@ const mapStateToProps = (state, props) => {
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 
+    isBookmarked: getIsBookmarked(state),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
@@ -150,10 +153,13 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
+  createBookmark,
+  deleteBookmark,
 };
 
 function QueryBuilder(props) {
   const {
+    isBookmarked,
     question,
     location,
     params,
@@ -168,6 +174,8 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    createBookmark,
+    deleteBookmark,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -197,6 +205,16 @@ function QueryBuilder(props) {
     },
     [setUIControls],
   );
+
+  const onClickBookmark = () => {
+    const {
+      card: { id },
+    } = props;
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+    toggleBookmark({ id });
+  };
 
   const handleCreate = useCallback(
     async card => {
@@ -285,6 +303,7 @@ function QueryBuilder(props) {
       onSave={handleSave}
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
+      toggleBookmark={onClickBookmark}
     />
   );
 }
