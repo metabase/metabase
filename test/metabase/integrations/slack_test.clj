@@ -1,7 +1,6 @@
 (ns metabase.integrations.slack-test
   (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
-            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
