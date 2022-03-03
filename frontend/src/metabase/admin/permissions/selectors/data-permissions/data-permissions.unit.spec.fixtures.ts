@@ -1,6 +1,5 @@
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)
-
 export const normalizedMetadata = {
   metrics: {},
   segments: {},
@@ -136,4 +135,63 @@ export const normalizedMetadata = {
     },
   },
   groups_list: { null: { list: [1, 2, 3] } },
+};
+
+export const initialPermissions = {
+  1: {
+    // Sample database
+    1: {
+      data: {
+        native: "write",
+        schemas: "all",
+      },
+    },
+    // Imaginary multi-schema
+    2: {
+      data: {
+        native: "write",
+        schemas: "all",
+      },
+    },
+    // Imaginary schemaless
+    3: {
+      data: {
+        native: "write",
+        schemas: "all",
+      },
+    },
+  },
+  2: {
+    // Sample database
+    1: {
+      data: {
+        native: "none",
+        schemas: "none",
+      },
+    },
+    // Imaginary multi-schema
+    2: {
+      data: {
+        native: "none",
+        schemas: "none",
+      },
+    },
+    // Imaginary schemaless
+    3: {
+      data: {
+        native: "none",
+        schemas: "none",
+      },
+    },
+  },
+};
+
+export const state = {
+  admin: {
+    permissions: {
+      dataPermissions: initialPermissions,
+      originalDataPermissions: initialPermissions,
+    },
+  },
+  entities: normalizedMetadata,
 };

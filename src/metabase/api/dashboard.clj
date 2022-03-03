@@ -12,6 +12,7 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.bookmark :as bookmark :refer [DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -250,7 +251,6 @@
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (-> (last-edit/with-last-edit-info dashboard :dashboard)
         (hydrate :bookmarked))))
-
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be

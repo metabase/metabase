@@ -12,9 +12,8 @@ export const SidebarRoot = styled.aside`
 `;
 
 export const SidebarHeader = styled.div`
+  padding: 0.75rem 1.5rem 0 1.5rem;
   flex-shrink: 0;
-  padding: 1rem;
-  border-bottom: 1px solid ${color("border")};
 `;
 
 export const SidebarContent = styled.div`
@@ -23,18 +22,10 @@ export const SidebarContent = styled.div`
   overflow: auto;
 `;
 
-export const EntityGroupsDivider = styled.hr`
-  margin: 1rem 1.5rem;
-  border: 0;
-  border-top: 1px solid ${color("border")};
-`;
-
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
   color: ${color("text-light")};
 `;
-
-BackIcon.defaultProps = { name: "arrow_left" };
 
 export const BackButton = styled.button`
   display: flex;
@@ -43,7 +34,7 @@ export const BackButton = styled.button`
   font-family: var(--default-font-family);
   font-weight: 700;
   font-size: 14px;
-  padding: 0.5rem;
+  padding: 0.5rem 0;
   cursor: pointer;
   transition: color 200ms;
   text-align: left;

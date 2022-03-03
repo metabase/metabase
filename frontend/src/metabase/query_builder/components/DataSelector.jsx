@@ -676,7 +676,10 @@ export class UnconnectedDataSelector extends Component {
         return this.props.fetchDatabases(this.props.databaseQuery);
       },
       [SCHEMA_STEP]: () => {
-        return this.props.fetchSchemas(this.state.selectedDatabaseId);
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchSchemas(this.state.selectedDatabaseId),
+        ]);
       },
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {

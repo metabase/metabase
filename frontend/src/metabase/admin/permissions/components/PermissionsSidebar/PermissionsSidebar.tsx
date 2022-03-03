@@ -1,20 +1,22 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import {
   PermissionsSidebarContent,
-  permissionSidebarContentPropTypes,
+  PermissionsSidebarContentProps,
 } from "./PermissionsSidebarContent";
 import { SidebarRoot } from "./PermissionsSidebar.styled";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-export const permissionSidebarPropTypes = {
-  isLoading: PropTypes.bool,
-  error: PropTypes.string,
-  ...permissionSidebarContentPropTypes,
-};
+interface PermissionsSidebar extends PermissionsSidebarContentProps {
+  isLoading?: boolean;
+  error: string;
+}
 
-export const PermissionsSidebar = ({ isLoading, error, ...contentProps }) => {
+export const PermissionsSidebar = ({
+  isLoading,
+  error,
+  ...contentProps
+}: PermissionsSidebar) => {
   return (
     <SidebarRoot>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
@@ -23,5 +25,3 @@ export const PermissionsSidebar = ({ isLoading, error, ...contentProps }) => {
     </SidebarRoot>
   );
 };
-
-PermissionsSidebar.propTypes = permissionSidebarPropTypes;
