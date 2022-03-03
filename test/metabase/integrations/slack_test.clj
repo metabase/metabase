@@ -142,33 +142,18 @@
           (is (= (concat (mock-users) (mock-users))
                  (slack/users-list))))))))
 
-(defn- mock-files-channel []
-  (let [channel-name (slack/slack-files-channel)]
-    (-> (mock-conversations)
-        first
-        (assoc
-         :name channel-name, :name_normalized channel-name,
-         :purpose {:value "Metabase file upload location", :creator "", :last_set 0}))))
-
 (deftest files-channel-test
-  ;; clear out any cached valid values of `files-channel`
-  (memoize/memo-clear! @#'slack/files-channel)
   (testing "files-channel"
-    (test-invalid-auth-token conversations-endpoint slack/files-channel)
-
-    (testing "Should be able to fetch the files-channel (if it exists)"
-      (http-fake/with-fake-routes {conversations-endpoint (fn [request]
-                                                            (-> (mock-conversations-response-body request)
-                                                                (update :channels conj (mock-files-channel))
-                                                                mock-200-response))}
-        (tu/with-temporary-setting-values [slack-token "test-token"
-                                           slack-app-token nil]
-          (is (= (mock-files-channel)
-                 (slack/files-channel))))
-        (tu/with-temporary-setting-values [slack-app-token "test-token"
-                                           slack-token nil]
-          (is (= (mock-files-channel)
-                 (slack/files-channel))))))))
+    (testing "Should be able to get the files-channel from the cache (if it exists)"
+      (tu/with-temporary-setting-values [slack-files-channel "general"
+                                         slack-cached-channels-and-usernames ["#general" "#random" "#off-topic" "#cooking" "@john" "@james" "@jordan"]]
+        (is (= "general" (slack/files-channel))))
+      (tu/with-temporary-setting-values [slack-files-channel "not_in_the_cache"
+                                         slack-cached-channels-and-usernames ["#general"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Slack channel named.*is missing.*"
+             (slack/files-channel)))))))
 
 (deftest upload-file!-test
   (testing "upload-file!"
