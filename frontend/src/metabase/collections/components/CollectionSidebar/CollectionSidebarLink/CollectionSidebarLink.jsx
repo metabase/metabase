@@ -10,7 +10,7 @@ const dimmedIconCss = css`
   opacity: 0.8;
 `;
 
-const CollectionLink = styled(Link)`
+const CollectionSidebarLink = styled(Link)`
   margin-left: ${props =>
     // use negative margin to reset our potentially nested item back by the depth
     -props.depth * SIDEBAR_SPACER}px;
@@ -51,8 +51,8 @@ const CollectionLink = styled(Link)`
   }
 `;
 
-CollectionLink.defaultProps = {
+CollectionSidebarLink.defaultProps = {
   depth: 1,
 };
 
-export default CollectionLink;
+export default CollectionSidebarLink;

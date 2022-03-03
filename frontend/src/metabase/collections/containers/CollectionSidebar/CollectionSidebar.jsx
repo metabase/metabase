@@ -14,12 +14,12 @@ import {
   Sidebar,
   SidebarHeading,
   ToggleMobileSidebarIcon,
-} from "metabase/components/CollectionSidebar/CollectionSidebar.styled";
+} from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import RootCollectionLink from "metabase/components/CollectionSidebar/RootCollectionLink";
-import Footer from "metabase/components/CollectionSidebar/CollectionSidebarFooter";
-import Collections from "metabase/components/CollectionSidebar/Collections";
-import Bookmarks from "metabase/components/CollectionSidebar/Bookmarks";
+import RootCollectionLink from "metabase/collections/components/CollectionSidebar/RootCollectionLink";
+import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter";
+import Collections from "metabase/collections/components/CollectionSidebar/Collections";
+import Bookmarks from "metabase/collections/components/CollectionSidebar/Bookmarks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { getParentPath } from "metabase/collections/utils";

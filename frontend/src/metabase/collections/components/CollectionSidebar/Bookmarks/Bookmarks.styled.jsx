@@ -13,4 +13,8 @@ export const BookmarkTypeIcon = styled(Icon)`
   opacity: 0.5;
 `;
 
+export const BookmarkLinkRoot = styled.div`
+  margin: ${space(2)} 0;
+`;
+
 export default CollectionSidebarBookmarksRoot;

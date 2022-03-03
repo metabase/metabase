@@ -6,8 +6,8 @@ import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import CollectionsList from "metabase/components/CollectionSidebar/Collections/CollectionsList";
-import CollectionLink from "metabase/collections/components/CollectionLink";
+import CollectionsList from "metabase/collections/components/CollectionSidebar/Collections/CollectionsList";
+import CollectionLink from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 
 import { Container } from "./RootCollectionLink.styled";
 

@@ -2,12 +2,14 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CollectionLink from "metabase/collections/components/CollectionLink";
+import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
-import BookmarksRoot, { BookmarkTypeIcon } from "./Bookmarks.styled";
+import BookmarksRoot, {
+  BookmarkLinkRoot,
+  BookmarkTypeIcon,
+} from "./Bookmarks.styled";
 
-// import CollectionLink from "metabase/collections/components/CollectionLink";
-import { SidebarHeading } from "metabase/components/CollectionSidebar/CollectionSidebar.styled";
+import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
 const LabelPropTypes = {
   itemId: PropTypes.string.isRequired,
@@ -38,19 +40,21 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
     <BookmarksRoot>
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
-      {bookmarks.map(({ id, name }, index) => {
-        return (
-          <CollectionLink
-            key={`bookmark-${id}`}
-            to={"https://www.google.com"}
-            selected={false}
-            onClick={() => {}}
-            role="sidebar-bookmark"
-          >
-            <Label itemId={id} name={name} />
-          </CollectionLink>
-        );
-      })}
+      <BookmarkLinkRoot>
+        {bookmarks.map(({ id, name }, index) => {
+          return (
+            <Link
+              key={`bookmark-${id}`}
+              to={"https://www.google.com"}
+              selected={false}
+              onClick={() => {}}
+              role="sidebar-bookmark"
+            >
+              <Label itemId={id} name={name} />
+            </Link>
+          );
+        })}
+      </BookmarkLinkRoot>
     </BookmarksRoot>
   );
 };
