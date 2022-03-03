@@ -1,9 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import {
-  createMockCollection,
-  createMockTimeline,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 import TimelineEmptyState, {
   TimelineEmptyStateProps,
 } from "./TimelineEmptyState";
@@ -30,7 +27,6 @@ describe("TimelineEmptyState", () => {
 const getProps = (
   opts?: Partial<TimelineEmptyStateProps>,
 ): TimelineEmptyStateProps => ({
-  timeline: createMockTimeline(),
   collection: createMockCollection(),
   ...opts,
 });
