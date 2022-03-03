@@ -25,9 +25,9 @@
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
 
-(defn hydrate-is-bookmarked
-  "Efficiently add `is_bookmarked` status for a sequence of `Cards`, `Dashboards`, or `Collections`."
-  {:batched-hydrate :is_bookmarked}
+(defn hydrate-bookmarked
+  "Efficiently add `bookmarked` status for a sequence of `Cards`, `Dashboards`, or `Collections`."
+  {:batched-hydrate :bookmarked}
   [items]
   (when (seq items)
     (let [klass (class (first items))
@@ -41,9 +41,7 @@
                                 id-key  [:in (map :id items)])]
       (for [item items]
         (let [bookmarked? (contains? bookmarked-item-ids (:id item))]
-          (if bookmarked?
-            (assoc item :is_bookmarked bookmarked?)
-            item))))))
+          (assoc item :bookmarked bookmarked?))))))
 
 (api/defendpoint GET "/"
   "Fetch all bookmarks for the user"
