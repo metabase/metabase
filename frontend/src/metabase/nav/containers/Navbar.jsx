@@ -29,6 +29,7 @@ import {
   getHasDataAccess,
   getHasNativeWrite,
   getPlainNativeQuery,
+  getHasDbWithJsonEngine,
 } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
 
@@ -39,6 +40,7 @@ const mapStateToProps = (state, props) => ({
   plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
+  hasDbWithJsonEngine: getHasDbWithJsonEngine(state, props),
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
@@ -107,7 +109,7 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { hasDataAccess, hasNativeWrite } = this.props;
+    const { hasDataAccess, hasNativeWrite, hasDbWithJsonEngine } = this.props;
 
     return (
       <Flex
@@ -179,7 +181,9 @@ export default class Navbar extends Component {
               ...(hasNativeWrite
                 ? [
                     {
-                      title: t`SQL query`,
+                      title: hasDbWithJsonEngine
+                        ? t`Native query`
+                        : t`SQL query`,
                       icon: `sql`,
                       link: Urls.newQuestion({
                         type: "native",
