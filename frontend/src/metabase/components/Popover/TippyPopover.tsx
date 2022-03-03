@@ -21,6 +21,7 @@ export interface ITippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
+const DEFAULT_Z_INDEX = 4;
 
 const propTypes = {
   disablContentSandbox: PropTypes.bool,
@@ -117,6 +118,7 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", className)}
       theme="popover"
+      zIndex={DEFAULT_Z_INDEX}
       arrow={false}
       offset={OFFSET}
       appendTo={appendTo}
