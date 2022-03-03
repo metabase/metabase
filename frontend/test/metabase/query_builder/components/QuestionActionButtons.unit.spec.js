@@ -61,12 +61,12 @@ function setup({
 
 describe("QuestionActionButtons", () => {
   describe("when `canWrite` is falsy", () => {
-    it("only renders the 'add to dashboard'' button", () => {
+    it("only renders the 'add to dashboard' and 'bookmark' buttons", () => {
       setup({ canWrite: false });
       const buttons = screen.getAllByRole("button");
 
       screen.getByTestId(ADD_TO_DASH_TESTID);
-      expect(buttons.length).toBe(1);
+      expect(buttons.length).toBe(2);
     });
 
     it("should pass the correct action to the `onOpenModal` prop", () => {
@@ -85,7 +85,7 @@ describe("QuestionActionButtons", () => {
     it("should show all buttons", () => {
       setup();
       const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBe(6);
+      expect(buttons.length).toBe(7);
     });
 
     it("should pass the correct action to the `onOpenModal`", () => {
