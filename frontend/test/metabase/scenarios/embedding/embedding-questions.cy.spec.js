@@ -4,6 +4,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   regularQuestion,
   questionWithAggregation,
+  joinedQuestion,
 } from "./embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -145,6 +146,42 @@ describe("scenarios > embedding > questions ", () => {
 
     // Data model: Subtotal is turned off globally
     cy.findByText("Subtotal").should("not.exist");
+  });
+
+  it("should display GUI question with explicit joins correctly", () => {
+    cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+
+      visitQuestion(id);
+    });
+
+    cy.icon("share").click();
+    cy.findByText("Embed this question in an application").click();
+
+    cy.document().then(doc => {
+      const iframe = doc.querySelector("iframe");
+
+      cy.signOut();
+      cy.visit(iframe.src);
+    });
+
+    // Base question assertions
+    cy.findByText("Product ID as Title");
+    cy.findByText("Awesome Concrete Shoes");
+    cy.findByText("Math");
+    cy.findByText("Billed");
+    cy.findByText("€39.72");
+    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
+    cy.findAllByTestId("mini-bar");
+    cy.findByText("Subtotal").should("not.exist");
+
+    // Joined table fields
+    cy.contains("98.52598640° W");
+
+    cy.contains("User → Birth Date");
+    cy.contains("December 12, 1986");
+
+    cy.contains("October 7, 2017, 1:34 AM");
   });
 });
 

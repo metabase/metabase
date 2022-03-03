@@ -1,6 +1,6 @@
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 export const regularQuestion = {
   name: "Orders4t#7 t3",
@@ -47,4 +47,29 @@ export const questionWithAggregation = {
     ],
   },
   display: "line",
+};
+
+export const joinedQuestion = {
+  ...regularQuestion,
+  query: {
+    ...regularQuestion.query,
+    joins: [
+      {
+        fields: "all",
+        "source-table": PEOPLE_ID,
+        condition: [
+          "=",
+          ["field", ORDERS.USER_ID, null],
+          [
+            "field",
+            PEOPLE.ID,
+            {
+              "join-alias": "User",
+            },
+          ],
+        ],
+        alias: "User",
+      },
+    ],
+  },
 };
