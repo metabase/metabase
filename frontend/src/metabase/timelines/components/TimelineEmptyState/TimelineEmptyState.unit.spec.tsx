@@ -15,7 +15,7 @@ describe("TimelineEmptyState", () => {
     jest.useRealTimers();
   });
 
-  it("should render the empty state with the current date", () => {
+  it("should render an empty state with the current date", () => {
     const props = getProps();
 
     render(<TimelineEmptyState {...props} />);
