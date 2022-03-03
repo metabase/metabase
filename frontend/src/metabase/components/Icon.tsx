@@ -98,7 +98,6 @@ class BaseIcon extends Component<IconProps> {
 
     // avoid passing `uncheckedColor` to a svg tag
     const { uncheckedColor, ...svgProps } = props;
-    console.log(Object.keys(svgProps));
 
     if (icon.img) {
       // avoid passing `role="img"` to an actual image file
