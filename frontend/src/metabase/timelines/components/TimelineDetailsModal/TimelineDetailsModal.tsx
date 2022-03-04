@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -29,7 +29,7 @@ export interface TimelineDetailsModalProps {
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
-  onGoBack?: () => void;
+  onGoBack?: (collection: Collection) => void;
 }
 
 const TimelineDetailsModal = ({
@@ -58,6 +58,10 @@ const TimelineDetailsModal = ({
     return getMenuItems(timeline, collection, isArchive);
   }, [timeline, collection, isArchive]);
 
+  const handleGoBack = useCallback(() => {
+    onGoBack?.(collection);
+  }, [collection, onGoBack]);
+
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
   const canWrite = collection.can_write;
@@ -67,7 +71,7 @@ const TimelineDetailsModal = ({
       <ModalHeader
         title={title}
         onClose={onClose}
-        onGoBack={!isDefault ? onGoBack : undefined}
+        onGoBack={!isDefault ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />

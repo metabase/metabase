@@ -1,11 +1,11 @@
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
-import { TimelineEvent } from "metabase-types/api";
+import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import { ModalProps } from "../../types";
@@ -25,8 +25,8 @@ const mapDispatchToProps = (dispatch: any) => ({
   onArchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
   },
-  onGoBack: () => {
-    dispatch(goBack());
+  onGoBack: (collection: Collection) => {
+    dispatch(push(Urls.timelinesInCollection(collection)));
   },
 });
 
