@@ -123,7 +123,7 @@ export const uiControls = handleActions(
           ...DEFAULT_UI_CONTROLS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           ...payload.uiControls,
-          isBookmarked: payload.card["is_bookmarked"],
+          isBookmarked: payload.card["bookmarked"],
         };
       },
     },

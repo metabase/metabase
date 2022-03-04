@@ -4,8 +4,6 @@ import _ from "underscore";
 import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
-import Questions from "metabase/entities/questions";
-import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -17,6 +15,11 @@ import Header from "metabase/collections/components/CollectionHeader/CollectionH
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
+
+import {
+  createBookmark as createQuestionBookmark,
+  deleteBookmark as deleteQuestionBookmark,
+} from "metabase/query_builder/actions";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -45,10 +48,8 @@ function mapStateToProps(state) {
 
 function mapDispatchToProps() {
   return {
-    toggleQuestionBookmark: (id, shouldBeBookmarked) =>
-      Questions.objectActions.setFavorited(id, shouldBeBookmarked),
-    toggleDashboardBookmark: (id, shouldBeBookmarked) =>
-      Dashboards.objectActions.setFavorited(id, shouldBeBookmarked),
+    createQuestionBookmark,
+    deleteQuestionBookmark,
   };
 }
 
@@ -60,8 +61,8 @@ function CollectionContent({
   isRoot,
   handleToggleMobileSidebar,
   metadata,
-  toggleQuestionBookmark,
-  toggleDashboardBookmark,
+  createQuestionBookmark,
+  deleteQuestionBookmark,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
@@ -225,8 +226,8 @@ function CollectionContent({
                         onDrop={clear}
                         onMove={handleMove}
                         onCopy={handleCopy}
-                        toggleQuestionBookmark={toggleQuestionBookmark}
-                        toggleDashboardBookmark={toggleDashboardBookmark}
+                        createQuestionBookmark={createQuestionBookmark}
+                        deleteQuestionBookmark={deleteQuestionBookmark}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (

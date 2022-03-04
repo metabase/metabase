@@ -73,8 +73,8 @@ BaseItemsTable.propTypes = {
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
   getIsSelected: PropTypes.func,
-  toggleQuestionBookmark: PropTypes.func,
-  toggleDashboardBookmark: PropTypes.func,
+  createQuestionBookmark: PropTypes.func,
+  deleteQuestionBookmark: PropTypes.func,
 
   // Used for dragging
   headless: PropTypes.bool,
@@ -100,17 +100,19 @@ function BaseItemsTable({
   onToggleSelected,
   getIsSelected = () => false,
   headless = false,
-  toggleQuestionBookmark,
-  toggleDashboardBookmark,
+  createQuestionBookmark,
+  deleteQuestionBookmark,
   ...props
 }) {
   function getItemBookmarker(item) {
     switch (item.model) {
       case "dataset":
       case "card":
-        return toggleQuestionBookmark;
+        return item.isBookmarked
+          ? deleteQuestionBookmark
+          : createQuestionBookmark;
       case "dashboard":
-        return toggleDashboardBookmark;
+        return () => {};
       default:
         throw new Error("Model must be defined.");
     }

@@ -96,6 +96,8 @@ function EntityItemMenu({
   const showPinnedAction = onPin && isPinned;
   const showUnpinnedAction = onPin && !isPinned;
 
+  console.log("🚀", { item });
+
   const actions = useMemo(
     () =>
       [
@@ -124,7 +126,7 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
         onBookmark && {
-          title: t`Bookmark`,
+          title: item.isBookmarked ? t`Remove bookmark` : t`Bookmark`,
           icon: "bookmark",
           action: onBookmark,
           event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
@@ -136,6 +138,7 @@ function EntityItemMenu({
       onPin,
       analyticsContext,
       item.model,
+      item.isBookmarked,
       onBookmark,
       onMove,
       onCopy,

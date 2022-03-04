@@ -68,7 +68,13 @@ import {
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
-import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
+import {
+  MetabaseApi,
+  BookmarkApi,
+  CardApi,
+  UserApi,
+  DashboardApi,
+} from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -260,13 +266,13 @@ export const CREATE_QUESTION_BOOKMARK = `metabase/entities/questions/ADD_BOOKMAR
 export const createBookmark = createAction(
   CREATE_QUESTION_BOOKMARK,
   ({ id }) => {
-    return CardApi.bookmark.create({ id });
+    return BookmarkApi.question.create({ id });
   },
 );
 
 export const DELETE_QUESTION_BOOKMARK = `metabase/entities/questions/DELETE_BOOKMARK`;
 export const deleteBookmark = createAction(DELETE_QUESTION_BOOKMARK, ({ id }) =>
-  CardApi.bookmark.delete({ id }),
+  BookmarkApi.question.delete({ id }),
 );
 
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";

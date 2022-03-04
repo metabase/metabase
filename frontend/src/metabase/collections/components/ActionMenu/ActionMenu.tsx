@@ -12,7 +12,7 @@ type Props = {
   collection: Collection;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-  toggleBookmark: (id: number, shouldBookmark: boolean) => void;
+  toggleBookmark: (arg0: any) => void;
 };
 
 function ActionMenu({
@@ -39,13 +39,9 @@ function ActionMenu({
     item.setArchived(true);
   }, [item]);
 
-  const handleBookmark = useCallback(
-    (id, shouldBookmark) => {
-      toggleBookmark(3, true);
-      // item.setArchived(true);
-    },
-    [/*item, */ toggleBookmark],
-  );
+  const handleBookmark = useCallback(() => {
+    toggleBookmark({ id: item.id });
+  }, [item, toggleBookmark]);
 
   return (
     // this component is used within a `<Link>` component,
@@ -60,7 +56,7 @@ function ActionMenu({
         onArchive={
           collection.can_write && item.setArchived ? handleArchive : null
         }
-        onBookmark={() => handleBookmark(1, false)}
+        onBookmark={handleBookmark}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>

@@ -56,8 +56,6 @@ export default createEntity({
             ? data.map(item => ({
                 collection_id: canonicalCollectionId(collection),
                 archived: archived || false,
-                // TODO: Remove line below, this field should come from the back-end
-                isBookmarked: true,
                 ...item,
               }))
             : [],
