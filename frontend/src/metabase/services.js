@@ -89,6 +89,13 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+export const BookmarkApi = {
+  question: {
+    create: POST("/api/bookmark/card/:id"),
+    delete: DELETE("/api/bookmark/card/:id"),
+  },
+};
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
