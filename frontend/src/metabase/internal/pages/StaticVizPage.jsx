@@ -67,10 +67,29 @@ import {
 } from "../../static-viz/components/LineAreaBarChart/constants";
 
 function setAccessorsForChartOptions(index, options) {
-  return {
-    ...options,
-    accessors: STATIC_CHART_DEFAULT_OPTIONS[index].accessors,
-  };
+  const optionsCopy = { ...options };
+  if (STATIC_CHART_DEFAULT_OPTIONS[index].accessors) {
+    optionsCopy.accessors = STATIC_CHART_DEFAULT_OPTIONS[index].accessors;
+  }
+  return optionsCopy;
+}
+
+function chartOptionsToStr(options) {
+  if (typeof options === "object") {
+    return JSON.stringify(options, null, 2);
+  }
+  return "";
+}
+
+function chartOptionsToObj(optionsStr) {
+  try {
+    const chartOptions = JSON.parse(optionsStr);
+    delete chartOptions["accessors"];
+    return chartOptions;
+  } catch (err) {
+    console.error(err);
+  }
+  return {};
 }
 
 export default function StaticVizPage() {
@@ -115,26 +134,29 @@ export default function StaticVizPage() {
           </select>
 
           {staticChartType && staticChartCustomOptions && (
-            <StaticChart
-              type={staticChartType}
-              options={setAccessorsForChartOptions(
-                staticChartTypeIndex,
-                staticChartCustomOptions,
-              )}
-            />
+            <div className="w-full mt1">
+              <StaticChart
+                type={staticChartType}
+                options={setAccessorsForChartOptions(
+                  staticChartTypeIndex,
+                  staticChartCustomOptions,
+                )}
+              />
+            </div>
           )}
 
-          {staticChartCustomOptions && (
-            <textarea
-              className="w-full mt1"
-              value={JSON.stringify(staticChartCustomOptions, null, 2)}
-              onChange={e => {
-                const chartOptions = JSON.parse(e.target.value);
-                delete chartOptions["accessors"];
-                setStaticChartCustomOptions(chartOptions);
-              }}
-            />
-          )}
+          <textarea
+            className="w-full mt1"
+            value={chartOptionsToStr(staticChartCustomOptions)}
+            onChange={e => {
+              const chartOptionsStr = e.target.value;
+              if (chartOptionsStr.length > 0) {
+                setStaticChartCustomOptions(chartOptionsToObj(chartOptionsStr));
+              } else {
+                setStaticChartCustomOptions(chartOptionsStr);
+              }
+            }}
+          />
         </PageSection>
 
         <PageSection>
