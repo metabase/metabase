@@ -4,23 +4,28 @@ import TimelineDetailsModal from "../../containers/TimelineDetailsModal";
 import TimelineListModal from "../../containers/TimelineListModal";
 import { ModalParams } from "../../types";
 
-export interface TimelineEntryModalProps {
+export interface TimelineIndexModalProps {
   timelines: Timeline[];
   params: ModalParams;
   onClose?: () => void;
 }
 
-const TimelineEntryModal = ({
+const TimelineIndexModal = ({
   timelines,
   params,
   onClose,
-}: TimelineEntryModalProps): JSX.Element => {
+}: TimelineIndexModalProps): JSX.Element => {
   if (timelines.length === 1) {
-    const newParams = { ...params, timelineId: timelines[0].id };
-    return <TimelineDetailsModal params={newParams} onClose={onClose} />;
+    return (
+      <TimelineDetailsModal
+        params={{ ...params, timelineId: timelines[0].id }}
+        isDefault={true}
+        onClose={onClose}
+      />
+    );
   } else {
     return <TimelineListModal params={params} onClose={onClose} />;
   }
 };
 
-export default TimelineEntryModal;
+export default TimelineIndexModal;
