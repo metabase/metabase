@@ -58,7 +58,7 @@
       (if archived?
         collections
         (cons (root-collection namespace) collections))
-      (hydrate collections :can_write)
+      (hydrate collections :can_write :bookmarked)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       (for [collection collections]
         (dissoc collection ::collection.root/is-root?)))))
@@ -279,7 +279,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level :icon) rows) :favorite))
+  (hydrate (map #(dissoc % :authority_level :icon) rows) :bookmarked))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -306,7 +306,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :bookmarked))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -528,7 +528,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :bookmarked)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"

@@ -1246,31 +1246,6 @@
            (with-cards-in-readable-collection card
              (bookmarked? card))))))
 
-(deftest bookmark-test
-  (testing "Can we bookmark a Card?"
-    (testing "POST /api/card/:id/bookmark"
-      (mt/with-temp Card [card]
-        (with-cards-in-readable-collection card
-          (is (= false
-                 (bookmarked? card)))
-          (bookmark! card)
-          (is (= true
-                 (bookmarked? card))))))))
-
-(deftest unbookmark-test
-  (testing "Can we unbookmark a Card?"
-    (testing "DELETE /api/card/:id/bookmark"
-      (mt/with-temp Card [card]
-        (with-cards-in-readable-collection card
-          (is (= false
-                 (bookmarked? card)))
-          (bookmark! card)
-          (is (= true
-                 (bookmarked? card)))
-          (unbookmark! card)
-          (is (= false
-                 (bookmarked? card))))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Timelines                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
