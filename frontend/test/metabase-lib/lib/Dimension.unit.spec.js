@@ -709,6 +709,18 @@ describe("Dimension", () => {
         });
       });
     });
+
+    describe("dimensions()", () => {
+      it("should return subdimensions according to the field type", () => {
+        const question = new Question(nestedQuestionCard, metadata);
+        const dimension = Dimension.parseMBQL(
+          ["expression", 42],
+          metadata,
+          question.query(),
+        );
+        expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
+      });
+    });
   });
 
   describe("Field with join-alias", () => {
