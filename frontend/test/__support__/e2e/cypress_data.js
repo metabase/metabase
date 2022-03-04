@@ -111,3 +111,7 @@ export const USERS = {
     group_ids: [ALL_USERS_GROUP],
   },
 };
+
+// Embedding
+export const METABASE_SECRET_KEY =
+  "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
