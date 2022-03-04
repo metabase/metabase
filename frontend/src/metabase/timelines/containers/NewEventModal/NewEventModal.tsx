@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
-import { TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
