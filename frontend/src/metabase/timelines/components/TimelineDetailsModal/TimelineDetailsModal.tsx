@@ -25,6 +25,7 @@ export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
   isArchive?: boolean;
+  isDefault?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
@@ -35,6 +36,7 @@ const TimelineDetailsModal = ({
   timeline,
   collection,
   isArchive = false,
+  isDefault = false,
   onArchive,
   onUnarchive,
   onClose,
@@ -62,7 +64,11 @@ const TimelineDetailsModal = ({
 
   return (
     <ModalRoot>
-      <ModalHeader title={title} onClose={onClose} onGoBack={onGoBack}>
+      <ModalHeader
+        title={title}
+        onClose={onClose}
+        onGoBack={!isDefault ? onGoBack : undefined}
+      >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}

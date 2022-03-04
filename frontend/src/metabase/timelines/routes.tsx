@@ -8,7 +8,7 @@ import NewEventWithTimelineModal from "./containers/NewEventWithTimelineModal";
 import NewTimelineModal from "./containers/NewTimelineModal";
 import TimelineArchiveModal from "./containers/TimelineArchiveModal";
 import TimelineDetailsModal from "./containers/TimelineDetailsModal";
-import TimelineEntryModal from "./containers/TimelineEntryModal";
+import TimelineIndexModal from "./containers/TimelineIndexModal";
 
 const getRoutes = () => {
   return (
@@ -16,7 +16,7 @@ const getRoutes = () => {
       <ModalRoute
         {...{
           path: "timelines",
-          modal: TimelineEntryModal,
+          modal: TimelineIndexModal,
         }}
       />
       <ModalRoute
