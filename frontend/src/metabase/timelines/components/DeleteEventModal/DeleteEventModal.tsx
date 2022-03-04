@@ -9,20 +9,26 @@ export interface DeleteEventModalProps {
   event: TimelineEvent;
   timeline: Timeline;
   collection: Collection;
-  onSubmit: (event: TimelineEvent) => void;
+  onSubmit: (
+    event: TimelineEvent,
+    timeline: Timeline,
+    collection: Collection,
+  ) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
 
 const DeleteEventModal = ({
   event,
+  timeline,
+  collection,
   onSubmit,
   onCancel,
   onClose,
 }: DeleteEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(async () => {
-    await onSubmit(event);
-  }, [event, onSubmit]);
+    await onSubmit(event, timeline, collection);
+  }, [event, timeline, collection, onSubmit]);
 
   return (
     <div>

@@ -70,11 +70,11 @@ function PermissionsLink({
 }
 
 function TimelinesLink({ collection }) {
-  const tooltip = t`Events`;
+  const title = t`Events`;
   const link = Urls.timelinesInCollection(collection);
 
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip tooltip={title}>
       <Link to={link}>
         <IconWrapper>
           <Icon name="calendar" size={20} />
