@@ -28,6 +28,7 @@ export interface TimelineDetailsModalProps {
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
+  onGoBack?: () => void;
 }
 
 const TimelineDetailsModal = ({
@@ -37,6 +38,7 @@ const TimelineDetailsModal = ({
   onArchive,
   onUnarchive,
   onClose,
+  onGoBack,
 }: TimelineDetailsModalProps): JSX.Element => {
   const title = isArchive ? t`Archived events` : timeline.name;
   const [inputText, setInputText] = useState("");
@@ -60,7 +62,7 @@ const TimelineDetailsModal = ({
 
   return (
     <ModalRoot>
-      <ModalHeader title={title} onClose={onClose}>
+      <ModalHeader title={title} onClose={onClose} onGoBack={onGoBack}>
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}
