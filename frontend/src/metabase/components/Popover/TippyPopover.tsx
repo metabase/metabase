@@ -105,6 +105,7 @@ function TippyPopover({
   lazy = true,
   flip = true,
   sizeToFit = false,
+  interactive = true,
   maxHeight,
   popperOptions,
   onShow,
@@ -171,6 +172,7 @@ function TippyPopover({
       appendTo={appendTo}
       plugins={plugins}
       {...props}
+      interactive={interactive}
       popperOptions={computedPopperOptions}
       duration={animationDuration}
       delay={delay}

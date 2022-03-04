@@ -98,8 +98,8 @@ export const examples = {
       </TippyPopover>
     </React.Fragment>
   ),
-  interactive: (
-    <TippyPopover interactive placement="left-end" content={content}>
+  "interactive disabled": (
+    <TippyPopover interactive={false} placement="left-end" content={content}>
       {target}
     </TippyPopover>
   ),
@@ -117,7 +117,6 @@ export const examples = {
   "sizeToFit enabled": (
     <TippyPopover
       visible
-      interactive
       placement="bottom-start"
       sizeToFit
       content={longContent}
