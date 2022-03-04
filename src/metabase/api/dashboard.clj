@@ -81,7 +81,7 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
    parameters          [su/Map]
    description         (s/maybe s/Str)
@@ -96,17 +96,16 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position}]
-    (let [dash (db/transaction
-                ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                ;; position, check that and fix up if needed
-                (api/maybe-reconcile-collection-position! dashboard-data)
-                ;; Ok, now save the Dashboard
-                (db/insert! Dashboard dashboard-data))]
-      ;; publish event after the txn so that lookup can succeed
-      (events/publish-event! :dashboard-create dash)
-      (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
-      (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+                        :collection_position collection_position}
+        dash           (db/transaction
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                        ;; position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (db/insert! Dashboard dashboard-data))]
+    (events/publish-event! :dashboard-create dash)
+    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
+    (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
@@ -229,7 +228,7 @@
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as dashboard} :body}]
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as _dashboard} :body}]
   {name                (s/maybe su/NonBlankString)
    description         (s/maybe s/Str)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -376,7 +375,7 @@
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
