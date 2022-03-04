@@ -1,9 +1,10 @@
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { Timeline } from "metabase-types/api";
+import { Collection, Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import EditTimelineModal from "../../components/EditTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -16,14 +17,19 @@ const timelineProps = {
   LoadingAndErrorWrapper,
 };
 
+const collectionProps = {
+  id: (state: State, props: ModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
+};
+
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline) => {
+  onSubmit: async (timeline: Timeline, collection: Collection) => {
     await dispatch(Timelines.actions.update(timeline));
-    dispatch(goBack());
+    dispatch(push(Urls.timelineInCollection(timeline, collection)));
   },
-  onArchive: async (timeline: Timeline) => {
+  onArchive: async (timeline: Timeline, collection: Collection) => {
     await dispatch(Timelines.actions.setArchived(timeline, true));
-    dispatch(goBack());
+    dispatch(push(Urls.timelinesInCollection(collection)));
   },
   onCancel: () => {
     dispatch(goBack());
@@ -32,5 +38,6 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
+  Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
 )(EditTimelineModal);

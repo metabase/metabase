@@ -1,7 +1,7 @@
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
-import TimelineEntryModal from "../../components/TimelineEntryModal";
+import TimelineIndexModal from "../../components/TimelineIndexModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
@@ -11,4 +11,4 @@ const timelineProps = {
   }),
 };
 
-export default Timelines.loadList(timelineProps)(TimelineEntryModal);
+export default Timelines.loadList(timelineProps)(TimelineIndexModal);
