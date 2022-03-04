@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
+import * as popper from "@popperjs/core";
 import cx from "classnames";
 import { merge } from "icepick";
 
@@ -18,8 +19,13 @@ export interface ITippyPopoverProps extends TippyProps {
   disableContentSandbox?: boolean;
   lazy?: boolean;
   flip?: boolean;
+  maxHeight?: number;
+  sizeToFit?: boolean;
 }
 
+// space we should leave berween page edge and popover edge when using the `sizeToFit` prop
+const PAGE_PADDING = 10;
+const DEFAULT_MAX_HEIGHT = 100;
 const OFFSET: [number, number] = [0, 5];
 const DEFAULT_Z_INDEX = 4;
 
@@ -33,21 +39,60 @@ function appendTo() {
   return document.body;
 }
 
-function getPopperOptions(
-  flip: ITippyPopoverProps["flip"],
-  popperOptions: ITippyPopoverProps["popperOptions"],
-): ITippyPopoverProps["popperOptions"] {
+function getPopperOptions({
+  flip,
+  sizeToFit,
+  maxHeight,
+  popperOptions,
+}: Pick<
+  ITippyPopoverProps,
+  "flip" | "sizeToFit" | "maxHeight" | "popperOptions"
+>): ITippyPopoverProps["popperOptions"] {
   return merge(
-    flip === false
-      ? {
-          modifiers: [
-            {
-              name: "flip",
-              enabled: false,
-            },
-          ],
-        }
-      : {},
+    {
+      modifiers: [
+        {
+          name: "flip",
+          enabled: flip,
+          requiresIfExists: ["sizeToFit"],
+        },
+        {
+          name: "sizeToFit",
+          phase: "main",
+          enabled: sizeToFit,
+          requiresIfExists: ["offset"],
+          fn: ({
+            state,
+            options,
+          }: popper.ModifierArguments<Record<string, unknown>>) => {
+            const {
+              placement,
+              rects: {
+                popper: { height },
+              },
+            } = state;
+
+            const overflow = popper.detectOverflow(state, options);
+            const distanceFromEdge = placement.startsWith("top")
+              ? overflow.top
+              : overflow.bottom;
+            const minMaxHeight =
+              maxHeight == null ? DEFAULT_MAX_HEIGHT : maxHeight;
+            const calculatedMaxHeight = Math.max(
+              height - distanceFromEdge - PAGE_PADDING,
+              minMaxHeight,
+            );
+
+            state.styles.popper.maxHeight = `${calculatedMaxHeight}px`;
+
+            // a hack to prevent the popover from flipping until after we've reached the minimum max-height of the popover
+            if (calculatedMaxHeight !== minMaxHeight) {
+              state.modifiersData.flip._skip = true;
+            }
+          },
+        },
+      ],
+    },
     popperOptions,
   );
 }
@@ -59,6 +104,8 @@ function TippyPopover({
   delay,
   lazy = true,
   flip = true,
+  sizeToFit = false,
+  maxHeight,
   popperOptions,
   onShow,
   onHide,
@@ -110,8 +157,8 @@ function TippyPopover({
   const plugins = useMemo(() => [lazyPlugin], [lazyPlugin]);
 
   const computedPopperOptions = useMemo(
-    () => getPopperOptions(flip, popperOptions),
-    [flip, popperOptions],
+    () => getPopperOptions({ flip, sizeToFit, maxHeight, popperOptions }),
+    [flip, sizeToFit, maxHeight, popperOptions],
   );
 
   return (

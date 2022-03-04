@@ -19,6 +19,10 @@ const PopoverBody = styled(Base)`
   width: 200px;
 `;
 
+const LongPopoverBody = styled(PopoverBody)`
+  height: 600px;
+`;
+
 const LazyPopoverBody = styled(Base)`
   border: none;
   height: 200px;
@@ -33,6 +37,7 @@ const PopoverTarget = styled(Base)`
 `;
 
 const content = <PopoverBody>popover body</PopoverBody>;
+const longContent = <LongPopoverBody>popover body</LongPopoverBody>;
 const target = <PopoverTarget>popover target</PopoverTarget>;
 
 function LazyContentExample() {
@@ -105,6 +110,17 @@ export const examples = {
       flip={false}
       placement="bottom-start"
       content={content}
+    >
+      {target}
+    </TippyPopover>
+  ),
+  "sizeToFit enabled": (
+    <TippyPopover
+      visible
+      interactive
+      placement="bottom-start"
+      sizeToFit
+      content={longContent}
     >
       {target}
     </TippyPopover>

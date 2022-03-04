@@ -52,6 +52,12 @@
   padding: 0;
 }
 
+.tippy-box,
+.tippy-content {
+  max-height: inherit;
+  transition: transform 0s, visibility 0.3s, opacity 0.3s;
+}
+
 /* remove the max-width in cases where the popover content needs to expand
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971
