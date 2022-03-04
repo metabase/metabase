@@ -3457,7 +3457,7 @@ Fetch a list of `Users`. By default returns every active user but only active us
 
 *  **`group_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`include_deactivated`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false'),
+*  **`include_deactivated`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 ### `GET /api/user/:id`
 
