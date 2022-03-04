@@ -136,18 +136,6 @@ export default function StaticVizPage() {
             ))}
           </select>
 
-          {!staticChartError && staticChartType && staticChartCustomOptions && (
-            <div className="text-code-plain w-full mt1">
-              <StaticChart
-                type={staticChartType}
-                options={setAccessorsForChartOptions(
-                  staticChartTypeIndex,
-                  staticChartCustomOptions,
-                )}
-              />
-            </div>
-          )}
-
           {(staticChartCustomOptions ||
             typeof staticChartCustomOptions === "string") && (
             <textarea
@@ -167,7 +155,19 @@ export default function StaticVizPage() {
           )}
 
           {staticChartError && (
-            <p className="text-bold text-error">{staticChartError}</p>
+            <p className="text-bold text-error mt1 mb0">{staticChartError}</p>
+          )}
+
+          {!staticChartError && staticChartType && staticChartCustomOptions && (
+            <div className="text-code-plain w-full mt1">
+              <StaticChart
+                type={staticChartType}
+                options={setAccessorsForChartOptions(
+                  staticChartTypeIndex,
+                  staticChartCustomOptions,
+                )}
+              />
+            </div>
           )}
         </PageSection>
 
