@@ -215,7 +215,35 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))))
+                  (map #(dissoc % :is_qbnewb :last_login)))))))
+  (testing "GET /api/user?include_deactivated=false should return only active users"
+    (is (= (->> [{:email                  "crowberto@metabase.com"
+                  :first_name             "Crowberto"
+                  :last_name              "Corv"
+                  :is_superuser           true
+                  :group_ids              #{(u/the-id (group/all-users))
+                                            (u/the-id (group/admin))}
+                  :personal_collection_id true
+                  :common_name            "Crowberto Corv"}
+                 {:email                  "lucky@metabase.com"
+                  :first_name             "Lucky"
+                  :last_name              "Pigeon"
+                  :group_ids              #{(u/the-id (group/all-users))}
+                  :personal_collection_id true
+                  :common_name            "Lucky Pigeon"}
+                 {:email                  "rasta@metabase.com"
+                  :first_name             "Rasta"
+                  :last_name              "Toucan"
+                  :group_ids              #{(u/the-id (group/all-users))}
+                  :personal_collection_id true
+                  :common_name            "Rasta Toucan"}]
+                (map (partial merge @user-defaults))
+                (map #(dissoc % :is_qbnewb :last_login)))
+           (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
+                (filter mt/test-user?)
+                group-ids->sets
+                mt/boolean-ids-and-timestamps
+                (map #(dissoc % :is_qbnewb :last_login)))))))
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"

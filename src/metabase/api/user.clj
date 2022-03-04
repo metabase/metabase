@@ -115,7 +115,6 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :group_id group_id])))
 
-
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
@@ -136,17 +135,18 @@
    include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
     (api/check-superuser))
-  {:data   (cond-> (db/select
-                     (vec (cons User (user-visible-columns)))
-                     (cond-> (user-clauses status query group_id include_deactivated)
-                       true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                       (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
-                       (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
-             ;; For admins, also include the IDs of the  Users' Personal Collections
-             api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
-   :total  (db/count User (user-clauses status query group_id include_deactivated))
-   :limit  offset-paging/*limit*
-   :offset offset-paging/*offset*})
+  (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
+    {:data   (cond-> (db/select
+                       (vec (cons User (user-visible-columns)))
+                       (cond-> (user-clauses status query group_id include_deactivated)
+                            true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                            (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
+                            (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
+               ;; For admins, also include the IDs of the  Users' Personal Collections
+               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*}))
 
 
 (api/defendpoint GET "/current"
