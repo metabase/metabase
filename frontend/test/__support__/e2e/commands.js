@@ -10,11 +10,13 @@ import "./commands/api/collection";
 import "./commands/api/moderation";
 import "./commands/api/pulse";
 import "./commands/api/user";
+import "./commands/api/timeline";
 
 import "./commands/api/composite/createQuestionAndDashboard";
 import "./commands/api/composite/createNativeQuestionAndDashboard";
 import "./commands/api/composite/createQuestionAndAddToDashboard";
 import "./commands/api/composite/createDashboardWithQuestions";
+import "./commands/api/composite/createTimelineWithEvents";
 
 import "./commands/user/createUser";
 import "./commands/user/authentication";

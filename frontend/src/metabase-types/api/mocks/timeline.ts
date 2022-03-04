@@ -20,7 +20,7 @@ export const createMockTimelineEvent = (
   name: "Christmas",
   description: null,
   icon: "star",
-  timestamp: "2021-12-25T14:48:00.000Z",
+  timestamp: "2021-12-25T00:00:00Z",
   timezone: "UTC",
   time_matters: false,
   creator: createMockUser(),
