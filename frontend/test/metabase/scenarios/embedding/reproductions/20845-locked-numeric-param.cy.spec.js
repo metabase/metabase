@@ -1,9 +1,10 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import { restore, visitEmbeddedPage } from "__support__/e2e/cypress";
 
 const defaultFilterValues = [undefined, "10"];
 
-describe.skip("issue 20845", () => {
+describe("issue 20845", () => {
   beforeEach(() => {
+    cy.intercept("PUT", "/api/card/*").as("publishChanges");
     restore();
     cy.signInAsAdmin();
   });
@@ -16,10 +17,9 @@ describe.skip("issue 20845", () => {
     it(`locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
       const questionDetails = getQuestionDetails(value);
 
-      cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
-
-        visitQuestion(id);
+      cy.createNativeQuestion(questionDetails, {
+        visitQuestion: true,
+        wrapId: true,
       });
 
       cy.icon("share").click();
@@ -34,11 +34,21 @@ describe.skip("issue 20845", () => {
           cy.findByPlaceholderText("Qty locked").type("15{enter}");
         });
 
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
+      cy.button("Publish").click();
+      cy.wait(["@publishChanges", "@publishChanges"]);
 
-        cy.signOut();
-        cy.visit(iframe.src);
+      cy.signOut();
+
+      // This issue is not possible to reproduce using UI from this point on.
+      // We have to manually send the payload with the numeric filter value.
+      cy.get("@questionId").then(questionId => {
+        visitEmbeddedPage({
+          resource: { question: questionId },
+          params: {
+            qty_locked: 15, // IMPORTANT: integer
+          },
+          exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+        });
       });
 
       cy.findByText("COUNT(*)");
