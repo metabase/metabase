@@ -1,65 +1,63 @@
 import React from "react";
 import PropTypes from "prop-types";
 import CategoricalAreaChart from "../../components/CategoricalAreaChart";
+import { CATEGORICAL_AREA_CHART_TYPE } from "../../components/CategoricalAreaChart/constants";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
+import { CATEGORICAL_BAR_CHART_TYPE } from "../../components/CategoricalBarChart/constants";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";
+import { CATEGORICAL_DONUT_CHART_TYPE } from "../../components/CategoricalDonutChart/constants";
 import CategoricalLineChart from "../../components/CategoricalLineChart";
+import { CATEGORICAL_LINE_CHART_TYPE } from "../../components/CategoricalLineChart/constants";
 import CategoricalWaterfallChart from "../../components/CategoricalWaterfallChart";
+import { CATEGORICAL_WATERFALL_CHART_TYPE } from "../../components/CategoricalWaterfallChart/constants";
 import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
+import { TIME_SERIES_AREA_CHART_TYPE } from "../../components/TimeSeriesAreaChart/constants";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
+import { TIME_SERIES_BAR_CHART_TYPE } from "../../components/TimeSeriesBarChart/constants";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
-import ProgressBar from "../../components/ProgressBar";
-import Funnel from "../../components/FunnelChart";
+import { TIME_SERIES_LINE_CHART_TYPE } from "../../components/TimeSeriesLineChart/constants";
 import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
+import { TIME_SERIES_WATERFALL_CHART_TYPE } from "../../components/TimeSeriesWaterfallChart/constants";
+import ProgressBar from "../../components/ProgressBar";
+import { PROGRESS_BAR_TYPE } from "../../components/ProgressBar/constants";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
-
-const propTypes = {
-  type: PropTypes.oneOf([
-    "categorical/area",
-    "categorical/bar",
-    "categorical/donut",
-    "categorical/line",
-    "categorical/waterfall",
-    "timeseries/area",
-    "timeseries/bar",
-    "timeseries/line",
-    "timeseries/waterfall",
-    "progress",
-    "combo-chart",
-    "funnel",
-  ]).isRequired,
-  options: PropTypes.object.isRequired,
-};
+import { LINE_AREA_BAR_CHART_TYPE } from "../../components/LineAreaBarChart/constants";
+import Funnel from "../../components/FunnelChart";
+import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
+import { STATIC_CHART_TYPES } from "./constants";
 
 const StaticChart = ({ type, options }) => {
   switch (type) {
-    case "categorical/area":
+    case CATEGORICAL_AREA_CHART_TYPE:
       return <CategoricalAreaChart {...options} />;
-    case "categorical/bar":
+    case CATEGORICAL_BAR_CHART_TYPE:
       return <CategoricalBarChart {...options} />;
-    case "categorical/donut":
+    case CATEGORICAL_DONUT_CHART_TYPE:
       return <CategoricalDonutChart {...options} />;
-    case "categorical/line":
+    case CATEGORICAL_LINE_CHART_TYPE:
       return <CategoricalLineChart {...options} />;
-    case "categorical/waterfall":
+    case CATEGORICAL_WATERFALL_CHART_TYPE:
       return <CategoricalWaterfallChart {...options} />;
-    case "timeseries/area":
+    case TIME_SERIES_AREA_CHART_TYPE:
       return <TimeSeriesAreaChart {...options} />;
-    case "timeseries/bar":
+    case TIME_SERIES_BAR_CHART_TYPE:
       return <TimeSeriesBarChart {...options} />;
-    case "timeseries/line":
+    case TIME_SERIES_LINE_CHART_TYPE:
       return <TimeSeriesLineChart {...options} />;
-    case "timeseries/waterfall":
+    case TIME_SERIES_WATERFALL_CHART_TYPE:
       return <TimeSeriesWaterfallChart {...options} />;
-    case "progress":
+    case PROGRESS_BAR_TYPE:
       return <ProgressBar {...options} />;
-    case "combo-chart":
+    case LINE_AREA_BAR_CHART_TYPE:
       return <LineAreaBarChart {...options} />;
-    case "funnel":
+    case FUNNEL_CHART_TYPE:
       return <Funnel {...options} />;
   }
 };
 
-StaticChart.propTypes = propTypes;
+StaticChart.propTypes = {
+  type: PropTypes.oneOf(STATIC_CHART_TYPES).isRequired,
+  options: PropTypes.object.isRequired,
+};
 
 export default StaticChart;
