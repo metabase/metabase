@@ -57,6 +57,9 @@
    id    su/IntGreaterThanZero}
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
+    (api/check (not (db/exists? bookmark-model item-key id
+                                :user_id api/*current-user-id*))
+      [400 "Bookmark already exists"])
     (db/insert! bookmark-model {item-key id :user_id api/*current-user-id*})))
 
 (api/defendpoint DELETE "/:model/:id"
