@@ -344,12 +344,19 @@
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
-  (let [{database-type :database_type} (when (integer? id-or-name)
-                                         (qp.store/field id-or-name))
+  (let [{database-type :database_type
+         nfc-path      :nfc-path} (when (integer? id-or-name)
+                                    (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
-    (if (= database-type "money")
+    (cond
+      (= database-type "money")
       (pg-conversion identifier :numeric)
+
+      (some? nfc-path)
+      do some shit with the json dealio
+
+      :else
       identifier)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
