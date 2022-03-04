@@ -117,8 +117,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
-      (hydrate :creator :collection :is_bookmarked)))
-
+      (hydrate :creator :collection :bookmarked)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 
@@ -154,7 +153,7 @@
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator
-                        :is_bookmarked
+                        :bookmarked
                         :dashboard_count
                         :can_write
                         :average_query_time
@@ -575,25 +574,6 @@
     (db/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
-
-
-;;; --------------------------------------------------- Bookmarking ---------------------------------------------------
-
-(api/defendpoint POST "/:id/bookmark"
-  "Bookmark a Card for the current user."
-  [id]
-  (api/read-check Card id)
-  (db/insert! CardBookmark :card_id id :user_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:id/bookmark"
-  "Un-Bookmark a Card for the current user."
-  [id]
-  (api/read-check Card id)
-  (api/let-404 [id (db/select-one-id CardBookmark :card_id id :user_id api/*current-user-id*)]
-    (db/delete! CardBookmark :id id))
-  api/generic-204-no-content)
-
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
