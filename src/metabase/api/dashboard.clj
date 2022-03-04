@@ -46,7 +46,7 @@
                                                 :mine [:= :creator_id api/*current-user-id*])
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
-    (hydrate <> :creator :is_bookmarked)
+    (hydrate <> :creator :bookmarked)
     (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
@@ -250,8 +250,7 @@
   (let [dashboard (get-dashboard id)]
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (-> (last-edit/with-last-edit-info dashboard :dashboard)
-        (hydrate :is_bookmarked))))
-
+        (hydrate :bookmarked))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -473,24 +472,6 @@
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id))
-
-
-;;; --------------------------------------------------- Bookmarking ---------------------------------------------------
-
-(api/defendpoint POST "/:id/bookmark"
-  "Bookmark a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (db/insert! DashboardBookmark :dashboard_id id :user_id api/*current-user-id*))
-
-(api/defendpoint DELETE "/:id/bookmark"
-  "Unbookmark a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (api/let-404 [id (db/select-one-id DashboardBookmark :dashboard_id id :user_id api/*current-user-id*)]
-    (db/delete! DashboardBookmark :id id))
-  api/generic-204-no-content)
-
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
