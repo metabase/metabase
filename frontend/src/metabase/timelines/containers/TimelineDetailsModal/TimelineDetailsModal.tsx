@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import { goBack } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
@@ -23,6 +24,9 @@ const collectionProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onArchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
+  },
+  onGoBack: () => {
+    dispatch(goBack());
   },
 });
 
