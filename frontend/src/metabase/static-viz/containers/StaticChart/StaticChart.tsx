@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import CategoricalAreaChart from "../../components/CategoricalAreaChart";
 import { CATEGORICAL_AREA_CHART_TYPE } from "../../components/CategoricalAreaChart/constants";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
@@ -24,7 +23,6 @@ import LineAreaBarChart from "../../components/LineAreaBarChart";
 import { LINE_AREA_BAR_CHART_TYPE } from "../../components/LineAreaBarChart/constants";
 import Funnel from "../../components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
-import { STATIC_CHART_TYPES } from "./constants";
 import { IStaticChartProps } from "./types";
 
 const StaticChart = ({ type, options }: IStaticChartProps) => {
@@ -54,11 +52,6 @@ const StaticChart = ({ type, options }: IStaticChartProps) => {
     case FUNNEL_CHART_TYPE:
       return <Funnel {...options} />;
   }
-};
-
-StaticChart.propTypes = {
-  type: PropTypes.oneOf(STATIC_CHART_TYPES).isRequired,
-  options: PropTypes.object.isRequired,
 };
 
 export default StaticChart;
