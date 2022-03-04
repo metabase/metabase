@@ -99,4 +99,9 @@ export const examples = {
     </TippyPopover>
   ),
   "control mode + handling of Esc press": <VisiblePropExample />,
+  "flip disabled": (
+    <TippyPopover flip={false} placement="bottom-start" content={content}>
+      {target}
+    </TippyPopover>
+  ),
 };

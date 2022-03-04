@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
 import cx from "classnames";
+import { merge } from "icepick";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -18,6 +19,7 @@ type TippyInstance = tippy.Instance;
 export interface ITippyPopoverProps extends TippyProps {
   disableContentSandbox?: boolean;
   lazy?: boolean;
+  flip?: boolean;
 }
 
 const OFFSET: [number, number] = [0, 5];
@@ -32,6 +34,23 @@ function appendTo() {
   return document.body;
 }
 
+function getPopperOptions({
+  flip,
+  popperOptions = {},
+}: Pick<ITippyPopoverProps, "flip" | "popperOptions">) {
+  return merge(
+    {
+      modifiers: [
+        {
+          name: "flip",
+          enabled: flip,
+        },
+      ],
+    },
+    popperOptions,
+  );
+}
+
 function TippyPopover({
   className,
   disableContentSandbox,
@@ -39,6 +58,8 @@ function TippyPopover({
   delay,
   lazy = true,
   interactive = true,
+  flip = true,
+  popperOptions,
   onShow,
   onHide,
   ...props
@@ -88,6 +109,11 @@ function TippyPopover({
 
   const plugins = useMemo(() => [lazyPlugin], [lazyPlugin]);
 
+  const computedPopperOptions = useMemo(
+    () => getPopperOptions({ flip, popperOptions }),
+    [flip, popperOptions],
+  );
+
   return (
     <TippyComponent
       className={cx("popover", className)}
@@ -98,6 +124,7 @@ function TippyPopover({
       appendTo={appendTo}
       plugins={plugins}
       {...props}
+      popperOptions={computedPopperOptions}
       interactive={interactive}
       duration={animationDuration}
       delay={delay}
