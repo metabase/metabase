@@ -1,13 +1,13 @@
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux";
+import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import { Collection, Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import EditTimelineModal from "../../components/EditTimelineModal";
 import { ModalProps } from "../../types";
-import Collections from "metabase/entities/collections";
 
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
@@ -21,13 +21,13 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline) => {
+  onSubmit: async (timeline: Timeline, collection: Collection) => {
     await dispatch(Timelines.actions.update(timeline));
-    dispatch(goBack());
+    dispatch(push(Urls.timelineInCollection(timeline, collection)));
   },
   onArchive: async (timeline: Timeline, collection: Collection) => {
     await dispatch(Timelines.actions.setArchived(timeline, true));
-    dispatch(goBack());
+    dispatch(push(Urls.timelinesInCollection(collection)));
   },
   onCancel: () => {
     dispatch(goBack());
