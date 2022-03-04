@@ -2,19 +2,18 @@ import { restore, visitEmbeddedPage } from "__support__/e2e/cypress";
 
 const defaultFilterValues = [undefined, "10"];
 
-describe("issue 20845", () => {
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("publishChanges");
-    restore();
-    cy.signInAsAdmin();
-  });
+defaultFilterValues.forEach(value => {
+  const conditionalPartOfTestTitle = value
+    ? "and the required filter with the default value"
+    : "";
 
-  defaultFilterValues.forEach(value => {
-    const conditionalPartOfTestTitle = value
-      ? "and the required filter with the default value"
-      : "";
+  describe.skip("issue 20845", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-    it(`locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
+      restore();
+      cy.signInAsAdmin();
+
       const questionDetails = getQuestionDetails(value);
 
       cy.createNativeQuestion(questionDetails, {
@@ -38,21 +37,28 @@ describe("issue 20845", () => {
       cy.wait(["@publishChanges", "@publishChanges"]);
 
       cy.signOut();
+    });
 
+    it(`locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#20845)`, () => {
       // This issue is not possible to reproduce using UI from this point on.
-      // We have to manually send the payload with the numeric filter value.
-      cy.get("@questionId").then(questionId => {
-        visitEmbeddedPage({
-          resource: { question: questionId },
-          params: {
-            qty_locked: 15, // IMPORTANT: integer
-          },
-          exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
-        });
-      });
+      // We have to manually send the payload in order to make sure it works for both strings and integers.
+      ["string", "integer"].forEach(type => {
+        cy.log(`Make sure it works with ${type.toUpperCase()} in the payload`);
 
-      cy.findByText("COUNT(*)");
-      cy.findByText("5");
+        cy.get("@questionId").then(questionId => {
+          visitEmbeddedPage({
+            resource: { question: questionId },
+            params: {
+              qty_locked: type === "string" ? "15" : 15, // IMPORTANT: integer
+            },
+            exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+          });
+        });
+
+        cy.get(".cellData")
+          .should("contain", "COUNT(*)")
+          .and("contain", "5");
+      });
     });
   });
 });
