@@ -1,7 +1,10 @@
 import React, { FormHTMLAttributes } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockTimeline } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTimeline,
+} from "metabase-types/api/mocks";
 import EditTimelineModal, { EditTimelineModalProps } from "./EditTimelineModal";
 
 const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
@@ -27,6 +30,7 @@ const getProps = (
   opts?: Partial<EditTimelineModalProps>,
 ): EditTimelineModalProps => ({
   timeline: createMockTimeline(),
+  collection: createMockCollection(),
   onSubmit: jest.fn(),
   onArchive: jest.fn(),
   onCancel: jest.fn(),
