@@ -70,6 +70,7 @@ const QueryDownloadWidget = ({
                   token={token}
                   card={card}
                   params={params}
+                  setStatus={setStatus}
                 />
               ) : uuid ? (
                 <PublicQueryButton
@@ -77,6 +78,7 @@ const QueryDownloadWidget = ({
                   type={type}
                   uuid={uuid}
                   result={result}
+                  setStatus={setStatus}
                 />
               ) : token ? (
                 <EmbedQueryButton key={type} type={type} token={token} />
@@ -95,6 +97,7 @@ const QueryDownloadWidget = ({
                   type={type}
                   result={result}
                   visualizationSettings={visualizationSettings}
+                  setStatus={setStatus}
                 />
               ) : null}
             </WidgetFormat>
@@ -109,6 +112,7 @@ const UnsavedQueryButton = ({
   type,
   result: { json_query = {} },
   visualizationSettings,
+  setStatus,
 }) => (
   <DownloadButton
     url={`api/dataset/${type}`}
@@ -117,6 +121,7 @@ const UnsavedQueryButton = ({
       visualization_settings: JSON.stringify(visualizationSettings),
     }}
     extensions={[type]}
+    setStatus={setStatus}
   >
     {type}
   </DownloadButton>
@@ -127,31 +132,35 @@ const SavedQueryButton = ({
   result: { json_query = {} },
   card,
   setStatus,
-}) => {
-  return (
-    <DownloadButton
-      url={`api/card/${card.id}/query/${type}`}
-      params={{ parameters: JSON.stringify(json_query.parameters) }}
-      extensions={[type]}
-      setStatus={setStatus}
-    >
-      {type}
-    </DownloadButton>
-  );
-};
-
-const PublicQueryButton = ({ type, uuid, result: { json_query = {} } }) => (
+}) => (
   <DownloadButton
-    method="GET"
-    url={Urls.publicQuestion(uuid, type)}
+    url={`api/card/${card.id}/query/${type}`}
     params={{ parameters: JSON.stringify(json_query.parameters) }}
     extensions={[type]}
+    setStatus={setStatus}
   >
     {type}
   </DownloadButton>
 );
 
-const EmbedQueryButton = ({ type, token }) => {
+const PublicQueryButton = ({
+  type,
+  uuid,
+  result: { json_query = {} },
+  setStatus,
+}) => (
+  <DownloadButton
+    method="GET"
+    url={Urls.publicQuestion(uuid, type)}
+    params={{ parameters: JSON.stringify(json_query.parameters) }}
+    extensions={[type]}
+    setStatus={setStatus}
+  >
+    {type}
+  </DownloadButton>
+);
+
+const EmbedQueryButton = ({ type, token, setStatus }) => {
   // Parse the query string part of the URL (e.g. the `?key=value` part) into an object. We need to pass them this
   // way to the `DownloadButton` because it's a form which means we need to insert a hidden `<input>` for each param
   // we want to pass along. For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
@@ -165,6 +174,7 @@ const EmbedQueryButton = ({ type, token }) => {
       url={Urls.embedCard(token, type)}
       params={params}
       extensions={[type]}
+      setStatus={setStatus}
     >
       {type}
     </DownloadButton>
@@ -177,12 +187,14 @@ const DashboardEmbedQueryButton = ({
   token,
   card,
   params,
+  setStatus,
 }) => (
   <DownloadButton
     method="GET"
     url={`api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${card.id}/${type}`}
     extensions={[type]}
     params={params}
+    setStatus={setStatus}
   >
     {type}
   </DownloadButton>

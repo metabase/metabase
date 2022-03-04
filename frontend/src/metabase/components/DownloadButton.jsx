@@ -22,16 +22,33 @@ function colorForType(type) {
   }
 }
 
+const handleSubmit = async (e, { method, url, setStatus }) => {
+  e.preventDefault();
+  setStatus(`pending`);
+
+  const formData = new URLSearchParams(new FormData(e.target));
+
+  const options = {
+    method,
+    body: formData,
+  };
+
+  fetch(url, options)
+    .then(() => setStatus(`resolved`))
+    .catch(() => setStatus(`rejected`));
+};
+
 const DownloadButton = ({
   children,
   method,
   url,
   params,
   extensions,
+  setStatus = () => {},
   ...props
 }) => (
   <div>
-    <form method={method} action={url}>
+    <form onSubmit={e => handleSubmit(e, { method, url, setStatus })}>
       {params && extractQueryParams(params).map(getInput)}
       <FormButton
         className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
@@ -53,7 +70,7 @@ const DownloadButton = ({
 );
 
 const getInput = ([name, value]) => (
-  <input type="hidden" name={name} value={value} />
+  <input key={name} type="hidden" name={name} value={value} />
 );
 
 DownloadButton.propTypes = {
