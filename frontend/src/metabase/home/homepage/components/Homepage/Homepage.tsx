@@ -1,5 +1,8 @@
 import React, { Fragment } from "react";
+import { t } from "ttag";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/components/EmptyState";
+import ErrorDetails from "metabase/components/ErrorDetails";
 import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
 import GreetingSection from "../GreetingSection";
@@ -31,6 +34,7 @@ export interface HomepageProps {
   onCollectionClick?: () => void;
   onDashboardClick?: (dashboard: Dashboard) => void;
   onDatabaseClick?: (database: Database) => void;
+  allError?: boolean;
 }
 
 const Homepage = ({
@@ -49,6 +53,7 @@ const Homepage = ({
   onCollectionClick,
   onDashboardClick,
   onDatabaseClick,
+  allError,
 }: HomepageProps): JSX.Element => {
   return (
     <HomepageRoot>
@@ -87,6 +92,14 @@ const Homepage = ({
             onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
+      ) : allError ? (
+        <EmptyState
+          title={t`Something's gone wrong`}
+          message={t`We've run into an error. You can try refreshing the page, or just go back.`}
+          illustrationElement={
+            <div className="QueryError-image QueryError-image--serverError" />
+          }
+        />
       ) : (
         <LoadingAndErrorWrapper loading />
       )}
