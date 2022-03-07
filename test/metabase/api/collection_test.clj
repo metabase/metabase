@@ -676,7 +676,6 @@
    {:slug                "lucky_pigeon_s_personal_collection"
     :color               "#31698A"
     :can_write           true
-    :bookmarked          false
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
     :effective_ancestors [{:metabase.models.collection.root/is-root? true
