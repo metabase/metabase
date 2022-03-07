@@ -78,12 +78,15 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <div className="relative flex">
+        <div
+          className="relative flex"
+          style={{ height: "100vh", overflow: "hidden" }}
+        >
           {this.hasNavbar() && <Navbar location={location} />}
           {errorPage ? (
             getErrorComponent(errorPage)
           ) : (
-            <div className="full">{children}</div>
+            <div className="full overflow-auto">{children}</div>
           )}
           <UndoListing />
           <StatusListing />
