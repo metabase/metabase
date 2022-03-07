@@ -13,7 +13,6 @@ export const SearchWrapper = styled.div`
   flex: 1 1 auto;
   max-width: 50em;
   align-items: center;
-  color: white;
   transition: background 300ms ease-in;
 `;
 
