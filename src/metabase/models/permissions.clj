@@ -418,6 +418,26 @@
   [database-or-id :- MapOrID]
   (str "/block" (data-perms-path database-or-id)))
 
+(s/defn base->feature-perms-path :- Path
+  "Returns the permissions path to use for a given permission type (e.g. download) and value (e.g. full or limited),
+  given the 'base' permissions path for an entity (the base path is equivalent to the one used for data access
+  permissions)."
+  [perm-type perm-value base-path]
+  (case [perm-type perm-value]
+    [:download :full]
+    (str "/download" base-path)
+
+    [:download :limited]
+    (str "/download/limited" base-path)))
+
+(s/defn feature-perms-path :- Path
+  [perm-type perm-value & path-components]
+  (base->feature-perms-path perm-type perm-value (apply data-perms-path path-components)))
+
+(s/defn native-feature-perms-path :- Path
+  [perm-type perm-value db-id]
+  (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
+
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -699,7 +719,7 @@
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
-;; TODO: rename this function to `revoke-data-access-permissions!` for consistency with the other helper functions
+;; TODO: rename this function to `revoke-permissions!` and make its behavior consistent with `grant-permissions!`
 (defn revoke-data-perms!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
   permissions that grant full or partial access to the object in question).
@@ -801,6 +821,64 @@
 
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
+
+(defn- download-permissions-set
+  [group-id]
+  (map :object
+       (db/select [Permissions :object]
+                  {:where [:and
+                           [:= :group_id group-id]
+                           [:or
+                            [:= :object (hx/literal "/")]
+                            [:like :object (hx/literal "/download/%")]]]})))
+
+(defn- download-permissions-level
+  [permissions-set db-id & [schema-name table-id]]
+  (cond
+   (set-has-full-permissions? permissions-set (feature-perms-path :download :full db-id schema-name table-id))
+   :full
+
+   (set-has-full-permissions? permissions-set (feature-perms-path :download :limited db-id schema-name table-id))
+   :limited
+
+   :else
+   :none))
+
+(s/defn update-native-download-permissions!
+  "To update native download permissions, we must read the list of tables in the database, and check the group's
+   download permission level for each one.
+     - If they have full download permissions for all tables, they have full native download permissions.
+     - If they have *at least* limited download permissions for all tables, they have limited native download
+       permissions.
+     - If they have no download permissions for at least one table, they have no native download permissions.
+
+  This lives in non-EE code because it needs to be called during sync, in case a new table was discovered or a
+  table was deleted. This ensures that native download perms are always up to date, even on OSS instances, in case
+  they are upgraded to EE."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
+  (doseq [perm-value [:full :limited]]
+    (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
+  (let [permissions-set (download-permissions-set group-id)
+        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id)
+        native-perm-level (reduce (fn [highest-seen-perm-level [table-id table-schema]]
+                                    (let [table-perm-level (download-permissions-level permissions-set
+                                                                                       db-id
+                                                                                       table-schema
+                                                                                       table-id)]
+                                      (cond
+                                        (= table-perm-level :none)
+                                        (reduced :none)
+
+                                        (or (= highest-seen-perm-level :limited)
+                                            (= table-perm-level :limited))
+                                        :limited
+
+                                        :else
+                                        :full)))
+                                  :full
+                                  (seq table-ids-and-schemas))]
+    (when (not= native-perm-level :none)
+      (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
 (s/defn ^:private update-table-read-permissions!
   [group-id       :- su/IntGreaterThanZero
