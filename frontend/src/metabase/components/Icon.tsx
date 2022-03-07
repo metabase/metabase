@@ -96,6 +96,9 @@ class BaseIcon extends Component<IconProps> {
     }
     delete props.size, props.scale;
 
+    // avoid passing `uncheckedColor` to a svg tag
+    const { uncheckedColor, ...svgProps } = props;
+
     if (icon.img) {
       // avoid passing `role="img"` to an actual image file
       const { _role, ...rest } = props;
@@ -113,14 +116,14 @@ class BaseIcon extends Component<IconProps> {
     } else if (icon.svg) {
       return (
         <svg
-          {...props}
+          {...svgProps}
           dangerouslySetInnerHTML={{ __html: icon.svg }}
           ref={forwardedRef}
         />
       );
     } else if (icon.path) {
       return (
-        <svg {...props} ref={forwardedRef}>
+        <svg {...svgProps} ref={forwardedRef}>
           <path d={icon.path} />
         </svg>
       );
