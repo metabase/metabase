@@ -78,9 +78,13 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <div className="relative">
+        <div className="relative flex">
           {this.hasNavbar() && <Navbar location={location} />}
-          {errorPage ? getErrorComponent(errorPage) : children}
+          {errorPage ? (
+            getErrorComponent(errorPage)
+          ) : (
+            <div className="full">{children}</div>
+          )}
           <UndoListing />
           <StatusListing />
         </div>

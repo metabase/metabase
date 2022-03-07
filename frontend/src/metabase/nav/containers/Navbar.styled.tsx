@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const NavRoot = styled.div`
-  display: flex;
+  width: 250px;
   align-items: center;
   padding: 0.5rem 1rem 0.5rem 0;
   background-color: ${color("nav")};
