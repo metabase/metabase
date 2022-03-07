@@ -528,7 +528,7 @@ export default class Activity extends Component {
           <div className="full flex flex-column">
             <div className="">
               {activity.length === 0 ? (
-                <div className="flex flex-column layout-centered mt4">
+                <div className="flex flex-column layout-centered my4">
                   <span className="QuestionCircle">!</span>
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}
