@@ -62,13 +62,14 @@ export const InputField = styled.input<InputProps>`
 export const InputButton = styled(IconButtonWrapper)`
   position: absolute;
   color: ${color("text-light")};
+  padding: 0.75rem;
   border-radius: 50%;
 `;
 
 export const InputLeftButton = styled(InputButton)`
-  left: 0.75rem;
+  left: 0;
 `;
 
 export const InputRightButton = styled(InputButton)`
-  right: 0.75rem;
+  right: 0;
 `;

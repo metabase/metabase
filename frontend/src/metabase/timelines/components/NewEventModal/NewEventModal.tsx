@@ -10,7 +10,11 @@ import { ModalBody } from "./NewEventModal.styled";
 export interface NewEventModalProps {
   timeline?: Timeline;
   collection: Collection;
-  onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
+  onSubmit: (
+    values: Partial<TimelineEvent>,
+    collection: Collection,
+    timeline?: Timeline,
+  ) => void;
   onCancel: (location: string) => void;
   onClose?: () => void;
 }
@@ -33,9 +37,9 @@ const NewEventModal = ({
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, collection);
+      await onSubmit(values, collection, timeline);
     },
-    [collection, onSubmit],
+    [timeline, collection, onSubmit],
   );
 
   return (
