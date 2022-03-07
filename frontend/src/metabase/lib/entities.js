@@ -259,12 +259,14 @@ export function createEntity(def) {
         );
 
         if (notify) {
-          if (notify.undo) {
-            // pick only the attributes that were updated
-            const undoObject = _.pick(
-              originalObject,
-              ...Object.keys(updatedObject || {}),
-            );
+          // pick only the attributes that were updated
+          const undoObject = _.pick(
+            originalObject,
+            ...Object.keys(updatedObject || {}),
+          );
+          // https://github.com/metabase/metabase/pull/20874#pullrequestreview-902384264
+          const canUndo = !hasCircularReference(undoObject);
+          if (notify.undo && canUndo) {
             dispatch(
               addUndo({
                 actions: [
@@ -609,6 +611,16 @@ export function createEntity(def) {
   require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
+}
+
+function hasCircularReference(object) {
+  try {
+    JSON.stringify(object);
+  } catch (error) {
+    return true;
+  }
+
+  return false;
 }
 
 export function combineEntities(entities) {
