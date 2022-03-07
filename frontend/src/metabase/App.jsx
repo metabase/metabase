@@ -23,6 +23,8 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
+import ProfileLink from "metabase/nav/components/ProfileLink";
+
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
   currentUser: state.currentUser,
@@ -97,7 +99,7 @@ export default class App extends Component {
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto">
-              <div className="full">
+              <div className="full flex align-center bg-white border-bottom">
                 <SearchBarContainer>
                   <SearchBarContent>
                     <SearchBar
@@ -106,6 +108,9 @@ export default class App extends Component {
                     />
                   </SearchBarContent>
                 </SearchBarContainer>
+                <div className="ml-auto">
+                  <ProfileLink {...this.props} />
+                </div>
               </div>
               {children}
             </div>

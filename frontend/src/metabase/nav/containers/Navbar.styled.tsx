@@ -30,8 +30,6 @@ export const SearchBarContainer = styled.div`
   align-items: center;
   padding-right: 1rem;
   z-index: 1;
-  background-color: white;
-  border-bottom: 1px solid #ddd;
 `;
 
 export const SearchBarContent = styled.div`

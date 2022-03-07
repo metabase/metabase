@@ -17,8 +17,6 @@ import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
-import ProfileLink from "metabase/nav/components/ProfileLink";
-
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { AdminNavbar } from "../components/AdminNavbar";
@@ -232,7 +230,6 @@ export default class Navbar extends Component {
               <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
             </Link>
           )}
-          <ProfileLink {...this.props} />
         </EntityMenuContainer>
         {this.renderModal()}
         <CollectionSidebar
