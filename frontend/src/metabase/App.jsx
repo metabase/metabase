@@ -101,7 +101,7 @@ export default class App extends Component {
           ) : (
             <div className="full overflow-auto">
               <div className="full flex align-center bg-white border-bottom px2">
-                <Icon name="menu" />
+                <Icon name="burger" />
                 <SearchBarContainer>
                   <SearchBarContent>
                     <SearchBar
