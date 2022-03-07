@@ -24,6 +24,7 @@ import {
 } from "metabase/containers/ErrorPages";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
+import Icon from "metabase/components/Icon";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
@@ -99,7 +100,8 @@ export default class App extends Component {
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto">
-              <div className="full flex align-center bg-white border-bottom">
+              <div className="full flex align-center bg-white border-bottom px2">
+                <Icon name="menu" />
                 <SearchBarContainer>
                   <SearchBarContent>
                     <SearchBar
