@@ -3,7 +3,7 @@ import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import StaticChart from "./StaticChart";
 import { STATIC_CHART_DEFAULT_OPTIONS, STATIC_CHART_TYPES } from "./constants";
-import { IStaticChartProps } from "./types";
+import { StaticChartProps } from "./types";
 
 export default {
   title: "static-viz/StaticChart",
@@ -20,7 +20,7 @@ export default {
 };
 
 const Template: ComponentStory<typeof StaticChart> = (
-  args: IStaticChartProps,
+  args: StaticChartProps,
 ) => {
   const [_, updateArgs] = useArgs();
 

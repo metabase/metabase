@@ -23,9 +23,9 @@ import LineAreaBarChart from "../../components/LineAreaBarChart";
 import { LINE_AREA_BAR_CHART_TYPE } from "../../components/LineAreaBarChart/constants";
 import Funnel from "../../components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
-import { IStaticChartProps } from "./types";
+import { StaticChartProps } from "./types";
 
-const StaticChart = ({ type, options }: IStaticChartProps) => {
+const StaticChart = ({ type, options }: StaticChartProps) => {
   switch (type) {
     case CATEGORICAL_AREA_CHART_TYPE:
       return <CategoricalAreaChart {...options} />;
