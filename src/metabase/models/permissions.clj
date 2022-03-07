@@ -863,7 +863,7 @@
   (doseq [perm-value [:full :limited]]
     (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
   (let [permissions-set (download-permissions-set group-id)
-        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id)
+        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [highest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id
