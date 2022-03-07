@@ -41,12 +41,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import {
-  EntityMenuContainer,
-  LogoIconContainer,
-  LogoLinkContainer,
-  NavRoot,
-} from "./Navbar.styled";
+import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 
 const mapDispatchToProps = {
@@ -153,10 +148,8 @@ export default class Navbar extends Component {
               <LogoIcon dark height={32} />
             </LogoIconContainer>
           </Link>
-        </LogoLinkContainer>
-        <EntityMenuContainer>
           <EntityMenu
-            className="hide sm-show mr1"
+            className="hide sm-show mr1 ml-auto"
             trigger={
               <Link
                 mr={1}
@@ -214,23 +207,7 @@ export default class Navbar extends Component {
               },
             ]}
           />
-
-          {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to="browse"
-              p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;Data Browse`}
-            >
-              <Icon name="table_spaced" size={14} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
-            </Link>
-          )}
-        </EntityMenuContainer>
+        </LogoLinkContainer>
         {this.renderModal()}
         <CollectionSidebar
           isRoot={isRoot}
@@ -238,6 +215,21 @@ export default class Navbar extends Component {
           collectionId={collectionId}
           shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
         />
+        {hasDataAccess && (
+          <Link
+            mr={[1, 2]}
+            to="browse"
+            p={1}
+            hover={{
+              backgroundColor: darken(color("brand")),
+            }}
+            className="flex align-center rounded transition-background"
+            data-metabase-event={`NavBar;Data Browse`}
+          >
+            <Icon name="table_spaced" size={14} />
+            <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+          </Link>
+        )}
       </NavRoot>
     );
   }
