@@ -51,6 +51,7 @@ import {
   SearchBarContainer,
   SearchBarContent,
 } from "./Navbar.styled";
+import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -225,6 +226,7 @@ export default class Navbar extends Component {
           <ProfileLink {...this.props} />
         </EntityMenuContainer>
         {this.renderModal()}
+        <CollectionSidebar />
       </NavRoot>
     );
   }
