@@ -1,8 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
+import SearchBar from "metabase/nav/components/SearchBar";
+import {
+  SearchBarContainer,
+  SearchBarContent,
+} from "metabase/nav/containers/Navbar.styled";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
@@ -21,6 +27,10 @@ const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
   currentUser: state.currentUser,
 });
+
+const mapDispatchToProps = {
+  onChangeLocation: push,
+};
 
 const getErrorComponent = ({ status, data, context }) => {
   if (status === 403) {
@@ -46,7 +56,7 @@ const getErrorComponent = ({ status, data, context }) => {
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
-@connect(mapStateToProps)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class App extends Component {
   state = {
     errorInfo: undefined,
@@ -73,7 +83,7 @@ export default class App extends Component {
   };
 
   render() {
-    const { children, location, errorPage } = this.props;
+    const { children, location, errorPage, onChangeLocation } = this.props;
     const { errorInfo } = this.state;
 
     return (
@@ -86,7 +96,19 @@ export default class App extends Component {
           {errorPage ? (
             getErrorComponent(errorPage)
           ) : (
-            <div className="full overflow-auto">{children}</div>
+            <div className="full overflow-auto">
+              <div className="full">
+                <SearchBarContainer>
+                  <SearchBarContent>
+                    <SearchBar
+                      location={location}
+                      onChangeLocation={onChangeLocation}
+                    />
+                  </SearchBarContent>
+                </SearchBarContainer>
+              </div>
+              {children}
+            </div>
           )}
           <UndoListing />
           <StatusListing />

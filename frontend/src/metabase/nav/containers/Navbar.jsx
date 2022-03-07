@@ -17,7 +17,6 @@ import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
-import SearchBar from "metabase/nav/components/SearchBar";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
@@ -48,8 +47,6 @@ import {
   LogoIconContainer,
   LogoLinkContainer,
   NavRoot,
-  SearchBarContainer,
-  SearchBarContent,
 } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 
@@ -139,14 +136,6 @@ export default class Navbar extends Component {
             </LogoIconContainer>
           </Link>
         </LogoLinkContainer>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              location={this.props.location}
-              onChangeLocation={this.props.onChangeLocation}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
         <EntityMenuContainer>
           <EntityMenu
             className="hide sm-show mr1"
