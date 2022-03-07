@@ -1,10 +1,13 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
-import moment, { Moment } from "moment";
+import { Moment } from "moment";
+import {
+  getDateStyleFromSettings,
+  getTimeStyleFromSettings,
+  has24HourModeSetting,
+  parseTimestamp,
+} from "metabase/lib/time";
 import DateWidget from "metabase/core/components/DateWidget";
 import { FormField } from "./types";
-
-const DATE_FORMAT = "YYYY-MM-DD";
-const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export interface FormDateWidgetProps {
   field: FormField;
@@ -26,17 +29,15 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const format = hasTime ? DATE_TIME_FORMAT : DATE_FORMAT;
-
   const value = useMemo(() => {
-    return field.value ? moment(field.value, format) : undefined;
-  }, [field, format]);
+    return field.value ? parseTimestamp(field.value) : undefined;
+  }, [field]);
 
   const handleChange = useCallback(
     (newValue?: Moment) => {
-      field.onChange?.(newValue?.format(format));
+      field.onChange?.(newValue?.format());
     },
-    [field, format],
+    [field],
   );
 
   const handleFocus = useCallback(() => {
@@ -53,6 +54,9 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       value={value}
       placeholder={placeholder}
       hasTime={hasTime}
+      dateFormat={getDateStyleFromSettings()}
+      timeFormat={getTimeStyleFromSettings()}
+      is24HourMode={has24HourModeSetting()}
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}

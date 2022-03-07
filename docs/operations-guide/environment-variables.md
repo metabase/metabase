@@ -727,13 +727,6 @@ Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_METABOT_ENABLED`
-
-Type: boolean<br>
-Default: `false`
-
-Enable MetaBot, which lets you search for and view your saved questions directly via Slack.
-
 ### `MB_NS_TRACE`
 
 Type: string<br>
@@ -959,6 +952,8 @@ Type: boolean<br>
 Default: `true`
 
 Send email notification to user, when they login from a new device. Set to `false` to stop sending "We've noticed a new login on your Metabase account" emails for all users.
+
+Also, this variable controls the geocoding service that Metabase uses to know the location from where your users logged in. Setting this variable to false also disables this reverse geocoding functionality.
 
 ### `MB_SESSION_COOKIES`
 

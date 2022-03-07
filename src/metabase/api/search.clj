@@ -165,7 +165,7 @@
 
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
-  [model archived?]
+  [_model archived?]
   [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
@@ -341,7 +341,7 @@
   [query]
   (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
-                               (filter (fn [[k v]] (= v :text)))
+                               (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>

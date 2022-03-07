@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -19,23 +19,28 @@ import {
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
+import { MenuItem } from "../../types";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
   isArchive?: boolean;
+  isDefault?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
+  onGoBack?: (collection: Collection) => void;
 }
 
 const TimelineDetailsModal = ({
   timeline,
   collection,
   isArchive = false,
+  isDefault = false,
   onArchive,
   onUnarchive,
   onClose,
+  onGoBack,
 }: TimelineDetailsModalProps): JSX.Element => {
   const title = isArchive ? t`Archived events` : timeline.name;
   const [inputText, setInputText] = useState("");
@@ -50,16 +55,27 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection);
-  }, [timeline, collection]);
+    return getMenuItems(timeline, collection, isArchive);
+  }, [timeline, collection, isArchive]);
+
+  const handleGoBack = useCallback(() => {
+    onGoBack?.(collection);
+  }, [collection, onGoBack]);
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
+  const canWrite = collection.can_write;
 
   return (
     <ModalRoot>
-      <ModalHeader title={title} onClose={onClose}>
-        {!isArchive && <EntityMenu items={menuItems} triggerIcon="kebab" />}
+      <ModalHeader
+        title={title}
+        onClose={onClose}
+        onGoBack={!isDefault ? handleGoBack : undefined}
+      >
+        {menuItems.length > 0 && (
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        )}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
         <ModalToolbar>
@@ -69,7 +85,7 @@ const TimelineDetailsModal = ({
             icon={<Icon name="search" />}
             onChange={setInputText}
           />
-          {!isArchive && (
+          {canWrite && !isArchive && (
             <ModalToolbarLink
               className="Button"
               to={Urls.newEventInCollection(timeline, collection)}
@@ -119,21 +135,34 @@ const isEventMatch = (event: TimelineEvent, searchText: string) => {
   );
 };
 
-const getMenuItems = (timeline: Timeline, collection: Collection) => {
-  return [
-    {
-      title: t`New timeline`,
-      link: Urls.newTimelineInCollection(collection),
-    },
-    {
-      title: t`Edit timeline details`,
-      link: Urls.editTimelineInCollection(timeline, collection),
-    },
-    {
+const getMenuItems = (
+  timeline: Timeline,
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  const items: MenuItem[] = [];
+
+  if (collection.can_write && !isArchive) {
+    items.push(
+      {
+        title: t`New timeline`,
+        link: Urls.newTimelineInCollection(collection),
+      },
+      {
+        title: t`Edit timeline details`,
+        link: Urls.editTimelineInCollection(timeline, collection),
+      },
+    );
+  }
+
+  if (!isArchive) {
+    items.push({
       title: t`View archived events`,
       link: Urls.timelineArchiveInCollection(timeline, collection),
-    },
-  ];
+    });
+  }
+
+  return items;
 };
 
 export default TimelineDetailsModal;

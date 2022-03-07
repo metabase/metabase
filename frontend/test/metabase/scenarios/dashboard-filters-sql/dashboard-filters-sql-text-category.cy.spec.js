@@ -5,6 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   setFilter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_SQL_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
@@ -24,12 +25,8 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         const questionDetails = getQuestionDetails(sqlFilter);
 
         cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { id, card_id, dashboard_id } }) => {
-            cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-            cy.visit(`/question/${card_id}`);
-
-            // Wait for `result_metadata` to load
-            cy.wait("@cardQuery");
+          ({ body: { card_id, dashboard_id } }) => {
+            visitQuestion(card_id);
 
             cy.visit(`/dashboard/${dashboard_id}`);
           },

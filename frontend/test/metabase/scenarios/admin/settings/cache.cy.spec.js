@@ -4,7 +4,7 @@ import {
   runNativeQuery,
 } from "__support__/e2e/cypress";
 
-const nativeQuery = "select random(), pg_sleep(2)";
+const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 
 describe("scenarios > admin > settings > cache", () => {
   beforeEach(() => {

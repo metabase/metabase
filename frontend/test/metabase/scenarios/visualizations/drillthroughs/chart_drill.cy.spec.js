@@ -7,8 +7,10 @@ import {
   visitQuestionAdhoc,
   visualize,
   summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -80,7 +82,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       const questionDetails = {
         name: "18011",
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -419,7 +421,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           query:
             "select 1 as axis, 5 as value, 9 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout",
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "bar",
       visualization_settings: {
@@ -487,17 +489,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "bar",
       }).then(({ body: { id: QUESTION_ID } }) => {
-        // Prepare to wait for certain imporatnt queries
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
         cy.signInAsNormalUser();
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.wait("@cardQuery");
         cy.get(".Visualization .bar")
           .eq(4)
           .click({ force: true });
@@ -516,7 +514,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     visitQuestionAdhoc({
       name: "15324",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -542,7 +540,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     visitQuestionAdhoc({
       name: "11345",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],

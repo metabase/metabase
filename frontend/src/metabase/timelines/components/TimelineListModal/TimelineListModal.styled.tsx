@@ -1,7 +1,19 @@
 import styled from "@emotion/styled";
 
+export const ModalRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 573px;
+  max-height: 90vh;
+`;
+
 export const ModalBody = styled.div`
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  margin: 1rem 0 0;
+  padding: 1rem 2rem 2rem;
+  overflow-y: auto;
 `;
 
 export const ListRoot = styled.div`

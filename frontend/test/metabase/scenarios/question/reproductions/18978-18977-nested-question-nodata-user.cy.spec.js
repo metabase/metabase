@@ -1,10 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
 
 describe("18978, 18977", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("/api/card/*/query").as("cardQuery");
   });
 
   it("should not display query editing controls and 'Browse Data' link", () => {
@@ -14,8 +13,7 @@ describe("18978, 18977", () => {
       },
     }).then(({ body: { id } }) => {
       cy.signIn("nodata");
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
+      visitQuestion(id);
 
       cy.get(".Nav").within(() => {
         cy.findByText(/Browse data/i).should("not.exist");

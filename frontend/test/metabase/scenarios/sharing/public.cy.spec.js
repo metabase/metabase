@@ -1,4 +1,9 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -61,7 +66,7 @@ describe.skip("scenarios > public", () => {
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized dashboards", () => {
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByTestId("add-to-dashboard-button").click();
@@ -116,7 +121,7 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create public questions", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.icon("share").click();
 
@@ -140,7 +145,7 @@ describe.skip("scenarios > public", () => {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
       });
 
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.icon("share").click();
 

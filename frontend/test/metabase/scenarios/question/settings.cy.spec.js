@@ -7,7 +7,9 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
@@ -90,7 +92,7 @@ describe("scenarios > question > settings", () => {
               },
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "table",
       });
@@ -149,7 +151,7 @@ describe("scenarios > question > settings", () => {
         dataset_query: {
           type: "query",
           query: { "source-table": ORDERS_ID },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 
@@ -175,7 +177,7 @@ describe("scenarios > question > settings", () => {
 
       const questionDetails = {
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: { "source-table": 2 },
           type: "query",
         },

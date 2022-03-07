@@ -1,7 +1,8 @@
 import {
   restore,
   withDatabase,
-  describeWithToken,
+  describeEE,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -9,7 +10,7 @@ const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-describeWithToken("postgres > user > query", () => {
+describeEE("postgres > user > query", () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -51,8 +52,6 @@ describeWithToken("postgres > user > query", () => {
         },
         database: PG_DB_ID,
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         cy.sandboxTable({
           table_id: PEOPLE_ID,
           attribute_remappings: {
@@ -63,11 +62,7 @@ describeWithToken("postgres > user > query", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);

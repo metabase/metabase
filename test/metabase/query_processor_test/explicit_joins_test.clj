@@ -848,3 +848,26 @@
                       [2 "Stout Burgers & Beers" "Burger" "Burger"]]
                      (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
+
+(deftest join-against-implicit-join-test
+  (testing "Should be able to explicitly join against an implicit join (#20519)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+      (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+        (mt/dataset sample-dataset
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :breakout     [$product_id->products.category]
+                                        :aggregation  [[:count]]}
+                         :joins        [{:source-table $$products
+                                         :alias        "Products"
+                                         :condition    [:= *products.category &Products.products.category]
+                                         :fields       [&Products.products.id
+                                                        &Products.products.title]}]
+                         :expressions  {"CC" [:+ 1 1]}
+                         :order-by     [[:asc &Products.products.id]]
+                         :limit        2})]
+            (mt/with-native-query-testing-context query
+              (is (= [["Gizmo"     4784 2 1 "Rustic Paper Wallet"]
+                      ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
+                     (mt/formatted-rows [str int int int str]
+                       (qp/process-query query)))))))))))

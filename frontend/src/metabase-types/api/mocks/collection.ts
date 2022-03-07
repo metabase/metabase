@@ -5,5 +5,6 @@ export const createMockCollection = (
 ): Collection => ({
   id: 1,
   name: "Collection",
+  can_write: false,
   ...opts,
 });

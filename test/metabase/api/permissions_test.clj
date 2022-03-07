@@ -20,7 +20,6 @@
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.
-;; It should also *not* include the MetaBot group because MetaBot should *not* be enabled
 (defn- fetch-groups []
   (set (mt/user-http-request
         :crowberto :get 200 "permissions/group")))

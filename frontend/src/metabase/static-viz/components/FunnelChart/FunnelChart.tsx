@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Line, Polygon } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
@@ -87,10 +87,9 @@ const Funnel = ({ data, settings }: FunnelProps) => {
           );
 
           return (
-            <>
+            <Fragment key={index}>
               {points && (
                 <Polygon
-                  key={index}
                   fill={palette.brand}
                   points={points}
                   opacity={calculateStepOpacity(index, steps.length)}
@@ -159,7 +158,7 @@ const Funnel = ({ data, settings }: FunnelProps) => {
                   </>
                 )}
               </Group>
-            </>
+            </Fragment>
           );
         })}
       </Group>
