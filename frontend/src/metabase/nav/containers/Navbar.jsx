@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 
 import { t } from "ttag";
 
@@ -61,10 +62,12 @@ const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
+@withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
     modal: null,
+    shouldDisplayMobileSidebar: false,
   };
 
   static propTypes = {
@@ -113,8 +116,25 @@ export default class Navbar extends Component {
     );
   }
 
+  handleToggleMobileSidebar() {
+    this.setState({
+      shouldDisplayMobileSidebar: !this.state.shouldDisplayMobileSidebar,
+    });
+  }
+
   renderMainNav() {
-    const { hasDataAccess, hasNativeWrite, hasDbWithJsonEngine } = this.props;
+    const {
+      hasDataAccess,
+      hasNativeWrite,
+      hasDbWithJsonEngine,
+      router,
+    } = this.props;
+    console.log("APP PROPS", this.props);
+    const collectionId = Urls.extractCollectionId(router.params.slug);
+    const isRoot = collectionId === "root";
+
+    console.log("ROOOT", isRoot, collectionId);
+    const shouldDisplayMobileSidebar = this.state.shouldDisplayMobileSidebar;
 
     return (
       <NavRoot
@@ -215,7 +235,12 @@ export default class Navbar extends Component {
           <ProfileLink {...this.props} />
         </EntityMenuContainer>
         {this.renderModal()}
-        <CollectionSidebar />
+        <CollectionSidebar
+          isRoot={isRoot}
+          handleToggleMobileSidebar={this.handleToggleMobileSidebar}
+          collectionId={collectionId}
+          shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
+        />
       </NavRoot>
     );
   }
