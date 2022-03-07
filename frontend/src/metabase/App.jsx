@@ -107,7 +107,7 @@ export default class App extends Component {
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto">
-              <div className="full flex align-center bg-white border-bottom px2 relative z2">
+              <div className="full flex align-center bg-white border-bottom px2 relative zF">
                 <Icon
                   name="burger"
                   className="text-brand-hover cursor-pointer"
