@@ -15,7 +15,7 @@ export const QueryBuilderViewRoot = styled.div`
   flex-direction: column;
   background-color: ${color("bg-white")};
   position: fixed;
-  top: 0;
+  top: 49px;
   left: ${SIDEBAR_WIDTH};
   right: 0;
   bottom: 0;
