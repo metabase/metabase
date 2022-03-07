@@ -79,7 +79,7 @@
   differences:
     - Permissions have three levels: full, limited, and none.
     - Native query download permissions are fully inferred from the non-native download permissions. For more details,
-      see the docstring for [[update-native-download-permissions!]]."
+      see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
   (when-let [schemas (:schemas new-download-perms)]
     (condp = schemas
