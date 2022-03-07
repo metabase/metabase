@@ -120,9 +120,10 @@
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
-   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
+   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.
    `status` and `include_deactivated` requires superuser permissions.
    - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
+   If both params are passed, `status` takes precedence.
 
   For users with segmented permissions, return only themselves.
 
