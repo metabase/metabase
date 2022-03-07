@@ -63,6 +63,7 @@ const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 export default class App extends Component {
   state = {
     errorInfo: undefined,
+    sidebarOpen: true,
   };
 
   constructor(props) {
@@ -85,6 +86,10 @@ export default class App extends Component {
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
+  toggleSidebar = () => {
+    this.setState({ sidebarOpen: !this.state.sidebarOpen });
+  };
+
   render() {
     const { children, location, errorPage, onChangeLocation } = this.props;
     const { errorInfo } = this.state;
@@ -95,13 +100,19 @@ export default class App extends Component {
           className="relative flex"
           style={{ height: "100vh", overflow: "hidden" }}
         >
-          {this.hasNavbar() && <Navbar location={location} />}
+          {this.hasNavbar() && this.state.sidebarOpen && (
+            <Navbar location={location} />
+          )}
           {errorPage ? (
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto">
-              <div className="full flex align-center bg-white border-bottom px2">
-                <Icon name="burger" />
+              <div className="full flex align-center bg-white border-bottom px2 relative z2">
+                <Icon
+                  name="burger"
+                  className="text-brand-hover cursor-pointer"
+                  onClick={() => this.toggleSidebar()}
+                />
                 <SearchBarContainer>
                   <SearchBarContent>
                     <SearchBar
