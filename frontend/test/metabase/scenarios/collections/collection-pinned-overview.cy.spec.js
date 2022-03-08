@@ -1,5 +1,4 @@
 import { restore, popover } from "__support__/e2e/cypress";
-import { turnIntoModel } from "../models/helpers/e2e-models-helpers";
 
 const DASHBOARD_ITEM_NAME = "Orders in a dashboard";
 const CARD_ITEM_NAME = "Orders, Count";
@@ -18,10 +17,11 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should let the user pin items", () => {
-    cy.visit("/question/1");
-    turnIntoModel();
+    // Turn question 1 into a model
+    cy.request("PUT", "/api/card/1", { dataset: true });
 
     cy.visit("/collection/root");
+    cy.wait("@pinnedItemsGET");
 
     // pin a dashboard
     cy.findByText(DASHBOARD_ITEM_NAME)
@@ -30,6 +30,7 @@ describe("scenarios > collection pinned items overview", () => {
         cy.icon("pin").click();
       });
     cy.wait("@pinnedItemsGET");
+
     // ensure the dashboard card is showing in the pinned section
     cy.findByTestId("pinned-items").within(() => {
       cy.icon("dashboard");
@@ -40,6 +41,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     cy.visit("/collection/root");
+    cy.wait("@pinnedItemsGET");
 
     // pin a card
     cy.findByText(CARD_ITEM_NAME)
@@ -47,8 +49,8 @@ describe("scenarios > collection pinned items overview", () => {
       .within(() => {
         cy.icon("pin").click();
       });
-    cy.wait("@pinnedItemsGET");
-    cy.wait("@cardQuery");
+    cy.wait(["@pinnedItemsGET", "@cardQuery"]);
+
     // ensure the card visualization is showing in the pinned section
     cy.findByTestId("pinned-items").within(() => {
       cy.findByText("18,760");
@@ -57,6 +59,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     cy.visit("/collection/root");
+    cy.wait(["@pinnedItemsGET", "@cardQuery"]);
 
     // pin a model
     cy.findByText(MODE_ITEM_NAME)
@@ -72,8 +75,6 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("A model").click();
       cy.url().should("include", "/model/1");
     });
-
-    cy.visit("/collection/root");
   });
 
   describe("pinned item actions", () => {
