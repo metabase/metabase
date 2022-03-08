@@ -11,7 +11,7 @@ jobs:
     if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v4
+      - uses: actions/github-script@v6
         id: branch_info
         with:
           script: |
@@ -63,7 +63,7 @@ jobs:
               startSha: commits[0].sha,
               endSha: commits[commits.length - 1].sha
             }
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         name: Cherry-pick commits and create PR
         with:
           fetch-depth: 0
@@ -116,7 +116,7 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/github-script@v4
+      - uses: actions/github-script@v6
         with:
           script: |
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;

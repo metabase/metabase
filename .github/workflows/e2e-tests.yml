@@ -17,7 +17,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -35,18 +35,8 @@ jobs:
     - run: ./bin/build drivers
     - run: ./bin/build uberjar
 
-    - name: Mark with the commit hash
-      run:  git rev-parse --short HEAD > COMMIT-ID
-    - name: Calculate SHA256 checksum
-      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
-    - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-        path: |
-          ./target/uberjar/metabase.jar
-          ./COMMIT-ID
-          ./SHA256.sum
+    - name: Prepare and Upload Uberjar Artifact
+      uses: ./.github/actions/upload-uberjar-artifact
 
   e2e-tests:
     runs-on: buildjet-2vcpu-ubuntu-2004
@@ -107,39 +97,31 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
 
-    - name: Get Cypress cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
-    - name: Ensure that Cypress executable is ready
-      run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
-
-    - uses: actions/download-artifact@v2
-      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+    - name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      uses: actions/download-artifact@v3
       with:
         name: metabase-${{ matrix.edition }}-uberjar
+
     - name: Get the version info
       run: |
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
-      name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       env:
         TERM: xterm
+
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}

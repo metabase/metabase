@@ -14,6 +14,6 @@ jobs:
     container: snowplow/igluctl:0.6.0
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Lint
         run: igluctl lint snowplow
