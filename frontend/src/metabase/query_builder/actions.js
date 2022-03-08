@@ -68,13 +68,7 @@ import {
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
-import {
-  MetabaseApi,
-  BookmarkApi,
-  CardApi,
-  UserApi,
-  DashboardApi,
-} from "metabase/services";
+import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -260,16 +254,6 @@ export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
   ({ id }, embedding_params) => CardApi.update({ id, embedding_params }),
-);
-
-export const CREATE_QUESTION_BOOKMARK = `metabase/entities/questions/ADD_BOOKMARK`;
-export const createBookmark = createAction(CREATE_QUESTION_BOOKMARK, ({ id }) =>
-  BookmarkApi.question.create({ id }),
-);
-
-export const DELETE_QUESTION_BOOKMARK = `metabase/entities/questions/DELETE_BOOKMARK`;
-export const deleteBookmark = createAction(DELETE_QUESTION_BOOKMARK, ({ id }) =>
-  BookmarkApi.question.delete({ id }),
 );
 
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
