@@ -14,3 +14,4 @@ runs:
           ./target/uberjar/metabase.jar
           ./COMMIT-ID
           ./SHA256.sum
+          
