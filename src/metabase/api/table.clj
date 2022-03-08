@@ -212,16 +212,10 @@
 (defn- supports-numeric-binning? [driver]
   (and driver (driver/supports? driver :binning)))
 
-(defn- supports-date-binning?
-  "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type], :as field}]
-  (and (types/temporal-field? field)
-       (not (isa? base_type :type/Time))))
-
 (defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-                                       (supports-date-binning? field)
+                                       (types/temporal-field? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value

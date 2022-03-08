@@ -713,7 +713,7 @@
         (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
           (mt/dataset test-data-with-time
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
-              (is (= []
+              (is (= @#'table-api/datetime-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))
 
 (deftest nested-queries-binning-options-test
