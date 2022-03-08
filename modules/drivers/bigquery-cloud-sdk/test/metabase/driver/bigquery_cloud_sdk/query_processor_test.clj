@@ -411,8 +411,8 @@
              :bigquery-cloud-sdk
              [:field "date" {:temporal-unit      :week
                              :base-type          :type/Date
-                             ::add/source-table
-                             ::add/source        ::add/source-alias "date"
+                             ::add/source-table  ::add/source
+                             ::add/source-alias  "date"
                              ::add/desired-alias "date"
                              ::add/position      0}]))))))
 
