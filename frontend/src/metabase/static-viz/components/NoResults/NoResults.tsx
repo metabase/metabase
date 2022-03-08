@@ -79,7 +79,7 @@ const NoResults = (): ReactElement => {
           textAnchor="middle"
           verticalAnchor="middle"
         >
-          No results!
+          No results
         </Text>
       </Group>
     </svg>
