@@ -79,14 +79,12 @@ describe("scenarios > collection pinned items overview", () => {
 
   describe("pinned item actions", () => {
     beforeEach(() => {
-      cy.visit("/collection/root");
+      // pin a dashboard using the API
+      cy.request("PUT", "/api/dashboard/1", {
+        collection_position: 1,
+      });
 
-      // pin a dashboard
-      cy.findByText(DASHBOARD_ITEM_NAME)
-        .closest("tr")
-        .within(() => {
-          cy.icon("pin").click();
-        });
+      cy.visit("/collection/root");
       cy.wait("@pinnedItemsGET");
 
       // open the action menu
