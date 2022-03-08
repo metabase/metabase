@@ -52,11 +52,8 @@ const getRawQueryResults = state => state.qb.queryResults;
 export const getIsBookmarked = (state, props) => {
   const itemId = props.list.length > 0 && props.list[0]["item_id"];
 
-  return (
-    itemId &&
-    props.bookmarks.some(
-      bookmark => bookmark.type === "card" && bookmark.item_id === itemId,
-    )
+  return props.bookmarks.some(
+    bookmark => bookmark.type === "card" && bookmark.item_id === itemId,
   );
 };
 
