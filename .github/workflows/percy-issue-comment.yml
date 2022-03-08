@@ -52,7 +52,7 @@ jobs:
       - run: ./bin/build
 
       - name: Prepare back-end environment
-        uses: ./.github/actions/uberjar-artifact
+        uses: ./.github/actions/upload-uberjar-artifact
 
   percy:
     timeout-minutes: 30

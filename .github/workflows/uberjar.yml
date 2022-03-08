@@ -30,7 +30,7 @@ jobs:
     - run: ./bin/build
 
     - name: Prepare back-end environment
-      uses: ./.github/actions/uberjar-artifact
+      uses: ./.github/actions/upload-uberjar-artifact
 
   check:
     runs-on: ubuntu-20.04
