@@ -273,33 +273,32 @@
 
 (deftest convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
-    (mt/with-log-level :trace
-      (impl/test-migrations ["v42.00-064"] [migrate!]
-        (with-open [conn (jdbc/get-connection (db/connection))]
-          (when (= :mysql driver/*driver*)
-            ;; simulate the broken app DB state that existed prior to the fix from #16095
-            (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
-              (.execute stmt)))
-          (migrate!) ; run migrations, then check the new type
-          (let [^String exp-type (case driver/*driver*
-                                   :mysql    "longblob"
-                                   :h2       "BLOB"
-                                   :postgres "bytea")
-                name-fn          (case driver/*driver*
-                                   :h2 str/upper-case
-                                   identity)
-                tbl-nm           "query_cache"
-                col-nm           "results"
-                tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
-              (testing (format " %s in %s" exp-type driver/*driver*)
-                ;; just get the first/only scalar value from the results (which is a vec of maps)
-                (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
-                  (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
-                          driver/*driver*
-                          tbl-nm
-                          col-nm
-                          exp-type
-                          (get tbl-cols col-nm))))))))))
+    (impl/test-migrations ["v42.00-064"] [migrate!]
+      (with-open [conn (jdbc/get-connection (db/connection))]
+        (when (= :mysql driver/*driver*)
+          ;; simulate the broken app DB state that existed prior to the fix from #16095
+          (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
+            (.execute stmt)))
+        (migrate!)                      ; run migrations, then check the new type
+        (let [^String exp-type (case driver/*driver*
+                                 :mysql    "longblob"
+                                 :h2       "BLOB"
+                                 :postgres "bytea")
+              name-fn          (case driver/*driver*
+                                 :h2 str/upper-case
+                                 identity)
+              tbl-nm           "query_cache"
+              col-nm           "results"
+              tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+          (testing (format " %s in %s" exp-type driver/*driver*)
+            ;; just get the first/only scalar value from the results (which is a vec of maps)
+            (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
+                        driver/*driver*
+                        tbl-nm
+                        col-nm
+                        exp-type
+                        (get tbl-cols col-nm)))))))))
 
 (deftest remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"

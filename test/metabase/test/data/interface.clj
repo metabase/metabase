@@ -6,6 +6,7 @@
 
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [environ.core :refer [env]]
             [medley.core :as m]
@@ -93,7 +94,7 @@
   ;; no-op during AOT compilation
   (when-not *compile-files*
     (driver/add-parent! driver ::test-extensions)
-    (println "Added test extensions for" driver "💯")))
+    (log/infof "Added test extensions for %s 💯" driver)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -110,7 +111,7 @@
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
-          (println "doing before-run for" driver))
+          (log/infof "doing before-run for %s" driver))
         ;; avoid using the dispatch fn here because it dispatches on driver with test extensions which would result in
         ;; a circular call back to this function
         ((get-method before-run driver) driver)
@@ -120,8 +121,8 @@
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
-    (println (format "Loading driver %s test extensions %s"
-                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (log/infof "Loading driver %s test extensions %s"
+               (u/format-color 'blue driver) (apply list 'require expected-ns require-options))
     (apply classloader/require expected-ns require-options)))
 
 (defonce ^:private has-loaded-extensions (atom #{}))
