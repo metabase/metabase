@@ -71,6 +71,19 @@
                     (map :name)
                     sort)))))
 
+    (testing "Personal Collection's name and slug should be returned in user's locale"
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
+          (mt/with-temp* [User       [user {:locale     "fr"
+                                            :first_name "Taco"
+                                            :last_name  "Bell"}]
+                          Collection [collection {:personal_owner_id (:id user)}]]
+            (is (= [{:name "Collection personnelle de Taco Bell"
+                     :slug "collection_personnelle_de_taco_bell"}]
+                   (->> (mt/user-http-request user :get 200 "collection")
+                        (filter :personal_owner_id)
+                        (map #(select-keys % [:name :slug])))))))))
+
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
@@ -191,7 +204,28 @@
                 response (mt/user-http-request :rasta :get 200
                                                "collection/tree?exclude-archived=true")]
             (is (= [{:name "A" :children []}]
-                   (collection-tree-names-only ids response)))))))))
+                   (collection-tree-names-only ids response)))))))
+
+    (testing "For personal collections, it should return name and slug in user's locale"
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
+          (mt/with-temp* [User       [{user-id :id} {:locale     "fr"
+                                                     :first_name "Taco"
+                                                     :last_name  "Bell"}]
+                          Collection [collection {:personal_owner_id user-id}]]
+            (is (= {:description       nil
+                    :archived          false
+                    :slug              "collection_personnelle_de_taco_bell"
+                    :color             "#ABCDEF"
+                    :name              "Collection personnelle de Taco Bell"
+                    :personal_owner_id user-id
+                    :id                (:id collection)
+                    :location          "/"
+                    :namespace         nil
+                    :children          []
+                    :authority_level   nil}
+                   (some #(when (= (:id %) (:id collection)) %)
+                         (mt/user-http-request user-id :get 200 "collection/tree"))))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"
@@ -277,8 +311,19 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))))
+                 (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))
 
+    (testing "For personal collections, it should return name and slug in user's locale"
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
+          (mt/with-temp* [User       [{user-id :id} {:locale     "fr"
+                                                     :first_name "Taco"
+                                                     :last_name  "Bell"}]
+                          Collection [collection {:personal_owner_id user-id}]]
+            (is (= {:name "Collection personnelle de Taco Bell"
+                    :slug "collection_personnelle_de_taco_bell"}
+                   (select-keys (mt/user-http-request user-id :get 200 (str "collection/" (:id collection)))
+                                [:name :slug])))))))))
 
 ;;; ------------------------------------------------ Collection Items ------------------------------------------------
 
@@ -932,7 +977,23 @@
                :authority_level nil
                :can_write       true}]
              (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
-                  (filter #(str/includes? (:name %) "Personal Collection"))))))
+                  (filter #(str/includes? (:name %) "Personal Collection")))))
+
+      (testing "... and personal collection's name should be translated to user's locale"
+        (binding [collection/*allow-deleting-personal-collections* true]
+          (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
+            (mt/with-temp* [User       [user {:locale     "fr"
+                                              :first_name "Taco"
+                                              :last_name  "Bell"}]
+                            Collection [collection {:personal_owner_id (:id user)}]]
+              (is (= [{:name            "Collection personnelle de Taco Bell"
+                       :id              (:id collection)
+                       :description     nil
+                       :model           "collection"
+                       :authority_level nil
+                       :can_write       true}]
+                     (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
+                          (filter #(str/includes? (:name %) "Taco Bell"))))))))))
 
     (testing "For admins, only return our own Personal Collection (!)"
       (is (= [{:name            "Crowberto Corv's Personal Collection"

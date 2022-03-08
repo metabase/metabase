@@ -60,8 +60,11 @@
         (cons (root-collection namespace) collections))
       (hydrate collections :can_write)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+      ;; and for personal collections we translate the name to user's locale
       (for [collection collections]
-        (dissoc collection ::collection.root/is-root?)))))
+        (-> collection
+            (dissoc ::collection.root/is-root?)
+            collection/personal-collection-with-ui-details)))))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
@@ -92,18 +95,17 @@
                               (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
                                                    :from      [:report_card]
-                                                   :where     [:= :archived false]}))]
-    (collection/collections->tree
-     coll-type-ids
-     (db/select Collection
-                {:where [:and
-                         (when exclude-archived
-                           [:= :archived false])
-                         [:= :namespace namespace]
-                         (collection/visible-collection-ids->honeysql-filter-clause
-                          :id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))))
-
+                                                   :where     [:= :archived false]}))
+        collections   (->> (db/select Collection
+                                      {:where [:and
+                                               (when exclude-archived
+                                                 [:= :archived false])
+                                               [:= :namespace namespace]
+                                               (collection/visible-collection-ids->honeysql-filter-clause
+                                                 :id
+                                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                           (map collection/personal-collection-with-ui-details))]
+    (collection/collections->tree coll-type-ids collections)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -198,7 +200,7 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status :icon)))
+    (dissoc row :description :display :authority_level :moderated_status :icon :personal_owner_id)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
@@ -227,7 +229,7 @@
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
-            :moderated_status :icon)))
+            :moderated_status :icon :personal_owner_id)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
@@ -279,7 +281,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level :icon) rows) :favorite))
+  (hydrate (map #(dissoc % :authority_level :icon :personal_owner_id) rows) :favorite))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -306,7 +308,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -319,6 +321,7 @@
              :select [:id
                       :name
                       :description
+                      :personal_owner_id
                       [(hx/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -331,9 +334,10 @@
     ;; don't get models back from ulterior over-query
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
-    (assoc (dissoc row :collection_position :display :moderated_status :icon)
-           :can_write
-           (mi/can-write? Collection (:id row)))))
+    (cond-> row
+      (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
+      true                     (assoc :can_write (mi/can-write? Collection (:id row)))
+      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -391,7 +395,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :display :model :collection_position :authority_level
+  [:id :name :description :display :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -528,6 +532,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
+      collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
 (api/defendpoint GET "/:id"
