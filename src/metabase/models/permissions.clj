@@ -654,7 +654,10 @@
   (reduce (fn [g db-id]
             (assoc g db-id {:data
                             {:native  :write
-                             :schemas :all}}))
+                             :schemas :all}
+                            :download
+                            {:native  :full
+                             :schemas :full}}))
           {}
           db-ids))
 
