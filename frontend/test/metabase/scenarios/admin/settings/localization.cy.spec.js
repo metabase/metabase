@@ -156,14 +156,20 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should use date and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+    cy.intercept("PUT", "/api/setting/custom-formatting").as(
+      "updateFormatting",
+    );
+
     cy.visit("/admin/settings/localization");
 
     // update the date style setting to YYYY/MM/DD
     cy.findByText("January 7, 2018").click();
     cy.findByText("2018/1/7").click();
+    cy.wait("@updateFormatting");
 
     // update the time style setting to 24 hour
     cy.findByText("17:24 (24-hour clock)").click();
+    cy.wait("@updateFormatting");
 
     cy.visit("/question/1");
     cy.findByTestId("loading-spinner").should("not.exist");
