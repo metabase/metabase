@@ -1,4 +1,4 @@
-name: Prepare front-end environment
+name: Prepare Uberjar Artifact
 runs:
   using: "composite"
   steps:
