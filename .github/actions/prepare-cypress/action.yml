@@ -14,4 +14,3 @@ runs:
         yarn cypress cache path
         yarn cypress cache list
         yarn cypress verify
-        
