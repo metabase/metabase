@@ -863,8 +863,6 @@
   table was deleted. This ensures that native download perms are always up to date, even on OSS instances, in case
   they are upgraded to EE."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
-  (doseq [perm-value [:full :limited]]
-    (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
   (let [permissions-set (download-permissions-set group-id)
         table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [highest-seen-perm-level [table-id table-schema]]
@@ -884,6 +882,8 @@
                                         :full)))
                                   :full
                                   (seq table-ids-and-schemas))]
+    (doseq [perm-value [:full :limited]]
+      (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
     (when (not= native-perm-level :none)
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
