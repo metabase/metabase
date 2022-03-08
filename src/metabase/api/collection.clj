@@ -58,7 +58,7 @@
       (if archived?
         collections
         (cons (root-collection namespace) collections))
-      (hydrate collections :can_write)
+      (hydrate collections :can_write :bookmarked)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       (for [collection collections]
         (dissoc collection ::collection.root/is-root?)))))
@@ -528,7 +528,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :bookmarked)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"

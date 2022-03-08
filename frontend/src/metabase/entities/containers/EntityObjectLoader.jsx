@@ -18,6 +18,7 @@ const CONSUMED_PROPS = [
   "wrapped",
   "properties",
   "loadingAndErrorWrapper",
+  "LoadingAndErrorWrapper",
   "selectorName",
 ];
 
@@ -54,6 +55,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 export default class EntityObjectLoader extends React.Component {
   static defaultProps = {
     loadingAndErrorWrapper: true,
+    LoadingAndErrorWrapper: LoadingAndErrorWrapper,
     reload: false,
     wrapped: false,
     dispatchApiErrorEvent: true,
@@ -123,7 +125,14 @@ export default class EntityObjectLoader extends React.Component {
     });
   };
   render() {
-    const { entityId, fetched, error, loadingAndErrorWrapper } = this.props;
+    const {
+      entityId,
+      fetched,
+      error,
+      loadingAndErrorWrapper,
+      LoadingAndErrorWrapper,
+    } = this.props;
+
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
         loading={!fetched && entityId != null}
