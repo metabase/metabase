@@ -808,22 +808,22 @@
 (defn profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
   [[profile]]d form."
-  [message start-time]
+  [message-delay start-time]
   ;; indent the message according to [[*profile-level*]] and add a little down-left arrow so it (hopefully) points to
   ;; the parent form
-  (println (format-color (case (int (mod *profile-level* 4))
-                           0 :green
-                           1 :cyan
-                           2 :magenta
-                           3 :yellow) "%s%s took %s"
-             (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
-               "")
-             message
-             (format-nanoseconds (- (System/nanoTime) start-time)))))
+  (log/info (format-color (case (int (mod *profile-level* 4))
+                            0 :green
+                            1 :cyan
+                            2 :magenta
+                            3 :yellow) "%s%s took %s"
+                          (if (pos? *profile-level*)
+                            (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
+                            "")
+                          @message-delay
+                          (format-nanoseconds (- (System/nanoTime) start-time)))))
 
 (defmacro profile
-  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, formats the
+  "Like [[clojure.core/time]], but lets you specify a `message` that gets printed with the total time, formats the
   time nicely using `format-nanoseconds`, and indents nested calls to `profile`.
 
     (profile \"top-level\"
@@ -837,7 +837,7 @@
   ([form]
    `(profile ~(str form) ~form))
   ([message & body]
-   `(let [message#    ~message
+   `(let [message#    (delay ~message)
           start-time# (System/nanoTime)
           result#     (binding [*profile-level* (inc *profile-level*)]
                         ~@body)]
