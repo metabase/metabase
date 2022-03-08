@@ -109,6 +109,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+    - uses: actions/checkout@v3
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
@@ -117,11 +118,10 @@ jobs:
     - name: Get the version info
       run: |
         jar xf target/uberjar/metabase-${{ matrix.edition }}.jar version.properties
-        mkdir -p resources/
-        mv version.properties resources/
+        mkdir -p resources/ && mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }} with ${{ matrix.edition }}
-      run: java -jar metabase-${{ matrix.edition }}.jar & yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      run: java -jar target/uberjar/metabase-${{ matrix.edition }}.jar & yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 
