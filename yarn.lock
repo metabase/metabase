@@ -22013,10 +22013,10 @@ xhr-mock@^2.4.1:
     global "^4.3.0"
     url "^0.11.0"
 
-xlsx@0.18.2:
-  version "0.18.2"
-  resolved "https://registry.yarnpkg.com/xlsx/-/xlsx-0.18.2.tgz#b30b80659623d0260173b3c96c4ad308e9a5151e"
-  integrity sha512-BWLS+GO5yg5Hnro8mpbNkZq/a+dZ8689otFuHmb9wgCtiMpL+I9dpc+Sans6K9yYxTLEZ235Kr/JkmoTEMunzQ==
+xlsx@0.18.3:
+  version "0.18.3"
+  resolved "https://registry.yarnpkg.com/xlsx/-/xlsx-0.18.3.tgz#03a95a1082b0ac436afa0fcbc50adb98ee4b288e"
+  integrity sha512-iNBdKSJO11bI59C/dJjYWfR2gglRUrbWtDK9YoKKvu+RA1dinyWU3XXc0BaZUoSYFkxvPrO/9dwBGu6mhVNVGQ==
   dependencies:
     adler-32 "~1.3.0"
     cfb "~1.2.1"
