@@ -12,6 +12,7 @@ const NoResults = (): ReactElement => {
 
   return (
     <svg width={LAYOUT.width} height={LAYOUT.height}>
+      {/* based on no_results.svg */}
       <g
         fill="#f9fbfc"
         fillRule="evenodd"
