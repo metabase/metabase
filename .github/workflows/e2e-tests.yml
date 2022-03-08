@@ -17,7 +17,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -42,7 +42,7 @@ jobs:
     - name: Calculate SHA256 checksum
       run: sha256sum ./target/uberjar/metabase-${{ matrix.edition }}.jar > SHA256.sum
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: |
@@ -109,7 +109,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -117,6 +117,7 @@ jobs:
     - name: Get the version info
       run: |
         jar xf target/uberjar/metabase-${{ matrix.edition }}.jar version.properties
+        mkdir -p resources/
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }} with ${{ matrix.edition }}
@@ -125,7 +126,7 @@ jobs:
         TERM: xterm
 
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
