@@ -414,7 +414,7 @@ describe("scenarios > question > new", () => {
       });
     });
 
-    it.skip("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
+    it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
       // Go straight to orders table in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
 
@@ -432,7 +432,7 @@ describe("scenarios > question > new", () => {
           .click({ force: true });
       });
       // this should be among the granular selection choices
-      cy.findByText("Hour of day").click();
+      cy.findByText("Hour of Day").click();
     });
 
     it("'read-only' user should be able to resize column width (metabase#9772)", () => {
