@@ -70,15 +70,14 @@ const NoResults = (): ReactElement => {
       </g>
       <Group top={iconPositionY + ICON_SIZE + ICON_MARGIN} left={centerX}>
         <Text
-          color={LAYOUT.colors.textDark}
-          fill={LAYOUT.colors.textDark}
+          color={LAYOUT.color}
+          fill={LAYOUT.color}
           fontFamily={LAYOUT.font.family}
           fontSize={LAYOUT.font.size}
           fontStyle="normal"
           fontWeight={LAYOUT.font.weight}
           textAnchor="middle"
           verticalAnchor="middle"
-          style={{ color: LAYOUT.colors.textDark }}
         >
           No results!
         </Text>

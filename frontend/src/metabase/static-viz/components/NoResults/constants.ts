@@ -10,7 +10,5 @@ export const LAYOUT = {
     size: 28,
     weight: 700,
   },
-  colors: {
-    textDark: "#4c5773",
-  },
+  color: "#b8bbc3",
 };
