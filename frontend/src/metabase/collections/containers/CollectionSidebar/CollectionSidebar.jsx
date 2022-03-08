@@ -105,7 +105,11 @@ function CollectionSidebar({
       {allFetched ? (
         <React.Fragment>
           <Bookmarks bookmarks={bookmarks} />
-          <SidebarHeading>{t`Collections`}</SidebarHeading>
+
+          {bookmarks.length > 0 && (
+            <SidebarHeading>{t`Collections`}</SidebarHeading>
+          )}
+
           <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           <RootCollectionLink
             isRoot={isRoot}
