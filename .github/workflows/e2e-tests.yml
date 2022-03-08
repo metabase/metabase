@@ -22,12 +22,10 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-
     - name: Java/AOT prep
       run: |
         source "./bin/prep.sh"
         prep_deps
-
     - run: ./bin/build version
     - run: ./bin/build translations
     - run: ./bin/build frontend
@@ -121,7 +119,9 @@ jobs:
         mkdir -p resources/ && mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }} with ${{ matrix.edition }}
-      run: java -jar target/uberjar/metabase-${{ matrix.edition }}.jar & yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      run: java -jar target/uberjar/metabase-${{ matrix.edition }}.jar && yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      with:
+      -  target/uberjar/metabase-${{ matrix.edition }}.jar
       env:
         TERM: xterm
 
