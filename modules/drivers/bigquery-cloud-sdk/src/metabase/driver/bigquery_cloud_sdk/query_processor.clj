@@ -466,9 +466,9 @@
   table e.g.
 
     `table`.`field` -> `dataset.table`.`field`"
-  [{:keys [identifier-type components] :as identifier}]
+  [{:keys [identifier-type components], ::keys [already-qualified?], :as identifier}]
   (cond
-    (::already-qualified? (meta identifier))
+    already-qualified?
     false
 
     ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
@@ -491,17 +491,16 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
   [_ identifier]
-  (if-not (should-qualify-identifier? identifier)
-    identifier
-    (-> identifier
-        (update :components (fn [[dataset-id table & more]]
-                              (cons (str (when-let [proj-id (project-id-for-current-query)]
-                                           (str proj-id \.))
-                                         dataset-id
-                                         \.
-                                         table)
-                                    more)))
-        (vary-meta assoc ::already-qualified? true))))
+  (letfn [(prefix-components [[dataset-id table & more]]
+            (cons (str (when-let [proj-id (project-id-for-current-query)]
+                         (str proj-id \.))
+                       dataset-id
+                       \.
+                       table)
+                  more))]
+    (cond-> identifier
+      (should-qualify-identifier? identifier) (update :components prefix-components)
+      true                                    (assoc ::already-qualified? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]

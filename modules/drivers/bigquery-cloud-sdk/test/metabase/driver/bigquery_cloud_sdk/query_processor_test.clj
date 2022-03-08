@@ -402,6 +402,20 @@
             (is (= expected-type
                    (#'bigquery.qp/temporal-type relative-datetime)))))))))
 
+(deftest field-literal-trunc-form-test
+  (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
+    (is (= ["datetime_trunc(CAST(`source`.`date` AS datetime), week(sunday))"]
+           (sql.qp/format-honeysql
+            :bigquery-cloud-sdk
+            (sql.qp/->honeysql
+             :bigquery-cloud-sdk
+             [:field "date" {:temporal-unit      :week
+                             :base-type          :type/Date
+                             ::add/source-table
+                             ::add/source        ::add/source-alias "date"
+                             ::add/desired-alias "date"
+                             ::add/position      0}]))))))
+
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
     (letfn [(between->sql [clause]
