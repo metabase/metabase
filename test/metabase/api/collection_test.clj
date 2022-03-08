@@ -35,7 +35,7 @@
          `(perms/grant-collection-read-permissions! (group/all-users) ~collection-symb))
      ~@body))
 
-(defn- do-with-france-user-and-personal-collection [f]
+(defn- do-with-french-user-and-personal-collection [f]
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
       (mt/with-temp* [User       [user {:locale     "fr"
@@ -44,11 +44,11 @@
                       Collection [collection {:personal_owner_id (:id user)}]]
         (f user collection)))))
 
-(defmacro ^:private with-france-user-and-personal-collection
+(defmacro ^:private with-french-user-and-personal-collection
   "Create a user with locale's fr and a collection associated with it"
   {:style/indent 2}
   [user collection & body]
-  `(do-with-france-user-and-personal-collection
+  `(do-with-french-user-and-personal-collection
      (fn [~user ~collection]
        ~@body)))
 
@@ -89,7 +89,7 @@
                     sort)))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
-      (with-france-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection user collection
         (is (= [{:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}]
                (->> (mt/user-http-request user :get 200 "collection")
@@ -219,7 +219,7 @@
                    (collection-tree-names-only ids response)))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-france-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection user collection
         (is (= {:description       nil
                 :archived          false
                 :slug              "collection_personnelle_de_taco_bell"
@@ -321,7 +321,7 @@
                  (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-france-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection user collection
         (is (= {:name "Collection personnelle de Taco Bell"
                 :slug "collection_personnelle_de_taco_bell"}
                (select-keys (mt/user-http-request (:id user) :get 200 (str "collection/" (:id collection)))
@@ -985,7 +985,7 @@
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
       (testing "and personal collection's name should be translated to user's locale"
-        (with-france-user-and-personal-collection user collection
+        (with-french-user-and-personal-collection user collection
           (is (= [{:name            "Collection personnelle de Taco Bell"
                    :id              (:id collection)
                    :description     nil
