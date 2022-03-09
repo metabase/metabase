@@ -25,6 +25,7 @@ import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
@@ -43,7 +44,6 @@ import {
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
-import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -174,8 +174,8 @@ export default class View extends React.Component {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
-    if (isShowingTimelineSidebar) {
-      return <TimelineSidebar onClose={onCloseTimelines} />;
+    if (isShowingTimelineSidebar && question) {
+      return <TimelineSidebar question={question} onClose={onCloseTimelines} />;
     }
 
     return null;
