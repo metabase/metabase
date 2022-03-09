@@ -19,6 +19,7 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
         </CardHeader>
       }
       fullWidth={true}
+      iconVariant="up-down"
       iconPosition="right"
     >
       <CardBody>

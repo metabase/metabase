@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
 
 export const PanelRoot = styled.div`
-  display: block;
+  margin: 0 1.5rem;
 `;

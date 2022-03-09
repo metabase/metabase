@@ -1,12 +1,10 @@
 import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export const CardRoot = styled.div`
   display: flex;
 `;
-
-export const CardThread = styled.div``;
 
 export const CardIcon = styled(Icon)`
   color: ${color("brand")};
@@ -16,7 +14,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardIconContainer = styled.div`
   display: flex;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   justify-content: center;
   align-items: center;
   width: 2rem;
@@ -52,4 +50,5 @@ export const CardDateInfo = styled.div`
 export const CardCreatorInfo = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.75rem;
+  font-size: 0.75rem;
 `;

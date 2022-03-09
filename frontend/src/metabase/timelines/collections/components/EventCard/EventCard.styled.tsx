@@ -63,6 +63,7 @@ export const CardDateInfo = styled.div`
 export const CardCreatorInfo = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.75rem;
+  font-size: 0.75rem;
 `;
 
 export const CardAside = styled.div`
