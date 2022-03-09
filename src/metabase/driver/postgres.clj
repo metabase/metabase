@@ -170,7 +170,7 @@
   "Number of rows to sample for describe-nested-field-columns"
   10000)
 
-(defn- flatten-row [field-name row]
+(defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
             (lazy-seq
               (when-let [[[k v] & xs] (seq row)]
@@ -184,8 +184,8 @@
 
 (defn- row->types [row]
   (into {} (for [[field-name field-val] row]
-             (let [flattened-row (flatten-row field-name field-val)]
-               (into {} (map (fn [[k v]] [k (type v)]) flattened-row))))))
+             (let [flat-row (flattened-row field-name field-val)]
+               (into {} (map (fn [[k v]] [k (type v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
   ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
@@ -218,15 +218,13 @@
   (let [valid-fields (for [[field-path field-type] (seq field-types)]
                        (if (nil? field-type)
                          nil
-                         (do
-                           (println field-type)
                          {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
                           :database-type     nil
                           :base-type         (get field-type-map field-type :type/*)
                           ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                           :database-position 0
-                          :nfc-path          field-path})))
-        field-hash   (hash-set (filter some? valid-fields))]
+                          :nfc-path          field-path}))
+        field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
 ;; The name's nested field columns but what the people wanted (issue #708)

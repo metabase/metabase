@@ -18,24 +18,24 @@
                       :database-type "blah",
                       :database-position 0,
                       :id        1}
-          nfc-fields '#{{:name "incoherent_json_val → b",
-                          :database-type "blah",
-                          :base-type :type/*,
+          nfc-fields '#{{:name               "incoherent_json_val → b",
+                          :database-type     "blah",
+                          :base-type         :type/*,
                           :database-position 0,
-                          :id 2,
-                          :nfc-path [:incoherent_json_val "b"]}
-                         {:name "coherent_json_val → a",
-                          :database-type "blah",
-                          :base-type :type/*,
+                          :id                2,
+                          :nfc-path          [:incoherent_json_val "b"]}
+                         {:name              "coherent_json_val → a",
+                          :database-type     "blah",
+                          :base-type         :type/*,
                           :database-position 0,
-                          :id 3,
-                          :nfc-path [:coherent_json_val "a"]}
-                         {:name "coherent_json_val → b",
-                          :database-type "blah",
-                          :base-type :type/*,
+                          :id                3,
+                          :nfc-path          [:coherent_json_val "a"]}
+                         {:name              "coherent_json_val → b",
+                          :database-type     "blah",
+                          :base-type         :type/*,
                           :database-position 0,
-                          :id 4,
-                          :nfc-path [:coherent_json_val "b"]}}]
+                          :id                4,
+                          :nfc-path          [:coherent_json_val "b"]}}]
       (is (= (#'sync-fields.fetch-metadata/add-nested-field-columns our-field nfc-fields)
              {:name "coherent_json_val",
               :base-type :type/*,
