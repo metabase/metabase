@@ -25,6 +25,8 @@ function colorForType(type) {
 const handleSubmit = async (e, { method, url, setStatus }) => {
   e.preventDefault();
   setStatus(`pending`);
+  // Closes the download popover
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
   const formData = new URLSearchParams(new FormData(e.target));
 
@@ -34,8 +36,45 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
   };
 
   fetch(url, options)
-    .then(() => setStatus(`resolved`))
-    .catch(() => setStatus(`rejected`));
+    .then(async res => {
+      const reader = res.body.getReader();
+      const stream = new ReadableStream({
+        start(controller) {
+          return pump();
+          function pump() {
+            return reader.read().then(({ done, value }) => {
+              // When no more data needs to be consumed, close the stream
+              if (done) {
+                controller.close();
+                return;
+              }
+              // Enqueue the next data chunk into our target stream
+              controller.enqueue(value);
+              return pump();
+            });
+          }
+        },
+      });
+      const streamResponse = await new Response(stream);
+      const blob = await streamResponse.blob();
+      const url = URL.createObjectURL(blob);
+
+      const fileName = res.headers
+        .get("Content-Disposition")
+        .split(`;`)[1]
+        .split(`filename=`)[1]
+        .replace(/\"/g, ``);
+
+      const link = document.createElement(`a`);
+      link.href = url;
+      link.setAttribute(`download`, fileName);
+      document.body.appendChild(link);
+      link.click();
+      setStatus(`resolved`);
+    })
+    .catch(() => {
+      setStatus(`rejected`);
+    });
 };
 
 const DownloadButton = ({

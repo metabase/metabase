@@ -45,7 +45,6 @@ const QueryDownloadWidget = ({
       triggerClasses={cx(className, "text-brand-hover")}
       triggerClassesClose={classNameClose}
       disabled={status === `pending` ? true : null}
-      isOpen={status === `pending` ? false : null}
     >
       <WidgetRoot
         isExpanded={result.data && result.data.rows_truncated != null}
