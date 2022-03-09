@@ -11,7 +11,8 @@ import {
   CardDescription,
   CardRoot,
   CardThread,
-  CardThreadIcon,
+  CardIcon,
+  CardIconContainer,
   CardTitle,
 } from "./EventCard.styled";
 
@@ -25,9 +26,9 @@ const EventCard = ({ event }: EventCardProps): JSX.Element => {
 
   return (
     <CardRoot>
-      <CardThread>
-        <CardThreadIcon name={event.icon} />
-      </CardThread>
+      <CardIconContainer>
+        <CardIcon name={event.icon} />
+      </CardIconContainer>
       <CardBody>
         <CardDateInfo>{dateMessage}</CardDateInfo>
         <CardTitle>{event.name}</CardTitle>

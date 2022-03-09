@@ -6,14 +6,23 @@ export const CardRoot = styled.div`
   display: flex;
 `;
 
-export const CardThread = styled.div`
-  flex: 0 1 auto;
-`;
+export const CardThread = styled.div``;
 
-export const CardThreadIcon = styled(Icon)`
+export const CardIcon = styled(Icon)`
   color: ${color("brand")};
   width: 1rem;
   height: 1rem;
+`;
+
+export const CardIconContainer = styled.div`
+  display: flex;
+  flex: 0 1 auto;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid ${color("border")};
+  border-radius: 1rem;
 `;
 
 export const CardBody = styled.div`
