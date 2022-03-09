@@ -13,17 +13,21 @@ import BookmarksRoot, {
 
 import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
+import { Bookmarks } from "metabase-types/api";
+
 const LabelPropTypes = {
-  itemId: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
 };
 
 const BookmarksPropTypes = {
   bookmarks: PropTypes.object,
 };
 
-const Label = ({ name }: { name: string }) => {
+interface LabelProps {
+  name: string;
+}
+
+const Label = ({ name }: LabelProps) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon name="grid" />
@@ -34,7 +38,12 @@ const Label = ({ name }: { name: string }) => {
 
 Label.propTypes = LabelPropTypes;
 
-const CollectionSidebarBookmarks = ({ bookmarks }) => {
+interface CollectionSidebarBookmarksProps {
+  bookmarks: Bookmarks;
+}
+const CollectionSidebarBookmarks = ({
+  bookmarks,
+}: CollectionSidebarBookmarksProps) => {
   if (bookmarks.length === 0) {
     return null;
   }
@@ -47,8 +56,8 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
         {bookmarks.map(({ id, name, type }, index) => {
           const url = Urls.bookmark({ id, name, type });
           return (
-            <Link key={`bookmark-${id}`} to={url} selected={false}>
-              <Label itemId={id} name={name} />
+            <Link key={`bookmark-${id}`} to={url}>
+              <Label name={name} />
             </Link>
           );
         })}
