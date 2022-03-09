@@ -2,8 +2,8 @@ import React, { ChangeEvent, memo, useCallback } from "react";
 import CheckBox from "metabase/core/components/CheckBox";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Timeline } from "metabase-types/api";
+import EventList from "../EventList";
 import { CardHeader, CardTitle } from "./TimelineCard.styled";
-import EventList from "metabase/timelines/questions/components/EventList";
 
 export interface TimelineCardProps {
   timeline: Timeline;
