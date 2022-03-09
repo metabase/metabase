@@ -61,6 +61,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getTimelineVisibility,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -103,6 +104,7 @@ const mapStateToProps = (state, props) => {
 
     query: getQuery(state),
     metadata: getMetadata(state),
+    timelineVisibility: getTimelineVisibility(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),

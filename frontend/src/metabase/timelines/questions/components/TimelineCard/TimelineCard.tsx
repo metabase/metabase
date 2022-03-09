@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { ChangeEvent, memo, useCallback } from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
 import CheckBox from "metabase/core/components/CheckBox";
@@ -9,16 +9,35 @@ import { CardBody, CardHeader, CardTitle } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
   timeline: Timeline;
+  isVisible?: boolean;
+  onShowTimeline?: (timeline: Timeline) => void;
+  onHideTimeline?: (timeline: Timeline) => void;
 }
 
-const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
+const TimelineCard = ({
+  timeline,
+  isVisible,
+  onShowTimeline,
+  onHideTimeline,
+}: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
+
+  const handleToggle = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      if (event.target.checked) {
+        onShowTimeline?.(timeline);
+      } else {
+        onHideTimeline?.(timeline);
+      }
+    },
+    [timeline, onShowTimeline, onHideTimeline],
+  );
 
   return (
     <CollapseSection
       header={
         <CardHeader>
-          <CheckBox checked={true} />
+          <CheckBox checked={isVisible} onChange={handleToggle} />
           <CardTitle>{timeline.name}</CardTitle>
         </CardHeader>
       }

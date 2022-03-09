@@ -500,14 +500,14 @@ export const currentState = handleActions(
 
 export const timelineVisibility = handleActions(
   {
-    [INITIALIZE_QB]: () => {},
+    [INITIALIZE_QB]: { next: () => ({}) },
     [SHOW_TIMELINE]: {
       next: (state, { payload }) => assoc(state, payload.id, true),
     },
     [HIDE_TIMELINE]: {
       next: (state, { payload }) => assoc(state, payload.id, false),
     },
-    [RESET_QB]: () => {},
+    [RESET_QB]: { next: () => ({}) },
   },
   {},
 );

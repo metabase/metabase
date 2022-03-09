@@ -154,6 +154,9 @@ export default class View extends React.Component {
       isShowingFilterSidebar,
       isShowingTimelineSidebar,
       runQuestionQuery,
+      timelineVisibility,
+      showTimeline,
+      hideTimeline,
       onCloseSummary,
       onCloseFilter,
       onCloseTimelines,
@@ -175,7 +178,15 @@ export default class View extends React.Component {
     }
 
     if (isShowingTimelineSidebar && question) {
-      return <TimelineSidebar question={question} onClose={onCloseTimelines} />;
+      return (
+        <TimelineSidebar
+          question={question}
+          timelineVisibility={timelineVisibility}
+          onShowTimeline={showTimeline}
+          onHideTimeline={hideTimeline}
+          onClose={onCloseTimelines}
+        />
+      );
     }
 
     return null;
