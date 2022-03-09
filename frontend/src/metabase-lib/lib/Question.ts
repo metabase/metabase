@@ -1201,6 +1201,20 @@ export default class Question {
     return a.isDirtyComparedTo(b);
   }
 
+  hasBreakoutByDateTime() {
+    if (!this.isStructured()) {
+      return false;
+    }
+
+    const query = this.query() as StructuredQuery;
+    const breakouts = query.breakouts();
+
+    return breakouts.some(breakout => {
+      const field = breakout.field();
+      return field.isDate() || field.isTime();
+    });
+  }
+
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,

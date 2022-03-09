@@ -69,7 +69,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
-  isShowingTimelineSidebar: true,
+  isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -85,7 +85,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
-  isShowingTimelineSidebar: true,
+  isShowingTimelineSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated

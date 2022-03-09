@@ -13,6 +13,7 @@ import ButtonBar from "metabase/components/ButtonBar";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
@@ -64,6 +65,9 @@ const ViewFooter = ({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
+  isShowingTimelineSidebar,
+  onOpenTimelines,
+  onCloseTimelines,
 }) => {
   if (!result || isObjectDetail) {
     return null;
@@ -185,11 +189,21 @@ const ViewFooter = ({
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <QuestionEmbedWidgetTrigger
+              key="embeds"
               onClick={() =>
                 question.isSaved()
                   ? onOpenModal("embed")
                   : onOpenModal("save-question-before-embed")
               }
+            />
+          ),
+          QuestionTimelineWidget.shouldRender({ question }) && (
+            <QuestionTimelineWidget
+              key="timelines"
+              className="mx1 hide sm-show"
+              isShowingTimelineSidebar={isShowingTimelineSidebar}
+              onOpenTimelines={onOpenTimelines}
+              onCloseTimelines={onCloseTimelines}
             />
           ),
         ]}
