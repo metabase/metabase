@@ -25,26 +25,6 @@
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
 
-(defn hydrate-bookmarked
-  "Efficiently add `bookmarked` status for a sequence of `Cards`, `Dashboards`, or `Collections`."
-  {:batched-hydrate :bookmarked}
-  [items]
-  (when (seq items)
-    (let [klass (class (first items))
-          ;; todo: there must be a cleaner way to do this?
-          model-string (cond (isa? (class Card) klass) "card"
-                             (isa? (class Dashboard) klass) "dashboard"
-                             (isa? (class Collection) klass) "collection")
-          [_ bookmark-model id-key] (lookup model-string)
-          bookmarked-item-ids (when model-string (db/select-field id-key bookmark-model
-                                                   :user_id api/*current-user-id*
-                                                   id-key  [:in (map :id items)]))]
-      (if model-string
-        (for [item items]
-          (let [bookmarked? (contains? bookmarked-item-ids (:id item))]
-            (assoc item :bookmarked bookmarked?)))
-        items))))
-
 (api/defendpoint GET "/"
   "Fetch all bookmarks for the user"
   []
