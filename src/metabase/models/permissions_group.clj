@@ -55,9 +55,10 @@
   "The name of the \"Metabot\" magic group. This group is no longer used as of v42, since MetaBot has been removed."
   "MetaBot")
 
-(def ^{:arglists '([])} metabot
-  "Fetch the `MetaBot` permissions group"
-  (magic-group metabot-group-name))
+(defn metabot
+  "Fetch the `MetaBot` permissions group, or nil if it doesn't exist."
+  []
+  (u/ignore-exceptions ((magic-group metabot-group-name))))
 
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
