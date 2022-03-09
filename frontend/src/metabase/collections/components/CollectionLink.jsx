@@ -28,7 +28,7 @@ const CollectionLink = styled(Link)`
   color: ${props => (props.selected ? color("brand") : "white")};
   background-color: ${props =>
     props.selected
-      ? color("white")
+      ? color("brand-light")
       : props.hovered
       ? color("brand-light")
       : "inherit"};

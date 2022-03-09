@@ -127,7 +127,7 @@ export default class Navbar extends Component {
       <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3 flex-no-shrink"
+        className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto"
       >
         <LogoLinkContainer>
           <Link
