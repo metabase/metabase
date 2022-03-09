@@ -10,6 +10,17 @@ import {
   getMBQLName,
 } from "./config";
 
+export function unescapeString(string) {
+  let str = "";
+  for (let i = 0; i < string.length; ++i) {
+    const ch = string[i];
+    if (ch !== "\\") {
+      str += ch;
+    }
+  }
+  return str;
+}
+
 // IDENTIFIERS
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
@@ -110,11 +121,16 @@ function quoteString(string, character) {
   } else if (character === "'") {
     return swapQuotes(JSON.stringify(swapQuotes(string)));
   } else if (character === "[") {
-    // TODO: escape brackets
-    if (string.match(/\[|\]/)) {
-      throw new Error("String currently can't contain brackets: " + string);
+    let str = "[";
+    for (let i = 0; i < string.length; ++i) {
+      const ch = string[i];
+      if (ch === "[" || ch === "]") {
+        str += "\\";
+      }
+      str += ch;
     }
-    return `[${string}]`;
+    str += "]";
+    return str;
   } else if (character === "") {
     // unquoted
     return string;
@@ -129,8 +145,7 @@ function unquoteString(string) {
   } else if (character === "'") {
     return swapQuotes(JSON.parse(swapQuotes(string)));
   } else if (character === "[") {
-    // TODO: unescape brackets
-    return string.slice(1, -1);
+    return unescapeString(string).slice(1, -1);
   } else {
     throw new Error("Unknown quoting: " + string);
   }
