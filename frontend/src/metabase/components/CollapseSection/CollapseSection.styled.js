@@ -7,6 +7,7 @@ import Icon from "metabase/components/Icon";
 export const HeaderContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: ${props => (props.fullWidth ? "space-between" : "")};
   cursor: pointer;
 `;
 
