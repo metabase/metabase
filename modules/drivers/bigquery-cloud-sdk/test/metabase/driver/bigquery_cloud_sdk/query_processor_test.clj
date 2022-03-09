@@ -322,7 +322,8 @@
                       (let [filter-clause       (into [(:mbql clause) field]
                                                       (repeat (dec (:args clause)) filter-value))
                             field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
-                            expected-identifier (cond-> (hx/identifier :field "ABC" (name temporal-type))
+                            expected-identifier (cond-> (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                               ::bigquery.qp/do-not-qualify? true)
                                                   (not field-literal?) (hx/with-database-type-info (name temporal-type)))
                             expected-value      (get-in value [:as temporal-type] (:value value))
                             expected-clause     (build-honeysql-clause-head clause
@@ -339,7 +340,8 @@
 
           (testing "\ndate extraction filters"
             (doseq [[temporal-type field] fields
-                    :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
+                    :let                  [identifier          (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                                      ::bigquery.qp/do-not-qualify? true)
                                            expected-identifier (case temporal-type
                                                                  :date      (hx/with-database-type-info identifier "date")
                                                                  :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
