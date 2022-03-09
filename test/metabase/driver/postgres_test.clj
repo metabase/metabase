@@ -286,16 +286,16 @@
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
-    (testing "flatten-row"
+    (testing "flattened-row"
       (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
-            flattened {[:bob :dobbs] 123
-                       [:bob :cobbs] "boop"}]
-        (is (= (#'postgres/flatten-row row) flattened))))
+            flattened {[:mob :bob :dobbs] 123
+                       [:mob :bob :cobbs] "boop"}]
+        (is (= flattened (#'postgres/flattened-row :mob row)))))
     (testing "row->types"
       (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
-            types {:bob {[:cobbs] clojure.lang.PersistentVector
-                         [:dobbs :robbs] java.lang.Long}}]
-        (is (= (#'postgres/row->types row) types))))
+            types {[:bob :cobbs] clojure.lang.PersistentVector
+                   [:bob :dobbs :robbs] java.lang.Long}]
+        (is (= types (#'postgres/row->types row)))))
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
@@ -304,8 +304,25 @@
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
                              "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= (into (sorted-map) (sql-jdbc.sync/describe-nested-field-columns :postgres database {:name "describe_json_table"}))
-                 (into (sorted-map) {:types {:coherent_json_val {["a"] java.lang.Integer, ["b"] java.lang.Integer} :incoherent_json_val nil}}))))))))
+          (is (= '#{{:name              "incoherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:incoherent_json_val "b"]}
+                     {:name              "coherent_json_val → a",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "a"]}
+                     {:name              "coherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "b"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:name "describe_json_table"}))))))))
 
 (mt/defdataset with-uuid
   [["users"

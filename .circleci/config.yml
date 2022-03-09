@@ -1246,7 +1246,6 @@ workflows:
               folder:
                 [
                   "admin",
-                  "auditing",
                   "binning",
                   "collections",
                   "custom-column",
