@@ -1224,28 +1224,6 @@
   (is (= "Not found."
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   FAVORITING                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Helper Functions
-(defn- bookmarked? [card]
-  (db/exists? CardBookmark, :card_id (u/the-id card), :user_id (mt/user->id :rasta)))
-
-(defn- bookmark! [card]
-  (mt/user-http-request :rasta :post 200 (format "card/%d/bookmark" (u/the-id card))))
-
-(defn- unbookmark! [card]
-  (mt/user-http-request :rasta :delete 204 (format "card/%d/bookmark" (u/the-id card))))
-
-;; ## GET /api/card/:id/bookmark
-(deftest can-we-see-if-a-card-is-bookmarked
-  (is (= false
-         (mt/with-temp Card [card]
-           (with-cards-in-readable-collection card
-             (bookmarked? card))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Timelines                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+

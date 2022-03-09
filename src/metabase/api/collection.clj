@@ -279,7 +279,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level :icon) rows) :bookmarked))
+  (map #(dissoc % :authority_level :icon) rows))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -306,7 +306,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status :icon) rows) :bookmarked))
+  (map #(dissoc % :display :authority_level :moderated_status :icon) rows))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
