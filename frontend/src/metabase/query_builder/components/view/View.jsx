@@ -152,7 +152,7 @@ export default class View extends React.Component {
       isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
-      isShowingTimelinesSidebar,
+      isShowingTimelineSidebar,
       runQuestionQuery,
       onCloseSummary,
       onCloseFilter,
@@ -174,7 +174,7 @@ export default class View extends React.Component {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
-    if (isShowingTimelinesSidebar) {
+    if (isShowingTimelineSidebar) {
       return <TimelineSidebar onClose={onCloseTimelines} />;
     }
 
