@@ -1,8 +1,9 @@
-import React from "react";
+import React, { memo } from "react";
 import CheckBox from "metabase/core/components/CheckBox";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Timeline } from "metabase-types/api";
-import { CardTitle, CardToggle } from "./TimelineCard.styled";
+import EventCard from "../EventCard";
+import { CardBody, CardHeader, CardTitle } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
   timeline: Timeline;
@@ -12,15 +13,21 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
   return (
     <CollapseSection
       header={
-        <CardToggle>
+        <CardHeader>
           <CheckBox checked={true} />
           <CardTitle>{timeline.name}</CardTitle>
-        </CardToggle>
+        </CardHeader>
       }
       fullWidth={true}
       iconPosition="right"
-    />
+    >
+      <CardBody>
+        {timeline.events?.map(event => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </CardBody>
+    </CollapseSection>
   );
 };
 
-export default TimelineCard;
+export default memo(TimelineCard);
