@@ -41,7 +41,7 @@ const TimelineCard = ({
       iconVariant="up-down"
       iconPosition="right"
     >
-      <EventList events={timeline.events} />
+      <EventList timeline={timeline} />
     </CollapseSection>
   );
 };
