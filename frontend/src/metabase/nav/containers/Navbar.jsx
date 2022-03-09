@@ -109,12 +109,6 @@ export default class Navbar extends Component {
     );
   }
 
-  handleToggleMobileSidebar() {
-    this.setState({
-      shouldDisplayMobileSidebar: !this.state.shouldDisplayMobileSidebar,
-    });
-  }
-
   renderMainNav() {
     const {
       hasDataAccess,
@@ -211,7 +205,12 @@ export default class Navbar extends Component {
         {this.renderModal()}
         <CollectionSidebar
           isRoot={isRoot}
-          handleToggleMobileSidebar={this.handleToggleMobileSidebar}
+          handleToggleMobileSidebar={() => {
+            this.setState({
+              shouldDisplayMobileSidebar: !this.state
+                .shouldDisplayMobileSidebar,
+            });
+          }}
           collectionId={collectionId}
           shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
         />
