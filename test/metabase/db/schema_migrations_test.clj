@@ -19,7 +19,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as group]
    [metabase.models.user :refer [User]]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
