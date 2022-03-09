@@ -11,7 +11,3 @@ export const CardTitle = styled.span`
   font-weight: bold;
   font-size: 0.875rem;
 `;
-
-export const CardBody = styled.div`
-  padding: 1rem 0;
-`;

@@ -1,11 +1,9 @@
 import React, { ChangeEvent, memo, useCallback } from "react";
-import _ from "underscore";
-import { parseTimestamp } from "metabase/lib/time";
 import CheckBox from "metabase/core/components/CheckBox";
 import CollapseSection from "metabase/components/CollapseSection";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import EventCard from "../EventCard";
-import { CardBody, CardHeader, CardTitle } from "./TimelineCard.styled";
+import { Timeline } from "metabase-types/api";
+import { CardHeader, CardTitle } from "./TimelineCard.styled";
+import EventList from "metabase/timelines/questions/components/EventList";
 
 export interface TimelineCardProps {
   timeline: Timeline;
@@ -20,8 +18,6 @@ const TimelineCard = ({
   onShowTimeline,
   onHideTimeline,
 }: TimelineCardProps): JSX.Element => {
-  const events = getEvents(timeline.events);
-
   const handleToggle = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.checked) {
@@ -45,21 +41,9 @@ const TimelineCard = ({
       iconVariant="up-down"
       iconPosition="right"
     >
-      <CardBody>
-        {events.map(event => (
-          <EventCard key={event.id} event={event} />
-        ))}
-      </CardBody>
+      <EventList events={timeline.events} />
     </CollapseSection>
   );
-};
-
-const getEvents = (events: TimelineEvent[] = []) => {
-  return _.chain(events)
-    .filter(e => !e.archived)
-    .sortBy(e => parseTimestamp(e.timestamp))
-    .reverse()
-    .value();
 };
 
 export default memo(TimelineCard);
