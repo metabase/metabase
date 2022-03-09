@@ -5,11 +5,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { createBookmark, deleteBookmark } from "../actions";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -115,7 +115,7 @@ const mapStateToProps = (state, props) => {
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 
-    isBookmarked: getIsBookmarked(state),
+    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
@@ -153,8 +153,8 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
-  createBookmark,
-  deleteBookmark,
+  createBookmark: async id => Bookmark.actions.create({ id }),
+  deleteBookmark: async id => Bookmark.actions.delete({ id }),
 };
 
 function QueryBuilder(props) {
@@ -213,7 +213,7 @@ function QueryBuilder(props) {
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark({ id });
+    toggleBookmark(id);
   };
 
   const handleCreate = useCallback(
@@ -309,6 +309,7 @@ function QueryBuilder(props) {
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),

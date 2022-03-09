@@ -10,7 +10,7 @@ import {
   LabelContainer,
 } from "./CollectionsList.styled";
 
-import CollectionLink from "metabase/collections/components/CollectionLink";
+import CollectionLink from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";

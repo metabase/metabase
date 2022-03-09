@@ -49,10 +49,11 @@ export const getMetadataDiff = state => state.qb.metadataDiff;
 
 const getRawQueryResults = state => state.qb.queryResults;
 
-export const getIsBookmarked = createSelector(
-  [getUiControls],
-  uiControls => uiControls?.isBookmarked,
-);
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
+  );
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],

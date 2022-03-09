@@ -41,8 +41,6 @@ import {
   SET_METADATA_DIFF,
   ZOOM_IN_ROW,
   RESET_ROW_ZOOM,
-  CREATE_QUESTION_BOOKMARK,
-  DELETE_QUESTION_BOOKMARK,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -123,7 +121,6 @@ export const uiControls = handleActions(
           ...DEFAULT_UI_CONTROLS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           ...payload.uiControls,
-          isBookmarked: payload.card["is_bookmarked"],
         };
       },
     },
@@ -197,18 +194,6 @@ export const uiControls = handleActions(
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingChartSettingsSidebar: true,
         initialChartSetting: payload,
-      }),
-    },
-    [CREATE_QUESTION_BOOKMARK]: {
-      next: (state, { payload }) => ({
-        ...state,
-        isBookmarked: true,
-      }),
-    },
-    [DELETE_QUESTION_BOOKMARK]: {
-      next: (state, { payload }) => ({
-        ...state,
-        isBookmarked: false,
       }),
     },
     // AGGREGATION
