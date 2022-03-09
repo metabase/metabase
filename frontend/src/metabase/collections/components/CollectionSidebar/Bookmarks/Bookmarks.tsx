@@ -23,7 +23,7 @@ const BookmarksPropTypes = {
   bookmarks: PropTypes.object,
 };
 
-const Label = ({ name }) => {
+const Label = ({ name }: { name: string }) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon name="grid" />
