@@ -647,4 +647,37 @@ describe("scenarios > question > custom column", () => {
       .should("have.attr", "class")
       .and("eq", "ace_text-input");
   });
+
+  it("should work with date extraction functions", () => {
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    cy.findByText("Custom Expression").click();
+    cy.get(".ace_text-input")
+      .type("[ID] = 1")
+      .blur();
+    cy.button("Done").click();
+
+    const createColumn = (name, formula) => {
+      cy.findByText("Custom column").click();
+      enterCustomColumnDetails({ formula, name });
+      cy.button("Done").click();
+    };
+
+    createColumn("Year", "get-year([Created At])");
+    createColumn("Quarter", "get-quarter([Created At])");
+    createColumn("Month", "get-month([Created At])");
+    createColumn("Day", "get-day([Created At])");
+    createColumn("Weekday", "get-day-of-week([Created At])");
+    createColumn("Hour", "get-hour([Created At])");
+    createColumn("Minute", "get-minute([Created At])");
+    visualize();
+
+    cy.get(".Grid-cell").contains("2,019"); // Year
+    cy.get(".Grid-cell").contains("1"); // Quarter
+    cy.get(".Grid-cell").contains("2"); // Month
+    cy.get(".Grid-cell").contains("11"); // Day
+    cy.get(".Grid-cell").contains("3"); // Weekday
+    cy.get(".Grid-cell").contains("9"); // Hour
+    cy.get(".Grid-cell").contains("40"); // Minute
+  });
 });
