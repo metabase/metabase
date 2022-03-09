@@ -943,7 +943,7 @@
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
   and `:user` when we need the name for displaying purposes"
   [first-name last-name user-or-site]
-  (assert (#{:user :site} user-or-site))
+  {:pre [(#{:user :site} user-or-site)]}
   (if (= :user user-or-site)
     (tru "{0} {1}''s Personal Collection" first-name last-name)
     (trs "{0} {1}''s Personal Collection" first-name last-name)))
