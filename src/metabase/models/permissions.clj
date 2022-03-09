@@ -831,13 +831,13 @@
 
 (defn- download-permissions-set
   [group-id]
-  (map :object
-       (db/select [Permissions :object]
-                  {:where [:and
-                           [:= :group_id group-id]
-                           [:or
-                            [:= :object (hx/literal "/")]
-                            [:like :object (hx/literal "/download/%")]]]})))
+  (db/select-field :object
+                   [Permissions :object]
+                   {:where [:and
+                            [:= :group_id group-id]
+                            [:or
+                             [:= :object (hx/literal "/")]
+                             [:like :object (hx/literal "/download/%")]]]}))
 
 (defn- download-permissions-level
   [permissions-set db-id & [schema-name table-id]]
@@ -852,8 +852,11 @@
    :none))
 
 (s/defn update-native-download-permissions!
-  "To update native download permissions, we must read the list of tables in the database, and check the group's
-   download permission level for each one.
+  "Native download permissions control the ability of users to download the results of native questions for a given
+  database.
+
+  To update native download permissions, we must read the list of tables in the database, and check the group's
+  download permission level for each one.
      - If they have full download permissions for all tables, they have full native download permissions.
      - If they have *at least* limited download permissions for all tables, they have limited native download
        permissions.
