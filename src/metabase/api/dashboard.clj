@@ -12,7 +12,6 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.bookmark :as bookmark :refer [DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
