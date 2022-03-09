@@ -356,12 +356,7 @@ export function extractCollectionId(slug) {
  * "
  */
 export function bookmark({ type, id, name }) {
-  const kebabCaseName = name
-    .toLowerCase()
-    .split(/[ ,]+/)
-    .join("-");
-
   const [, idInteger] = id.split("-");
 
-  return `${type}/${idInteger}-${kebabCaseName}`;
+  return `${type}/${appendSlug(idInteger, slugg(name))}`;
 }
