@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -15,16 +14,12 @@ import { SidebarHeading } from "metabase/collections/components/CollectionSideba
 
 import { Bookmarks } from "metabase-types/api";
 
-const LabelPropTypes = {
-  name: PropTypes.string.isRequired,
-};
-
-const BookmarksPropTypes = {
-  bookmarks: PropTypes.object,
-};
-
 interface LabelProps {
   name: string;
+}
+
+interface CollectionSidebarBookmarksProps {
+  bookmarks: Bookmarks;
 }
 
 const Label = ({ name }: LabelProps) => {
@@ -36,11 +31,6 @@ const Label = ({ name }: LabelProps) => {
   );
 };
 
-Label.propTypes = LabelPropTypes;
-
-interface CollectionSidebarBookmarksProps {
-  bookmarks: Bookmarks;
-}
 const CollectionSidebarBookmarks = ({
   bookmarks,
 }: CollectionSidebarBookmarksProps) => {
@@ -65,7 +55,5 @@ const CollectionSidebarBookmarks = ({
     </BookmarksRoot>
   );
 };
-
-CollectionSidebarBookmarks.propTypes = BookmarksPropTypes;
 
 export default CollectionSidebarBookmarks;
