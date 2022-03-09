@@ -47,13 +47,7 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
         {bookmarks.map(({ id, name, type }, index) => {
           const url = Urls.bookmark({ id, name, type });
           return (
-            <Link
-              key={`bookmark-${id}`}
-              to={url}
-              selected={false}
-              onClick={() => {}}
-              role="sidebar-bookmark"
-            >
+            <Link key={`bookmark-${id}`} to={url} selected={false}>
               <Label itemId={id} name={name} />
             </Link>
           );
