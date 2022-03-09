@@ -56,6 +56,8 @@ import {
   onCloseQuestionHistory,
   onOpenTimelines,
   onCloseTimelines,
+  SHOW_TIMELINE,
+  HIDE_TIMELINE,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -494,4 +496,18 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const timelineVisibility = handleActions(
+  {
+    [INITIALIZE_QB]: () => {},
+    [SHOW_TIMELINE]: {
+      next: (state, { payload }) => assoc(state, payload.id, true),
+    },
+    [HIDE_TIMELINE]: {
+      next: (state, { payload }) => assoc(state, payload.id, false),
+    },
+    [RESET_QB]: () => {},
+  },
+  {},
 );
