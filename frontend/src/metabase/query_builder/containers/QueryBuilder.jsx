@@ -153,8 +153,8 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
-  createBookmark: async id => Bookmark.actions.create({ id }),
-  deleteBookmark: async id => Bookmark.actions.delete({ id }),
+  createBookmark: id => Bookmark.actions.create({ id }),
+  deleteBookmark: id => Bookmark.actions.delete({ id }),
 };
 
 function QueryBuilder(props) {
