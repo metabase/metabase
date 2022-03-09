@@ -54,6 +54,8 @@ import {
   onCloseQuestionDetails,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
+  onOpenTimelines,
+  onCloseTimelines,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -67,6 +69,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelinesSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -82,6 +85,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelinesSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -266,6 +270,15 @@ export const uiControls = handleActions(
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
+    }),
+    [onOpenTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingTimelinesSidebar: true,
+    }),
+    [onCloseTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
     [onCloseSidebars]: state => ({
       ...state,

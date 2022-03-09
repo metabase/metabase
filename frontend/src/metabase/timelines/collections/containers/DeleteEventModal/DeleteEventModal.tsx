@@ -5,17 +5,21 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
+import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import NewEventModal from "../../components/NewEventModal";
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
-  LoadingAndErrorWrapper,
+};
+
+const timelineEventProps = {
+  id: (state: State, props: ModalProps) =>
+    Urls.extractEntityId(props.params.timelineEventId),
+  entityAlias: "event",
 };
 
 const collectionProps = {
@@ -25,12 +29,12 @@ const collectionProps = {
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (
-    values: Partial<TimelineEvent>,
-    collection: Collection,
+    event: TimelineEvent,
     timeline: Timeline,
+    collection: Collection,
   ) => {
-    await dispatch(TimelineEvents.actions.create(values));
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    await dispatch(TimelineEvents.actions.delete(event));
+    dispatch(push(Urls.timelineArchiveInCollection(timeline, collection)));
   },
   onCancel: () => {
     dispatch(goBack());
@@ -39,6 +43,7 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
+  TimelineEvents.load(timelineEventProps),
   Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
-)(NewEventModal);
+)(DeleteEventModal);

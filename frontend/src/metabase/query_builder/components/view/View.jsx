@@ -43,6 +43,7 @@ import {
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
+import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -151,9 +152,11 @@ export default class View extends React.Component {
       isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
+      isShowingTimelinesSidebar,
       runQuestionQuery,
       onCloseSummary,
       onCloseFilter,
+      onCloseTimelines,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -169,6 +172,10 @@ export default class View extends React.Component {
 
     if (isShowingFilterSidebar) {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
+    }
+
+    if (isShowingTimelinesSidebar) {
+      return <TimelineSidebar onClose={onCloseTimelines} />;
     }
 
     return null;
