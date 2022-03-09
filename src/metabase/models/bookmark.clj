@@ -70,16 +70,20 @@
                      [:card.id (db/qualify 'Card :item_id)]
                      [:card.name (db/qualify 'Card :name)]
                      [:card.description (db/qualify 'Card :description)]
+                     [:card.archived (db/qualify 'Card :archived)]
                      [:dashboard.id (db/qualify 'Dashboard :item_id)]
                      [:dashboard.name (db/qualify 'Dashboard :name)]
                      [:dashboard.description (db/qualify 'Dashboard :description)]
+                     [:dashboard.archived (db/qualify 'Dashboard :archived)]
                      [:collection.id (db/qualify 'Collection :item_id)]
                      [:collection.name (db/qualify 'Collection :name)]
-                     [:collection.description (db/qualify 'Collection :description)]]
+                     [:collection.description (db/qualify 'Collection :description)]
+                     [:collection.archived (db/qualify 'Collection :archived)]]
          :from      [[(bookmarks-union-query id) :bookmark]]
          :left-join [[:report_card :card] [:= :bookmark.card_id :card.id]
                      [:report_dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
                      :collection [:= :bookmark.collection_id :collection.id]]})
        (map remove-nil-values)
        (sort-by :created_at)
-       (map normalize-bookmark-result)))
+       (map normalize-bookmark-result)
+       (remove :archived)))
