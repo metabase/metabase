@@ -40,7 +40,7 @@
   "All Users")
 
 (def ^{:arglists '([])} all-users
-  "Fetch the `All Users` permissions group, creating it if needed."
+  "Fetch the `All Users` permissions group"
   (magic-group all-users-group-name))
 
 (def admin-group-name
@@ -48,8 +48,16 @@
   "Administrators")
 
 (def ^{:arglists '([])} admin
-  "Fetch the `Administrators` permissions group, creating it if needed."
+  "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
+
+(def metabot-group-name
+  "The name of the \"Metabot\" magic group. This group is no longer used as of v42, since MetaBot has been removed."
+  "MetaBot")
+
+(def ^{:arglists '([])} metabot
+  "Fetch the `MetaBot` permissions group"
+  (magic-group metabot-group-name))
 
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------

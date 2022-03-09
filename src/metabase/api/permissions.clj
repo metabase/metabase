@@ -71,7 +71,8 @@
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset]
   (db/select PermissionsGroup
-             (cond-> {:order-by [:%lower.name]}
+             (cond-> {:where [:not= :id (u/the-id (group/metabot))]
+                      :order-by [:%lower.name]}
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset))))
 
