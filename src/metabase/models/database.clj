@@ -46,7 +46,7 @@
   (u/prog1 database
     ;; add this database to the All Users permissions group
     (perms/grant-full-data-permissions! (perm-group/all-users) database)
-    ;; give full download perms for this database to the All Useres permissions group
+    ;; give full download perms for this database to the All Users permissions group
     (perms/grant-full-download-permissions! (perm-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
