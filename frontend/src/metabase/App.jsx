@@ -122,7 +122,7 @@ export default class App extends Component {
                   </SearchBarContent>
                 </SearchBarContainer>
                 <div className="ml-auto">
-                  <ProfileLink {...this.props} />
+                  <ProfileLink {...this.props} user={this.props.currentUser} />
                 </div>
               </div>
               {children}
