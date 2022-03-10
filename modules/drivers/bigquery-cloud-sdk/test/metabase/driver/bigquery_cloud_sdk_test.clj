@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
   (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -496,3 +497,20 @@
                 mt/native-query
                 qp/process-query
                 mt/rows))))))
+
+(deftest datetime-truncate-field-literal-form-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Field literal forms should get datetime-truncated correctly (#20806)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str/join
+                                             \newline
+                                             ["SELECT date"
+                                              "FROM unnest(generate_date_array('2021-01-01', '2021-01-15')) date"])}
+                     :breakout    [[:field "date" {:temporal-unit :week, :base-type :type/Date}]]
+                     :aggregation [[:count]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2020-12-27T00:00:00Z" 2]
+                  ["2021-01-03T00:00:00Z" 7]
+                  ["2021-01-10T00:00:00Z" 6]]
+                 (mt/rows
+                  (qp/process-query query)))))))))
