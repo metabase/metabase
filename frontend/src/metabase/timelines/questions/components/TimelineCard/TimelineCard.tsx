@@ -1,14 +1,20 @@
-import React, { ChangeEvent, MouseEvent, memo, useCallback } from "react";
+import React, {
+  ChangeEvent,
+  MouseEvent,
+  memo,
+  useCallback,
+  useState,
+} from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
-import CollapseSection from "metabase/components/CollapseSection";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   CardHeader,
-  CardList,
-  CardTitle,
-  CardToggle,
+  CardContent,
+  CardLabel,
+  CardCheckbox,
+  CardIcon,
 } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
@@ -29,46 +35,48 @@ const TimelineCard = ({
   onArchiveEvent,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleToggle = useCallback(
+  const handleHeaderClick = useCallback(() => {
+    setIsExpanded(isExpanded => !isExpanded);
+  }, []);
+
+  const handleCheckboxChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onToggleTimeline?.(timeline, event.target.checked);
     },
     [timeline, onToggleTimeline],
   );
 
-  const handleClick = useCallback((event: MouseEvent) => {
+  const handleCheckboxClick = useCallback((event: MouseEvent) => {
     event.stopPropagation();
   }, []);
 
   return (
-    <CollapseSection
-      header={
-        <CardHeader>
-          <CardToggle
-            checked={isVisible}
-            onChange={handleToggle}
-            onClick={handleClick}
-          />
-          <CardTitle>{timeline.name}</CardTitle>
-        </CardHeader>
-      }
-      fullWidth={true}
-      iconVariant="up-down"
-      iconPosition="right"
-    >
-      <CardList>
-        {events.map(event => (
-          <EventCard
-            key={event.id}
-            event={event}
-            collection={collection}
-            onEdit={onEditEvent}
-            onArchive={onArchiveEvent}
-          />
-        ))}
-      </CardList>
-    </CollapseSection>
+    <div>
+      <CardHeader onClick={handleHeaderClick}>
+        <CardCheckbox
+          checked={isVisible}
+          onChange={handleCheckboxChange}
+          onClick={handleCheckboxClick}
+        />
+        <CardLabel>{timeline.name}</CardLabel>
+        <CardIcon name={isExpanded ? "chevronup" : "chevrondown"} />
+      </CardHeader>
+      {isExpanded && (
+        <CardContent>
+          {events.map(event => (
+            <EventCard
+              key={event.id}
+              event={event}
+              collection={collection}
+              onEdit={onEditEvent}
+              onArchive={onArchiveEvent}
+            />
+          ))}
+        </CardContent>
+      )}
+    </div>
   );
 };
 
