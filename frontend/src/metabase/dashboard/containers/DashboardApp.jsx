@@ -36,6 +36,7 @@ import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => {
@@ -72,6 +73,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+@Bookmark.loadList({ reload: true, wrapped: true })
 @connect(mapStateToProps, mapDispatchToProps)
 @fitViewport
 @title(({ dashboard }) => dashboard && dashboard.name)
