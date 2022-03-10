@@ -212,6 +212,12 @@ function isNewDashcard(dashcard) {
   return dashcard.id < 1 && dashcard.id >= 0;
 }
 
+function isNewAdditionalSeriesCard(card, dashcard) {
+  return (
+    card.id !== dashcard.card_id && !dashcard.series.some(s => s.id === card.id)
+  );
+}
+
 export const addCardToDashboard = ({ dashId, cardId }) => async (
   dispatch,
   getState,
@@ -603,10 +609,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         ),
       );
     } else {
-      // new cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = isNewDashcard(dashcard)
-        ? CardApi.query
-        : DashboardApi.cardQuery;
+      // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+      const endpoint =
+        isNewDashcard(dashcard) || isNewAdditionalSeriesCard(card, dashcard)
+          ? CardApi.query
+          : DashboardApi.cardQuery;
 
       result = await fetchDataOrError(
         maybeUsePivotEndpoint(endpoint, card)(

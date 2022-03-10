@@ -61,9 +61,11 @@ const EventCard = ({
         )}
         <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
-      <CardAside>
-        <EntityMenu items={menuItems} triggerIcon="ellipsis" />
-      </CardAside>
+      {menuItems.length > 0 && (
+        <CardAside>
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        </CardAside>
+      )}
     </CardRoot>
   );
 };
@@ -75,7 +77,9 @@ const getMenuItems = (
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!event.archived) {
+  if (!collection.can_write) {
+    return [];
+  } else if (!event.archived) {
     return [
       {
         title: t`Edit event`,
@@ -89,8 +93,12 @@ const getMenuItems = (
   } else {
     return [
       {
-        title: t`Restore event`,
+        title: t`Unarchive event`,
         action: () => onUnarchive?.(event),
+      },
+      {
+        title: t`Delete event`,
+        link: Urls.deleteEventInCollection(event, timeline, collection),
       },
     ];
   }
@@ -100,10 +108,10 @@ const getDateMessage = (event: TimelineEvent) => {
   const date = parseTimestamp(event.timestamp);
   const options = Settings.formattingOptions();
 
-  if (date.hours() === 0 && date.minutes() === 0) {
-    return formatDateTimeWithUnit(date, "day", options);
-  } else {
+  if (event.time_matters) {
     return formatDateTimeWithUnit(date, "default", options);
+  } else {
+    return formatDateTimeWithUnit(date, "day", options);
   }
 };
 

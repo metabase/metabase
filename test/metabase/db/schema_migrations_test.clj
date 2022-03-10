@@ -8,21 +8,22 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.db.schema-migrations-test.impl :as impl]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Database Field Permissions PermissionsGroup Setting Table]]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db])
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as group]
+   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db])
   (:import java.sql.Connection
            java.util.UUID))
 
@@ -378,3 +379,162 @@
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
              (db/query {:select [:*], :from [Setting], :where [:= :key "site-url"]}))))))
+
+(defn- add-legacy-data-migration-entry! [migration-name]
+  (db/execute! {:insert-into :data_migrations
+                :values      [{:id        migration-name
+                               :timestamp :%now}]}))
+
+(defn- add-migrated-collections-data-migration-entry! []
+  (add-legacy-data-migration-entry! "add-migrated-collections"))
+
+(deftest add-migrated-collections-test
+  (testing "Migrations v43.00-014 - v43.00-019"
+    (letfn [(create-user! []
+              (db/execute! {:insert-into User
+                            :values      [{:first_name  "Cam"
+                                           :last_name   "Era"
+                                           :email       "cam@era.com"
+                                           :password    "abc123"
+                                           :date_joined :%now}]}))]
+      (doseq [{:keys [model collection-name create-instance!]}
+              [{:model            Dashboard
+                :collection-name  "Migrated Dashboards"
+                :create-instance! (fn []
+                                    (create-user!)
+                                    (db/execute! {:insert-into Dashboard
+                                                  :values      [{:name          "My Dashboard"
+                                                                 :created_at    :%now
+                                                                 :updated_at    :%now
+                                                                 :creator_id    1
+                                                                 :parameters    "[]"
+                                                                 :collection_id nil}]}))}
+               {:model            Pulse
+                :collection-name  "Migrated Pulses"
+                :create-instance! (fn []
+                                    (create-user!)
+                                    (db/execute! {:insert-into Pulse
+                                                  :values      [{:name          "My Pulse"
+                                                                 :created_at    :%now
+                                                                 :updated_at    :%now
+                                                                 :creator_id    1
+                                                                 :parameters    "[]"
+                                                                 :collection_id nil}]}))}
+               {:model            Card
+                :collection-name  "Migrated Questions"
+                :create-instance! (fn []
+                                    (create-user!)
+                                    (db/execute! {:insert-into Database
+                                                  :values      [{:name       "My DB"
+                                                                 :engine     "h2"
+                                                                 :details    "{}"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now}]})
+                                    (db/execute! {:insert-into Card
+                                                  :values      [{:name                   "My Saved Question"
+                                                                 :created_at             :%now
+                                                                 :updated_at             :%now
+                                                                 :creator_id             1
+                                                                 :display                "table"
+                                                                 :dataset_query          "{}"
+                                                                 :visualization_settings "{}"
+                                                                 :database_id            1
+                                                                 :collection_id          nil}]}))}]]
+        (testing (format "create %s Collection for %s in the Root Collection"
+                         (pr-str collection-name)
+                         (name model))
+          (letfn [(collections []
+                    (db/query {:select [:name :slug], :from [Collection]}))
+                  (collection-slug []
+                    (-> collection-name
+                        str/lower-case
+                        (str/replace #"\s+" "_")))]
+            (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
+              (create-instance!)
+              (migrate!)
+              (is (= [{:name collection-name, :slug (collection-slug)}]
+                     (collections)))
+              (testing "Instance should be moved new Collection"
+                (is (= [{:collection_id 1}]
+                       (db/query {:select [:collection_id], :from [model]})))))
+            (testing "\nSkip if\n"
+              (testing "There are no instances not in a Collection\n"
+                (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
+                  (migrate!)
+                  (is (= []
+                         (collections)))))
+              (testing "add-migrated-collections already ran\n"
+                (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
+                  (create-instance!)
+                  (add-migrated-collections-data-migration-entry!)
+                  (migrate!)
+                  (is (= []
+                         (collections)))
+                  (testing "Instance should NOT be moved"
+                    (is (= [{:collection_id nil}]
+                           (db/query {:select [:collection_id], :from [model]}))))))
+              (testing "Migrated Collection already exists\n"
+                (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
+                  (create-instance!)
+                  (db/execute! {:insert-into Collection
+                                :values      [{:name collection-name, :slug "existing_collection", :color "#abc123"}]})
+                  (migrate!)
+                  (is (= [{:name collection-name, :slug "existing_collection"}]
+                         (collections)))
+                  (testing "Collection should not have been created but instance should still be moved"
+                    (is (= [{:collection_id 1}]
+                           (db/query {:select [:collection_id], :from [model]})))))))))))))
+
+(deftest grant-all-users-root-collection-readwrite-perms-test
+  (testing "Migration v43.00-020: create a Root Collection entry for All Users"
+    (letfn [(all-users-group-id []
+              (let [[{id :id}] (db/query {:select [:id], :from [PermissionsGroup], :where [:= :name group/all-users-group-name]})]
+                (is (integer? id))
+                id))
+            (all-user-perms []
+              (db/query {:select [:object], :from [Permissions], :where [:= :group_id (all-users-group-id)]}))]
+      (impl/test-migrations ["v43.00-020"] [migrate!]
+        (is (= []
+               (all-user-perms)))
+        (migrate!)
+        (is (= [{:object "/collection/root/"}]
+               (all-user-perms))))
+
+      (testing "add-migrated-collections data migration was ran previously: don't create an entry"
+        (impl/test-migrations ["v43.00-020"] [migrate!]
+          (add-migrated-collections-data-migration-entry!)
+          (migrate!)
+          (is (= []
+                 (all-user-perms)))))
+
+      (testing "entry already exists: don't create an entry"
+        (impl/test-migrations ["v43.00-020"] [migrate!]
+          (db/execute! {:insert-into Permissions
+                        :values      [{:object   "/collection/root/"
+                                       :group_id (all-users-group-id)}]})
+          (migrate!)
+          (is (= [{:object "/collection/root/"}]
+                 (all-user-perms))))))))
+
+(deftest clear-ldap-user-passwords-test
+  (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
+    (impl/test-migrations ["v43.00-029"] [migrate!]
+      (db/execute! {:insert-into User
+                    :values      [{:first_name    "Cam"
+                                   :last_name     "Era"
+                                   :email         "cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     false}
+                                  {:first_name    "LDAP Cam"
+                                   :last_name     "Era"
+                                   :email         "ldap_cam@era.com"
+                                   :date_joined   :%now
+                                   :password      "password"
+                                   :password_salt "and pepper"
+                                   :ldap_auth     true}]})
+      (migrate!)
+      (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
+              {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
+             (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))

@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const {
@@ -21,10 +21,7 @@ describe("issue 18352", () => {
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-
-        cy.visit(`/question/${card_id}`);
-        cy.wait("@cardQuery");
+        visitQuestion(card_id);
 
         cy.visit(`/dashboard/${dashboard_id}`);
       },

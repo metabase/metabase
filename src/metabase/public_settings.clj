@@ -6,8 +6,6 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
@@ -354,15 +352,6 @@
     (assoc object :public_uuid nil)
     object))
 
-(defn- short-timezone-name [timezone-id]
-  (let [^java.time.ZoneId zone (if (seq timezone-id)
-                                 (t/zone-id timezone-id)
-                                 (t/zone-id))]
-    (.getDisplayName
-     zone
-     java.time.format.TextStyle/SHORT
-     (java.util.Locale/getDefault))))
-
 (defsetting available-locales
   "Available i18n locales"
   :visibility :public
@@ -374,12 +363,6 @@
   :visibility :public
   :setter     :none
   :getter     (comp sort t/available-zone-ids))
-
-(defsetting engines
-  "Available database engines"
-  :visibility :public
-  :setter     :none
-  :getter     driver.u/available-drivers-info)
 
 (defsetting has-sample-database?
   "Whether this instance has a Sample Database database"
@@ -398,12 +381,6 @@
   :type       :boolean
   :visibility :public
   :default    nil)
-
-(defsetting report-timezone-short
-  "Current report timezone abbreviation"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (short-timezone-name (driver/report-timezone))))
 
 (defsetting version
   "Metabase's version info"

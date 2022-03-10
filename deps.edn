@@ -48,8 +48,8 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.6.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  dk.ative/docjure                          {:mvn/version "1.17.0"              ; excel export
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
+  dk.ative/docjure                          {:mvn/version "1.17.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
@@ -62,8 +62,8 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   javax.xml.bind/jaxb-api                   {:mvn/version "2.4.0-b180830.0359"} ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
-  kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
   joda-time/joda-time                       {:mvn/version "2.10.13"}
+  kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   me.raynes/fs                              {:mvn/version "1.4.6"               ; Filesystem tools
                                              :exclusions  [org.apache.commons/commons-compress]}
@@ -445,8 +445,7 @@
   :liquibase
   {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.2.10"}}
    :extra-paths ["dev/src"]
-   :main-opts   ["-m" "dev.liquibase"]}
+   :main-opts   ["-m" "dev.liquibase"]}}}
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.
-  }}

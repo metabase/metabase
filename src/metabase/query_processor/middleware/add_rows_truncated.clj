@@ -6,7 +6,7 @@
 (defn- results-limit
   [{{:keys [max-results max-results-bare-rows]}                                    :constraints
     {aggregations :aggregation, :keys [limit page], ::limit/keys [original-limit]} :query
-    :as                                                                            query}]
+    :as                                                                            _query}]
   (or (when (and (or (not limit)
                      (= original-limit nil))
                  (not page)

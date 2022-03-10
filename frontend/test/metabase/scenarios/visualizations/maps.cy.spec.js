@@ -4,6 +4,8 @@ import {
   visitQuestionAdhoc,
   openNativeEditor,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -100,10 +102,10 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
-    cy.intercept("/app/assets/geojson").as("geojson");
+    cy.intercept("/app/assets/geojson/**").as("geojson");
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PEOPLE_ID,
           aggregation: [["count"]],
@@ -148,7 +150,7 @@ describe("scenarios > visualizations > maps", () => {
     visitQuestionAdhoc({
       display: "map",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": PEOPLE_ID,
@@ -200,7 +202,7 @@ describe("scenarios > visualizations > maps", () => {
             `,
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "map",
       visualization_settings: {

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import { getDefaultTimezone } from "metabase/lib/time";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
@@ -25,9 +26,14 @@ const NewEventModal = ({
   onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return { timeline_id: timeline?.id };
-  }, [timeline]);
+  const initialValues = useMemo(
+    () => ({
+      timeline_id: timeline?.id,
+      icon: timeline?.icon,
+      timezone: getDefaultTimezone(),
+    }),
+    [timeline],
+  );
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {

@@ -1,8 +1,9 @@
 import {
   restore,
   popover,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
+  isEE,
 } from "__support__/e2e/cypress";
 
 function typeField(label, value) {
@@ -155,7 +156,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("EE should ship with Oracle and Vertica as options", () => {
-    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(isEE);
 
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
@@ -304,7 +305,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  describeWithToken("caching", () => {
+  describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
     });

@@ -104,3 +104,13 @@
 (defmethod db-default-timezone :sql-jdbc
   [_ _]
   nil)
+
+(defmulti describe-nested-field-columns
+  "Return information about the nestable columns in a `table`. Required for drivers that support `:nested-field-columns`. Results
+  should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
+  {:added "0.43.0", :arglists '([driver database table])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod describe-nested-field-columns :sql-jdbc [_ _ _]
+  nil)

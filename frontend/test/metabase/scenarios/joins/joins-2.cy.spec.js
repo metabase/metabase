@@ -8,7 +8,10 @@ import {
   visitQuestionAdhoc,
   summarize,
   filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -361,21 +364,13 @@ describe("scenarios > question > joined questions", () => {
             "source-table": PRODUCTS_ID,
           },
         }).then(({ body: { id: joinedQuestionId } }) => {
-          // listen on the final card query which means the data for this question loaded
-          cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
-            "cardQuery",
-          );
-
           // Assert phase begins here
-          cy.visit(`/question/${joinedQuestionId}`);
-          cy.findByText("13744_joined");
+          visitQuestion(joinedQuestionId);
 
           cy.log("Reported failing on v0.34.3 - v0.37.0.2");
           cy.log("Reported error log: 'No aggregation at index: 0'");
-          // assert directly on XHR instead of relying on UI
-          cy.wait("@cardQuery").then(xhr => {
-            expect(xhr.response.body.error).not.to.exist;
-          });
+
+          cy.findByText("13744_joined");
           cy.findAllByText("Gizmo");
         });
       });
@@ -439,7 +434,7 @@ describe("scenarios > question > joined questions", () => {
               ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "line",
       });
@@ -469,7 +464,7 @@ describe("scenarios > question > joined questions", () => {
             "source-table": ORDERS_ID,
             filter: ["=", ["field-id", ORDERS.USER_ID], 1],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 

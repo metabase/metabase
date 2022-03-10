@@ -36,33 +36,29 @@ const DatabaseEditAppSidebar = ({
           <ol>
             {!isSyncCompleted(database) && (
               <li>
-                <Button disabled>{t`Syncing database…`}</Button>
+                <Button disabled borderless>{t`Syncing database…`}</Button>
               </li>
             )}
-            {isSyncCompleted(database) && (
-              <li>
-                <ActionButton
-                  actionFn={() => syncDatabaseSchema(database.id)}
-                  className="Button Button--syncDbSchema"
-                  normalText={t`Sync database schema now`}
-                  activeText={t`Starting…`}
-                  failedText={t`Failed to sync`}
-                  successText={t`Sync triggered!`}
-                />
-              </li>
-            )}
-            {isSyncCompleted(database) && (
-              <li className="mt2">
-                <ActionButton
-                  actionFn={() => rescanDatabaseFields(database.id)}
-                  className="Button Button--rescanFieldValues"
-                  normalText={t`Re-scan field values now`}
-                  activeText={t`Starting…`}
-                  failedText={t`Failed to start scan`}
-                  successText={t`Scan triggered!`}
-                />
-              </li>
-            )}
+            <li>
+              <ActionButton
+                actionFn={() => syncDatabaseSchema(database.id)}
+                className="Button Button--syncDbSchema"
+                normalText={t`Sync database schema now`}
+                activeText={t`Starting…`}
+                failedText={t`Failed to sync`}
+                successText={t`Sync triggered!`}
+              />
+            </li>
+            <li className="mt2">
+              <ActionButton
+                actionFn={() => rescanDatabaseFields(database.id)}
+                className="Button Button--rescanFieldValues"
+                normalText={t`Re-scan field values now`}
+                activeText={t`Starting…`}
+                failedText={t`Failed to start scan`}
+                successText={t`Scan triggered!`}
+              />
+            </li>
           </ol>
         </div>
 

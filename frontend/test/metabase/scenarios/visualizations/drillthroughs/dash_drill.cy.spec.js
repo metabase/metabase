@@ -1,5 +1,7 @@
 // Imported from drillthroughs.e2e.spec.js
 import { restore } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -47,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         // Convert Q2 to a scalar with a filter applied
         cy.request("PUT", `/api/card/${Q2.id}`, {
           dataset_query: {
-            database: 1,
+            database: SAMPLE_DB_ID,
             query: {
               aggregation: [["count"]],
               filter: [">", ["field", ORDERS.TOTAL, null], 100],

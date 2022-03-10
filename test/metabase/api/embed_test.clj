@@ -203,12 +203,12 @@
 
 (defn card-query-url
   "Generate a query URL for an embedded card"
-  [card response-format & [additional-token-params]]
-  {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format)]}
+  [card response-format-route-suffix & [additional-token-params]]
+  {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format-route-suffix)]}
   (str "embed/card/"
        (card-token card additional-token-params)
        "/query"
-       response-format))
+       response-format-route-suffix))
 
 (def ^:private response-format->request-options
   {""      nil
@@ -1138,3 +1138,17 @@
               (is (= [[1]]
                      (mt/rows (http/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer")))
                      (mt/rows (http/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer&name=x"))))))))))))
+
+(deftest pass-numeric-param-as-number-test
+  (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
+    (mt/dataset sample-dataset
+      (with-embedding-enabled-and-new-secret-key
+        (mt/with-temp Card [card {:dataset_query    (mt/native-query
+                                                      {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                       :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                     :display-name "Quantity (Locked)"
+                                                                                     :type         :number}}})
+                                  :enable_embedding true
+                                  :embedding_params {:qty_locked "locked"}}]
+          (is (= [3443]
+                 (mt/first-row (http/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))

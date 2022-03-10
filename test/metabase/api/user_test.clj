@@ -215,7 +215,15 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))))
+                  (map #(dissoc % :is_qbnewb :last_login)))))))
+
+  (testing "GET /api/user?include_deactivated=false should return only active users"
+    (is (= (->> [{:email "crowberto@metabase.com"}
+                 {:email "lucky@metabase.com"}
+                 {:email "rasta@metabase.com"}])
+           (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
+                (filter mt/test-user?)
+                (map #(select-keys % [:email])))))))
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"

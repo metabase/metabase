@@ -13,7 +13,7 @@
   (keyword (str (u/the-id id))))
 
 (defn- db-graph-keypath [group]
-  [:groups (id->keyword group) (id->keyword (mt/id))])
+  [:groups (id->keyword group) (id->keyword (mt/id)) :data])
 
 (defn- venues-perms-graph-keypath [group]
   (concat

@@ -1,12 +1,13 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, darken } from "metabase/lib/colors";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export interface InputProps {
   hasError?: boolean;
-  hasTooltip?: boolean;
   fullWidth?: boolean;
-  borderless?: boolean;
+  hasLeftIcon?: boolean;
+  hasRightIcon?: boolean;
 }
 
 export const InputRoot = styled.div<InputProps>`
@@ -26,6 +27,7 @@ export const InputField = styled.input<InputProps>`
   border-radius: 4px;
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   outline: none;
+  text-align: inherit;
 
   &:focus {
     border-color: ${color("brand")};
@@ -39,33 +41,35 @@ export const InputField = styled.input<InputProps>`
     `};
 
   ${props =>
-    props.hasTooltip &&
-    css`
-      padding-right: 2.25rem;
-    `};
-
-  ${props =>
     props.fullWidth &&
     css`
       width: 100%;
     `}
 
   ${props =>
-    props.borderless &&
+    props.hasLeftIcon &&
     css`
-      border: none;
-      border-radius: 0;
-      background-color: transparent;
+      padding-left: 2.25rem;
+    `};
+
+  ${props =>
+    props.hasRightIcon &&
+    css`
+      padding-right: 2.25rem;
     `};
 `;
 
-export const InputIconContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
+export const InputButton = styled(IconButtonWrapper)`
   position: absolute;
-  right: 0.75rem;
   color: ${color("text-light")};
-  cursor: pointer;
+  padding: 0.75rem;
   border-radius: 50%;
+`;
+
+export const InputLeftButton = styled(InputButton)`
+  left: 0;
+`;
+
+export const InputRightButton = styled(InputButton)`
+  right: 0;
 `;

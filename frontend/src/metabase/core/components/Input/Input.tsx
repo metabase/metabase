@@ -1,14 +1,29 @@
-import React, { forwardRef, InputHTMLAttributes, ReactNode, Ref } from "react";
+import React, {
+  forwardRef,
+  InputHTMLAttributes,
+  MouseEvent,
+  ReactNode,
+  Ref,
+} from "react";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { InputField, InputIconContainer, InputRoot } from "./Input.styled";
+import {
+  InputField,
+  InputLeftButton,
+  InputRightButton,
+  InputRoot,
+} from "./Input.styled";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   inputRef?: Ref<HTMLInputElement>;
   error?: boolean;
   fullWidth?: boolean;
-  borderless?: boolean;
-  helperText?: ReactNode;
+  leftIcon?: string;
+  leftIconTooltip?: ReactNode;
+  rightIcon?: string;
+  rightIconTooltip?: ReactNode;
+  onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onRightIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 const Input = forwardRef(function Input(
@@ -18,9 +33,13 @@ const Input = forwardRef(function Input(
     inputRef,
     error,
     fullWidth,
-    borderless,
-    helperText,
-    ...rest
+    leftIcon,
+    leftIconTooltip,
+    rightIcon,
+    rightIconTooltip,
+    onLeftIconClick,
+    onRightIconClick,
+    ...props
   }: InputProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -32,18 +51,24 @@ const Input = forwardRef(function Input(
       fullWidth={fullWidth}
     >
       <InputField
-        {...rest}
+        {...props}
         ref={inputRef}
         hasError={error}
-        hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}
-        borderless={borderless}
+        hasRightIcon={Boolean(rightIcon)}
       />
-      {helperText && (
-        <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
-          <InputIconContainer>
-            <Icon name="info" />
-          </InputIconContainer>
+      {leftIcon && (
+        <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
+          <InputLeftButton tabIndex={-1} onClick={onLeftIconClick}>
+            <Icon name={leftIcon} />
+          </InputLeftButton>
+        </Tooltip>
+      )}
+      {rightIcon && (
+        <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
+          <InputRightButton tabIndex={-1} onClick={onRightIconClick}>
+            <Icon name={rightIcon} />
+          </InputRightButton>
         </Tooltip>
       )}
     </InputRoot>

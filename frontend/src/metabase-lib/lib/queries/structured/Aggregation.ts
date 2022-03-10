@@ -279,8 +279,8 @@ export default class Aggregation extends MBQLClause {
   // MISC
   aggregationDimension() {
     return new AggregationDimension(
+      this._index,
       null,
-      [this._index],
       this._query.metadata(),
       this._query,
     );

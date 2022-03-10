@@ -2,11 +2,11 @@ import {
   restore,
   modal,
   popover,
-  describeWithToken,
+  describeEE,
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
-describeWithToken("scenarios > question > snippets", () => {
+describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

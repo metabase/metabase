@@ -29,9 +29,6 @@
 
 (defn- all-join-aliases [query]
   (into #{} cat (mbql.u/match query
-                  [:field _ (m :guard :join-alias)]
-                  [(:join-alias m)]
-
                   (join :guard (every-pred map? :condition :alias))
                   (cons
                    (:alias join)

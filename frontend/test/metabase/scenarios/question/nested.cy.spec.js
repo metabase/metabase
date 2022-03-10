@@ -9,6 +9,7 @@ import {
   summarize,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -267,8 +268,6 @@ describe("scenarios > question > nested", () => {
         name: "12507",
         query: ORIGINAL_QUERY,
       }).then(({ body: { id: questionId } }) => {
-        cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
         cy.log("Create and visit a nested question based on the previous one");
         visitQuestionAdhoc({
           dataset_query: {
@@ -277,15 +276,11 @@ describe("scenarios > question > nested", () => {
               "source-table": `card__${questionId}`,
               filter: [">", ["field", ORDERS.TOTAL, null], 50],
             },
-            database: 1,
+            database: SAMPLE_DB_ID,
           },
         });
 
         cy.log("Reported failing since v0.35.2");
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
         cy.get(".cellData").contains(METRIC_NAME);
       });
     });

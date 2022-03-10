@@ -37,9 +37,10 @@ const FormInputWidget = forwardRef(function FormInputWidget(
       readOnly={readOnly}
       autoFocus={autoFocus}
       error={field.visited && !field.active && field.error != null}
-      helperText={helperText}
-      fullWidth
+      rightIcon={helperText && "info"}
+      rightIconTooltip={helperText}
       tabIndex={tabIndex}
+      fullWidth
       ref={ref}
     />
   );

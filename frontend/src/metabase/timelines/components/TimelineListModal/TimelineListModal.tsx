@@ -1,18 +1,12 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import TimelineCard from "../TimelineCard";
-import {
-  EmptyStateBody,
-  EmptyStateRoot,
-  EmptyStateText,
-  ListRoot,
-  ModalBody,
-} from "./TimelineListModal.styled";
+import TimelineEmptyState from "../TimelineEmptyState";
+import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
@@ -25,22 +19,23 @@ const TimelineListModal = ({
   collection,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
-  const hasItems = timelines.length > 0;
-  const title = hasItems ? t`Events` : t`${collection.name} events`;
+  const canWrite = collection.can_write;
+  const hasTimelines = timelines.length > 0;
+  const title = hasTimelines ? t`Events` : t`${collection.name} events`;
 
   return (
-    <div>
+    <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {hasItems && <TimelineMenu collection={collection} />}
+        {canWrite && hasTimelines && <TimelineMenu collection={collection} />}
       </ModalHeader>
       <ModalBody>
-        {hasItems ? (
+        {hasTimelines ? (
           <TimelineList timelines={timelines} collection={collection} />
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
       </ModalBody>
-    </div>
+    </ModalRoot>
   );
 };
 
@@ -82,29 +77,6 @@ const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
   );
 
   return <EntityMenu items={items} triggerIcon="ellipsis" />;
-};
-
-export interface TimelineEmptyStateProps {
-  collection: Collection;
-}
-
-const TimelineEmptyState = ({
-  collection,
-}: TimelineEmptyStateProps): JSX.Element => {
-  const link = Urls.newEventAndTimelineInCollection(collection);
-
-  return (
-    <EmptyStateRoot>
-      <EmptyStateBody>
-        <EmptyStateText>
-          {t`Add events to Metabase to open important milestones, launches, or anything else, right alongside your data.`}
-        </EmptyStateText>
-        <Link className="Button Button--primary" to={link}>
-          {t`Add an event`}
-        </Link>
-      </EmptyStateBody>
-    </EmptyStateRoot>
-  );
 };
 
 export default TimelineListModal;

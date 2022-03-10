@@ -20,6 +20,7 @@
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
             [metabase.api.public :as public-api]
@@ -164,7 +165,7 @@
           :let  [value (get slug->value (keyword (:slug param)))
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
-                 value (if (and (seq value)
+                 value (if (and (some? value)
                                 (params.operators/operator? (:type param)))
                          (u/one-or-many value)
                          value)]
@@ -283,7 +284,7 @@
    (check-embedding-enabled-for-object (db/select-one [entity :enable_embedding] :id id)))
 
   ([object]
-   (api/check-embedding-enabled)
+   (validation/check-embedding-enabled)
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)

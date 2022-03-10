@@ -11,6 +11,7 @@ import {
   filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -123,7 +124,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".List-item-title")
       .contains("Product ID")
       .click();
-    cy.get(".scroll-y")
+    cy.findByTestId("sidebar-content")
       .contains("Aerodynamic Linen Coat")
       .click();
     cy.findByText("Add filter").click();
@@ -261,7 +262,7 @@ describe("scenarios > question > filter", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -483,7 +484,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -507,7 +508,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -555,7 +556,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -605,7 +606,7 @@ describe("scenarios > question > filter", () => {
           aggregation: [["count"]],
           breakout: [["field-id", PRODUCTS.CATEGORY]],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -714,7 +715,7 @@ describe("scenarios > question > filter", () => {
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-query": {
             "source-table": 1,
@@ -755,7 +756,7 @@ describe("scenarios > question > filter", () => {
   it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [
@@ -800,7 +801,7 @@ describe("scenarios > question > filter", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PRODUCTS_ID,
             filter: [

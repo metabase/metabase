@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { t } from "ttag";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
@@ -7,6 +7,7 @@ import {
   ListIcon,
   ListIconContainer,
   ListIconText,
+  ListRoot,
   ListThread,
   ListThreadContainer,
 } from "./EventList.styled";
@@ -27,7 +28,7 @@ const EventList = ({
   onUnarchive,
 }: EventListProps): JSX.Element => {
   return (
-    <div>
+    <ListRoot>
       {events.map(event => (
         <EventCard
           key={event.id}
@@ -44,11 +45,11 @@ const EventList = ({
         </ListThreadContainer>
         <ListIconContainer>
           <ListIcon name="dyno" />
-          <ListIconText>{t`The Paleozoic Era`}</ListIconText>
+          <ListIconText>{t`The Mesozoic era`}</ListIconText>
         </ListIconContainer>
       </ListFooter>
-    </div>
+    </ListRoot>
   );
 };
 
-export default EventList;
+export default memo(EventList);

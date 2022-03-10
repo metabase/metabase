@@ -19,6 +19,8 @@ const CompletedStep = ({
     return null;
   }
 
+  const baseUrl = (window as any).MetabaseRoot || "/";
+
   return (
     <StepRoot>
       <StepTitle>{t`You're all set up!`}</StepTitle>
@@ -26,7 +28,7 @@ const CompletedStep = ({
         <NewsletterForm />
       </StepBody>
       <StepFooter>
-        <a className="Button Button--primary" href="/">
+        <a className="Button Button--primary" href={baseUrl}>
           {t`Take me to Metabase`}
         </a>
       </StepFooter>

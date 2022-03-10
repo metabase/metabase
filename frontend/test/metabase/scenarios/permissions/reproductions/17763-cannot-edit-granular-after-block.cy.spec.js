@@ -1,16 +1,16 @@
-import { restore, popover, describeWithToken } from "__support__/e2e/cypress";
+import { restore, popover, describeEE } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-describeWithToken("issue 17763", () => {
+describeEE("issue 17763", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        "1": { schemas: "block", native: "none" },
+        "1": { data: { schemas: "block", native: "none" } },
       },
     });
   });

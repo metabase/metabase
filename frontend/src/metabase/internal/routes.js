@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Route, IndexRedirect } from "react-router";
 
 import {
@@ -46,11 +46,14 @@ export default (
     <Route path="static-viz" component={StaticVizPage} />
     {/* Legacy App pages - not really style guide related, but keep for now */}
     {Object.entries(APPS).map(
-      ([name, Component]) =>
-        Component &&
-        (Component.routes || (
-          <Route path={name.toLowerCase()} component={Component} />
-        )),
+      ([name, Component], routeIndex) =>
+        Component && (
+          <Fragment key={routeIndex}>
+            {Component.routes || (
+              <Route path={name.toLowerCase()} component={Component} />
+            )}
+          </Fragment>
+        ),
     )}
     <Route path="errors">
       <Route path="404" component={NotFound} />

@@ -4,11 +4,14 @@ import {
   summarize,
   visualize,
   openOrdersTable,
+  openPeopleTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
+  getBinningButtonForDimension,
   filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -32,6 +35,108 @@ describe("scenarios > question > custom column", () => {
 
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains("Math");
+  });
+
+  it("should allow choosing a binning for a numeric custom column", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Product.Price] / 2",
+      name: "Half Price",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("Half Price")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("Half Price")
+      .click();
+    getBinningButtonForDimension({
+      name: "Half Price",
+    }).click();
+
+    popover()
+      .findByText("10 bins")
+      .click();
+
+    cy.findByText("Half Price: 10 bins").should("be.visible");
+  });
+
+  it("should allow choosing a temporal unit for a date/time custom column", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Product.Created At]",
+      name: "Product Date",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("Product Date")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("Product Date")
+      .click();
+    getBinningButtonForDimension({
+      name: "Product Date",
+    }).click();
+
+    popover()
+      .findByText("Month of Year")
+      .click();
+
+    cy.findByText("Product Date: Month of year").should("be.visible");
+  });
+
+  it("should allow choosing a binning for a coordinate custom column", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Latitude]",
+      name: "UserLAT",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("UserLAT")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("UserLAT")
+      .click();
+    getBinningButtonForDimension({
+      name: "UserLAT",
+    }).click();
+
+    popover()
+      .findByText("Bin every 10 degrees")
+      .click();
+
+    cy.findByText("UserLAT: 10°").should("be.visible");
   });
 
   // flaky test (#19454)
@@ -376,7 +481,7 @@ describe("scenarios > question > custom column", () => {
               ],
             },
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "table",
       },

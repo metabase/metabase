@@ -1288,8 +1288,8 @@ export default class StructuredQuery extends AtomicQuery {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
         return new ExpressionDimension(
+          expressionName,
           null,
-          [expressionName],
           this._metadata,
           this,
         );
@@ -1602,9 +1602,15 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    // source-table, if set
-    const tableId = this.sourceTableId();
+    const dbId = this.databaseId();
+    if (dbId) {
+      addDependency({
+        type: "schema",
+        id: dbId,
+      });
+    }
 
+    const tableId = this.sourceTableId();
     if (tableId) {
       addDependency({
         type: "table",

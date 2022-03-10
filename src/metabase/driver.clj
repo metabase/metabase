@@ -8,6 +8,7 @@
   [[metabase.driver.sql-jdbc]] for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
@@ -33,12 +34,27 @@
       (catch Throwable e
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
+(defn- short-timezone-name [timezone-id]
+  (let [^java.time.ZoneId zone (if (seq timezone-id)
+                                 (t/zone-id timezone-id)
+                                 (t/zone-id))]
+    (.getDisplayName
+     zone
+     java.time.format.TextStyle/SHORT
+     (java.util.Locale/getDefault))))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)))
+
+(defsetting report-timezone-short
+  "Current report timezone abbreviation"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (short-timezone-name (report-timezone))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -342,8 +358,11 @@
     ;; Does this database support foreign key relationships?
     :foreign-keys
 
-    ;; Does this database support nested fields (e.g. Mongo)?
+    ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
+
+    ;; Does this database support nested fields but only for certain field types (e.g. Postgres and JSON / JSONB columns)?
+    :nested-field-columns
 
     ;; Does this driver support setting a timezone for the query?
     :set-timezone
@@ -470,10 +489,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;; TODO -- I have a PR to add some truncation logic for this so we don't end up with crazy-long identifiers -- see
-;; #19659
-;;
-;; TODO -- we should probably also remove diacritical marks like we do for BigQuery
 (defmethod escape-alias ::driver
   [_driver alias-name]
   (impl/truncate-alias alias-name))

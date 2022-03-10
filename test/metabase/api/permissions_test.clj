@@ -20,7 +20,6 @@
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.
-;; It should also *not* include the MetaBot group because MetaBot should *not* be enabled
 (defn- fetch-groups []
   (set (mt/user-http-request
         :crowberto :get 200 "permissions/group")))
@@ -59,7 +58,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
              (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
-      (is (= [{:id 1, :name "All Users", :member_count 3}]
+      (is (partial= [{:id 1, :name "All Users"}]
              (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
 (deftest fetch-group-test
@@ -96,21 +95,21 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (perms/data-perms-graph)
-                   [:groups (u/the-id group) (mt/id) :schemas]
+                   [:groups (u/the-id group) (mt/id) :data :schemas]
                    {"PUBLIC" {(mt/id :venues) :all}}))
         (is (= {(mt/id :venues) :all}
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))))
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) (mt/id) :schemas]
+                     [:groups (u/the-id group) (mt/id) :data :schemas]
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
 
     (testing "permissions for new db"
       (let [new-id (inc (mt/id))]
@@ -120,10 +119,10 @@
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :schemas]
+                     [:groups (u/the-id group) db-id :data :schemas]
                      :all))
           (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :schemas]))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))
 
     (testing "permissions for new db with no tables"
       (let [new-id (inc (mt/id))]
@@ -132,7 +131,7 @@
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :schemas]
+                     [:groups (u/the-id group) db-id :data :schemas]
                      :all))
           (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :schemas]))))))))
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))))

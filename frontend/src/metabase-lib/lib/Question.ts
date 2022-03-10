@@ -75,7 +75,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */

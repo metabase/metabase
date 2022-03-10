@@ -40,7 +40,7 @@ var statusElement = document.getElementById("status");
 
 function poll() {
   var req = new XMLHttpRequest();
-  req.open("GET", "/api/health", true);
+  req.open("GET", "api/health", true);
   req.onreadystatechange = function() {
     if (req.readyState === 4) {
       if (req.status === 200) {
