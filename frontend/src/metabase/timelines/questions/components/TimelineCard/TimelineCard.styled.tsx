@@ -23,10 +23,10 @@ export const CardLabel = styled.span`
 
 export const CardIcon = styled(Icon)`
   color: ${color("text-medium")};
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 1.125rem;
+  height: 1.125rem;
 `;
 
 export const CardContent = styled.div`
-  padding: 1rem 0;
+  margin: 1rem -0.75rem 1rem -0.5rem;
 `;
