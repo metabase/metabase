@@ -348,13 +348,14 @@ export default class DashboardHeader extends Component {
               <Icon name="ellipsis" size={20} className="text-brand-hover" />
             </DashboardHeaderButton>
           )}
-        >
-          <div className="py1">
-            {extraButtons.map((b, i) => (
-              <div key={i}>{b}</div>
-            ))}
-          </div>
-        </TippyPopoverWithTrigger>,
+          popoverContent={
+            <div className="py1">
+              {extraButtons.map((b, i) => (
+                <div key={i}>{b}</div>
+              ))}
+            </div>
+          }
+        />,
       );
     }
 

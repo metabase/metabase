@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { useEffect } from "react";
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -16,7 +15,7 @@ function setup(props: TippyPopoverWithTriggerProps) {
   );
 }
 
-const children = <div>popover content</div>;
+const popoverContent = <div>popover content</div>;
 const triggerContent = "trigger content";
 
 describe("TippyPopoverWithTrigger", () => {
@@ -24,7 +23,7 @@ describe("TippyPopoverWithTrigger", () => {
     jest.clearAllMocks();
 
     setup({
-      children,
+      popoverContent,
       triggerContent,
     });
   });

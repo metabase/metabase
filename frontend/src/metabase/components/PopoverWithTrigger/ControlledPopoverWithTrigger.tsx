@@ -14,7 +14,7 @@ export type ControlledPopoverWithTriggerProps = Omit<
   OptionalTriggerStyleProps & {
     renderTrigger?: RenderTrigger;
     triggerContent?: React.ReactNode;
-    children: PopoverWithTriggerContent;
+    popoverContent: PopoverWithTriggerContent;
     visible: boolean;
     onOpen: () => void;
     onClose: () => void;
@@ -49,7 +49,7 @@ function ControlledPopoverWithTrigger({
   triggerClassesClose,
   renderTrigger,
   triggerContent,
-  children,
+  popoverContent,
   disabled,
   visible,
   onOpen,
@@ -81,9 +81,9 @@ function ControlledPopoverWithTrigger({
     </button>
   );
 
-  const popoverContent = _.isFunction(children)
-    ? children({ onClose })
-    : children;
+  const computedPopoverContent = _.isFunction(popoverContent)
+    ? popoverContent({ onClose })
+    : popoverContent;
 
   return (
     <TippyPopover
@@ -92,7 +92,7 @@ function ControlledPopoverWithTrigger({
       {...popoverProps}
       visible={visible}
       disabled={disabled}
-      content={popoverContent}
+      content={computedPopoverContent}
       onClose={onClose}
     >
       {computedTrigger}

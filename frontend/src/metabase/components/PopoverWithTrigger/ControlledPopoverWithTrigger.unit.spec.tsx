@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { useEffect } from "react";
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ControlledPopoverWithTrigger, {
@@ -19,7 +18,7 @@ function setup(props: ControlledPopoverWithTriggerProps) {
 
 const onClose = jest.fn();
 const onOpen = jest.fn();
-const children = <div>popover content</div>;
+const popoverContent = <div>popover content</div>;
 const triggerContent = "trigger content";
 
 describe("ControlledPopoverWithTrigger", () => {
@@ -38,7 +37,7 @@ describe("ControlledPopoverWithTrigger", () => {
       setup({
         visible: false,
         renderTrigger,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
@@ -63,7 +62,7 @@ describe("ControlledPopoverWithTrigger", () => {
       setup({
         visible: false,
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
@@ -84,7 +83,7 @@ describe("ControlledPopoverWithTrigger", () => {
     it("should be openable/closable via the visible prop", async () => {
       const props = {
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       };
@@ -106,7 +105,7 @@ describe("ControlledPopoverWithTrigger", () => {
       setup({
         visible: true,
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
@@ -127,22 +126,22 @@ describe("ControlledPopoverWithTrigger", () => {
     });
   });
 
-  describe("children fn prop", () => {
+  describe("popoverContent fn prop", () => {
     beforeEach(() => {
-      const children: PopoverWithTriggerContent = ({ onClose }) => (
+      const popoverContent: PopoverWithTriggerContent = ({ onClose }) => (
         <button onClick={onClose}>popover content</button>
       );
 
       setup({
         visible: true,
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
     });
 
-    it("should pass the onClose prop to the children fn", () => {
+    it("should pass the onClose prop to the popoverContent fn", () => {
       userEvent.click(screen.getByText("popover content"));
       expect(onClose).toHaveBeenCalled();
     });
@@ -154,7 +153,7 @@ describe("ControlledPopoverWithTrigger", () => {
         disabled: true,
         visible: false,
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
@@ -172,7 +171,7 @@ describe("ControlledPopoverWithTrigger", () => {
         disabled: true,
         visible: true,
         triggerContent,
-        children,
+        popoverContent,
         onClose,
         onOpen,
       });
