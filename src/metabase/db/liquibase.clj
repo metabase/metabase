@@ -27,6 +27,12 @@
 ;; See https://logging.apache.org/log4j/2.x/log4j-jul/index.html for more information.
 (org.apache.logging.log4j.jul.Log4jBridgeHandler/install true nil true)
 
+;; Liquibase logs a message for every ChangeSet directly to standard out -- see
+;; https://github.com/liquibase/liquibase/issues/2396 -- but we can disable this by setting the ConsoleUIService's
+;; output stream to the null output stream
+(doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
+  (.setOutputStream (java.io.PrintStream. (java.io.PrintStream/nullOutputStream))))
+
 (def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]

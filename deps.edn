@@ -84,7 +84,7 @@
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.17.1"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.17.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.17.1"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.17.1"}             ; allows the java.util.logging API to work with log4j2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.17.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.17.1"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.2.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.0"

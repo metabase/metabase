@@ -1,6 +1,5 @@
 (ns metabase.db.liquibase.h2
-  "Loading this namespace will replace the default `H2Database` implementation with our custom subclass that uppercases
-  all identifiers."
+  "Custom implementation of the Liquibase H2 adapter that uppercases all identifiers. See #20611 for more details."
   (:require [metabase.util :as u])
   (:import liquibase.database.core.H2Database
            liquibase.database.jvm.JdbcConnection))
