@@ -50,6 +50,13 @@ export const Sidebar = styled.aside`
   }
 `;
 
+export const SidebarHeading = styled.h4`
+  color: ${color("text-medium")};
+  font-weight: 700;
+  margin-left: ${space(3)};
+  text-transform: uppercase;
+`;
+
 export const ToggleMobileSidebarIcon = styled(Icon)`
   color: ${color("brand")};
   // margin sizes hard-coded

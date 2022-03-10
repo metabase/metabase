@@ -346,3 +346,17 @@ export function extractCollectionId(slug) {
   }
   return extractEntityId(slug);
 }
+
+/*
+ * Will transform a name like `This name has spaces and Uppercases`
+ * into `this-name-has-spaced-and-uppercases`
+ *
+ * then prepend an entity type, say "card" or "dashboard"
+ * plus the passed id.
+ * "
+ */
+export function bookmark({ type, id, name }) {
+  const [, idInteger] = id.split("-");
+
+  return `${type}/${appendSlug(idInteger, slugg(name))}`;
+}

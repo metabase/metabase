@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import CollectionsList from "./CollectionsList/CollectionsList";
+import CollectionsList from "./CollectionsList";
 
 import {
   nonPersonalOrArchivedCollection,

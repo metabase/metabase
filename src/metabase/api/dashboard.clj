@@ -16,7 +16,6 @@
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.field :refer [Field]]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
@@ -40,17 +39,6 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
-(defn- hydrate-favorites
-  "Efficiently hydrate the `:favorite` status (whether the current User has favorited it) for a group of Dashboards."
-  [dashboards]
-  (let [favorite-dashboard-ids (when (seq dashboards)
-                                 (db/select-field :dashboard_id DashboardFavorite
-                                   :user_id      api/*current-user-id*
-                                   :dashboard_id [:in (set (map u/the-id dashboards))]))]
-    (for [dashboard dashboards]
-      (assoc dashboard
-        :favorite (contains? favorite-dashboard-ids (u/the-id dashboard))))))
-
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
@@ -58,8 +46,7 @@
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
-    (filter mi/can-read? <>)
-    (hydrate-favorites <>)))
+    (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -77,7 +64,6 @@
                    (assoc dashboard :last-edit-info edit-info)
                    dashboard)))
           dashboards)))
-
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
@@ -263,7 +249,6 @@
   (let [dashboard (get-dashboard id)]
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (last-edit/with-last-edit-info dashboard :dashboard)))
-
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -485,25 +470,6 @@
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id))
-
-
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
-
-(api/defendpoint POST "/:id/favorite"
-  "Favorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (db/insert! DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:id/favorite"
-  "Unfavorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (api/let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*)]
-    (db/delete! DashboardFavorite, :id favorite-id))
-  api/generic-204-no-content)
-
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

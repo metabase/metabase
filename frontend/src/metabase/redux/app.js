@@ -1,6 +1,7 @@
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import { push, LOCATION_CHANGE } from "react-router-redux";
 
-import { LOCATION_CHANGE } from "react-router-redux";
+import { combineReducers, handleActions } from "metabase/lib/redux";
+import { openInBlankWindow, shouldOpenInBlankWindow } from "metabase/lib/dom";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error) {
@@ -10,6 +11,14 @@ export function setErrorPage(error) {
     payload: error,
   };
 }
+
+export const openUrl = (url, options) => dispatch => {
+  if (shouldOpenInBlankWindow(url, options)) {
+    openInBlankWindow(url);
+  } else {
+    dispatch(push(url));
+  }
+};
 
 const errorPage = handleActions(
   {

@@ -1,6 +1,6 @@
 # Environment variables
 
-Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence.
+Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that the environment variables won't get written into the application database.
 
 Setting environment variables can be done in various ways depending on how Metabase is being run.
 
@@ -913,6 +913,14 @@ Type: string<br>
 Default: `null`
 
 This is the URL where your users go to log in to your identity provider. Depending on which IdP you're using, this usually looks like `https://your-org-name.okta.com`.
+
+### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+This is a unique identifier for the IdP. Often referred to as Entity ID or simply Issuer. Depending on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
