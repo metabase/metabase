@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Collections from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import TimelinePanel from "../../components/TimelinePanel";
@@ -17,7 +17,9 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelinePanelProps) => props.collectionId,
+  id: (state: State, props: TimelinePanelProps) => {
+    return props.collectionId ?? ROOT_COLLECTION.id;
+  },
 };
 
 export default _.compose(
