@@ -3,8 +3,8 @@ import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline } from "metabase-types/api";
-import ModalHeader from "../ModalHeader";
 import { ModalBody } from "./NewTimelineModal.styled";
 
 export interface NewTimelineModalProps {

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
-import ModalHeader from "../ModalHeader";
+import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import TimelineCard from "../TimelineCard";
 import TimelineEmptyState from "../TimelineEmptyState";
 import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
