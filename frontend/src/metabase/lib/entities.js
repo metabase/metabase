@@ -1,6 +1,12 @@
 /*
  * # Entities abstract the interface between the back-end and the front-end.
  *
+ * ## Endpoint requirements for entities:
+ *
+ * When fetching a list, each item of the list must include an `id` key/value pair.
+ *
+ * JSON must wrap response inside a `{ "data" : { …your data } }` structure.
+ *
  * ## Required Properties:
  *
  * name:
@@ -253,12 +259,14 @@ export function createEntity(def) {
         );
 
         if (notify) {
-          if (notify.undo) {
-            // pick only the attributes that were updated
-            const undoObject = _.pick(
-              originalObject,
-              ...Object.keys(updatedObject || {}),
-            );
+          // pick only the attributes that were updated
+          const undoObject = _.pick(
+            originalObject,
+            ...Object.keys(updatedObject || {}),
+          );
+          // https://github.com/metabase/metabase/pull/20874#pullrequestreview-902384264
+          const canUndo = !hasCircularReference(undoObject);
+          if (notify.undo && canUndo) {
             dispatch(
               addUndo({
                 actions: [
@@ -603,6 +611,16 @@ export function createEntity(def) {
   require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
+}
+
+function hasCircularReference(object) {
+  try {
+    JSON.stringify(object);
+  } catch (error) {
+    return true;
+  }
+
+  return false;
 }
 
 export function combineEntities(entities) {

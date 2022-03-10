@@ -419,7 +419,6 @@
                   :display             "table"
                   :description         nil
                   :moderated_status    "verified"
-                  :favorite            false
                   :model               "card"}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
@@ -461,8 +460,8 @@
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
           (is (= (map default-item [{:name "Acme Products", :model "pulse"}
-                                    {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}
+                                    {:name "Birthday Card", :description nil, :model "card", :display "table"}
+                                    {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                                     {:name "Electro-Magnetic Pulse", :model "pulse"}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
@@ -474,11 +473,11 @@
             (is (= ()
                    (mt/boolean-ids-and-timestamps
                      (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
-            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
+            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
-                    (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
+            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))
             ))))
@@ -488,7 +487,7 @@
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
-          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
+          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
@@ -727,10 +726,10 @@
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
     :effective_ancestors [{:metabase.models.collection.root/is-root? true
-                           :name "Our analytics"
-                           :id "root"
-                           :authority_level nil
-                           :can_write true}]
+                           :name                                     "Our analytics"
+                           :id                                       "root"
+                           :authority_level                          nil
+                           :can_write                                true}]
     :effective_location  "/"
     :parent_id           nil
     :id                  (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
@@ -922,9 +921,9 @@
 (deftest fetch-root-items-collection-test
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+      (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
-              (default-item {:name "Dine & Dashboard", :favorite false, :description nil, :model "dashboard"})
+              (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"}) ]
              (with-some-children-of-collection nil
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
@@ -965,8 +964,8 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
-                      (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})
+              (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
                      (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
@@ -1025,7 +1024,6 @@
                  :collection_position nil
                  :display             "table"
                  :moderated_status    nil
-                 :favorite            false
                  :model               "card"}]
                (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                  (dissoc item :id)))))))))

@@ -97,10 +97,8 @@ export function interceptPromise(method, path) {
   return state;
 }
 
-const chainStart = Symbol();
-
 /**
- * Waits for all Cypress commands similarly to Promise.all.
+ * Executes and waits for all Cypress commands sequentially.
  * Helps to avoid excessive nesting and verbosity
  *
  * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
@@ -112,38 +110,28 @@ const chainStart = Symbol();
  *   cy.visit(`/dashboard/1`);
  * });
  */
+const cypressWaitAllRecursive = (results, currentCommand, commands) => {
+  return currentCommand.then(result => {
+    results.push(result);
+
+    const [nextCommand, ...rest] = Array.from(commands);
+
+    if (nextCommand == null) {
+      return results;
+    }
+
+    return cypressWaitAllRecursive(results, nextCommand, rest);
+  });
+};
+
 export const cypressWaitAll = function(commands) {
-  const _ = Cypress._;
-  const chain = cy.wrap(null, { log: false });
+  const results = [];
 
-  const stopCommand = _.find(cy.queue.commands, {
-    attributes: { chainerId: chain.chainerId },
-  });
-
-  const startCommand = _.find(cy.queue.commands, {
-    attributes: { chainerId: commands[0].chainerId },
-  });
-
-  const p = chain.then(() => {
-    return _(commands)
-      .map(cmd => {
-        return cmd[chainStart]
-          ? cmd[chainStart].attributes
-          : _.find(cy.queue.commands, {
-              attributes: { chainerId: cmd.chainerId },
-            }).attributes;
-      })
-      .concat(stopCommand.attributes)
-      .slice(1)
-      .flatMap(cmd => {
-        return cmd.prev.get("subject");
-      })
-      .value();
-  });
-
-  p[chainStart] = startCommand;
-
-  return p;
+  return cypressWaitAllRecursive(
+    results,
+    cy.wrap(null, { log: false }),
+    commands,
+  );
 };
 
 /**

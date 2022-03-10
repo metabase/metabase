@@ -200,7 +200,7 @@
     "chromatic": "^6.3.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "6.4.0",
+    "cypress": "^9.5.1",
     "cypress-grep": "^2.5.2",
     "cypress-real-events": "^1.4.0",
     "documentation": "^13.2.5",
@@ -250,7 +250,7 @@
     "set-value": "4.0.1",
     "immer": "9.0.6",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "cypress": "6.4.0"
+    "prismjs": "1.27.0"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",

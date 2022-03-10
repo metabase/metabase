@@ -4,6 +4,7 @@
             [metabase.api.activity :as activity]
             [metabase.api.alert :as alert]
             [metabase.api.automagic-dashboards :as magic]
+            [metabase.api.bookmark :as bookmark]
             [metabase.api.card :as card]
             [metabase.api.collection :as collection]
             [metabase.api.dashboard :as dashboard]
@@ -63,6 +64,7 @@
   (context "/alert"                [] (+auth alert/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
+  (context "/bookmark"             [] (+auth bookmark/routes))
   (context "/collection"           [] (+auth collection/routes))
   (context "/dashboard"            [] (+auth dashboard/routes))
   (context "/database"             [] (+auth database/routes))

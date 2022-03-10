@@ -48,6 +48,17 @@
       (assoc metabase-field :nested-fields (set (for [nested-field nested-fields]
                                                   (add-nested-fields nested-field parent-id->fields)))))))
 
+(s/defn ^:private add-nested-field-columns :- common/TableMetadataFieldWithID
+  "Nested field columns are flattened, unlike the ordinary nested fields.
+  Add the pertinent nested fields to the parent column"
+  [mb-field :- common/TableMetadataFieldWithID,
+   nfc-fields :- #{common/TableMetadataFieldWithID}]
+  (let [column-fields (filter #(= (keyword (mb-field :name))
+                                  (get-in % [:nfc-path 0])) nfc-fields)]
+        (if-not (seq column-fields)
+          mb-field
+          (assoc mb-field :nested-fields (set column-fields)))))
+
 (s/defn fields->our-metadata :- #{common/TableMetadataFieldWithID}
   "Given a sequence of Metabase Fields, format them and return them in a hierachy so the format matches the one
   `db-metadata` comes back in."
@@ -74,7 +85,6 @@
    `TableMetadataField` format returned by `describe-table`."
   [table :- i/TableInstance]
   (-> table table->fields fields->our-metadata))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FETCHING METADATA FROM CONNECTED DB                                       |

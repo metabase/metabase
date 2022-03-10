@@ -953,6 +953,8 @@ Default: `true`
 
 Send email notification to user, when they login from a new device. Set to `false` to stop sending "We've noticed a new login on your Metabase account" emails for all users.
 
+Also, this variable controls the geocoding service that Metabase uses to know the location from where your users logged in. Setting this variable to false also disables this reverse geocoding functionality.
+
 ### `MB_SESSION_COOKIES`
 
 Type: boolean<br>
