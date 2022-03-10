@@ -69,19 +69,19 @@
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
-    [{:name     \"A\"
-      :below    #{:card :dataset}
-      :children [{:name \"B\"}
-                 {:name     \"C\"
-                  :here     #{:dataset :card}
-                  :below    #{:dataset :card}
-                  :children [{:name     \"D\"
-                              :here     #{:dataset}
-                              :children [{:name \"E\"}]}
-                             {:name     \"F\"
-                              :here     #{:card}
-                              :children [{:name \"G\"}]}]}]}
-     {:name \"H\"}]
+  [{:name     \"A\"
+  :below    #{:card :dataset}
+  :children [{:name \"B\"}
+  {:name     \"C\"
+  :here     #{:dataset :card}
+  :below    #{:dataset :card}
+  :children [{:name     \"D\"
+  :here     #{:dataset}
+  :children [{:name \"E\"}]}
+  {:name     \"F\"
+  :here     #{:card}
+  :children [{:name \"G\"}]}]}]}
+  {:name \"H\"}]
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
@@ -95,17 +95,17 @@
                               (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
                                                    :from      [:report_card]
-                                                   :where     [:= :archived false]}))
-        collections   (->> (db/select Collection
-                                      {:where [:and
-                                               (when exclude-archived
-                                                 [:= :archived false])
-                                               [:= :namespace namespace]
-                                               (collection/visible-collection-ids->honeysql-filter-clause
-                                                 :id
-                                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                           (map collection/personal-collection-with-ui-details))]
-    (collection/collections->tree coll-type-ids collections)))
+                                                   :where     [:= :archived false]}))]
+    (->> (db/select Collection
+                    {:where [:and
+                             (when exclude-archived
+                               [:= :archived false])
+                             [:= :namespace namespace]
+                             (collection/visible-collection-ids->honeysql-filter-clause
+                              :id
+                              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+         (map collection/personal-collection-with-ui-details)
+         (collection/collections->tree coll-type-ids))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -335,6 +335,7 @@
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
     (cond-> row
+      ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
       true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id))))
