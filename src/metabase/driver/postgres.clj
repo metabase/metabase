@@ -451,7 +451,7 @@
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-key"))
+                          (secret/db-details-prop->secret-map db-details "ssl-key"))
         ssl-client-cert (when (:ssl-use-client-auth db-details)
                           (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
         ssl-key-pw      (when (:ssl-use-client-auth db-details)
