@@ -35,6 +35,7 @@ const TimelineSidebar = ({
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
         cardId={question.id()}
+        collectionId={question.collectionId()}
         visibility={visibility}
         onToggleTimeline={handleToggleTimeline}
       />
