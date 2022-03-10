@@ -177,11 +177,11 @@ export default class View extends React.Component {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
-    if (isShowingTimelineSidebar && question) {
+    if (isShowingTimelineSidebar) {
       return (
         <TimelineSidebar
           question={question}
-          timelineVisibility={timelineVisibility}
+          visibility={timelineVisibility}
           onShowTimeline={showTimeline}
           onHideTimeline={hideTimeline}
           onClose={onCloseTimelines}

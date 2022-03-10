@@ -5,18 +5,14 @@ import { PanelRoot } from "./TimelinePanel.styled";
 
 export interface TimelinePanelProps {
   timelines: Timeline[];
-  timelineVisibility?: Record<number, boolean>;
-  isVisibleByDefault?: boolean;
-  onShowTimeline?: (timeline: Timeline) => void;
-  onHideTimeline?: (timeline: Timeline) => void;
+  visibility: Record<number, boolean>;
+  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelinePanel = ({
   timelines,
-  timelineVisibility = {},
-  isVisibleByDefault = false,
-  onShowTimeline,
-  onHideTimeline,
+  visibility,
+  onToggleTimeline,
 }: TimelinePanelProps): JSX.Element => {
   return (
     <PanelRoot>
@@ -24,9 +20,8 @@ const TimelinePanel = ({
         <TimelineCard
           key={timeline.id}
           timeline={timeline}
-          isVisible={timelineVisibility[timeline.id] ?? isVisibleByDefault}
-          onShowTimeline={onShowTimeline}
-          onHideTimeline={onHideTimeline}
+          isVisible={visibility[timeline.id] ?? true}
+          onToggleTimeline={onToggleTimeline}
         />
       ))}
     </PanelRoot>

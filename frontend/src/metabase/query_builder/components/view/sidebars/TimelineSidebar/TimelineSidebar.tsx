@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import Question from "metabase-lib/lib/Question";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -7,7 +7,7 @@ import { Timeline } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
   question: Question;
-  timelineVisibility: Record<number, boolean>;
+  visibility: Record<number, boolean>;
   onShowTimeline?: (timeline: Timeline) => void;
   onHideTimeline?: (timeline: Timeline) => void;
   onClose?: () => void;
@@ -15,19 +15,28 @@ export interface TimelineSidebarProps {
 
 const TimelineSidebar = ({
   question,
-  timelineVisibility,
+  visibility,
   onShowTimeline,
   onHideTimeline,
   onClose,
 }: TimelineSidebarProps) => {
+  const handleToggleTimeline = useCallback(
+    (timeline: Timeline, isVisible: boolean) => {
+      if (isVisible) {
+        onShowTimeline?.(timeline);
+      } else {
+        onHideTimeline?.(timeline);
+      }
+    },
+    [onShowTimeline, onHideTimeline],
+  );
+
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
         cardId={question.id()}
-        timelineVisibility={timelineVisibility}
-        isVisibleByDefault={question.isSaved()}
-        onShowTimeline={onShowTimeline}
-        onHideTimeline={onHideTimeline}
+        visibility={visibility}
+        onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>
   );
