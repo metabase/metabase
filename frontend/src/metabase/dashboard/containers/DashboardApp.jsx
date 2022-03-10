@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import _ from "underscore";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -36,7 +38,6 @@ import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
-import Bookmark from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => {
@@ -73,41 +74,35 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@Bookmark.loadList({ reload: true, wrapped: true })
-@connect(mapStateToProps, mapDispatchToProps)
-@fitViewport
-@title(({ dashboard }) => dashboard && dashboard.name)
-@titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
-export default class DashboardApp extends Component {
-  state = {
-    addCardOnLoad: null,
-  };
+function DashboardApp(props) {
+  const [addCardOnLoad, setAddCardOnLoad] = useState(null);
+  const [editingOnLoad, setEditingOnLoad] = useState(null);
 
-  UNSAFE_componentWillMount() {
+  useEffect(() => {
     const options = parseHashOptions(window.location.hash);
-
     if (options) {
-      this.setState({
-        editingOnLoad: options.edit,
-        addCardOnLoad: options.add && parseInt(options.add),
-      });
+      setEditingOnLoad(options.edit);
+      setAddCardOnLoad(options.add && parseInt(options.add));
     }
-  }
+  }, []);
 
-  render() {
-    const { editingOnLoad, addCardOnLoad } = this.state;
-
-    return (
-      <div className="shrink-below-content-size full-height">
-        <Dashboard
-          editingOnLoad={editingOnLoad}
-          addCardOnLoad={addCardOnLoad}
-          {...this.props}
-        />
-        {/* For rendering modal urls */}
-        {this.props.children}
-      </div>
-    );
-  }
+  return (
+    <div className="shrink-below-content-size full-height">
+      <Dashboard
+        editingOnLoad={editingOnLoad}
+        addCardOnLoad={addCardOnLoad}
+        {...props}
+      />
+      {/* For rendering modal urls */}
+      {props.children}
+    </div>
+  );
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ dashboard }) => dashboard?.name),
+  titleWithLoadingTime("loadingStartTime"),
+  fitViewport,
+)(DashboardApp);
