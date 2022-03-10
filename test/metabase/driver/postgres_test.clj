@@ -284,6 +284,18 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
+(deftest json-query-test
+  (mt/test-driver :postgres
+    (testing "Issue JSON query if we get a field with nested field column data"
+      (mt/dataset
+        (mt/dataset-definition
+          "Postgres with a JSON Field"
+          ["venues"
+           [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
+           [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]]
+          (is (= "bob"
+                 (db/select-one Field, :id (mt/id :venues :address)))))))))
+
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "flattened-row"
