@@ -27,23 +27,20 @@
 ;;
 ;; 3. The Clojure DynamicClassLoader does not create a Package -- see
 ;;    https://clojure.atlassian.net/browse/CLJ-1550?focusedCommentId=13025
-(defn- define-package! [^String package-name]
-  (doto (.getDeclaredMethod
-         ClassLoader
-         "definePackage"
-         (into-array Class [String String String String String String String java.net.URL]))
-    (.setAccessible true)
-    (.invoke (classloader/the-classloader) (into-array Object [package-name nil nil nil nil nil nil nil]))
-    (.setAccessible false)))
-
 (let [klass (class (h2-database*))]
   (when-not (.getPackage klass)
-    ;; class name will be something like           metabase.db.liquibase.h2.proxy$liquibase.database.core.H2Database$ff19274a
-    ;; so the corresponding package name should be metabase.db.liquibase.h2.proxy$liquibase.database.core.H2Database
-    (let [package-name (->> (str/split (.getName (class (h2-database*))) #"\$")
-                            butlast
-                            (str/join \$))]
-      (define-package! package-name))))
+    (let [method       (.getDeclaredMethod
+                        ClassLoader
+                        "definePackage"
+                        (into-array Class [String String String String String String String java.net.URL]))
+          class-name   (.getName klass)
+          ;; e.g. metabase.db.liquibase.h2.proxy$liquibase.database.core
+          package-name (.substring class-name 0 (.lastIndexOf class-name "."))]
+      (doto method
+        (.setAccessible true)
+        (.invoke (.getClassLoader klass) (into-array Object [package-name nil nil nil nil nil nil nil]))
+        (.setAccessible false))
+      (assert (.getPackage klass) (format "Failed to create package for proxy class %s." class-name)))))
 
 (defn h2-database
   "A version of the Liquibase H2 implementation that always converts identifiers to uppercase and then quotes them."
