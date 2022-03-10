@@ -6,6 +6,7 @@ import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -72,6 +73,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+@Bookmark.loadList()
 @connect(mapStateToProps, mapDispatchToProps)
 @fitViewport
 @title(({ dashboard }) => dashboard && dashboard.name)
