@@ -16,6 +16,8 @@ export const ActivityApi = {
 };
 
 export const BookmarkApi = {
+  create: POST("/api/bookmark/:entity/:id"),
+  delete: DELETE("/api/bookmark/:entity/:id"),
   card: {
     create: POST("/api/bookmark/card/:id"),
     delete: DELETE("/api/bookmark/card/:id"),
