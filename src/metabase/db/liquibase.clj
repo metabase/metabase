@@ -20,6 +20,13 @@
 
 (.register (SqlGeneratorFactory/getInstance) (MetabaseMySqlCreateTableSqlGenerator.))
 
+;; Liquibase uses java.util.logging (JUL) for logging, so we need to install the JUL -> Log4j2 bridge which replaces the
+;; default JUL handler with one that "writes" log messages to Log4j2. (Not sure this is the best place in the world to
+;; do this, but Liquibase is the only thing using JUL directly.)
+;;
+;; See https://logging.apache.org/log4j/2.x/log4j-jul/index.html for more information.
+(org.apache.logging.log4j.jul.Log4jBridgeHandler/install true nil true)
+
 (def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]

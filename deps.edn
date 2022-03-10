@@ -154,9 +154,6 @@
  :paths
  ["src" "shared/src" "resources" "java/target/classes"]
 
- :jvm-opts
- ["-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager"]
-
  :aliases
  {
 ;;; Local Dev & test profiles
