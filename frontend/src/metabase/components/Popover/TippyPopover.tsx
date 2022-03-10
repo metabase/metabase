@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
+import * as popper from "@popperjs/core";
 import cx from "classnames";
 import { merge } from "icepick";
 
@@ -20,8 +21,10 @@ export interface ITippyPopoverProps extends TippyProps {
   disableContentSandbox?: boolean;
   lazy?: boolean;
   flip?: boolean;
+  sizeToFit?: boolean;
 }
 
+const PAGE_PADDING = 10;
 const OFFSET: [number, number] = [0, 5];
 
 const propTypes = {
@@ -36,14 +39,41 @@ function appendTo() {
 
 function getPopperOptions({
   flip,
+  sizeToFit,
   popperOptions = {},
-}: Pick<ITippyPopoverProps, "flip" | "popperOptions">) {
+}: Pick<ITippyPopoverProps, "flip" | "sizeToFit" | "popperOptions">) {
   return merge(
     {
       modifiers: [
         {
           name: "flip",
           enabled: flip,
+        },
+        {
+          name: "sizeToFit",
+          phase: "beforeWrite",
+          enabled: sizeToFit,
+          requiresIfExists: ["offset", "flip"],
+          fn: ({
+            state,
+            options,
+          }: popper.ModifierArguments<Record<string, unknown>>) => {
+            const {
+              placement,
+              rects: {
+                popper: { height },
+              },
+            } = state;
+            if (placement.startsWith("top") || placement.startsWith("bottom")) {
+              const overflow = popper.detectOverflow(state, options);
+              const distanceFromEdge = placement.startsWith("top")
+                ? overflow.top
+                : overflow.bottom;
+
+              const maxHeight = height - distanceFromEdge - PAGE_PADDING;
+              state.styles.popper.maxHeight = `${maxHeight}px`;
+            }
+          },
         },
       ],
     },
@@ -59,6 +89,7 @@ function TippyPopover({
   lazy = true,
   interactive = true,
   flip = true,
+  sizeToFit = false,
   popperOptions,
   onShow,
   onHide,
@@ -110,8 +141,8 @@ function TippyPopover({
   const plugins = useMemo(() => [lazyPlugin], [lazyPlugin]);
 
   const computedPopperOptions = useMemo(
-    () => getPopperOptions({ flip, popperOptions }),
-    [flip, popperOptions],
+    () => getPopperOptions({ flip, sizeToFit, popperOptions }),
+    [flip, sizeToFit, popperOptions],
   );
 
   return (
