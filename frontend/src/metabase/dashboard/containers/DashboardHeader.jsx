@@ -15,12 +15,14 @@ import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/Popover/TippyPopoverWithTrigger";
 import { getIsBookmarked } from "metabase/dashboard/selectors";
 
 import cx from "classnames";
 
 import { Link } from "react-router";
+
+const POPOVER_PROPS = { placement: "bottom-end" };
 
 const mapStateToProps = (state, props) => {
   return {
@@ -341,19 +343,20 @@ export default class DashboardHeader extends Component {
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
-        <PopoverWithTrigger
-          triggerElement={
-            <DashboardHeaderButton>
+        <TippyPopoverWithTrigger
+          popoverProps={POPOVER_PROPS}
+          trigger={({ onClick }) => (
+            <DashboardHeaderButton onClick={onClick}>
               <Icon name="ellipsis" size={20} className="text-brand-hover" />
             </DashboardHeaderButton>
-          }
+          )}
         >
           <div className="py1">
             {extraButtons.map((b, i) => (
               <div key={i}>{b}</div>
             ))}
           </div>
-        </PopoverWithTrigger>,
+        </TippyPopoverWithTrigger>,
       );
     }
 
