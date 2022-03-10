@@ -35,7 +35,8 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const admin = this.props.user.is_superuser;
+    // PROTOTYPE CRUFT - added a check to stop things from blowing up, will need to keep an eye on this.
+    const admin = this.props.user && this.props.user.is_superuser;
 
     return [
       {

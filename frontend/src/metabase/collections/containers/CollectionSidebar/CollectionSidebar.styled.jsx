@@ -26,11 +26,9 @@ export const Sidebar = styled.aside`
   left: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-top: ${space(3)};
-  position: fixed;
-  top: 65px;
+  padding-top: ${space(1)};
   width: 0;
-  background-color: ${color("white")};
+  background-color: transparent;
 
   ${props =>
     props.shouldDisplayMobileSidebar &&

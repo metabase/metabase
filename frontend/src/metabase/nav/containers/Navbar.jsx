@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 
 import { t } from "ttag";
 
@@ -15,9 +16,6 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
-
-import ProfileLink from "metabase/nav/components/ProfileLink";
-import SearchBar from "metabase/nav/components/SearchBar";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
@@ -43,14 +41,8 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import {
-  EntityMenuContainer,
-  LogoIconContainer,
-  LogoLinkContainer,
-  NavRoot,
-  SearchBarContainer,
-  SearchBarContent,
-} from "./Navbar.styled";
+import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
+import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -63,10 +55,12 @@ const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
+@withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
     modal: null,
+    shouldDisplayMobileSidebar: false,
   };
 
   static propTypes = {
@@ -116,13 +110,24 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { hasDataAccess, hasNativeWrite, hasDbWithJsonEngine } = this.props;
+    const {
+      hasDataAccess,
+      hasNativeWrite,
+      hasDbWithJsonEngine,
+      router,
+    } = this.props;
+    console.log("APP PROPS", this.props);
+    const collectionId = Urls.extractCollectionId(router.params.slug);
+    const isRoot = collectionId === "root";
+
+    console.log("ROOOT", isRoot, collectionId);
+    const shouldDisplayMobileSidebar = this.state.shouldDisplayMobileSidebar;
 
     return (
       <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3 flex-no-shrink"
+        className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto"
       >
         <LogoLinkContainer>
           <Link
@@ -137,18 +142,8 @@ export default class Navbar extends Component {
               <LogoIcon dark height={32} />
             </LogoIconContainer>
           </Link>
-        </LogoLinkContainer>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              location={this.props.location}
-              onChangeLocation={this.props.onChangeLocation}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <EntityMenuContainer>
           <EntityMenu
-            className="hide sm-show mr1"
+            className="hide sm-show mr1 ml-auto"
             trigger={
               <Link
                 mr={1}
@@ -206,25 +201,34 @@ export default class Navbar extends Component {
               },
             ]}
           />
-
-          {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to="browse"
-              p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;Data Browse`}
-            >
-              <Icon name="table_spaced" size={14} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
-            </Link>
-          )}
-          <ProfileLink {...this.props} />
-        </EntityMenuContainer>
+        </LogoLinkContainer>
         {this.renderModal()}
+        <CollectionSidebar
+          isRoot={isRoot}
+          handleToggleMobileSidebar={() => {
+            this.setState({
+              shouldDisplayMobileSidebar: !this.state
+                .shouldDisplayMobileSidebar,
+            });
+          }}
+          collectionId={collectionId}
+          shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
+        />
+        {hasDataAccess && (
+          <Link
+            mr={[1, 2]}
+            to="browse"
+            p={1}
+            hover={{
+              backgroundColor: darken(color("brand")),
+            }}
+            className="flex align-center rounded transition-background"
+            data-metabase-event={`NavBar;Data Browse`}
+          >
+            <Icon name="table_spaced" size={14} />
+            <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+          </Link>
+        )}
       </NavRoot>
     );
   }

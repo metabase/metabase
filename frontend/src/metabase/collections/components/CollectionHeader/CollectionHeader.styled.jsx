@@ -15,7 +15,7 @@ export const Container = styled.div`
   ${breakpointMinSmall} {
     align-items: center;
     flex-direction: row;
-    padding-top: ${space(3)};
+    padding-top: ${space(1)};
   }
 `;
 

@@ -1,25 +1,19 @@
 import styled from "@emotion/styled";
 import { space } from "styled-system";
 
-import { getDefaultSearchColor } from "metabase/nav/constants";
-import { color, lighten } from "metabase/lib/colors";
-
-const getActiveSearchColor = () => lighten(color("nav"), 0.1);
+import { color } from "metabase/lib/colors";
 
 export const SearchWrapper = styled.div`
   display: flex;
+  align-items: center;
   position: relative;
-  background-color: ${props =>
-    props.active ? getActiveSearchColor() : getDefaultSearchColor()};
+  background-color: white;
+  border: 1px solid #ddd;
   border-radius: 6px;
   flex: 1 1 auto;
   max-width: 50em;
   align-items: center;
-  color: white;
   transition: background 300ms ease-in;
-  &:hover {
-    background-color: ${getActiveSearchColor()};
-  }
 `;
 
 export const SearchInput = styled.input`
@@ -27,13 +21,13 @@ export const SearchInput = styled.input`
   background-color: transparent;
   width: 100%;
   border: none;
-  color: white;
-  font-size: 1em;
+  color: ${color("text-dark")};
+  font-size: 0.8em;
   font-weight: 700;
   &:focus {
     outline: none;
   }
   &::placeholder {
-    color: ${color("text-white")};
+    color: ${color("text-medium")};
   }
 `;

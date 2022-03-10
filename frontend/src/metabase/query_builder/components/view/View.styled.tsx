@@ -8,16 +8,14 @@ import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
+import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${color("bg-white")};
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: calc(100vh - 49px);
+  position: relative;
 `;
 
 export const QueryBuilderContentContainer = styled.div`

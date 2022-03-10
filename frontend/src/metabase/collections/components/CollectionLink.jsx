@@ -25,10 +25,10 @@ const CollectionLink = styled(Link)`
   flex-shrink: 0;
   align-items: center;
   font-weight: bold;
-  color: ${props => (props.selected ? "white" : color("brand"))};
+  color: ${props => (props.selected ? color("brand") : "white")};
   background-color: ${props =>
     props.selected
-      ? color("brand")
+      ? color("brand-light")
       : props.hovered
       ? color("brand-light")
       : "inherit"};
