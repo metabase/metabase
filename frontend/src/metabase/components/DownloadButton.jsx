@@ -24,15 +24,14 @@ function colorForType(type) {
 
 const handleSubmit = async (e, { method, url, setStatus }) => {
   e.preventDefault();
+
   setStatus(`pending`);
   // Closes the download popover
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
   const formData = new URLSearchParams(new FormData(e.target));
 
-  const options = {
-    method,
-  };
+  const options = { method };
   if (method === `POST`) {
     options.body = formData;
   } else if (method === `GET`) {
@@ -59,7 +58,7 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
           }
         },
       });
-      const streamResponse = await new Response(stream);
+      const streamResponse = new Response(stream);
       const blob = await streamResponse.blob();
       const url = URL.createObjectURL(blob);
 
@@ -69,6 +68,7 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
         .split(`filename=`)[1]
         .replace(/\"/g, ``);
 
+      // create a pseudo-link to trigger download
       const link = document.createElement(`a`);
       link.href = url;
       link.setAttribute(`download`, fileName);
