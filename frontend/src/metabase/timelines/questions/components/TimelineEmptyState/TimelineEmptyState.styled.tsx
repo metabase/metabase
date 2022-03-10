@@ -6,7 +6,7 @@ export const EmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4rem;
+  margin-top: 10rem;
 `;
 
 export const EmptyStateIcon = styled(Icon)`
@@ -20,6 +20,6 @@ export const EmptyStateText = styled.div`
   color: ${color("text-medium")};
   font-size: 0.875rem;
   line-height: 1.5rem;
-  font-weight: bold;
+  text-align: center;
   max-width: 19.375rem;
 `;

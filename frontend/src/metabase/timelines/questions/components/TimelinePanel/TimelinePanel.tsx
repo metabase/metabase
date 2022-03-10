@@ -1,6 +1,7 @@
 import React from "react";
 import { Timeline } from "metabase-types/api";
-import TimelineCard from "../TimelineCard";
+import TimelineList from "../TimelineList";
+import TimelineEmptyState from "../TimelineEmptyState";
 import { PanelRoot } from "./TimelinePanel.styled";
 
 export interface TimelinePanelProps {
@@ -14,16 +15,19 @@ const TimelinePanel = ({
   visibility,
   onToggleTimeline,
 }: TimelinePanelProps): JSX.Element => {
+  const isEmpty = timelines.length === 0;
+
   return (
     <PanelRoot>
-      {timelines.map(timeline => (
-        <TimelineCard
-          key={timeline.id}
-          timeline={timeline}
-          isVisible={visibility[timeline.id] ?? true}
+      {!isEmpty ? (
+        <TimelineList
+          timelines={timelines}
+          visibility={visibility}
           onToggleTimeline={onToggleTimeline}
         />
-      ))}
+      ) : (
+        <TimelineEmptyState />
+      )}
     </PanelRoot>
   );
 };
