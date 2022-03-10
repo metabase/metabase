@@ -2,7 +2,9 @@ import React from "react";
 import cx from "classnames";
 import _ from "underscore";
 
-import TippyPopover, { ITippyPopoverProps } from "./TippyPopover";
+import TippyPopover, {
+  ITippyPopoverProps,
+} from "metabase/components/Popover/TippyPopover";
 
 export type ControlledPopoverWithTriggerProps = Omit<
   ITippyPopoverProps,
