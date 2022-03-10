@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Motion, spring } from "react-motion";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
@@ -283,6 +284,8 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
+    const validationError = _.first(query.validate?.());
+
     const topQuery = isStructured && query.topLevelQuery();
 
     // only allow editing of series for structured queries
@@ -329,6 +332,7 @@ export default class View extends React.Component {
             onEditSeries={onEditSeries}
             onRemoveSeries={onRemoveSeries}
             onEditBreakout={onEditBreakout}
+            validationError={validationError}
           />
         </StyledDebouncedFrame>
 

@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { t } from "ttag";
+
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import { countLines } from "metabase/lib/string";
@@ -285,11 +287,31 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
+  validate() {
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors;
+  }
+
+  validateTemplateTags() {
+    return this.templateTags()
+      .map(tag => {
+        const dimension = new TemplateTagDimension(
+          tag.name,
+          this.metadata(),
+          this,
+        );
+        if (!dimension) {
+          return new Error(t`Invalid template tag: ${tag.name}`);
+        }
+
+        return dimension.validateTemplateTag();
+      })
+      .filter(Boolean);
+  }
+
   allTemplateTagsAreValid() {
-    return this.templateTags().every(
-      // field filters require a field
-      t => !(t.type === "dimension" && t.dimension == null),
-    );
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors.length === 0;
   }
 
   setTemplateTag(name, tag) {

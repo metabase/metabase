@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ErrorMessage from "metabase/components/ErrorMessage";
 
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
@@ -59,6 +60,7 @@ export default class QueryVisualization extends Component {
       isResultDirty,
       isNativeEditorOpen,
       result,
+      validationError,
     } = this.props;
 
     return (
@@ -82,7 +84,12 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error ? (
+          {validationError ? (
+            <ErrorMessage
+              title={t`Something's wrong with your question`}
+              message={validationError.message}
+            />
+          ) : result && result.error ? (
             <VisualizationError
               className="spread"
               error={result.error}
