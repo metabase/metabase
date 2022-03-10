@@ -12,7 +12,6 @@ const propTypes = {
   initialState: PropTypes.oneOf(["expanded", "collapsed"]),
   iconVariant: PropTypes.oneOf(["right-down", "up-down"]),
   iconPosition: PropTypes.oneOf(["left", "right"]),
-  fullWidth: PropTypes.bool,
 };
 
 function CollapseSection({
@@ -23,7 +22,6 @@ function CollapseSection({
   headerClass,
   className,
   bodyClass,
-  fullWidth,
   children,
 }) {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
@@ -53,7 +51,6 @@ function CollapseSection({
     <div className={className} role="tab" aria-expanded={isExpanded}>
       <HeaderContainer
         className={headerClass}
-        fullWidth={fullWidth}
         onClick={toggle}
         onKeyDown={onKeyDown}
       >
