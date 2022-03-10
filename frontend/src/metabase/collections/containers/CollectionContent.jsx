@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -43,8 +43,8 @@ function mapStateToProps(state) {
 }
 
 const mapDispatchToProps = {
-  createBookmark: async (id, entity) => Bookmark.actions.create({ id, entity }),
-  deleteBookmark: id => Bookmark.actions.delete({ id }),
+  createBookmark: id => Bookmark.actions.create({ id: `collection-${id}` }),
+  deleteBookmark: id => Bookmark.actions.delete({ id: `collection-${id}` }),
 };
 
 function CollectionContent({
@@ -59,6 +59,7 @@ function CollectionContent({
   handleToggleMobileSidebar,
   metadata,
 }) {
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
@@ -73,6 +74,15 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+
+  useEffect(() => {
+    const shouldBeBookmarked = bookmarks.some(
+      bookmark =>
+        bookmark.type === "collection" && bookmark.item_id === collectionId,
+    );
+
+    setIsBookmarked(shouldBeBookmarked);
+  }, [bookmarks, collectionId]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -125,12 +135,8 @@ function CollectionContent({
   };
 
   const handleClickBookmark = () => {
-    const isBookmarked = bookmarks.some(
-      bookmark => bookmark.type === "card" && bookmark.item_id === collectionId,
-    );
-
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId, "collection");
+    toggleBookmark(collectionId);
   };
 
   const unpinnedQuery = {
@@ -164,6 +170,7 @@ function CollectionContent({
             <CollectionMain>
               <Header
                 onClickBookmark={handleClickBookmark}
+                isBookmarked={isBookmarked}
                 isRoot={isRoot}
                 isAdmin={isAdmin}
                 collectionId={collectionId}

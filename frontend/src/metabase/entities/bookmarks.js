@@ -1,4 +1,3 @@
-import { DELETE } from "metabase/lib/api";
 import { createEntity } from "metabase/lib/entities";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
@@ -9,17 +8,30 @@ const Bookmarks = createEntity({
   path: "/api/bookmark",
   schema: BookmarkSchema,
   api: {
-    create: async (params, ...args) => {
-      switch (params.entity) {
+    create: async params => {
+      const [entity, id] = params.id.split("-");
+
+      switch (entity) {
         case "card":
-          return BookmarkApi.card.create(params, ...args);
+          return BookmarkApi.card.create({ id });
         case "collection":
-          return BookmarkApi.collection.create(params, ...args);
+          return BookmarkApi.collection.create({ id });
         default:
           throw new Error();
       }
     },
-    delete: DELETE("/api/bookmark/card/:id"),
+    delete: async params => {
+      const [entity, id] = params.id.split("-");
+
+      switch (entity) {
+        case "card":
+          return BookmarkApi.card.delete({ id });
+        case "collection":
+          return BookmarkApi.collection.delete({ id });
+        default:
+          throw new Error();
+      }
+    },
   },
 });
 
