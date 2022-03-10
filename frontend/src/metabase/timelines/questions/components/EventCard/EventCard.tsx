@@ -3,24 +3,34 @@ import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import { TimelineEvent } from "metabase-types/api";
+import EntityMenu from "metabase/components/EntityMenu";
+import { Collection, TimelineEvent } from "metabase-types/api";
 import {
   CardBody,
   CardCreatorInfo,
   CardDateInfo,
   CardDescription,
   CardRoot,
-  CardThread,
   CardIcon,
   CardIconContainer,
   CardTitle,
+  CardAside,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
   event: TimelineEvent;
+  collection: Collection;
+  onEdit?: (event: TimelineEvent) => void;
+  onArchive?: (event: TimelineEvent) => void;
 }
 
-const EventCard = ({ event }: EventCardProps): JSX.Element => {
+const EventCard = ({
+  event,
+  collection,
+  onEdit,
+  onArchive,
+}: EventCardProps): JSX.Element => {
+  const menuItems = getMenuItems(event, collection, onEdit, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
@@ -37,8 +47,35 @@ const EventCard = ({ event }: EventCardProps): JSX.Element => {
         )}
         <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
+      {menuItems.length > 0 && (
+        <CardAside>
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        </CardAside>
+      )}
     </CardRoot>
   );
+};
+
+const getMenuItems = (
+  event: TimelineEvent,
+  collection: Collection,
+  onEdit?: (event: TimelineEvent) => void,
+  onArchive?: (event: TimelineEvent) => void,
+) => {
+  if (collection.can_write) {
+    return [
+      {
+        title: t`Edit event`,
+        action: () => onEdit?.(event),
+      },
+      {
+        title: t`Archive event`,
+        action: () => onArchive?.(event),
+      },
+    ];
+  } else {
+    return [];
+  }
 };
 
 const getDateMessage = (event: TimelineEvent) => {

@@ -2,7 +2,7 @@ import React, { ChangeEvent, MouseEvent, memo, useCallback } from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
 import CollapseSection from "metabase/components/CollapseSection";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   CardHeader,
@@ -14,13 +14,19 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   isVisible?: boolean;
+  collection: Collection;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  onEditEvent?: (event: TimelineEvent) => void;
+  onArchiveEvent?: (event: TimelineEvent) => void;
 }
 
 const TimelineCard = ({
   timeline,
+  collection,
   isVisible,
   onToggleTimeline,
+  onEditEvent,
+  onArchiveEvent,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
 
@@ -53,7 +59,13 @@ const TimelineCard = ({
     >
       <CardList>
         {events.map(event => (
-          <EventCard key={event.id} event={event} />
+          <EventCard
+            key={event.id}
+            event={event}
+            collection={collection}
+            onEdit={onEditEvent}
+            onArchive={onArchiveEvent}
+          />
         ))}
       </CardList>
     </CollapseSection>

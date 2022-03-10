@@ -1,17 +1,23 @@
 import React from "react";
-import { Timeline } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineCard from "metabase/timelines/questions/components/TimelineCard/TimelineCard";
 
 export interface TimelineListProps {
   timelines: Timeline[];
+  collection: Collection;
   visibility: Record<number, boolean>;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  onEditEvent?: (event: TimelineEvent) => void;
+  onArchiveEvent?: (event: TimelineEvent) => void;
 }
 
 const TimelineList = ({
   timelines,
+  collection,
   visibility,
   onToggleTimeline,
+  onEditEvent,
+  onArchiveEvent,
 }: TimelineListProps): JSX.Element => {
   return (
     <div>
@@ -19,8 +25,11 @@ const TimelineList = ({
         <TimelineCard
           key={timeline.id}
           timeline={timeline}
+          collection={collection}
           isVisible={visibility[timeline.id] ?? true}
           onToggleTimeline={onToggleTimeline}
+          onEditEvent={onEditEvent}
+          onArchiveEvent={onArchiveEvent}
         />
       ))}
     </div>
