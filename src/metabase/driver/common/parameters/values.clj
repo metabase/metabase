@@ -208,27 +208,28 @@
   converted to SQL as a simple comma-separated list.)"
   [value]
   (cond
-   ;; if not a string it's already been parsed
-   (number? value) value
-   ;; same goes for an instance of CommaSeperated values
-   (instance? CommaSeparatedNumbers value) value
-
-   ;; newer operators use vectors as their arguments even if there's only one
-   (vector? value)
-   (let [values (map parse-number value)]
-     (if (next values)
-       (i/map->CommaSeparatedNumbers {:numbers values})
-       (first values)))
-   ;; if the value is a string, then split it by commas in the string. Usually there should be none.
-   ;; Parse each part as a number.
-   (string? value)
-   (let [parts (for [part (str/split value #",")]
-                 (parse-number part))]
-     (if (> (count parts) 1)
-       ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-       (i/map->CommaSeparatedNumbers {:numbers parts})
-       ;; otherwise just return the single number
-       (first parts)))))
+    ;; if not a string it's already been parsed
+    (number? value)
+    value
+    ;; same goes for an instance of CommaSeperated values
+    (instance? CommaSeparatedNumbers value)
+    value
+    ;; newer operators use vectors as their arguments even if there's only one
+    (vector? value)
+    (let [values (mapv value->number value)]
+      (if (next values)
+        (i/map->CommaSeparatedNumbers {:numbers values})
+        (first values)))
+    ;; if the value is a string, then split it by commas in the string. Usually there should be none.
+    ;; Parse each part as a number.
+    (string? value)
+    (let [parts (for [part (str/split value #",")]
+                  (parse-number part))]
+      (if (> (count parts) 1)
+        ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
+        (i/map->CommaSeparatedNumbers {:numbers parts})
+        ;; otherwise just return the single number
+        (first parts)))))
 
 (s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
@@ -305,7 +306,9 @@
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e
-      (throw (ex-info (tru "Error determining value for parameter: {0}" (ex-message e))
+      (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
+                           (pr-str (:name tag))
+                           (ex-message e))
                       {:tag  tag
                        :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
