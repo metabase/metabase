@@ -31,15 +31,19 @@
 ;; https://github.com/liquibase/liquibase/issues/2396 -- but we can disable this by setting the ConsoleUIService's
 ;; output stream to the null output stream
 (doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
-  (.setOutputStream (java.io.PrintStream. (java.io.PrintStream/nullOutputStream))))
+  ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
+  (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
 
+(defn- h2? [^JdbcConnection liquibase-conn]
+  (str/starts-with? (.getURL liquibase-conn) "jdbc:h2"))
+
 (defn- database ^Database [^JdbcConnection liquibase-conn]
-  (if (str/starts-with? (.getURL liquibase-conn) "jdbc:h2")
+  (if (h2? liquibase-conn)
     (liquibase.h2/h2-database liquibase-conn)
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
