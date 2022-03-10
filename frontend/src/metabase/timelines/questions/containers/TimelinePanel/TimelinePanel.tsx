@@ -1,6 +1,6 @@
 import Timelines from "metabase/entities/timelines";
-import TimelinePanel from "../../components/TimelinePanel";
 import { State } from "metabase-types/store";
+import TimelinePanel from "../../components/TimelinePanel";
 
 interface TimelinePanelProps {
   cardId?: number;

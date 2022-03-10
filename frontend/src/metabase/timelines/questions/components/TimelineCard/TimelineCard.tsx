@@ -1,11 +1,15 @@
-import React, { ChangeEvent, memo, useCallback } from "react";
+import React, { ChangeEvent, MouseEvent, memo, useCallback } from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
-import CheckBox from "metabase/core/components/CheckBox";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
-import { CardHeader, CardList, CardTitle } from "./TimelineCard.styled";
+import {
+  CardHeader,
+  CardList,
+  CardTitle,
+  CardToggle,
+} from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
   timeline: Timeline;
@@ -27,11 +31,19 @@ const TimelineCard = ({
     [timeline, onToggleTimeline],
   );
 
+  const handleClick = useCallback((event: MouseEvent) => {
+    event.stopPropagation();
+  }, []);
+
   return (
     <CollapseSection
       header={
         <CardHeader>
-          <CheckBox checked={isVisible} onChange={handleToggle} />
+          <CardToggle
+            checked={isVisible}
+            onChange={handleToggle}
+            onClick={handleClick}
+          />
           <CardTitle>{timeline.name}</CardTitle>
         </CardHeader>
       }
