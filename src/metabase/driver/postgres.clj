@@ -170,7 +170,7 @@
   "Number of rows to sample for describe-nested-field-columns"
   10000)
 
-(defn- flatten-row [row]
+(defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
             (lazy-seq
               (when-let [[[k v] & xs] (seq row)]
@@ -180,12 +180,12 @@
                       :else
                       (cons [(conj path k) v]
                             (flatten-row xs path))))))]
-    (into {} (flatten-row row []))))
+    (into {} (flatten-row row [field-name]))))
 
 (defn- row->types [row]
   (into {} (for [[field-name field-val] row]
-             [field-name (let [flattened-row (flatten-row field-val)]
-                           (into {} (map (fn [[k v]] [k (type v)]) flattened-row)))])))
+             (let [flat-row (flattened-row field-name field-val)]
+               (into {} (map (fn [[k v]] [k (type v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
   ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
@@ -202,6 +202,33 @@
              [json-column (snd json-column)]
              [json-column nil])))))
 
+(def ^:const field-type-map
+  "We deserialize the JSON in order to determine types,
+  so the java / clojure types we get have to be matched to MBQL types"
+  {java.lang.String                :type/Text
+   ;; JSON itself has the single number type, but Java serde of JSON is stricter
+   java.lang.Long                  :type/Integer
+   java.lang.Integer               :type/Integer
+   java.lang.Double                :type/Float
+   java.lang.Boolean               :type/Boolean
+   clojure.lang.PersistentVector   :type/Array
+   clojure.lang.PersistentArrayMap :type/Structured})
+
+(defn- field-types->fields [field-types]
+  (let [valid-fields (for [[field-path field-type] (seq field-types)]
+                       (if (nil? field-type)
+                         nil
+                         {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                          :database-type     nil
+                          :base-type         (get field-type-map field-type :type/*)
+                          ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                          :database-position 0
+                          :nfc-path          field-path}))
+        field-hash   (apply hash-set (filter some? valid-fields))]
+    field-hash))
+
+;; The name's nested field columns but what the people wanted (issue #708)
+;; was JSON so what they're getting is JSON.
 (defn- describe-nested-field-columns*
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
@@ -214,8 +241,10 @@
           sql-args         (hsql/format {:select json-field-names
                                          :from   [(keyword (:name table))]
                                          :limit  nested-field-sample-limit} {:quoting :ansi})
-          query            (jdbc/reducible-query spec sql-args)]
-      {:types (transduce describe-json-xform describe-json-rf query)})))
+          query            (jdbc/reducible-query spec sql-args)
+          field-types      (transduce describe-json-xform describe-json-rf query)
+          fields           (field-types->fields field-types)]
+      fields)))
 
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
@@ -422,7 +451,7 @@
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-key"))
+                          (secret/db-details-prop->secret-map db-details "ssl-key"))
         ssl-client-cert (when (:ssl-use-client-auth db-details)
                           (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
         ssl-key-pw      (when (:ssl-use-client-auth db-details)

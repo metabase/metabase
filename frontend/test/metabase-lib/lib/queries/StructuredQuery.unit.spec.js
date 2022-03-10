@@ -83,17 +83,21 @@ describe("StructuredQuery", () => {
       });
     });
     describe("dependentMetadata", () => {
-      it("should include source table with foreignTables = true", () => {
+      it("should include db schemas and source table with foreignTables = true", () => {
         expect(query.dependentMetadata()).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
         ]);
       });
-      it("should include source table for nested queries with foreignTables = true", () => {
+
+      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
         expect(query.nest().dependentMetadata()).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
         ]);
       });
-      it("should include joined tables with foreignTables = false", () => {
+
+      it("should include db schemas and joined tables with foreignTables = false", () => {
         expect(
           query
             .join({
@@ -102,9 +106,22 @@ describe("StructuredQuery", () => {
             })
             .dependentMetadata(),
         ).toEqual([
+          { type: "schema", id: SAMPLE_DATABASE.id },
           { type: "table", id: ORDERS.id, foreignTables: true },
           { type: "table", id: PRODUCTS.id, foreignTables: false },
         ]);
+      });
+
+      describe("when the query is missing a database", () => {
+        it("should not include db schemas in dependent  metadata", () => {
+          const dependentMetadata = query
+            .setDatabaseId(null)
+            .dependentMetadata();
+
+          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
+            false,
+          );
+        });
       });
     });
   });
