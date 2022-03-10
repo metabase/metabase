@@ -11,7 +11,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
-import { setErrorPage } from "metabase/redux/app";
+import { setErrorPage, openUrl } from "metabase/redux/app";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
@@ -24,7 +24,7 @@ import {
   serializeCardForUrl,
   cleanCopyCard,
 } from "metabase/lib/card";
-import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
@@ -999,7 +999,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
-          open(url);
+          dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
