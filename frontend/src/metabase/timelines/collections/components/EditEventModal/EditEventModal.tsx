@@ -11,7 +11,7 @@ export interface EditEventModalProps {
   timeline: Timeline;
   collection: Collection;
   onSubmit: (
-    values: Partial<TimelineEvent>,
+    event: TimelineEvent,
     timeline: Timeline,
     collection: Collection,
   ) => void;
@@ -34,8 +34,8 @@ const EditEventModal = ({
   onClose,
 }: EditEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, timeline, collection);
+    async (event: TimelineEvent) => {
+      await onSubmit(event, timeline, collection);
     },
     [timeline, collection, onSubmit],
   );

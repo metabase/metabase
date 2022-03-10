@@ -8,7 +8,7 @@ import { ModalBody, ModalDangerButton } from "./EditEventModal.styled";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
-  onSubmit: (values: Partial<TimelineEvent>) => void;
+  onSubmit: (event: TimelineEvent) => void;
   onArchive: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
@@ -20,8 +20,8 @@ const EditEventModal = ({
   onClose,
 }: EditEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values);
+    async (event: TimelineEvent) => {
+      await onSubmit(event);
       onClose?.();
     },
     [onSubmit, onClose],

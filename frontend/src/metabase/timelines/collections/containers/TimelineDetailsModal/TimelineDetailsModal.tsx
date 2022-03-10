@@ -24,8 +24,8 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onArchive: (event: TimelineEvent) => {
-    dispatch(TimelineEvents.actions.setArchived(event, true));
+  onArchive: async (event: TimelineEvent) => {
+    await dispatch(TimelineEvents.actions.setArchived(event, true));
   },
   onGoBack: (collection: Collection) => {
     dispatch(push(Urls.timelinesInCollection(collection)));
