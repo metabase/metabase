@@ -103,6 +103,9 @@ export function parseTime(value) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
+    if (value.match(/(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d)Z/)) {
+      value = value.replace("Z", "0000Z");
+    }
     return moment.parseZone(value, [
       "HH:mm:SS.sssZZ",
       "HH:mm:SS.sss",
