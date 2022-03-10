@@ -11,6 +11,7 @@ export interface EditEventModalProps {
 
 const timelineEventProps = {
   id: (state: State, props: EditEventModalProps) => props.eventId,
+  entityAlias: "event",
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

@@ -181,13 +181,15 @@ function QueryBuilder(props) {
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
 
-  const openModal = useCallback(modal => setUIControls({ modal }), [
-    setUIControls,
-  ]);
+  const openModal = useCallback(
+    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    [setUIControls],
+  );
 
-  const closeModal = useCallback(() => setUIControls({ modal: null }), [
-    setUIControls,
-  ]);
+  const closeModal = useCallback(
+    () => setUIControls({ modal: null, modalContext: null }),
+    [setUIControls],
+  );
 
   const setRecentlySaved = useCallback(
     recentlySaved => {

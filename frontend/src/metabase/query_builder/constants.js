@@ -14,4 +14,5 @@ export const MODAL_TYPES = {
   EMBED: "embed",
   TURN_INTO_DATASET: "turn-into-dataset",
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
+  EDIT_EVENT: "edit-event",
 };

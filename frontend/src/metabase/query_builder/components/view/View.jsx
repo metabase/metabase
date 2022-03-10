@@ -157,6 +157,7 @@ export default class View extends React.Component {
       timelineVisibility,
       showTimeline,
       hideTimeline,
+      onOpenModal,
       onCloseSummary,
       onCloseFilter,
       onCloseTimelines,
@@ -184,6 +185,7 @@ export default class View extends React.Component {
           visibility={timelineVisibility}
           onShowTimeline={showTimeline}
           onHideTimeline={hideTimeline}
+          onOpenModal={onOpenModal}
           onClose={onCloseTimelines}
         />
       );
