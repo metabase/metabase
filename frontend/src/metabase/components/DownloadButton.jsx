@@ -32,8 +32,12 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
 
   const options = {
     method,
-    body: formData,
   };
+  if (method === `POST`) {
+    options.body = formData;
+  } else if (method === `GET`) {
+    options.query = formData;
+  }
 
   fetch(url, options)
     .then(async res => {
@@ -70,11 +74,10 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
       link.setAttribute(`download`, fileName);
       document.body.appendChild(link);
       link.click();
+
       setStatus(`resolved`);
     })
-    .catch(() => {
-      setStatus(`rejected`);
-    });
+    .catch(() => setStatus(`rejected`));
 };
 
 const DownloadButton = ({
