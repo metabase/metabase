@@ -306,11 +306,11 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.pece.result.gender': {
     'en': 'Statistics of result of PECE/EECE (GPA 4.0 to 5.0)',
-    'bn': 'পিইসিই/ইইসিই পরীক্ষার রেসাল্টের পরিসংখ্যান (জিপিএ ৪.০ থেকে ৫.০)'
+    'bn': 'পিইসিই/ইইসিই পরীক্ষার রেজাল্টের পরিসংখ্যান (জিপিএ ৪.০ থেকে ৫.০)'
   },
   'admin.dashboard.pece.result.details': {
     'en': 'Students\' Result in PECE/EECE',
-    'bn': 'পিইসিই/ইইসিই পরীক্ষায় শিক্ষার্থীদের রেসাল্ট'
+    'bn': 'পিইসিই/ইইসিই পরীক্ষায় শিক্ষার্থীদের রেজাল্ট'
   },
   'admin.dashboard.nsa.scale.scores': {
     'en': 'Statistics of Scale Scores of NSA',
@@ -343,6 +343,26 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.book.distribution.progress' : {
     'en': 'Progress of Book Demand',
     'bn': 'বইয়ের চাহিদার অগ্রগতি'
+  },
+  'admin.dashboard.book.received.progress.fully.partially' : {
+	'en': 'Book distributed schools',
+	'bn': 'বিদ্যালয়ে বিতরণ হয়েছে'
+  },
+  'admin.dashboard.book.received.progress.fully' : {
+	'en': 'Fully book distributed schools',
+	'bn': 'বিদ্যালয়ে সম্পূর্ণ বিতরণ হয়েছে'
+  },
+  'admin.dashboard.book.received.progress.partially' : {
+	'en': 'Partially book distributed schools',
+	'bn': 'বিদ্যালয়ে আংশিক বিতরণ হয়েছে'
+  },
+  'admin.dashboard.book.received.progress.not.received': {
+	'en': 'Yet to be distributed schools',
+	'bn': 'বিদ্যালয়ে কোনও বই বিতরণ হয়নি'
+  },
+  'admin.book.flow': {
+	'en' : 'Current Status of every distributed book',
+	'bn' : 'প্রতিটি বইয়ের বিতরণের বর্তমান অবস্থা'
   }
 }
 
