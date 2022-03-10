@@ -36,9 +36,7 @@ describe.skip("issue 14145", () => {
       is_full_sync: true,
     });
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.visit(`/question/${body.id}`);
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("`field-id` should update when database source is changed (metabase#14145)", () => {

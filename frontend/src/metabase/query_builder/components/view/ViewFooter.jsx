@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -69,8 +69,13 @@ const ViewFooter = ({
     return null;
   }
 
+  const hasDataPermission = question.query().isEditable();
+
   return (
-    <ViewFooterRoot className={cx(className, "text-medium border-top")}>
+    <ViewFooterRoot
+      className={cx(className, "text-medium border-top")}
+      data-testid="view-footer"
+    >
       <ButtonBar
         className="flex-full"
         left={[
@@ -97,26 +102,30 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          <VizTypeButton
-            key="viz-type"
-            question={question}
-            result={result}
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-            }
-          />,
-          <VizSettingsButton
-            key="viz-settings"
-            ml={1}
-            mr={[3, 0]}
-            active={isShowingChartSettingsSidebar}
-            onClick={
-              isShowingChartSettingsSidebar
-                ? onCloseChartSettings
-                : onOpenChartSettings
-            }
-          />,
+          hasDataPermission && (
+            <VizTypeButton
+              key="viz-type"
+              question={question}
+              result={result}
+              active={isShowingChartTypeSidebar}
+              onClick={
+                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+              }
+            />
+          ),
+          hasDataPermission && (
+            <VizSettingsButton
+              key="viz-settings"
+              ml={1}
+              mr={[3, 0]}
+              active={isShowingChartSettingsSidebar}
+              onClick={
+                isShowingChartSettingsSidebar
+                  ? onCloseChartSettings
+                  : onOpenChartSettings
+              }
+            />
+          ),
         ]}
         center={
           isVisualized && (

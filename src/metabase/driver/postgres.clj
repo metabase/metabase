@@ -1,7 +1,8 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -164,6 +165,96 @@
   [driver database table]
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
+
+(def ^:const nested-field-sample-limit
+  "Number of rows to sample for describe-nested-field-columns"
+  10000)
+
+(defn- flattened-row [field-name row]
+  (letfn [(flatten-row [row path]
+            (lazy-seq
+              (when-let [[[k v] & xs] (seq row)]
+                (cond (and (map? v) (not-empty v))
+                      (into (flatten-row v (conj path k))
+                            (flatten-row xs path))
+                      :else
+                      (cons [(conj path k) v]
+                            (flatten-row xs path))))))]
+    (into {} (flatten-row row [field-name]))))
+
+(defn- row->types [row]
+  (into {} (for [[field-name field-val] row]
+             (let [flat-row (flattened-row field-name field-val)]
+               (into {} (map (fn [[k v]] [k (type v)]) flat-row))))))
+
+(defn- describe-json-xform [member]
+  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+         (map #(into {} %))
+         (map row->types)) member))
+
+(defn- describe-json-rf
+  ([] nil)
+  ([fst] fst)
+  ([fst snd]
+   (into {}
+         (for [json-column (keys snd)]
+           (if (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
+             [json-column (snd json-column)]
+             [json-column nil])))))
+
+(def ^:const field-type-map
+  "We deserialize the JSON in order to determine types,
+  so the java / clojure types we get have to be matched to MBQL types"
+  {java.lang.String                :type/Text
+   ;; JSON itself has the single number type, but Java serde of JSON is stricter
+   java.lang.Long                  :type/Integer
+   java.lang.Integer               :type/Integer
+   java.lang.Double                :type/Float
+   java.lang.Boolean               :type/Boolean
+   clojure.lang.PersistentVector   :type/Array
+   clojure.lang.PersistentArrayMap :type/Structured})
+
+(defn- field-types->fields [field-types]
+  (let [valid-fields (for [[field-path field-type] (seq field-types)]
+                       (if (nil? field-type)
+                         nil
+                         {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                          :database-type     nil
+                          :base-type         (get field-type-map field-type :type/*)
+                          ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                          :database-position 0
+                          :nfc-path          field-path}))
+        field-hash   (apply hash-set (filter some? valid-fields))]
+    field-hash))
+
+;; The name's nested field columns but what the people wanted (issue #708)
+;; was JSON so what they're getting is JSON.
+(defn- describe-nested-field-columns*
+  [driver spec table]
+  (with-open [conn (jdbc/get-connection spec)]
+    (let [map-inner        (fn [f xs] (map #(into {}
+                                                  (for [[k v] %]
+                                                    [k (f v)])) xs))
+          table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
+          json-field-names (mapv (comp keyword :name) json-fields)
+          sql-args         (hsql/format {:select json-field-names
+                                         :from   [(keyword (:name table))]
+                                         :limit  nested-field-sample-limit} {:quoting :ansi})
+          query            (jdbc/reducible-query spec sql-args)
+          field-types      (transduce describe-json-xform describe-json-rf query)
+          fields           (field-types->fields field-types)]
+      fields)))
+
+;; Describe the nested fields present in a table (currently and maybe forever just JSON),
+;; including if they have proper keyword and type stability.
+;; Not to be confused with existing nested field functionality for mongo,
+;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
+;; Every single database major is fiddly and weird and different about JSON so there's only a trivial default impl in sql.jdbc
+(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
+  [driver database table]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (describe-nested-field-columns* driver spec table)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

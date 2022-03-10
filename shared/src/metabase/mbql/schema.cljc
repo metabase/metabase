@@ -1,6 +1,6 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
    (:clj
     [(:require
@@ -1056,6 +1056,8 @@
   driver supports `:full-join` before generating a Join clause using that strategy."
   (apply s/enum join-strategies))
 
+(declare Fields)
+
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
   specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.
@@ -1110,7 +1112,7 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      [field])
+      (s/recursive #'Fields))
     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
@@ -1444,9 +1446,9 @@
    (s/optional-key :disable-mbql->native?)
    s/Bool
 
-   ;; Userland queries are ones ran as a result of an API call, Pulse, MetaBot query, or the like. Special handling is
-   ;; done in the `process-userland-query` middleware for such queries -- results are returned in a slightly different
-   ;; format, and QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
+   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
+   ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
+   ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
    (s/optional-key :userland-query?)
    (s/maybe s/Bool)
 

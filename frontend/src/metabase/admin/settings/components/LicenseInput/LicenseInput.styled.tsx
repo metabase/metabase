@@ -1,6 +1,6 @@
 import TextInput from "metabase/components/TextInput";
 import { color } from "metabase/lib/colors";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const LicenseInputContainer = styled.div`
   display: flex;

@@ -9,8 +9,11 @@ import {
   restore,
   visitQuestionAdhoc,
   visualize,
+  summarize,
+  filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -69,7 +72,7 @@ describe("scenarios > question > notebook", () => {
 
   it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Pick a column to group by").click();
     cy.findByText("User ID")
       .closest(".List-item")
@@ -78,12 +81,9 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           filter: ["between", ["field", ORDERS.ID, null], 96, 97],
@@ -93,7 +93,6 @@ describe("scenarios > question > notebook", () => {
       display: "table",
     });
 
-    cy.wait("@dataset");
     cy.findByText("ID between 96 97").click();
     cy.findByText("Between").click();
     popover().within(() => {
@@ -135,7 +134,7 @@ describe("scenarios > question > notebook", () => {
 
   it("should process the updated expression when pressing Enter", () => {
     openProductsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "[Price] > 1" });
 
@@ -153,36 +152,31 @@ describe("scenarios > question > notebook", () => {
     cy.contains(/^Price is less than 5/i);
   });
 
-  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading", () => {
-    // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Database").click();
-    cy.contains("Orders").click();
-
-    // Add filter for ID < 100
-    cy.findByText("Add filters to narrow your answer").click();
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "ID < 100" });
-    cy.button("Done")
-      .should("not.be.disabled")
-      .click();
-
-    visualize();
-
-    cy.contains("Showing 99 rows");
-
+  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
     const req = interceptPromise("POST", "/api/dataset");
-    cy.contains("ID is less than 100").click();
-    cy.get(".Icon-chevronleft").click();
-    cy.findByText("Custom Expression").click();
-    cy.get("@formula")
-      .clear()
-      .type("ID < 2010");
-    cy.button("Done").click();
-    cy.contains("Showing 99 rows");
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["=", ["field", ORDERS.PRODUCT_ID, null], 2],
+      },
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.contains("Showing 98 rows");
+
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByText("Product ID is 2").click();
+
+    popover()
+      .find("input")
+      .type("3{enter}");
+    cy.findByText("Product ID is 2 selections");
+
+    cy.contains("Showing 98 rows");
+
     req.resolve();
-    cy.contains("Showing first 2000 rows");
+    cy.contains("Showing 175 rows");
   });
 
   // flaky test (#19454)
@@ -248,7 +242,7 @@ describe("scenarios > question > notebook", () => {
     it("should create a nested question with post-aggregation filter", () => {
       openProductsTable({ mode: "notebook" });
 
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       popover().within(() => {
         cy.findByText("Count of rows").click();
       });
@@ -316,7 +310,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should work on custom filter", () => {
-      cy.findByText("Filter").click();
+      filter({ mode: "notebook" });
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
@@ -341,7 +335,7 @@ describe("scenarios > question > notebook", () => {
       const [expression, result] = formula;
 
       it(`should work on custom aggregation with ${filter}`, () => {
-        cy.findByText("Summarize").click();
+        summarize({ mode: "notebook" });
         cy.findByText("Custom Expression").click();
 
         enterCustomColumnDetails({ formula: expression });

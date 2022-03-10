@@ -1,8 +1,9 @@
 import {
   restore,
   popover,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
+  isEE,
 } from "__support__/e2e/cypress";
 
 function typeField(label, value) {
@@ -155,7 +156,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("EE should ship with Oracle and Vertica as options", () => {
-    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(isEE);
 
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
@@ -276,13 +277,13 @@ describe("scenarios > admin > databases > add", () => {
     it("should display driver deprecation messages", () => {
       cy.visit("/admin/databases/create");
 
-      chooseDatabase("BigQuery");
+      chooseDatabase("Presto");
 
-      cy.findByText("BigQuery");
+      cy.findByText("Presto");
       cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
-      cy.findByText("BigQuery (Deprecated Driver)");
+      cy.findByText("Presto (Deprecated Driver)");
       cy.findByText("Need help connecting?");
     });
   });
@@ -304,7 +305,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  describeWithToken("caching", () => {
+  describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
     });

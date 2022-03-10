@@ -84,16 +84,19 @@ describe("URLs", () => {
 
     it("should open slugified URLs correctly", () => {
       cy.visit("/collection/9-first-collection");
-      cy.get("[class*=PageHeading]").should("have.text", "First collection");
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "First collection",
+      );
 
       cy.visit("/collection/1-bobby-tables-s-personal-collection");
-      cy.get("[class*=PageHeading]").should(
+      cy.findByTestId("collection-name-heading").should(
         "have.text",
         "Bobby Tables's Personal Collection",
       );
 
       cy.visit("/collection/8-robert-tableton-s-personal-collection");
-      cy.get("[class*=PageHeading]").should(
+      cy.findByTestId("collection-name-heading").should(
         "have.text",
         "Robert Tableton's Personal Collection",
       );

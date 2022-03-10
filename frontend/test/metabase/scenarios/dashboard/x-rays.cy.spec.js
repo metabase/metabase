@@ -3,7 +3,10 @@ import {
   getDimensionByName,
   visitQuestionAdhoc,
   popover,
+  summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -43,49 +46,47 @@ describe("scenarios > x-rays", () => {
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.createQuestion({
-      name: "13112",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
-            ],
-            alias: PRODUCTS_ALIAS,
-          },
-        ],
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
-        ],
+    cy.createQuestion(
+      {
+        name: "13112",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+              ],
+              alias: PRODUCTS_ALIAS,
+            },
+          ],
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+          ],
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
+      { visitQuestion: true },
+    );
 
-      cy.visit(`/question/${QUESTION_ID}`);
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.wait("@cardQuery");
-      cy.get(".dot")
-        .eq(23) // Random dot
-        .click({ force: true });
-      cy.findByText("X-ray").click();
+    cy.get(".dot")
+      .eq(23) // Random dot
+      .click({ force: true });
+    cy.findByText("X-ray").click();
 
-      // x-rays take long time even locally - that can timeout in CI so we have to extend it
-      cy.wait("@dataset", { timeout: 30000 });
-      cy.findByText(
-        "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
-      );
-      cy.icon("warning").should("not.exist");
-    });
+    // x-rays take long time even locally - that can timeout in CI so we have to extend it
+    cy.wait("@dataset", { timeout: 30000 });
+    cy.findByText(
+      "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
+    );
+    cy.icon("warning").should("not.exist");
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
@@ -101,7 +102,7 @@ describe("scenarios > x-rays", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
-      cy.findByText("Summarize").click();
+      summarize();
       getDimensionByName({ name: "SOURCE" }).click();
       cy.button("Done").click();
       cy.get(".bar")
@@ -121,7 +122,7 @@ describe("scenarios > x-rays", () => {
       visitQuestionAdhoc({
         name: "15737",
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PEOPLE_ID,
             aggregation: [["count"]],

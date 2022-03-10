@@ -1,4 +1,6 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -7,8 +9,6 @@ describe("visual tests > visualizations > line", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with data points", () => {
@@ -28,7 +28,7 @@ describe("visual tests > visualizations > line", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -38,15 +38,13 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.wait("@dataset");
-
     cy.percySnapshot();
   });
 
   it("with vertical legends", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": ORDERS_ID,
@@ -76,15 +74,13 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.wait("@dataset");
-
     cy.percySnapshot();
   });
 
   it("with vertical legends", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": ORDERS_ID,
@@ -113,8 +109,6 @@ describe("visual tests > visualizations > line", () => {
         "graph.metrics": ["count"],
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
@@ -136,7 +130,7 @@ describe("visual tests > visualizations > line", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -154,8 +148,6 @@ describe("visual tests > visualizations > line", () => {
         "graph.metrics": ["count", "sum"],
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
@@ -179,7 +171,7 @@ describe("visual tests > visualizations > line", () => {
             SELECT CAST('2010-10-03' AS DATE), 6, null
           `,
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -196,8 +188,6 @@ describe("visual tests > visualizations > line", () => {
         },
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

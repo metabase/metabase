@@ -103,10 +103,10 @@ export const CardApi = {
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // isfavorite:                  GET("/api/card/:cardId/favorite"),
-  favorite: POST("/api/card/:cardId/favorite"),
-  unfavorite: DELETE("/api/card/:cardId/favorite"),
-
+  bookmark: {
+    create: POST("/api/card/:id/bookmark"),
+    delete: DELETE("/api/card/:id/bookmark"),
+  },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
@@ -210,6 +210,12 @@ export const SlackApi = {
 
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
+};
+
+export const TimelineApi = {
+  getTimelines: GET("/api/timeline"),
+  getCardTimelines: GET("/api/card/:cardId/timelines"),
+  getCollectionTimelines: GET("/api/collection/:collectionId/timelines"),
 };
 
 export const MetabaseApi = {

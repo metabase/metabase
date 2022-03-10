@@ -4,8 +4,8 @@ import React from "react";
 import Subhead from "metabase/components/type/Subhead";
 import { ViewSectionRoot } from "metabase/query_builder/components/view/ViewSection.styled";
 
-const ViewSection = ({ className, style, children }) => (
-  <ViewSectionRoot className={className} style={style}>
+const ViewSection = ({ className, style, children, ...rest }) => (
+  <ViewSectionRoot className={className} style={style} {...rest}>
     {children}
   </ViewSectionRoot>
 );

@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   modal,
-  describeWithToken,
+  describeEE,
   mockSessionProperty,
 } from "__support__/e2e/cypress";
 
@@ -13,6 +13,15 @@ describe("scenarios > admin > databases > edit", () => {
     cy.server();
     cy.route("GET", "/api/database/*").as("databaseGet");
     cy.route("PUT", "/api/database/*").as("databaseUpdate");
+  });
+
+  describe("Database type", () => {
+    it("should be disabled for the Sample Dataset (metabase#16382)", () => {
+      cy.visit("/admin/databases/1");
+      cy.findByText("H2")
+        .parentsUntil("a")
+        .should("be.disabled");
+    });
   });
 
   describe("Connection settings", () => {
@@ -71,7 +80,7 @@ describe("scenarios > admin > databases > edit", () => {
       );
     });
 
-    describeWithToken("caching", () => {
+    describeEE("caching", () => {
       beforeEach(() => {
         mockSessionProperty("enable-query-caching", true);
       });

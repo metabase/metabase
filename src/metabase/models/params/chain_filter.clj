@@ -391,7 +391,8 @@
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))})
+                   (add-filters source-table-id joined-table-ids constraints)))
+   :middleware {:disable-remaps? true}})
 
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------

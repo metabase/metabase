@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
@@ -42,10 +42,7 @@ export const LegendItemTitle = styled.div`
   overflow: hidden;
 `;
 
-export const LegendItemRemoveIcon = styled(Icon).attrs({
-  name: "close",
-  size: 12,
-})`
+export const LegendItemRemoveIcon = styled(Icon)`
   color: ${colors["text-light"]};
   cursor: pointer;
   margin-left: 0.5rem;
@@ -54,3 +51,8 @@ export const LegendItemRemoveIcon = styled(Icon).attrs({
     color: ${colors["text-medium"]};
   }
 `;
+
+LegendItemRemoveIcon.defaultProps = {
+  name: "close",
+  size: 12,
+};

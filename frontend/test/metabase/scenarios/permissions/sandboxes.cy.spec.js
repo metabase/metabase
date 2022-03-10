@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   modal,
   openOrdersTable,
   openPeopleTable,
@@ -9,8 +9,11 @@ import {
   remapDisplayValueToFK,
   setupSMTP,
   visualize,
+  summarize,
+  filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -27,7 +30,7 @@ const {
 
 const { DATA_GROUP } = USER_GROUPS;
 
-describeWithToken("formatting > sandboxes", () => {
+describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       restore();
@@ -139,9 +142,9 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
         popover().within(() => {
-          cy.findByText("Total").click();
+          cy.findByText("Total").click({ force: true });
         });
         cy.findByText("Equal to").click();
         cy.findByText("Greater than").click();
@@ -198,7 +201,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
 
@@ -261,18 +264,11 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
         // Assertion phase starts here
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
         cy.findByText(QUESTION_NAME);
 
         cy.log("Reported failing since v1.36.4");
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-
         cy.contains(CC_NAME);
       });
     });
@@ -482,10 +478,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.get(".cellData")
@@ -640,11 +634,10 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        openOrdersTable();
-
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        openOrdersTable({
+          callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
+
         // Title of the first order for User ID = 1
         cy.findByText("Awesome Concrete Shoes");
       });
@@ -809,7 +802,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}`);
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Settings").click();
@@ -885,24 +878,15 @@ describeWithToken("formatting > sandboxes", () => {
               ],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/pivot/${QUESTION_ID}/query`).as(
-          "cardQuery",
-        );
-
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.visit(`/question/${QUESTION_ID}`);
-
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.cause).not.to.exist;
-        });
+        visitQuestion(QUESTION_ID);
       });
 
       cy.findByText("Twitter");
@@ -969,10 +953,9 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openOrdersTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openOrdersTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       cy.contains("37.65");
@@ -1026,10 +1009,9 @@ describeWithToken("formatting > sandboxes", () => {
       });
       cy.signOut();
       cy.signInAsSandboxedUser();
-      openReviewsTable();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+      openReviewsTable({
+        callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
       // Add positive assertion once this issue is fixed

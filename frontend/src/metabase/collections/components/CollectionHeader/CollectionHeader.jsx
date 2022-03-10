@@ -32,7 +32,12 @@ function Title({ collection, handleToggleMobileSidebar }) {
           mr={1}
           size={24}
         />
-        <PageHeading className="text-wrap">{collection.name}</PageHeading>
+        <PageHeading
+          data-testid="collection-name-heading"
+          className="text-wrap"
+        >
+          {collection.name}
+        </PageHeading>
       </TitleContent>
       {collection.description && (
         <DescriptionHeading>{collection.description}</DescriptionHeading>
@@ -64,6 +69,21 @@ function PermissionsLink({
   ) : null;
 }
 
+function TimelinesLink({ collection }) {
+  const title = t`Events`;
+  const link = Urls.timelinesInCollection(collection);
+
+  return (
+    <Tooltip tooltip={title}>
+      <Link to={link}>
+        <IconWrapper>
+          <Icon name="calendar" size={20} />
+        </IconWrapper>
+      </Link>
+    </Tooltip>
+  );
+}
+
 function EditMenu({
   collection,
   hasWritePermission,
@@ -92,6 +112,7 @@ function Menu(props) {
       {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
+      <TimelinesLink {...props} />
     </MenuContainer>
   );
 }

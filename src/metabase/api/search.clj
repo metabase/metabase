@@ -7,9 +7,8 @@
             [honeysql.helpers :as h]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models.card-favorite :refer [CardFavorite]]
+            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
             [metabase.models.collection :as coll :refer [Collection]]
-            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.permissions :as perms]
@@ -77,7 +76,7 @@
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
-   :favorite            :boolean
+   :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
    ;; returned for Card only
@@ -165,7 +164,7 @@
 
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
-  [model archived?]
+  [_model archived?]
   [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
@@ -253,10 +252,10 @@
 (s/defn ^:private shared-card-impl [dataset? :- s/Bool search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
-      (h/left-join [CardFavorite :fave]
+      (h/left-join [CardBookmark :bookmark]
                    [:and
-                    [:= :card.id :fave.card_id]
-                    [:= :fave.owner_id api/*current-user-id*]])
+                    [:= :bookmark.card_id :card.id]
+                    [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
 
@@ -282,10 +281,10 @@
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
-      (h/left-join [DashboardFavorite :fave]
+      (h/left-join [DashboardBookmark :bookmark]
                    [:and
-                    [:= :dashboard.id :fave.dashboard_id]
-                    [:= :fave.user_id api/*current-user-id*]])
+                    [:= :dashboard.id :bookmark.dashboard_id]
+                    [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "pulse"
@@ -341,7 +340,7 @@
   [query]
   (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
-                               (filter (fn [[k v]] (= v :text)))
+                               (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
@@ -407,8 +406,8 @@
           reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
           xf                (comp
                              (filter check-permissions-for-model)
-                             ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-                             (map #(update % :favorite bit->boolean))
+                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
+                             (map #(update % :bookmark bit->boolean))
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
                              (filter some?))

@@ -32,39 +32,45 @@
   [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
-  ### Database-Local Settings
+  ### User-local and Database-local Settings
 
   Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
-  value. These are similar in concept to buffer-local variables in Emacs Lisp.
+  value. Similarly, starting in 0.43.0, some Settings are allowed to have User-specific values. These are similar in
+  concept to buffer-local variables in Emacs Lisp.
 
-  When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will be
-  returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
-  `Database.settings` column in the application DB. `nil` values in [[*database-local-values*]] are ignored, i.e. you
-  cannot 'unset' a site-wide value with a Database-local one.
+  When a Setting is allowed to be User or Database local, any values in [[*user-local-values*]] or
+  [[*database-local-values*]] for that Setting will be returned preferentially to site-wide values of that Setting.
+  [[*user-local-values*]] comes from the `User.settings` column in the application DB, and [[*database-local-values*]]
+  comes from the `Database.settings` column. `nil` values in [[*user-local-values*]] and [[*database-local-values*]]
+  are ignored, i.e. you cannot 'unset' a site-wide value with a User- or Database-local one.
 
-  Whether or not a Setting can be Database-local is controlled by the `:database-local` option passed
-  to [[defsetting]]. There are three valid values of this option:
+  Whether or not a Setting can be User- or Database-local is controlled by the `:user-local` and `:database-local`
+  options passed to [[defsetting]]. A Setting can only be User-local *or* Database-local, not both; this is enforced
+  when the Setting is defined. There are three valid values of these options:
 
-  * `:only` means this Setting can *only* have a Database-local value and cannot have a 'normal' site-wide value. It
-  cannot be set via env var. Default values are still allowed for Database-local-only Settings. Database-local-only
-  Settings are never returned by [[admin-writable-settings]] or [[user-readable-values-map]] regardless of
-  their [[Visibility]].
+  * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
+  value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
+  User- and Database-local-only Settings are never returned by [[admin-writable-settings]] or
+  [[user-readable-values-map]] regardless of their [[Visibility]].
 
-  * `:allowed` means this Setting can be Database-local and can also have a normal site-wide value; if both are
-  specified, the Database-specific value will be returned preferentially when we are in the context of a specific
-  Database (i.e., [[*database-local-values*]] is bound).
+  * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
+  are specified, the User- or Database-specific value will be returned preferentially when we are in the context of a
+  specific User or Database (i.e., [[*user-local-values*]] or [[*database-local-values*]] is bound).
 
-  * `:never` means Database-specific values cannot be set for this Setting. Values in [[*database-local-values*]]
-  will be ignored.
+  * `:never` means User- or Database-specific values cannot be set for this Setting. Values in [[*user-local-values*]]
+  and [[*database-local-values*]] will be ignored.
 
-  `:never` is the default value of `:database-local`; to allow Database-local values, the Setting definition must
-  explicitly specify `:database-local` `:only` or `:allowed`.
+  `:never` is the default value of both `:user-local` and `:database-local`; to allow User- or Database-local values,
+  the Setting definition must explicitly specify `:only` or `:allowed` for the appropriate option.
 
-  Setting setter functions do not affect Database-local values; they always set the site-wide value. (At the time of
-  this writing, there is not yet a FE-client-friendly way to set Database-local values. Just set them manually in the
-  application DB until we figure that out.)
+  If a User-local setting is written in the context of an API request (i.e., when [[metabase.api.common/*current-user*]]
+  is bound), the value will be local to the current user. If it is written outside of an API request, a site-wide
+  value will be written. (At the time of this writing, there is not yet a FE-client-friendly way to set Database-local
+  values. Just set them manually in the application DB until we figure that out.)
 
-  See #19399 for more information about and motivation behind Database-local Settings."
+  Custom setter functions do not affect User- or Database-local values; they always set the site-wide value.
+
+  See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
             [clojure.core :as core]
@@ -74,6 +80,7 @@
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -98,10 +105,21 @@
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
   nil)
 
+(def ^:dynamic *user-local-values*
+  "User-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
+  `User.settings` in the application DB. When bound, any Setting that *can* be User-local will have a value from this
+  map returned preferentially to the site-wide value.
+
+  This is normally bound automatically by session middleware, in
+  [[metabase.server.middleware.session/do-with-current-user]]."
+  (atom nil))
+
 (def ^:private retired-setting-names
   "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
   these names to avoid unintended side-effects if an application database still stores values for these settings."
-  #{"metabot-enabled"})
+  #{"-site-url"
+    "enable-advanced-humanization"
+    "metabot-enabled"})
 
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
@@ -187,8 +205,9 @@
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)            ; if non-nil, contains the Metabase version in which this setting was deprecated
 
-   ;; whether this Setting can be Database-local. See [[metabase.models.setting]] docstring for more info.
+   ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
    :database-local LocalOption
+   :user-local     LocalOption
 
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
@@ -249,16 +268,41 @@
   (setting-name [this]
     (name this)))
 
+(defn- allows-site-wide-values? [setting]
+  (and
+   (not= (:database-local (resolve-setting setting)) :only)
+   (not= (:user-local (resolve-setting setting)) :only)))
+
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
-
-(defn- allows-site-wide-values? [setting]
-  (not= (:database-local (resolve-setting setting)) :only))
 
 (defn- database-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
+
+(defn- allows-user-local-values? [setting]
+  (#{:only :allowed} (:user-local (resolve-setting setting))))
+
+(defn- user-local-value [setting-definition-or-name]
+  (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
+    (when (allows-user-local-values? setting)
+      (core/get @*user-local-values* setting-name))))
+
+(defn- should-set-user-local-value? [setting-definition-or-name]
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (and (allows-user-local-values? setting)
+         @*user-local-values*)))
+
+(defn- set-user-local-value! [setting-definition-or-name value]
+  (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+    ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
+    ;; subsequent setting updates within the same API request will not overwrite this value.
+    (swap! *user-local-values*
+           (fn [old-settings] (if value
+                                (assoc old-settings setting-name value)
+                                (dissoc old-settings setting-name))))
+    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @*user-local-values*)})))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -311,10 +355,11 @@
   "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
   order:
 
-  1. From [[*database-local-values*]] if this Setting is allowed to have a Database-local value
-  2. From the corresponding env var (excluding empty string values)
-  3. From the application database (i.e., set via the admin panel) (excluding empty string values)
-  4. The default value, if one was specified
+  1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
+  2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
+  3. From the corresponding env var (excluding empty string values)
+  4. From the application database (i.e., set via the admin panel) (excluding empty string values)
+  5. The default value, if one was specified
 
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
@@ -326,7 +371,8 @@
   conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
   ([setting-definition-or-name]
    (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [database-local-value
+         source-fns [user-local-value
+                     database-local-value
                      env-var-value
                      db-or-cache-value
                      default-value]]
@@ -479,10 +525,7 @@
          :as setting}                     (resolve-setting setting-definition-or-name)
         obfuscated?                       (and sensitive? (obfuscated-value? new-value))
         setting-name                      (setting-name setting)]
-    ;; make sure we're not trying to set the value of a Database-local-only Setting or something like that
-    (when-not (allows-site-wide-values? setting)
-      (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
-                      {:setting (:name setting)})))
+    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!`
     ;; function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
@@ -491,27 +534,36 @@
           (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
                          setting-name
                          deprecated)))
-        ;; always update the cache entirely when updating a Setting.
-        (cache/restore-cache!)
-        ;; write to DB
-        (cond
-          (nil? new-value)
-          (db/simple-delete! Setting :key setting-name)
+        (if (should-set-user-local-value? setting)
+          ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
+          ;; site-wide value or write or read from the cache
+          (set-user-local-value! setting-name new-value)
+          (do
+            ;; make sure we're not trying to set the value of a Database-local-only Setting
+            (when-not (allows-site-wide-values? setting)
+              (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
+                              {:setting (:name setting)})))
+            ;; always update the cache entirely when updating a Setting.
+            (cache/restore-cache!)
+            ;; write to DB
+            (cond
+              (nil? new-value)
+              (db/simple-delete! Setting :key setting-name)
 
-          ;; if there's a value in the cache then the row already exists in the DB; update that
-          (contains? (cache/cache) setting-name)
-          (update-setting! setting-name new-value)
+              ;; if there's a value in the cache then the row already exists in the DB; update that
+              (contains? (cache/cache) setting-name)
+              (update-setting! setting-name new-value)
 
-          ;; if there's nothing in the cache then the row doesn't exist, insert a new one
-          :else
-          (set-new-setting! setting-name new-value))
-        ;; update cached value
-        (cache/update-cache! setting-name new-value)
-        ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
-        ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
-        ;; cause other instances to do needless reloading of the cache from the DB)
-        (when-not *disable-cache*
-          (cache/update-settings-last-updated!))
+              ;; if there's nothing in the cache then the row doesn't exist, insert a new one
+              :else
+              (set-new-setting! setting-name new-value))
+            ;; update cached value
+            (cache/update-cache! setting-name new-value)
+            ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
+            ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
+            ;; cause other instances to do needless reloading of the cache from the DB)
+            (when-not *disable-cache*
+              (cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
 
@@ -628,6 +680,7 @@
                  :sensitive?     false
                  :cache?         true
                  :database-local :never
+                 :user-local     :never
                  :deprecated     nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
@@ -648,6 +701,10 @@
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
+      (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
+        (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -903,12 +960,10 @@
   `options` are passed to [[user-facing-value]].
 
   This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
-  page) so all admin-visible Settings should be included. Also used
-  by [[metabase-enterprise.serialization.dump/dump-settings]] which should also have access to everything not
-  `:internal`. In either case we *do not* want to return env var values -- we don't want to serialize them regardless
-  of whether the value should be readable or not, and admins should not be allowed to modify them."
+  page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
+  are not allowed to modify them."
   [& {:as options}]
-  ;; ignore Database-local values even if this is bound for some reason
+  ;; ignore User-local and Database-local values
   (binding [*database-local-values* nil]
     (into
      []
@@ -917,6 +972,16 @@
                           (allows-site-wide-values? setting))))
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
+
+(defn admin-writable-site-wide-settings
+  "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
+  excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
+  be included with their site-wide value, if a site-wide value is set.
+
+  This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
+  [& options]
+  (binding [*user-local-values* (atom nil)]
+    (apply admin-writable-settings options)))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
@@ -928,7 +993,7 @@
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
   [visibility]
-  ;; ignore Database-local values even if this is bound for some reason
+  ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      {}

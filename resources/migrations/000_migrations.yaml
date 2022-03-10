@@ -9898,6 +9898,1077 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET name='Sample Database' WHERE is_sample=true
 
+  - changeSet:
+      id: v43.00-001
+      author: jeff303
+      comment: >-
+        Added 0.43.0 - migrates any Database using the old bigquery driver to bigquery-cloud-sdk instead
+      changes:
+        - sql:
+            sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
+
+
+  #
+  # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
+  #
+
+  # Create the magic Permissions Groups if they don't already exist.
+
+  # [add-users-to-default-permissions-groups 1 of 4]
+  - changeSet:
+      id: v43.00-002
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'All Users' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'All Users';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('All Users')
+
+  # [add-users-to-default-permissions-groups 2 of 4]
+  - changeSet:
+      id: v43.00-003
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create magic 'Administrators' Permissions Group if it does not already exist.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) FROM permissions_group WHERE name = 'Administrators';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name)
+              VALUES
+              ('Administrators')
+
+  # Add existing Users to the magic Permissions Groups if needed.
+
+  # [add-users-to-default-permissions-groups 3 of 4]
+  - changeSet:
+      id: v43.00-004
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users to 'All Users' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                all_users_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'All Users'
+                ) all_users_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND all_users_group.id = pgm.group_id
+                WHERE pgm.id IS NULL;
+
+  # [add-users-to-default-permissions-groups 4 of 4]
+  - changeSet:
+      id: v43.00-005
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add existing Users with 'is_superuser' flag to 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group_membership (user_id, group_id)
+              SELECT
+                u.id AS user_id,
+                admin_group.id AS group_id
+                FROM core_user u
+                LEFT JOIN (
+                  SELECT *
+                  FROM permissions_group
+                  WHERE name = 'Administrators'
+                ) admin_group
+                  ON true
+                LEFT JOIN permissions_group_membership pgm
+                       ON u.id = pgm.user_id
+                      AND admin_group.id = pgm.group_id
+                WHERE u.is_superuser = true
+                  AND pgm.id IS NULL;
+
+  #
+  # This migration replaces metabase.db.data-migrations/add-admin-group-root-entry, added 0.20.0
+  #
+  # Create root permissions entry for admin magic Permissions Group. Admin Group has a single entry that lets it
+  # access to everything
+  - changeSet:
+      id: v43.00-006
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create root '/' permissions entry for the 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                admin_group.id AS group_id,
+                '/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'Administrators'
+              ) admin_group
+              LEFT JOIN permissions p
+                     ON admin_group.id = p.group_id
+                    AND p.object = '/'
+              WHERE p.object IS NULL;
+
+  #
+  # The following migration replaces metabase.db.data-migrations/add-databases-to-magic-permissions-groups, added 0.20.0
+  #
+
+  # Add permissions entries for 'All Users' for all Databases created BEFORE we created the 'All Users' Permissions
+  # Group. This replaces the old 'add-databases-to-magic-permissions-groups' Clojure-land data migration. Only run
+  # this migration if that one hasn't been run yet.
+  - changeSet:
+      id: v43.00-007
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant permissions for existing Databases to 'All Users' permissions group.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-databases-to-magic-permissions-groups';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
+  #
+  # The following migration replaces metabase.db.migrations/copy-site-url-setting-and-remove-trailing-slashes, added 0.23.0
+  #
+  # Copy the value of the old setting `-site-url` to the new `site-url` if applicable. (`site-url` used to be stored
+  # internally as `-site-url`; this was confusing, see #4188 for details.) Make sure `site-url` has no trailing slashes
+  # originally fixed in #4123.
+  - changeSet:
+      id: v43.00-008
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'site-url' AS key,
+                regexp_replace(value, '/$', '') AS value
+              FROM setting
+              WHERE key = '-site-url';
+        - sql:
+            dbms: mysql,mariadb
+            # MySQL 5.7 doesn't support regexp_replace :(
+            # 'key' has to be quoted in MySQL
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'site-url' AS `key`,
+                CASE
+                  WHEN value LIKE '%/'
+                    THEN substring(value, 1, length(value) - 1)
+                  ELSE
+                    value
+                  END
+                AS value
+              FROM setting
+              WHERE `key` = '-site-url';
+
+  #
+  # The following migration replaces metabase.db.migrations/ensure-protocol-specified-in-site-url, added in 0.25.1
+  #
+  # There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
+  # specified. Other areas of the application expect that site-url will always include http/https. This migration
+  # ensures that if we have a site-url stored it has the current defaulting logic applied to it
+  - changeSet:
+      id: v43.00-009
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Make sure 'site-url' Setting includes protocol.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE key = 'site-url'
+                AND value NOT LIKE 'http%';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting
+              SET value = concat('http://', value)
+              WHERE `key` = 'site-url'
+                AND value NOT LIKE 'http%';
+
+  #
+  # The following migrations replace metabase.db.migrations/migrate-humanization-setting, added in 0.28.0
+  #
+  # Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+  # `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+  # was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+  # between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+
+  # [migrate-humanization-setting part 1 of 2]
+  - changeSet:
+      id: v43.00-010
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT
+                'humanization-strategy'                                      AS key,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, value)
+              SELECT
+                'humanization-strategy'                                      AS `key`,
+                (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
+              FROM setting
+              WHERE `key` = 'enable-advanced-humanization';
+
+  # [migrate-humanization-setting part 2 of 2]
+  - changeSet:
+      id: v43.00-011
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in MySQL/MariaDB
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM setting WHERE `key` = 'enable-advanced-humanization';
+
+  #
+  # The following migration replaces metabase.db.migrations/mark-category-fields-as-list, added in 0.29.0
+  #
+  # Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+  # would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+  # longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+  # keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+  # meaning of the Category special type.
+  #
+  # Note that in 0.39.0 special type was renamed to semantic type
+  - changeSet:
+      id: v43.00-012
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Set Field.has_field_values to 'list' if semantic_type derives from :type/Category.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'mark-category-fields-as-list';
+      changes:
+        - sql:
+            # This is a snapshot of all the descendants of `:type/Category` at the time this migration was written. We
+            # don't need to worry about new types being added in the future, since the purpose of this migration is
+            # only to update old columns.
+            sql: >-
+              UPDATE metabase_field
+              SET has_field_values = 'list'
+              WHERE has_field_values IS NULL
+                AND active = true
+                AND semantic_type IN (
+                  'type/Category',
+                  'type/City',
+                  'type/Company',
+                  'type/Country',
+                  'type/Name',
+                  'type/Product',
+                  'type/Source',
+                  'type/State',
+                  'type/Subscription',
+                  'type/Title'
+                );
+
+  #
+  # The following migrations replace metabase.db.migrations/add-migrated-collections, added in 0.30.0
+  #
+  # In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
+  # will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
+  # Else" area where they can currently be saved).
+  #
+  # Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
+  # when users upgrade their instance to 0.30 from a previous version.
+  #
+  # The user feedback we've received points to a UX that would do the following:
+  #
+  # 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+  #
+  # 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
+  #    questions."
+  #
+  # 3. The permissions settings for these new collections should be set to No Access for all user groups except
+  #    Administrators.
+  #
+  # 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
+  #    new collections.
+
+  # [add-migrated-collections part 1 of 7] Create 'Migrated Dashboards' Collection if needed
+  - changeSet:
+      id: v43.00-014
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Dashboards' Collection if needed and there are any Dashboards not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Dashboards';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM report_dashboard
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Dashboards', '#509ee3', 'migrated_dashboards');
+
+  # [add-migrated-collections part 2 of 7] Create 'Migrated Pulses' Collection if needed
+  - changeSet:
+      id: v43.00-015
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Pulses' Collection if needed and there are any Pulses not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Pulses';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM pulse
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Pulses', '#509ee3', 'migrated_pulses');
+
+  # [add-migrated-collections part 3 of 7] Create 'Migrated Questions' Collection if needed
+  - changeSet:
+      id: v43.00-016
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Questions' Collection if needed and there are any Cards not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Questions';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM report_card
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, color, slug)
+              VALUES
+              ('Migrated Questions', '#509ee3', 'migrated_questions');
+
+  # [add-migrated-collections part 4 of 7] Move Dashboards not in a Collection to 'Migrated Dashboards'
+  - changeSet:
+      id: v43.00-017
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Dashboards not in a Collection to 'Migrated Dashboards'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Dashboards')
+              WHERE collection_id IS NULL;
+
+
+  # [add-migrated-collections part 5 of 7] Move Pulses not in a Collection to 'Migrated Pulses'
+  - changeSet:
+      id: v43.00-018
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Pulses not in a Collection to 'Migrated Pulses'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE pulse
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Pulses')
+              WHERE collection_id IS NULL;
+
+  # [add-migrated-collections part 6 of 7] Move Cards not in a Collection to 'Migrated Questions'
+  - changeSet:
+      id: v43.00-019
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Move Cards not in a Collection to 'Migrated Questions'.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*)
+              FROM data_migrations
+              WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET collection_id = (SELECT id FROM collection WHERE name = 'Migrated Questions')
+              WHERE collection_id IS NULL;
+
+  # [add-migrated-collections part 7 of 7] Grant All Users readwrite perms for the Root Collection.
+  - changeSet:
+      id: v43.00-020
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                     ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/root/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v43.00-021
+      author: adam-james
+      comment: Added 0.43.0 - Timeline table for Events
+      changes:
+        - createTable:
+            tableName: timeline
+            remarks: Timeline table to organize events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: Name of the timeline
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional description of the timeline
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: ID of the collection containing the timeline
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_timeline_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: Whether or not the timeline has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the timeline
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_timeline_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the timeline was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the timeline was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-022
+      author: adam-james
+      comment: Added 0.43.0 - Events table
+      changes:
+        - createTable:
+            tableName: timeline_event
+            remarks: Events table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: ID of the timeline containing the event
+                  name: timeline_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: timeline(id)
+                    foreignKeyName: fk_events_timeline_id
+                    deleteCascade: true
+              - column:
+                  remarks: Name of the event
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional markdown description of the event
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+                  remarks: When the event happened
+              - column:
+                  name: time_matters
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  remarks: >-
+                     Indicate whether the time component matters or if the timestamp should just serve to indicate the
+                     day of the event without any time associated to it.
+              - column:
+                  name: timezone
+                  constraints:
+                    nullable: false
+                  type: varchar(255)
+                  remarks: Timezone to display the underlying UTC timestamp in for the client
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: Whether or not the event has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_event_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the event was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the event was modified
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-023
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline collection_id
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v43.00-024
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline_event timeline_id
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v43.00-025
+      author: dpsutton
+      comment: Added 0.43.0 - Index on timeline timestamp
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id_timestamp
+            columns:
+              - column:
+                  name: timeline_id
+              - column:
+                  name: timestamp
+
+  - changeSet:
+      id: v43.00-026
+      author: noahmoss
+      comment: >-
+        Added 0.43.0 - adds User.settings column to implement User-local Settings
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing User-local Settings for this User"
+
+  - changeSet:
+      id: v43.00-027
+      author: camsaul
+      comment: Added 0.43.0. Drop NOT NULL constraint for core_user.password
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: password
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v43.00-028
+      author: camsaul
+      comment: Added 0.43.0. Drop NOT NULL constraint for core_user.password_salt
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: password_salt
+            columnDataType: varchar(254)
+
+  #
+  # The following migration replaces metabase.db.data-migrations/clear-ldap-user-local-passwords, added 0.30.0
+  #
+  # Before 0.30.0, we were storing the LDAP user's password in the core_user table (though it wasn't used). This
+  # migration clears those passwords out, disabling password-based login.
+  - changeSet:
+      id: v43.00-029
+      author: camsaul
+      comment: Added 0.43.0. Clear local password for Users using LDAP auth.
+      changes:
+        - sql:
+            sql: >-
+              UPDATE core_user
+              SET
+                password = NULL,
+                password_salt = NULL
+              WHERE ldap_auth IS TRUE;
+
+  - changeSet:
+      id: v43.00-030
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table
+      changes:
+        - createTable:
+            tableName: dashboard_bookmark
+            remarks: Table holding bookmarks on dashboards
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Dashboard'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_dashboard_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: report_dashboard(id)
+                    foreignKeyName: fk_dashboard_bookmark_dashboard_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-031
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: dashboard_bookmark
+            columnNames: user_id, dashboard_id
+            constraintName: unique_dashboard_bookmark_user_id_dashboard_id
+  - changeSet:
+      id: v43.00-032
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: dashboard_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_dashboard_bookmark_user_id
+  - changeSet:
+      id: v43.00-033
+      author: dpsutton
+      comment: Added 0.43.0 - Dashboard bookmarks table index on dashboard_id
+      changes:
+        - createIndex:
+            tableName: dashboard_bookmark
+            columns:
+              - column:
+                  name: dashboard_id
+            indexName: idx_dashboard_bookmark_dashboard_id
+
+  - changeSet:
+      id: v43.00-034
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table
+      changes:
+        - createTable:
+            tableName: card_bookmark
+            remarks: Table holding bookmarks on cards
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Card'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_card_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_card_bookmark_dashboard_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-035
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: card_bookmark
+            columnNames: user_id, card_id
+            constraintName: unique_card_bookmark_user_id_card_id
+  - changeSet:
+      id: v43.00-036
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: card_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_card_bookmark_user_id
+  - changeSet:
+      id: v43.00-037
+      author: dpsutton
+      comment: Added 0.43.0 - Card bookmarks table index on card_id
+      changes:
+        - createIndex:
+            tableName: card_bookmark
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_card_bookmark_card_id
+
+  - changeSet:
+      id: v43.00-038
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table
+      changes:
+        - createTable:
+            tableName: collection_bookmark
+            remarks: Table holding bookmarks on collections
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who bookmarked the Collection'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_bookmark_user_id
+                    deleteCascade: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'ID of the Card bookmarked by the user'
+                  constraints:
+                    nullable: false
+                    references: collection(id)
+                    foreignKeyName: fk_collection_bookmark_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the bookmark was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-039
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table unique constraint
+      changes:
+        - addUniqueConstraint:
+            tableName: collection_bookmark
+            columnNames: user_id, collection_id
+            constraintName: unique_collection_bookmark_user_id_collection_id
+  - changeSet:
+      id: v43.00-040
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table index on user_id
+      changes:
+        - createIndex:
+            tableName: collection_bookmark
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_collection_bookmark_user_id
+  - changeSet:
+      id: v43.00-041
+      author: dpsutton
+      comment: Added 0.43.0 - Collection bookmarks table index on collection_id
+      changes:
+        - createIndex:
+            tableName: collection_bookmark
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_collection_bookmark_collection_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -9911,22 +10982,6 @@ databaseChangeLog:
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
-#
-# 3) Migrations IDs should follow the format
-#
-#    vMM.mm-NNN
-#
-#    where
-#
-#    M = major version
-#    m = minor version
-#    N = migration number relative to that major+minor version
-#
-#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
-#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
-#
-#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
-#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
 #
 # 3) Migrations IDs should follow the format
 #

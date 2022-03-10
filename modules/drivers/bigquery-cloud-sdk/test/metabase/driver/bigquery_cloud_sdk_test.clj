@@ -6,11 +6,10 @@
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-            [metabase.models :refer [Card Database Field Table]]
+            [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
             [metabase.test.data.interface :as tx]
             [metabase.test.util :as tu]
@@ -94,6 +93,7 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
+             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
@@ -198,7 +198,7 @@
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
-    (with-view [view-name]
+    (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
@@ -287,7 +287,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [tbl-nm]
+    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")
@@ -382,33 +382,6 @@
               (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
                 (is (= max-rows (count rows)))
                 (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
-
-(deftest driver-switch-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (testing "A Database can be seamlessly changed from the :bigquery driver to :bigquery-cloud-sdk driver"
-      (mt/with-temp Database [temp-db {:engine  :bigquery
-                                       ;; same db-details for new driver as old, so we can luckily just reuse them
-                                       :details (assoc (:details (mt/db))
-                                                  :dataset-id (get-in (mt/db) [:details :dataset-filters-patterns]))}]
-        (mt/with-db temp-db
-          (sync/sync-database! temp-db {:scan :schema})
-          (mt/with-temp Card [temp-card {:database_id   (mt/id)
-                                         :dataset_query (mt/mbql-query :venues {:fields [$name]
-                                                                                :filter [:= $id 21]})}]
-            (let [check-card-query-res (fn [card]
-                                         (is (= [["PizzaHacker"]]
-                                                (mt/formatted-rows [str]
-                                                  (data/run-mbql-query* (:dataset_query card))))))]
-              (check-card-query-res temp-card)
-              (let [db-id          (u/the-id temp-db)
-                    updates        (assoc temp-db :engine :bigquery-cloud-sdk)]
-                (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates)
-                (mt/with-db (Database db-id)
-                  ;; having only changed the driver old->new, the existing card query should produce the same results
-                  (check-card-query-res temp-card)
-                  (is (= (bigquery-project-id)
-                         (get-in (Database db-id)
-                                 [:details :project-id-from-credentials]))))))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]

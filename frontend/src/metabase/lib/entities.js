@@ -1,3 +1,73 @@
+/*
+ * # Entities abstract the interface between the back-end and the front-end.
+ *
+ * ## Endpoint requirements for entities:
+ *
+ * When fetching a list, each item of the list must include an `id` key/value pair.
+ *
+ * JSON must wrap response inside a `{ "data" : { …your data } }` structure.
+ *
+ * ## Required Properties:
+ *
+ * name:
+ *   a string in plural form
+ *   examples:
+ *     "questions", "dashboards"
+ *
+ * path:
+ *   a uri
+ *     starting with "/api/"
+ *     conventionally followed by the entity name in singular form
+ *   examples:
+ *     "/api/card", "/api/dashboard"
+ *
+ * ## Optional properties:
+ *
+ * api:
+ *
+ * here you can override the basic entity methods like `list`, `create`, `get`, `update`, `delete` (OR see `path` below)
+ *
+ * schema:
+ *   normalizr schema
+ *   default:
+ *     `new schema.Entity(entity.name)`
+ *
+ * ## How to create a bare-bones entity
+ *
+ * Say we want to create a "books" entity, to be able to fetch a list of "books".
+ *
+ * Add the following line to `frontend/src/metabase/entities.index.js`:
+ *
+ *   export { default as books } from "./books"
+ *
+ * Create file `frontend/src/metabase/entities/books.js`
+ *
+ * Add the following to it:
+ *
+ *   import { createEntity } from "metabase/lib/entities";
+
+ *   const Books = createEntity({
+ *     name: "books",
+ *     nameOne: "book",
+ *     path: "/api/book",
+ *   });
+ *
+ *   export default Books;
+ *
+ * ## How to consume an entity:
+ *
+ * Near the top of a container file, import the entity:
+ *
+ *   import Book from "metabase/entities/books";
+ *
+ * Near the bottom of the container file, add the entity to a `compose` statement:
+ *
+ *   export default _.compose(
+ *     Book.loadList(),
+ *     connect(mapStateToProps),
+ *   )(BookContainer);
+ */
+
 import {
   combineReducers,
   handleEntities,
@@ -21,14 +91,6 @@ import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
 import _ from "underscore";
-
-// entity defintions export the following properties (`name`, and `api` or `path` are required)
-//
-// name: plural, like "questions" or "dashboards"
-// api: object containing `list`, `create`, `get`, `update`, `delete` methods (OR see `path` below)
-// path: API endpoint to create default `api` object
-// schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
-//
 
 export function createEntity(def) {
   const entity = { ...def };
@@ -68,12 +130,12 @@ export function createEntity(def) {
     };
   }
 
-  const getIdForQuery = entityQuery => JSON.stringify(entityQuery || null);
-
+  const getQueryKey = entityQuery => JSON.stringify(entityQuery || null);
   const getObjectStatePath = entityId => ["entities", entity.name, entityId];
   const getListStatePath = entityQuery =>
-    ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+    ["entities", entity.name + "_list"].concat(getQueryKey(entityQuery));
 
+  entity.getQueryKey = getQueryKey;
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
@@ -152,10 +214,11 @@ export function createEntity(def) {
       withCachedDataAndRequestState(
         ({ id }) => [...getObjectStatePath(id)],
         ({ id }) => [...getObjectStatePath(id), "fetch"],
+        entityQuery => getQueryKey(entityQuery),
       ),
       withEntityActionDecorators("fetch"),
-    )((entityObject, options = {}) => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get({ id: entityObject.id }, options)),
+    )((entityQuery, options = {}) => async (dispatch, getState) =>
+      entity.normalize(await entity.api.get(entityQuery, options)),
     ),
 
     create: compose(
@@ -196,12 +259,14 @@ export function createEntity(def) {
         );
 
         if (notify) {
-          if (notify.undo) {
-            // pick only the attributes that were updated
-            const undoObject = _.pick(
-              originalObject,
-              ...Object.keys(updatedObject || {}),
-            );
+          // pick only the attributes that were updated
+          const undoObject = _.pick(
+            originalObject,
+            ...Object.keys(updatedObject || {}),
+          );
+          // https://github.com/metabase/metabase/pull/20874#pullrequestreview-902384264
+          const canUndo = !hasCircularReference(undoObject);
+          if (notify.undo && canUndo) {
             dispatch(
               addUndo({
                 actions: [
@@ -330,7 +395,7 @@ export function createEntity(def) {
   // LIST SELECTORS
 
   const getEntityQueryId = (state, props) =>
-    getIdForQuery(props && props.entityQuery);
+    getQueryKey(props && props.entityQuery);
 
   const getEntityLists = createSelector(
     [getEntities],
@@ -452,7 +517,7 @@ export function createEntity(def) {
         const { entityQuery, metadata, result: list } = payload;
         return {
           ...state,
-          [getIdForQuery(entityQuery)]: {
+          [getQueryKey(entityQuery)]: {
             list,
             metadata,
           },
@@ -546,6 +611,16 @@ export function createEntity(def) {
   require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
+}
+
+function hasCircularReference(object) {
+  try {
+    JSON.stringify(object);
+  } catch (error) {
+    return true;
+  }
+
+  return false;
 }
 
 export function combineEntities(entities) {

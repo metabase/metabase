@@ -14,7 +14,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-
+import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
@@ -48,6 +48,12 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
 const getRawQueryResults = state => state.qb.queryResults;
+
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
+  );
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],
@@ -85,6 +91,33 @@ export const getQueryResults = createSelector(
 
 export const getFirstQueryResult = createSelector([getQueryResults], results =>
   Array.isArray(results) ? results[0] : null,
+);
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult],
+  result => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+    return cols.findIndex(isPK);
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
 );
 
 // get instance settings, used for determining whether to display certain actions
@@ -207,6 +240,11 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.previousQueryBuilderMode,
+);
+
 export const getDatasetEditorTab = createSelector(
   [getUiControls],
   uiControls => uiControls.datasetEditorTab,
@@ -324,14 +362,82 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+
+const getZoomedObjectRowIndex = createSelector(
+  [getPKRowIndexMap, getZoomedObjectId],
+  (PKRowIndexMap, objectId) => {
+    if (!PKRowIndexMap) {
+      return;
+    }
+    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+  },
+);
+
+export const getPreviousRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex - 1][PKColumnIndex];
+  },
+);
+
+export const getNextRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex + 1][PKColumnIndex];
+  },
+);
+
+export const getCanZoomPreviousRow = createSelector(
+  [getZoomedObjectRowIndex],
+  rowIndex => rowIndex !== 0,
+);
+
+export const getCanZoomNextRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    const rowCount = queryResults[0].data.rows.length;
+    return rowIndex !== rowCount - 1;
+  },
+);
+
+export const getZoomRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    return queryResults[0].data.rows[rowIndex];
+  },
+);
+
+const isZoomingRow = createSelector(
+  [getZoomedObjectId],
+  index => index != null,
+);
+
 export const getMode = createSelector(
   [getLastRunQuestion],
   question => question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults],
-  (mode, results) => {
+  [getMode, getQueryResults, isZoomingRow],
+  (mode, results, isZoomingSingleRow) => {
+    if (isZoomingSingleRow) {
+      return true;
+    }
     // It handles filtering by a manually set PK column that is not unique
     const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
     return mode?.name() === "object" && !hasMultipleRows;

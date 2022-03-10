@@ -64,9 +64,7 @@ export default class FieldList extends Component {
         // forward DimensionList props
         useOriginalDimension={this.props.useOriginalDimension}
         enableSubDimensions={this.props.enableSubDimensions}
-        preventNumberSubDimensions={
-          this.props.fieldOptions.preventNumberSubDimensions
-        }
+        preventNumberSubDimensions={this.props.preventNumberSubDimensions}
       />
     );
   }

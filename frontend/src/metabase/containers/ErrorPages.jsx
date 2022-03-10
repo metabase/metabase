@@ -6,7 +6,7 @@ import fitViewport from "metabase/hoc/FitViewPort";
 
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
-import ErrorDetails from "metabase/components/ErrorDetails";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 
 import NoResults from "assets/img/no_results.svg";
 import { ErrorPageRoot } from "./ErrorPages.styled";

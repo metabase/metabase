@@ -177,7 +177,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/spark:2.1.1
+      - image: metabase/spark:3.2.1
     resource_class: large
 
   vertica:
@@ -627,9 +627,6 @@ jobs:
                 name: Compile Java source file(s)
                 command: clojure -X:deps prep
             - run:
-                name: Compile driver AOT namespaces
-                command: cd modules/drivers && clojure -X:deps prep
-            - run:
                 name: Fetch dependencies
                 command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
             - run:
@@ -1029,7 +1026,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery", "bigquery-cloud-sdk", "googleanalytics", "sqlite"]
+              driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-tests-java-8-ee
@@ -1049,7 +1046,7 @@ workflows:
           name: be-google-related-drivers-classpath-test
           requires:
             - be-tests-java-8-ee
-          driver: googleanalytics,bigquery,bigquery-cloud-sdk
+          driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
                     metabase.driver.googleanalytics-test]"
@@ -1256,6 +1253,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "embedding",
                   "joins",
                   "models",
                   "moderation",

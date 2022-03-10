@@ -75,7 +75,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
@@ -931,17 +933,16 @@ export default class Question {
       !question.id() ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(
-        null,
-        question._serializeForUrl({
+      return Urls.question(null, {
+        hash: question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
           creationType,
         }),
         query,
-      );
+      });
     } else {
-      return Urls.question(question.card(), "", query);
+      return Urls.question(question.card(), { query });
     }
   }
 
@@ -1298,6 +1299,3 @@ export default class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 }
-window.Question = Question;
-window.NativeQuery = NativeQuery;
-window.StructuredQuery = StructuredQuery;

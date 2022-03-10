@@ -152,7 +152,7 @@ class RawCustomFormField extends React.Component {
   };
 
   render() {
-    const { name, innerRef } = this.props;
+    const { name, forwardedRef } = this.props;
     const { fields, formFieldsByName, values, onChangeField } = this.context;
 
     const field = getIn(fields, name.split("."));
@@ -183,14 +183,14 @@ class RawCustomFormField extends React.Component {
 
     return (
       <FormField {...props}>
-        <Widget {...props} ref={innerRef} />
+        <Widget {...props} ref={forwardedRef} />
       </FormField>
     );
   }
 }
 
 export const CustomFormField = React.forwardRef((props, ref) => (
-  <RawCustomFormField {...props} innerRef={ref} />
+  <RawCustomFormField {...props} forwardedRef={ref} />
 ));
 
 export const CustomFormSubmit = (
@@ -297,18 +297,19 @@ export const CustomFormFooter = (
     onCancel,
     footerExtraButtons,
     fullWidth,
+    isModal,
   },
-  { isModal },
+  { isModal: isContextModal },
 ) => {
   return (
     <div
       className={cx("flex align-center", {
-        "flex-reverse": isModal,
+        "flex-reverse": isModal || isContextModal,
       })}
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
-        <Button className="mx1" onClick={onCancel}>
+        <Button className="mx1" type="button" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}

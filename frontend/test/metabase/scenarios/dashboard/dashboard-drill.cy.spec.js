@@ -6,6 +6,7 @@ import {
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -599,7 +600,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
     cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.route("POST", "/api/card/*/query").as("cardQuery");
 
     cy.createQuestion({
       name: "15331",
@@ -675,7 +676,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .contains("1")
       .click();
 
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@cardQuery").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.findByText("37.65");
@@ -880,7 +881,7 @@ function createDashboardWithQuestion(
 function createQuestion(options, callback) {
   cy.request("POST", "/api/card", {
     dataset_query: {
-      database: 1,
+      database: SAMPLE_DB_ID,
       type: "native",
       native: {
         query: options.query || "select 111 as my_number, 'foo' as my_string",

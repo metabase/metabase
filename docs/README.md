@@ -36,6 +36,7 @@
 - [List of expressions: aggregations and functions](./users-guide/expressions-list.html)
 - [Visualizing data](./users-guide/05-visualizing-results.html)
 - [Using results to ask new questions](./users-guide/referencing-saved-questions-in-queries.html)
+- [Joining data](./users-guide/join.md)
 
 ### SQL and native queries
 
@@ -78,7 +79,8 @@
 
 ## Permissions
 
-- [Data permissions](./administration-guide/05-setting-permissions.html)
+- [Permissions overview](./administration-guide/05-setting-permissions.html)
+- [Data permissions](./administration-guide/data-permissions.html)
 - [Collection permissions](./administration-guide/06-collections.html)
 - [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.html)
 - [SQL snippets folder permissions](./enterprise-guide/sql-snippets.html)

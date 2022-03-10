@@ -3,13 +3,15 @@ import {
   downloadAndAssert,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const questionDetails = {
   dataset_query: {
-    database: 1,
+    database: SAMPLE_DB_ID,
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],
@@ -26,8 +28,6 @@ const questionDetails = {
 
 describe("issue 18729", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
   });
@@ -38,7 +38,6 @@ describe("issue 18729", () => {
       cy.skipOn(fileType === "xlsx");
 
       visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
 
       downloadAndAssert({ fileType }, assertion);
     });

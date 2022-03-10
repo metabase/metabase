@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { assoc } from "icepick";
 import { restore } from "__support__/e2e/cypress";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -38,7 +39,7 @@ describe("scenarios > dashboard > permissions", () => {
 
       cy.request("POST", "/api/card", {
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           type: "native",
           native: { query: "select 'foo'" },
         },
@@ -50,7 +51,7 @@ describe("scenarios > dashboard > permissions", () => {
 
       cy.request("POST", "/api/card", {
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           type: "native",
           native: { query: "select 'bar'" },
         },

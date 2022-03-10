@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, undo } from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -76,6 +77,7 @@ const Fields = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Fields.getObjectStatePath(id)],
         ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+        entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
     )(({ id: fieldId }) => async (dispatch, getState) => {
@@ -85,6 +87,13 @@ const Fields = createEntity({
       return { id, values };
     }),
 
+    updateField(field, opts) {
+      return Fields.actions.update(
+        { id: field.id },
+        field,
+        undo(opts, field.display_name, t`updated`),
+      );
+    },
     // Docstring from m.api.field:
     // Update the human-readable values for a `Field` whose semantic type is
     // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."

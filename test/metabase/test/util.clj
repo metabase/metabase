@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory User]]
+                                     PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -21,7 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -35,13 +35,12 @@
             [toucan.util.test :as tt])
   (:import [java.io File FileInputStream]
            java.net.ServerSocket
-           java.nio.charset.StandardCharsets
            java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -109,8 +108,8 @@
             :color "#ABCDEF"})
 
    Dashboard
-   (fn [_] {:creator_id   (rasta-id)
-            :name         (random-name)})
+   (fn [_] {:creator_id (rasta-id)
+            :name       (random-name)})
 
    DashboardCardSeries
    (constantly {:position 0})
@@ -173,7 +172,7 @@
             :is_reversion false})
 
    Segment
-   (fn [_] {:creator_id (rasta-id)
+   (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
@@ -195,6 +194,19 @@
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
+
+   Timeline
+   (fn [_]
+     {:name       "Timeline of bird squawks"
+      :creator_id (rasta-id)})
+
+   TimelineEvent
+   (fn [_]
+     {:name         "default timeline event"
+      :timestamp    (t/zoned-date-time)
+      :timezone     "US/Pacific"
+      :time_matters true
+      :creator_id   (rasta-id)})
 
    User
    (fn [_] {:first_name (random-name)
@@ -831,10 +843,10 @@
           (let [remapped (db/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
-                                          :name                    (:display_name original)
+                                          :name                    (format "%s [external remap]" (:display_name original))
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
-                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
           (let [values-map (if (sequential? remap)
@@ -843,12 +855,12 @@
                              remap)]
             (fn []
               (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (:display_name original)
+                                              :name     (format "%s [internal remap]" (:display_name original))
                                               :type     :internal}]
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)
                                               :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s"
+                (testing (format "With human readable values remapping %s -> %s\n"
                                  (describe-field original) (pr-str values-map))
                   (thunk)))))))))
    orig->remapped))
@@ -1024,9 +1036,9 @@
   interpreted as a UTF-8 encoded string, then compared to `expected. Otherwise, the individual bytes of each are
   compared."
   {:added "0.42.0"}
-  [expected value]
+  [expected ^bytes value]
   (cond (string? expected)
-        (= expected (String. value (.name StandardCharsets/UTF_8)))
+        (= expected (String. value "UTF-8"))
 
         (bytes? expected)
         (= (seq expected) (seq value))
@@ -1069,7 +1081,7 @@
 
 (defn file->bytes
   "Reads a file at `file-path` completely into a byte array, returning that array."
-  [file-path]
+  [^String file-path]
   (let [f   (File. file-path)
         ary (byte-array (.length f))]
     (with-open [is (FileInputStream. f)]

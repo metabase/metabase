@@ -36,12 +36,13 @@
 ;; Session password is only used when creating session user, not anywhere else
 
 (defn- connection-details []
-  (let [details* {:host     (tx/db-test-env-var-or-throw :oracle :host)
-                  :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-                  :user     (tx/db-test-env-var-or-throw :oracle :user)
-                  :password (tx/db-test-env-var-or-throw :oracle :password)
-                  :sid      (tx/db-test-env-var-or-throw :oracle :sid)
-                  :ssl      (tx/db-test-env-var :oracle :ssl false)}
+  (let [details* {:host         (tx/db-test-env-var-or-throw :oracle :host "localhost")
+                  :port         (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
+                  :user         (tx/db-test-env-var-or-throw :oracle :user "system")
+                  :password     (tx/db-test-env-var-or-throw :oracle :password "password")
+                  :sid          (tx/db-test-env-var :oracle :sid)
+                  :service-name (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
+                  :ssl          (tx/db-test-env-var :oracle :ssl false)}
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
                   :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value

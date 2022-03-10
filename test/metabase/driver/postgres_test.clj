@@ -9,6 +9,7 @@
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
@@ -282,6 +283,46 @@
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
+
+(deftest describe-nested-field-columns-test
+  (mt/test-driver :postgres
+    (testing "flattened-row"
+      (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
+            flattened {[:mob :bob :dobbs] 123
+                       [:mob :bob :cobbs] "boop"}]
+        (is (= flattened (#'postgres/flattened-row :mob row)))))
+    (testing "row->types"
+      (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
+            types {[:bob :cobbs] clojure.lang.PersistentVector
+                   [:bob :dobbs :robbs] java.lang.Long}]
+        (is (= types (#'postgres/row->types row)))))
+    (testing "describes json columns and gives types for ones with coherent schemas only"
+      (drop-if-exists-and-create-db! "describe-json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
+                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
+                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= '#{{:name              "incoherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:incoherent_json_val "b"]}
+                     {:name              "coherent_json_val → a",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "a"]}
+                     {:name              "coherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "b"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:name "describe_json_table"}))))))))
 
 (mt/defdataset with-uuid
   [["users"

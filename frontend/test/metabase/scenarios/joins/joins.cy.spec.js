@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   popover,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -14,7 +15,7 @@ describe("scenarios > question > joined questions", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("joining on a question with remapped values should work (metabase#15578)", () => {
+  it("joining on a question with remapped values should work (metabase#15578)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     // Remap display value
     cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
@@ -102,7 +103,7 @@ describe("scenarios > question > joined questions", () => {
     assertDimensionName("parent", "Created At: Day");
     assertDimensionName("join", "Created At: Day");
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
     visualize();
@@ -115,7 +116,7 @@ describe("scenarios > question > joined questions", () => {
   it("should show 'Previous results' instead of a table name for non-field dimensions", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
     cy.findByText("Pick a column to group by").click();

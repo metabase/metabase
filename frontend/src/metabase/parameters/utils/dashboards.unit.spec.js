@@ -9,6 +9,7 @@ import {
   hasMatchingParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
+  getMappingTargetField,
 } from "metabase/parameters/utils/dashboards";
 import { metadata } from "__support__/sample_database_fixture";
 
@@ -328,7 +329,17 @@ describe("meta/Dashboard", () => {
         field(id) {
           return this.fields[id];
         },
-        table() {},
+        tables: {
+          6: {
+            id: 6,
+          },
+          8: {
+            id: 8,
+          },
+        },
+        table(id) {
+          return this.tables[id];
+        },
       };
 
       dashboard = DASHBOARD_WITH_BOOLEAN_PARAMETER;
@@ -343,7 +354,7 @@ describe("meta/Dashboard", () => {
             "56": {
               card_id: 56,
               dashcard_id: 81,
-              field: metadata.field(120),
+              field: expect.any(Field),
               field_id: 120,
               parameter_id: "parameter1",
               target: ["dimension", ["field", 120, null]],
@@ -353,7 +364,7 @@ describe("meta/Dashboard", () => {
             "59": {
               card_id: 59,
               dashcard_id: 86,
-              field: metadata.field(134),
+              field: expect.any(Field),
               field_id: 134,
               parameter_id: "parameter1",
               target: ["dimension", ["template-tag", "bbb"]],
@@ -375,7 +386,13 @@ describe("meta/Dashboard", () => {
         },
       });
 
-      expect(mappings.parameter1["87"]["62"].field).toEqual(
+      expect(mappings.parameter1["81"]["56"].field.getPlainObject()).toEqual(
+        expect.objectContaining(metadata.field(120).getPlainObject()),
+      );
+      expect(mappings.parameter1["86"]["59"].field.getPlainObject()).toEqual(
+        expect.objectContaining(metadata.field(134).getPlainObject()),
+      );
+      expect(mappings.parameter1["87"]["62"].field.getPlainObject()).toEqual(
         expect.objectContaining({
           name: "boolean",
         }),
@@ -675,6 +692,56 @@ describe("meta/Dashboard", () => {
       ).toEqual(
         "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
       );
+    });
+  });
+
+  describe("getMappingTargetField", () => {
+    const mapping = {
+      parameter_id: "dbe38f17",
+      card_id: 1,
+      target: ["dimension", ["field", 4, null]],
+    };
+
+    const metadata = {
+      field: jest.fn(),
+    };
+
+    it("should return null when not given a card", () => {
+      expect(getMappingTargetField(null, mapping, metadata)).toBe(null);
+    });
+
+    it("should return null when given a card without a `dataset_query`", () => {
+      const card = {
+        id: 1,
+      };
+
+      expect(getMappingTargetField(card, mapping, metadata)).toBe(null);
+    });
+
+    it("should return the field that maps to the mapping target", () => {
+      const field = {
+        id: 4,
+        name: "foo",
+      };
+
+      metadata.field.mockImplementation(id => {
+        if (id === 4) {
+          return field;
+        }
+      });
+
+      const card = {
+        id: 1,
+        dataset_query: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+          },
+        },
+      };
+
+      expect(getMappingTargetField(card, mapping, metadata)).toEqual(field);
     });
   });
 });

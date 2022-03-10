@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal, filter } from "__support__/e2e/cypress";
 
 import {
   assertIsModel,
@@ -37,9 +37,7 @@ describe("scenarios > models > revision history", () => {
     assertIsQuestion();
     cy.get(".LineAreaBarChart");
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("Discount");
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
@@ -69,9 +67,7 @@ describe("scenarios > models > revision history", () => {
     assertIsModel();
     cy.get(".LineAreaBarChart").should("not.exist");
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("Count");
     cy.findByText("Equal to").click();
     selectFromDropdown("Greater than");

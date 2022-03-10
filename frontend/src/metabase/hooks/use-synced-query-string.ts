@@ -21,7 +21,21 @@ export function useSyncedQueryString(
   }, [deps]);
 }
 
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+
 function buildSearchString(object: Record<string, any>) {
-  const search = querystring.stringify(object);
+  const currentSearchParams = querystring.parse(
+    window.location.search.replace("?", ""),
+  );
+  const filteredSearchParams = Object.fromEntries(
+    Object.entries(currentSearchParams).filter(entry =>
+      QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
+    ),
+  );
+
+  const search = querystring.stringify({
+    ...filteredSearchParams,
+    ...object,
+  });
   return search ? `?${search}` : "";
 }

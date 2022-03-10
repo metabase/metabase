@@ -1,10 +1,11 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
-export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
+export const FieldTypeIcon = styled(Icon)`
   color: ${props =>
     props.name === "ellipsis" ? color("text-white") : color("brand")};
 
@@ -18,3 +19,5 @@ export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
       background-color: ${color("text-dark")};
     `}
 `;
+
+FieldTypeIcon.defaultProps = { size: 14 };

@@ -167,8 +167,7 @@
                    (substitute query {"param" (i/map->FieldFilter
                                                {:field (Field (mt/id :venues field))
                                                 :value {:type  operator
-                                                        :value value}})}))))))))
-
+                                                        :value value}})})))))))))
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
@@ -176,7 +175,7 @@
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))))
+             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
@@ -628,9 +627,6 @@
              (mt/first-row
                (process-native
                  :native     {:query (case driver/*driver*
-                                       :bigquery
-                                       "SELECT {{date}} as date"
-
                                        :oracle
                                        "SELECT cast({{date}} as date) from dual"
 

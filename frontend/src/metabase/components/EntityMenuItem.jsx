@@ -1,62 +1,30 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import styled from "styled-components";
 import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
+import { Item, StyledExternalLink } from "./EntityMenuItem.styled";
 
-import { color } from "metabase/lib/colors";
-
-const Item = styled.div`
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: ${color("text-medium")};
-  padding: 0.85em 1.45em;
-  text-decoration: none;
-  transition: all 300ms linear;
-  :hover {
-    color: ${color("brand")};
-  }
-  > .Icon {
-    color: ${color("text-light")};
-    margin-right: 0.65em;
-  }
-  :hover > .Icon {
-    color: ${color("brand")};
-    transition: all 300ms linear;
-  },
-  /* icon specific tweaks
-     the alert icon should be optically aligned  with the x-height of the text */
-  > .Icon.Icon-alert {
-    transform: translate-y(1px),
-  }
-  /* the embed icon should be optically aligned with the x-height of the text */
-  > .Icon.Icon-embed {
-    transform: translate-y(1px);
-  }
-  /* the download icon should be optically aligned with the x-height of the text */
-  > .Icon.Icon-download: {
-    transform: translate-y(1px);
-  }
-  /* the history icon is wider so it needs adjustment to center it with other
-   icons */
-  "> .Icon.Icon-history": {
-    transform: translate-x(-2px);
-  },
-`;
-
-const LinkMenuItem = ({ children, link, onClose, event, externalLink }) => (
-  <Link
-    to={link}
-    target={externalLink ? "_blank" : null}
-    onClick={onClose}
-    data-metabase-event={event}
-    style={{ display: "block" }}
-  >
-    {children}
-  </Link>
-);
+const LinkMenuItem = ({ children, link, onClose, event, externalLink }) =>
+  externalLink ? (
+    <StyledExternalLink
+      href={link}
+      target="_blank"
+      onClick={onClose}
+      data-metabase-event={event}
+    >
+      {children}
+    </StyledExternalLink>
+  ) : (
+    <Link
+      to={link}
+      onClick={onClose}
+      data-metabase-event={event}
+      className="block"
+    >
+      {children}
+    </Link>
+  );
 
 const ActionMenuItem = ({ children, action, event }) => (
   <div onClick={action} data-metabase-event={event}>

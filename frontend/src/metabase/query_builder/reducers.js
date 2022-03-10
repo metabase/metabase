@@ -39,6 +39,8 @@ import {
   CANCEL_DATASET_CHANGES,
   SET_RESULTS_METADATA,
   SET_METADATA_DIFF,
+  ZOOM_IN_ROW,
+  RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -69,6 +71,7 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
 };
@@ -93,7 +96,18 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
+      next: (
+        { queryBuilderMode: currentQBMode, ...state },
+        { payload: { queryBuilderMode: nextQBMode, ...payload } },
+      ) => ({
+        ...state,
+        ...payload,
+        queryBuilderMode: nextQBMode || currentQBMode,
+        previousQueryBuilderMode:
+          nextQBMode && currentQBMode !== nextQBMode
+            ? currentQBMode
+            : state.previousQueryBuilderMode,
+      }),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -101,12 +115,14 @@ export const uiControls = handleActions(
     },
 
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...DEFAULT_UI_CONTROLS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        ...payload.uiControls,
-      }),
+      next: (state, { payload }) => {
+        return {
+          ...state,
+          ...DEFAULT_UI_CONTROLS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          ...payload.uiControls,
+        };
+      },
     },
 
     [TOGGLE_DATA_REFERENCE]: {
@@ -261,6 +277,20 @@ export const uiControls = handleActions(
   DEFAULT_UI_CONTROLS,
 );
 
+export const zoomedRowObjectId = handleActions(
+  {
+    [INITIALIZE_QB]: {
+      next: (state, { payload }) => payload?.objectId ?? null,
+    },
+    [ZOOM_IN_ROW]: {
+      next: (state, { payload }) => payload.objectId,
+    },
+    [RESET_ROW_ZOOM]: { next: () => null },
+    [RESET_QB]: { next: () => null },
+  },
+  null,
+);
+
 // the card that is actively being worked on
 export const card = handleActions(
   {
@@ -281,16 +311,12 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card, queryResults } }) => {
-        const [{ data }] = queryResults;
-        return {
-          ...state,
-          display: card.display,
-          result_metadata:
-            data?.results_metadata?.columns ?? card.result_metadata,
-          visualization_settings: card.visualization_settings,
-        };
-      },
+      next: (state, { payload: { card } }) => ({
+        ...state,
+        display: card.display,
+        result_metadata: card.result_metadata,
+        visualization_settings: card.visualization_settings,
+      }),
     },
 
     [CREATE_PUBLIC_LINK]: {

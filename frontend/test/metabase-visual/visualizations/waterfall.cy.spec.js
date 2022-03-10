@@ -1,4 +1,6 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -18,15 +20,13 @@ const testQuery = {
       ],
     ],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 describe("visual tests > visualizations > waterfall", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with positive and negative series", () => {
@@ -39,8 +39,6 @@ describe("visual tests > visualizations > waterfall", () => {
         "graph.metrics": ["count"],
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

@@ -6,12 +6,9 @@ import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
 
-export const version = require("../../../../version.json");
-
 export * from "./helpers/e2e-setup-helpers";
 export * from "./helpers/e2e-ui-elements-helpers";
 export * from "./helpers/e2e-dashboard-helpers";
-export * from "./helpers/e2e-open-table-helpers";
 export * from "./helpers/e2e-database-metadata-helpers";
 export * from "./helpers/e2e-qa-databases-helpers";
 export * from "./helpers/e2e-ad-hoc-question-helpers";
@@ -29,5 +26,7 @@ export * from "./helpers/e2e-snowplow-helpers";
 export * from "./helpers/e2e-custom-column-helpers";
 export * from "./helpers/e2e-dimension-list-helpers";
 export * from "./helpers/e2e-downloads-helpers";
+export * from "./helpers/e2e-bi-basics-helpers";
+export * from "./helpers/e2e-embedding-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);

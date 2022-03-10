@@ -11,6 +11,7 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -24,6 +25,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -108,13 +110,13 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [ModelString] :else ModelString))
+(def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -158,6 +160,14 @@
      :is_not_pinned [:= col nil]
      [:= 1 1])))
 
+(defn- poison-when-pinned-clause
+  "Poison a query to return no results when filtering to pinned items. Use for items that do not have a notion of
+  pinning so that no results return when asking for pinned items."
+  [pinned-state]
+  (if (= pinned-state :is_pinned)
+    [:= 1 2]
+    [:= 1 1]))
+
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
   (fn [model _]
@@ -188,20 +198,36 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status)))
+    (dissoc row :description :display :authority_level :moderated_status :icon)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
   {:select [:id :name [(hx/literal "snippet") :model]]
-       :from   [[NativeQuerySnippet :nqs]]
-       :where  [:and
-                [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]})
+   :from   [[NativeQuerySnippet :nqs]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod collection-children-query :timeline
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+   :from   [[Timeline :timeline]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :timeline
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
-    (dissoc row :description :collection_position :display :authority_level :moderated_status)))
+    (dissoc row
+            :description :collection_position :display :authority_level
+            :moderated_status :icon)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
@@ -253,7 +279,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate (map #(dissoc % :authority_level) rows) :favorite))
+  (map #(dissoc % :authority_level :icon) rows))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -280,7 +306,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display :authority_level :moderated_status) rows) :favorite))
+  (map #(dissoc % :display :authority_level :moderated_status :icon) rows))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -305,7 +331,7 @@
     ;; don't get models back from ulterior over-query
     ;; Previous examination with logging to DB says that there's no N+1 query for this.
     ;; However, this was only tested on H2 and Postgres
-    (assoc (dissoc row :collection_position :display :moderated_status)
+    (assoc (dissoc row :collection_position :display :moderated_status :icon)
            :can_write
            (mi/can-write? Collection (:id row)))))
 
@@ -346,7 +372,8 @@
     :dataset    Card
     :dashboard  Dashboard
     :pulse      Pulse
-    :snippet    NativeQuerySnippet))
+    :snippet    NativeQuerySnippet
+    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -365,7 +392,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :display :model :collection_position :authority_level
-   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status
+   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
 (defn- add-missing-columns
@@ -386,7 +413,8 @@
                   :dataset    3
                   :card       4
                   :snippet    5
-                  :collection 6}]
+                  :collection 6
+                  :timeline   7}]
     (conj select-clause [(get rankings model 100)
                          :model_ranking])))
 
@@ -477,9 +505,9 @@
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models], :as options} :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet]
+  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models], :as options}                     :- CollectionChildrenOptions]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -506,6 +534,24 @@
   "Fetch a specific Collection with standard details added"
   [id]
   (collection-detail (api/read-check Collection id)))
+
+(api/defendpoint GET "/root/timelines"
+  "Fetch the root Collection's timelines."
+  [include archived]
+  {include  (s/maybe timeline-api/Include)
+   archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                            :timeline/archived? archived?})))
+
+(api/defendpoint GET "/:id/timelines"
+  "Fetch a specific Collection's timelines."
+  [id include archived]
+  {include  (s/maybe timeline-api/Include)
+   archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)]
+    (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                           :timeline/archived? archived?})))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:

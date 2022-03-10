@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
@@ -56,13 +56,13 @@ export const DatasetHeaderButtonContainer = styled.div`
 `;
 
 export const HeaderButton = styled(Button)`
+  font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? alpha(color, 0.8) : "transparent"};
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
-    background-color: ${({ active, color = getDefaultColor() }) =>
-      active ? alpha(color, 0.8) : "transparent"};
-    color: ${({ active }) => (active ? "white" : color("text-dark"))};
+    background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
+    color: ${color};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {

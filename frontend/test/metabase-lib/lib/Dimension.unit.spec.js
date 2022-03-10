@@ -1,3 +1,4 @@
+import _ from "underscore";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -58,6 +59,29 @@ const nestedQuestionCard = {
 };
 
 const PRODUCT_CATEGORY_FIELD_ID = 21;
+
+const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
+
+const OVERWRITTEN_USER_ID_FIELD_METADATA = {
+  ...ORDERS_USER_ID_FIELD,
+  display_name: "Foo",
+  description: "Bar",
+  fk_target_field_id: 1,
+  semantic_type: "type/Price",
+  settings: {
+    show_mini_bar: true,
+  },
+};
+
+const ORDERS_DATASET = ORDERS.question()
+  .setDataset(true)
+  .setResultsMetadata({
+    columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
+  });
+
+// It isn't actually possible to overwrite metadata for non-models,
+// it's just needed to test it's only possible for models
+const ORDERS_WITH_OVERWRITTEN_METADATA = ORDERS_DATASET.setDataset(false);
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -320,6 +344,32 @@ describe("Dimension", () => {
 
           expect(field.id).toEqual(ORDERS.TOTAL.id);
           expect(field.base_type).toEqual("type/Float");
+        });
+
+        it("should merge model's field results metadata with field info", () => {
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.USER_ID.id, null],
+            metadata,
+            ORDERS_DATASET.query(),
+          );
+
+          const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
+
+          expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
+        });
+
+        it("should not merge regular question's field results metadata with field info", () => {
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.USER_ID.id, null],
+            metadata,
+            ORDERS_WITH_OVERWRITTEN_METADATA.query(),
+          );
+
+          const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
+
+          expect(fieldInfo).toEqual(ORDERS_USER_ID_FIELD);
         });
       });
     });
@@ -614,7 +664,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
         });
       });
       describe("displayName()", () => {
@@ -625,12 +675,12 @@ describe("Dimension", () => {
 
       describe("column()", () => {
         expect(dimension.column()).toEqual({
-          id: ["expression", "Hello World"],
+          id: ["expression", "Hello World", null],
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Text",
-          semantic_type: null,
-          field_ref: ["expression", "Hello World"],
+          semantic_type: "type/Text",
+          field_ref: ["expression", "Hello World", null],
         });
       });
 
@@ -657,6 +707,18 @@ describe("Dimension", () => {
             expect(field.name).toEqual("Foo");
           });
         });
+      });
+    });
+
+    describe("dimensions()", () => {
+      it("should return subdimensions according to the field type", () => {
+        const question = new Question(nestedQuestionCard, metadata);
+        const dimension = Dimension.parseMBQL(
+          ["expression", 42],
+          metadata,
+          question.query(),
+        );
+        expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
     });
   });
@@ -731,7 +793,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "aggregation" clause', () => {
-          expect(dimension.mbql()).toEqual(["aggregation", 1]);
+          expect(dimension.mbql()).toEqual(["aggregation", 1, null]);
         });
       });
 

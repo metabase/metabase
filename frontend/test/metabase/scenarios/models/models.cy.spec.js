@@ -8,6 +8,8 @@ import {
   visualize,
   mockSessionProperty,
   sidebar,
+  summarize,
+  filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -37,9 +39,7 @@ describe("scenarios > models", () => {
     turnIntoModel();
     assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("Discount");
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
@@ -87,9 +87,7 @@ describe("scenarios > models", () => {
     turnIntoModel();
     assertIsModel();
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Filter").click();
-    });
+    filter();
     selectDimensionOptionFromSidebar("DISCOUNT");
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
@@ -179,7 +177,7 @@ describe("scenarios > models", () => {
 
   describe("data picker", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/search").as("search");
+      cy.intercept("GET", "/api/search*").as("search");
       cy.request("PUT", "/api/card/1", { dataset: true });
     });
 
@@ -246,8 +244,8 @@ describe("scenarios > models", () => {
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products");
-      selectFromDropdown("Price");
+      selectFromDropdown("Products", { force: true });
+      selectFromDropdown("Price", { force: true });
       selectFromDropdown("Equal to");
       selectFromDropdown("Less than");
       cy.findByPlaceholderText("Enter a number").type("50");
@@ -292,9 +290,7 @@ describe("scenarios > models", () => {
     it("can create a question by filtering and summarizing a model", () => {
       cy.visit("/question/1");
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Filter").click();
-      });
+      filter();
       selectDimensionOptionFromSidebar("Discount");
       cy.findByText("Equal to").click();
       selectFromDropdown("Not empty");
@@ -306,9 +302,8 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Summarize").click();
-      });
+      summarize();
+
       selectDimensionOptionFromSidebar("Created At");
       cy.button("Done").click();
 

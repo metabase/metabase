@@ -19,8 +19,8 @@ const AuthLayout = ({ showScene, children }: AuthLayoutProps): JSX.Element => {
       {showScene && (
         <LayoutScene>
           <LayoutSceneImage
-            src="/app/img/bridge.png"
-            srcSet="/app/img/bridge.png 1x, /app/img/bridge@2x.png 2x, /app/img/bridge@3x.png 3x"
+            src="app/img/bridge.png"
+            srcSet="app/img/bridge.png 1x, app/img/bridge@2x.png 2x, app/img/bridge@3x.png 3x"
           />
         </LayoutScene>
       )}
