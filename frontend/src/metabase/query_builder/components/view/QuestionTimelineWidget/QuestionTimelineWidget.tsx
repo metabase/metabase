@@ -33,7 +33,7 @@ export interface QuestionTimelineWidgetOpts {
 QuestionTimelineWidget.shouldRender = ({
   question,
 }: QuestionTimelineWidgetOpts) => {
-  return question.isSaved() && question.hasBreakoutByDateTime();
+  return question.hasBreakoutByDateTime();
 };
 
 export default QuestionTimelineWidget;

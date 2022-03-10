@@ -47,6 +47,7 @@ const TimelineSidebar = ({
         cardId={question.id()}
         collectionId={question.collectionId()}
         visibility={visibility}
+        isVisibleByDefault={question.isSaved()}
         onToggleTimeline={handleToggleTimeline}
         onEditEvent={handleEditEvent}
       />
