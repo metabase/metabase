@@ -11,16 +11,14 @@ export type ControlledPopoverWithTriggerProps = Omit<
   // this is explicitly a "controlled" component, so we need to remove TippyPopover's optional `visible` prop and make it required
   "children" | "visible"
 > &
-  OptionalTriggerStyleProps &
-  RequiredProps;
-
-type RequiredProps = {
-  trigger: Trigger;
-  children: Children;
-  visible: boolean;
-  onOpen: () => void;
-  onClose: () => void;
-};
+  OptionalTriggerStyleProps & {
+    renderTrigger?: RenderTrigger;
+    triggerContent?: React.ReactNode;
+    children: PopoverWithTriggerContent;
+    visible: boolean;
+    onOpen: () => void;
+    onClose: () => void;
+  };
 
 type OptionalTriggerStyleProps = {
   triggerClasses?: string;
@@ -29,27 +27,28 @@ type OptionalTriggerStyleProps = {
   triggerClassesClose?: string;
 };
 
-type Children = React.ReactNode | ((props: ChildrenProps) => React.ReactNode);
-type ChildrenProps = {
+export type PopoverWithTriggerContent =
+  | React.ReactNode
+  | ((args: PopoverWithTriggerContentArgs) => React.ReactNode);
+type PopoverWithTriggerContentArgs = {
   onClose: () => void;
 };
 
-type Trigger = React.ReactNode | ((props: TriggerFnProps) => ComputedTrigger);
-type TriggerFnProps = {
+export type RenderTrigger = (
+  args: RenderTriggerArgs,
+) => React.ReactElement<any, string | React.JSXElementConstructor<any>>;
+type RenderTriggerArgs = {
   visible: boolean;
   onClick: () => void;
 };
-type ComputedTrigger = React.ReactElement<
-  any,
-  string | React.JSXElementConstructor<any>
->;
 
 function ControlledPopoverWithTrigger({
   triggerClasses,
   triggerStyle,
   triggerClassesOpen,
   triggerClassesClose,
-  trigger,
+  renderTrigger,
+  triggerContent,
   children,
   disabled,
   visible,
@@ -63,8 +62,8 @@ function ControlledPopoverWithTrigger({
     }
   };
 
-  const computedTrigger = _.isFunction(trigger) ? (
-    trigger({ visible, onClick: handleTriggerClick })
+  const computedTrigger = _.isFunction(renderTrigger) ? (
+    renderTrigger({ visible, onClick: handleTriggerClick })
   ) : (
     <button
       className={cx(
@@ -78,7 +77,7 @@ function ControlledPopoverWithTrigger({
       style={triggerStyle}
       onClick={handleTriggerClick}
     >
-      {trigger}
+      {triggerContent}
     </button>
   );
 

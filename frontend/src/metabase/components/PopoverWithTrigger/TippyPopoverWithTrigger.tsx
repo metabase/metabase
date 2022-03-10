@@ -4,7 +4,7 @@ import ControlledPopoverWithTrigger, {
   ControlledPopoverWithTriggerProps,
 } from "./ControlledPopoverWithTrigger";
 
-type TippyPopoverWithTriggerProps = {
+export type TippyPopoverWithTriggerProps = {
   isInitiallyVisible?: boolean;
 } & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 

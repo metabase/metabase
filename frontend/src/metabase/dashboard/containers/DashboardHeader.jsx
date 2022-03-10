@@ -343,7 +343,7 @@ export default class DashboardHeader extends Component {
       buttons.push(
         <TippyPopoverWithTrigger
           placement="bottom-end"
-          trigger={({ onClick }) => (
+          renderTrigger={({ onClick }) => (
             <DashboardHeaderButton onClick={onClick}>
               <Icon name="ellipsis" size={20} className="text-brand-hover" />
             </DashboardHeaderButton>
