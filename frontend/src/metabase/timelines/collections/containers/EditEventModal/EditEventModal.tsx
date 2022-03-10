@@ -5,9 +5,9 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import EditEventModal from "../../components/EditEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import { ModalProps } from "../../types";
 
