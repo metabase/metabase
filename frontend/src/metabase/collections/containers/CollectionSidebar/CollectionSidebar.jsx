@@ -15,7 +15,6 @@ import {
 } from "./CollectionSidebar.styled";
 
 import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
-import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -113,7 +112,6 @@ function CollectionSidebar({
             onOpen={onOpen}
             onClose={onClose}
           />
-          <Footer isAdmin={currentUser.is_superuser} />
         </React.Fragment>
       ) : (
         <LoadingView />

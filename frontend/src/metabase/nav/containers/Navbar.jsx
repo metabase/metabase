@@ -43,6 +43,7 @@ const mapStateToProps = (state, props) => ({
 import { getDefaultSearchColor } from "metabase/nav/constants";
 import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
+import Footer from "metabase/collections/containers/CollectionSidebar/CollectionSidebarFooter/CollectionSidebarFooter";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -115,6 +116,7 @@ export default class Navbar extends Component {
       hasNativeWrite,
       hasDbWithJsonEngine,
       router,
+      user,
     } = this.props;
     console.log("APP PROPS", this.props);
     const collectionId = Urls.extractCollectionId(router.params.slug);
@@ -229,6 +231,7 @@ export default class Navbar extends Component {
             <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
           </Link>
         )}
+        <Footer isAdmin={user.is_superuser} />
       </NavRoot>
     );
   }
