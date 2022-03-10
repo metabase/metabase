@@ -32,10 +32,7 @@ describe("metabase/lib/expressions/recursive-parser", () => {
 
   it("should parse bracketed field references (with escaping)", () => {
     expect(process("[Sale \\[2022\\]]")).toEqual(["dimension", "Sale [2022]"]);
-    expect(process("[\\(2021\\) Discount]")).toEqual([
-      "dimension",
-      "(2021) Discount",
-    ]);
+    expect(process("[Crazy\\test]")).toEqual(["dimension", "Crazy\\test"]);
   });
 
   it("should parse unary expressions", () => {

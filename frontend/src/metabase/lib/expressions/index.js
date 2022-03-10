@@ -10,12 +10,29 @@ import {
   getMBQLName,
 } from "./config";
 
-export function unescapeString(string) {
+// Return a copy with brackets (`[` and `]`) being escaped
+function escapeString(string) {
   let str = "";
   for (let i = 0; i < string.length; ++i) {
     const ch = string[i];
-    if (ch !== "\\") {
-      str += ch;
+    if (ch === "[" || ch === "]") {
+      str += "\\";
+    }
+    str += ch;
+  }
+  return str;
+}
+
+// The opposite of escapeString
+export function unescapeString(string) {
+  let str = "";
+  for (let i = 0; i < string.length; ++i) {
+    const ch1 = string[i];
+    const ch2 = string[i + 1];
+    if (ch1 === "\\" && (ch2 === "[" || ch2 === "]")) {
+      // skip
+    } else {
+      str += ch1;
     }
   }
   return str;
@@ -121,16 +138,7 @@ function quoteString(string, character) {
   } else if (character === "'") {
     return swapQuotes(JSON.stringify(swapQuotes(string)));
   } else if (character === "[") {
-    let str = "[";
-    for (let i = 0; i < string.length; ++i) {
-      const ch = string[i];
-      if (ch === "[" || ch === "]") {
-        str += "\\";
-      }
-      str += ch;
-    }
-    str += "]";
-    return str;
+    return "[" + escapeString(string) + "]";
   } else if (character === "") {
     // unquoted
     return string;
