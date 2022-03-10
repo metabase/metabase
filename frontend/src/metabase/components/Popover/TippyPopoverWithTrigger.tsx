@@ -4,23 +4,23 @@ import ControlledPopoverWithTrigger, {
   ControlledPopoverWithTriggerProps,
 } from "./ControlledPopoverWithTrigger";
 
-type UncontrolledPopoverWithTriggerProps = {
-  isInitiallyOpen?: boolean;
-} & Omit<ControlledPopoverWithTriggerProps, "isOpen" | "onClose" | "onOpen">;
+type TippyPopoverWithTriggerProps = {
+  isInitiallyVisible?: boolean;
+} & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 
 function UncontrolledPopoverWithTrigger({
-  isInitiallyOpen,
+  isInitiallyVisible,
   ...props
-}: UncontrolledPopoverWithTriggerProps) {
-  const [isOpen, setIsOpen] = useState(isInitiallyOpen || false);
+}: TippyPopoverWithTriggerProps) {
+  const [visible, setVisible] = useState(isInitiallyVisible || false);
 
-  const onOpen = useCallback(() => setIsOpen(true), []);
-  const onClose = useCallback(() => setIsOpen(false), []);
+  const onOpen = useCallback(() => setVisible(true), []);
+  const onClose = useCallback(() => setVisible(false), []);
 
   return (
     <ControlledPopoverWithTrigger
       {...props}
-      isOpen={isOpen}
+      visible={visible}
       onOpen={onOpen}
       onClose={onClose}
     />

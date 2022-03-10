@@ -1,64 +1,74 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React from "react";
 import cx from "classnames";
+import _ from "underscore";
 
 import TippyPopover, { ITippyPopoverProps } from "./TippyPopover";
 
-export type ControlledPopoverWithTriggerProps = {
-  onOpen: () => void;
-  onClose: () => void;
+export type ControlledPopoverWithTriggerProps = Omit<
+  ITippyPopoverProps,
+  // this is explicitly a "controlled" component, so we need to remove TippyPopover's optional `visible` prop and make it required
+  "children" | "visible"
+> &
+  OptionalTriggerStyleProps &
+  RequiredProps;
+
+type RequiredProps = {
   trigger: Trigger;
   children: Children;
-  isOpen: boolean;
-  disabled?: boolean;
-  popoverProps?: ITippyPopoverProps;
-} & TriggerStyleProps;
-
-type Children = React.ReactNode | ((props: ChildrenProps) => React.ReactNode);
-type ChildrenProps = {
-  onClose?: () => void;
+  visible: boolean;
+  onOpen: () => void;
+  onClose: () => void;
 };
 
-type Trigger = React.ReactNode | ((props: TriggerFnProps) => React.ReactNode);
-type TriggerFnProps = {
-  isOpen: boolean;
-  onClick: () => void;
-};
-type TriggerStyleProps = {
+type OptionalTriggerStyleProps = {
   triggerClasses?: string;
   triggerStyle?: React.CSSProperties;
   triggerClassesOpen?: string;
   triggerClassesClose?: string;
 };
 
-function getTrigger(
-  trigger: Trigger,
-  {
-    triggerClasses,
-    triggerStyle,
-    triggerClassesOpen,
-    triggerClassesClose,
-    disabled,
-    handleTriggerClick,
-    isOpen,
-  }: TriggerStyleProps & {
-    disabled?: boolean;
-    isOpen: boolean;
-    handleTriggerClick: () => void;
-  },
-): React.ReactElement<any, string | React.JSXElementConstructor<any>> {
-  if (typeof trigger === "function") {
-    return trigger({
-      isOpen,
-      onClick: handleTriggerClick,
-    });
-  }
+type Children = React.ReactNode | ((props: ChildrenProps) => React.ReactNode);
+type ChildrenProps = {
+  onClose: () => void;
+};
 
-  return (
+type Trigger = React.ReactNode | ((props: TriggerFnProps) => ComputedTrigger);
+type TriggerFnProps = {
+  visible: boolean;
+  onClick: () => void;
+};
+type ComputedTrigger = React.ReactElement<
+  any,
+  string | React.JSXElementConstructor<any>
+>;
+
+function ControlledPopoverWithTrigger({
+  triggerClasses,
+  triggerStyle,
+  triggerClassesOpen,
+  triggerClassesClose,
+  trigger,
+  children,
+  disabled,
+  visible,
+  onOpen,
+  onClose,
+  ...popoverProps
+}: ControlledPopoverWithTriggerProps) {
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      onOpen();
+    }
+  };
+
+  const computedTrigger = _.isFunction(trigger) ? (
+    trigger({ visible, onClick: handleTriggerClick })
+  ) : (
     <button
       className={cx(
         triggerClasses,
-        isOpen && triggerClassesOpen,
-        !isOpen && triggerClassesClose,
+        visible && triggerClassesOpen,
+        !visible && triggerClassesClose,
         disabled && "cursor-default",
         "no-decoration",
       )}
@@ -69,53 +79,17 @@ function getTrigger(
       {trigger}
     </button>
   );
-}
 
-function getContent(children: Children, onClose?: () => void): React.ReactNode {
-  if (typeof children === "function") {
-    return children({ onClose });
-  }
-
-  return children;
-}
-
-function ControlledPopoverWithTrigger({
-  triggerClasses,
-  triggerStyle,
-  triggerClassesOpen,
-  triggerClassesClose,
-  trigger,
-  children,
-  disabled,
-  isOpen,
-  onOpen,
-  onClose,
-  popoverProps = {},
-}: ControlledPopoverWithTriggerProps) {
-  const handleTriggerClick = () => {
-    if (!disabled) {
-      onOpen();
-    }
-  };
-
-  const computedTrigger = getTrigger(trigger, {
-    triggerClasses,
-    triggerStyle,
-    triggerClassesOpen,
-    triggerClassesClose,
-    handleTriggerClick,
-    isOpen,
-    disabled,
-  });
-
-  const popoverContent = getContent(children, onClose);
+  const popoverContent = _.isFunction(children)
+    ? children({ onClose })
+    : children;
 
   return (
     <TippyPopover
       interactive
       placement="bottom-start"
       {...popoverProps}
-      visible={isOpen}
+      visible={visible}
       disabled={disabled}
       content={popoverContent}
       onClose={onClose}

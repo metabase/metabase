@@ -22,8 +22,6 @@ import cx from "classnames";
 
 import { Link } from "react-router";
 
-const POPOVER_PROPS = { placement: "bottom-end" };
-
 const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
@@ -344,7 +342,7 @@ export default class DashboardHeader extends Component {
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
         <TippyPopoverWithTrigger
-          popoverProps={POPOVER_PROPS}
+          placement="bottom-end"
           trigger={({ onClick }) => (
             <DashboardHeaderButton onClick={onClick}>
               <Icon name="ellipsis" size={20} className="text-brand-hover" />
