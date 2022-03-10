@@ -3,6 +3,7 @@ import React, { useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
@@ -41,10 +42,18 @@ function mapStateToProps(state) {
   };
 }
 
+const mapDispatchToProps = {
+  createBookmark: async (id, entity) => Bookmark.actions.create({ id, entity }),
+  deleteBookmark: id => Bookmark.actions.delete({ id }),
+};
+
 function CollectionContent({
+  bookmarks,
   collection,
   collections: collectionList = [],
   collectionId,
+  createBookmark,
+  deleteBookmark,
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
@@ -115,6 +124,15 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
+  const handleClickBookmark = () => {
+    const isBookmarked = bookmarks.some(
+      bookmark => bookmark.type === "card" && bookmark.item_id === collectionId,
+    );
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    toggleBookmark(collectionId, "collection");
+  };
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -145,6 +163,7 @@ function CollectionContent({
           <CollectionRoot>
             <CollectionMain>
               <Header
+                onClickBookmark={handleClickBookmark}
                 isRoot={isRoot}
                 isAdmin={isAdmin}
                 collectionId={collectionId}
@@ -257,6 +276,7 @@ function CollectionContent({
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   Collection.loadList({
     query: () => ({ tree: true }),
     loadingAndErrorWrapper: false,
@@ -265,5 +285,5 @@ export default _.compose(
     id: (_, props) => props.collectionId,
     reload: true,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionContent);

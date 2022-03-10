@@ -105,6 +105,18 @@ function EditMenu({
   ) : null;
 }
 
+function Bookmark({ onClickBookmark }) {
+  const title = t`Bookmarks`;
+
+  return (
+    <Tooltip tooltip={title}>
+      <IconWrapper onClick={onClickBookmark}>
+        <Icon name="bookmark" size={20} />
+      </IconWrapper>
+    </Tooltip>
+  );
+}
+
 function Menu(props) {
   const { hasWritePermission } = props;
   return (
@@ -113,6 +125,7 @@ function Menu(props) {
       <EditMenu {...props} />
       <PermissionsLink {...props} />
       <TimelinesLink {...props} />
+      <Bookmark onClickBookmark={props.onClickBookmark} />
     </MenuContainer>
   );
 }
