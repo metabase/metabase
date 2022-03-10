@@ -121,12 +121,14 @@ export const uiControls = handleActions(
     },
 
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...DEFAULT_UI_CONTROLS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        ...payload.uiControls,
-      }),
+      next: (state, { payload }) => {
+        return {
+          ...state,
+          ...DEFAULT_UI_CONTROLS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          ...payload.uiControls,
+        };
+      },
     },
 
     [TOGGLE_DATA_REFERENCE]: {

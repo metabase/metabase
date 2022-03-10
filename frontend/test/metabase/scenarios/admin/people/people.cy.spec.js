@@ -231,7 +231,7 @@ describe("scenarios > admin > people", () => {
       beforeEach(() => {
         generateUsers(NEW_USERS);
 
-        cy.intercept("GET", "/api/user").as("users");
+        cy.intercept("GET", "/api/user*").as("users");
         cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 

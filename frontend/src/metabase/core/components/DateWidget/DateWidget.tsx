@@ -54,7 +54,6 @@ const DateWidget = forwardRef(function DateWidget(
     <TippyPopover
       visible={isOpened}
       placement="bottom-start"
-      interactive
       content={
         <DateSelector
           value={value}

@@ -125,6 +125,8 @@ export default class View extends React.Component {
       onOpenModal,
       onCloseChartSettings,
       onCloseChartType,
+      isBookmarked,
+      toggleBookmark,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -139,7 +141,12 @@ export default class View extends React.Component {
 
     if (isShowingQuestionDetailsSidebar) {
       return (
-        <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+        <QuestionDetailsSidebar
+          question={question}
+          onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
+        />
       );
     }
 

@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -61,6 +62,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getIsBookmarked,
   getTimelineVisibility,
 } from "../selectors";
 import * as actions from "../actions";
@@ -115,6 +117,7 @@ const mapStateToProps = (state, props) => {
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 
+    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
@@ -152,10 +155,13 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
+  createBookmark: id => Bookmark.actions.create({ id }),
+  deleteBookmark: id => Bookmark.actions.delete({ id }),
 };
 
 function QueryBuilder(props) {
   const {
+    isBookmarked,
     question,
     location,
     params,
@@ -170,6 +176,8 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    createBookmark,
+    deleteBookmark,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -201,6 +209,16 @@ function QueryBuilder(props) {
     },
     [setUIControls],
   );
+
+  const onClickBookmark = () => {
+    const {
+      card: { id },
+    } = props;
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+    toggleBookmark(id);
+  };
 
   const handleCreate = useCallback(
     async card => {
@@ -289,11 +307,13 @@ function QueryBuilder(props) {
       onSave={handleSave}
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
+      toggleBookmark={onClickBookmark}
     />
   );
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),

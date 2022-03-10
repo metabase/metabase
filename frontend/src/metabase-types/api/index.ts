@@ -1,4 +1,5 @@
 export * from "./automagic-dashboards";
+export * from "./bookmark";
 export * from "./collection";
 export * from "./dashboard";
 export * from "./database";

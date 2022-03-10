@@ -36,6 +36,7 @@ function TippyPopover({
   content,
   delay,
   lazy = true,
+  interactive = true,
   onShow,
   onHide,
   ...props
@@ -94,6 +95,7 @@ function TippyPopover({
       appendTo={appendTo}
       plugins={plugins}
       {...props}
+      interactive={interactive}
       duration={animationDuration}
       delay={delay}
       content={
