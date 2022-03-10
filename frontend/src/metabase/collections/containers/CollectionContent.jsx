@@ -135,8 +135,12 @@ function CollectionContent({
   };
 
   const handleClickBookmark = () => {
+    const isBookmarked = bookmarks.some(
+      bookmark => bookmark.type === "card" && bookmark.item_id === collectionId,
+    );
+
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId);
+    toggleBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -170,7 +174,10 @@ function CollectionContent({
             <CollectionMain>
               <Header
                 onClickBookmark={handleClickBookmark}
+<<<<<<< HEAD
                 isBookmarked={isBookmarked}
+=======
+>>>>>>> 23f430000b (Basic pipeline)
                 isRoot={isRoot}
                 isAdmin={isAdmin}
                 collectionId={collectionId}

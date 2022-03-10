@@ -106,14 +106,23 @@ function EditMenu({
   ) : null;
 }
 
+<<<<<<< HEAD
 function Bookmark({ isBookmarked, onClickBookmark }) {
   const title = t`Bookmarks`;
   const iconColor = isBookmarked ? color("brand") : "";
+=======
+function Bookmark({ onClickBookmark }) {
+  const title = t`Bookmarks`;
+>>>>>>> 23f430000b (Basic pipeline)
 
   return (
     <Tooltip tooltip={title}>
       <IconWrapper onClick={onClickBookmark}>
+<<<<<<< HEAD
         <Icon name="bookmark" color={iconColor} size={20} />
+=======
+        <Icon name="bookmark" size={20} />
+>>>>>>> 23f430000b (Basic pipeline)
       </IconWrapper>
     </Tooltip>
   );
@@ -130,7 +139,11 @@ function Menu(props) {
       <EditMenu {...props} />
       <PermissionsLink {...props} />
       <TimelinesLink {...props} />
+<<<<<<< HEAD
       {shouldBeBookmarkable && <Bookmark {...props} />}
+=======
+      <Bookmark onClickBookmark={props.onClickBookmark} />
+>>>>>>> 23f430000b (Basic pipeline)
     </MenuContainer>
   );
 }
