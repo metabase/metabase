@@ -19,12 +19,12 @@ export const Icon = styled(GenericIcon)`
 
 export const Link = styled(GenericLink)`
   align-items: center;
-  color: ${color("text-light")};
+  color: ${color("white")};
   display: flex;
   font-weight: 700;
   margin-top: ${space(2)};
 
   &:hover {
-    color: ${color("brand")};
+    text-decoration: underline;
   }
 `;
