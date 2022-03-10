@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -13,17 +12,17 @@ import BookmarksRoot, {
 
 import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-const LabelPropTypes = {
-  itemId: PropTypes.string.isRequired,
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
-};
+import { Bookmarks } from "metabase-types/api";
 
-const BookmarksPropTypes = {
-  bookmarks: PropTypes.object,
-};
+interface LabelProps {
+  name: string;
+}
 
-const Label = ({ name }) => {
+interface CollectionSidebarBookmarksProps {
+  bookmarks: Bookmarks;
+}
+
+const Label = ({ name }: LabelProps) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon name="grid" />
@@ -32,9 +31,9 @@ const Label = ({ name }) => {
   );
 };
 
-Label.propTypes = LabelPropTypes;
-
-const CollectionSidebarBookmarks = ({ bookmarks }) => {
+const CollectionSidebarBookmarks = ({
+  bookmarks,
+}: CollectionSidebarBookmarksProps) => {
   if (bookmarks.length === 0) {
     return null;
   }
@@ -47,8 +46,8 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
         {bookmarks.map(({ id, name, type }, index) => {
           const url = Urls.bookmark({ id, name, type });
           return (
-            <Link key={`bookmark-${id}`} to={url} selected={false}>
-              <Label itemId={id} name={name} />
+            <Link key={`bookmark-${id}`} to={url}>
+              <Label name={name} />
             </Link>
           );
         })}
@@ -56,7 +55,5 @@ const CollectionSidebarBookmarks = ({ bookmarks }) => {
     </BookmarksRoot>
   );
 };
-
-CollectionSidebarBookmarks.propTypes = BookmarksPropTypes;
 
 export default CollectionSidebarBookmarks;
