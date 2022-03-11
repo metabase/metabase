@@ -140,19 +140,18 @@ export function renderEvents(
   chart,
   { timelines, xDomain, xInterval, isTimeseries },
 ) {
-  if (!isTimeseries) {
+  const xAxis = getXAxis(chart);
+  if (!xAxis || !isTimeseries) {
     return;
   }
 
   const events = getDomainEvents(getFlatEvents(timelines), xDomain);
   const eventGroups = getEventGroups(events, xInterval);
   const eventTicks = getEventTicks(eventGroups);
-
   if (!events.length) {
     return;
   }
 
-  const xAxis = getXAxis(chart);
   const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
   renderEventTicks(chart, eventAxis, eventGroups);
   renderXAxis(xAxis);
