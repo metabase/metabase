@@ -28,6 +28,8 @@
 (api/defendpoint GET "/"
   "Fetch all bookmarks for the user"
   []
+  ;; already sorted by created_at in query. Can optionally use user sort preferences here and not in the function
+  ;; below
   (bookmarks/bookmarks-for-user api/*current-user-id*))
 
 (api/defendpoint POST "/:model/:id"
