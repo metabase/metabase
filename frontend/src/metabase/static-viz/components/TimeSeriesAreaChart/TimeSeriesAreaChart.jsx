@@ -13,13 +13,14 @@ import {
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
 import { sortTimeSeries } from "../../lib/sort";
+import { DATE_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
     x: PropTypes.func,
     y: PropTypes.func,
-  }).isRequired,
+  }),
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
@@ -58,7 +59,12 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
+const TimeSeriesAreaChart = ({
+  data,
+  accessors = DATE_ACCESSORS,
+  settings,
+  labels,
+}) => {
   data = sortTimeSeries(data);
   const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
