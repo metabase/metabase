@@ -202,7 +202,7 @@ export function getDateStyleFromSettings() {
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
-export function getShortDateStyleFromSettings() {
+export function getNumericDateStyleFromSettings() {
   const dateStyle = getDateStyleFromSettings();
   return /\//.test(dateStyle) ? dateStyle : "M/D/YYYY";
 }
