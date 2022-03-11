@@ -25,6 +25,7 @@ import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
@@ -124,6 +125,8 @@ export default class View extends React.Component {
       onOpenModal,
       onCloseChartSettings,
       onCloseChartType,
+      isBookmarked,
+      toggleBookmark,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -138,7 +141,12 @@ export default class View extends React.Component {
 
     if (isShowingQuestionDetailsSidebar) {
       return (
-        <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+        <QuestionDetailsSidebar
+          question={question}
+          onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
+        />
       );
     }
 
@@ -151,9 +159,15 @@ export default class View extends React.Component {
       isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
+      isShowingTimelineSidebar,
       runQuestionQuery,
+      timelineVisibility,
+      showTimeline,
+      hideTimeline,
+      onOpenModal,
       onCloseSummary,
       onCloseFilter,
+      onCloseTimelines,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -169,6 +183,19 @@ export default class View extends React.Component {
 
     if (isShowingFilterSidebar) {
       return <FilterSidebar question={question} onClose={onCloseFilter} />;
+    }
+
+    if (isShowingTimelineSidebar) {
+      return (
+        <TimelineSidebar
+          question={question}
+          visibility={timelineVisibility}
+          onShowTimeline={showTimeline}
+          onHideTimeline={hideTimeline}
+          onOpenModal={onOpenModal}
+          onClose={onCloseTimelines}
+        />
+      );
     }
 
     return null;

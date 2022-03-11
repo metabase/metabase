@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { isCypressActive } from "metabase/env";
+import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = () =>
@@ -297,6 +298,11 @@ export function open(
   } else {
     openInSameWindow(url);
   }
+}
+
+export function openInBlankWindow(url) {
+  const siteUrl = MetabaseSettings.get("site-url");
+  clickLink(url.startsWith("/") ? siteUrl + url : url, true);
 }
 
 function clickLink(url, blank = false) {

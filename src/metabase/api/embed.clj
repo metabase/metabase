@@ -165,7 +165,7 @@
           :let  [value (get slug->value (keyword (:slug param)))
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
-                 value (if (and (seq value)
+                 value (if (and (some? value)
                                 (params.operators/operator? (:type param)))
                          (u/one-or-many value)
                          value)]

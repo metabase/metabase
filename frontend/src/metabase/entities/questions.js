@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -13,9 +11,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
-
-const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
@@ -55,16 +50,6 @@ const Questions = createEntity({
         },
         opts,
       ),
-
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Questions.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Questions.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
   },
 
   objectSelectors: {
@@ -77,11 +62,6 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    }
     return state;
   },
 
