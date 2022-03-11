@@ -51,7 +51,7 @@ export function format(mbql, options = {}) {
 }
 
 function formatBooleanLiteral(mbql) {
-  return mbql[0] ? "True" : "False";
+  return mbql ? "True" : "False";
 }
 
 function formatNumberLiteral(mbql) {

@@ -224,7 +224,7 @@ export function isStringLiteral(expr) {
 }
 
 export function isBooleanLiteral(expr) {
-  return typeof expr?.[0] === "boolean";
+  return typeof expr === "boolean";
 }
 
 export function isNumberLiteral(expr) {

@@ -100,7 +100,7 @@ function recursiveParse(source) {
       }
       return field(text);
     } else if (type === TOKEN.Boolean) {
-      return text.toLowerCase() === "true" ? [true] : [false];
+      return text.toLowerCase() === "true" ? true : false;
     }
 
     // for string literal, remove its enclosing quotes
