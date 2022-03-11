@@ -4772,709 +4772,709 @@ databaseChangeLog:
       comment: Added 0.30.0
       validCheckSum: ANY
       changes:
-      - createTable:
-          tableName: ${quartz.qrtz_job_details.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.description.name}
-              type: varchar(250)
-          - column:
-              name: ${quartz.job_class_name.name}
-              type: varchar(250)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.is_durable.name}
-              type: bool
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.is_nonconcurrent.name}
-              type: bool
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.is_update_data.name}
-              type: bool
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.requests_recovery.name}
-              type: bool
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_data.name}
-              type: ${blob.type}
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_job_details.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.job_name.name}
-          - ${quartz.job_group.name}
-          constraintName: ${quartz.pk_qrtz_job_details.name}
-      - createTable:
-          tableName: ${quartz.qrtz_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.description.name}
-              type: varchar(250)
-          - column:
-              name: ${quartz.next_fire_time.name}
-              type: bigint
-          - column:
-              name: ${quartz.prev_fire_time.name}
-              type: bigint
-          - column:
-              name: ${quartz.priority.name}
-              type: integer
-          - column:
-              name: ${quartz.trigger_state.name}
-              type: varchar(16)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_type.name}
-              type: varchar(8)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.start_time.name}
-              type: bigint
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.end_time.name}
-              type: bigint
-          - column:
-              name: ${quartz.calendar_name.name}
-              type: varchar(200)
-          - column:
-              name: ${quartz.misfire_instr.name}
-              type: smallint
-          - column:
-              name: ${quartz.job_data.name}
-              type: ${blob.type}
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_qrtz_triggers.name}
-      - addForeignKeyConstraint:
-          baseTableName: ${quartz.qrtz_triggers.name}
-          baseColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.job_name.name}
-          - ${quartz.job_group.name}
-          referencedTableName: ${quartz.qrtz_job_details.name}
-          referencedColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.job_name.name}
-          - ${quartz.job_group.name}
-          constraintName: ${quartz.fk_qrtz_triggers_job_details.name}
-      - createTable:
-          tableName: ${quartz.qrtz_simple_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.repeat_count.name}
-              type: bigint
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.repeat_interval.name}
-              type: bigint
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.times_triggered.name}
-              type: bigint
-              constraints:
-                nullable: false
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_simple_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_qrtz_simple_triggers.name}
-      - addForeignKeyConstraint:
-          baseTableName: ${quartz.qrtz_simple_triggers.name}
-          baseColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          referencedTableName: ${quartz.qrtz_triggers.name}
-          referencedColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.fk_qrtz_simple_triggers_triggers.name}
-      - createTable:
-          tableName: ${quartz.qrtz_cron_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.cron_expression.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.time_zone_id.name}
-              type: varchar(80)
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_cron_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_qrtz_cron_triggers.name}
-      - addForeignKeyConstraint:
-          baseTableName: ${quartz.qrtz_cron_triggers.name}
-          baseColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          referencedTableName: ${quartz.qrtz_triggers.name}
-          referencedColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.fk_qrtz_cron_triggers_triggers.name}
-      - createTable:
-          tableName: ${quartz.qrtz_simprop_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.str_prop_1.name}
-              type: varchar(512)
-          - column:
-              name: ${quartz.str_prop_2.name}
-              type: varchar(512)
-          - column:
-              name: ${quartz.str_prop_3.name}
-              type: varchar(512)
-          - column:
-              name: ${quartz.int_prop_1.name}
-              type: int
-          - column:
-              name: ${quartz.int_prop_2.name}
-              type: int
-          - column:
-              name: ${quartz.long_prop_1.name}
-              type: bigint
-          - column:
-              name: ${quartz.long_prop_2.name}
-              type: bigint
-          - column:
-              name: ${quartz.dec_prop_1.name}
-              type: numeric(13,4)
-          - column:
-              name: ${quartz.dec_prop_2.name}
-              type: numeric(13,4)
-          - column:
-              name: ${quartz.bool_prop_1.name}
-              type: bool
-          - column:
-              name: ${quartz.bool_prop_2.name}
-              type: bool
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_simprop_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_qrtz_simprop_triggers.name}
-      - addForeignKeyConstraint:
-          baseTableName: ${quartz.qrtz_simprop_triggers.name}
-          baseColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          referencedTableName: ${quartz.qrtz_triggers.name}
-          referencedColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.fk_qrtz_simprop_triggers_triggers.name}
-      - createTable:
-          tableName: ${quartz.qrtz_blob_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.blob_data.name}
-              type: ${blob.type}
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_blob_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_qrtz_blob_triggers.name}
-      - addForeignKeyConstraint:
-          baseTableName: ${quartz.qrtz_blob_triggers.name}
-          baseColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          referencedTableName: ${quartz.qrtz_triggers.name}
-          referencedColumnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.fk_qrtz_blob_triggers_triggers.name}
-      - createTable:
-          tableName: ${quartz.qrtz_calendars.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.calendar_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.calendar.name}
-              type: ${blob.type}
-              constraints:
-                nullable: false
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_calendars.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.calendar_name.name}
-          constraintName: ${quartz.pk_qrtz_calendars.name}
-      - createTable:
-          tableName: ${quartz.qrtz_paused_trigger_grps.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_paused_trigger_grps.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.trigger_group.name}
-          constraintName: ${quartz.pk_sched_name.name}
-      - createTable:
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.entry_id.name}
-              type: varchar(95)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.trigger_group.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.instance_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.fired_time.name}
-              type: bigint
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.sched_time.name}
-              type: bigint
-          - column:
-              name: ${quartz.priority.name}
-              type: integer
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.state.name}
-              type: varchar(16)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.job_name.name}
-              type: varchar(200)
-          - column:
-              name: ${quartz.job_group.name}
-              type: varchar(200)
-          - column:
-              name: ${quartz.is_nonconcurrent.name}
-              type: bool
-          - column:
-              name: ${quartz.requests_recovery.name}
-              type: bool
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.entry_id.name}
-          constraintName: ${quartz.pk_qrtz_fired_triggers.name}
-      - createTable:
-          tableName: ${quartz.qrtz_scheduler_state.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.instance_name.name}
-              type: varchar(200)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.last_checkin_time.name}
-              type: bigint
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.checkin_interval.name}
-              type: bigint
-              constraints:
-                nullable: false
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_scheduler_state.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.instance_name.name}
-          constraintName: ${quartz.pk_qrtz_scheduler_state.name}
-      - createTable:
-          tableName: ${quartz.qrtz_locks.name}
-          remarks: Used for Quartz scheduler.
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-              type: varchar(120)
-              constraints:
-                nullable: false
-          - column:
-              name: ${quartz.lock_name.name}
-              type: varchar(40)
-              constraints:
-                nullable: false
-      - addPrimaryKey:
-          tableName: ${quartz.qrtz_locks.name}
-          columnNames:
-          - ${quartz.sched_name.name}
-          - ${quartz.lock_name.name}
-          constraintName: ${quartz.pk_qrtz_locks.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_j_req_recovery.name}
-          tableName: ${quartz.qrtz_job_details.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.requests_recovery.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_j_grp.name}
-          tableName: ${quartz.qrtz_job_details.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.job_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_j.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.job_name.name}
-          - column:
-              name: ${quartz.job_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_jg.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.job_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_c.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.calendar_name.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_g.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_state.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_n_state.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_name.name}
-          - column:
-              name: ${quartz.trigger_group.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_n_g_state.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_group.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_next_fire_time.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.next_fire_time.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_nft_st.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-          - column:
-              name: ${quartz.next_fire_time.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_nft_misfire.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.misfire_instr.name}
-          - column:
-              name: ${quartz.next_fire_time.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_nft_st_misfire.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.misfire_instr.name}
-          - column:
-              name: ${quartz.next_fire_time.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_t_nft_st_misfire_grp.name}
-          tableName: ${quartz.qrtz_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.misfire_instr.name}
-          - column:
-              name: ${quartz.next_fire_time.name}
-          - column:
-              name: ${quartz.trigger_group.name}
-          - column:
-              name: ${quartz.trigger_state.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_trig_inst_name.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.instance_name.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_inst_job_req_rcvry.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.instance_name.name}
-          - column:
-              name: ${quartz.requests_recovery.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_j_g.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.job_name.name}
-          - column:
-              name: ${quartz.job_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_jg.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.job_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_t_g.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_name.name}
-          - column:
-              name: ${quartz.trigger_group.name}
-      - createIndex:
-          indexName: ${quartz.idx_qrtz_ft_tg.name}
-          tableName: ${quartz.qrtz_fired_triggers.name}
-          columns:
-          - column:
-              name: ${quartz.sched_name.name}
-          - column:
-              name: ${quartz.trigger_group.name}
+        - createTable:
+            tableName: ${quartz.qrtz_job_details.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.description.name}
+                  type: varchar(250)
+              - column:
+                  name: ${quartz.job_class_name.name}
+                  type: varchar(250)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.is_durable.name}
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.is_nonconcurrent.name}
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.is_update_data.name}
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.requests_recovery.name}
+                  type: bool
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_data.name}
+                  type: ${blob.type}
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_job_details.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.job_name.name}
+              - ${quartz.job_group.name}
+            constraintName: ${quartz.pk_qrtz_job_details.name}
+        - createTable:
+            tableName: ${quartz.qrtz_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.description.name}
+                  type: varchar(250)
+              - column:
+                  name: ${quartz.next_fire_time.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.prev_fire_time.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.priority.name}
+                  type: integer
+              - column:
+                  name: ${quartz.trigger_state.name}
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_type.name}
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.start_time.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.end_time.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.calendar_name.name}
+                  type: varchar(200)
+              - column:
+                  name: ${quartz.misfire_instr.name}
+                  type: smallint
+              - column:
+                  name: ${quartz.job_data.name}
+                  type: ${blob.type}
+          - addPrimaryKey:
+              tableName: ${quartz.qrtz_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_triggers.name}
+        - addForeignKeyConstraint:
+            baseTableName: ${quartz.qrtz_triggers.name}
+            baseColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.job_name.name}
+              - ${quartz.job_group.name}
+            referencedTableName: ${quartz.qrtz_job_details.name}
+            referencedColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.job_name.name}
+              - ${quartz.job_group.name}
+            constraintName: ${quartz.fk_qrtz_triggers_job_details.name}
+        - createTable:
+            tableName: ${quartz.qrtz_simple_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.repeat_count.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.repeat_interval.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.times_triggered.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_simple_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_simple_triggers.name}
+        - addForeignKeyConstraint:
+            baseTableName: ${quartz.qrtz_simple_triggers.name}
+            baseColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_simple_triggers_triggers.name}
+        - createTable:
+            tableName: ${quartz.qrtz_cron_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.cron_expression.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.time_zone_id.name}
+                  type: varchar(80)
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_cron_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_cron_triggers.name}
+        - addForeignKeyConstraint:
+            baseTableName: ${quartz.qrtz_cron_triggers.name}
+            baseColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_cron_triggers_triggers.name}
+        - createTable:
+            tableName: ${quartz.qrtz_simprop_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.str_prop_1.name}
+                  type: varchar(512)
+              - column:
+                  name: ${quartz.str_prop_2.name}
+                  type: varchar(512)
+              - column:
+                  name: ${quartz.str_prop_3.name}
+                  type: varchar(512)
+              - column:
+                  name: ${quartz.int_prop_1.name}
+                  type: int
+              - column:
+                  name: ${quartz.int_prop_2.name}
+                  type: int
+              - column:
+                  name: ${quartz.long_prop_1.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.long_prop_2.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.dec_prop_1.name}
+                  type: numeric(13,4)
+              - column:
+                  name: ${quartz.dec_prop_2.name}
+                  type: numeric(13,4)
+              - column:
+                  name: ${quartz.bool_prop_1.name}
+                  type: bool
+              - column:
+                  name: ${quartz.bool_prop_2.name}
+                  type: bool
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_simprop_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_simprop_triggers.name}
+        - addForeignKeyConstraint:
+            baseTableName: ${quartz.qrtz_simprop_triggers.name}
+            baseColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_simprop_triggers_triggers.name}
+        - createTable:
+            tableName: ${quartz.qrtz_blob_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.blob_data.name}
+                  type: ${blob.type}
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_blob_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_blob_triggers.name}
+        - addForeignKeyConstraint:
+            baseTableName: ${quartz.qrtz_blob_triggers.name}
+            baseColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_blob_triggers_triggers.name}
+        - createTable:
+            tableName: ${quartz.qrtz_calendars.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.calendar_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.calendar.name}
+                  type: ${blob.type}
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_calendars.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.calendar_name.name}
+            constraintName: ${quartz.pk_qrtz_calendars.name}
+        - createTable:
+            tableName: ${quartz.qrtz_paused_trigger_grps.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_paused_trigger_grps.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_sched_name.name}
+        - createTable:
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.entry_id.name}
+                  type: varchar(95)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.trigger_group.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.instance_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.fired_time.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.sched_time.name}
+                  type: bigint
+              - column:
+                  name: ${quartz.priority.name}
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.state.name}
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.job_name.name}
+                  type: varchar(200)
+              - column:
+                  name: ${quartz.job_group.name}
+                  type: varchar(200)
+              - column:
+                  name: ${quartz.is_nonconcurrent.name}
+                  type: bool
+              - column:
+                  name: ${quartz.requests_recovery.name}
+                  type: bool
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.entry_id.name}
+            constraintName: ${quartz.pk_qrtz_fired_triggers.name}
+        - createTable:
+            tableName: ${quartz.qrtz_scheduler_state.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.instance_name.name}
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.last_checkin_time.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.checkin_interval.name}
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_scheduler_state.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.instance_name.name}
+            constraintName: ${quartz.pk_qrtz_scheduler_state.name}
+        - createTable:
+            tableName: ${quartz.qrtz_locks.name}
+            remarks: Used for Quartz scheduler.
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ${quartz.lock_name.name}
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_locks.name}
+            columnNames:
+              - ${quartz.sched_name.name}
+              - ${quartz.lock_name.name}
+            constraintName: ${quartz.pk_qrtz_locks.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_j_req_recovery.name}
+            tableName: ${quartz.qrtz_job_details.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.requests_recovery.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_j_grp.name}
+            tableName: ${quartz.qrtz_job_details.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.job_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_j.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.job_name.name}
+              - column:
+                  name: ${quartz.job_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_jg.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.job_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_c.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.calendar_name.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_g.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_n_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_name.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_n_g_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_next_fire_time.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.next_fire_time.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_nft_st.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+              - column:
+                  name: ${quartz.next_fire_time.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_nft_misfire.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.misfire_instr.name}
+              - column:
+                  name: ${quartz.next_fire_time.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_nft_st_misfire.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.misfire_instr.name}
+              - column:
+                  name: ${quartz.next_fire_time.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_t_nft_st_misfire_grp.name}
+            tableName: ${quartz.qrtz_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.misfire_instr.name}
+              - column:
+                  name: ${quartz.next_fire_time.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
+              - column:
+                  name: ${quartz.trigger_state.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_trig_inst_name.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.instance_name.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_inst_job_req_rcvry.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.instance_name.name}
+              - column:
+                  name: ${quartz.requests_recovery.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_j_g.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.job_name.name}
+              - column:
+                  name: ${quartz.job_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_jg.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.job_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_t_g.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_name.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
+        - createIndex:
+            indexName: ${quartz.idx_qrtz_ft_tg.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columns:
+              - column:
+                  name: ${quartz.sched_name.name}
+              - column:
+                  name: ${quartz.trigger_group.name}
 
   - changeSet:
       id: 90
