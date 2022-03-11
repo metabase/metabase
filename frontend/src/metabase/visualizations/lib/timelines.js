@@ -131,7 +131,7 @@ function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
 
 export function renderEvents(
   chart,
-  { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
+  { timelineEvents = [], xDomain, xInterval, isTimeseries, onOpenTimelines },
 ) {
   const xAxis = getXAxis(chart);
   if (!xAxis || !isTimeseries) {
@@ -149,7 +149,7 @@ export function renderEvents(
   renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines);
 }
 
-export function hasEventAxis({ timelineEvents, xDomain, isTimeseries }) {
+export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
   if (!isTimeseries) {
     return false;
   }
