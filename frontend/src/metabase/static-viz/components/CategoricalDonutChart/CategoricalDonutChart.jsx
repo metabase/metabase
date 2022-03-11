@@ -19,6 +19,10 @@ const propTypes = {
   }),
 };
 
+const defaultProps = {
+  accessors: DIMENSION_ACCESSORS,
+};
+
 const layout = {
   width: 540,
   height: 540,
@@ -38,12 +42,7 @@ const layout = {
   labelFontSize: 14,
 };
 
-const CategoricalDonutChart = ({
-  data,
-  colors,
-  accessors = DIMENSION_ACCESSORS,
-  settings,
-}) => {
+const CategoricalDonutChart = ({ data, colors, accessors, settings }) => {
   const innerWidth = layout.width - layout.margin * 2;
   const innerHeight = layout.height - layout.margin * 2;
   const outerRadius = Math.min(innerWidth, innerHeight) / 2;
@@ -108,5 +107,6 @@ const CategoricalDonutChart = ({
 };
 
 CategoricalDonutChart.propTypes = propTypes;
+CategoricalDonutChart.defaultProps = defaultProps;
 
 export default CategoricalDonutChart;
