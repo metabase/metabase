@@ -45,11 +45,11 @@ export default class DebouncedFrame extends React.Component {
       return;
     }
     if (
-      this.props.width !== nextProps.width ||
-      this.props.height !== nextProps.height
+      this.state.width !== nextProps.width ||
+      this.state.height !== nextProps.height
     ) {
       if (this.state.width == null || this.state.height == null) {
-        this.setSize(nextProps.width, nextProps.height);
+        this.setSizeDebounced(nextProps.width, nextProps.height);
       } else {
         this.setSizeDebounced(nextProps.width, nextProps.height);
         this._transition = true;
