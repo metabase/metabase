@@ -6,6 +6,7 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 import { ListItemStyled, UlStyled } from "./ExpressionEditorSuggestions.styled";
 
@@ -98,6 +99,15 @@ export default class ExpressionEditorSuggestions extends React.Component {
             const { icon } = suggestion;
             const { normal, highlighted } = colorForIcon(icon);
 
+            const iconComponent = (
+              <Icon
+                name={icon}
+                color={isHighlighted ? highlighted : normal}
+                size="14"
+                className="mr1"
+              />
+            );
+
             const key = `$suggstion-${i}`;
             const listItem = (
               <ListItemStyled
@@ -105,12 +115,13 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 isHighlighted={isHighlighted}
                 className="flex align-center px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
               >
-                <Icon
-                  name={icon}
-                  color={isHighlighted ? highlighted : normal}
-                  size="14"
-                  className="mr1"
-                />
+                {suggestion.dimension ? (
+                  <DimensionInfoPopover dimension={suggestion.dimension}>
+                    {iconComponent}
+                  </DimensionInfoPopover>
+                ) : (
+                  iconComponent
+                )}
                 <SuggestionSpan
                   suggestion={suggestion}
                   isHighlighted={isHighlighted}
