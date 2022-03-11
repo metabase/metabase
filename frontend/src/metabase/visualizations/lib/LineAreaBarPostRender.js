@@ -390,9 +390,7 @@ function onRenderSetZeroGridLineClassName(chart) {
 function onRenderAddEvents(
   chart,
   { timelines, xDomain, xInterval, isTimeseries, onHoverChange },
-) {
-  console.log(timelines);
-}
+) {}
 
 // the various steps that get called
 function onRender(
