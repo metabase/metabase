@@ -274,6 +274,7 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing) {
       const extraButtonClassNames =
         "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
+
       if (canEdit) {
         extraButtons.push(
           <Link
@@ -285,6 +286,16 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
+
+      extraButtons.push(
+        <div
+          className={extraButtonClassNames}
+          onClick={this.handleToggleBookmark}
+        >
+          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
+        </div>,
+      );
+
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -294,14 +305,7 @@ export default class DashboardHeader extends Component {
           {t`Revision history`}
         </Link>,
       );
-      extraButtons.push(
-        <div
-          className={extraButtonClassNames}
-          onClick={this.handleToggleBookmark}
-        >
-          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
-        </div>,
-      );
+
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -311,6 +315,7 @@ export default class DashboardHeader extends Component {
           {t`Duplicate`}
         </Link>,
       );
+
       if (canEdit) {
         extraButtons.push(
           <Link
@@ -322,6 +327,7 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
+
       if (canEdit) {
         extraButtons.push(
           <Link
