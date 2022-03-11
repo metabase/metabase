@@ -815,7 +815,7 @@ export default function lineAreaBar(element, props) {
     isScalarSeries,
     settings,
     series,
-    timelines,
+    timelineEvents,
     onRender,
     onHoverChange,
   } = props;
@@ -922,7 +922,7 @@ export default function lineAreaBar(element, props) {
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
     datas,
-    timelines,
+    timelineEvents,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
     xDomain: xAxisProps.xDomain,

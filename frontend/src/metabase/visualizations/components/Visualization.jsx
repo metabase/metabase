@@ -82,7 +82,7 @@ export default class Visualization extends React.PureComponent {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
       !Utils.equals(newProps.settings, this.props.settings) ||
-      newProps.timelines !== this.props.timelines
+      newProps.timelineEvents !== this.props.timelineEvents
     ) {
       this.transform(newProps);
     }

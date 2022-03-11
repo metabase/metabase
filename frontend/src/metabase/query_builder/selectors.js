@@ -313,7 +313,7 @@ export const getVisibleTimelineEvents = createSelector(
     return timelines
       .flatMap(timeline => timeline.events)
       .filter(event => !event.archived)
-      .map(event => updateIn(event, "timestamp", parseTimestamp));
+      .map(event => updateIn(event, ["timestamp"], parseTimestamp));
   },
 );
 

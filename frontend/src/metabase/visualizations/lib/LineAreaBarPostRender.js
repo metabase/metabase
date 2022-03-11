@@ -390,9 +390,9 @@ function onRenderSetZeroGridLineClassName(chart) {
 
 function onRenderAddEvents(
   chart,
-  { timelines, xDomain, xInterval, isTimeseries },
+  { timelineEvents, xDomain, xInterval, isTimeseries },
 ) {
-  renderEvents(chart, { timelines, xDomain, xInterval, isTimeseries });
+  renderEvents(chart, { timelineEvents, xDomain, xInterval, isTimeseries });
 }
 
 // the various steps that get called
@@ -400,7 +400,7 @@ function onRender(
   chart,
   {
     datas,
-    timelines,
+    timelineEvents,
     isSplitAxis,
     xDomain,
     xInterval,
@@ -431,7 +431,7 @@ function onRender(
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
   onRenderAddEvents(chart, {
-    timelines,
+    timelineEvents,
     xDomain,
     xInterval,
     isTimeseries,
@@ -658,10 +658,10 @@ function beforeRenderFixMargins(chart, args) {
 }
 
 // collection of function calls that get made *before* we tell the Chart to render
-function beforeRender(chart, { timelines, xDomain, isTimeseries }) {
+function beforeRender(chart, { timelineEvents, xDomain, isTimeseries }) {
   beforeRenderComputeXAxisLabelType(chart);
   beforeRenderHideDisabledAxesAndLabels(chart);
-  beforeRenderFixMargins(chart, { timelines, xDomain, isTimeseries });
+  beforeRenderFixMargins(chart, { timelineEvents, xDomain, isTimeseries });
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
