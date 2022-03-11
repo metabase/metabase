@@ -201,7 +201,7 @@
   [^Liquibase liquibase]
   (.forceReleaseLocks liquibase))
 
- (defn release-lock-if-needed!
+(defn release-lock-if-needed!
   "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
   intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
   [^Liquibase liquibase]
