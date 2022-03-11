@@ -387,10 +387,12 @@ function onRenderSetZeroGridLineClassName(chart) {
     .attr("class", "zero");
 }
 
-function onRenderAddEvents(
+function onRenderAddTimelineEvents(
   chart,
   { timelines, xDomain, xInterval, isTimeseries, onHoverChange },
-) {}
+) {
+  // TODO (ranquild): render timeline events
+}
 
 // the various steps that get called
 function onRender(
@@ -427,7 +429,7 @@ function onRender(
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
-  onRenderAddEvents(chart, {
+  onRenderAddTimelineEvents(chart, {
     timelines,
     xDomain,
     xInterval,
