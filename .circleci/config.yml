@@ -357,7 +357,7 @@ commands:
             - run:
                 name: "Skip tests (create dummy file .SUCCESS) if commit message contains [ci quick] and branch isn't a master/release branch"
                 command: |
-                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
+                  if [[ "$CIRCLE_BRANCH" =~ ^master|currents-circleci|release-.+$ ]]; then
                       echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
                   elif [[ `cat .COMMIT` == *"[ci quick]"* ]]; then
                       echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
@@ -932,7 +932,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
-      - step:
+      - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
             - run-yarn-command:
