@@ -27,6 +27,9 @@
 ;;
 ;; 3. The Clojure DynamicClassLoader does not create a Package -- see
 ;;    https://clojure.atlassian.net/browse/CLJ-1550?focusedCommentId=13025
+;;
+;; This only does anything in REPL-based development; in the uberjar the proxy class will be AOT'ed and will have a
+;; package defined for it when it's loaded by the normal JVM classloader rather than the Clojure DynamicClassLoader
 (let [klass (class (h2-database*))]
   (when-not (.getPackage klass)
     (let [method       (.getDeclaredMethod

@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.db.liquibase.h2 :as liquibase.h2]
+            [metabase.db.liquibase.mysql :as liquibase.mysql]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -13,12 +14,9 @@
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor
-           liquibase.sqlgenerator.SqlGeneratorFactory
-           metabase.db.liquibase.MetabaseMySqlCreateTableSqlGenerator))
+           liquibase.sqlgenerator.SqlGeneratorFactory))
 
 (comment liquibase.h2/keep-me)
-
-(.register (SqlGeneratorFactory/getInstance) (MetabaseMySqlCreateTableSqlGenerator.))
 
 ;; Liquibase uses java.util.logging (JUL) for logging, so we need to install the JUL -> Log4j2 bridge which replaces the
 ;; default JUL handler with one that "writes" log messages to Log4j2. (Not sure this is the best place in the world to
@@ -33,6 +31,9 @@
 (doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
+
+;; register our custom MySQL SQL generators
+(liquibase.mysql/register-mysql-generators!)
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
@@ -203,7 +204,7 @@
   [^Liquibase liquibase]
   (.forceReleaseLocks liquibase))
 
-(defn release-lock-if-needed!
+ (defn release-lock-if-needed!
   "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
   intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
   [^Liquibase liquibase]
