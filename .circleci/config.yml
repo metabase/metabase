@@ -943,7 +943,7 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  || $CIRCLE_BRANCH == currents-circleci ]]; then
+                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  || $CIRCLE_BRANCH == circleci-currents ]]; then
                     echo 'This is a release or master branch; runnning E2E Tests with Currents.dev integration'
                     run test-cypress-no-build \<<<# parameters.test-files >> --spec \<<< parameters.test-files >> \<<< parameters.test-files >> \<<<# parameters.source-folder >> --folder \<<< parameters.source-folder >> \<<</ parameters.source-folder >> --record --key $CURRENTS_KEY --group \<<< parameters.source-folder >> \<<</ parameters.source-folder >>
                   else
