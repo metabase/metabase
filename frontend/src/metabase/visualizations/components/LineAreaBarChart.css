@@ -274,6 +274,7 @@ text.value-label-white {
   stroke: var(--color-brand);
   stroke-width: 2;
   opacity: 0.2;
+  pointer-events: none;
 }
 
 .dc-chart .event-line.hover {
