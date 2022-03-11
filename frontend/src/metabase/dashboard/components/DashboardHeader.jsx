@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
@@ -8,6 +9,7 @@ import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
+import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "./DashboardActions";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
@@ -19,11 +21,21 @@ import cx from "classnames";
 
 import { Link } from "react-router";
 
+const mapStateToProps = (state, props) => {};
+
+const mapDispatchToProps = {
+  createBookmark: id => Bookmark.actions.create({ id: `dashboard-${id}` }),
+  deleteBookmark: id => Bookmark.actions.delete({ id: `dashboard-${id}` }),
+};
+
+@Bookmark.loadList()
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardHeader extends Component {
   constructor(props) {
     super(props);
 
     this.addQuestionModal = React.createRef();
+    this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
   state = {
@@ -57,6 +69,24 @@ export default class DashboardHeader extends Component {
 
   handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
+  }
+
+  getIsBookmarked() {
+    return this.props.bookmarks.some(
+      bookmark =>
+        bookmark.type === "dashboard" &&
+        bookmark.item_id === this.props.dashboardId,
+    );
+  }
+
+  handleToggleBookmark() {
+    const isBookmarked = this.getIsBookmarked();
+
+    const toggleBookmark = isBookmarked
+      ? this.props.deleteBookmark
+      : this.props.createBookmark;
+
+    toggleBookmark(this.props.dashboardId);
   }
 
   onAddTextBox() {
@@ -183,6 +213,7 @@ export default class DashboardHeader extends Component {
         hideAddParameterPopover,
         addParameter,
       } = this.props;
+
       // Parameters
       buttons.push(
         <span key="add-a-filter">
@@ -262,6 +293,14 @@ export default class DashboardHeader extends Component {
         >
           {t`Revision history`}
         </Link>,
+      );
+      extraButtons.push(
+        <div
+          className={extraButtonClassNames}
+          onClick={this.handleToggleBookmark}
+        >
+          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
+        </div>,
       );
       extraButtons.push(
         <Link
