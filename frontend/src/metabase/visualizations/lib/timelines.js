@@ -36,7 +36,7 @@ function getEventGroups(events, xInterval) {
 }
 
 function getEventTicks(eventGroups) {
-  return Object.keys(eventGroups).map(value => new Date(value));
+  return Object.keys(eventGroups).map(value => new Date(parseInt(value)));
 }
 
 function getTranslateFromStyle(value) {

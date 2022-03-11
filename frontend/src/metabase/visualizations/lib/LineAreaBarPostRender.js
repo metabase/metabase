@@ -388,7 +388,7 @@ function onRenderSetZeroGridLineClassName(chart) {
     .attr("class", "zero");
 }
 
-function onRenderAddTimelineEvents(
+function onRenderAddEvents(
   chart,
   { timelines, xDomain, xInterval, isTimeseries },
 ) {
@@ -430,7 +430,7 @@ function onRender(
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
-  onRenderAddTimelineEvents(chart, {
+  onRenderAddEvents(chart, {
     timelines,
     xDomain,
     xInterval,
@@ -603,7 +603,7 @@ function beforeRenderComputeXAxisLabelType(chart) {
   }
 }
 
-function beforeRenderFixMargins(chart, { timelines, xDomain, isTimeseries }) {
+function beforeRenderFixMargins(chart, args) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
   const xAxisMargin = computeXAxisMargin(chart);
@@ -651,7 +651,7 @@ function beforeRenderFixMargins(chart, { timelines, xDomain, isTimeseries }) {
     mins.right,
   );
 
-  const minBottomMargin = hasEventAxis(chart, timelines, xDomain, isTimeseries)
+  const minBottomMargin = hasEventAxis(chart, args)
     ? MARGIN_BOTTOM_MIN_WITH_EVENT_AXIS
     : MARGIN_BOTTOM_MIN;
   chart.margins().bottom = Math.max(minBottomMargin, chart.margins().bottom);
