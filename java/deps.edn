@@ -12,4 +12,4 @@
 
   ;; dependencies needed for compiling the Java files.
   :compilation-basis
-  {:extra-deps {org.liquibase/liquibase-core {:mvn/version "3.6.3"}}}}}
+  {:extra-deps {org.liquibase/liquibase-core {:mvn/version "4.8.0"}}}}}

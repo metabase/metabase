@@ -1,10 +1,10 @@
 databaseChangeLog:
   - property:
-      name: timestamp.type
+      name: timestamp_type
       value: timestamp with time zone
       dbms: postgresql,h2
   - property:
-      name: timestamp.type
+      name: timestamp_type
       value: timestamp(6)
       dbms: mysql,mariadb
   - property:
@@ -6750,11 +6750,11 @@ databaseChangeLog:
         - modifyDataType:
             tableName: metabase_fieldvalues
             columnName: updated_at
-            newDataType: ${timestamp.type}
+            newDataType: ${timestamp_type}
         - modifyDataType:
             tableName: query_cache
             columnName: updated_at
-            newDataType: ${timestamp.type}
+            newDataType: ${timestamp_type}
 
 # Create the native query snippets table, intended to store snippets and their metadata
   - changeSet:
@@ -6812,7 +6812,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   # it seems like defaultValueComputed actaully just ends
                   # getting ignored anyway -- see
                   # https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
@@ -6822,7 +6822,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: updated_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -6845,7 +6845,7 @@ databaseChangeLog:
         - modifyDataType:
             tableName: query_execution
             columnName: started_at
-            newDataType: ${timestamp.type}
+            newDataType: ${timestamp_type}
 
 # Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
 # this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
@@ -8372,7 +8372,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: timestamp
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   remarks: "When this login occurred."
                   defaultValueComputed: current_timestamp
                   constraints:
@@ -8557,14 +8557,14 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: updated_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   remarks: "most recent modification time"
                   constraints:
                     nullable: false
               - column:
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   remarks: "creation time"
                   constraints:
@@ -8794,7 +8794,7 @@ databaseChangeLog:
                     nullable: false
                   name: created_at
                   remarks: Timestamp for when this secret instance was created
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
               - column:
                   constraints:
                     nullable: true
@@ -8802,7 +8802,7 @@ databaseChangeLog:
                   remarks: >-
                     Timestamp for when this secret record was updated. Only relevant when non-value field changes
                     since a value change will result in a new version being inserted.
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
               - column:
                   constraints:
                     nullable: false
@@ -10798,14 +10798,14 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the timeline was created
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   remarks: The timestamp of when the timeline was updated
                   name: updated_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -10849,7 +10849,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: timestamp
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   constraints:
                     nullable: false
                   remarks: When the event happened
@@ -10892,14 +10892,14 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the event was created
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   remarks: The timestamp of when the event was modified
                   name: updated_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -11031,7 +11031,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -11104,7 +11104,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -11177,7 +11177,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp.type}
+                  type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
