@@ -342,11 +342,13 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
+(defn- json-query [identifier nfc-path]
+  "some stuff here")
+
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
-  (let [{database-type :database_type
-         nfc-path      :nfc-path} (when (integer? id-or-name)
-                                    (qp.store/field id-or-name))
+  (let [{database-type :database_type, nfc-path :nfc-path} (when (integer? id-or-name)
+                                                            (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
@@ -354,7 +356,7 @@
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
-      "some stuff here"
+      (json-query identifier nfc-path)
 
       :else
       identifier)))
