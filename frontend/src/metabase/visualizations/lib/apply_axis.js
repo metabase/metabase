@@ -15,10 +15,13 @@ import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
+import { hasEventAxis } from "metabase/visualizations/lib/timelines";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;
+const X_AXIS_PADDING = 3;
+const X_AXIS_PADDING_WITH_EVENT_AXIS = 20;
 
 /// d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
 /// if it's an array then convert to a num. Use this function so you're guaranteed to get a number;
@@ -87,6 +90,7 @@ export function applyChartTimeseriesXAxis(
   chart,
   series,
   { xValues, xDomain, xInterval },
+  timelineEvents,
 ) {
   // find the first nonempty single series
   const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
@@ -160,6 +164,12 @@ export function applyChartTimeseriesXAxis(
     }
 
     chart.xAxis().tickFormat(tickFormat);
+
+    if (hasEventAxis({ timelineEvents, xDomain, isTimeseries: true })) {
+      chart.xAxis().tickPadding(X_AXIS_PADDING_WITH_EVENT_AXIS);
+    } else {
+      chart.xAxis().tickPadding(X_AXIS_PADDING);
+    }
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
     tickInterval = {

@@ -4,7 +4,6 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
-const X_AXIS_TICK_EXTRA_MARGIN_TOP = 20;
 const EVENT_ICON_OFFSET_X = -16;
 const EVENT_ICON_MARGIN_TOP = 10;
 const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
@@ -67,17 +66,6 @@ function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
 
   eventsAxis.select("path.domain").remove();
   return eventsAxis;
-}
-
-function renderXAxis(xAxis) {
-  xAxis.selectAll(".tick")[0].forEach(tick => {
-    const style = tick.getAttribute("transform");
-    const [x, y] = getTranslateFromStyle(style);
-    tick.setAttribute(
-      "transform",
-      `translate(${x},${y + X_AXIS_TICK_EXTRA_MARGIN_TOP})`,
-    );
-  });
 }
 
 function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
@@ -154,10 +142,9 @@ export function renderEvents(
 
   const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
   renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines);
-  renderXAxis(xAxis);
 }
 
-export function hasEventAxis(chart, { timelineEvents, xDomain, isTimeseries }) {
+export function hasEventAxis({ timelineEvents, xDomain, isTimeseries }) {
   if (!isTimeseries) {
     return false;
   }

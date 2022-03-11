@@ -728,9 +728,9 @@ function addTrendlineChart(
   }
 }
 
-function applyXAxisSettings(parent, series, xAxisProps) {
+function applyXAxisSettings(parent, series, xAxisProps, timelineEvents) {
   if (isTimeseries(parent.settings)) {
-    applyChartTimeseriesXAxis(parent, series, xAxisProps);
+    applyChartTimeseriesXAxis(parent, series, xAxisProps, timelineEvents);
   } else if (isQuantitative(parent.settings)) {
     applyChartQuantitativeXAxis(parent, series, xAxisProps);
   } else {
@@ -904,7 +904,7 @@ export default function lineAreaBar(element, props) {
     parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
   }
 
-  applyXAxisSettings(parent, props.series, xAxisProps);
+  applyXAxisSettings(parent, props.series, xAxisProps, timelineEvents);
 
   applyYAxisSettings(parent, yAxisProps);
 
