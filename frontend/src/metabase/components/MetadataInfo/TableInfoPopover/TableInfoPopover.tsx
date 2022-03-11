@@ -18,7 +18,7 @@ interface TableSubset {
 
 const propTypes = {
   table: PropTypes.shape({
-    id: PropTypes.oneOf([PropTypes.number, PropTypes.string]),
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     description: PropTypes.string,
   }).isRequired,
   children: PropTypes.node,
