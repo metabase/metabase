@@ -2,8 +2,8 @@ import d3 from "d3";
 import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
 import { parseTimestamp } from "metabase/lib/time";
-import timeseriesScale from "metabase/visualizations/lib/timeseriesScale";
-import { stretchTimeseriesDomain } from "metabase/visualizations/lib/apply_axis";
+import { stretchTimeseriesDomain } from "./apply_axis";
+import timeseriesScale from "./timeseriesScale";
 
 const X_AXIS_TICK_EXTRA_MARGIN_TOP = 20;
 const EVENT_ICON_OFFSET_X = -16;
