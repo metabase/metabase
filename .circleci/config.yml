@@ -943,13 +943,13 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
-                command: |
-                  run test-cypress-no-build \<<<# parameters.test-files >> --spec \<<< parameters.test-files >> \<<</ parameters.test-files >> \<<<# parameters.source-folder >> --folder \<<< parameters.source-folder >> \<<</ parameters.source-folder >> --record --key $CURRENTS_KEY --group \<<< parameters.source-folder >> \<<</ parameters.source-folder >>
-                after-steps:
-                  - store_artifacts:
-                      path: /home/circleci/metabase/metabase/cypress
-                  - store_test_results:
-                      path: cypress/results
+          -run:
+            command: yarn test-cypress-no-build --spec \<<< parameters.test-files >> --folder \<<< parameters.source-folder >> --record --key $CURRENTS_KEY --group \<<< parameters.source-folder >>
+            after-steps:
+              - store_artifacts:
+                  path: /home/circleci/metabase/metabase/cypress
+              - store_test_results:
+                  path: cypress/results
 
 ########################################################################################################################
 #                                                       SNOWPLOW                                                       #
