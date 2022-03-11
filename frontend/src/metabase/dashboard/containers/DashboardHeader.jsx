@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import Bookmark from "metabase/entities/bookmarks";
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
+import { getDashboardActions } from "./DashboardActions";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
@@ -302,6 +302,14 @@ export default class DashboardHeader extends Component {
         </Link>,
       );
 
+      extraButtons.push(
+        <div
+          className={extraButtonClassNames}
+          onClick={this.handleToggleBookmark}
+        >
+          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
+        </div>,
+      );
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
