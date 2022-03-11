@@ -120,14 +120,17 @@ function Bookmark({ isBookmarked, onClickBookmark }) {
 }
 
 function Menu(props) {
-  const { hasWritePermission } = props;
+  const { collectionId, hasWritePermission } = props;
+
+  const shouldBeBookmarkable = collectionId !== "root";
+
   return (
     <MenuContainer data-testid="collection-menu">
       {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
       <TimelinesLink {...props} />
-      <Bookmark {...props} />
+      {shouldBeBookmarkable && <Bookmark {...props} />}
     </MenuContainer>
   );
 }
