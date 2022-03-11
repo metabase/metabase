@@ -5100,9 +5100,7 @@ databaseChangeLog:
                     nullable: false
         - addPrimaryKey:
             tableName: ${quartz.qrtz_calendars.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.calendar_name.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.calendar_name.name}
             constraintName: ${quartz.pk_qrtz_calendars.name}
         - createTable:
             tableName: ${quartz.qrtz_paused_trigger_grps.name}
@@ -5120,9 +5118,7 @@ databaseChangeLog:
                     nullable: false
         - addPrimaryKey:
             tableName: ${quartz.qrtz_paused_trigger_grps.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_sched_name.name}
         - createTable:
             tableName: ${quartz.qrtz_fired_triggers.name}
@@ -5188,9 +5184,7 @@ databaseChangeLog:
                   type: bool
         - addPrimaryKey:
             tableName: ${quartz.qrtz_fired_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.entry_id.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.entry_id.name}
             constraintName: ${quartz.pk_qrtz_fired_triggers.name}
         - createTable:
             tableName: ${quartz.qrtz_scheduler_state.name}
@@ -5218,9 +5212,7 @@ databaseChangeLog:
                     nullable: false
         - addPrimaryKey:
             tableName: ${quartz.qrtz_scheduler_state.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.instance_name.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.instance_name.name}
             constraintName: ${quartz.pk_qrtz_scheduler_state.name}
         - createTable:
             tableName: ${quartz.qrtz_locks.name}
@@ -5238,9 +5230,7 @@ databaseChangeLog:
                     nullable: false
         - addPrimaryKey:
             tableName: ${quartz.qrtz_locks.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.lock_name.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.lock_name.name}
             constraintName: ${quartz.pk_qrtz_locks.name}
         - createIndex:
             indexName: ${quartz.idx_qrtz_j_req_recovery.name}

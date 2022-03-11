@@ -141,7 +141,7 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (u/auto-retry 3 (let [^Contexts contexts nil] (.update liquibase contexts))))
+        (let [^Contexts contexts nil] (.update liquibase contexts)))
       (log/info
         (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
