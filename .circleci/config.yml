@@ -932,15 +932,15 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
-      - run-on-change:
+      - step:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
-                  # - restore_cache:
-                  #     name: Restore cached uberjar built in previous step
-                  #     <<: *CacheKeyUberjar
+                  - restore_cache:
+                      name: Restore cached uberjar built in previous step
+                      <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
