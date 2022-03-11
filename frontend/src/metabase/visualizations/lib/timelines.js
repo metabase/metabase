@@ -47,6 +47,7 @@ function getXAxis(chart) {
 function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
   const xAxisDomainLine = xAxis.select("path.domain").node();
   const { width: axisWidth } = xAxisDomainLine.getBoundingClientRect();
+  xAxis.selectAll("event-axis").remove();
 
   const scale = timeseriesScale(xInterval)
     .domain(stretchTimeseriesDomain(xDomain, xInterval))
@@ -69,8 +70,12 @@ function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
 }
 
 function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
-  const brushLayer = chart.svg().select("g.brush");
-  const brushLayerHeight = brushLayer.select("rect.background").attr("height");
+  const svg = chart.svg();
+  const brush = svg.select("g.brush");
+  const brushHeight = brush.select("rect.background").attr("height");
+
+  svg.selectAll(".event-tick").remove();
+  svg.selectAll(".event-line").remove();
 
   Object.values(eventGroups).forEach(group => {
     const defaultTick = eventAxis.select(".tick");
@@ -86,13 +91,13 @@ function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
       : ICON_PATHS[iconName];
     const iconScale = iconName === "mail" ? 0.45 : 0.5;
 
-    brushLayer
+    brush
       .append("line")
       .attr("class", "event-line")
       .attr("x1", tickX)
       .attr("x2", tickX)
       .attr("y1", "0")
-      .attr("y2", brushLayerHeight);
+      .attr("y2", brushHeight);
 
     const eventIconContainer = eventAxis
       .append("g")
