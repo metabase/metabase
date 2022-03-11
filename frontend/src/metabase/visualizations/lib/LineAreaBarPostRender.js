@@ -391,7 +391,7 @@ function onRenderAddTimelineEvents(
   chart,
   { timelines, xDomain, xInterval, isTimeseries, onHoverChange },
 ) {
-  // TODO (ranquild): render timeline events
+  // TODO render timeline events
 }
 
 // the various steps that get called
