@@ -13,10 +13,10 @@
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.LockException
-           liquibase.resource.ClassLoaderResourceAccessor
-           liquibase.sqlgenerator.SqlGeneratorFactory))
+           liquibase.resource.ClassLoaderResourceAccessor))
 
-(comment liquibase.h2/keep-me)
+;; register our custom MySQL SQL generators
+(liquibase.mysql/register-mysql-generators!)
 
 ;; Liquibase uses java.util.logging (JUL) for logging, so we need to install the JUL -> Log4j2 bridge which replaces the
 ;; default JUL handler with one that "writes" log messages to Log4j2. (Not sure this is the best place in the world to
@@ -31,9 +31,6 @@
 (doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
-
-;; register our custom MySQL SQL generators
-(liquibase.mysql/register-mysql-generators!)
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
