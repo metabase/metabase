@@ -5,6 +5,7 @@ import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
+import { renderEvents } from "./timelines";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -389,9 +390,9 @@ function onRenderSetZeroGridLineClassName(chart) {
 
 function onRenderAddTimelineEvents(
   chart,
-  { timelines, xDomain, xInterval, isTimeseries, onHoverChange },
+  { timelines, xDomain, xInterval, isTimeseries },
 ) {
-  // TODO render timeline events
+  renderEvents(chart, { timelines, xDomain, xInterval, isTimeseries });
 }
 
 // the various steps that get called
