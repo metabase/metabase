@@ -388,7 +388,7 @@ function onRenderSetZeroGridLineClassName(chart) {
     .attr("class", "zero");
 }
 
-function onRenderAddEvents(
+function onRenderAddTimelineEvents(
   chart,
   { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
 ) {
@@ -436,7 +436,7 @@ function onRender(
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
-  onRenderAddEvents(chart, {
+  onRenderAddTimelineEvents(chart, {
     timelineEvents,
     xDomain,
     xInterval,
