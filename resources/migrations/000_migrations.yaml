@@ -1,16 +1,20 @@
 databaseChangeLog:
-  # The quoting strategy decides when things like column names should be quoted. This is in place to deal with
-  # Liquibase not knowing about all of the new reserved words in MySQL 8+. Using a column name that is a reserved word
-  # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
-  # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
   - property:
-      name: timestamp_type
+      name: timestamp.type
       value: timestamp with time zone
       dbms: postgresql,h2
   - property:
-      name: timestamp_type
+      name: timestamp.type
       value: timestamp(6)
       dbms: mysql,mariadb
+  - property:
+      name: blob.type
+      value: blob
+      dbms: mysql,h2,mariadb
+  - property:
+      name: blob.type
+      value: bytea
+      dbms: postgresql
   # In MySQL, use LONGTEXT instead of TEXT (#7006)
   - property:
       name: text.type
@@ -20,17 +24,22 @@ databaseChangeLog:
       name: text.type
       value: longtext
       dbms: mysql,mariadb
+  # databasechangelog is uppercase in MySQL and H2 but lower-case in Postgres for reasons
+  - property:
+      name: databasechangelog.name
+      value: DATABASECHANGELOG
+      dbms: h2,mysql,mariadb
+  - property:
+      name: databasechangelog.name
+      value: databasechangelog
+      dbms: postgresql
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
   - changeSet:
       id: '1'
       author: agilliland
-      validCheckSum:
-        - 8:7182ca8e82947c24fa827d31f78b19aa
-        - 8:70d9a1021171b879cc55058f4d094a9c
-        - 8:29a8f482877466643f65adb20c6d2139
-        - 8:c6ae58b391611a9317a5235970daf2bd
+      validCheckSum: ANY
       changes:
       - createTable:
           columns:
@@ -1364,11 +1373,7 @@ databaseChangeLog:
   - changeSet:
       id: '2'
       author: agilliland
-      validCheckSum:
-        - 8:bdcf1238e2ccb4fbe66d7f9e1d9b9529
-        - 8:ca241a2c777802abaedd43d8944927f3
-        - 8:983477ec51adb1236dd9d76ebf604be9
-        - 8:b93383f26ef8fd74b0d0c79f71f6dafb
+      validCheckSum: ANY
       changes:
       - createTable:
           columns:
@@ -1476,9 +1481,7 @@ databaseChangeLog:
   - changeSet:
       id: '7'
       author: cammsaul
-      validCheckSum:
-        - 8:c57c69fd78d804beb77d261066521f7f
-        - 8:4f23ddbddd447461588462fa8bb443dd
+      validCheckSum: ANY
       changes:
       - addColumn:
           columns:
@@ -1520,15 +1523,7 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: cammsaul
-      validCheckSum:
-        - 7:3b90e2fe0ac8e617a1f30ef95d39319b
-        - 7:97fec69516d0dfe424ea7365f51bb87e
-        - 8:2e03a495932b4a9aebb9d58a6ad87ca9
-        - 8:431360d062cb82d8b27960b3a0abb98c
-        - 8:5297214d1788d964675d8c6336ac9b6d
-        - 8:532075ff1717d4a16bb9f27c606db46b
-        - 8:96e54d9100db3f9cdcc00eaeccc200a3
-        - 8:9f03a236be31f54e8e5c894fe5fc7f00
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: revision
@@ -1603,9 +1598,7 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
-      validCheckSum:
-        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
-        - 8:e862a199cba5b4ce0cba713110f66cfb
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -1644,13 +1637,7 @@ databaseChangeLog:
   - changeSet:
       id: 13
       author: agilliland
-      validCheckSum:
-        - 7:f27286894439bef33ff93761f9b32bc4
-        - 7:1bc8ccc9b1803cda5651f144029be40c
-        - 8:c2c65930bad8d3e9bab3bb6ae562fe0c
-        - 8:944bf2f6777cec0c4f6c9fe3f98725f4
-        - 8:f3ae0bac98abb3288158ac45d85bf0e3
-        - 8:e4c750cd2fecec6667be99e4adb4ae9f
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: activity
@@ -1743,11 +1730,7 @@ databaseChangeLog:
   - changeSet:
       id: 14
       author: agilliland
-      validCheckSum:
-        - 8:320d2ca8ead3f31309674b2b7f54f395
-        - 8:22397aede818dcd23b443810127b665f
-        - 8:7dc558da864d98b79f8d13a427ca3858
-        - 8:e0ab939d4315c87ed232b71989dfa7a5
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: view_log
@@ -1845,9 +1828,7 @@ databaseChangeLog:
   - changeSet:
       id: 18
       author: camsaul
-      validCheckSum:
-        - 7:07d501a6e52c14691f7f895d137e565f
-        - 7:329d897d44ba9893fdafc9ce7e876d73
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: data_migrations
@@ -1882,11 +1863,7 @@ databaseChangeLog:
   - changeSet:
       id: 20
       author: agilliland
-      validCheckSum:
-        - 8:0afa34e8b528b83aa19b4142984f8095
-        - 8:1b6c23d69b9330b56dcb4bb7188e8d5e
-        - 8:7ec10b2c7acbab0fc38043be575ff907
-        - 8:40b0729e80f3f66f92c590268ce390dd
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: pulse
@@ -2086,11 +2063,7 @@ databaseChangeLog:
   - changeSet:
       id: 21
       author: agilliland
-      validCheckSum:
-        - 8:fb2cd308b17ab81b502d057ecde4fc1b
-        - 8:be31f33e7fa7961b902c3ee4a56e19a7
-        - 8:492a1b64ff9c792aa6ba97d091819261
-        - 8:625a55f4f516a883eae4933528ac08fd
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: segment
@@ -2261,11 +2234,7 @@ databaseChangeLog:
   - changeSet:
       id: 25
       author: agilliland
-      validCheckSum:
-        - 8:61f25563911117df72f5621d78f10089
-        - 8:ea4cd56cdc21ddf73495101a2a1cb3d4
-        - 8:cea300a621393501d4534b0ff41eb91c
-        - 8:d4523147fa777867f757fb1b5a83969a
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: metric
@@ -2363,11 +2332,7 @@ databaseChangeLog:
   - changeSet:
       id: 27
       author: agilliland
-      validCheckSum:
-        - 8:001855139df2d5dac4eb954e5abe6486
-        - 8:4778d6724e114803d2d805f494008fb1
-        - 8:017050df833b3b678d1b52b1a0f4de50
-        - 8:522ded869baeb030fa3889e16e28cbad
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: dashboardcard_series
@@ -2483,9 +2448,7 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: camsaul
-      validCheckSum:
-        - 8:40830260b92cedad8da273afd5eca678
-        - 8:28afcfc9b7f1bd1b08caa9d527355c48
+      validCheckSum: ANY
       changes:
         ######################################## label table ########################################
         - createTable:
@@ -2578,11 +2541,7 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: agilliland
-      validCheckSum:
-        - 8:483c6c6c8e0a8d056f7b9112d0b0125c
-        - 8:32fb3ffb1ac9b619248c3de8e3d09b4b
-        - 8:ca6efc1c0a7aa82467d2c84421e812eb
-        - 8:ccbc51ac2b9446103414e98e68332036
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: raw_table
@@ -2845,9 +2804,7 @@ databaseChangeLog:
   - changeSet:
       id: 38
       author: camsaul
-      validCheckSum:
-        - 8:43604ab55179b50306eb39353e760b46
-        - 8:c9251b99ab1122ef441117d5d9852d29
+      validCheckSum: ANY
       changes:
         ######################################## Add "points_of_interest" metadata column to various models ########################################
         - addColumn:
@@ -3053,9 +3010,7 @@ databaseChangeLog:
   - changeSet:
       id: 40
       author: camsaul
-      validCheckSum:
-        - 8:231d66cf27fc4b4bc066172b435439b5
-        - 8:ee7f50a264d6cf8d891bd01241eebd2c
+      validCheckSum: ANY
       changes:
         ############################################################ add PermissionsGroup table ############################################################
         - createTable:
@@ -3275,11 +3230,7 @@ databaseChangeLog:
   - changeSet:
       id: 43
       author: camsaul
-      validCheckSum:
-        - 7:b20750a949504e93efced32877a4488f
-        - 7:dbc18c8ca697fc335869f0ed0eb5f4cb
-        - 8:165e9384e46d6f9c0330784955363f70
-        - 8:3cf48c3e52ea315379a8ed538c9f2624
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: permissions_revision
@@ -3376,9 +3327,7 @@ databaseChangeLog:
   - changeSet:
       id: 47
       author: camsaul
-      validCheckSum:
-        - 8:1d2474e49a27db344c250872df58a6ed
-        - 8:717ed16b2f279bd4fdf5c4aa2b5f5857
+      validCheckSum: ANY
       changes:
         ######################################## collection table ########################################
         - createTable:
@@ -3449,9 +3398,7 @@ databaseChangeLog:
   - changeSet:
       id: 48
       author: camsaul
-      validCheckSum:
-        - 8:720ce9d4b9e6f0917aea035e9dc5d95d
-        - 8:b3b418a4bbcf558e40f5d32effd2c7da
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: collection_revision
@@ -3498,9 +3445,7 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
-      validCheckSum:
-        - 8:56dcab086b21de1df002561efeac8bb6
-        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
+      validCheckSum: ANY
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3564,9 +3509,7 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
-      validCheckSum:
-        - 8:388da4c48984aad647709514e4ba9204
-        - 8:98a6ab6428ea7a589507464e34ade58a
+      validCheckSum: ANY
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3607,9 +3550,7 @@ databaseChangeLog:
   - changeSet:
       id: 51
       author: camsaul
-      validCheckSum:
-        - 8:8491a72bd30aac2565c97daf8b84e515
-        - 8:676d3f95358dcd572ccce47c950e8ed9
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: query_execution
@@ -3697,14 +3638,6 @@ databaseChangeLog:
                   name: hash
               - column:
                   name: started_at
-  - property:
-        name: blob.type
-        value: blob
-        dbms: mysql,h2,mariadb
-  - property:
-      name: blob.type
-      value: bytea
-      dbms: postgresql
   - changeSet:
       id: 52
       author: camsaul
@@ -3769,9 +3702,7 @@ databaseChangeLog:
   - changeSet:
       id: 54
       author: tlrobinson
-      validCheckSum:
-        - 7:695b12a78e897c62c21d41bfb04ab44b
-        - 7:0857800db71a4757e7202aad4eaed48d
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: pulse
@@ -3786,9 +3717,7 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
-      validCheckSum:
-        - 8:87c4becde5fe208ba2c356128df86fba
-        - 8:11bbd199bfa57b908ea3b1a470197de9
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3883,9 +3812,7 @@ databaseChangeLog:
   - changeSet:
       id: 58
       author: senior
-      validCheckSum:
-        - 8:3554219ca39e0fd682d0fba57531e917
-        - 8:9e6d48acacceb109e0bd27e4e44a8cb4
+      validCheckSum: ANY
       comment: 'Added 0.25.0'
       changes:
         - createTable:
@@ -3972,9 +3899,7 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
-      validCheckSum:
-        - 8:4f997b2cd3309882e900493892381f38
-        - 8:2141162a1c99a5dd95e5a67c5595e6d7
+      validCheckSum: ANY
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -4055,9 +3980,7 @@ databaseChangeLog:
       id: 66
       author: senior
       comment: 'Added 0.26.0'
-      validCheckSum:
-        - 7:e494c2c90fe5c377526da7a6e5ad63a2
-        - 7:76d06b44a544105c2a613603b8bdf25f
+      validCheckSum: ANY
       changes:
         - sql:
             sql: drop table if exists computation_job_result cascade
@@ -4067,9 +3990,7 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
-      validCheckSum:
-        - 8:59dfc37744fc362e0e312488fbc9a69b
-        - 8:a03608d97e19b8a716989e918efad0a6
+      validCheckSum: ANY
       comment: 'Added 0.27.0'
       changes:
         - createTable:
@@ -4157,9 +4078,7 @@ databaseChangeLog:
       id: 68
       author: sbelak
       comment: 'Added 0.27.0'
-      validCheckSum:
-        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
-        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: computation_job
@@ -4176,9 +4095,7 @@ databaseChangeLog:
   - changeSet:
       id: 69
       author: senior
-      validCheckSum:
-        - 8:97b7768436b9e8d695bae984020d754c
-        - 8:eadbe00e97eb53df4b3df60462f593f6
+      validCheckSum: ANY
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -4241,9 +4158,7 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
-      validCheckSum:
-        - 8:ed16046dfa04c139f48e9068eb4faee4
-        - 8:4dc6debdf779ab9273cf2158a84bb154
+      validCheckSum: ANY
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4331,9 +4246,7 @@ databaseChangeLog:
   - changeSet:
       id: 78
       author: camsaul
-      validCheckSum:
-        - 8:1977d7278269cdd0dc4f941f9e82f548
-        - 8:8ea54a54fa04fe657b0b8072125981af
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - createTable:
@@ -4402,9 +4315,7 @@ databaseChangeLog:
   - changeSet:
       id: 79
       author: camsaul
-      validCheckSum:
-        - 8:3f31cb67f9cdf7754ca95cade22d87a2
-        - 8:37825e0d48bd4ed5cf1a068de30edc60
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4560,9 +4471,7 @@ databaseChangeLog:
   - changeSet:
       id: 85
       author: camsaul
-      validCheckSum:
-        - 8:9b4c9878a5018452dd63eb6d7c17f415
-        - 8:624bb71d09dc2bef7c16c025f57edff0
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4665,659 +4574,907 @@ databaseChangeLog:
 # The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
 # using a multi-instance Metabase setup.
 
+# Quartz identifiers are upper-case in MySQL and H2 but lower-case in PostgreSQL for reasons... so we'll have to
+# define properties for EVERYTHING and use the correct identifiers
+
+  - property: {name: quartz.blob_data.name,                         dbms: "postgresql",       value: blob_data}
+  - property: {name: quartz.blob_data.name,                         dbms: "mysql,mariadb,h2", value: BLOB_DATA}
+  - property: {name: quartz.bool_prop_1.name,                       dbms: "postgresql",       value: bool_prop_1}
+  - property: {name: quartz.bool_prop_1.name,                       dbms: "mysql,mariadb,h2", value: BOOL_PROP_1}
+  - property: {name: quartz.bool_prop_2.name,                       dbms: "postgresql",       value: bool_prop_2}
+  - property: {name: quartz.bool_prop_2.name,                       dbms: "mysql,mariadb,h2", value: BOOL_PROP_2}
+  - property: {name: quartz.calendar.name,                          dbms: "postgresql",       value: calendar}
+  - property: {name: quartz.calendar.name,                          dbms: "mysql,mariadb,h2", value: CALENDAR}
+  - property: {name: quartz.calendar_name.name,                     dbms: "postgresql",       value: calendar_name}
+  - property: {name: quartz.calendar_name.name,                     dbms: "mysql,mariadb,h2", value: CALENDAR_NAME}
+  - property: {name: quartz.checkin_interval.name,                  dbms: "postgresql",       value: checkin_interval}
+  - property: {name: quartz.checkin_interval.name,                  dbms: "mysql,mariadb,h2", value: CHECKIN_INTERVAL}
+  - property: {name: quartz.cron_expression.name,                   dbms: "postgresql",       value: cron_expression}
+  - property: {name: quartz.cron_expression.name,                   dbms: "mysql,mariadb,h2", value: CRON_EXPRESSION}
+  - property: {name: quartz.dec_prop_1.name,                        dbms: "postgresql",       value: dec_prop_1}
+  - property: {name: quartz.dec_prop_1.name,                        dbms: "mysql,mariadb,h2", value: DEC_PROP_1}
+  - property: {name: quartz.dec_prop_2.name,                        dbms: "postgresql",       value: dec_prop_2}
+  - property: {name: quartz.dec_prop_2.name,                        dbms: "mysql,mariadb,h2", value: DEC_PROP_2}
+  - property: {name: quartz.description.name,                       dbms: "postgresql",       value: description}
+  - property: {name: quartz.description.name,                       dbms: "mysql,mariadb,h2", value: DESCRIPTION}
+  - property: {name: quartz.end_time.name,                          dbms: "postgresql",       value: end_time}
+  - property: {name: quartz.end_time.name,                          dbms: "mysql,mariadb,h2", value: END_TIME}
+  - property: {name: quartz.entry_id.name,                          dbms: "postgresql",       value: entry_id}
+  - property: {name: quartz.entry_id.name,                          dbms: "mysql,mariadb,h2", value: ENTRY_ID}
+  - property: {name: quartz.fired_time.name,                        dbms: "postgresql",       value: fired_time}
+  - property: {name: quartz.fired_time.name,                        dbms: "mysql,mariadb,h2", value: FIRED_TIME}
+  - property: {name: quartz.fk_qrtz_blob_triggers_triggers.name,    dbms: "postgresql",       value: fk_qrtz_blob_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_blob_triggers_triggers.name,    dbms: "mysql,mariadb,h2", value: FK_QRTZ_BLOB_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_cron_triggers_triggers.name,    dbms: "postgresql",       value: fk_qrtz_cron_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_cron_triggers_triggers.name,    dbms: "mysql,mariadb,h2", value: FK_QRTZ_CRON_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_simple_triggers_triggers.name,  dbms: "postgresql",       value: fk_qrtz_simple_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_simple_triggers_triggers.name,  dbms: "mysql,mariadb,h2", value: FK_QRTZ_SIMPLE_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_simprop_triggers_triggers.name, dbms: "postgresql",       value: fk_qrtz_simprop_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_simprop_triggers_triggers.name, dbms: "mysql,mariadb,h2", value: FK_QRTZ_SIMPROP_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_triggers_job_details.name,      dbms: "postgresql",       value: fk_qrtz_triggers_job_details}
+  - property: {name: quartz.fk_qrtz_triggers_job_details.name,      dbms: "mysql,mariadb,h2", value: FK_QRTZ_TRIGGERS_JOB_DETAILS}
+  - property: {name: quartz.idx_qrtz_ft_inst_job_req_rcvry.name,    dbms: "postgresql",       value: idx_qrtz_ft_inst_job_req_rcvry}
+  - property: {name: quartz.idx_qrtz_ft_inst_job_req_rcvry.name,    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_INST_JOB_REQ_RCVRY}
+  - property: {name: quartz.idx_qrtz_ft_jg.name,                    dbms: "postgresql",       value: idx_qrtz_ft_jg}
+  - property: {name: quartz.idx_qrtz_ft_jg.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_JG}
+  - property: {name: quartz.idx_qrtz_ft_j_g.name,                   dbms: "postgresql",       value: idx_qrtz_ft_j_g}
+  - property: {name: quartz.idx_qrtz_ft_j_g.name,                   dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_J_G}
+  - property: {name: quartz.idx_qrtz_ft_tg.name,                    dbms: "postgresql",       value: idx_qrtz_ft_tg}
+  - property: {name: quartz.idx_qrtz_ft_tg.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_TG}
+  - property: {name: quartz.idx_qrtz_ft_trig_inst_name.name,        dbms: "postgresql",       value: idx_qrtz_ft_trig_inst_name}
+  - property: {name: quartz.idx_qrtz_ft_trig_inst_name.name,        dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_TRIG_INST_NAME}
+  - property: {name: quartz.idx_qrtz_ft_t_g.name,                   dbms: "postgresql",       value: idx_qrtz_ft_t_g}
+  - property: {name: quartz.idx_qrtz_ft_t_g.name,                   dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_T_G}
+  - property: {name: quartz.idx_qrtz_j_grp.name,                    dbms: "postgresql",       value: idx_qrtz_j_grp}
+  - property: {name: quartz.idx_qrtz_j_grp.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_J_GRP}
+  - property: {name: quartz.idx_qrtz_j_req_recovery.name,           dbms: "postgresql",       value: idx_qrtz_j_req_recovery}
+  - property: {name: quartz.idx_qrtz_j_req_recovery.name,           dbms: "mysql,mariadb,h2", value: IDX_QRTZ_J_REQ_RECOVERY}
+  - property: {name: quartz.idx_qrtz_t_c.name,                      dbms: "postgresql",       value: idx_qrtz_t_c}
+  - property: {name: quartz.idx_qrtz_t_c.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_C}
+  - property: {name: quartz.idx_qrtz_t_g.name,                      dbms: "postgresql",       value: idx_qrtz_t_g}
+  - property: {name: quartz.idx_qrtz_t_g.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_G}
+  - property: {name: quartz.idx_qrtz_t_j.name,                      dbms: "postgresql",       value: idx_qrtz_t_j}
+  - property: {name: quartz.idx_qrtz_t_j.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_J}
+  - property: {name: quartz.idx_qrtz_t_jg.name,                     dbms: "postgresql",       value: idx_qrtz_t_jg}
+  - property: {name: quartz.idx_qrtz_t_jg.name,                     dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_JG}
+  - property: {name: quartz.idx_qrtz_t_next_fire_time.name,         dbms: "postgresql",       value: idx_qrtz_t_next_fire_time}
+  - property: {name: quartz.idx_qrtz_t_next_fire_time.name,         dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NEXT_FIRE_TIME}
+  - property: {name: quartz.idx_qrtz_t_nft_misfire.name,            dbms: "postgresql",       value: idx_qrtz_t_nft_misfire}
+  - property: {name: quartz.idx_qrtz_t_nft_misfire.name,            dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_MISFIRE}
+  - property: {name: quartz.idx_qrtz_t_nft_st.name,                 dbms: "postgresql",       value: idx_qrtz_t_nft_st}
+  - property: {name: quartz.idx_qrtz_t_nft_st.name,                 dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire.name,         dbms: "postgresql",       value: idx_qrtz_t_nft_st_misfire}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire.name,         dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST_MISFIRE}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire_grp.name,     dbms: "postgresql",       value: idx_qrtz_t_nft_st_misfire_grp}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire_grp.name,     dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST_MISFIRE_GRP}
+  - property: {name: quartz.idx_qrtz_t_n_g_state.name,              dbms: "postgresql",       value: idx_qrtz_t_n_g_state}
+  - property: {name: quartz.idx_qrtz_t_n_g_state.name,              dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_N_G_STATE}
+  - property: {name: quartz.idx_qrtz_t_n_state.name,                dbms: "postgresql",       value: idx_qrtz_t_n_state}
+  - property: {name: quartz.idx_qrtz_t_n_state.name,                dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_N_STATE}
+  - property: {name: quartz.idx_qrtz_t_state.name,                  dbms: "postgresql",       value: idx_qrtz_t_state}
+  - property: {name: quartz.idx_qrtz_t_state.name,                  dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_STATE}
+  - property: {name: quartz.instance_name.name,                     dbms: "postgresql",       value: instance_name}
+  - property: {name: quartz.instance_name.name,                     dbms: "mysql,mariadb,h2", value: INSTANCE_NAME}
+  - property: {name: quartz.int_prop_1.name,                        dbms: "postgresql",       value: int_prop_1}
+  - property: {name: quartz.int_prop_1.name,                        dbms: "mysql,mariadb,h2", value: INT_PROP_1}
+  - property: {name: quartz.int_prop_2.name,                        dbms: "postgresql",       value: int_prop_2}
+  - property: {name: quartz.int_prop_2.name,                        dbms: "mysql,mariadb,h2", value: INT_PROP_2}
+  - property: {name: quartz.is_durable.name,                        dbms: "postgresql",       value: is_durable}
+  - property: {name: quartz.is_durable.name,                        dbms: "mysql,mariadb,h2", value: IS_DURABLE}
+  - property: {name: quartz.is_nonconcurrent.name,                  dbms: "postgresql",       value: is_nonconcurrent}
+  - property: {name: quartz.is_nonconcurrent.name,                  dbms: "mysql,mariadb,h2", value: IS_NONCONCURRENT}
+  - property: {name: quartz.is_update_data.name,                    dbms: "postgresql",       value: is_update_data}
+  - property: {name: quartz.is_update_data.name,                    dbms: "mysql,mariadb,h2", value: IS_UPDATE_DATA}
+  - property: {name: quartz.job_class_name.name,                    dbms: "postgresql",       value: job_class_name}
+  - property: {name: quartz.job_class_name.name,                    dbms: "mysql,mariadb,h2", value: JOB_CLASS_NAME}
+  - property: {name: quartz.job_data.name,                          dbms: "postgresql",       value: job_data}
+  - property: {name: quartz.job_data.name,                          dbms: "mysql,mariadb,h2", value: JOB_DATA}
+  - property: {name: quartz.job_group.name,                         dbms: "postgresql",       value: job_group}
+  - property: {name: quartz.job_group.name,                         dbms: "mysql,mariadb,h2", value: JOB_GROUP}
+  - property: {name: quartz.job_name.name,                          dbms: "postgresql",       value: job_name}
+  - property: {name: quartz.job_name.name,                          dbms: "mysql,mariadb,h2", value: JOB_NAME}
+  - property: {name: quartz.last_checkin_time.name,                 dbms: "postgresql",       value: last_checkin_time}
+  - property: {name: quartz.last_checkin_time.name,                 dbms: "mysql,mariadb,h2", value: LAST_CHECKIN_TIME}
+  - property: {name: quartz.lock_name.name,                         dbms: "postgresql",       value: lock_name}
+  - property: {name: quartz.lock_name.name,                         dbms: "mysql,mariadb,h2", value: LOCK_NAME}
+  - property: {name: quartz.long_prop_1.name,                       dbms: "postgresql",       value: long_prop_1}
+  - property: {name: quartz.long_prop_1.name,                       dbms: "mysql,mariadb,h2", value: LONG_PROP_1}
+  - property: {name: quartz.long_prop_2.name,                       dbms: "postgresql",       value: long_prop_2}
+  - property: {name: quartz.long_prop_2.name,                       dbms: "mysql,mariadb,h2", value: LONG_PROP_2}
+  - property: {name: quartz.misfire_instr.name,                     dbms: "postgresql",       value: misfire_instr}
+  - property: {name: quartz.misfire_instr.name,                     dbms: "mysql,mariadb,h2", value: MISFIRE_INSTR}
+  - property: {name: quartz.next_fire_time.name,                    dbms: "postgresql",       value: next_fire_time}
+  - property: {name: quartz.next_fire_time.name,                    dbms: "mysql,mariadb,h2", value: NEXT_FIRE_TIME}
+  - property: {name: quartz.pk_qrtz_blob_triggers.name,             dbms: "postgresql",       value: pk_qrtz_blob_triggers}
+  - property: {name: quartz.pk_qrtz_blob_triggers.name,             dbms: "mysql,mariadb,h2", value: PK_QRTZ_BLOB_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_calendars.name,                 dbms: "postgresql",       value: pk_qrtz_calendars}
+  - property: {name: quartz.pk_qrtz_calendars.name,                 dbms: "mysql,mariadb,h2", value: PK_QRTZ_CALENDARS}
+  - property: {name: quartz.pk_qrtz_cron_triggers.name,             dbms: "postgresql",       value: pk_qrtz_cron_triggers}
+  - property: {name: quartz.pk_qrtz_cron_triggers.name,             dbms: "mysql,mariadb,h2", value: PK_QRTZ_CRON_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_fired_triggers.name,            dbms: "postgresql",       value: pk_qrtz_fired_triggers}
+  - property: {name: quartz.pk_qrtz_fired_triggers.name,            dbms: "mysql,mariadb,h2", value: PK_QRTZ_FIRED_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_job_details.name,               dbms: "postgresql",       value: pk_qrtz_job_details}
+  - property: {name: quartz.pk_qrtz_job_details.name,               dbms: "mysql,mariadb,h2", value: PK_QRTZ_JOB_DETAILS}
+  - property: {name: quartz.pk_qrtz_locks.name,                     dbms: "postgresql",       value: pk_qrtz_locks}
+  - property: {name: quartz.pk_qrtz_locks.name,                     dbms: "mysql,mariadb,h2", value: PK_QRTZ_LOCKS}
+  - property: {name: quartz.pk_qrtz_scheduler_state.name,           dbms: "postgresql",       value: pk_qrtz_scheduler_state}
+  - property: {name: quartz.pk_qrtz_scheduler_state.name,           dbms: "mysql,mariadb,h2", value: PK_QRTZ_SCHEDULER_STATE}
+  - property: {name: quartz.pk_qrtz_simple_triggers.name,           dbms: "postgresql",       value: pk_qrtz_simple_triggers}
+  - property: {name: quartz.pk_qrtz_simple_triggers.name,           dbms: "mysql,mariadb,h2", value: PK_QRTZ_SIMPLE_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_simprop_triggers.name,          dbms: "postgresql",       value: pk_qrtz_simprop_triggers}
+  - property: {name: quartz.pk_qrtz_simprop_triggers.name,          dbms: "mysql,mariadb,h2", value: PK_QRTZ_SIMPROP_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_triggers.name,                  dbms: "postgresql",       value: pk_qrtz_triggers}
+  - property: {name: quartz.pk_qrtz_triggers.name,                  dbms: "mysql,mariadb,h2", value: PK_QRTZ_TRIGGERS}
+  - property: {name: quartz.pk_sched_name.name,                     dbms: "postgresql",       value: pk_sched_name}
+  - property: {name: quartz.pk_sched_name.name,                     dbms: "mysql,mariadb,h2", value: PK_SCHED_NAME}
+  - property: {name: quartz.prev_fire_time.name,                    dbms: "postgresql",       value: prev_fire_time}
+  - property: {name: quartz.prev_fire_time.name,                    dbms: "mysql,mariadb,h2", value: PREV_FIRE_TIME}
+  - property: {name: quartz.priority.name,                          dbms: "postgresql",       value: priority}
+  - property: {name: quartz.priority.name,                          dbms: "mysql,mariadb,h2", value: PRIORITY}
+  - property: {name: quartz.qrtz_blob_triggers.name,                dbms: "postgresql",       value: qrtz_blob_triggers}
+  - property: {name: quartz.qrtz_blob_triggers.name,                dbms: "mysql,mariadb,h2", value: QRTZ_BLOB_TRIGGERS}
+  - property: {name: quartz.qrtz_calendars.name,                    dbms: "postgresql",       value: qrtz_calendars}
+  - property: {name: quartz.qrtz_calendars.name,                    dbms: "mysql,mariadb,h2", value: QRTZ_CALENDARS}
+  - property: {name: quartz.qrtz_cron_triggers.name,                dbms: "postgresql",       value: qrtz_cron_triggers}
+  - property: {name: quartz.qrtz_cron_triggers.name,                dbms: "mysql,mariadb,h2", value: QRTZ_CRON_TRIGGERS}
+  - property: {name: quartz.qrtz_fired_triggers.name,               dbms: "postgresql",       value: qrtz_fired_triggers}
+  - property: {name: quartz.qrtz_fired_triggers.name,               dbms: "mysql,mariadb,h2", value: QRTZ_FIRED_TRIGGERS}
+  - property: {name: quartz.qrtz_job_details.name,                  dbms: "postgresql",       value: qrtz_job_details}
+  - property: {name: quartz.qrtz_job_details.name,                  dbms: "mysql,mariadb,h2", value: QRTZ_JOB_DETAILS}
+  - property: {name: quartz.qrtz_locks.name,                        dbms: "postgresql",       value: qrtz_locks}
+  - property: {name: quartz.qrtz_locks.name,                        dbms: "mysql,mariadb,h2", value: QRTZ_LOCKS}
+  - property: {name: quartz.qrtz_paused_trigger_grps.name,          dbms: "postgresql",       value: qrtz_paused_trigger_grps}
+  - property: {name: quartz.qrtz_paused_trigger_grps.name,          dbms: "mysql,mariadb,h2", value: QRTZ_PAUSED_TRIGGER_GRPS}
+  - property: {name: quartz.qrtz_scheduler_state.name,              dbms: "postgresql",       value: qrtz_scheduler_state}
+  - property: {name: quartz.qrtz_scheduler_state.name,              dbms: "mysql,mariadb,h2", value: QRTZ_SCHEDULER_STATE}
+  - property: {name: quartz.qrtz_simple_triggers.name,              dbms: "postgresql",       value: qrtz_simple_triggers}
+  - property: {name: quartz.qrtz_simple_triggers.name,              dbms: "mysql,mariadb,h2", value: QRTZ_SIMPLE_TRIGGERS}
+  - property: {name: quartz.qrtz_simprop_triggers.name,             dbms: "postgresql",       value: qrtz_simprop_triggers}
+  - property: {name: quartz.qrtz_simprop_triggers.name,             dbms: "mysql,mariadb,h2", value: QRTZ_SIMPROP_TRIGGERS}
+  - property: {name: quartz.qrtz_triggers.name,                     dbms: "postgresql",       value: qrtz_triggers}
+  - property: {name: quartz.qrtz_triggers.name,                     dbms: "mysql,mariadb,h2", value: QRTZ_TRIGGERS}
+  - property: {name: quartz.repeat_count.name,                      dbms: "postgresql",       value: repeat_count}
+  - property: {name: quartz.repeat_count.name,                      dbms: "mysql,mariadb,h2", value: REPEAT_COUNT}
+  - property: {name: quartz.repeat_interval.name,                   dbms: "postgresql",       value: repeat_interval}
+  - property: {name: quartz.repeat_interval.name,                   dbms: "mysql,mariadb,h2", value: REPEAT_INTERVAL}
+  - property: {name: quartz.requests_recovery.name,                 dbms: "postgresql",       value: requests_recovery}
+  - property: {name: quartz.requests_recovery.name,                 dbms: "mysql,mariadb,h2", value: REQUESTS_RECOVERY}
+  - property: {name: quartz.sched_name.name,                        dbms: "postgresql",       value: sched_name}
+  - property: {name: quartz.sched_name.name,                        dbms: "mysql,mariadb,h2", value: SCHED_NAME}
+  - property: {name: quartz.sched_time.name,                        dbms: "postgresql",       value: sched_time}
+  - property: {name: quartz.sched_time.name,                        dbms: "mysql,mariadb,h2", value: SCHED_TIME}
+  - property: {name: quartz.start_time.name,                        dbms: "postgresql",       value: start_time}
+  - property: {name: quartz.start_time.name,                        dbms: "mysql,mariadb,h2", value: START_TIME}
+  - property: {name: quartz.state.name,                             dbms: "postgresql",       value: state}
+  - property: {name: quartz.state.name,                             dbms: "mysql,mariadb,h2", value: STATE}
+  - property: {name: quartz.str_prop_1.name,                        dbms: "postgresql",       value: str_prop_1}
+  - property: {name: quartz.str_prop_1.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_1}
+  - property: {name: quartz.str_prop_2.name,                        dbms: "postgresql",       value: str_prop_2}
+  - property: {name: quartz.str_prop_2.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_2}
+  - property: {name: quartz.str_prop_3.name,                        dbms: "postgresql",       value: str_prop_3}
+  - property: {name: quartz.str_prop_3.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_3}
+  - property: {name: quartz.times_triggered.name,                   dbms: "postgresql",       value: times_triggered}
+  - property: {name: quartz.times_triggered.name,                   dbms: "mysql,mariadb,h2", value: TIMES_TRIGGERED}
+  - property: {name: quartz.time_zone_id.name,                      dbms: "postgresql",       value: time_zone_id}
+  - property: {name: quartz.time_zone_id.name,                      dbms: "mysql,mariadb,h2", value: TIME_ZONE_ID}
+  - property: {name: quartz.trigger_group.name,                     dbms: "postgresql",       value: trigger_group}
+  - property: {name: quartz.trigger_group.name,                     dbms: "mysql,mariadb,h2", value: TRIGGER_GROUP}
+  - property: {name: quartz.trigger_name.name,                      dbms: "postgresql",       value: trigger_name}
+  - property: {name: quartz.trigger_name.name,                      dbms: "mysql,mariadb,h2", value: TRIGGER_NAME}
+  - property: {name: quartz.trigger_state.name,                     dbms: "postgresql",       value: trigger_state}
+  - property: {name: quartz.trigger_state.name,                     dbms: "mysql,mariadb,h2", value: TRIGGER_STATE}
+  - property: {name: quartz.trigger_type.name,                      dbms: "postgresql",       value: trigger_type}
+  - property: {name: quartz.trigger_type.name,                      dbms: "mysql,mariadb,h2", value: TRIGGER_TYPE}
+
   - changeSet:
       id: 89
       author: camsaul
-      comment: 'Added 0.30.0'
+      comment: Added 0.30.0
+      validCheckSum: ANY
       changes:
-        - createTable:
-            tableName: qrtz_job_details
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: description
-                  type: varchar(250)
-              - column:
-                  name: job_class_name
-                  type: varchar(250)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_durable
-                  type: bool
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_nonconcurrent
-                  type: bool
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_update_data
-                  type: bool
-                  constraints:
-                    nullable: false
-              - column:
-                  name: requests_recovery
-                  type: bool
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_data
-                  type: ${blob.type}
-        - addPrimaryKey:
-            tableName: qrtz_job_details
-            columnNames: sched_name, job_name, job_group
-            constraintName: pk_qrtz_job_details
-        - createTable:
-            tableName: qrtz_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: description
-                  type: varchar(250)
-              - column:
-                  name: next_fire_time
-                  type: bigint
-              - column:
-                  name: prev_fire_time
-                  type: bigint
-              - column:
-                  name: priority
-                  type: integer
-              - column:
-                  name: trigger_state
-                  type: varchar(16)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_type
-                  type: varchar(8)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: start_time
-                  type: bigint
-                  constraints:
-                    nullable: false
-              - column:
-                  name: end_time
-                  type: bigint
-              - column:
-                  name: calendar_name
-                  type: varchar(200)
-              - column:
-                  name: misfire_instr
-                  type: smallint
-              - column:
-                  name: job_data
-                  type: ${blob.type}
-        - addPrimaryKey:
-            tableName: qrtz_triggers
-            columnNames: sched_name, trigger_name, trigger_group
-            constraintName: pk_qrtz_triggers
-        - addForeignKeyConstraint:
-            baseTableName: qrtz_triggers
-            baseColumnNames: sched_name, job_name, job_group
-            referencedTableName: qrtz_job_details
-            referencedColumnNames: sched_name, job_name, job_group
-            constraintName: fk_qrtz_triggers_job_details
-        - createTable:
-            tableName: qrtz_simple_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: repeat_count
-                  type: bigint
-                  constraints:
-                    nullable: false
-              - column:
-                  name: repeat_interval
-                  type: bigint
-                  constraints:
-                    nullable: false
-              - column:
-                  name: times_triggered
-                  type: bigint
-                  constraints:
-                    nullable: false
-        - addPrimaryKey:
-            tableName: qrtz_simple_triggers
-            columnNames: sched_name, trigger_name, trigger_group
-            constraintName: pk_qrtz_simple_triggers
-        - addForeignKeyConstraint:
-            baseTableName: qrtz_simple_triggers
-            baseColumnNames: sched_name, trigger_name, trigger_group
-            referencedTableName: qrtz_triggers
-            referencedColumnNames: sched_name, trigger_name, trigger_group
-            constraintName: fk_qrtz_simple_triggers_triggers
-        - createTable:
-            tableName: qrtz_cron_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: cron_expression
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: time_zone_id
-                  type: varchar(80)
-        - addPrimaryKey:
-            tableName: qrtz_cron_triggers
-            columnNames: sched_name, trigger_name, trigger_group
-            constraintName: pk_qrtz_cron_triggers
-        - addForeignKeyConstraint:
-            baseTableName: qrtz_cron_triggers
-            baseColumnNames: sched_name, trigger_name, trigger_group
-            referencedTableName: qrtz_triggers
-            referencedColumnNames: sched_name, trigger_name, trigger_group
-            constraintName: fk_qrtz_cron_triggers_triggers
-        - createTable:
-            tableName: qrtz_simprop_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: str_prop_1
-                  type: varchar(512)
-              - column:
-                  name: str_prop_2
-                  type: varchar(512)
-              - column:
-                  name: str_prop_3
-                  type: varchar(512)
-              - column:
-                  name: int_prop_1
-                  type: int
-              - column:
-                  name: int_prop_2
-                  type: int
-              - column:
-                  name: long_prop_1
-                  type: bigint
-              - column:
-                  name: long_prop_2
-                  type: bigint
-              - column:
-                  name: dec_prop_1
-                  type: numeric(13,4)
-              - column:
-                  name: dec_prop_2
-                  type: numeric(13,4)
-              - column:
-                  name: bool_prop_1
-                  type: bool
-              - column:
-                  name: bool_prop_2
-                  type: bool
-        - addPrimaryKey:
-            tableName: qrtz_simprop_triggers
-            columnNames: sched_name, trigger_name, trigger_group
-            constraintName: pk_qrtz_simprop_triggers
-        - addForeignKeyConstraint:
-            baseTableName: qrtz_simprop_triggers
-            baseColumnNames: sched_name, trigger_name, trigger_group
-            referencedTableName: qrtz_triggers
-            referencedColumnNames: sched_name, trigger_name, trigger_group
-            constraintName: fk_qrtz_simprop_triggers_triggers
-        - createTable:
-            tableName: qrtz_blob_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: blob_data
-                  type: ${blob.type}
-        - addPrimaryKey:
-            tableName: qrtz_blob_triggers
-            columnNames: sched_name, trigger_name, trigger_group
-            constraintName: pk_qrtz_blob_triggers
-        - addForeignKeyConstraint:
-            baseTableName: qrtz_blob_triggers
-            baseColumnNames: sched_name, trigger_name, trigger_group
-            referencedTableName: qrtz_triggers
-            referencedColumnNames: sched_name, trigger_name, trigger_group
-            constraintName: fk_qrtz_blob_triggers_triggers
-        - createTable:
-            tableName: qrtz_calendars
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: calendar_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: calendar
-                  type: ${blob.type}
-                  constraints:
-                    nullable: false
-        - addPrimaryKey:
-            tableName: qrtz_calendars
-            columnNames: sched_name, calendar_name
-            constraintName: pk_qrtz_calendars
-        - createTable:
-            tableName: qrtz_paused_trigger_grps
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-        - addPrimaryKey:
-            tableName: qrtz_paused_trigger_grps
-            columnNames: sched_name, trigger_group
-            constraintName: pk_sched_name
-        - createTable:
-            tableName: qrtz_fired_triggers
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entry_id
-                  type: varchar(95)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: trigger_group
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: instance_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: fired_time
-                  type: bigint
-                  constraints:
-                    nullable: false
-# Note: this column is not used on Quartz 2.1.x; it is used in 2.2.x, which recommends making it NOT NULL. I've made it
-# nullable since at the time of this migration we're still using 2.1.7; including it gives us an easy upgrade path in
-# the future.
-              - column:
-                  name: sched_time
-                  type: bigint
-              - column:
-                  name: priority
-                  type: integer
-                  constraints:
-                    nullable: false
-              - column:
-                  name: state
-                  type: varchar(16)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: job_name
-                  type: varchar(200)
-              - column:
-                  name: job_group
-                  type: varchar(200)
-              - column:
-                  name: is_nonconcurrent
-                  type: bool
-              - column:
-                  name: requests_recovery
-                  type: bool
-        - addPrimaryKey:
-            tableName: qrtz_fired_triggers
-            columnNames: sched_name, entry_id
-            constraintName: pk_qrtz_fired_triggers
-        - createTable:
-            tableName: qrtz_scheduler_state
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: instance_name
-                  type: varchar(200)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: last_checkin_time
-                  type: bigint
-                  constraints:
-                    nullable: false
-              - column:
-                  name: checkin_interval
-                  type: bigint
-                  constraints:
-                    nullable: false
-        - addPrimaryKey:
-            tableName: qrtz_scheduler_state
-            columnNames: sched_name, instance_name
-            constraintName: pk_qrtz_scheduler_state
-        - createTable:
-            tableName: qrtz_locks
-            remarks: 'Used for Quartz scheduler.'
-            columns:
-              - column:
-                  name: sched_name
-                  type: varchar(120)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: lock_name
-                  type: varchar(40)
-                  constraints:
-                    nullable: false
-        - addPrimaryKey:
-            tableName: qrtz_locks
-            columnNames: sched_name, lock_name
-            constraintName: pk_qrtz_locks
-        - createIndex:
-            indexName: idx_qrtz_j_req_recovery
-            tableName: qrtz_job_details
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: requests_recovery
-        - createIndex:
-            indexName: idx_qrtz_j_grp
-            tableName: qrtz_job_details
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: job_group
-        - createIndex:
-            indexName: idx_qrtz_t_j
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: job_name
-              - column:
-                  name: job_group
-        - createIndex:
-            indexName: idx_qrtz_t_jg
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: job_group
-        - createIndex:
-            indexName: idx_qrtz_t_c
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: calendar_name
-        - createIndex:
-            indexName: idx_qrtz_t_g
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_group
-        - createIndex:
-            indexName: idx_qrtz_t_state
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_state
-        - createIndex:
-            indexName: idx_qrtz_t_n_state
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_name
-              - column:
-                  name: trigger_group
-              - column:
-                  name: trigger_state
-        - createIndex:
-            indexName: idx_qrtz_t_n_g_state
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_group
-              - column:
-                  name: trigger_state
-        - createIndex:
-            indexName: idx_qrtz_t_next_fire_time
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: next_fire_time
-        - createIndex:
-            indexName: idx_qrtz_t_nft_st
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_state
-              - column:
-                  name: next_fire_time
-        - createIndex:
-            indexName: idx_qrtz_t_nft_misfire
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: misfire_instr
-              - column:
-                  name: next_fire_time
-        - createIndex:
-            indexName: idx_qrtz_t_nft_st_misfire
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: misfire_instr
-              - column:
-                  name: next_fire_time
-              - column:
-                  name: trigger_state
-        - createIndex:
-            indexName: idx_qrtz_t_nft_st_misfire_grp
-            tableName: qrtz_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: misfire_instr
-              - column:
-                  name: next_fire_time
-              - column:
-                  name: trigger_group
-              - column:
-                  name: trigger_state
-        - createIndex:
-            indexName: idx_qrtz_ft_trig_inst_name
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: instance_name
-        - createIndex:
-            indexName: idx_qrtz_ft_inst_job_req_rcvry
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: instance_name
-              - column:
-                  name: requests_recovery
-        - createIndex:
-            indexName: idx_qrtz_ft_j_g
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: job_name
-              - column:
-                  name: job_group
-        - createIndex:
-            indexName: idx_qrtz_ft_jg
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: job_group
-        - createIndex:
-            indexName: idx_qrtz_ft_t_g
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_name
-              - column:
-                  name: trigger_group
-        - createIndex:
-            indexName: idx_qrtz_ft_tg
-            tableName: qrtz_fired_triggers
-            columns:
-              - column:
-                  name: sched_name
-              - column:
-                  name: trigger_group
+      - createTable:
+          tableName: ${quartz.qrtz_job_details.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.description.name}
+              type: varchar(250)
+          - column:
+              name: ${quartz.job_class_name.name}
+              type: varchar(250)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.is_durable.name}
+              type: bool
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.is_nonconcurrent.name}
+              type: bool
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.is_update_data.name}
+              type: bool
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.requests_recovery.name}
+              type: bool
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_data.name}
+              type: ${blob.type}
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_job_details.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.job_name.name}
+          - ${quartz.job_group.name}
+          constraintName: ${quartz.pk_qrtz_job_details.name}
+      - createTable:
+          tableName: ${quartz.qrtz_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.description.name}
+              type: varchar(250)
+          - column:
+              name: ${quartz.next_fire_time.name}
+              type: bigint
+          - column:
+              name: ${quartz.prev_fire_time.name}
+              type: bigint
+          - column:
+              name: ${quartz.priority.name}
+              type: integer
+          - column:
+              name: ${quartz.trigger_state.name}
+              type: varchar(16)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_type.name}
+              type: varchar(8)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.start_time.name}
+              type: bigint
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.end_time.name}
+              type: bigint
+          - column:
+              name: ${quartz.calendar_name.name}
+              type: varchar(200)
+          - column:
+              name: ${quartz.misfire_instr.name}
+              type: smallint
+          - column:
+              name: ${quartz.job_data.name}
+              type: ${blob.type}
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_qrtz_triggers.name}
+      - addForeignKeyConstraint:
+          baseTableName: ${quartz.qrtz_triggers.name}
+          baseColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.job_name.name}
+          - ${quartz.job_group.name}
+          referencedTableName: ${quartz.qrtz_job_details.name}
+          referencedColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.job_name.name}
+          - ${quartz.job_group.name}
+          constraintName: ${quartz.fk_qrtz_triggers_job_details.name}
+      - createTable:
+          tableName: ${quartz.qrtz_simple_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.repeat_count.name}
+              type: bigint
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.repeat_interval.name}
+              type: bigint
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.times_triggered.name}
+              type: bigint
+              constraints:
+                nullable: false
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_simple_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_qrtz_simple_triggers.name}
+      - addForeignKeyConstraint:
+          baseTableName: ${quartz.qrtz_simple_triggers.name}
+          baseColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          referencedTableName: ${quartz.qrtz_triggers.name}
+          referencedColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.fk_qrtz_simple_triggers_triggers.name}
+      - createTable:
+          tableName: ${quartz.qrtz_cron_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.cron_expression.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.time_zone_id.name}
+              type: varchar(80)
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_cron_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_qrtz_cron_triggers.name}
+      - addForeignKeyConstraint:
+          baseTableName: ${quartz.qrtz_cron_triggers.name}
+          baseColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          referencedTableName: ${quartz.qrtz_triggers.name}
+          referencedColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.fk_qrtz_cron_triggers_triggers.name}
+      - createTable:
+          tableName: ${quartz.qrtz_simprop_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.str_prop_1.name}
+              type: varchar(512)
+          - column:
+              name: ${quartz.str_prop_2.name}
+              type: varchar(512)
+          - column:
+              name: ${quartz.str_prop_3.name}
+              type: varchar(512)
+          - column:
+              name: ${quartz.int_prop_1.name}
+              type: int
+          - column:
+              name: ${quartz.int_prop_2.name}
+              type: int
+          - column:
+              name: ${quartz.long_prop_1.name}
+              type: bigint
+          - column:
+              name: ${quartz.long_prop_2.name}
+              type: bigint
+          - column:
+              name: ${quartz.dec_prop_1.name}
+              type: numeric(13,4)
+          - column:
+              name: ${quartz.dec_prop_2.name}
+              type: numeric(13,4)
+          - column:
+              name: ${quartz.bool_prop_1.name}
+              type: bool
+          - column:
+              name: ${quartz.bool_prop_2.name}
+              type: bool
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_simprop_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_qrtz_simprop_triggers.name}
+      - addForeignKeyConstraint:
+          baseTableName: ${quartz.qrtz_simprop_triggers.name}
+          baseColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          referencedTableName: ${quartz.qrtz_triggers.name}
+          referencedColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.fk_qrtz_simprop_triggers_triggers.name}
+      - createTable:
+          tableName: ${quartz.qrtz_blob_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.blob_data.name}
+              type: ${blob.type}
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_blob_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_qrtz_blob_triggers.name}
+      - addForeignKeyConstraint:
+          baseTableName: ${quartz.qrtz_blob_triggers.name}
+          baseColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          referencedTableName: ${quartz.qrtz_triggers.name}
+          referencedColumnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.fk_qrtz_blob_triggers_triggers.name}
+      - createTable:
+          tableName: ${quartz.qrtz_calendars.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.calendar_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.calendar.name}
+              type: ${blob.type}
+              constraints:
+                nullable: false
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_calendars.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.calendar_name.name}
+          constraintName: ${quartz.pk_qrtz_calendars.name}
+      - createTable:
+          tableName: ${quartz.qrtz_paused_trigger_grps.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_paused_trigger_grps.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.trigger_group.name}
+          constraintName: ${quartz.pk_sched_name.name}
+      - createTable:
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.entry_id.name}
+              type: varchar(95)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.trigger_group.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.instance_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.fired_time.name}
+              type: bigint
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.sched_time.name}
+              type: bigint
+          - column:
+              name: ${quartz.priority.name}
+              type: integer
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.state.name}
+              type: varchar(16)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.job_name.name}
+              type: varchar(200)
+          - column:
+              name: ${quartz.job_group.name}
+              type: varchar(200)
+          - column:
+              name: ${quartz.is_nonconcurrent.name}
+              type: bool
+          - column:
+              name: ${quartz.requests_recovery.name}
+              type: bool
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.entry_id.name}
+          constraintName: ${quartz.pk_qrtz_fired_triggers.name}
+      - createTable:
+          tableName: ${quartz.qrtz_scheduler_state.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.instance_name.name}
+              type: varchar(200)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.last_checkin_time.name}
+              type: bigint
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.checkin_interval.name}
+              type: bigint
+              constraints:
+                nullable: false
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_scheduler_state.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.instance_name.name}
+          constraintName: ${quartz.pk_qrtz_scheduler_state.name}
+      - createTable:
+          tableName: ${quartz.qrtz_locks.name}
+          remarks: Used for Quartz scheduler.
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+              type: varchar(120)
+              constraints:
+                nullable: false
+          - column:
+              name: ${quartz.lock_name.name}
+              type: varchar(40)
+              constraints:
+                nullable: false
+      - addPrimaryKey:
+          tableName: ${quartz.qrtz_locks.name}
+          columnNames:
+          - ${quartz.sched_name.name}
+          - ${quartz.lock_name.name}
+          constraintName: ${quartz.pk_qrtz_locks.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_j_req_recovery.name}
+          tableName: ${quartz.qrtz_job_details.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.requests_recovery.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_j_grp.name}
+          tableName: ${quartz.qrtz_job_details.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.job_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_j.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.job_name.name}
+          - column:
+              name: ${quartz.job_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_jg.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.job_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_c.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.calendar_name.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_g.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_state.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_n_state.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_name.name}
+          - column:
+              name: ${quartz.trigger_group.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_n_g_state.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_group.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_next_fire_time.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.next_fire_time.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_nft_st.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+          - column:
+              name: ${quartz.next_fire_time.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_nft_misfire.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.misfire_instr.name}
+          - column:
+              name: ${quartz.next_fire_time.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_nft_st_misfire.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.misfire_instr.name}
+          - column:
+              name: ${quartz.next_fire_time.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_t_nft_st_misfire_grp.name}
+          tableName: ${quartz.qrtz_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.misfire_instr.name}
+          - column:
+              name: ${quartz.next_fire_time.name}
+          - column:
+              name: ${quartz.trigger_group.name}
+          - column:
+              name: ${quartz.trigger_state.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_trig_inst_name.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.instance_name.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_inst_job_req_rcvry.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.instance_name.name}
+          - column:
+              name: ${quartz.requests_recovery.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_j_g.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.job_name.name}
+          - column:
+              name: ${quartz.job_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_jg.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.job_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_t_g.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_name.name}
+          - column:
+              name: ${quartz.trigger_group.name}
+      - createIndex:
+          indexName: ${quartz.idx_qrtz_ft_tg.name}
+          tableName: ${quartz.qrtz_fired_triggers.name}
+          columns:
+          - column:
+              name: ${quartz.sched_name.name}
+          - column:
+              name: ${quartz.trigger_group.name}
 
   - changeSet:
       id: 90
@@ -5357,10 +5514,7 @@ databaseChangeLog:
       id: 92
       author: camsaul
       comment: 'Added 0.31.0'
-      validCheckSum:
-        - 8:a875945f36824a0667c740888c00c37f
-        - 8:83ded48e18fe8f70d6ec09add042124d
-        - 8:1e5bc2d66778316ea640a561862c23b4
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: query_execution
@@ -5452,23 +5606,11 @@ databaseChangeLog:
 # databases. We only support PostgreSQL, MySQL and H2 which doesn't have that issue. This changeset puts back that
 # uniqueness constraint since the issue shouldn't affect us and it will allow replication without the user needed to
 # add their own constraint.
-#
-# databasechangelog is uppercase in MySQL and H2 but lower-case in Postgres for reasons
-  - property:
-      name: databasechangelog.name
-      value: DATABASECHANGELOG
-      dbms: h2,mysql,mariadb
-  - property:
-      name: databasechangelog.name
-      value: databasechangelog
-      dbms: postgresql
   - changeSet:
       id: 95
       author: senior
       comment: 'Added 0.31.0'
-      validCheckSum:
-        - 8:9824808283004e803003b938399a4cf0
-        - 8:e7cd8168533c58c865dacf320e819218
+      validCheckSum: ANY
       # Don't add the constraint if there are already duplicates in the database change log! Migrations will fail!
       # See #8909
       preConditions:
@@ -5605,19 +5747,29 @@ databaseChangeLog:
       id: 100
       author: camsaul
       comment: 'Added 0.32.0'
-      preConditions:
-        - onFail: MARK_RAN
-        - onUpdateSQL: RUN
-        - tableExists:
-            tableName: databasechangelog
+      validCheckSum: ANY
       changes:
+        # databasechangelog is upper-case in MySQL and MariaDB (and H2 for that matter, but H2 will upper-case the
+        # unquoted identifier)
         - sql:
+            dbms: postgresql,h2
             sql: >-
               UPDATE metric
               SET archived = NOT archived
               WHERE EXISTS (
                 SELECT *
                 FROM databasechangelog dbcl
+                WHERE dbcl.id = '84'
+                  AND metric.updated_at < dbcl.dateexecuted
+              )
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metric
+              SET archived = NOT archived
+              WHERE EXISTS (
+                SELECT *
+                FROM `DATABASECHANGELOG` dbcl
                 WHERE dbcl.id = '84'
                   AND metric.updated_at < dbcl.dateexecuted
               )
@@ -5750,7 +5902,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_calendars` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_CALENDARS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 111
         author: camsaul
@@ -5766,7 +5918,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_fired_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_FIRED_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 112
         author: camsaul
@@ -5782,7 +5934,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_job_DETAILS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_JOB_DETAILS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 113
         author: camsaul
@@ -5798,7 +5950,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_locks` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_LOCKS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 114
         author: camsaul
@@ -5814,7 +5966,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_paused_TRIGGER_GRPS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_PAUSED_TRIGGER_GRPS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 115
         author: camsaul
@@ -5830,7 +5982,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_scheduler_STATE` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_SCHEDULER_STATE` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 116
         author: camsaul
@@ -6022,7 +6174,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_triggers` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 128
         author: camsaul
@@ -6198,7 +6350,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_blob_triggers` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_BLOB_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 139
         author: camsaul
@@ -6214,7 +6366,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_cron_triggers` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_CRON_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 140
         author: camsaul
@@ -6230,7 +6382,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_simple_triggers` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_SIMPLE_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 141
         author: camsaul
@@ -6246,7 +6398,7 @@ databaseChangeLog:
                     type: mariadb
         changes:
           - sql:
-                sql: ALTER TABLE `qrtz_simprop_triggers` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                sql: ALTER TABLE `QRTZ_SIMPROP_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   - changeSet:
         id: 142
         author: camsaul
@@ -6607,9 +6759,7 @@ databaseChangeLog:
       id: 165
       author: sb
       comment: 'Added field_order to Table and database_position to Field'
-      validCheckSum:
-        - 8:474a357368a665d5e0701b9eb5f313f9
-        - 8:8848644da9dd9e40924ae71ac4c7c370
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: metabase_field
@@ -6655,19 +6805,17 @@ databaseChangeLog:
         - modifyDataType:
             tableName: metabase_fieldvalues
             columnName: updated_at
-            newDataType: ${timestamp_type}
+            newDataType: ${timestamp.type}
         - modifyDataType:
             tableName: query_cache
             columnName: updated_at
-            newDataType: ${timestamp_type}
+            newDataType: ${timestamp.type}
 
 # Create the native query snippets table, intended to store snippets and their metadata
   - changeSet:
       id: 167
       author: walterl, camsaul
-      validCheckSum:
-        - 8:4c11dc8c5e829b5263c198fe7879f161
-        - 8:4ed8c3a2d7d00700cc564095ddbb290f
+      validCheckSum: ANY
       comment: 'Added 0.36.0'
       changes:
         # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
@@ -6719,7 +6867,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   # it seems like defaultValueComputed actaully just ends
                   # getting ignored anyway -- see
                   # https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
@@ -6729,7 +6877,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: updated_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -6752,7 +6900,7 @@ databaseChangeLog:
         - modifyDataType:
             tableName: query_execution
             columnName: started_at
-            newDataType: ${timestamp_type}
+            newDataType: ${timestamp.type}
 
 # Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
 # this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
@@ -6784,9 +6932,7 @@ databaseChangeLog:
   - changeSet:
       id: 171
       author: camsaul
-      validCheckSum:
-        - 8:0798080c0796e6ab3e791bff007118b8
-        - 8:57f4fb33fe80309af71dc8c0c8d90362
+      validCheckSum: ANY
       comment: Added 0.36.0
       changes:
         - addColumn:
@@ -8011,9 +8157,7 @@ databaseChangeLog:
       id: 275
       author: dpsutton
       comment: 'Added 0.38.0 refingerprint to Database'
-      validCheckSum:
-        - 8:b976d49f4eb84664649119f5f63465dd
-        - 8:447d9e294f59dd1058940defec7e0f40
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: metabase_database
@@ -8028,9 +8172,7 @@ databaseChangeLog:
       id: 276
       author: robroland
       comment: Added 0.38.0 - Dashboard subscriptions
-      validCheckSum:
-        - 8:dfe9b8333b600c739306caa85d95ad55
-        - 8:59dd1fb0732c7a9b78bce896c0cff3c0
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: pulse_card
@@ -8194,9 +8336,7 @@ databaseChangeLog:
       id: 287
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
-      validCheckSum:
-        - 8:ed47b08ec425a34cf66bd1e96c7b2446
-        - 8:0679eedae767a8648383aac2f923e413
+      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -8222,11 +8362,7 @@ databaseChangeLog:
       id: 288
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps
-      validCheckSum:
-        - 8:4fa37c8edede4a10c39bf5aca13bd1b5
-        - 8:96af0fae84744857640d029cf4cd4bb6
-        - 8:8a8b10ff335892c18394a6e00676a446
-        - 8:943c6dd0c9339729fefcee9207227849
+      validCheckSum: ANY
       changes:
         - sql:
               sql: >-
@@ -8249,9 +8385,7 @@ databaseChangeLog:
       id: 289
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
-      validCheckSum:
-        - 8:c5398e06bc1bd497f9b56d3e8497b88a
-        - 8:9f7f2e9bbf3236f204c644dc8ea7abef
+      validCheckSum: ANY
       changes:
         - sql:
               sql: >-
@@ -8277,9 +8411,7 @@ databaseChangeLog:
   - changeSet:
       id: 291
       author: camsaul
-      validCheckSum:
-        - 8:b3b15e2ad791618e3ab1300a5d4f072f
-        - 8:f1b9110e87c7cb627c29fe6fb243b675
+      validCheckSum: ANY
       comment: Added 0.39.0
       changes:
         - createTable:
@@ -8295,7 +8427,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: timestamp
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   remarks: "When this login occurred."
                   defaultValueComputed: current_timestamp
                   constraints:
@@ -8480,14 +8612,14 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: updated_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   remarks: "most recent modification time"
                   constraints:
                     nullable: false
               - column:
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   remarks: "creation time"
                   constraints:
@@ -8679,11 +8811,7 @@ databaseChangeLog:
       id: 313
       author: jeff303
       comment: Added 0.42.0 - Secret domain object.
-      validCheckSum:
-        - 8:d60aa66f5909d37393ee711dea6996c7 # original checksum under #17649
-        - 8:98f3ccbb3e8efc46f5766fcd51f39d0e # changed creator_id to nullable in #19398
-        - 8:ccfed82cd5d09891c7a380b428e5fbc5 # no idea where these two values come from :(
-        - 8:b4864fb1516837c753bf3a607a8ed655
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: secret
@@ -8721,7 +8849,7 @@ databaseChangeLog:
                     nullable: false
                   name: created_at
                   remarks: Timestamp for when this secret instance was created
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
               - column:
                   constraints:
                     nullable: true
@@ -8729,7 +8857,7 @@ databaseChangeLog:
                   remarks: >-
                     Timestamp for when this secret record was updated. Only relevant when non-value field changes
                     since a value change will result in a new version being inserted.
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
               - column:
                   constraints:
                     nullable: false
@@ -10725,14 +10853,14 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the timeline was created
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   remarks: The timestamp of when the timeline was updated
                   name: updated_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -10776,7 +10904,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: timestamp
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   constraints:
                     nullable: false
                   remarks: When the event happened
@@ -10819,14 +10947,14 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the event was created
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   remarks: The timestamp of when the event was modified
                   name: updated_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -10958,7 +11086,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -11031,7 +11159,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -11104,7 +11232,7 @@ databaseChangeLog:
               - column:
                   remarks: The timestamp of when the bookmark was created
                   name: created_at
-                  type: ${timestamp_type}
+                  type: ${timestamp.type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
