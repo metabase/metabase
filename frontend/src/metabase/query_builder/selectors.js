@@ -22,6 +22,7 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
@@ -279,6 +280,29 @@ export const getQuestion = createSelector(
     return question.isDataset() && hasDataPermission
       ? question.composeDataset()
       : question;
+  },
+);
+
+export const getTimelines = createSelector(
+  [state => state, getQuestion],
+  (state, question) => {
+    if (question) {
+      const entityQuery = { cardId: question.id(), include: "events" };
+      return Timelines.selectors.getList(state, { entityQuery }) ?? [];
+    } else {
+      return [];
+    }
+  },
+);
+
+export const getVisibleTimelines = createSelector(
+  [getQuestion, getTimelines, getTimelineVisibility],
+  (question, timelines, visibility) => {
+    if (question) {
+      return timelines.filter(t => visibility[t.id] ?? question.isSaved());
+    } else {
+      return [];
+    }
   },
 );
 

@@ -64,6 +64,7 @@ import {
   getNativeEditorSelectedText,
   getIsBookmarked,
   getTimelineVisibility,
+  getVisibleTimelines,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -106,6 +107,7 @@ const mapStateToProps = (state, props) => {
 
     query: getQuery(state),
     metadata: getMetadata(state),
+    timelines: getVisibleTimelines(state),
     timelineVisibility: getTimelineVisibility(state),
 
     result: getFirstQueryResult(state),
@@ -178,6 +180,7 @@ function QueryBuilder(props) {
     cancelQuery,
     createBookmark,
     deleteBookmark,
+    loadTimelinesForCard,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -266,6 +269,12 @@ function QueryBuilder(props) {
     closeModal();
     clearTimeout(timeout.current);
   });
+
+  useEffect(() => {
+    if (question && question.hasBreakoutByDateTime()) {
+      loadTimelinesForCard(question.card());
+    }
+  }, [question, loadTimelinesForCard]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;

@@ -387,17 +387,28 @@ function onRenderSetZeroGridLineClassName(chart) {
     .attr("class", "zero");
 }
 
+function onRenderAddEvents(
+  chart,
+  { timelines, xDomain, xInterval, isTimeseries, onHoverChange },
+) {
+  console.log(timelines);
+}
+
 // the various steps that get called
 function onRender(
   chart,
   {
-    onGoalHover,
+    datas,
+    timelines,
     isSplitAxis,
+    xDomain,
     xInterval,
     yAxisSplit,
     isStacked,
+    isTimeseries,
     formatYValue,
-    datas,
+    onGoalHover,
+    onHoverChange,
   },
 ) {
   onRenderRemoveClipPath(chart);
@@ -418,6 +429,13 @@ function onRender(
   onRenderRotateAxis(chart);
   onRenderAddExtraClickHandlers(chart);
   onRenderSetZeroGridLineClassName(chart);
+  onRenderAddEvents(chart, {
+    timelines,
+    xDomain,
+    xInterval,
+    isTimeseries,
+    onHoverChange,
+  });
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
