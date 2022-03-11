@@ -303,14 +303,6 @@ export default class DashboardHeader extends Component {
       );
 
       extraButtons.push(
-        <div
-          className={extraButtonClassNames}
-          onClick={this.handleToggleBookmark}
-        >
-          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
-        </div>,
-      );
-      extraButtons.push(
         <Link
           className={extraButtonClassNames}
           to={location.pathname + "/copy"}
