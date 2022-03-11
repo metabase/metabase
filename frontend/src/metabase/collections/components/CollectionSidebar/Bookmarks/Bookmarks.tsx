@@ -15,7 +15,7 @@ import BookmarksRoot, {
 
 import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import { BookmarkableEntities, Bookmarks } from "metabase-types/api";
+import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
 interface LabelProps {
   name: string;
@@ -24,6 +24,7 @@ interface LabelProps {
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmarks;
+  deleteBookmark: (arg0: string) => void;
 }
 
 function getIconForEntityType(type: BookmarkableEntities) {
@@ -48,24 +49,32 @@ const Label = ({ name, type }: LabelProps) => {
 
 const CollectionSidebarBookmarks = ({
   bookmarks,
+  deleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
   if (bookmarks.length === 0) {
     return null;
   }
+
+  const handleDeleteBookmark = ({ id }: Bookmark) => {
+    deleteBookmark(id);
+  };
 
   return (
     <BookmarksRoot>
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
       <BookmarkListRoot>
-        {bookmarks.map(({ id, name, type }, index) => {
+        {bookmarks.map((bookmark, index) => {
+          const { id, name, type } = bookmark;
           const url = Urls.bookmark({ id, name, type });
           return (
             <BookmarkContainer key={`bookmark-${id}`}>
               <Link to={url}>
                 <Label name={name} type={type} />
               </Link>
-              <BookmarkButtonWrapper>
+              <BookmarkButtonWrapper
+                onClick={() => handleDeleteBookmark(bookmark)}
+              >
                 <Icon name="bookmark" />
               </BookmarkButtonWrapper>
             </BookmarkContainer>
