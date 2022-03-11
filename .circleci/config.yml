@@ -347,10 +347,10 @@ commands:
       skip-job-if-commit-message-includes-ci-quick:
         type: boolean
         default: false
-    # steps:
-      # - restore_cache:
-      #     name: Restore dummy file .SUCCESS if it exists for cache key << parameters.checksum >>
-      #     <<: *CacheKeyRunOnChange
+    steps:
+      - restore_cache:
+          name: Restore dummy file .SUCCESS if it exists for cache key << parameters.checksum >>
+          <<: *CacheKeyRunOnChange
       # - when:
       #     condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
       #     steps:
