@@ -7,6 +7,7 @@ import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { DimensionPicker } from "./DimensionPicker";
@@ -172,6 +173,19 @@ export default class DimensionList extends Component {
     );
   }
 
+  renderItemIcon = item => {
+    if (item.dimension) {
+      const dimension = this._getDimensionFromItem(item);
+      if (dimension) {
+        return (
+          <DimensionInfoPopover dimension={dimension}>
+            <Icon name={dimension.icon()} size={18} />
+          </DimensionInfoPopover>
+        );
+      }
+    }
+  };
+
   _getDimensionFromItem(item) {
     const {
       enableSubDimensions,
@@ -235,6 +249,7 @@ export default class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
+        renderItemIcon={this.renderItemIcon}
         getItemClassName={() => "hover-parent hover--display"}
       />
     );

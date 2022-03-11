@@ -6,6 +6,7 @@ import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DimensionPicker } from "metabase/query_builder/components/DimensionPicker";
 import Icon from "metabase/components/Icon";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 import { getSelectedSubDimensionName } from "../utils";
 
@@ -76,7 +77,9 @@ export const DimensionListItem = ({
     >
       <DimensionListItemContent>
         <DimensionListItemTitleContainer onClick={handleChange}>
-          <DimensionListItemIcon name={iconName} size={18} />
+          <DimensionInfoPopover dimension={dimension}>
+            <DimensionListItemIcon name={iconName} size={18} />
+          </DimensionInfoPopover>
           <DimensionListItemTitle data-testid="dimension-list-item-name">
             {name}
           </DimensionListItemTitle>
