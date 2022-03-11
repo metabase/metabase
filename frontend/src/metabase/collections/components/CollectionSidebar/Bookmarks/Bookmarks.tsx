@@ -3,10 +3,13 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
+import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
-  BookmarkLinkRoot,
+  BookmarkButtonWrapper,
+  BookmarkContainer,
+  BookmarkListRoot,
   BookmarkTypeIcon,
 } from "./Bookmarks.styled";
 
@@ -54,16 +57,21 @@ const CollectionSidebarBookmarks = ({
     <BookmarksRoot>
       <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
 
-      <BookmarkLinkRoot>
+      <BookmarkListRoot>
         {bookmarks.map(({ id, name, type }, index) => {
           const url = Urls.bookmark({ id, name, type });
           return (
-            <Link key={`bookmark-${id}`} to={url}>
-              <Label name={name} type={type} />
-            </Link>
+            <BookmarkContainer key={`bookmark-${id}`}>
+              <Link to={url}>
+                <Label name={name} type={type} />
+              </Link>
+              <BookmarkButtonWrapper>
+                <Icon name="bookmark" />
+              </BookmarkButtonWrapper>
+            </BookmarkContainer>
           );
         })}
-      </BookmarkLinkRoot>
+      </BookmarkListRoot>
     </BookmarksRoot>
   );
 };
