@@ -46,7 +46,7 @@ function getXAxis(chart) {
 }
 
 function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
-  const [[xAxisDomainLine]] = xAxis.select("path.domain");
+  const xAxisDomainLine = xAxis.select("path.domain").node();
   const { width: axisWidth } = xAxisDomainLine.getBoundingClientRect();
 
   const scale = timeseriesScale(xInterval)
@@ -80,7 +80,7 @@ function renderXAxis(xAxis) {
   });
 }
 
-function renderEventTicks(chart, eventAxis, eventGroups) {
+function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
   const brushLayer = chart.svg().select("g.brush");
   const brushLayerHeight = brushLayer.select("rect.background").attr("height");
 
@@ -129,12 +129,16 @@ function renderEventTicks(chart, eventAxis, eventGroups) {
           `translate(${EVENT_GROUP_COUNT_MARGIN_LEFT},${EVENT_GROUP_COUNT_MARGIN_TOP})`,
         );
     }
+
+    eventIconContainer.on("click", () => {
+      onOpenTimelines();
+    });
   });
 }
 
 export function renderEvents(
   chart,
-  { timelineEvents, xDomain, xInterval, isTimeseries },
+  { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
 ) {
   const xAxis = getXAxis(chart);
   if (!xAxis || !isTimeseries) {
@@ -149,7 +153,7 @@ export function renderEvents(
   }
 
   const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
-  renderEventTicks(chart, eventAxis, eventGroups);
+  renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines);
   renderXAxis(xAxis);
 }
 

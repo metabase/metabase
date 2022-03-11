@@ -103,6 +103,7 @@ export default class VisualizationResult extends Component {
           metadata={question.metadata()}
           timelineEvents={timelineEvents}
           handleVisualizationClick={this.props.handleVisualizationClick}
+          onOpenTimelines={this.props.onOpenTimelines}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={

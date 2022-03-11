@@ -390,9 +390,15 @@ function onRenderSetZeroGridLineClassName(chart) {
 
 function onRenderAddEvents(
   chart,
-  { timelineEvents, xDomain, xInterval, isTimeseries },
+  { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
 ) {
-  renderEvents(chart, { timelineEvents, xDomain, xInterval, isTimeseries });
+  renderEvents(chart, {
+    timelineEvents,
+    xDomain,
+    xInterval,
+    isTimeseries,
+    onOpenTimelines,
+  });
 }
 
 // the various steps that get called
@@ -409,7 +415,7 @@ function onRender(
     isTimeseries,
     formatYValue,
     onGoalHover,
-    onHoverChange,
+    onOpenTimelines,
   },
 ) {
   onRenderRemoveClipPath(chart);
@@ -435,7 +441,7 @@ function onRender(
     xDomain,
     xInterval,
     isTimeseries,
-    onHoverChange,
+    onOpenTimelines,
   });
 }
 
