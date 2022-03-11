@@ -1,9 +1,9 @@
-name: E2E Tests Recorded
+name: E2E Tests
 
 on:
   push:
     branches:
-      - 'cy2'
+      - 'master'
 
 jobs:
 
@@ -61,7 +61,6 @@ jobs:
           - "moderation"
           - "native"
           - "native-filters"
-          - "native"
           - "permissions"
           - "question"
           - "sharing"
@@ -104,7 +103,6 @@ jobs:
       uses: ./.github/actions/prepare-backend
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
-
     - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
@@ -114,8 +112,8 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{matrix.folder}}
-      name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{matrix.folder}}
       env:
         TERM: xterm
     - name: Upload Cypress recording upon failure
