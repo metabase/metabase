@@ -5,6 +5,7 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
   const process = (source, type) => resolve(parse(source), type, mockResolve);
   const filter = expr => process(expr, "boolean");
+  const aggregation = expr => process(expr, "aggregation");
 
   // handy references
   const X = ["segment", "X"];
@@ -155,8 +156,8 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   });
 
   it("should detect aggregation functions with no argument", () => {
-    expect(process("COUNT/2")).toEqual(["/", ["count"], 2]);
-    expect(process("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
+    expect(aggregation("COUNT/2")).toEqual(["/", ["count"], 2]);
+    expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
   });
 
   it("should resolve segments", () => {
