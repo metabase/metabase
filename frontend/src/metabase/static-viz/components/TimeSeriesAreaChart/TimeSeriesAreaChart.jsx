@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { scaleLinear, scaleTime } from "@visx/scale";
+import { scaleLinear, scaleBand } from "@visx/scale";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { AreaClosed, LinePath } from "@visx/shape";
@@ -71,12 +71,10 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
   const bottomLabel = labels?.bottom;
   const palette = { ...layout.colors, ...colors };
 
-  const xScale = scaleTime({
-    domain: [
-      Math.min(...data.map(accessors.x)),
-      Math.max(...data.map(accessors.x)),
-    ],
+  const xScale = scaleBand({
+    domain: data.map(accessors.x),
     range: [xMin, xMax],
+    round: true,
   });
 
   const yScale = scaleLinear({
@@ -98,14 +96,14 @@ const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
         yScale={yScale}
         fill={palette.brand}
         opacity={layout.areaOpacity}
-        x={d => xScale(accessors.x(d))}
+        x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
         y={d => yScale(accessors.y(d))}
       />
       <LinePath
         data={data}
         stroke={palette.brand}
         strokeWidth={layout.strokeWidth}
-        x={d => xScale(accessors.x(d))}
+        x={d => xScale(accessors.x(d)) + xScale.bandwidth() / 2}
         y={d => yScale(accessors.y(d))}
       />
       <AxisLeft
