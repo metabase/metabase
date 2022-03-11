@@ -351,50 +351,50 @@ commands:
       - restore_cache:
           name: Restore dummy file .SUCCESS if it exists for cache key << parameters.checksum >>
           <<: *CacheKeyRunOnChange
-      # - when:
-      #     condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
-      #     steps:
-      #       - run:
-      #           name: "Skip tests (create dummy file .SUCCESS) if commit message contains [ci quick] and branch isn't a master/release branch"
-      #           command: |
-      #             if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
-      #                 echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
-      #             elif [[ `cat .COMMIT` == *"[ci quick]"* ]]; then
-      #                 echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
-      #                 touch .SUCCESS
-      #             else
-      #                 echo 'Commit message does not include [ci quick]'
-      #             fi
-      # - run:
-      #     name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
-      #     command: |
-      #       if [[ `cat .COMMIT` == *"[ci noskip]"* ]]; then
-      #           echo 'Commit message includes [ci noskip] -- forcing test run (delete .SUCCESS)'
-      #           rm -f .SUCCESS
-      #       else
-      #           echo 'Commit message does not include [ci noskip]'
-      #       fi
-      # - run:
-      #     name: Skip rest of job if .SUCCESS exists
-      #     command: |
-      #       if [ -f .SUCCESS ]; then
-      #           echo '.SUCCESS is present: skipping rest of job.'
-      #           echo "Link to last successful run (if available): $(cat .SUCCESS)"
-      #           circleci-agent step halt
-      #       fi
-      # - steps: << parameters.steps >>
-      # - run:
-      #     name: Create dummy file .SUCCESS
-      #     command: |
-      #       echo "$CIRCLE_BUILD_URL" > .SUCCESS
-      # - save_cache:
-      #     name: Persist dummy file .SUCCESS to cache with key << parameters.checksum >>
-      #     <<: *CacheKeyRunOnChange
-      #     paths:
-      #       - /home/circleci/metabase/metabase/.SUCCESS
-      # - run:
-      #     name: Delete dummy file .SUCCESS so subsequent steps don't see it
-      #     command: rm /home/circleci/metabase/metabase/.SUCCESS
+      - when:
+          condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
+          steps:
+            - run:
+                name: "Skip tests (create dummy file .SUCCESS) if commit message contains [ci quick] and branch isn't a master/release branch"
+                command: |
+                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
+                      echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
+                  elif [[ `cat .COMMIT` == *"[ci quick]"* ]]; then
+                      echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
+                      touch .SUCCESS
+                  else
+                      echo 'Commit message does not include [ci quick]'
+                  fi
+      - run:
+          name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
+          command: |
+            if [[ `cat .COMMIT` == *"[ci noskip]"* ]]; then
+                echo 'Commit message includes [ci noskip] -- forcing test run (delete .SUCCESS)'
+                rm -f .SUCCESS
+            else
+                echo 'Commit message does not include [ci noskip]'
+            fi
+      - run:
+          name: Skip rest of job if .SUCCESS exists
+          command: |
+            if [ -f .SUCCESS ]; then
+                echo '.SUCCESS is present: skipping rest of job.'
+                echo "Link to last successful run (if available): $(cat .SUCCESS)"
+                circleci-agent step halt
+            fi
+      - steps: << parameters.steps >>
+      - run:
+          name: Create dummy file .SUCCESS
+          command: |
+            echo "$CIRCLE_BUILD_URL" > .SUCCESS
+      - save_cache:
+          name: Persist dummy file .SUCCESS to cache with key << parameters.checksum >>
+          <<: *CacheKeyRunOnChange
+          paths:
+            - /home/circleci/metabase/metabase/.SUCCESS
+      - run:
+          name: Delete dummy file .SUCCESS so subsequent steps don't see it
+          command: rm /home/circleci/metabase/metabase/.SUCCESS
 
   # Creates a file that contains checksums for all the files found using the find command with supplied arguments.
   # You can use a checksum of the checksum file for cache keys including run-on-change cache keys.
@@ -938,9 +938,9 @@ jobs:
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
-                  - restore_cache:
-                      name: Restore cached uberjar built in previous step
-                      <<: *CacheKeyUberjar
+                  # - restore_cache:
+                  #     name: Restore cached uberjar built in previous step
+                  #     <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
