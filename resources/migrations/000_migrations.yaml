@@ -4824,10 +4824,7 @@ databaseChangeLog:
                   type: ${blob.type}
         - addPrimaryKey:
             tableName: ${quartz.qrtz_job_details.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.job_name.name}
-              - ${quartz.job_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
             constraintName: ${quartz.pk_qrtz_job_details.name}
         - createTable:
             tableName: ${quartz.qrtz_triggers.name}
@@ -4897,24 +4894,15 @@ databaseChangeLog:
               - column:
                   name: ${quartz.job_data.name}
                   type: ${blob.type}
-          - addPrimaryKey:
-              tableName: ${quartz.qrtz_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+        - addPrimaryKey:
+            tableName: ${quartz.qrtz_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_qrtz_triggers.name}
         - addForeignKeyConstraint:
             baseTableName: ${quartz.qrtz_triggers.name}
-            baseColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.job_name.name}
-              - ${quartz.job_group.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
             referencedTableName: ${quartz.qrtz_job_details.name}
-            referencedColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.job_name.name}
-              - ${quartz.job_group.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
             constraintName: ${quartz.fk_qrtz_triggers_job_details.name}
         - createTable:
             tableName: ${quartz.qrtz_simple_triggers.name}
@@ -4952,22 +4940,13 @@ databaseChangeLog:
                     nullable: false
         - addPrimaryKey:
             tableName: ${quartz.qrtz_simple_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_qrtz_simple_triggers.name}
         - addForeignKeyConstraint:
             baseTableName: ${quartz.qrtz_simple_triggers.name}
-            baseColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             referencedTableName: ${quartz.qrtz_triggers.name}
-            referencedColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.fk_qrtz_simple_triggers_triggers.name}
         - createTable:
             tableName: ${quartz.qrtz_cron_triggers.name}
@@ -4998,22 +4977,13 @@ databaseChangeLog:
                   type: varchar(80)
         - addPrimaryKey:
             tableName: ${quartz.qrtz_cron_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_qrtz_cron_triggers.name}
         - addForeignKeyConstraint:
             baseTableName: ${quartz.qrtz_cron_triggers.name}
-            baseColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             referencedTableName: ${quartz.qrtz_triggers.name}
-            referencedColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.fk_qrtz_cron_triggers_triggers.name}
         - createTable:
             tableName: ${quartz.qrtz_simprop_triggers.name}
@@ -5069,22 +5039,13 @@ databaseChangeLog:
                   type: bool
         - addPrimaryKey:
             tableName: ${quartz.qrtz_simprop_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_qrtz_simprop_triggers.name}
         - addForeignKeyConstraint:
             baseTableName: ${quartz.qrtz_simprop_triggers.name}
-            baseColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             referencedTableName: ${quartz.qrtz_triggers.name}
-            referencedColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.fk_qrtz_simprop_triggers_triggers.name}
         - createTable:
             tableName: ${quartz.qrtz_blob_triggers.name}
@@ -5110,22 +5071,13 @@ databaseChangeLog:
                   type: ${blob.type}
         - addPrimaryKey:
             tableName: ${quartz.qrtz_blob_triggers.name}
-            columnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.pk_qrtz_blob_triggers.name}
         - addForeignKeyConstraint:
             baseTableName: ${quartz.qrtz_blob_triggers.name}
-            baseColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             referencedTableName: ${quartz.qrtz_triggers.name}
-            referencedColumnNames:
-              - ${quartz.sched_name.name}
-              - ${quartz.trigger_name.name}
-              - ${quartz.trigger_group.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
             constraintName: ${quartz.fk_qrtz_blob_triggers_triggers.name}
         - createTable:
             tableName: ${quartz.qrtz_calendars.name}
@@ -5206,6 +5158,9 @@ databaseChangeLog:
                   type: bigint
                   constraints:
                     nullable: false
+# Note: this column is not used on Quartz 2.1.x; it is used in 2.2.x, which recommends making it NOT NULL. I've made it
+# nullable since at the time of this migration we're still using 2.1.7; including it gives us an easy upgrade path in
+# the future.
               - column:
                   name: ${quartz.sched_time.name}
                   type: bigint
