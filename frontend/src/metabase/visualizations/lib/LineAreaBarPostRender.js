@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
-import { renderEvents } from "./timelines";
+import { hasEventAxis, renderEvents } from "./timelines";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -453,6 +453,7 @@ function beforeRenderHideDisabledAxesAndLabels(chart) {
 // min margin
 const MARGIN_TOP_MIN = 20; // needs to be large enough for goal line text
 const MARGIN_BOTTOM_MIN = 10;
+const MARGIN_BOTTOM_MIN_WITH_EVENT_AXIS = 80;
 const MARGIN_HORIZONTAL_MIN = 20;
 
 // extra padding for axis
@@ -602,7 +603,7 @@ function beforeRenderComputeXAxisLabelType(chart) {
   }
 }
 
-function beforeRenderFixMargins(chart) {
+function beforeRenderFixMargins(chart, { timelines, xDomain, isTimeseries }) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
   const xAxisMargin = computeXAxisMargin(chart);
@@ -649,14 +650,18 @@ function beforeRenderFixMargins(chart) {
     chart.margins().right,
     mins.right,
   );
-  chart.margins().bottom = Math.max(MARGIN_BOTTOM_MIN, chart.margins().bottom);
+
+  const minBottomMargin = hasEventAxis(chart, timelines, xDomain, isTimeseries)
+    ? MARGIN_BOTTOM_MIN_WITH_EVENT_AXIS
+    : MARGIN_BOTTOM_MIN;
+  chart.margins().bottom = Math.max(minBottomMargin, chart.margins().bottom);
 }
 
 // collection of function calls that get made *before* we tell the Chart to render
-function beforeRender(chart) {
+function beforeRender(chart, { timelines, xDomain, isTimeseries }) {
   beforeRenderComputeXAxisLabelType(chart);
   beforeRenderHideDisabledAxesAndLabels(chart);
-  beforeRenderFixMargins(chart);
+  beforeRenderFixMargins(chart, { timelines, xDomain, isTimeseries });
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -665,7 +670,7 @@ function beforeRender(chart) {
 
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 export default function lineAndBarOnRender(chart, args) {
-  beforeRender(chart);
+  beforeRender(chart, args);
   chart.on("renderlet.on-render", () => onRender(chart, args));
   chart.render();
 }

@@ -157,3 +157,12 @@ export function renderEvents(
   renderEventTicks(chart, eventAxis, eventGroups);
   renderXAxis(xAxis);
 }
+
+export function hasEventAxis(chart, { timelines, xDomain, isTimeseries }) {
+  if (!isTimeseries) {
+    return false;
+  }
+
+  const events = getDomainEvents(getFlatEvents(timelines), xDomain);
+  return events.length > 0;
+}
