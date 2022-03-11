@@ -65,6 +65,7 @@ import {
   getIsBookmarked,
   getTimelineVisibility,
   getVisibleTimelines,
+  getVisibleTimelineEvents,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -107,7 +108,9 @@ const mapStateToProps = (state, props) => {
 
     query: getQuery(state),
     metadata: getMetadata(state),
+
     timelines: getVisibleTimelines(state),
+    timelineEvents: getVisibleTimelineEvents(state),
     timelineVisibility: getTimelineVisibility(state),
 
     result: getFirstQueryResult(state),

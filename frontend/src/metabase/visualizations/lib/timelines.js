@@ -1,7 +1,6 @@
 import d3 from "d3";
 import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
-import { parseTimestamp } from "metabase/lib/time";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
@@ -11,19 +10,16 @@ const EVENT_ICON_MARGIN_TOP = 10;
 const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
 const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
 
-function getFlatEvents(timelines) {
-  return timelines
-    .flatMap(timeline => timeline.events)
-    .map(event => ({ ...event, timestamp: parseTimestamp(event.timestamp) }));
+function isAxisEvent(event, [xAxisMin, xAxisMax]) {
+  return (
+    event.timestamp.isSame(xAxisMin) ||
+    event.timestamp.isBetween(xAxisMin, xAxisMax) ||
+    event.timestamp.isSame(xAxisMax)
+  );
 }
 
-function getDomainEvents(events, [xDomainMin, xDomainMax]) {
-  return events.filter(
-    event =>
-      event.timestamp.isSame(xDomainMin) ||
-      event.timestamp.isBetween(xDomainMin, xDomainMax) ||
-      event.timestamp.isSame(xDomainMax),
-  );
+function getAxisEvents(events, xDomain) {
+  return events.filter(event => isAxisEvent(event, xDomain));
 }
 
 function getEventGroups(events, xInterval) {
@@ -138,14 +134,14 @@ function renderEventTicks(chart, eventAxis, eventGroups) {
 
 export function renderEvents(
   chart,
-  { timelines, xDomain, xInterval, isTimeseries },
+  { timelineEvents, xDomain, xInterval, isTimeseries },
 ) {
   const xAxis = getXAxis(chart);
   if (!xAxis || !isTimeseries) {
     return;
   }
 
-  const events = getDomainEvents(getFlatEvents(timelines), xDomain);
+  const events = getAxisEvents(timelineEvents, xDomain);
   const eventGroups = getEventGroups(events, xInterval);
   const eventTicks = getEventTicks(eventGroups);
   if (!events.length) {
@@ -157,11 +153,10 @@ export function renderEvents(
   renderXAxis(xAxis);
 }
 
-export function hasEventAxis(chart, { timelines, xDomain, isTimeseries }) {
+export function hasEventAxis(chart, { timelineEvents, xDomain, isTimeseries }) {
   if (!isTimeseries) {
     return false;
   }
 
-  const events = getDomainEvents(getFlatEvents(timelines), xDomain);
-  return events.length > 0;
+  return timelineEvents.some(event => isAxisEvent(event, xDomain));
 }
