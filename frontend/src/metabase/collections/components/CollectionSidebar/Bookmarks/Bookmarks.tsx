@@ -12,20 +12,31 @@ import BookmarksRoot, {
 
 import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import { Bookmarks } from "metabase-types/api";
+import { BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
 interface LabelProps {
   name: string;
+  type: BookmarkableEntities;
 }
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmarks;
 }
 
-const Label = ({ name }: LabelProps) => {
+function getIconForEntityType(type: BookmarkableEntities) {
+  const icons = {
+    card: "grid",
+    collection: "folder",
+  };
+
+  return icons[type];
+}
+
+const Label = ({ name, type }: LabelProps) => {
+  const iconName = getIconForEntityType(type);
   return (
     <LabelContainer>
-      <BookmarkTypeIcon name="grid" />
+      <BookmarkTypeIcon name={iconName} />
       {name}
     </LabelContainer>
   );
@@ -47,7 +58,7 @@ const CollectionSidebarBookmarks = ({
           const url = Urls.bookmark({ id, name, type });
           return (
             <Link key={`bookmark-${id}`} to={url}>
-              <Label name={name} />
+              <Label name={name} type={type} />
             </Link>
           );
         })}

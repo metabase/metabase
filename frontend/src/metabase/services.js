@@ -25,6 +25,7 @@ export const BookmarkApi = {
     delete: DELETE("/api/bookmark/collection/:id"),
   },
 };
+
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
