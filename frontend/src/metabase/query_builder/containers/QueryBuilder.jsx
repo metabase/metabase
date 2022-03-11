@@ -63,6 +63,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
+  getTimelineVisibility,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -105,6 +106,7 @@ const mapStateToProps = (state, props) => {
 
     query: getQuery(state),
     metadata: getMetadata(state),
+    timelineVisibility: getTimelineVisibility(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -187,13 +189,15 @@ function QueryBuilder(props) {
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
 
-  const openModal = useCallback(modal => setUIControls({ modal }), [
-    setUIControls,
-  ]);
+  const openModal = useCallback(
+    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    [setUIControls],
+  );
 
-  const closeModal = useCallback(() => setUIControls({ modal: null }), [
-    setUIControls,
-  ]);
+  const closeModal = useCallback(
+    () => setUIControls({ modal: null, modalContext: null }),
+    [setUIControls],
+  );
 
   const setRecentlySaved = useCallback(
     recentlySaved => {
