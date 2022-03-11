@@ -1567,7 +1567,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: object
-                  type: varchar
+                  type: ${text.type}
                   constraints:
                     nullable: false
               - column:
@@ -1709,7 +1709,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: details
-                  type: varchar
+                  type: ${text.type}
                   constraints:
                     nullable: false
         - createIndex:
@@ -5452,6 +5452,16 @@ databaseChangeLog:
 # databases. We only support PostgreSQL, MySQL and H2 which doesn't have that issue. This changeset puts back that
 # uniqueness constraint since the issue shouldn't affect us and it will allow replication without the user needed to
 # add their own constraint.
+#
+# databasechangelog is uppercase in MySQL and H2 but lower-case in Postgres for reasons
+  - property:
+      name: databasechangelog.name
+      value: DATABASECHANGELOG
+      dbms: h2,mysql,mariadb
+  - property:
+      name: databasechangelog.name
+      value: databasechangelog
+      dbms: postgresql
   - changeSet:
       id: 95
       author: senior
@@ -5473,7 +5483,7 @@ databaseChangeLog:
         - addUniqueConstraint:
             columnNames: id, author, filename
             constraintName: idx_databasechangelog_id_author_filename
-            tableName: databasechangelog
+            tableName: ${databasechangelog.name}
 #
 # ADD Field.settings COLUMN
 #
