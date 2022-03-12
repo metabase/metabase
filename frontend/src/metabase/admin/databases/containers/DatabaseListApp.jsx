@@ -29,6 +29,7 @@ import {
   addSampleDatabase,
   closeSyncingModal,
 } from "../database";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 const RELOAD_INTERVAL = 2000;
 
@@ -47,6 +48,7 @@ const mapStateToProps = (state, props) => ({
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
+  isAdmin: getUserIsAdmin(state, props),
 });
 
 const mapDispatchToProps = {
@@ -93,6 +95,7 @@ export default class DatabaseList extends Component {
     created: PropTypes.string,
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
+    isAdmin: PropTypes.bool,
   };
 
   render() {
@@ -103,6 +106,7 @@ export default class DatabaseList extends Component {
       addSampleDatabaseError,
       engines,
       deletionError,
+      isAdmin,
     } = this.props;
     const { isSyncingModalOpened } = this.state;
 
@@ -111,10 +115,12 @@ export default class DatabaseList extends Component {
     return (
       <div className="wrapper">
         <section className="PageHeader px2 clearfix">
-          <Link
-            to="/admin/databases/create"
-            className="Button Button--primary float-right"
-          >{t`Add database`}</Link>
+          {isAdmin && (
+            <Link
+              to="/admin/databases/create"
+              className="Button Button--primary float-right"
+            >{t`Add database`}</Link>
+          )}
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
         {error && (
@@ -180,11 +186,12 @@ export default class DatabaseList extends Component {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                {isAddingSampleDatabase ? (
+                {isAddingSampleDatabase && (
                   <span className="text-light no-decoration">
                     {t`Restoring the sample database...`}
                   </span>
-                ) : (
+                )}
+                {!isAddingSampleDatabase && isAdmin && (
                   <a
                     className="text-light text-brand-hover no-decoration"
                     onClick={() => this.props.addSampleDatabase()}

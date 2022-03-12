@@ -8,4 +8,4 @@ export const canAccessDataModel = ({ can_access_data_model }: User) =>
 
 export const canAccessDatabaseManagement = ({
   can_access_database_management,
-}: User) => can_access_database_management;
+}: User) => true;
