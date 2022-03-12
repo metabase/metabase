@@ -81,6 +81,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -799,6 +800,10 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
     queries.push(question.composeDataset().query());
   }
   return dispatch(loadMetadataForQueries(queries));
+};
+
+export const loadTimelinesForCard = card => dispatch => {
+  dispatch(Timelines.actions.fetchList({ cardId: card.id, include: "events" }));
 };
 
 function hasNewColumns(question, queryResult) {
