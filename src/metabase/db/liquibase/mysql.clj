@@ -1,10 +1,10 @@
 (ns metabase.db.liquibase.mysql
   (:require [clojure.string :as str])
-  (:import liquibase.database.Database
-           liquibase.database.core.MySQLDatabase
-           (liquibase.sql Sql UnparsedSql)
+  (:import liquibase.database.core.MySQLDatabase
+           liquibase.database.Database
+           [liquibase.sql Sql UnparsedSql]
+           [liquibase.sqlgenerator.core CreateTableGenerator SetColumnRemarksGenerator]
            liquibase.sqlgenerator.SqlGeneratorFactory
-           (liquibase.sqlgenerator.core CreateTableGenerator SetColumnRemarksGenerator)
            liquibase.structure.DatabaseObject))
 
 (defn- mysql? [database]

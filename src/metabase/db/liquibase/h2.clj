@@ -1,8 +1,6 @@
 (ns metabase.db.liquibase.h2
   "Custom implementation of the Liquibase H2 adapter that uppercases all identifiers. See #20611 for more details."
-  (:require [clojure.string :as str]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u])
+  (:require [metabase.util :as u])
   (:import liquibase.database.core.H2Database
            liquibase.database.jvm.JdbcConnection))
 
