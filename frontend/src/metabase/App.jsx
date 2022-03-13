@@ -96,10 +96,7 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <div
-          className="relative flex"
-          style={{ height: "100vh", overflow: "hidden" }}
-        >
+        <div className="relative flex" style={{ height: "100vh" }}>
           {this.hasNavbar() && this.state.sidebarOpen && (
             <Navbar location={location} />
           )}
