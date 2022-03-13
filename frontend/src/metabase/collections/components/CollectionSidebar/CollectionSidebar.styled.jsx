@@ -49,10 +49,12 @@ export const Sidebar = styled.aside`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("text-medium")};
+  color: ${color("white")};
   font-weight: 700;
-  margin-left: ${space(3)};
+  font-size: 12px;
+  margin-left: ${space(2)};
   text-transform: uppercase;
+  letter-spacing: 0.1px;
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon)`
