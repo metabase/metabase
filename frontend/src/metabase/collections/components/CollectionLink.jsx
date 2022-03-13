@@ -33,6 +33,7 @@ const CollectionLink = styled(Link)`
       ? color("brand-light")
       : "inherit"};
   :hover {
+    color: ${color("brand")};
     background-color: ${props =>
       props.selected
         ? false

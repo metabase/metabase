@@ -36,7 +36,7 @@ export const ChildrenContainer = styled.div`
 
 export const ExpandCollectionButton = styled(IconButtonWrapper)`
   align-items: center;
-  color: ${color("brand")};
+  color: ${color("white")};
   cursor: pointer;
   left: -20px;
   position: absolute;
