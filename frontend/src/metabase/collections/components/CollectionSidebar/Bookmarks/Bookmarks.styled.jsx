@@ -5,6 +5,7 @@ import { space } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
 
 const CollectionSidebarBookmarksRoot = styled.div`
+  margin-top: ${space(2)};
   margin-bottom: ${space(2)};
 `;
 
@@ -14,7 +15,7 @@ export const BookmarkTypeIcon = styled(Icon)`
 `;
 
 export const BookmarkLinkRoot = styled.div`
-  margin: ${space(2)} 0;
+  margin: ${space(1)} 0;
 `;
 
 export default CollectionSidebarBookmarksRoot;

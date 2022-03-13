@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
+import { darken, color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -49,12 +49,12 @@ export const Sidebar = styled.aside`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("white")};
+  color: ${darken(color("white"), 0.075)};
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   margin-left: ${space(2)};
   text-transform: uppercase;
-  letter-spacing: 0.1px;
+  letter-spacing: 0.45px;
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon)`
