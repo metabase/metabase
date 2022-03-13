@@ -131,6 +131,7 @@ export default class Navbar extends Component {
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
         className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto relative pb4"
+        style={{ paddingBottom: 100 }}
       >
         <LogoLinkContainer>
           <Link
@@ -301,7 +302,10 @@ export default class Navbar extends Component {
 
 function UserFooter({ user }) {
   return (
-    <div className="border-top border-light absolute bottom left right p2 full flex align-center">
+    <div
+      className="border-top border-light fixed bottom p2 full flex align-center bg-brand z3"
+      style={{ width: 320 }}
+    >
       <div>
         {user.first_name} {user.last_name}
       </div>
