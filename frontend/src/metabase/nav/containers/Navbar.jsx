@@ -20,6 +20,7 @@ import Modal from "metabase/components/Modal";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { AdminNavbar } from "../components/AdminNavbar";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
@@ -129,7 +130,7 @@ export default class Navbar extends Component {
       <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto"
+        className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto relative pb4"
       >
         <LogoLinkContainer>
           <Link
@@ -224,14 +225,14 @@ export default class Navbar extends Component {
             hover={{
               backgroundColor: darken(color("brand")),
             }}
-            className="flex align-center rounded transition-background"
+            className="flex align-center rounded transition-background ml2"
             data-metabase-event={`NavBar;Data Browse`}
           >
             <Icon name="table_spaced" size={14} />
             <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
           </Link>
         )}
-        <Footer isAdmin={user.is_superuser} />
+        <UserFooter user={user} />
       </NavRoot>
     );
   }
@@ -296,4 +297,19 @@ export default class Navbar extends Component {
         return this.renderMainNav();
     }
   }
+}
+
+function UserFooter({ user }) {
+  return (
+    <div className="border-top border-light absolute bottom left right p2 full flex align-center">
+      <div>
+        {user.first_name} {user.last_name}
+      </div>
+      <div className="ml-auto">
+        <PopoverWithTrigger triggerElement={<Icon name="ellipsis" />}>
+          <Footer isAdmin={user.is_superuser} />
+        </PopoverWithTrigger>
+      </div>
+    </div>
+  );
 }
