@@ -22,6 +22,7 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 
 export default class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -43,7 +44,14 @@ export default class QueryModals extends React.Component {
   };
 
   render() {
-    const { modal, question, onCloseModal, onOpenModal } = this.props;
+    const {
+      modal,
+      modalContext,
+      question,
+      onCloseModal,
+      onOpenModal,
+    } = this.props;
+
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
@@ -211,6 +219,10 @@ export default class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.CAN_NOT_CREATE_MODEL ? (
       <Modal onClose={onCloseModal}>
         <ImpossibleToCreateModelModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.EDIT_EVENT ? (
+      <Modal onClose={onCloseModal}>
+        <EditEventModal eventId={modalContext} onClose={onCloseModal} />
       </Modal>
     ) : null;
   }

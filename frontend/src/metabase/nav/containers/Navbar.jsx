@@ -44,7 +44,7 @@ const mapStateToProps = (state, props) => ({
 import { getDefaultSearchColor } from "metabase/nav/constants";
 import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
-import Footer from "metabase/collections/containers/CollectionSidebar/CollectionSidebarFooter/CollectionSidebarFooter";
+import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter/CollectionSidebarFooter";
 
 const mapDispatchToProps = {
   onChangeLocation: push,

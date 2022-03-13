@@ -322,7 +322,8 @@
                       (let [filter-clause       (into [(:mbql clause) field]
                                                       (repeat (dec (:args clause)) filter-value))
                             field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
-                            expected-identifier (cond-> (hx/identifier :field "ABC" (name temporal-type))
+                            expected-identifier (cond-> (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                               ::bigquery.qp/do-not-qualify? true)
                                                   (not field-literal?) (hx/with-database-type-info (name temporal-type)))
                             expected-value      (get-in value [:as temporal-type] (:value value))
                             expected-clause     (build-honeysql-clause-head clause
@@ -339,7 +340,8 @@
 
           (testing "\ndate extraction filters"
             (doseq [[temporal-type field] fields
-                    :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
+                    :let                  [identifier          (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                                      ::bigquery.qp/do-not-qualify? true)
                                            expected-identifier (case temporal-type
                                                                  :date      (hx/with-database-type-info identifier "date")
                                                                  :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
@@ -401,6 +403,20 @@
           (testing (format "\nclause = %s" (pr-str clause))
             (is (= expected-type
                    (#'bigquery.qp/temporal-type relative-datetime)))))))))
+
+(deftest field-literal-trunc-form-test
+  (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
+    (is (= ["datetime_trunc(CAST(`source`.`date` AS datetime), week(sunday))"]
+           (sql.qp/format-honeysql
+            :bigquery-cloud-sdk
+            (sql.qp/->honeysql
+             :bigquery-cloud-sdk
+             [:field "date" {:temporal-unit      :week
+                             :base-type          :type/Date
+                             ::add/source-table  ::add/source
+                             ::add/source-alias  "date"
+                             ::add/desired-alias "date"
+                             ::add/position      0}]))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"

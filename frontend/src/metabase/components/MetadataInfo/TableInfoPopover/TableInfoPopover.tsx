@@ -53,7 +53,6 @@ function TableInfoPopover({
   return showPopover ? (
     <TippyPopover
       className={className}
-      interactive
       delay={delay}
       placement={placement}
       offset={offset}

@@ -95,9 +95,9 @@
   "Columns returned for all models."
   [:id :name :description :archived :updated_at])
 
-(def ^:private favorite-col
-  "Case statement to return boolean values of `:favorite` for Card and Dashboard."
-  [(hsql/call :case [:not= :fave.id nil] true :else false) :favorite])
+(def ^:private bookmark-col
+  "Case statement to return boolean values of `:bookmark` for Card and Dashboard."
+  [(hsql/call :case [:not= :bookmark.id nil] true :else false) :bookmark])
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
@@ -135,11 +135,11 @@
           :order-by [[:id :desc]]
           :limit    1}
          :moderated_status]
-        favorite-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :collection_id :collection_position favorite-col
+  (conj default-columns :collection_id :collection_position bookmark-col
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]))
 

@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import { getUser } from "metabase/selectors/user";
 
@@ -11,11 +12,13 @@ import {
   LoadingContainer,
   LoadingTitle,
   Sidebar,
+  SidebarHeading,
   ToggleMobileSidebarIcon,
-} from "./CollectionSidebar.styled";
+} from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
-import Collections from "./Collections/Collections";
+import RootCollectionLink from "metabase/collections/components/CollectionSidebar/RootCollectionLink";
+import Collections from "metabase/collections/components/CollectionSidebar/Collections";
+import Bookmarks from "metabase/collections/components/CollectionSidebar/Bookmarks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { getParentPath } from "metabase/collections/utils";
@@ -41,6 +44,7 @@ CollectionSidebar.propTypes = {
   currentUser: PropTypes.object.isRequired,
   collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,
+  bookmarks: PropTypes.arrayOf(PropTypes.object),
   isRoot: PropTypes.bool,
   allFetched: PropTypes.bool,
   loading: PropTypes.bool,
@@ -50,6 +54,7 @@ CollectionSidebar.propTypes = {
 };
 
 function CollectionSidebar({
+  bookmarks,
   currentUser,
   collectionId,
   collections,
@@ -98,6 +103,12 @@ function CollectionSidebar({
     >
       {allFetched ? (
         <React.Fragment>
+          <Bookmarks bookmarks={bookmarks} />
+
+          {bookmarks.length > 0 && (
+            <SidebarHeading>{t`Collections`}</SidebarHeading>
+          )}
+
           <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           <RootCollectionLink
             isRoot={isRoot}
@@ -130,6 +141,7 @@ function LoadingView() {
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   Collection.loadList(collectionEntityQuery),
   connect(mapStateToProps),
 )(CollectionSidebar);
