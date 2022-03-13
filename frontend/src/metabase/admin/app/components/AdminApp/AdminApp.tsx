@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
 export interface AdminAppProps {
@@ -6,6 +6,13 @@ export interface AdminAppProps {
 }
 
 const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
+  useEffect(() => {
+    const b = document.querySelector("body");
+    if (b) {
+      b.classList.add("Admin");
+    }
+    return () => b.classList.remove("Admin");
+  }, []);
   return (
     <>
       <DeprecationNotice />

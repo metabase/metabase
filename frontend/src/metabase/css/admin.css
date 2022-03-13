@@ -6,6 +6,10 @@
   --page-header-padding: 2.375rem;
 }
 
+.Admin #mainAppBar {
+  display: none;
+}
+
 /* utility to get a simple common hover state for admin items */
 .HoverItem:hover {
   background-color: var(--color-bg-medium);
