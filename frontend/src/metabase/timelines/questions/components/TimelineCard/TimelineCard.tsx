@@ -15,6 +15,7 @@ import {
   CardLabel,
   CardCheckbox,
   CardIcon,
+  CardRoot,
 } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
@@ -53,7 +54,7 @@ const TimelineCard = ({
   }, []);
 
   return (
-    <div>
+    <CardRoot>
       <CardHeader onClick={handleHeaderClick}>
         <CardCheckbox
           checked={isVisible}
@@ -76,7 +77,7 @@ const TimelineCard = ({
           ))}
         </CardContent>
       )}
-    </div>
+    </CardRoot>
   );
 };
 

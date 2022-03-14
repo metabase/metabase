@@ -13,10 +13,6 @@ export const CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS = {
     ["Stage 9", 100],
     ["Stage 10", -300],
   ],
-  accessors: {
-    x: (row: any[]) => row[0],
-    y: (row: any[]) => row[1],
-  },
   settings: {
     showTotal: true,
   },

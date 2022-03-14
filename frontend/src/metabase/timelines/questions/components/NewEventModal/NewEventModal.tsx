@@ -9,40 +9,38 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
-  timeline?: Timeline;
+  timelines?: Timeline[];
   collection: Collection;
-  onSubmit: (
-    values: Partial<TimelineEvent>,
-    collection: Collection,
-    timeline?: Timeline,
-  ) => void;
-  onCancel: (location: string) => void;
+  onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
   onClose?: () => void;
 }
 
 const NewEventModal = ({
-  timeline,
+  timelines = [],
   collection,
   onSubmit,
-  onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details(), []);
+  const form = useMemo(() => forms.details({ timelines }), [timelines]);
+  const hasTimelines = timelines.length > 0;
+  const hasOneTimeline = timelines.length === 1;
+  const defaultTimeline = timelines[0];
 
   const initialValues = useMemo(
     () => ({
-      timeline_id: timeline?.id,
-      icon: timeline ? timeline.icon : getDefaultTimelineIcon(),
+      timeline_id: hasTimelines ? defaultTimeline.id : null,
+      icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
     }),
-    [timeline],
+    [defaultTimeline, hasTimelines, hasOneTimeline],
   );
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, collection, timeline);
+      await onSubmit(values, collection);
+      onClose?.();
     },
-    [timeline, collection, onSubmit],
+    [collection, onSubmit, onClose],
   );
 
   return (
@@ -54,7 +52,7 @@ const NewEventModal = ({
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
-          onClose={onCancel}
+          onClose={onClose}
         />
       </ModalBody>
     </div>
