@@ -10,10 +10,10 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import Bookmark from "metabase/entities/bookmarks";
-import { getDashboardActions } from "./DashboardActions";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
-import ParametersPopover from "./ParametersPopover";
+import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
