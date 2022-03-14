@@ -16,16 +16,11 @@ import { DashboardHeaderButton } from "./DashboardHeader.styled";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { getIsBookmarked } from "./selectors";
 
 import cx from "classnames";
 
 import { Link } from "react-router";
-
-const getIsBookmarked = (state, props) =>
-  props.bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === props.dashboardId,
-  );
 
 const mapStateToProps = (state, props) => {
   return {
