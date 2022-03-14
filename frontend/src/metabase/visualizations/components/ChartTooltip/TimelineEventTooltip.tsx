@@ -7,7 +7,7 @@ import {
   TimelineEventInfoContainer,
   TimelineEventName,
   TimelineEventRow,
-  TimelineEventsList,
+  TimelineEventList,
 } from "./TimelineEventTooltip.styled";
 
 export interface TimelineEventTooltipProps {
@@ -19,7 +19,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { timelineEvents } = hovered;
 
   return (
-    <TimelineEventsList>
+    <TimelineEventList>
       {timelineEvents.map(event => (
         <li key={event.id}>
           <TimelineEventRow>
@@ -28,12 +28,15 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
             </TimelineEventIconContainer>
             <TimelineEventInfoContainer>
               <TimelineEventName>{event.name}</TimelineEventName>
-              <TimelineEventDate value={event.timestamp} />
+              <TimelineEventDate
+                value={event.timestamp}
+                unit={event.time_matters ? "default" : "day"}
+              />
             </TimelineEventInfoContainer>
           </TimelineEventRow>
         </li>
       ))}
-    </TimelineEventsList>
+    </TimelineEventList>
   );
 };
 

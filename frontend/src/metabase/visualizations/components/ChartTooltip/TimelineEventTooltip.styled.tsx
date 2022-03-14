@@ -1,10 +1,12 @@
 import styled from "@emotion/styled";
 import DateTime from "metabase/components/DateTime";
+import { darken } from "metabase/lib/colors";
 
-export const TimelineEventsList = styled.ul`
+export const TimelineEventList = styled.ul`
   max-width: 300px;
+
   li:not(:first-of-type) {
-    margin-top: 8px;
+    margin-top: 0.5rem;
   }
 `;
 
@@ -16,8 +18,8 @@ export const TimelineEventIconContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-left: 8px;
-  padding-right: 14px;
+  padding-left: 0.25rem;
+  padding-right: 0.75rem;
 `;
 
 export const TimelineEventInfoContainer = styled.div`
@@ -26,12 +28,12 @@ export const TimelineEventInfoContainer = styled.div`
 `;
 
 export const TimelineEventName = styled.span`
+  font-size: 0.875rem;
   font-weight: bold;
-  font-size: 14px;
 `;
 
 export const TimelineEventDate = styled(DateTime)`
-  font-size: 12px;
-  color: #fafafa;
-  margin-top: 1px;
+  color: ${darken("white", 0.02)};
+  font-size: 0.75rem;
+  margin-top: 0.0625rem;
 `;
