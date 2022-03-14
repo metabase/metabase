@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { hasTimePart, parseTimestamp } from "metabase/lib/time";
-import { getTimelineIcons } from "metabase/lib/timeline";
+import { getTimelineIcons } from "metabase/lib/timelines";
 import validate from "metabase/lib/validate";
 
 const createForm = ({ timelines }) => {

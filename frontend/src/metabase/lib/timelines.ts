@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { t } from "ttag";
 import { Collection, Timeline } from "metabase-types/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -9,12 +8,8 @@ export const getDefaultTimeline = (
   return {
     name: t`${collection.name} events`,
     collection_id: canonicalCollectionId(collection.id),
-    icon: "star",
+    icon: getDefaultTimelineIcon(),
   };
-};
-
-export const getDefaultTimezone = () => {
-  return moment.tz.guess();
 };
 
 export const getTimelineIcons = () => {
@@ -26,4 +21,8 @@ export const getTimelineIcons = () => {
     { name: t`Bell`, value: "bell", icon: "bell" },
     { name: t`Cloud`, value: "cloud", icon: "cloud" },
   ];
+};
+
+export const getDefaultTimelineIcon = () => {
+  return "star";
 };
