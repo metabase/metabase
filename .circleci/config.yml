@@ -906,9 +906,6 @@ jobs:
       source-folder:
         type: string
         default: ""
-      test-files:
-        type: string
-        default: ""
       before-steps:
         type: steps
         default: []
@@ -932,7 +929,7 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-visual-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
+                  run test-visual-no-build <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -950,9 +947,6 @@ jobs:
         type: string
         default: ""
       folder:
-        type: string
-        default: ""
-      test-files:
         type: string
         default: ""
       qa-db:
@@ -984,9 +978,8 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
-                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >>
+                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $CIRCLE_BRANCH
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1325,7 +1318,6 @@ workflows:
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
-          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
           <<: *Matrix
 
       - snowplow-deps:
