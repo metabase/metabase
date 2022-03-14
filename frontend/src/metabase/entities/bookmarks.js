@@ -21,7 +21,7 @@ const Bookmarks = createEntity({
       return BookmarkApi[entity].create({ id });
     },
     delete: async params => {
-      const [entity, id] = params.id.split("-");
+      const { entity, id } = params;
       return BookmarkApi[entity].delete({ id });
     },
   },
