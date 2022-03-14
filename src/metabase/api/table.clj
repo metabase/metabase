@@ -153,8 +153,7 @@
                      :type "type/Time"})
                   [[(deferred-tru "Minute") "minute"]
                    [hour-str "hour"]
-                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-                   [(deferred-tru "Hour of Day") "hour-of-day"]])
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
