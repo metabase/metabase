@@ -5,6 +5,7 @@
   "supportFile": "frontend/test/__support__/e2e/cypress.js",
   "videoUploadOnPasses": false,
   "chromeWebSecurity": false,
+  "projectId": "kFvJq7",
   "viewportHeight": 800,
   "viewportWidth": 1280,
   "retries": {

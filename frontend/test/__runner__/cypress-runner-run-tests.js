@@ -1,3 +1,4 @@
+const { patch } = require("cy2");
 const cypress = require("cypress");
 const arg = require("arg");
 
@@ -44,6 +45,18 @@ const getReporterConfig = isCI => {
 };
 
 const runCypress = async (baseUrl, exitFunction) => {
+  /**
+   * We need to patch CYPRESS_API_URL with cy2 in order to use currents.dev dashboard for recording.
+   * This is applicable only when you explicitly use the `--record` flag, with the provided `--key`.
+   */
+  try {
+    patch("https://cy.currents.dev");
+  } catch (e) {
+    console.error("Failed to patch Cypress!\n", e);
+
+    await exitFunction(1);
+  }
+
   const defaultConfig = {
     configFile: "frontend/test/__support__/e2e/cypress.json",
     config: {
