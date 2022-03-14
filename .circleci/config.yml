@@ -967,12 +967,13 @@ jobs:
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
+      - run:
+          name: Get Commit message
+          command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
       - attach-workspace
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
-            - run:
-              command: it log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
