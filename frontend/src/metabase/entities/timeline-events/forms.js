@@ -44,6 +44,7 @@ const createForm = ({ timelines }) => {
     },
     {
       name: "timeline_id",
+      title: t`Timeline`,
       type: timelines.length > 1 ? "select" : "hidden",
       options: timelines.map(t => ({ name: t.name, value: t.id })),
     },
