@@ -971,6 +971,8 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
+            - run:
+              command: it log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
@@ -979,7 +981,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id .COMMIT
+                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $COMMIT_MESSAGE
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
