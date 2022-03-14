@@ -16,7 +16,17 @@ type ChartTooltipProps = {
 };
 
 const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
-  const hasContentToDisplay = useMemo(() => {
+  const tooltip = useMemo(() => {
+    if (!hovered) {
+      return null;
+    }
+    if (!_.isEmpty(hovered.timelineEvents)) {
+      return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
+    }
+    return <DataPointTooltip hovered={hovered} settings={settings} />;
+  }, [hovered, settings]);
+
+  const isNotEmpty = useMemo(() => {
     if (!hovered) {
       return false;
     }
@@ -28,21 +38,10 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     );
   }, [hovered]);
 
-  const renderTooltipContent = useCallback(() => {
-    if (!hovered) {
-      return null;
-    }
-    if (!_.isEmpty(hovered.timelineEvents)) {
-      return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
-    }
-    return <DataPointTooltip hovered={hovered} settings={settings} />;
-  }, [hovered, settings]);
-
   const hasTargetElement =
     hovered?.element != null && document.body.contains(hovered.element);
   const hasTargetEvent = hovered?.event != null;
-
-  const isOpen = hasContentToDisplay && (hasTargetElement || hasTargetEvent);
+  const isOpen = isNotEmpty && (hasTargetElement || hasTargetEvent);
 
   let target;
   if (hasTargetElement) {
@@ -55,7 +54,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     <Tooltip
       reference={target}
       isOpen={isOpen}
-      tooltip={renderTooltipContent()}
+      tooltip={tooltip}
       maxWidth="unset"
     />
   ) : null;
