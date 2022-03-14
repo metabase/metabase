@@ -927,7 +927,7 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
-                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
+                # Make `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--folder`)
                 command: |
                   run test-visual-no-build <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
