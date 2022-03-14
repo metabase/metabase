@@ -343,7 +343,13 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defn- json-query [identifier nfc-path]
-  "some stuff here")
+  (reduce (fn [acc [curr-member next-member]]
+            (str acc
+                 (if-not (number? curr-member)
+                   (format "'%s'" (hformat/to-sql curr-member))
+                   curr-member)))
+          identifier
+          (partition-all 2 1 (rest nfc-path))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
