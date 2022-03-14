@@ -34,10 +34,6 @@ const propTypes = {
   }),
 };
 
-const defaultProps = {
-  accessors: POSITIONAL_ACCESSORS,
-};
-
 const layout = {
   width: 540,
   height: 300,
@@ -63,7 +59,12 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
+const CategoricalLineChart = ({
+  data,
+  accessors = POSITIONAL_ACCESSORS,
+  settings,
+  labels,
+}) => {
   const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(
@@ -155,6 +156,5 @@ const CategoricalLineChart = ({ data, accessors, settings, labels }) => {
 };
 
 CategoricalLineChart.propTypes = propTypes;
-CategoricalLineChart.defaultProps = defaultProps;
 
 export default CategoricalLineChart;

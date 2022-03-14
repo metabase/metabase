@@ -32,10 +32,6 @@ const propTypes = {
   }),
 };
 
-const defaultProps = {
-  accessors: DATE_ACCESSORS,
-};
-
 const layout = {
   width: 540,
   height: 300,
@@ -61,7 +57,12 @@ const layout = {
   strokeDasharray: "4",
 };
 
-const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
+const TimeSeriesLineChart = ({
+  data,
+  accessors = DATE_ACCESSORS,
+  settings,
+  labels,
+}) => {
   data = sortTimeSeries(data);
   const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
@@ -130,6 +131,5 @@ const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
 };
 
 TimeSeriesLineChart.propTypes = propTypes;
-TimeSeriesLineChart.defaultProps = defaultProps;
 
 export default TimeSeriesLineChart;

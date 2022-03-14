@@ -41,10 +41,6 @@ const propTypes = {
   }),
 };
 
-const defaultProps = {
-  accessors: POSITIONAL_ACCESSORS,
-};
-
 const layout = {
   width: 540,
   height: 300,
@@ -73,7 +69,12 @@ const layout = {
   maxTickWidth: 100,
 };
 
-const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
+const CategoricalWaterfallChart = ({
+  data,
+  accessors = POSITIONAL_ACCESSORS,
+  settings,
+  labels,
+}) => {
   const entries = calculateWaterfallEntries(
     data,
     accessors,
@@ -179,6 +180,5 @@ const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
 };
 
 CategoricalWaterfallChart.propTypes = propTypes;
-CategoricalWaterfallChart.defaultProps = defaultProps;
 
 export default CategoricalWaterfallChart;
