@@ -40,10 +40,10 @@ objectClass: person
 objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: Fred Taylor
-sN: Taylor
+sn: Taylor
 givenname: Fred
 uid: ftaylor300
-mAiL: fred.taylor@metabase.com
+mail: fred.taylor@metabase.com
 userpassword: pa$$word
 
 dn: cn=Jane Miller,ou=People,dc=metabase,dc=com

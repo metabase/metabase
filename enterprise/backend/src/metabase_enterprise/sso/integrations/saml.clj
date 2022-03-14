@@ -60,8 +60,7 @@
     (when group-names
       (integrations.common/sync-group-memberships! user
                                                    (group-names->ids group-names)
-                                                   (all-mapped-group-ids)
-                                                   false))))
+                                                   (all-mapped-group-ids)))))
 
 (s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."
