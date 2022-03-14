@@ -23,6 +23,17 @@ const TimelineSidebar = ({
   onHideTimeline,
   onClose,
 }: TimelineSidebarProps) => {
+  const handleNewEvent = useCallback(() => {
+    onOpenModal?.(MODAL_TYPES.NEW_EVENT);
+  }, [onOpenModal]);
+
+  const handleEditEvent = useCallback(
+    (event: TimelineEvent) => {
+      onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
+    },
+    [onOpenModal],
+  );
+
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
@@ -34,13 +45,6 @@ const TimelineSidebar = ({
     [onShowTimeline, onHideTimeline],
   );
 
-  const handleEditEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
-    },
-    [onOpenModal],
-  );
-
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
@@ -48,8 +52,9 @@ const TimelineSidebar = ({
         collectionId={question.collectionId()}
         visibility={visibility}
         isVisibleByDefault={question.isSaved()}
-        onToggleTimeline={handleToggleTimeline}
+        onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
+        onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>
   );
