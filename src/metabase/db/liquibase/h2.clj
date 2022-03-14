@@ -20,6 +20,7 @@
 ;;
 ;; 1. Liquibase will throw an NPE if the package for the class does not exist -- see
 ;;    https://github.com/liquibase/liquibase/blob/master/liquibase-core/src/main/java/liquibase/logging/core/JavaLogService.java#L45
+;;    and https://github.com/liquibase/liquibase/issues/2633
 ;;
 ;; 2. In Java 9+, the JVM will automatically define a package when a class is created; in Java 8, it does not.
 ;;
