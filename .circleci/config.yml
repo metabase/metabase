@@ -569,7 +569,7 @@ jobs:
           find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
           name: Save last git commit message to .COMMIT
-          command: git log -1 > .COMMIT
+          command: git log --format=%B -n 1 $CIRCLE_SHA1 > .COMMIT
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -966,7 +966,6 @@ jobs:
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
-      GIT_COMMIT_DESC: git log --format=%B -n 1 $CIRCLE_SHA1
     steps:
       - attach-workspace
       - run-on-change:
@@ -980,7 +979,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $GIT_COMMIT_DESC
+                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id .COMMIT
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
