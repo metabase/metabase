@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
   compose,
@@ -73,6 +74,13 @@ const Tables = createEntity({
 
   // ACTION CREATORS
   objectActions: {
+    updateProperty(entityObject, name, value, opts) {
+      return Tables.actions.update(
+        entityObject,
+        { [name]: value },
+        notify(opts, `Table ${name}`, t`updated`),
+      );
+    },
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),

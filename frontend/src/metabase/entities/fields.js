@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { createEntity, undo } from "metabase/lib/entities";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -90,7 +90,7 @@ const Fields = createEntity({
       return Fields.actions.update(
         { id: field.id },
         field,
-        undo(opts, field.display_name, t`updated`),
+        notify(opts, field.display_name, t`updated`),
       );
     },
     // Docstring from m.api.field:
