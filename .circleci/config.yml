@@ -978,6 +978,7 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
+                name: Running Cypress tests and sending to Currents.dev
                 command: |
                   run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $CIRCLE_BUILD_URL
                 after-steps:
