@@ -38,17 +38,16 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     );
   }, [hovered]);
 
+  const hasTargetEvent = hovered?.event != null;
   const hasTargetElement =
     hovered?.element != null && document.body.contains(hovered.element);
-  const hasTargetEvent = hovered?.event != null;
   const isOpen = isNotEmpty && (hasTargetElement || hasTargetEvent);
 
-  let target;
-  if (hasTargetElement) {
-    target = hovered.element;
-  } else if (hasTargetEvent) {
-    target = getEventTarget(hovered.event as MouseEvent);
-  }
+  const target = hasTargetElement
+    ? hovered?.element
+    : hasTargetEvent
+    ? getEventTarget(hovered.event as MouseEvent)
+    : null;
 
   return target ? (
     <Tooltip
