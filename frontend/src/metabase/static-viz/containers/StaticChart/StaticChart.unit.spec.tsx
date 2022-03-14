@@ -13,8 +13,8 @@ describe("StaticChart", () => {
             ["Widget", 31],
           ],
           accessors: {
-            x: row => row[0],
-            y: row => row[1],
+            x: (row: any[]) => row[0],
+            y: (row: any[]) => row[1],
           },
           settings: {
             y: {
@@ -47,8 +47,8 @@ describe("StaticChart", () => {
             ["Widget", 31],
           ],
           accessors: {
-            x: row => row[0],
-            y: row => row[1],
+            x: (row: any[]) => row[0],
+            y: (row: any[]) => row[1],
           },
           settings: {
             y: {
@@ -81,8 +81,8 @@ describe("StaticChart", () => {
             ["Widget", 31],
           ],
           accessors: {
-            x: row => row[0],
-            y: row => row[1],
+            x: (row: any[]) => row[0],
+            y: (row: any[]) => row[1],
           },
           settings: {
             y: {
@@ -119,8 +119,8 @@ describe("StaticChart", () => {
             cronut: "#DDECFA",
           },
           accessors: {
-            dimension: row => row[0],
-            metric: row => row[1],
+            dimension: (row: any[]) => row[0],
+            metric: (row: any[]) => row[1],
           },
           settings: {
             metric: {
@@ -147,8 +147,8 @@ describe("StaticChart", () => {
             ["2020-11-08", 30],
           ],
           accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
+            x: (row: any[]) => new Date(row[0]).valueOf(),
+            y: (row: any[]) => row[1],
           },
           settings: {
             x: {
@@ -177,8 +177,8 @@ describe("StaticChart", () => {
             ["2020-11-08", 30],
           ],
           accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
+            x: (row: any[]) => new Date(row[0]).valueOf(),
+            y: (row: any[]) => row[1],
           },
           settings: {
             x: {
@@ -207,8 +207,8 @@ describe("StaticChart", () => {
             ["2020-11-08", 30],
           ],
           accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
+            x: (row: any[]) => new Date(row[0]).valueOf(),
+            y: (row: any[]) => row[1],
           },
           settings: {
             x: {

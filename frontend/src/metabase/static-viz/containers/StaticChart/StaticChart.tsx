@@ -1,4 +1,5 @@
-import React from "react";
+import React, { ReactElement } from "react";
+import NoResults from "../../components/NoResults";
 import CategoricalAreaChart from "../../components/CategoricalAreaChart";
 import { CATEGORICAL_AREA_CHART_TYPE } from "../../components/CategoricalAreaChart/constants";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
@@ -25,7 +26,22 @@ import Funnel from "../../components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
 import { StaticChartProps } from "./types";
 
-const StaticChart = ({ type, options }: StaticChartProps) => {
+const StaticChart = ({ type, options }: StaticChartProps): ReactElement => {
+  const { data, series } = options;
+  const hasData = !!(
+    data &&
+    ((Array.isArray(data) && data.length > 0) ||
+      (!Array.isArray(data) && Object.keys(data).length > 0))
+  );
+  const hasSeries = !!(
+    series &&
+    ((Array.isArray(series) && series.length > 0) ||
+      (!Array.isArray(series) && Object.keys(series).length > 0))
+  );
+  if (!hasData && !hasSeries) {
+    return <NoResults />;
+  }
+
   switch (type) {
     case CATEGORICAL_AREA_CHART_TYPE:
       return <CategoricalAreaChart {...options} />;
