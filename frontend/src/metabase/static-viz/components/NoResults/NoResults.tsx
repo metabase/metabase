@@ -2,6 +2,7 @@ import React, { ReactElement } from "react";
 import { Group } from "@visx/group";
 import { Text } from "@visx/text";
 import { ICON_SIZE, ICON_MARGIN, LAYOUT } from "./constants";
+import { t } from "ttag";
 
 const NoResults = (): ReactElement => {
   const innerWidth = LAYOUT.width - LAYOUT.margin * 2;
@@ -79,7 +80,7 @@ const NoResults = (): ReactElement => {
           textAnchor="middle"
           verticalAnchor="middle"
         >
-          No results
+          {t`No results!`}
         </Text>
       </Group>
     </svg>
