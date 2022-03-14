@@ -968,6 +968,9 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - run:
+          name: Get Commit message
+          command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           name: Get Commit message
