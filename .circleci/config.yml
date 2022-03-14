@@ -966,6 +966,7 @@ jobs:
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
+      GIT_COMMIT_DESC: git log --format=%B -n 1 $CIRCLE_SHA1
     steps:
       - attach-workspace
       - run-on-change:
@@ -979,7 +980,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $CIRCLE_BRANCH
+                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $GIT_COMMIT_DESC
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
