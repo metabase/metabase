@@ -8,21 +8,13 @@ const Bookmarks = createEntity({
   path: "/api/bookmark",
   schema: BookmarkSchema,
   api: {
-    /*
-     * For some reason, `params` seems to be filtered down
-     * to an object only with the `id` key/value,
-     * regardless of what is passed to te function calls below.
-     *
-     * So we hack it by passing `entity-id` as id, then
-     * splitting, destructuring it and using that.
-     */
     create: async params => {
-      const [entity, id] = params.id.split("-");
-      return BookmarkApi[entity].create({ id });
+      const { type, id } = params;
+      return BookmarkApi[type].create({ id });
     },
     delete: async params => {
-      const { entity, id } = params;
-      return BookmarkApi[entity].delete({ id });
+      const { type, id } = params;
+      return BookmarkApi[type].delete({ id });
     },
   },
 });
