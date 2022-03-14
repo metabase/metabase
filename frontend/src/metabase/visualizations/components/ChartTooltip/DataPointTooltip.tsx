@@ -15,25 +15,7 @@ export interface DataPointTooltipProps {
 }
 
 const DataPointTooltip = ({ hovered, settings }: DataPointTooltipProps) => {
-  const rows = useMemo(() => {
-    if (Array.isArray(hovered.data)) {
-      return hovered.data.map(getRowFromDataPoint);
-    }
-    if (hovered.value !== undefined || hovered.dimensions) {
-      const dimensions = [];
-      if (hovered.dimensions) {
-        dimensions.push(...hovered.dimensions);
-      }
-      if (hovered.value !== undefined) {
-        dimensions.push({
-          value: hovered.value,
-          column: hovered.column,
-        } as HoveredDimension);
-      }
-      return dimensions.map(getRowFromDimension);
-    }
-    return [];
-  }, [hovered]);
+  const rows = useMemo(() => getRows(hovered), [hovered]);
 
   return (
     <table className="py1 px2">
@@ -69,6 +51,28 @@ const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
     </td>
   </tr>
 );
+
+const getRows = (hovered: HoveredObject) => {
+  if (Array.isArray(hovered.data)) {
+    return hovered.data.map(getRowFromDataPoint);
+  }
+
+  if (hovered.value !== undefined || hovered.dimensions) {
+    const dimensions = [];
+    if (hovered.dimensions) {
+      dimensions.push(...hovered.dimensions);
+    }
+    if (hovered.value !== undefined) {
+      dimensions.push({
+        value: hovered.value,
+        column: hovered.column,
+      } as HoveredDimension);
+    }
+    return dimensions.map(getRowFromDimension);
+  }
+
+  return [];
+};
 
 const getRowFromDataPoint = (data: DataPoint) => ({
   ...data,
