@@ -24,8 +24,8 @@ import { Link } from "react-router";
 const mapStateToProps = (state, props) => {};
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id: `dashboard-${id}` }),
-  deleteBookmark: id => Bookmark.actions.delete({ id: `dashboard-${id}` }),
+  createBookmark: id => Bookmark.actions.create({ id, type: "dashboard" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "dashboard" }),
 };
 
 @Bookmark.loadList()
