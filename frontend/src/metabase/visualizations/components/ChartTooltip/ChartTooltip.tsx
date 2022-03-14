@@ -1,19 +1,19 @@
-import React, { useCallback, useMemo, MouseEvent } from "react";
+import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import Tooltip from "metabase/components/Tooltip";
+import DataPointTooltip from "./DataPointTooltip";
+import TimelineEventTooltip from "./TimelineEventTooltip";
 import {
   HoveredObject,
   HoveredTimelineEvent,
   VisualizationSettings,
 } from "./types";
 import { getEventTarget } from "./utils";
-import DataPointTooltip from "./DataPointTooltip";
-import TimelineEventTooltip from "./TimelineEventTooltip";
 
-type ChartTooltipProps = {
+export interface ChartTooltipProps {
   hovered?: HoveredObject;
   settings: VisualizationSettings;
-};
+}
 
 const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   const tooltip = useMemo(() => {
