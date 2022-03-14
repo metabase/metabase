@@ -345,6 +345,7 @@
 (defn- json-query [identifier nfc-path]
   (reduce (fn [acc [curr-member next-member]]
             (str acc
+                 " -> "
                  (if-not (number? curr-member)
                    (format "'%s'" (hformat/to-sql curr-member))
                    curr-member)))

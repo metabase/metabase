@@ -291,15 +291,10 @@
       )))
 
 (deftest json-query-test
-  (mt/test-driver :postgres
-    (testing "Issue JSON query if we get a field indicating that it's a nested field column"
-(mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
-                    ["venues"
-                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
-                     [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
-        (is (= "431 Natoma"
-               (get the honeysql thing from the field shenanigans i guess)
-               ))))))
+  (testing "Transforming MBQL query with JSON in it to postgres query works"
+        (is (= "mlep -> 'meh'"
+               (#'postgres/json-query 'mlep [:bleh :meh])
+               ))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
