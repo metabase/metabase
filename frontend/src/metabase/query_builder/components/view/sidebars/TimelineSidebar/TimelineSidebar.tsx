@@ -27,6 +27,10 @@ const TimelineSidebar = ({
     onOpenModal?.(MODAL_TYPES.NEW_EVENT);
   }, [onOpenModal]);
 
+  const handleNewEventWithTimeline = useCallback(() => {
+    onOpenModal?.(MODAL_TYPES.NEW_EVENT_WITH_TIMELINE);
+  }, [onOpenModal]);
+
   const handleEditEvent = useCallback(
     (event: TimelineEvent) => {
       onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
@@ -53,6 +57,7 @@ const TimelineSidebar = ({
         visibility={visibility}
         isVisibleByDefault={question.isSaved()}
         onNewEvent={handleNewEvent}
+        onNewEventWithTimeline={handleNewEventWithTimeline}
         onEditEvent={handleEditEvent}
         onToggleTimeline={handleToggleTimeline}
       />

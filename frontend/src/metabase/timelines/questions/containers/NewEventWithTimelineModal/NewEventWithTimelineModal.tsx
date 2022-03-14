@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { TimelineEvent } from "metabase-types/api";
+import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 
@@ -17,8 +17,8 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<TimelineEvent>) => {
-    await dispatch(Timelines.actions.createWithEvent(values));
+  onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
+    await dispatch(Timelines.actions.createWithEvent(values, collection));
   },
 });
 

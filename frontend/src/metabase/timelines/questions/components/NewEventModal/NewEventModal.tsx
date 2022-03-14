@@ -9,14 +9,14 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
-  timelines: Timeline[];
+  timelines?: Timeline[];
   collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
   onClose?: () => void;
 }
 
 const NewEventModal = ({
-  timelines,
+  timelines = [],
   collection,
   onSubmit,
   onClose,
