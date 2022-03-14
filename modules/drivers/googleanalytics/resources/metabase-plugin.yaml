@@ -8,7 +8,6 @@ driver:
   name: googleanalytics
   display-name: Google Analytics
   lazy-load: true
-  parent: google
   connection-properties:
     - name: account-id
       display-name: Google Analytics Account ID
