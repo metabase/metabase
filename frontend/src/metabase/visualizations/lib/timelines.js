@@ -69,7 +69,10 @@ function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
   return eventsAxis;
 }
 
-function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
+function renderEventTicks(
+  chart,
+  { eventAxis, eventGroups, onHoverChange, onOpenTimelines },
+) {
   const svg = chart.svg();
   const brush = svg.select("g.brush");
   const brushHeight = brush.select("rect.background").attr("height");
@@ -91,7 +94,7 @@ function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
       : ICON_PATHS[iconName];
     const iconScale = iconName === "mail" ? 0.45 : 0.5;
 
-    brush
+    const eventPointerLine = brush
       .append("line")
       .attr("class", "event-line")
       .attr("x1", tickX)
@@ -104,7 +107,7 @@ function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
       .attr("class", "event-tick")
       .attr("transform", transformStyle);
 
-    eventIconContainer
+    const eventIcon = eventIconContainer
       .append("path")
       .attr("class", "event-icon")
       .attr("d", iconPath)
@@ -123,15 +126,36 @@ function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
         );
     }
 
-    eventIconContainer.on("click", () => {
-      onOpenTimelines();
-    });
+    eventIconContainer
+      .on("mousemove", () => {
+        onHoverChange({
+          element: eventIcon.node(),
+          timelineEvents: group,
+        });
+        eventIconContainer.classed("hover", true);
+        eventPointerLine.classed("hover", true);
+      })
+      .on("mouseleave", () => {
+        onHoverChange(null);
+        eventIconContainer.classed("hover", false);
+        eventPointerLine.classed("hover", false);
+      })
+      .on("click", () => {
+        onOpenTimelines();
+      });
   });
 }
 
 export function renderEvents(
   chart,
-  { timelineEvents = [], xDomain, xInterval, isTimeseries, onOpenTimelines },
+  {
+    timelineEvents = [],
+    xDomain,
+    xInterval,
+    isTimeseries,
+    onHoverChange,
+    onOpenTimelines,
+  },
 ) {
   const xAxis = getXAxis(chart);
   if (!xAxis || !isTimeseries) {
@@ -146,7 +170,12 @@ export function renderEvents(
   }
 
   const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
-  renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines);
+  renderEventTicks(chart, {
+    eventAxis,
+    eventGroups,
+    onHoverChange,
+    onOpenTimelines,
+  });
 }
 
 export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
