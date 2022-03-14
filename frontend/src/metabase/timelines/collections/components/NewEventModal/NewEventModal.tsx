@@ -26,6 +26,8 @@ const NewEventModal = ({
   onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
+  const form = useMemo(() => forms.details(), []);
+
   const initialValues = useMemo(
     () => ({
       timeline_id: timeline?.id,
@@ -47,7 +49,7 @@ const NewEventModal = ({
       <ModalHeader title={t`New event`} onClose={onClose} />
       <ModalBody>
         <Form
-          form={forms.collection}
+          form={form}
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}

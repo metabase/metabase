@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
@@ -19,6 +19,8 @@ const EditEventModal = ({
   onArchive,
   onClose,
 }: EditEventModalProps): JSX.Element => {
+  const form = useMemo(() => forms.details(), []);
+
   const handleSubmit = useCallback(
     async (event: TimelineEvent) => {
       await onSubmit(event);
@@ -37,7 +39,7 @@ const EditEventModal = ({
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
         <Form
-          form={forms.collection}
+          form={form}
           initialValues={event}
           isModal={true}
           onSubmit={handleSubmit}
