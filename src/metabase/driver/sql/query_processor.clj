@@ -659,25 +659,25 @@
   [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
 
 (defmethod ->honeysql [:sql :>]
-  [driver [_ field value]]
-  [:> (->honeysql driver field) (->honeysql driver value)])
+  [driver [_ & args]]
+  (apply hsql/call :> (map (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :<]
-  [driver [_ field value]]
-  [:< (->honeysql driver field) (->honeysql driver value)])
-
+    [driver [_ & args]]
+  (apply hsql/call :< (map (partial ->honeysql driver) args)))
+  
 (defmethod ->honeysql [:sql :>=]
-  [driver [_ field value]]
-  [:>= (->honeysql driver field) (->honeysql driver value)])
-
+    [driver [_ & args]]
+  (apply hsql/call :>= (map (partial ->honeysql driver) args)))
+  
 (defmethod ->honeysql [:sql :<=]
-  [driver [_ field value]]
-  [:<= (->honeysql driver field) (->honeysql driver value)])
-
+    [driver [_ & args]]
+  (apply hsql/call :<= (map (partial ->honeysql driver) args)))
+  
 (defmethod ->honeysql [:sql :=]
-  [driver [_ field value]]
-  (assert field)
-  [:= (->honeysql driver field) (->honeysql driver value)])
+    [driver [_ & args]]
+  (apply hsql/call := (map (partial ->honeysql driver) args)))
+  
 
 (defn- correct-null-behaviour
   [driver [op & args]]
