@@ -83,7 +83,7 @@ function checkNoFieldType({ oldValue, newValue } = {}) {
 
   popover().within(() => {
     searchFieldType(newValue);
-    cy.queryByText(newValue).should("not.exist");
+    cy.findByText(newValue).should("not.exist");
   });
 }
 
