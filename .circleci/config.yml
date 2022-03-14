@@ -968,9 +968,6 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
-      - run:
-          name: Get Commit message
-          command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           name: Get Commit message
@@ -984,6 +981,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
+                  git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
                   run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $COMMIT_MESSAGE
                 after-steps:
                   - store_artifacts:
