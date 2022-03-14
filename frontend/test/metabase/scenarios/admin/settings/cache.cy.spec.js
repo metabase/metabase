@@ -6,7 +6,11 @@ import {
 
 const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 
-describe("scenarios > admin > settings > cache", () => {
+/**
+ * Disabled and quarantined until we fix the caching issues, and especially:
+ * https://github.com/metabase/metabase/issues/13262
+ */
+describe.skip("scenarios > admin > settings > cache", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
