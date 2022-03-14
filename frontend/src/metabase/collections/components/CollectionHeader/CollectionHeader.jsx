@@ -11,7 +11,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 import NewCollectionItemMenu from "metabase/collections/components/NewCollectionItemMenu";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
@@ -108,7 +108,7 @@ function EditMenu({
 
 function Bookmark({ isBookmarked, onClickBookmark }) {
   const title = t`Bookmarks`;
-  const iconColor = isBookmarked ? colors["brand"] : "";
+  const iconColor = isBookmarked ? color("brand") : "";
 
   return (
     <Tooltip tooltip={title}>
