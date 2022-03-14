@@ -21,7 +21,17 @@ import cx from "classnames";
 
 import { Link } from "react-router";
 
-const mapStateToProps = (state, props) => {};
+const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === props.dashboardId,
+  );
+
+const mapStateToProps = (state, props) => {
+  return {
+    isBookmarked: getIsBookmarked(state, props),
+  };
+};
 
 const mapDispatchToProps = {
   createBookmark: id => Bookmark.actions.create({ id, type: "dashboard" }),
@@ -71,20 +81,10 @@ export default class DashboardHeader extends Component {
     this.props.onEditingChange(dashboard);
   }
 
-  getIsBookmarked() {
-    return this.props.bookmarks.some(
-      bookmark =>
-        bookmark.type === "dashboard" &&
-        bookmark.item_id === this.props.dashboardId,
-    );
-  }
-
   handleToggleBookmark() {
-    const isBookmarked = this.getIsBookmarked();
+    const { createBookmark, deleteBookmark, isBookmarked } = this.props;
 
-    const toggleBookmark = isBookmarked
-      ? this.props.deleteBookmark
-      : this.props.createBookmark;
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
     toggleBookmark(this.props.dashboardId);
   }
@@ -158,6 +158,7 @@ export default class DashboardHeader extends Component {
     const {
       dashboard,
       parametersWidget,
+      isBookmarked,
       isEditing,
       isFullscreen,
       isEditable,
@@ -292,7 +293,7 @@ export default class DashboardHeader extends Component {
           className={extraButtonClassNames}
           onClick={this.handleToggleBookmark}
         >
-          {this.getIsBookmarked() ? t`Remove bookmark` : t`Bookmark`}
+          {isBookmarked ? t`Remove bookmark` : t`Bookmark`}
         </div>,
       );
 
