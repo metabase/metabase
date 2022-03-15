@@ -145,14 +145,16 @@
   (testing "GET /api/preview_embed/card/:token/query"
     (testing "Only 2000 results returned when there are many more"
       (embed-test/with-embedding-enabled-and-new-secret-key
-        (let [sample-db-orders-question {:database 1
+        (let [;; this is the same sample question as setup in these steps to reproduce:
+              ;; https://github.com/metabase/metabase/issues/20938
+              sample-db-orders-question {:database 1
                                          :query {:source-table 2}
                                          :type "query"}]
           (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
-            (is (= 2000 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                            :data
-                            :rows
-                            count)))))))))
+            (is (>= 2000 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
+                             :data
+                             :rows
+                             count)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
