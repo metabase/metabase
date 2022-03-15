@@ -11213,6 +11213,21 @@ databaseChangeLog:
                   name: collection_id
             indexName: idx_collection_bookmark_collection_id
 
+  - changeSet:
+      id: v43.00-043
+      author: howonlee
+      comment: Added 0.43.0 - Nested field columns in fields
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Nested field column paths, flattened
+                name: nfc_paths
+                type: varchar(254)
+                constraints:
+                  nullable: true
+            tableName: metabase_field
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
