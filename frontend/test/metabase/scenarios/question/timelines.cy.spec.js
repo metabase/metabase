@@ -41,5 +41,26 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC1");
       cy.findByText("RC2");
     });
+
+    it("should edit an event", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+      });
+
+      cy.visit("/question/3");
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Releases").click();
+      cy.findByLabelText("ellipsis icon").click();
+      cy.findByText("Edit event").click();
+
+      cy.findByLabelText("Event name")
+        .clear()
+        .type("RC2");
+      cy.findByText("Update").click();
+
+      cy.findByText("Releases");
+      cy.findByText("RC2");
+    });
   });
 });
