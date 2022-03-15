@@ -10,7 +10,7 @@ import CountdownIcon from "metabase/components/icons/CountdownIcon";
 import { t } from "ttag";
 import cx from "classnames";
 
-import { DashboardHeaderButton } from "./DashboardHeader.styled";
+import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 
 const OPTIONS = [
   { name: t`Off`, period: null },

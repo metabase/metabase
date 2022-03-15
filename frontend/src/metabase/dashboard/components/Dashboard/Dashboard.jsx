@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
-import DashboardHeader from "../DashboardHeader";
+import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import {
   CardsContainer,
   DashboardStyled,

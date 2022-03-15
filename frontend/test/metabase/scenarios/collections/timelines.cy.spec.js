@@ -69,6 +69,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByText("Our analytics events");
       cy.findByText("RC1");
+      cy.findByText("AM").should("not.exist");
     });
 
     it("should create an event with date and time", () => {
