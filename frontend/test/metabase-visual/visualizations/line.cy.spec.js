@@ -196,8 +196,8 @@ describe("visual tests > visualizations > line", () => {
     cy.createTimelineWithEvents({
       timeline: { name: "Releases" },
       events: [
-        { name: "v20", timestamp: "2017-10-30T00:00:00Z", icon: "balloons" },
-        { name: "v21", timestamp: "2018-08-08T00:00:00Z", icon: "cloud" },
+        { name: "v20", timestamp: "2017-10-30T00:00:00Z", icon: "cloud" },
+        { name: "v21", timestamp: "2018-08-08T00:00:00Z", icon: "mail" },
         { name: "RC1", timestamp: "2019-05-10T00:00:00Z", icon: "bell" },
         { name: "RC2", timestamp: "2019-05-20T00:00:00Z", icon: "star" },
       ],
@@ -231,6 +231,7 @@ describe("visual tests > visualizations > line", () => {
 
     cy.findByLabelText("calendar icon").click();
     cy.findByRole("checkbox").click();
+
     cy.percySnapshot();
   });
 });
