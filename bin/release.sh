@@ -12,8 +12,5 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
-source "./bin/prep.sh"
-prep_deps
-
 cd bin/release
 clojure -M -m release $@

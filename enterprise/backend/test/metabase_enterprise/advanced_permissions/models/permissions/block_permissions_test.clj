@@ -108,7 +108,7 @@
                      (test-db-perms group-id)))))
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-model-cleanup [Permissions]
-              (perms/grant-full-db-permissions! group-id (mt/id))
+              (perms/grant-full-data-permissions! group-id (mt/id))
               (grant! group-id)
               (is (= {:schemas :block}
                      (test-db-perms group-id)))

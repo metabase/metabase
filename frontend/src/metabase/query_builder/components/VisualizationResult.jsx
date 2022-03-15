@@ -40,6 +40,7 @@ export default class VisualizationResult extends Component {
       navigateToNewCardInsideQB,
       result,
       rawSeries,
+      timelineEvents,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -100,7 +101,9 @@ export default class VisualizationResult extends Component {
           queryBuilderMode={queryBuilderMode}
           showTitle={false}
           metadata={question.metadata()}
+          timelineEvents={timelineEvents}
           handleVisualizationClick={this.props.handleVisualizationClick}
+          onOpenTimelines={this.props.onOpenTimelines}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={

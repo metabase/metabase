@@ -3,6 +3,12 @@ import { color } from "metabase/lib/colors";
 import CheckBox from "metabase/core/components/CheckBox";
 import Icon from "metabase/components/Icon";
 
+export const CardRoot = styled.div`
+  &:not(:last-child) {
+    margin-bottom: 1.5rem;
+  }
+`;
+
 export const CardHeader = styled.div`
   display: flex;
   align-items: center;

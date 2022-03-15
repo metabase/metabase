@@ -39,7 +39,7 @@ const EditTimelineModal = ({
       <ModalHeader title={t`Edit event timeline`} onClose={onClose} />
       <ModalBody>
         <Form
-          form={forms.collection}
+          form={forms.details}
           initialValues={timeline}
           isModal={true}
           onSubmit={handleSubmit}

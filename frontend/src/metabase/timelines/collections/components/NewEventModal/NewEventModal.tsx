@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimezone } from "metabase/lib/time";
+import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
@@ -26,10 +27,12 @@ const NewEventModal = ({
   onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
+  const form = useMemo(() => forms.details(), []);
+
   const initialValues = useMemo(
     () => ({
       timeline_id: timeline?.id,
-      icon: timeline?.icon,
+      icon: timeline ? timeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
     }),
     [timeline],
@@ -47,7 +50,7 @@ const NewEventModal = ({
       <ModalHeader title={t`New event`} onClose={onClose} />
       <ModalBody>
         <Form
-          form={forms.collection}
+          form={form}
           initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}

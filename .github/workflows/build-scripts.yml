@@ -17,8 +17,6 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'build-scripts'
-    - name: Compile Java & AOT Sources
-      run: source ./bin/prep.sh && prep_deps
 
     - name: Run metabuild-common build script tests
       run: clojure -M:test

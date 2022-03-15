@@ -22,6 +22,8 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import NewEventWithTimelineModal from "metabase/timelines/questions/containers/NewEventWithTimelineModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 
 export default class QueryModals extends React.Component {
@@ -219,6 +221,21 @@ export default class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.CAN_NOT_CREATE_MODEL ? (
       <Modal onClose={onCloseModal}>
         <ImpossibleToCreateModelModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.NEW_EVENT ? (
+      <Modal onClose={onCloseModal}>
+        <NewEventModal
+          cardId={question.id()}
+          collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.NEW_EVENT_WITH_TIMELINE ? (
+      <Modal onClose={onCloseModal}>
+        <NewEventWithTimelineModal
+          collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : modal === MODAL_TYPES.EDIT_EVENT ? (
       <Modal onClose={onCloseModal}>
