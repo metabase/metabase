@@ -32,7 +32,7 @@
           ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
           (slack/slack-token nil)
           ;; refresh user/conversation cache when token is newly valid
-          (slack/refresh-channels-and-usernames!))
+          (slack/refresh-channels-and-usernames-when-needed!))
       ;; clear user/conversation cache when token is newly empty
       (slack/slack-cached-channels-and-usernames []))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]

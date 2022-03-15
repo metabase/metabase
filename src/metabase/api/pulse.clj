@@ -2,7 +2,6 @@
   "/api/pulse endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
-            [java-time :as t]
             [metabase.api.common :as api]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
@@ -19,7 +18,6 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -136,8 +134,7 @@
                  ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (when (u.date/older-than? (slack/slack-channels-and-usernames-last-updated) (t/minutes 10))
-                     (future (slack/refresh-channels-and-usernames!)))
+                   (future (slack/refresh-channels-and-usernames-when-needed!))
                    (assoc-in chan-types
                              [:slack :fields 0 :options]
                              (slack/slack-cached-channels-and-usernames))

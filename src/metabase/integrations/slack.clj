@@ -11,7 +11,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.util.date-2 :as u.date]))
 
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
@@ -203,13 +204,20 @@
                                  (map (fn [member]
                                         (str \@ (:name member)))))
                            query-parameters)
-       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
+       ;; remove deleted users and bots. At the time of this writing there's no way to do this in the Slack API
        ;; itself so we need to do it after the fact.
-       (filter (complement :deleted))
-       (filter (complement :is_bot))))
+       (remove :deleted)
+       (remove :is_bot)))
+
+(defonce ^:private refresh-lock (Object.))
+
+(defn- needs-refresh? []
+  (u.date/older-than?
+   (slack-channels-and-usernames-last-updated)
+   (t/minutes 10)))
 
 (defn refresh-channels-and-usernames!
-  "Refreshes users and conversations in slack-cache. If called with no args, finds both in parallel, sets
+  "Refreshes users and conversations in slack-cache. finds both in parallel, sets
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
   []
   (when (slack-configured?)
@@ -218,6 +226,14 @@
           conversations (future (vec (conversations-list)))]
       (slack-cached-channels-and-usernames (concat @conversations @users))
       (slack-channels-and-usernames-last-updated (t/zoned-date-time)))))
+
+(defn refresh-channels-and-usernames-when-needed!
+  "Refreshes users and conversations in slack-cache on a per-instance lock."
+  []
+  (when (needs-refresh?)
+    (locking refresh-lock
+      (when (needs-refresh?)
+        (refresh-channels-and-usernames!)))))
 
 (defn files-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
