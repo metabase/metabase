@@ -106,13 +106,13 @@
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 
-;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
          no-bare-blob-or-text-types?
-         (s/+ (s/alt :property  (s/keys :req-un [::property])
-                     :changeSet (s/keys :req-un [::changeSet])))))
+         (s/+ (s/alt :property              (s/keys :req-un [::property])
+                     :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
+                     :changeSet             (s/keys :req-un [::changeSet])))))
 
 (def strict-change-set-cutoff
   "All change sets with an ID >= this number will be validated with the strict spec."
