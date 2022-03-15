@@ -17,6 +17,8 @@
 const hasEnterpriseToken =
   process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
+console.log(">>>>hasEnterpriseToken", hasEnterpriseToken);
+
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
