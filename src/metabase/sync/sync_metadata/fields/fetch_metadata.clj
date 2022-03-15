@@ -84,6 +84,8 @@
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
+  (println (driver/supports? (:engine database) :nested-field-columns))
+  (println (fetch-metadata/nfc-metadata database table))
   (cond-> (:fields (fetch-metadata/table-metadata database table))
-    (driver/supports? (:driver database) :nested-field-columns)
+    (driver/supports? (:engine database) :nested-field-columns)
     (cons (fetch-metadata/nfc-metadata database table))))

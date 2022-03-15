@@ -25,7 +25,7 @@
     (when (driver/supports? driver :foreign-keys)
       (driver/describe-table-fks driver database table))))
 
-(s/defn nfc-metadata :- #{i/TableMetadataField}
+(s/defn nfc-metadata :- (s/maybe #{i/TableMetadataField})
   "Get information about the nested field column fields within `table`."
   [database :- i/DatabaseInstance, table :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
