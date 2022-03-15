@@ -208,8 +208,8 @@ const renderIcon = ({ icon, status }) => {
     );
   } else if (status === "pending") {
     return (
-      <Tooltip tooltip={t`Downloading...`}>
-        <LoadingSpinner />
+      <Tooltip tooltip={t`Downloading…`}>
+        <LoadingSpinner size={18} />
       </Tooltip>
     );
   } else {
