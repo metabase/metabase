@@ -31,7 +31,7 @@ Here's the basic flow:
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with
 > the same roles.
 
-## Adding the service account to your Google Analytics account
+### Adding the service account to your Google Analytics account
 
 The newly created service account will have an email address that looks similar to:
 
