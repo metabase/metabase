@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
-  BookmarkButtonWrapper,
+  BookmarkButton,
   BookmarkContainer,
   BookmarkListRoot,
   BookmarkTypeIcon,
@@ -72,11 +72,9 @@ const CollectionSidebarBookmarks = ({
               <Link to={url}>
                 <Label name={name} type={type} />
               </Link>
-              <BookmarkButtonWrapper
-                onClick={() => handleDeleteBookmark(bookmark)}
-              >
+              <BookmarkButton onClick={() => handleDeleteBookmark(bookmark)}>
                 <Icon name="bookmark" />
-              </BookmarkButtonWrapper>
+              </BookmarkButton>
             </BookmarkContainer>
           );
         })}

@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Icon from "metabase/components/Icon";
 
 const CollectionSidebarBookmarksRoot = styled.div`
@@ -20,6 +19,7 @@ export const BookmarkListRoot = styled.div`
 `;
 
 export const BookmarkContainer = styled.div`
+  overflow: hidden;
   position: relative;
   width: 100%;
 
@@ -28,11 +28,17 @@ export const BookmarkContainer = styled.div`
   }
 `;
 
-export const BookmarkButtonWrapper = styled(IconButtonWrapper)`
+export const BookmarkButton = styled.button`
   color: ${color("brand")};
+  cursor: pointer;
+  padding: ${space(1)};
   position: absolute;
-  right: ${space(1)};
-  top: ${space(1)};
+  right: 0;
+  top: 0;
+
+  &:hover {
+    background: ${color("focus")};
+  }
 `;
 
 export default CollectionSidebarBookmarksRoot;
