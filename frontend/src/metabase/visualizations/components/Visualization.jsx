@@ -81,7 +81,8 @@ export default class Visualization extends React.PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !Utils.equals(newProps.settings, this.props.settings)
+      !Utils.equals(newProps.settings, this.props.settings) ||
+      !Utils.equals(newProps.timelineEvents, this.props.timelineEvents)
     ) {
       this.transform(newProps);
     }

@@ -53,7 +53,7 @@ export default class MetadataTable extends Component {
 
   updateProperty(name, value) {
     this.setState({ saving: true });
-    this.props.table.update({ [name]: value });
+    this.props.table.updateProperty(name, value);
   }
 
   onNameChange(event) {
