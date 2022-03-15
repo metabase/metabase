@@ -24,7 +24,7 @@
 (models/defmodel ^:deprecated DataMigrations :data_migrations)
 
 (setting/defsetting data-migration-index
-  "A setting that is used when we don't want to re-run a data-migration"
+  "Used during data-migration to skip migrations that only need to run once"
   :type       :integer
   :visibility :internal)
 
