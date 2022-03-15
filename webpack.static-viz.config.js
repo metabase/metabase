@@ -27,6 +27,7 @@ module.exports = {
   output: {
     path: BUILD_PATH + "/app/dist",
     filename: "[name].bundle.js",
+    publicPath: "app/dist/",
   },
 
   module: {
@@ -43,7 +44,15 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
+    extensions: [
+      ".webpack.js",
+      ".web.js",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".svg",
+    ],
     alias: {
       assets: ASSETS_PATH,
       metabase: SRC_PATH,
