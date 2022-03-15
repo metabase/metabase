@@ -36,7 +36,7 @@ const collectionEntityQuery = {
 };
 
 const mapDispatchToProps = {
-  deleteBookmark: id => Bookmark.actions.delete({ id }),
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
 };
 
 function mapStateToProps(state) {

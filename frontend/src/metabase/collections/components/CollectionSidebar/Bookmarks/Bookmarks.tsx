@@ -24,7 +24,7 @@ interface LabelProps {
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmarks;
-  deleteBookmark: (arg0: string) => void;
+  deleteBookmark: (id: string, type: string) => void;
 }
 
 function getIconForEntityType(type: BookmarkableEntities) {
@@ -55,8 +55,8 @@ const CollectionSidebarBookmarks = ({
     return null;
   }
 
-  const handleDeleteBookmark = ({ id }: Bookmark) => {
-    deleteBookmark(id);
+  const handleDeleteBookmark = ({ item_id: id, type }: Bookmark) => {
+    deleteBookmark(id, type);
   };
 
   return (
