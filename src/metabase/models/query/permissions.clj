@@ -39,7 +39,7 @@
 ;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
-(s/defn ^:private query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
+(s/defn query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
   "Return a sequence of all Table IDs referenced by `query`."
   [query]
   (set
@@ -57,34 +57,41 @@
 
 (def ^:private PermsOptions
   "Map of options to be passed to the permissions checking functions."
-  {:segmented-perms?                       s/Bool
+  {(s/optional-key :segmented-perms?)      s/Bool
    (s/optional-key :throw-exceptions?)     (s/maybe s/Bool)
-   (s/optional-key :already-preprocessed?) s/Bool})
+   (s/optional-key :already-preprocessed?) s/Bool
+   (s/optional-key :table-perms-fn)        (s/pred fn?)
+   (s/optional-key :native-perms-fn)        (s/pred fn?)})
 
 (def ^:private TableOrIDOrNativePlaceholder
   (s/cond-pre
    (s/eq ::native)
    su/IntGreaterThanZero))
 
-(s/defn ^:private tables->permissions-path-set :- #{perms/Path}
+(s/defn tables->permissions-path-set :- #{perms/Path}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
-  `segmented-perms?` will return segmented permissions for the table rather that full table permissions."
+  `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
+
+  Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
+  permissions."
   [database-or-id             :- (s/cond-pre su/IntGreaterThanZero su/Map)
    tables-or-ids              :- #{TableOrIDOrNativePlaceholder}
-   {:keys [segmented-perms?]} :- PermsOptions]
+   {:keys [segmented-perms? table-perms-fn native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
                               (db/select-id->field :schema Table :id [:in table-ids]))
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))
-        table-perms-fn      (if segmented-perms?
-                              perms/table-segmented-query-path
-                              perms/table-query-path)]
+        native-perms-fn     (or native-perms-fn perms/adhoc-native-query-path)
+        table-perms-fn      (or table-perms-fn
+                                (if segmented-perms?
+                                  perms/table-segmented-query-path
+                                  perms/table-query-path))]
     (set (for [table-or-id tables-or-ids]
            (if (= ::native table-or-id)
              ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
-             (perms/adhoc-native-query-path database-or-id)
+             (native-perms-fn database-or-id)
              ;; anything else (i.e., a normal table) just gets normal table permissions
              (table-perms-fn (u/the-id database-or-id)
                              (table-or-id->schema table-or-id)
@@ -116,7 +123,7 @@
    {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
     (let [query (normalize/normalize query)]
-      ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
+      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
       (if-let [source-card-id (qputil/query->source-card-id query)]
         (source-card-read-perms source-card-id)
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query

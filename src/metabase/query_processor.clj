@@ -70,10 +70,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (u/ignore-exceptions
-  (classloader/require '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-                       '[metabase-enterprise.sandbox.query-processor.middleware
-                         [column-level-perms-check :as ee.sandbox.columns]
-                         [row-level-restrictions :as ee.sandbox.rows]]))
+ (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+                      '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+                      '[metabase-enterprise.sandbox.query-processor.middleware
+                        [column-level-perms-check :as ee.sandbox.columns]
+                        [row-level-restrictions :as ee.sandbox.rows]]))
 
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
@@ -110,6 +111,7 @@
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
+   (resolve 'ee.perms/apply-download-limit)
    #'check-features/check-features])
 
 (defn- preprocess*
@@ -137,6 +139,7 @@
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
    #'perms/check-query-permissions
+   (resolve 'ee.perms/check-download-permissions)
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
 
 (def ^:private post-processing-middleware

@@ -439,8 +439,8 @@
 (s/defn native-feature-perms-path :- Path
   "Returns the native permissions path to use for a given feature-level permission type (e.g. download) and value
   (e.g. full or limited)."
-  [perm-type perm-value db-id]
-  (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
+  [perm-type perm-value database-or-id]
+  (base->feature-perms-path perm-type perm-value (adhoc-native-query-path database-or-id)))
 
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
