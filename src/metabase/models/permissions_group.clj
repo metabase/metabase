@@ -51,15 +51,6 @@
   "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
-(def metabot-group-name
-  "The name of the \"Metabot\" magic group. This group is no longer used as of v42, since MetaBot has been removed."
-  "MetaBot")
-
-(defn metabot
-  "Fetch the `MetaBot` permissions group, or nil if it doesn't exist."
-  []
-  (u/ignore-exceptions ((magic-group metabot-group-name))))
-
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
