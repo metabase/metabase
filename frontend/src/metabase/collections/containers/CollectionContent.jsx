@@ -43,8 +43,8 @@ function mapStateToProps(state) {
 }
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id: `collection-${id}` }),
-  deleteBookmark: id => Bookmark.actions.delete({ id: `collection-${id}` }),
+  createBookmark: id => Bookmark.actions.create({ id, type: "collection" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "collection" }),
 };
 
 function CollectionContent({
