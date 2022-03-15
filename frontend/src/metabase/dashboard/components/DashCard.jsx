@@ -220,11 +220,7 @@ export default class DashCard extends Component {
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
-          gridSize={
-            this.props.isMobile
-              ? undefined
-              : { width: dashcard.sizeX, height: dashcard.sizeY }
-          }
+          gridSize={{ width: dashcard.sizeX, height: dashcard.sizeY }}
           actionButtons={
             isEmbed ? (
               <QueryDownloadWidget
