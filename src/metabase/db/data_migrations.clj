@@ -13,8 +13,8 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.setting :refer [Setting] :as setting]
             [metabase.models.permissions-group :as group]
+            [metabase.models.setting :as setting :refer [Setting]]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
