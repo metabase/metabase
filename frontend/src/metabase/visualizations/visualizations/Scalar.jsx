@@ -177,6 +177,7 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
       width,
+      gridSize,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -235,7 +236,11 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={displayValue} />
+            <ScalarValue
+              isDashboard={isDashboard}
+              gridSize={gridSize}
+              value={displayValue}
+            />
           </span>
         </Ellipsified>
         {isDashboard && (

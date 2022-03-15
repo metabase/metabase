@@ -9,14 +9,20 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { ScalarRoot } from "./ScalarValue.styled";
+import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
 
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
 );
 
-const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
-  <h1 className="ScalarValue cursor-pointer text-brand-hover">{value}</h1>
+const ScalarValue = ({ value, isDashboard, gridSize }) => (
+  <ScalarValueWrapper
+    isDashboard={isDashboard}
+    gridSize={gridSize}
+    className="ScalarValue"
+  >
+    {value}
+  </ScalarValueWrapper>
 );
 
 const ICON_WIDTH = 24;
