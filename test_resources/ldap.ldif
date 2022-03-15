@@ -40,10 +40,11 @@ objectClass: person
 objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: Fred Taylor
-sn: Taylor
+# intetionally having some attributes not properly cased to test case-insensitive when query
+sN: Taylor
 givenname: Fred
 uid: ftaylor300
-mail: fred.taylor@metabase.com
+mAiL: fred.taylor@metabase.com
 userpassword: pa$$word
 
 dn: cn=Jane Miller,ou=People,dc=metabase,dc=com

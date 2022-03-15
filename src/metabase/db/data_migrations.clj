@@ -11,6 +11,8 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.setting :refer [Setting] :as setting]
+            [metabase.models.permissions-group :as group]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -18,6 +20,22 @@
 ;;; # Migration Helpers
 
 (models/defmodel ^:deprecated DataMigrations :data_migrations)
+
+(setting/defsetting data-migration-index
+  "A setting that is used when we don't want to re-run a data-migration"
+  :type       :integer
+  :visibility :internal)
+
+(defn- should-re-run?
+  [required-data-migration-index]
+  (let [data-migration-index (setting/get :data-migration-index)]
+    (and (integer? data-migration-index) (< data-migration-index required-data-migration-index))))
+
+(defmacro with-required-data-migration-index
+  [index & body]
+  `(when (should-re-run? ~index)
+    ~@body
+    (setting/set-value-of-type! :integer :data-migration-index ~index)))
 
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
@@ -32,11 +50,12 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-        (@migration-var)
-        (catch Exception e
-          (if catch?
-            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-            (throw e))))
+       (db/transaction
+        (@migration-var))
+       (catch Exception e
+         (if catch?
+           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+           (throw e))))
       (db/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
@@ -171,6 +190,20 @@
                                   :dashcard.visualization_settings "%\"link_template\":%"]
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+
+(defmigration ^{:author "qnkhuat" :added "0.43.0" :data-migration-index 1} remove-admin-group-mapping-if-needed
+  (with-required-data-migration-index 1
+    (let [admin-group-id (u/the-id (group/admin))
+          remove-by-key  (fn [k] (setting/set-value-of-type!
+                                  :json k
+                                  (into {}
+                                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                                        (setting/get k))))]
+      ;; manually select instead of using setting/get because we've already removed this key from setting
+      (when (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group"))
+        (remove-by-key :ldap-group-mappings))
+      (remove-by-key :jwt-group-mappings)
+      (remove-by-key :saml-group-mappings))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
