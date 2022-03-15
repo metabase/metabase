@@ -897,46 +897,6 @@ jobs:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
                   - /home/circleci/metabase/metabase/resources/version.properties
 
-  fe-tests-cypress-visual:
-    parameters:
-      e:
-        type: executor
-        default: tester
-      cypress-group:
-        type: string
-      source-folder:
-        type: string
-        default: ""
-      before-steps:
-        type: steps
-        default: []
-      <<: *Params
-    executor: << parameters.e >>
-    environment:
-      MB_EDITION: << parameters.edition >>
-      CYPRESS_GROUP:  << parameters.cypress-group >>
-      DISPLAY: ""
-    steps:
-      - attach-workspace
-      - run-on-change:
-          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Run Cypress tests Visual
-                before-steps:
-                  - restore_cache:
-                      name: Restore cached uberjar built in previous step
-                      <<: *CacheKeyUberjar
-                  - steps: << parameters.before-steps >>
-                # Make `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--folder`)
-                command: |
-                  run test-visual-no-build <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
-                after-steps:
-                  - store_artifacts:
-                      path: /home/circleci/metabase/metabase/cypress
-                  - store_test_results:
-                      path: cypress/results
-
   fe-tests-cypress:
     parameters:
       e:
@@ -948,6 +908,9 @@ jobs:
         type: string
         default: ""
       folder:
+        type: string
+        default: ""
+      test-files:
         type: string
         default: ""
       qa-db:
@@ -979,14 +942,15 @@ jobs:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
             - run-yarn-command:
-                command-name: Run Cypress tests and send to Currents.dev
+                command-name: Run Cypress tests
                 before-steps:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
+                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >> <<# parameters.source-folder >> --record <</ parameters.source-folder >> <<# parameters.source-folder >> --key $CURRENTS_KEY <</ parameters.source-folder >> <<# parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >> 
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1325,6 +1289,7 @@ workflows:
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
+          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
           <<: *Matrix
 
       - snowplow-deps:
