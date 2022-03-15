@@ -937,10 +937,7 @@ jobs:
       - attach-workspace
       - run:
          name: Getting the commit message of the SHA1
-         command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
-      - run:
-         name: Exporting the commit massage to bash to be used by Cypress
-         command: echo 'export COMMIT_INFO_MESSAGE=$COMMIT_MESSAGE' >> $BASH_ENV
+         command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_INFO_MESSAGE
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
