@@ -70,7 +70,10 @@
         :id        migration-name
         :timestamp :%now))))
 
-(def ^:deprecated data-migrations (atom []))
+(def data-migrations
+  "a list of all migration defined by defmigration"
+  ^:deprecated
+  (atom []))
 
 (defmacro ^:deprecated defmigration
   "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
