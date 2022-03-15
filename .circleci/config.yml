@@ -979,7 +979,7 @@ jobs:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
             - run-yarn-command:
-                command-name: Run Cypress tests
+                command-name: Run Cypress tests and send to Currents.dev
                 before-steps:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
