@@ -307,7 +307,7 @@
       (doseq [x    [relative absolute]
               y    [relative absolute]
               unit [:week :default]]
-        (t/testing (pr-str [:between 'field relative absolute])
+        (t/testing (pr-str [:between 'field x y])
           (t/is (= [:between
                     [:field 1 {:temporal-unit unit}]
                     (expected x unit)
