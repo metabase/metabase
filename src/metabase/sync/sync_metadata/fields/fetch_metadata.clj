@@ -48,17 +48,6 @@
       (assoc metabase-field :nested-fields (set (for [nested-field nested-fields]
                                                   (add-nested-fields nested-field parent-id->fields)))))))
 
-(s/defn ^:private add-nested-field-columns :- common/TableMetadataFieldWithID
-  "Nested field columns are flattened, unlike the ordinary nested fields.
-  Add the pertinent nested fields to the parent column"
-  [mb-field :- common/TableMetadataFieldWithID,
-   nfc-fields :- #{common/TableMetadataFieldWithID}]
-  (let [column-fields (filter #(= (keyword (mb-field :name))
-                                  (get-in % [:nfc-path 0])) nfc-fields)]
-        (if-not (seq column-fields)
-          mb-field
-          (assoc mb-field :nested-fields (set column-fields)))))
-
 (s/defn fields->our-metadata :- #{common/TableMetadataFieldWithID}
   "Given a sequence of Metabase Fields, format them and return them in a hierachy so the format matches the one
   `db-metadata` comes back in."
@@ -66,15 +55,7 @@
    (fields->our-metadata fields nil))
 
   ([fields :- (s/maybe [i/FieldInstance]), top-level-parent-id :- common/ParentID]
-   (let [parent-id->fields    (fields->parent-id->fields fields)
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         ;;;;;;;;;;;;;;;
-         nested-field-columns (some shit)]
+   (let [parent-id->fields    (fields->parent-id->fields fields)]
      ;; get all the top-level fields, then call `add-nested-fields` to recursively add the fields
      (set (for [metabase-field (get parent-id->fields top-level-parent-id)]
             (add-nested-fields metabase-field parent-id->fields))))))
@@ -83,7 +64,7 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
  (db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-             :parent_id :id :description :database_position]
+             :parent_id :id :description :database_position :nfc_path]
      :table_id  (u/the-id table)
      :active    true
      {:order-by table/field-order-rule}))
@@ -102,4 +83,5 @@
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
+  ;;;; if nfc enabled, enrich it here
   (:fields (fetch-metadata/table-metadata database table)))

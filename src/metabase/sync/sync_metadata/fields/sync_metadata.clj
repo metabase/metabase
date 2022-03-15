@@ -38,6 +38,12 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
+        ;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;
+        ;;;;;;;;;;;;; nfc stuff here...
+        ;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;
+
         ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
