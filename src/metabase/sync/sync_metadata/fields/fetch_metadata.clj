@@ -4,6 +4,7 @@
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
   comparing the differences in the two sets of Metadata."
   (:require [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :as table]
             [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -83,6 +84,6 @@
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
-  (:fields (cond-> (fetch-metadata/table-metadata database table)
-             ;;;;
-             (some shit w db) (add to the list blah some shit here)))
+  (cond-> (:fields (fetch-metadata/table-metadata database table))
+    (driver/supports? (:driver database) :nested-field-columns)
+    (cons (fetch-metadata/nfc-metadata database table))))
