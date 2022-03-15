@@ -37,6 +37,7 @@
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :constraints      {:max-results 2000}
       :query-params     query-params)))
 
 (api/defendpoint GET "/dashboard/:token"
