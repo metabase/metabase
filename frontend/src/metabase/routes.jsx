@@ -1,6 +1,9 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
@@ -124,6 +127,17 @@ const UserIsNotAuthenticated = UserAuthWrapper({
   redirectAction: routerActions.replace,
 });
 
+const UserCanAccessSettings = UserAuthWrapper({
+  predicate: currentUser =>
+    currentUser?.is_superuser ||
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(currentUser),
+  failureRedirectPath: "/unauthorized",
+  authSelector: state => state.currentUser,
+  allowRedirectBack: false,
+  wrapperDisplayName: "UserCanAccessSettings",
+  redirectAction: routerActions.replace,
+});
+
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -133,6 +147,10 @@ const IsAdmin = MetabaseIsSetup(
 
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
+);
+
+const CanAccessSettings = MetabaseIsSetup(
+  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
 );
 
 export const getRoutes = store => (
@@ -340,7 +358,7 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(store, IsAdmin)}
+      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
