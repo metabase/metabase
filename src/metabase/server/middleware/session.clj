@@ -234,6 +234,11 @@
   (when user-id
     (db/select-one current-user-fields, :id user-id)))
 
+(defn- user-local-settings [user-id]
+  (when user-id
+    (or (:settings (db/select-one [User :settings] :id user-id))
+        {})))
+
 (defn do-with-current-user
   "Impl for `with-current-user`."
   [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
@@ -242,7 +247,8 @@
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
-            *user-local-values*            (atom (or settings {}))]
+            *user-local-values*            (delay (atom (or settings
+                                                            (user-local-settings metabase-user-id))))]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request

@@ -23,11 +23,6 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
 
-    - name: Java/AOT prep
-      run: |
-        source "./bin/prep.sh"
-        prep_deps
-
     - run: ./bin/build version
     - run: ./bin/build translations
     - run: ./bin/build frontend
@@ -61,7 +56,6 @@ jobs:
           - "moderation"
           - "native"
           - "native-filters"
-          - "native"
           - "permissions"
           - "question"
           - "sharing"

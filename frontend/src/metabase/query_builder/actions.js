@@ -81,6 +81,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -146,6 +147,9 @@ export const onOpenQuestionHistory = createAction(
 export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
+
+export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
+export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
@@ -796,6 +800,10 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
     queries.push(question.composeDataset().query());
   }
   return dispatch(loadMetadataForQueries(queries));
+};
+
+export const loadTimelinesForCard = card => dispatch => {
+  dispatch(Timelines.actions.fetchList({ cardId: card.id, include: "events" }));
 };
 
 function hasNewColumns(question, queryResult) {
@@ -1658,3 +1666,9 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
+
+export const SHOW_TIMELINE = "metabase/qb/SHOW_TIMELINE";
+export const showTimeline = createAction(SHOW_TIMELINE);
+
+export const HIDE_TIMELINE = "metabase/qb/HIDE_TIMELINE";
+export const hideTimeline = createAction(HIDE_TIMELINE);

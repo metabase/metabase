@@ -12,10 +12,6 @@ export const TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS = {
     ["2020-10-27", 20],
     ["2020-10-28", -15],
   ],
-  accessors: {
-    x: (row: any[]) => new Date(row[0]).valueOf(),
-    y: (row: any[]) => row[1],
-  },
   labels: {
     left: "Count",
     bottom: "Created At",

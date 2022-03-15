@@ -54,6 +54,10 @@ import {
   onCloseQuestionDetails,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
+  onOpenTimelines,
+  onCloseTimelines,
+  SHOW_TIMELINE,
+  HIDE_TIMELINE,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -67,6 +71,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -82,6 +87,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -268,6 +274,15 @@ export const uiControls = handleActions(
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
+    }),
+    [onOpenTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingTimelineSidebar: true,
+    }),
+    [onCloseTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
     [onCloseSidebars]: state => ({
       ...state,
@@ -483,4 +498,18 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const timelineVisibility = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => ({}) },
+    [SHOW_TIMELINE]: {
+      next: (state, { payload }) => assoc(state, payload.id, true),
+    },
+    [HIDE_TIMELINE]: {
+      next: (state, { payload }) => assoc(state, payload.id, false),
+    },
+    [RESET_QB]: { next: () => ({}) },
+  },
+  {},
 );

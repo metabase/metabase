@@ -48,10 +48,6 @@ keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacert
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
 &SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
 
-# Prepare dependencies
-source "./bin/prep.sh"
-prep_deps
-
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \
 MB_ENABLE_PRESTO_JDBC_DRIVER=true \
