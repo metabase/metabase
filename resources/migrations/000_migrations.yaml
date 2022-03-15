@@ -11222,7 +11222,7 @@ databaseChangeLog:
             columns:
             - column:
                 remarks: Nested field column paths, flattened
-                name: nfc_paths
+                name: nfc_path
                 type: varchar(254)
                 constraints:
                   nullable: true
