@@ -57,8 +57,10 @@
   {:added "0.42.0"}
   [prop-nm {db-details :details :as _database}]
   (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
-        schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
-        exclusion-type?        (= "exclusion" schema-filter-type)]
-    (if exclusion-type?
-      [nil schema-filter-patterns]
-      [schema-filter-patterns nil])))
+        schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))]
+    (tap> {:what               "db-details->schema-filter-patterns"
+           :schema-filter-type schema-filter-type})
+    (case schema-filter-type
+      "exclusion" [nil schema-filter-patterns]
+      "inclusion" [schema-filter-patterns nil]
+      [nil nil])))
