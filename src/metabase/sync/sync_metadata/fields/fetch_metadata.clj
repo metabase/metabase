@@ -83,5 +83,6 @@
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
-  ;;;; if nfc enabled, enrich it here
-  (:fields (fetch-metadata/table-metadata database table)))
+  (:fields (cond-> (fetch-metadata/table-metadata database table)
+             ;;;;
+             (some shit w db) (add to the list blah some shit here)))
