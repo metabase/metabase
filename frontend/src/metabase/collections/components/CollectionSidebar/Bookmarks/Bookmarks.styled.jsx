@@ -25,19 +25,20 @@ export const BookmarkContainer = styled.div`
 
   &:hover {
     background: ${color("bg-medium")};
+
+    button {
+      opacity: 0.5;
+    }
   }
-`;
 
-export const BookmarkButton = styled.button`
-  color: ${color("brand")};
-  cursor: pointer;
-  padding: ${space(1)};
-  position: absolute;
-  right: 0;
-  top: 0;
-
-  &:hover {
-    background: ${color("focus")};
+  button {
+    opacity: 0;
+    color: ${color("brand")};
+    cursor: pointer;
+    padding: ${space(1)};
+    position: absolute;
+    right: 0;
+    top: 0;
   }
 `;
 

@@ -5,9 +5,9 @@ import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
+import Tooltip from "metabase/components/Tooltip";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
-  BookmarkButton,
   BookmarkContainer,
   BookmarkListRoot,
   BookmarkTypeIcon,
@@ -72,9 +72,11 @@ const CollectionSidebarBookmarks = ({
               <Link to={url}>
                 <Label name={name} type={type} />
               </Link>
-              <BookmarkButton onClick={() => handleDeleteBookmark(bookmark)}>
-                <Icon name="bookmark" />
-              </BookmarkButton>
+              <button onClick={() => handleDeleteBookmark(bookmark)}>
+                <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
+                  <Icon name="bookmark" />
+                </Tooltip>
+              </button>
             </BookmarkContainer>
           );
         })}
