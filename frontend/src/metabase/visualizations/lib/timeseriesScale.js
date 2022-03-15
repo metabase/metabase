@@ -6,9 +6,10 @@ const timeseriesScale = (
   { count, interval, timezone, shiftDays },
   linear = d3.scale.linear(),
 ) => {
-  const s = x => linear(toInt(x));
+  // console.log("Scale:", { count, interval, timezone, shiftDays }, linear);
+  const scale = x => linear(toInt(x));
 
-  s.domain = x => {
+  scale.domain = x => {
     if (x === undefined) {
       return firstAndLast(linear.domain()).map(t => moment(t).tz(timezone));
     }
@@ -17,29 +18,29 @@ const timeseriesScale = (
       x = domainForEvenlySpacedMonths(x, { interval, timezone });
     }
     linear.domain(x.map(toInt));
-    return s;
+    return scale;
   };
 
-  s.range = x => {
+  scale.range = x => {
     if (x === undefined) {
       return firstAndLast(linear.range());
     }
     if (interval === "month") {
-      x = rangeForEvenlySpacedMonths(x, s.domain(), { interval, timezone });
+      x = rangeForEvenlySpacedMonths(x, scale.domain(), { interval, timezone });
     }
     linear.range(x);
-    return s;
+    return scale;
   };
 
-  s.ticks = () =>
-    ticksForRange(s.domain(), { count, timezone, interval, shiftDays });
+  scale.ticks = () =>
+    ticksForRange(scale.domain(), { count, timezone, interval, shiftDays });
 
-  s.copy = () =>
+  scale.copy = () =>
     timeseriesScale({ count, interval, timezone, shiftDays }, linear);
 
-  d3.rebind(s, linear, "rangeRound", "interpolate", "clamp", "invert");
+  d3.rebind(scale, linear, "rangeRound", "interpolate", "clamp", "invert");
 
-  return s;
+  return scale;
 };
 
 function domainForEvenlySpacedMonths(domain, { timezone, interval }) {
@@ -84,11 +85,13 @@ function firstAndLast(a) {
 }
 
 function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
+  const rangeStart = start.clone().startOf(interval);
+  const rangeEnd = end.clone().startOf(interval);
+
   const ticks = [];
-  let tick = start
+  let tick = rangeStart
     .clone()
     .tz(timezone)
-    .startOf(interval)
     .add(shiftDays, "days");
 
   // We want to use "round" ticks for a given interval (unit). If we're
@@ -97,8 +100,8 @@ function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
   const intervalMod = tick.get(interval);
   tick.set(interval, intervalMod - (intervalMod % count));
 
-  while (!tick.isAfter(end)) {
-    if (!tick.isBefore(start)) {
+  while (!tick.isAfter(rangeEnd)) {
+    if (!tick.isBefore(rangeStart)) {
       ticks.push(tick);
     }
     tick = tick.clone().add(count, interval);
