@@ -141,6 +141,18 @@
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
                                                             "?venue_id=200")))))))))
 
+(deftest query-max-results-constraint-test
+  (testing "GET /api/preview_embed/card/:token/query"
+    (testing "Only 2000 results returned when there are many more"
+      (embed-test/with-embedding-enabled-and-new-secret-key
+        (let [sample-db-orders-question {:database 1
+                                         :query {:source-table 2}
+                                         :type "query"}]
+          (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
+            (is (= 2000 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
+                            :data
+                            :rows
+                            count)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
