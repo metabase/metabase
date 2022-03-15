@@ -33,6 +33,4 @@ driver:
     - default-advanced-options
 init:
   - step: load-namespace
-    namespace: metabase.driver.google
-  - step: load-namespace
     namespace: metabase.driver.googleanalytics

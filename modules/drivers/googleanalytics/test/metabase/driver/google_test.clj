@@ -2,10 +2,10 @@
   (:require [clojure.test :refer :all]
             [metabase.driver.google :as google]))
 
-(deftest create-application-name-test
+(deftest ^:parallel create-application-name-test
   (testing "Typical scenario, all config information included"
     (is (= "Metabase/v0.30.0-snapshot (GPN:Metabase; NWNjNWY0Mw== master)"
-           (#'google/create-application-name  {:tag "v0.30.0-snapshot", :hash "5cc5f43", :branch "master", :date "2018-08-21"}))))
+           (#'google/create-application-name {:tag "v0.30.0-snapshot", :hash "5cc5f43", :branch "master", :date "2018-08-21"}))))
 
   (testing (str "It's possible to have two hashes come back from our script. Sending a string with a newline in it "
                 "for the application name will cause Google connections to fail")
