@@ -191,4 +191,46 @@ describe("visual tests > visualizations > line", () => {
 
     cy.percySnapshot();
   });
+
+  it("with timeline events", () => {
+    cy.createTimelineWithEvents({
+      timeline: { name: "Releases" },
+      events: [
+        { name: "v20", timestamp: "2017-10-30T00:00:00Z", icon: "balloons" },
+        { name: "v21", timestamp: "2018-08-08T00:00:00Z", icon: "cloud" },
+        { name: "RC1", timestamp: "2019-05-10T00:00:00Z", icon: "bell" },
+        { name: "RC2", timestamp: "2019-05-20T00:00:00Z", icon: "star" },
+      ],
+    });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+        "graph.show_values": true,
+      },
+    });
+
+    cy.findByLabelText("calendar icon").click();
+    cy.findByRole("checkbox").click();
+    cy.percySnapshot();
+  });
 });
