@@ -20,13 +20,19 @@ export const BookmarkListRoot = styled.div`
 `;
 
 export const BookmarkContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  width: 100%;
+
+  &:hover {
+    background: ${color("bg-medium")};
+  }
 `;
 
 export const BookmarkButtonWrapper = styled(IconButtonWrapper)`
   color: ${color("brand")};
-  margin-right: ${space(1)};
+  position: absolute;
+  right: ${space(1)};
+  top: ${space(1)};
 `;
 
 export default CollectionSidebarBookmarksRoot;
