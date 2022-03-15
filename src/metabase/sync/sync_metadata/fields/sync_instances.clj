@@ -39,9 +39,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-                     ;;;;;;;;;;;;;;;;;;;;;;
-                     ;;;;;;;;;;;;;;;;;;;;;;
-      (for [{:keys [database-type base-type effective-type coercion-strategy field-comment database-position], field-name :name :as field} new-field-metadatas]
+      (for [{:keys [database-type base-type effective-type coercion-strategy field-comment database-position nfc-path], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
                     base-type
@@ -64,9 +62,7 @@
           :coercion_strategy (when effective-type coercion-strategy)
           :semantic_type     (common/semantic-type field)
           :parent_id         parent-id
-                     ;;;;;;;;;;;;;;;;;;;;;;
-                     ;;;;;;;;;;;;;;;;;;;;;;
-                     ;;;;;;;;;;;;;;;;;;;;;;
+          :nfc-path          nfc-path
           :description       field-comment
           :position          database-position
           :database_position database-position})))))
