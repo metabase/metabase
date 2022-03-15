@@ -111,6 +111,7 @@ function renderEventTicks(
       .append("path")
       .attr("class", "event-icon")
       .attr("d", iconPath)
+      .attr("aria-label", `${iconName} icon`)
       .attr(
         "transform",
         `scale(${iconScale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
