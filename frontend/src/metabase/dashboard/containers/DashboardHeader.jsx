@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
@@ -8,22 +9,38 @@ import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { getDashboardActions } from "./DashboardActions";
+import Bookmark from "metabase/entities/bookmarks";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
-import ParametersPopover from "./ParametersPopover";
+import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { getIsBookmarked } from "./selectors";
 
 import cx from "classnames";
 
 import { Link } from "react-router";
 
+const mapStateToProps = (state, props) => {
+  return {
+    isBookmarked: getIsBookmarked(state, props),
+  };
+};
+
+const mapDispatchToProps = {
+  createBookmark: id => Bookmark.actions.create({ id, type: "dashboard" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "dashboard" }),
+};
+
+@Bookmark.loadList()
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardHeader extends Component {
   constructor(props) {
     super(props);
 
     this.addQuestionModal = React.createRef();
+    this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
   state = {
@@ -57,6 +74,14 @@ export default class DashboardHeader extends Component {
 
   handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
+  }
+
+  handleToggleBookmark() {
+    const { createBookmark, deleteBookmark, isBookmarked } = this.props;
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+    toggleBookmark(this.props.dashboardId);
   }
 
   onAddTextBox() {
@@ -128,6 +153,7 @@ export default class DashboardHeader extends Component {
     const {
       dashboard,
       parametersWidget,
+      isBookmarked,
       isEditing,
       isFullscreen,
       isEditable,
@@ -183,6 +209,7 @@ export default class DashboardHeader extends Component {
         hideAddParameterPopover,
         addParameter,
       } = this.props;
+
       // Parameters
       buttons.push(
         <span key="add-a-filter">
@@ -243,6 +270,7 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing) {
       const extraButtonClassNames =
         "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
+
       if (canEdit) {
         extraButtons.push(
           <Link
@@ -254,6 +282,16 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
+
+      extraButtons.push(
+        <div
+          className={extraButtonClassNames}
+          onClick={this.handleToggleBookmark}
+        >
+          {isBookmarked ? t`Remove bookmark` : t`Bookmark`}
+        </div>,
+      );
+
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -263,6 +301,7 @@ export default class DashboardHeader extends Component {
           {t`Revision history`}
         </Link>,
       );
+
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -272,6 +311,7 @@ export default class DashboardHeader extends Component {
           {t`Duplicate`}
         </Link>,
       );
+
       if (canEdit) {
         extraButtons.push(
           <Link
@@ -283,6 +323,7 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
+
       if (canEdit) {
         extraButtons.push(
           <Link

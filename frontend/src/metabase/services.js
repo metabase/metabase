@@ -24,6 +24,10 @@ export const BookmarkApi = {
     create: POST("/api/bookmark/collection/:id"),
     delete: DELETE("/api/bookmark/collection/:id"),
   },
+  dashboard: {
+    create: POST("/api/bookmark/dashboard/:id"),
+    delete: DELETE("/api/bookmark/dashboard/:id"),
+  },
 };
 
 // only available with token loaded
