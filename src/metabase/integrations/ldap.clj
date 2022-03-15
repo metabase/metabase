@@ -87,9 +87,10 @@
 
                (map? new-value)
                (do (doseq [k (keys new-value)]
-                     (when-not (DN/isValidDN (name k))
+                     (when-not (DN/isValidDN (if (keyword? k) (name k) (str k)))
                        (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
-                   (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
+                   ;; except both key with type str and DN.
+                   (setting/set-value-of-type! :json :ldap-group-mappings (into {} (map (fn [[k v]] [(str k) v]) new-value)))))))
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."

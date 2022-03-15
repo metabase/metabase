@@ -7,9 +7,14 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db]))
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru]]
+            [toucan.db :as db])
+  (:import com.unboundid.ldap.sdk.DN))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -331,3 +336,67 @@
           (testing "And it is idempotent"
             (#'migrations/migrate-click-through)
             (is (= expected-settings (get-settings!)))))))))
+
+(deftest run-with-data-migration-index-test
+  (let [meaning-of-life (atom nil)]
+    (migrations/defmigration what-is-the-meaning-of-life?
+      (migrations/run-with-data-migration-index 2
+        (reset! meaning-of-life 42)))
+
+    (testing "shouldn't run if current data-migration-index is larger than requried index"
+      (mt/with-temporary-setting-values
+        [data-migration-index 3]
+        (what-is-the-meaning-of-life?)
+        (is (= nil @meaning-of-life))
+        (is (= 3 (setting/get :data-migration-index)))))
+
+    (testing "should run if current data-migration-index is smaller than requried index"
+      (mt/with-temporary-setting-values
+        [data-migration-index 1]
+        (what-is-the-meaning-of-life?)
+        (is (= 42 @meaning-of-life))
+        (is (= 2 (setting/get :data-migration-index)))))
+
+    (testing "should run if current data-migration-index even if current data-migration-index is nil"
+      (mt/with-temporary-setting-values
+        [data-migration-index nil]
+        (reset! meaning-of-life nil)
+        (what-is-the-meaning-of-life?)
+        (is (= 42 @meaning-of-life))
+        (is (= 2 (setting/get :data-migration-index)))))))
+
+(deftest migrate-remove-admin-from-group-mapping-if-needed-test
+  (testing "Remove admin from group mapping for LDAP, SAML, JWT"
+    (binding [setting/*allow-retired-setting-names* true]
+      (setting/defsetting ldap-sync-admin-group
+        (deferred-tru "Sync the admin group?")
+        :type    :boolean
+        :default false)
+      (let [admin-group-id        (u/the-id (group/admin))
+            sso-group-mapping     {:group-mapping-a [admin-group-id (+ 1 admin-group-id)]
+                                   :group-mapping-b [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
+            ldap-group-mapping    {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
+            sso-expected-mapping  {:group-mapping-a [(+ 1 admin-group-id)]
+                                   :group-mapping-b [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
+            ldap-expected-mapping {(DN. "dc=metabase,dc=com") [(+ 1 admin-group-id)]}]
+        (mt/with-temporary-setting-values
+          [jwt-group-mappings   sso-group-mapping
+           saml-group-mappings  sso-group-mapping
+           ldap-group-mappings  ldap-group-mapping
+           data-migration-index nil]
+          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
+          (is (= sso-expected-mapping (setting/get :saml-group-mappings)))
+          (is (= ldap-expected-mapping (setting/get :ldap-group-mappings))))))
+
+    (testing "But if ldap-sync-admin-group is true, don't remove it"
+      (let [admin-group-id     (u/the-id (group/admin))
+            group-ids          [admin-group-id (+ 1 admin-group-id)]
+            ldap-group-mapping    {"dc=metabase,dc=com" group-ids}
+            ldap-expected-mapping {(DN. "dc=metabase,dc=com") group-ids}]
+        (mt/with-temporary-setting-values
+          [ldap-group-mappings  ldap-group-mapping
+           ldap-sync-admin-group "true"
+           data-migration-index nil]
+          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= ldap-expected-mapping (setting/get :ldap-group-mappings))))))))

@@ -28,7 +28,7 @@
   :type       :integer
   :visibility :internal)
 
-(defn- should-run-data-migration?
+(defn should-run-data-migration?
   "`true` if the current `data-migration-index` is lower than the required index"
   [required-data-migration-index]
   (let [data-migration-index (setting/get :data-migration-index)]
@@ -70,9 +70,9 @@
         :id        migration-name
         :timestamp :%now))))
 
-(def ^:private ^:deprecated data-migrations (atom []))
+(def ^:deprecated data-migrations (atom []))
 
-(defmacro ^:private ^:deprecated defmigration
+(defmacro ^:deprecated defmigration
   "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
   `data-migrations` atom."
   [migration-name & body]
@@ -216,7 +216,7 @@
              (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
              mapping)))))
 
-(defmigration ^{:author "qnkhuat" :added "0.43.0" :data-migration-index 1} remove-admin-group-mapping-if-needed
+(defmigration ^{:author "qnkhuat" :added "0.43.0" :data-migration-index 1} migrate-remove-admin-from-group-mapping-if-needed
   ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
   ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
   ;;  But with this change we want to make sure we don't accidently add/remove adminusers we need to :
