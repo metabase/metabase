@@ -570,9 +570,10 @@ jobs:
       - run:
           name: Save last git commit message to .COMMIT
           command: git log -1 > .COMMIT
-      - run:
-         name: Exporting SHA1 message to be used on the fe-test
-         command: echo "export COMMIT_INFO_MESSAGE=\"$(git log --format=oneline -n 1 $CIRCLE_SHA1)\"" >> $BASH_ENV
+      - save_cache:
+          key: git
+          paths: 
+           - /home/circleci/metabase/metabase/.git
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -582,7 +583,6 @@ jobs:
               echo 'This is not a release branch; removing .git directory (not needed for tests)'
               rm -rf /home/circleci/metabase/metabase/.git
             fi
-
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX
@@ -947,6 +947,8 @@ jobs:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
+                      keys:
+                          - git
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
