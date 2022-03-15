@@ -572,7 +572,7 @@ jobs:
           command: git log -1 > .COMMIT
       - save_cache:
           key: git
-          paths: 
+          paths:
            - /home/circleci/metabase/metabase/.git
       - run:
           name: Determine what to do to .git directory
@@ -946,9 +946,9 @@ jobs:
                 before-steps:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
-                      <<: *CacheKeyUberjar
                       keys:
-                          - git
+                        - git
+                      <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
