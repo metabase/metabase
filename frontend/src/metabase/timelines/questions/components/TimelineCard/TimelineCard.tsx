@@ -20,11 +20,11 @@ import {
 
 export interface TimelineCardProps {
   timeline: Timeline;
-  isVisible?: boolean;
   collection: Collection;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  isVisible?: boolean;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelineCard = ({
