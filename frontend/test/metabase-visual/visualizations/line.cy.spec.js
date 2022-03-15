@@ -231,7 +231,10 @@ describe("visual tests > visualizations > line", () => {
 
     cy.findByLabelText("calendar icon").click();
     cy.findByRole("checkbox").click();
-    cy.findByLabelText("star icon");
+    cy.findByLabelText("star icon").realHover();
+    cy.findByText("RC1");
+    cy.findByText("RC2");
+
     cy.percySnapshot();
   });
 });
