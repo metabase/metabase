@@ -538,3 +538,19 @@
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
               {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
              (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))
+
+(deftest grant-download-perms-test
+  (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
+    (impl/test-migrations ["v43.00-042"] [migrate!]
+      (db/execute! {:insert-into Database
+                    :values      [{:name       "My DB"
+                                   :engine     "h2"
+                                   :created_at :%now
+                                   :updated_at :%now
+                                   :details    "{}"}]})
+      (migrate!)
+      (is (= [{:object "/collection/root/"} {:object "/download/db/1/"}]
+             (db/query {:select    [:p.object]
+                        :from      [[Permissions :p]]
+                        :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                        :where     [:= :pg.name group/all-users-group-name]}))))))

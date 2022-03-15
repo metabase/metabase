@@ -27,6 +27,7 @@ function getIconForEntityType(type: BookmarkableEntities) {
   const icons = {
     card: "grid",
     collection: "folder",
+    dashboard: "dashboard",
   };
 
   return icons[type];
