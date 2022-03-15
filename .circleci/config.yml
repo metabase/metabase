@@ -569,7 +569,7 @@ jobs:
           find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
           name: Save last git commit message to .COMMIT
-          command: git log -1 > .COMMIT
+          command: git log --format=oneline -n 1 > .COMMIT
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -946,6 +946,7 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
+                  COMMIT_INFO_MESSAGE=$(cat .COMMIT)
                   run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>  <<# parameters.currrents-record >>  --record << parameters.currrents-record >> <</ parameters.currrents-record >>  <<# parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
