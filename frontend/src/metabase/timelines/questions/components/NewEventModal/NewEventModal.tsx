@@ -9,7 +9,7 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
-  cardId: number;
+  cardId?: number;
   timelines?: Timeline[];
   collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
