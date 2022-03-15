@@ -5,7 +5,9 @@
   thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
-     CREATE TABLE ...               -- Bad"
+     CREATE TABLE ...               -- Bad
+
+  In case we need to guarantee a data-migration is only run once, check out `run-with-data-migration-index`."
   (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -26,16 +28,24 @@
   :type       :integer
   :visibility :internal)
 
-(defn- should-re-run?
+(defn- should-run-data-migration?
+  "`true` if the current `data-migration-index` is lower than the required index"
   [required-data-migration-index]
   (let [data-migration-index (setting/get :data-migration-index)]
-    (and (integer? data-migration-index) (< data-migration-index required-data-migration-index))))
+    (or (nil? data-migration-index) (< data-migration-index required-data-migration-index))))
 
-(defmacro with-required-data-migration-index
-  [index & body]
-  `(when (should-re-run? ~index)
+(defmacro run-with-data-migration-index
+  "To avoid re-running a data-migration, we use `:data-migration-index` setting to check whether or not a migration is already run.
+  Useful when we need to enforce a data-migration to only run once when upgrading Metabase.
+
+  When defining a new data migration, make sure the `data-migration-index` is incremented from the last data-migration,
+  otherwise the migration will be skipped even when upgrading Metabase.
+  After running migration successfully, `data-migration-index` will be automatically updated"
+  {:style/indent 1}
+  [data-migration-index & body]
+  `(when (should-run-data-migration? ~data-migration-index)
     ~@body
-    (setting/set-value-of-type! :integer :data-migration-index ~index)))
+    (setting/set-value-of-type! :integer :data-migration-index ~data-migration-index)))
 
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
@@ -191,19 +201,33 @@
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
+(defn- remove-group-id-from-mappings-by-setting-key
+  [mapping-setting-key admin-group-id]
+  ;; Intentionally get setting using `db/select-one-field` instead of `setting/get` because for some reasons
+  ;; during start-up setting/get return the default value defined in defsetting instead of value from Setting table
+  (let [mapping (try
+                 (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
+                 (catch Exception _e
+                   {}))]
+    (when-not (empty? mapping)
+      (setting/set-value-of-type!
+       :json mapping-setting-key
+       (into {}
+             (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+             mapping)))))
+
 (defmigration ^{:author "qnkhuat" :added "0.43.0" :data-migration-index 1} remove-admin-group-mapping-if-needed
-  (with-required-data-migration-index 1
-    (let [admin-group-id (u/the-id (group/admin))
-          remove-by-key  (fn [k] (setting/set-value-of-type!
-                                  :json k
-                                  (into {}
-                                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                                        (setting/get k))))]
-      ;; manually select instead of using setting/get because we've already removed this key from setting
+  ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
+  ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+  ;;  But with this change we want to make sure we don't accidently add/remove adminusers we need to :
+  ;;  - for LDAP, if the `ldap-sync-admin-group` is disabled, remove all mapping for admin group
+  ;;  - for SAML, JWT remove all mapping for admin group
+  (run-with-data-migration-index 1
+    (let [admin-group-id (u/the-id (group/admin))]
       (when (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group"))
-        (remove-by-key :ldap-group-mappings))
-      (remove-by-key :jwt-group-mappings)
-      (remove-by-key :saml-group-mappings))))
+        (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
+      (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id)
+      (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
