@@ -1523,8 +1523,7 @@ export class TemplateTagDimension extends FieldDimension {
 
     if (this.isDimensionType() && tag.dimension == null) {
       return new Error(
-        t`Field filter "${this.displayName() ||
-          this.tagName()}" is missing a field.`,
+        t`The variable "${this.tagName()}" needs to be mapped to a field.`,
       );
     }
 
