@@ -571,6 +571,9 @@ jobs:
           name: Save last git commit message to .COMMIT
           command: git log -1 > .COMMIT
       - run:
+         name: Exporting SHA1 message to be used on the fe-test
+         command: echo "export COMMIT_INFO_MESSAGE=\"$(git log --format=oneline -n 1 $CIRCLE_SHA1)\"" >> $BASH_ENV
+      - run:
           name: Determine what to do to .git directory
           command: |
             if [[ $CIRCLE_BRANCH == release* ]]; then
@@ -935,9 +938,6 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
-      - run:
-         name: Getting the commit message of the SHA1
-         command: echo "export COMMIT_INFO_MESSAGE=\"$(git log --format=oneline -n 1 $CIRCLE_SHA1)\"" >> $BASH_ENV
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
