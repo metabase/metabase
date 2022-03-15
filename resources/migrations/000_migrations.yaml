@@ -11213,6 +11213,31 @@ databaseChangeLog:
                   name: collection_id
             indexName: idx_collection_bookmark_collection_id
 
+  - changeSet:
+      id: v43.00-042
+      author: noahmoss
+      comment: >-
+        Added 0.43.0. Grant download permissions for existing Databases to 'All Users' permissions group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/download/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
