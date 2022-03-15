@@ -23,11 +23,6 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
 
-    - name: Java/AOT prep
-      run: |
-        source "./bin/prep.sh"
-        prep_deps
-
     - run: ./bin/build version
     - run: ./bin/build translations
     - run: ./bin/build frontend
@@ -61,7 +56,6 @@ jobs:
           - "moderation"
           - "native"
           - "native-filters"
-          - "native"
           - "permissions"
           - "question"
           - "sharing"
@@ -102,18 +96,8 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-
-    - name: Get Cypress cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
-    - name: Ensure that Cypress executable is ready
-      run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
 
     - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}

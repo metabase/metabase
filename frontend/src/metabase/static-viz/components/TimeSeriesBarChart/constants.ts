@@ -8,10 +8,6 @@ export const TIME_SERIES_BAR_CHART_DEFAULT_OPTIONS = {
     ["2020-10-24", 10],
     ["2020-10-25", 15],
   ],
-  accessors: {
-    x: (row: any[]) => new Date(row[0]).valueOf(),
-    y: (row: any[]) => row[1],
-  },
   settings: {
     x: {
       date_style: "MM/DD/YYYY",

@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
@@ -41,15 +42,24 @@ function mapStateToProps(state) {
   };
 }
 
+const mapDispatchToProps = {
+  createBookmark: id => Bookmark.actions.create({ id: `collection-${id}` }),
+  deleteBookmark: id => Bookmark.actions.delete({ id: `collection-${id}` }),
+};
+
 function CollectionContent({
+  bookmarks,
   collection,
   collections: collectionList = [],
   collectionId,
+  createBookmark,
+  deleteBookmark,
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
   metadata,
 }) {
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
@@ -64,6 +74,15 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+
+  useEffect(() => {
+    const shouldBeBookmarked = bookmarks.some(
+      bookmark =>
+        bookmark.type === "collection" && bookmark.item_id === collectionId,
+    );
+
+    setIsBookmarked(shouldBeBookmarked);
+  }, [bookmarks, collectionId]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -115,6 +134,11 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
+  const handleClickBookmark = () => {
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    toggleBookmark(collectionId);
+  };
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -145,6 +169,8 @@ function CollectionContent({
           <CollectionRoot>
             <CollectionMain>
               <Header
+                onClickBookmark={handleClickBookmark}
+                isBookmarked={isBookmarked}
                 isRoot={isRoot}
                 isAdmin={isAdmin}
                 collectionId={collectionId}
@@ -257,6 +283,7 @@ function CollectionContent({
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   Collection.loadList({
     query: () => ({ tree: true }),
     loadingAndErrorWrapper: false,
@@ -265,5 +292,5 @@ export default _.compose(
     id: (_, props) => props.collectionId,
     reload: true,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionContent);

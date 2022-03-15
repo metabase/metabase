@@ -158,7 +158,7 @@
         results    (try
                      (execute* details query)
                      (catch Throwable e
-                       (throw (ex-info (tru "Error executing query")
+                       (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                        {:type  qp.error-type/db
                                         :query query}
                                        e))))

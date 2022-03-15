@@ -11,6 +11,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 import NewCollectionItemMenu from "metabase/collections/components/NewCollectionItemMenu";
+import { color } from "metabase/lib/colors";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
@@ -105,14 +106,31 @@ function EditMenu({
   ) : null;
 }
 
+function Bookmark({ isBookmarked, onClickBookmark }) {
+  const title = t`Bookmarks`;
+  const iconColor = isBookmarked ? color("brand") : "";
+
+  return (
+    <Tooltip tooltip={title}>
+      <IconWrapper onClick={onClickBookmark}>
+        <Icon name="bookmark" color={iconColor} size={20} />
+      </IconWrapper>
+    </Tooltip>
+  );
+}
+
 function Menu(props) {
-  const { hasWritePermission } = props;
+  const { collectionId, hasWritePermission } = props;
+
+  const shouldBeBookmarkable = collectionId !== "root";
+
   return (
     <MenuContainer data-testid="collection-menu">
       {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
       <TimelinesLink {...props} />
+      {shouldBeBookmarkable && <Bookmark {...props} />}
     </MenuContainer>
   );
 }
