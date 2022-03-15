@@ -969,6 +969,12 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - run:
+         name: Getting the commit message of the SHA1
+         command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_MESSAGE
+      - run:
+         name: Exporting the commit massage to bash to be used by Cypress
+         command: echo 'export COMMIT_INFO_MESSAGE=$COMMIT_MESSAGE' >> $BASH_ENV
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
@@ -980,7 +986,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >> --ci-build-id $CIRCLE_SHA1
+                  run test-cypress-no-build --folder << parameters.source-folder >>  --record --key $CURRENTS_KEY --group << parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
