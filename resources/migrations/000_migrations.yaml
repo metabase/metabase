@@ -11213,6 +11213,14 @@ databaseChangeLog:
                   name: collection_id
             indexName: idx_collection_bookmark_collection_id
 
+  - changeSet:
+      id: v43.00-044
+      author: noahmoss
+      comment: Added 0.43.0 - Removes MetaBot permissions group
+      changes:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE name = 'MetaBot'
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
