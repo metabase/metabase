@@ -937,6 +937,9 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
+            - run:
+                name: Adding commit message as variable to be used from Cypress
+                command: COMMIT_INFO_MESSAGE=$(cat .COMMIT)
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
@@ -946,7 +949,6 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  COMMIT_INFO_MESSAGE=$(cat .COMMIT)
                   run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>  <<# parameters.currrents-record >>  --record << parameters.currrents-record >> <</ parameters.currrents-record >>  <<# parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
