@@ -932,6 +932,9 @@ jobs:
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
+      COMMIT_INFO_BRANCH: $CIRCLE_BRANCH
+      COMMIT_INFO_AUTHOR: $CIRCLE_USERNAME
+      COMMIT_INFO_SHA: $CIRCLE_SHA1
     steps:
       - attach-workspace
       - run-on-change:
@@ -940,6 +943,8 @@ jobs:
             - run:
                 name: Adding commit message as variable to be used from Cypress
                 command: COMMIT_INFO_MESSAGE=$(cat .COMMIT)
+            - run:
+                command: echo ${COMMIT_INFO_MESSAGE}
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
