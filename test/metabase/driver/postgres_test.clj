@@ -285,12 +285,6 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
-(deftest json-field-test
-  (mt/test-driver :postgres
-    (testing "Get honeysql to do postgres's sugar if it gets a JSON field"
-
-      )))
-
 (deftest json-query-test
   (testing "Transforming MBQL query with JSON in it to postgres query works"
         (is (= "mlep -> 'meh'"
