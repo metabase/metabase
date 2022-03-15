@@ -202,6 +202,11 @@ export function getDateStyleFromSettings() {
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
+export function getNumericDateStyleFromSettings() {
+  const dateStyle = getDateStyleFromSettings();
+  return /\//.test(dateStyle) ? dateStyle : "M/D/YYYY";
+}
+
 export function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.time_style;

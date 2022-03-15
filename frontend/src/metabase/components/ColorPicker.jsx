@@ -22,6 +22,11 @@ const ColorSquare = ({ color, size }) => (
   />
 );
 
+const ColorPickerFancyContent = ({ children }) => <div>{children}</div>;
+const ColorPickerContent = ({ children }) => (
+  <div className="p1">{children}</div>
+);
+
 class ColorPicker extends Component {
   constructor(props) {
     super(props);
@@ -59,7 +64,7 @@ class ColorPicker extends Component {
           }
         >
           {fancy ? (
-            <div>
+            <ColorPickerFancyContent>
               {/* HACK to hide SketchPicker's border/shadow */}
               <div className="rounded overflow-hidden">
                 <SketchPicker
@@ -74,9 +79,9 @@ class ColorPicker extends Component {
                   Done
                 </Button>
               </div>
-            </div>
+            </ColorPickerFancyContent>
           ) : (
-            <div className="p1">
+            <ColorPickerContent>
               <ol
                 className="flex flex-wrap"
                 style={{
@@ -97,7 +102,7 @@ class ColorPicker extends Component {
                   </li>
                 ))}
               </ol>
-            </div>
+            </ColorPickerContent>
           )}
         </PopoverWithTrigger>
       </div>

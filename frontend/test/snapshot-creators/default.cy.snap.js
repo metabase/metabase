@@ -5,6 +5,7 @@ import {
   USER_GROUPS,
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
+  METABASE_SECRET_KEY,
 } from "__support__/e2e/cypress_data";
 
 const {
@@ -68,7 +69,7 @@ describe("snapshots", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
     cy.request("PUT", "/api/setting/enable-embedding", { value: true });
     cy.request("PUT", "/api/setting/embedding-secret-key", {
-      value: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      value: METABASE_SECRET_KEY,
     });
 
     // update the Sample db connection string so it is valid in both CI and locally

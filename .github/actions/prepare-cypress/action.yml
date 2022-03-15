@@ -1,0 +1,16 @@
+name: Prepare cypress environment
+runs:
+  using: "composite"
+  steps:
+    - name: Get Cypress cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/Cypress
+        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+    - name: Ensure that Cypress executable is ready
+      run: |
+        yarn cypress install
+        yarn cypress cache path
+        yarn cypress cache list
+        yarn cypress verify
+      shell: bash

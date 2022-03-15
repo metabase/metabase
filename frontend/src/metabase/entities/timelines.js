@@ -4,7 +4,7 @@ import _ from "underscore";
 import { TimelineSchema } from "metabase/schema";
 import { TimelineApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
-import { getDefaultTimeline } from "metabase/lib/timeline";
+import { getDefaultTimeline } from "metabase/lib/timelines";
 import TimelineEvents from "./timeline-events";
 import forms from "./timelines/forms";
 

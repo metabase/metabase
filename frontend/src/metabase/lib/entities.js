@@ -1,6 +1,12 @@
 /*
  * # Entities abstract the interface between the back-end and the front-end.
  *
+ * ## Endpoint requirements for entities:
+ *
+ * When fetching a list, each item of the list must include an `id` key/value pair.
+ *
+ * JSON must wrap response inside a `{ "data" : { …your data } }` structure.
+ *
  * ## Required Properties:
  *
  * name:

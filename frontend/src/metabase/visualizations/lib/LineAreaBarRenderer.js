@@ -728,9 +728,9 @@ function addTrendlineChart(
   }
 }
 
-function applyXAxisSettings(parent, series, xAxisProps) {
+function applyXAxisSettings(parent, series, xAxisProps, timelineEvents) {
   if (isTimeseries(parent.settings)) {
-    applyChartTimeseriesXAxis(parent, series, xAxisProps);
+    applyChartTimeseriesXAxis(parent, series, xAxisProps, timelineEvents);
   } else if (isQuantitative(parent.settings)) {
     applyChartQuantitativeXAxis(parent, series, xAxisProps);
   } else {
@@ -811,7 +811,15 @@ function doHistogramBarStuff(parent) {
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
 export default function lineAreaBar(element, props) {
-  const { onRender, isScalarSeries, settings, series } = props;
+  const {
+    isScalarSeries,
+    settings,
+    series,
+    timelineEvents,
+    onRender,
+    onHoverChange,
+    onOpenTimelines,
+  } = props;
 
   const warnings = {};
   // `text` is displayed to users, but we deduplicate based on `key`
@@ -896,7 +904,7 @@ export default function lineAreaBar(element, props) {
     parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
   }
 
-  applyXAxisSettings(parent, props.series, xAxisProps);
+  applyXAxisSettings(parent, props.series, xAxisProps, timelineEvents);
 
   applyYAxisSettings(parent, yAxisProps);
 
@@ -914,13 +922,18 @@ export default function lineAreaBar(element, props) {
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
-    onGoalHover,
+    datas,
+    timelineEvents,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
+    xDomain: xAxisProps.xDomain,
     xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
+    isTimeseries: isTimeseries(parent.settings),
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
-    datas,
+    onGoalHover,
+    onHoverChange,
+    onOpenTimelines,
   });
 
   // only ordinal axis can display "null" values

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import { hasTimePart, parseTimestamp } from "metabase/lib/time";
-import { getTimelineIcons } from "metabase/lib/timeline";
+import { getTimelineIcons } from "metabase/lib/timelines";
 import validate from "metabase/lib/validate";
 
-const createForm = () => {
+const createForm = ({ timelines }) => {
   return [
     {
       name: "name",
@@ -44,23 +44,25 @@ const createForm = () => {
     },
     {
       name: "timeline_id",
-      type: "hidden",
+      title: t`Timeline`,
+      type: timelines.length > 1 ? "select" : "hidden",
+      options: timelines.map(t => ({ name: t.name, value: t.id })),
     },
   ];
 };
 
-const normalizeForm = timeline => {
-  const timestamp = parseTimestamp(timeline.timestamp);
+const normalizeForm = values => {
+  const timestamp = parseTimestamp(values.timestamp);
 
   return {
-    ...timeline,
+    ...values,
     time_matters: hasTimePart(timestamp),
   };
 };
 
 export default {
-  collection: {
-    fields: createForm,
+  details: ({ timelines = [] } = {}) => ({
+    fields: createForm({ timelines }),
     normalize: normalizeForm,
-  },
+  }),
 };

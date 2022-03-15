@@ -177,7 +177,7 @@ describe("scenarios > models", () => {
 
   describe("data picker", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/search").as("search");
+      cy.intercept("GET", "/api/search*").as("search");
       cy.request("PUT", "/api/card/1", { dataset: true });
     });
 
