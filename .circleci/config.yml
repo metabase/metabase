@@ -937,7 +937,7 @@ jobs:
       - attach-workspace
       - run:
          name: Getting the commit message of the SHA1
-         command: git log --format=%B -n 1 $CIRCLE_SHA1 > $COMMIT_INFO_MESSAGE
+         command: echo "export COMMIT_MESSAGE=\"$(git log --format=oneline -n 1 $CIRCLE_SHA1)\"" >> $BASH_ENV
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
