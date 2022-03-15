@@ -7,6 +7,7 @@ import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 
 interface TimelinePanelProps {
+  cardId?: number;
   collectionId?: number;
 }
 

@@ -34,6 +34,20 @@ const createForm = ({ timelines }) => {
       validate: validate.required(),
     },
     {
+      name: "timeline_id",
+      title: t`Timeline`,
+      type: timelines.length > 1 ? "select" : "hidden",
+      options: timelines.map(t => ({ name: t.name, value: t.id })),
+    },
+    {
+      name: "source",
+      type: "hidden",
+    },
+    {
+      name: "question_id",
+      type: "hidden",
+    },
+    {
       name: "timezone",
       type: "hidden",
     },
@@ -41,12 +55,6 @@ const createForm = ({ timelines }) => {
       name: "time_matters",
       type: "hidden",
       initial: false,
-    },
-    {
-      name: "timeline_id",
-      title: t`Timeline`,
-      type: timelines.length > 1 ? "select" : "hidden",
-      options: timelines.map(t => ({ name: t.name, value: t.id })),
     },
   ];
 };

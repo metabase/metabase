@@ -9,6 +9,7 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
+  cardId: number;
   timelines?: Timeline[];
   collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
@@ -16,6 +17,7 @@ export interface NewEventModalProps {
 }
 
 const NewEventModal = ({
+  cardId,
   timelines = [],
   collection,
   onSubmit,
@@ -31,8 +33,10 @@ const NewEventModal = ({
       timeline_id: hasTimelines ? defaultTimeline.id : null,
       icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
+      source: "question",
+      question_id: cardId,
     }),
-    [defaultTimeline, hasTimelines, hasOneTimeline],
+    [defaultTimeline, hasTimelines, hasOneTimeline, cardId],
   );
 
   const handleSubmit = useCallback(

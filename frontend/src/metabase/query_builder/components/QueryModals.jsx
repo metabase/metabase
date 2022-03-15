@@ -233,6 +233,7 @@ export default class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.NEW_EVENT_WITH_TIMELINE ? (
       <Modal onClose={onCloseModal}>
         <NewEventWithTimelineModal
+          cardId={question.id()}
           collectionId={question.collectionId()}
           onClose={onCloseModal}
         />
