@@ -66,7 +66,8 @@
    (fields->our-metadata fields nil))
 
   ([fields :- (s/maybe [i/FieldInstance]), top-level-parent-id :- common/ParentID]
-   (let [parent-id->fields (fields->parent-id->fields fields)]
+   (let [parent-id->fields    (fields->parent-id->fields fields)
+         nested-field-columns (some shit)]
      ;; get all the top-level fields, then call `add-nested-fields` to recursively add the fields
      (set (for [metabase-field (get parent-id->fields top-level-parent-id)]
             (add-nested-fields metabase-field parent-id->fields))))))
