@@ -569,7 +569,7 @@ jobs:
           find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
           name: Save last git commit message to .COMMIT
-          command: git log --format=oneline -n 1 > .COMMIT
+          command: git log --format=%B -n 1 > .COMMIT
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -932,9 +932,7 @@ jobs:
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
-      COMMIT_INFO_BRANCH: $CIRCLE_BRANCH
-      COMMIT_INFO_AUTHOR: $CIRCLE_USERNAME
-      COMMIT_INFO_SHA: $CIRCLE_SHA1
+      defaultBranch: $CIRCLE_BRANCH
     steps:
       - attach-workspace
       - run-on-change:
@@ -942,11 +940,9 @@ jobs:
           steps:
             - run:
                 name: Adding commit message as variable to be used from Cypress
-                command: echo 'export COMMIT_INFO_MESSAGE=$(cat .COMMIT)'
+                command: echo 'export COMMIT_INFO_MESSAGE="$(cat .COMMIT)"'
             - run:
                 command: echo ${COMMIT_INFO_MESSAGE}
-            - run:
-                command: cat .COMMIT
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
