@@ -6,11 +6,7 @@ import { t } from "ttag";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-
-import { routerActions } from "react-router-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -59,25 +55,13 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
-const createRouteGuard = userPredicate => {
-  const Wrapper = UserAuthWrapper({
-    predicate: currentUser =>
-      currentUser?.is_superuser || userPredicate(currentUser),
-    failureRedirectPath: "/unauthorized",
-    authSelector: state => state.currentUser,
-    allowRedirectBack: false,
-    wrapperDisplayName: "RouteGuard",
-    redirectAction: routerActions.replace,
-  });
-
-  return Wrapper(({ children }) => children);
-};
-
-const DataModelGuard = createRouteGuard(
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
-);
-
-const getRoutes = (store, CanAccessSettings, IsAdmin) => (
+const getRoutes = (
+  store,
+  CanAccessSettings,
+  IsAdmin,
+  CanAccessDataModel,
+  CanAccessDatabaseManagement,
+) => (
   <Route
     path="/admin"
     component={withBackground("bg-white")(CanAccessSettings)}
@@ -85,13 +69,17 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
     <Route title={t`Admin`} component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
 
-      <Route path="databases" title={t`Databases`}>
+      <Route
+        path="databases"
+        title={t`Databases`}
+        component={CanAccessDatabaseManagement}
+      >
         <IndexRoute component={DatabaseListApp} />
         <Route path="create" component={DatabaseEditApp} />
         <Route path=":databaseId" component={DatabaseEditApp} />
       </Route>
 
-      <Route path="datamodel" component={DataModelGuard}>
+      <Route path="datamodel" component={CanAccessDataModel}>
         <Route title={t`Data Model`} component={DataModelApp}>
           <IndexRedirect to="database" />
           <Route path="database" component={MetadataEditorApp} />

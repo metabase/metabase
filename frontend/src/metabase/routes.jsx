@@ -138,6 +138,20 @@ const UserCanAccessSettings = UserAuthWrapper({
   redirectAction: routerActions.replace,
 });
 
+const createRouteGuard = (userPredicate, displayName) => {
+  const Wrapper = UserAuthWrapper({
+    predicate: currentUser =>
+      currentUser?.is_superuser || userPredicate(currentUser),
+    failureRedirectPath: "/unauthorized",
+    authSelector: state => state.currentUser,
+    allowRedirectBack: false,
+    wrapperDisplayName: displayName,
+    redirectAction: routerActions.replace,
+  });
+
+  return Wrapper(({ children }) => children);
+};
+
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -151,6 +165,16 @@ const IsNotAuthenticated = MetabaseIsSetup(
 
 const CanAccessSettings = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+);
+
+const CanAccessDataModel = createRouteGuard(
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  "CanAccessDataModel",
+);
+
+const CanAccessDatabaseManagement = createRouteGuard(
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDatabaseManagement,
+  "CanAccessDatabasesManagement",
 );
 
 export const getRoutes = store => (
@@ -358,7 +382,13 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+      {getAdminRoutes(
+        store,
+        CanAccessSettings,
+        IsAdmin,
+        CanAccessDataModel,
+        CanAccessDatabaseManagement,
+      )}
     </Route>
 
     {/* INTERNAL */}
