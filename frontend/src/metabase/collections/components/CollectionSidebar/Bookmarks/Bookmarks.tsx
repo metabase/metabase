@@ -56,7 +56,7 @@ const CollectionSidebarBookmarks = ({
   }
 
   const handleDeleteBookmark = ({ item_id: id, type }: Bookmark) => {
-    deleteBookmark(id, type);
+    deleteBookmark(id.toString(), type);
   };
 
   return (

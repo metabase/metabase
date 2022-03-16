@@ -61,7 +61,7 @@ function ActionMenu({
   const handleToggleBookmark = useCallback(() => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark?.(item.id + "", item.model);
+    toggleBookmark?.(item.id.toString(), item.model);
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   return (
