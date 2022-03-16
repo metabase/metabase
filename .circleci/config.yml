@@ -277,9 +277,6 @@ cache-key-uberjar: &CacheKeyUberjar
 cache-key-snowplow-deps: &CacheKeySnowplowDeps
   key: v5-{{ checksum ".CACHE-PREFIX" }}-snowplow-deps
 
-cache-key-git-deps: &CacheKeyGitDeps
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-git-deps
-
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
 ########################################################################################################################
@@ -310,12 +307,6 @@ commands:
       - restore_cache:
           name: Restore Snowplow Micro JAR
           <<: *CacheKeySnowplowDeps
-
-  restore-git-deps-cache:
-    steps:
-      - restore_cache:
-          name: Restore .git Folder
-          <<: *CacheKeyGitDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
@@ -578,11 +569,6 @@ jobs:
       - run:
           name: Save last git commit message to .COMMIT
           command: git log --format=%B -n 1 > .COMMIT
-      - save_cache:
-          name: Cache .git
-          <<: *CacheKeyGitDeps
-          paths:
-            - /home/circleci/metabase/metabase/.git
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -956,7 +942,6 @@ jobs:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
-                  - restore-git-deps-cache
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
@@ -1284,6 +1269,7 @@ workflows:
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
+            - checkout
             - build-uberjar-<< matrix.edition >>
             - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
