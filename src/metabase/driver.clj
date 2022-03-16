@@ -395,6 +395,9 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does the driver support persisting models
+    :persisted-models
+
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
 
