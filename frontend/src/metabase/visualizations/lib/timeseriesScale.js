@@ -6,7 +6,6 @@ const timeseriesScale = (
   { count, interval, timezone, shiftDays },
   linear = d3.scale.linear(),
 ) => {
-  // console.log("Scale:", { count, interval, timezone, shiftDays }, linear);
   const scale = x => linear(toInt(x));
 
   scale.domain = x => {
@@ -85,13 +84,11 @@ function firstAndLast(a) {
 }
 
 function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
-  const rangeStart = start.clone().startOf(interval);
-  const rangeEnd = end.clone().startOf(interval);
-
   const ticks = [];
-  let tick = rangeStart
+  let tick = start
     .clone()
     .tz(timezone)
+    .startOf(interval)
     .add(shiftDays, "days");
 
   // We want to use "round" ticks for a given interval (unit). If we're
@@ -100,12 +97,13 @@ function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
   const intervalMod = tick.get(interval);
   tick.set(interval, intervalMod - (intervalMod % count));
 
-  while (!tick.isAfter(rangeEnd)) {
-    if (!tick.isBefore(rangeStart)) {
+  while (!tick.isAfter(end)) {
+    if (!tick.isBefore(start)) {
       ticks.push(tick);
     }
     tick = tick.clone().add(count, interval);
   }
+
   return ticks;
 }
 
