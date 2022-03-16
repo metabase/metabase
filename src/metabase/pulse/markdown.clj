@@ -7,6 +7,7 @@
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
+           com.vladsch.flexmark.ext.autolink.AutolinkExtension
            [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
            [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
            com.vladsch.flexmark.parser.Parser
@@ -20,7 +21,9 @@
 
 (def ^:private parser
   "An instance of a Flexmark parser"
-  (delay (.build (Parser/builder))))
+  (let [options (.. (MutableDataSet.)
+                    (set Parser/EXTENSIONS [(AutolinkExtension/create)]))]
+    (delay (.build (Parser/builder options)))))
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
@@ -266,7 +269,7 @@
       (str "<" (:href attrs) ">")
 
       :mail-link
-      (str "<" (:address attrs) ">")
+      (str "<mailto:" (:address attrs) "|" (:address attrs) ">")
 
       ;; list items might have nested lists or other elements, which should have their indentation level increased
       (:unordered-list-item :ordered-list-item)
@@ -313,13 +316,15 @@
                        (toImmutable))
         lr-factory (reify LinkResolverFactory
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
-                      (reify LinkResolver
-                        (resolveLink [_this _node _context link]
-                          (if-let [url (resolve-uri (.getUrl link))]
-                            (.. link
-                                (withStatus LinkStatus/VALID)
-                                (withUrl url))
-                            link)))))]
+                       (reify LinkResolver
+                         (resolveLink [_this node _context link]
+                           (if-let [url (if (instance? MailLink node)
+                                          (.getUrl link)
+                                          (resolve-uri (.getUrl link)))]
+                             (.. link
+                                 (withStatus LinkStatus/VALID)
+                                 (withUrl url))
+                             link)))))]
     (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
 
 (defmulti process-markdown
