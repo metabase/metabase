@@ -52,9 +52,8 @@ const TimelineSidebar = ({
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
-        cardId={question.id()}
-        collectionId={question.collectionId()}
         timelineIds={timelineIds}
+        collectionId={question.collectionId()}
         onNewEvent={handleNewEvent}
         onNewEventWithTimeline={handleNewEventWithTimeline}
         onEditEvent={handleEditEvent}

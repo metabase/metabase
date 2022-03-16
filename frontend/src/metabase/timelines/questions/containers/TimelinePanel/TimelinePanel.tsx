@@ -8,15 +8,11 @@ import { State } from "metabase-types/store";
 import TimelinePanel from "../../components/TimelinePanel";
 
 interface TimelinePanelProps {
-  cardId?: number;
   collectionId?: number;
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelinePanelProps) => ({
-    cardId: props.cardId,
-    include: "events",
-  }),
+  query: { include: "events" },
 };
 
 const collectionProps = {

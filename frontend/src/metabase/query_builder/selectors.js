@@ -285,7 +285,7 @@ export const getQuestion = createSelector(
 
 export const getVisibleTimelines = createSelector(
   [getQuestion, getTimelines, getTimelineIds],
-  (question, timelines, timelineIds) => {
+  (question, timelines = [], timelineIds) => {
     if (!question) {
       return [];
     }
