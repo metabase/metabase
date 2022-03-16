@@ -932,17 +932,11 @@ jobs:
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
-      defaultBranch: $CIRCLE_BRANCH
     steps:
       - attach-workspace
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
-            - run:
-                name: Adding commit message as variable to be used from Cypress
-                command: echo 'export COMMIT_INFO_MESSAGE="$(cat .COMMIT)"'
-            - run:
-                command: echo ${COMMIT_INFO_MESSAGE}
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
