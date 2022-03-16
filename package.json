@@ -202,7 +202,7 @@
     "css-loader": "^0.28.7",
     "cypress": "^9.5.2",
     "cypress-grep": "^2.5.2",
-    "cypress-real-events": "^1.4.0",
+    "cypress-real-events": "^1.7.0",
     "documentation": "^13.2.5",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
