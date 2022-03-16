@@ -22,12 +22,30 @@ function colorForType(type) {
   }
 }
 
-const handleSubmit = async (e, { method, url, setStatus }) => {
+const retrieveFilename = ({ res, type }) => {
+  const contentDisposition = res.headers.get("Content-Disposition") || "";
+  const match = contentDisposition.match(/filename="(?<fileName>.+)"/);
+  const fileName =
+    match?.groups?.fileName ||
+    `query_result_${new Date().toISOString()}.${type}`;
+
+  return fileName;
+};
+
+const handleSubmit = async (
+  e,
+  {
+    method,
+    url,
+    type,
+    onDownloadStart,
+    onDownloadResolved,
+    onDownloadRejected,
+  },
+) => {
   e.preventDefault();
 
-  setStatus(`pending`);
-  // Closes the download popover
-  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+  onDownloadStart();
 
   const formData = new URLSearchParams(new FormData(e.target));
 
@@ -40,44 +58,24 @@ const handleSubmit = async (e, { method, url, setStatus }) => {
 
   fetch(url, options)
     .then(async res => {
-      const reader = res.body.getReader();
-      const stream = new ReadableStream({
-        start(controller) {
-          return pump();
-          function pump() {
-            return reader.read().then(({ done, value }) => {
-              // When no more data needs to be consumed, close the stream
-              if (done) {
-                controller.close();
-                return;
-              }
-              // Enqueue the next data chunk into our target stream
-              controller.enqueue(value);
-              return pump();
-            });
-          }
-        },
-      });
-      const streamResponse = new Response(stream);
-      const blob = await streamResponse.blob();
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
 
-      const fileName = res.headers
-        .get("Content-Disposition")
-        .split(`;`)[1]
-        .split(`filename=`)[1]
-        .replace(/\"/g, ``);
+      // retrieves the filename from the response header and parses it into query_result[DATE TIME].extension
+      const fileName = retrieveFilename({ res, type });
 
-      // create a pseudo-link to trigger download
+      // create a pseudo-link to trigger the download
       const link = document.createElement(`a`);
       link.href = url;
       link.setAttribute(`download`, fileName);
       document.body.appendChild(link);
       link.click();
+      URL.revokeObjectURL(url);
+      link.remove();
 
-      setStatus(`resolved`);
+      onDownloadResolved();
     })
-    .catch(() => setStatus(`rejected`));
+    .catch(() => onDownloadRejected());
 };
 
 const DownloadButton = ({
@@ -86,11 +84,24 @@ const DownloadButton = ({
   url,
   params,
   extensions,
-  setStatus = () => {},
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
   ...props
 }) => (
   <div>
-    <form onSubmit={e => handleSubmit(e, { method, url, setStatus })}>
+    <form
+      onSubmit={e =>
+        handleSubmit(e, {
+          method,
+          url,
+          type: children,
+          onDownloadStart,
+          onDownloadResolved,
+          onDownloadRejected,
+        })
+      }
+    >
       {params && extractQueryParams(params).map(getInput)}
       <FormButton
         className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
@@ -120,6 +131,9 @@ DownloadButton.propTypes = {
   method: PropTypes.string,
   params: PropTypes.object,
   extensions: PropTypes.array,
+  onDownloadStart: PropTypes.func,
+  onDownloadResolved: PropTypes.func,
+  onDownloadRejected: PropTypes.func,
 };
 
 DownloadButton.defaultProps = {

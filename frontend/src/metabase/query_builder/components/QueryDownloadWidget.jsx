@@ -46,63 +46,95 @@ const QueryDownloadWidget = ({
       triggerClassesClose={classNameClose}
       disabled={status === `pending` ? true : null}
     >
-      <WidgetRoot
-        isExpanded={result.data && result.data.rows_truncated != null}
-      >
-        <WidgetHeader>
-          <h4>{t`Download full results`}</h4>
-        </WidgetHeader>
-        {result.data != null && result.data.rows_truncated != null && (
-          <WidgetMessage>
-            <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
-            <p>{t`The maximum download size is 1 million rows.`}</p>
-          </WidgetMessage>
-        )}
-        <div>
-          {EXPORT_FORMATS.map(type => (
-            <WidgetFormat key={type}>
-              {dashcardId && token ? (
-                <DashboardEmbedQueryButton
-                  key={type}
-                  type={type}
-                  dashcardId={dashcardId}
-                  token={token}
-                  card={card}
-                  params={params}
-                  setStatus={setStatus}
-                />
-              ) : uuid ? (
-                <PublicQueryButton
-                  key={type}
-                  type={type}
-                  uuid={uuid}
-                  result={result}
-                  setStatus={setStatus}
-                />
-              ) : token ? (
-                <EmbedQueryButton key={type} type={type} token={token} />
-              ) : card && card.id ? (
-                <SavedQueryButton
-                  key={type}
-                  type={type}
-                  card={card}
-                  result={result}
-                  disabled={status === "pending"}
-                  setStatus={setStatus}
-                />
-              ) : card && !card.id ? (
-                <UnsavedQueryButton
-                  key={type}
-                  type={type}
-                  result={result}
-                  visualizationSettings={visualizationSettings}
-                  setStatus={setStatus}
-                />
-              ) : null}
-            </WidgetFormat>
-          ))}
-        </div>
-      </WidgetRoot>
+      {({ onClose: closePopover }) => (
+        <WidgetRoot
+          isExpanded={result.data && result.data.rows_truncated != null}
+        >
+          <WidgetHeader>
+            <h4>{t`Download full results`}</h4>
+          </WidgetHeader>
+          {result.data != null && result.data.rows_truncated != null && (
+            <WidgetMessage>
+              <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
+              <p>{t`The maximum download size is 1 million rows.`}</p>
+            </WidgetMessage>
+          )}
+          <div>
+            {EXPORT_FORMATS.map(type => (
+              <WidgetFormat key={type}>
+                {dashcardId && token ? (
+                  <DashboardEmbedQueryButton
+                    key={type}
+                    type={type}
+                    dashcardId={dashcardId}
+                    token={token}
+                    card={card}
+                    params={params}
+                    onDownloadStart={() => {
+                      setStatus("pending");
+                      closePopover();
+                    }}
+                    onDownloadResolved={() => setStatus("resolved")}
+                    onDownloadRejected={() => setStatus("rejected")}
+                  />
+                ) : uuid ? (
+                  <PublicQueryButton
+                    key={type}
+                    type={type}
+                    uuid={uuid}
+                    result={result}
+                    onDownloadStart={() => {
+                      setStatus("pending");
+                      closePopover();
+                    }}
+                    onDownloadResolved={() => setStatus("resolved")}
+                    onDownloadRejected={() => setStatus("rejected")}
+                  />
+                ) : token ? (
+                  <EmbedQueryButton
+                    key={type}
+                    type={type}
+                    token={token}
+                    onDownloadStart={() => {
+                      setStatus("pending");
+                      closePopover();
+                    }}
+                    onDownloadResolved={() => setStatus("resolved")}
+                    onDownloadRejected={() => setStatus("rejected")}
+                  />
+                ) : card && card.id ? (
+                  <SavedQueryButton
+                    key={type}
+                    type={type}
+                    card={card}
+                    result={result}
+                    disabled={status === "pending"}
+                    onDownloadStart={() => {
+                      setStatus("pending");
+                      closePopover();
+                    }}
+                    onDownloadResolved={() => setStatus("resolved")}
+                    onDownloadRejected={() => setStatus("rejected")}
+                  />
+                ) : card && !card.id ? (
+                  <UnsavedQueryButton
+                    key={type}
+                    type={type}
+                    result={result}
+                    visualizationSettings={visualizationSettings}
+                    onDownloadStart={() => {
+                      setStatus("pending");
+                      closePopover();
+                    }}
+                    onDownloadResolved={() => setStatus("resolved")}
+                    onDownloadRejected={() => setStatus("rejected")}
+                  />
+                ) : null}
+              </WidgetFormat>
+            ))}
+          </div>
+        </WidgetRoot>
+      )}
     </PopoverWithTrigger>
   );
 };
@@ -111,7 +143,9 @@ const UnsavedQueryButton = ({
   type,
   result: { json_query = {} },
   visualizationSettings,
-  setStatus,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
 }) => (
   <DownloadButton
     url={`api/dataset/${type}`}
@@ -120,7 +154,9 @@ const UnsavedQueryButton = ({
       visualization_settings: JSON.stringify(visualizationSettings),
     }}
     extensions={[type]}
-    setStatus={setStatus}
+    onDownloadStart={onDownloadStart}
+    onDownloadResolved={onDownloadResolved}
+    onDownloadRejected={onDownloadRejected}
   >
     {type}
   </DownloadButton>
@@ -130,13 +166,17 @@ const SavedQueryButton = ({
   type,
   result: { json_query = {} },
   card,
-  setStatus,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
 }) => (
   <DownloadButton
     url={`api/card/${card.id}/query/${type}`}
     params={{ parameters: JSON.stringify(json_query.parameters) }}
     extensions={[type]}
-    setStatus={setStatus}
+    onDownloadStart={onDownloadStart}
+    onDownloadResolved={onDownloadResolved}
+    onDownloadRejected={onDownloadRejected}
   >
     {type}
   </DownloadButton>
@@ -146,20 +186,30 @@ const PublicQueryButton = ({
   type,
   uuid,
   result: { json_query = {} },
-  setStatus,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
 }) => (
   <DownloadButton
     method="GET"
     url={Urls.publicQuestion(uuid, type)}
     params={{ parameters: JSON.stringify(json_query.parameters) }}
     extensions={[type]}
-    setStatus={setStatus}
+    onDownloadStart={onDownloadStart}
+    onDownloadResolved={onDownloadResolved}
+    onDownloadRejected={onDownloadRejected}
   >
     {type}
   </DownloadButton>
 );
 
-const EmbedQueryButton = ({ type, token, setStatus }) => {
+const EmbedQueryButton = ({
+  type,
+  token,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
+}) => {
   // Parse the query string part of the URL (e.g. the `?key=value` part) into an object. We need to pass them this
   // way to the `DownloadButton` because it's a form which means we need to insert a hidden `<input>` for each param
   // we want to pass along. For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
@@ -173,7 +223,9 @@ const EmbedQueryButton = ({ type, token, setStatus }) => {
       url={Urls.embedCard(token, type)}
       params={params}
       extensions={[type]}
-      setStatus={setStatus}
+      onDownloadStart={onDownloadStart}
+      onDownloadResolved={onDownloadResolved}
+      onDownloadRejected={onDownloadRejected}
     >
       {type}
     </DownloadButton>
@@ -186,14 +238,18 @@ const DashboardEmbedQueryButton = ({
   token,
   card,
   params,
-  setStatus,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
 }) => (
   <DownloadButton
     method="GET"
     url={`api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${card.id}/${type}`}
     extensions={[type]}
     params={params}
-    setStatus={setStatus}
+    onDownloadStart={onDownloadStart}
+    onDownloadResolved={onDownloadResolved}
+    onDownloadRejected={onDownloadRejected}
   >
     {type}
   </DownloadButton>
