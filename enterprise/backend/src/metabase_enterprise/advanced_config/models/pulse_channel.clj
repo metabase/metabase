@@ -6,7 +6,7 @@
             [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting subscription-allowed-domains
-  (deferred-tru "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. Does not affect existing subscriptions.")
+  (deferred-tru "Allowed email address domain(s) for new dashboard Subscriptions and Alerts. Use comma separation without spaces for multiple domains. Leave empty to allow all domains. Does not affect existing subscriptions.")
   :visibility :public
   ;; this is a comma-separated string but we're not using `:csv` because it gets serialized to an array which makes it
   ;; inconvenient to use on the frontend.
