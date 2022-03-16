@@ -564,7 +564,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Sandboxed", "No", "No"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],
@@ -590,7 +590,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save changes").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Sandboxed", "No", "No"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],

@@ -40,7 +40,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Unrestricted", "No", "1 million rows"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],
@@ -78,7 +78,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Unrestricted", "No", "1 million rows"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],
@@ -90,7 +90,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.visit("/admin/permissions/data/database/1");
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Granular", "No", "Granular"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],
@@ -114,7 +114,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "No self-service", "No", "No"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "1 million rows"],
@@ -137,7 +137,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "No self-service", "No", "No"],
       ["collection", "No self-service", "No", "No"],
       ["data", "No self-service", "No", "No"],
