@@ -3,6 +3,7 @@
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [toucan.util.test :as tt]))
@@ -30,7 +31,8 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token)
-      :query-params {:users (str (#'premium-features/active-user-count))}}
+      :query-params {:users     (str (#'premium-features/active-user-count))
+                     :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
 

@@ -57,8 +57,6 @@ The **Localization** settings can be found in the **Admin Panel** under the **Se
 
 The default language for all users across the Metabase UI, system emails, pulses, and alerts. Users can pick a different language from their own account settings page.
 
-See a [list of languages Metabase supports](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
-
 ### First day of the week
 
 If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../users-guide/04-asking-questions.html). This setting doesn't affect [SQL queries](../users-guide/writing-sql.html).

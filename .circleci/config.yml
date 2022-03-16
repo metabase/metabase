@@ -177,7 +177,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: metabase/spark:2.1.1
+      - image: metabase/spark:3.2.1
     resource_class: large
 
   vertica:
@@ -626,9 +626,6 @@ jobs:
             - run:
                 name: Compile Java source file(s)
                 command: clojure -X:deps prep
-            - run:
-                name: Compile driver AOT namespaces
-                command: cd modules/drivers && clojure -X:deps prep
             - run:
                 name: Fetch dependencies
                 command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
@@ -1256,6 +1253,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "embedding",
                   "joins",
                   "models",
                   "moderation",

@@ -334,6 +334,12 @@
                       :driver-name    (driver/display-name driver)
                       :superseded-by  (driver/superseded-by driver)}])))
 
+(defsetting engines
+  "Available database engines"
+  :visibility :public
+  :setter     :none
+  :getter     available-drivers-info)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+

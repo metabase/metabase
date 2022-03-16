@@ -83,8 +83,11 @@
        (for [component components]
          (hformat/quote-identifier component, :split false)))))
   pretty/PrettyPrintable
-  (pretty [_]
-    (cons `identifier (cons identifier-type components))))
+  (pretty [this]
+    (if (= (set (keys this)) #{:identifier-type :components})
+      (cons `identifier (cons identifier-type components))
+      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g. #metabase..Identifier {...}
+      (list (symbol (str \# `Identifier)) (into {} this)))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (alter-meta! #'->Identifier    assoc :private true)
@@ -218,7 +221,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type  str/lower-case)
+  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info

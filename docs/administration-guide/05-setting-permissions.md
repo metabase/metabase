@@ -59,7 +59,8 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 ## Further reading
 
-Checkout our track on [Permissions][permissions] in Learn Metabase.
+- [Permissions guide][permissions] in Learn Metabase
+- [Troubleshooting permissions][troubleshooting-permissions]
 
 ---
 
@@ -78,3 +79,4 @@ Metabase lets you [set permissions on databases and their tables][data-permissio
 [slack-integration]: 09-setting-up-slack.md
 [sql-snippet-folders]: ../enterprise-guide/sql-snippets.html
 [table-permissions]: data-permissions.md#table-permissions
+[troubleshooting-permissions]: ../troubleshooting-guide/permissions.html

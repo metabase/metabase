@@ -3,7 +3,6 @@ import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
@@ -12,6 +11,7 @@ import Question from "metabase-lib/lib/Question";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
+import { openUrl } from "metabase/redux/app";
 import {
   createParameter,
   setParameterName as setParamName,
@@ -40,7 +40,6 @@ import {
   addFields,
   loadMetadataForQueries,
 } from "metabase/redux/metadata";
-import { push } from "react-router-redux";
 
 import {
   DashboardApi,
@@ -210,6 +209,12 @@ function generateTemporaryDashcardId() {
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
   return dashcard.id < 1 && dashcard.id >= 0;
+}
+
+function isNewAdditionalSeriesCard(card, dashcard) {
+  return (
+    card.id !== dashcard.card_id && !dashcard.series.some(s => s.id === card.id)
+  );
 }
 
 export const addCardToDashboard = ({ dashId, cardId }) => async (
@@ -603,10 +608,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         ),
       );
     } else {
-      // new cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = isNewDashcard(dashcard)
-        ? CardApi.query
-        : DashboardApi.cardQuery;
+      // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+      const endpoint =
+        isNewDashcard(dashcard) || isNewAdditionalSeriesCard(card, dashcard)
+          ? CardApi.query
+          : DashboardApi.cardQuery;
 
       result = await fetchDataOrError(
         maybeUsePivotEndpoint(endpoint, card)(
@@ -997,10 +1003,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       ? Urls.serializedQuestion(question.card())
       : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
 
-    open(url, {
-      blankOnMetaOrCtrlKey: true,
-      openInSameWindow: url => dispatch(push(url)),
-    });
+    dispatch(openUrl(url));
   },
 );
 

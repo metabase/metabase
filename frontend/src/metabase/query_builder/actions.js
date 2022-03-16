@@ -11,7 +11,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
-import { setErrorPage } from "metabase/redux/app";
+import { setErrorPage, openUrl } from "metabase/redux/app";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
@@ -24,7 +24,7 @@ import {
   serializeCardForUrl,
   cleanCopyCard,
 } from "metabase/lib/card";
-import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
@@ -81,6 +81,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -146,6 +147,9 @@ export const onOpenQuestionHistory = createAction(
 export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
+
+export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
+export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
@@ -798,6 +802,10 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
   return dispatch(loadMetadataForQueries(queries));
 };
 
+export const loadTimelinesForCard = card => dispatch => {
+  dispatch(Timelines.actions.fetchList({ cardId: card.id, include: "events" }));
+};
+
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
   // technically this is wrong because you could add and remove two columns with the same name
@@ -999,7 +1007,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
-          open(url);
+          dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
@@ -1658,3 +1666,9 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
+
+export const SHOW_TIMELINE = "metabase/qb/SHOW_TIMELINE";
+export const showTimeline = createAction(SHOW_TIMELINE);
+
+export const HIDE_TIMELINE = "metabase/qb/HIDE_TIMELINE";
+export const hideTimeline = createAction(HIDE_TIMELINE);

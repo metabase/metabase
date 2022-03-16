@@ -44,8 +44,10 @@
 
 (defn- post-insert [database]
   (u/prog1 database
-    ;; add this database to the All Users permissions groups
-    (perms/grant-full-db-permissions! (perm-group/all-users) database)
+    ;; add this database to the All Users permissions group
+    (perms/grant-full-data-permissions! (perm-group/all-users) database)
+    ;; give full download perms for this database to the All Users permissions group
+    (perms/grant-full-download-permissions! (perm-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
@@ -135,36 +137,48 @@
     database))
 
 (defn- pre-update
-  [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
-  (u/prog1 (handle-secrets-changes database)
-    ;; TODO - this logic would make more sense in post-update if such a method existed
-    ;; if the sync operation schedules have changed, we need to reschedule this DB
-    (when (or new-metadata-schedule new-fieldvalues-schedule)
-      (let [{old-metadata-schedule    :metadata_sync_schedule
-             old-fieldvalues-schedule :cache_field_values_schedule
-             existing-engine          :engine
-             existing-name            :name} (db/select-one [Database
-                                                             :metadata_sync_schedule
-                                                             :cache_field_values_schedule
-                                                             :engine
-                                                             :name]
-                                                            :id (u/the-id database))
-            ;; if one of the schedules wasn't passed continue using the old one
-            new-metadata-schedule            (or new-metadata-schedule old-metadata-schedule)
-            new-fieldvalues-schedule         (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-        (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
-                     [old-metadata-schedule old-fieldvalues-schedule])
-          (log/info
-           (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
-           "\n"
-           (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
-           "\n"
-           (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
-          ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
-          (schedule-tasks!
-           (assoc database
-             :metadata_sync_schedule      new-metadata-schedule
-             :cache_field_values_schedule new-fieldvalues-schedule)))))))
+  [{new-metadata-schedule    :metadata_sync_schedule,
+    new-fieldvalues-schedule :cache_field_values_schedule,
+    new-engine               :engine
+    :as                      database}]
+  (let [{is-sample?               :is_sample
+         old-metadata-schedule    :metadata_sync_schedule
+         old-fieldvalues-schedule :cache_field_values_schedule
+         existing-engine          :engine
+         existing-name            :name} (db/select-one [Database
+                                                         :metadata_sync_schedule
+                                                         :cache_field_values_schedule
+                                                         :engine
+                                                         :name
+                                                         :is_sample] :id (u/the-id database))
+        new-engine                       (some-> new-engine keyword)]
+    (if (and is-sample?
+             new-engine
+             (not= new-engine existing-engine))
+      (throw (ex-info (trs "The engine on a sample database cannot be changed.")
+                      {:status-code     400
+                       :existing-engine existing-engine
+                       :new-engine      new-engine}))
+      (u/prog1 (handle-secrets-changes database)
+        ;; TODO - this logic would make more sense in post-update if such a method existed
+        ;; if the sync operation schedules have changed, we need to reschedule this DB
+        (when (or new-metadata-schedule new-fieldvalues-schedule)
+          ;; if one of the schedules wasn't passed continue using the old one
+          (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
+                new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
+            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
+                        [old-metadata-schedule old-fieldvalues-schedule])
+              (log/info
+               (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
+               "\n"
+               (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
+               "\n"
+               (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
+              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
+              (schedule-tasks!
+               (assoc database
+                      :metadata_sync_schedule      new-metadata-schedule
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))))))
 
 (defn- pre-insert [database]
   (-> database

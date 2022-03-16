@@ -127,6 +127,7 @@
                      (if (map? credentials)
                        (authenticate credentials)
                        credentials))}
+    :cookie-policy :standard
     :content-type :json}
    (when (seq http-body)
      {:body (json/generate-string http-body)})))

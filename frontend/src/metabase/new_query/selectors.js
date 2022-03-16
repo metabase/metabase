@@ -4,9 +4,11 @@
  */
 
 import { createSelector } from "reselect";
+
 import { getMetadata, getDatabases } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
+import { getEngineNativeType } from "metabase/lib/engine";
 
 export const getPlainNativeQuery = state => {
   const metadata = getMetadata(state);
@@ -26,11 +28,21 @@ export const getPlainNativeQuery = state => {
 
 export const getHasDataAccess = createSelector(
   [getDatabases],
-  databases => databases && Object.values(databases).length > 0,
+  (databaseMap = {}) =>
+    // This ensures there is at least one real (not saved questions) DB available
+    // If there is only the saved questions DB, it doesn't mean a user has data access
+    Object.values(databaseMap).some(db => !db.is_saved_questions),
 );
+
 export const getHasNativeWrite = createSelector(
   [getDatabases],
-  databases =>
-    databases &&
-    Object.values(databases).some(d => d.native_permissions === "write"),
+  (databaseMap = {}) =>
+    Object.values(databaseMap).some(d => d.native_permissions === "write"),
 );
+
+export const getHasDbWithJsonEngine = (state, props) => {
+  return (props.databases || []).some(database => {
+    const isJsonEngine = getEngineNativeType(database.engine) === "json";
+    return database.canWrite() && isJsonEngine;
+  });
+};

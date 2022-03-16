@@ -11,6 +11,7 @@ import {
   filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -61,46 +62,48 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.createQuestion({
-      name: "12872",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        filter: [
-          "and",
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, null],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-        ],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", PRODUCTS.ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    cy.createQuestion(
+      {
+        name: "12872",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          filter: [
+            "and",
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, null],
+              "2019-04-15",
+              "2019-04-15",
             ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-        ],
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+              "2019-04-15",
+              "2019-04-15",
+            ],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+        },
+        display: "scalar",
       },
-      display: "scalar",
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("12872");
-      cy.log("At the moment of unfixed issue, it's showing '0'");
-      cy.get(".ScalarValue").contains("1");
-    });
+      { visitQuestion: true },
+    );
+
+    cy.findByText("12872");
+    cy.log("At the moment of unfixed issue, it's showing '0'");
+    cy.get(".ScalarValue").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -121,7 +124,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".List-item-title")
       .contains("Product ID")
       .click();
-    cy.get(".scroll-y")
+    cy.findByTestId("sidebar-content")
       .contains("Aerodynamic Linen Coat")
       .click();
     cy.findByText("Add filter").click();
@@ -259,7 +262,7 @@ describe("scenarios > question > filter", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -481,7 +484,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -505,7 +508,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -553,7 +556,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -603,7 +606,7 @@ describe("scenarios > question > filter", () => {
           aggregation: [["count"]],
           breakout: [["field-id", PRODUCTS.CATEGORY]],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -695,10 +698,24 @@ describe("scenarios > question > filter", () => {
       .and("contains", "Button");
   });
 
+  it("should allow hiding the suggestion list with Escape", () => {
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+    cy.findByText("Tax");
+
+    // Esc closes the suggestion popover
+    cy.realPress("{esc}");
+    cy.findByText("Tax").should("not.exist");
+  });
+
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-query": {
             "source-table": 1,
@@ -739,7 +756,7 @@ describe("scenarios > question > filter", () => {
   it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [
@@ -784,7 +801,7 @@ describe("scenarios > question > filter", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PRODUCTS_ID,
             filter: [

@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.binning :as binning]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.util :as u]))
 
@@ -150,3 +152,25 @@
                  :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
                  :aggregation  [[:count]]})
               (mt/formatted-rows [int int]))))))
+
+(mt/defdataset single-row
+  [["t" [{:field-name    "lat"
+          :base-type     :type/Decimal
+          :semantic-type :type/Latitude}
+         {:field-name    "lon"
+          :base-type     :type/Decimal
+          :semantic-type :type/Longitude}]
+    [[-27.137453079223633 -52.5982666015625]]]])
+
+(deftest auto-bin-single-row-test
+  (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
+    (mt/dataset single-row
+      ;; sync the Database so we have valid fingerprints for our columns.
+      (sync/sync-database! (mt/db))
+      (let [query (mt/mbql-query t
+                    {:breakout    [[:field %lat {:binning {:strategy :default}}]
+                                   [:field %lon {:binning {:strategy :default}}]]
+                     :aggregation [[:count]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[-30.00M -60.00M 1]]
+                 (mt/rows (qp/process-query query)))))))))

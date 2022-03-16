@@ -10,6 +10,15 @@
   function rather than accessing `:expressions` directly, as doing so can make your driver compatible with both 0.42.0
   and with 0.43.0 and newer.
 
+- There is now a `describe-nested-field-columns` method under `sql-jdbc.sync` namespace which returns an instance of
+  NestedFCMetadata. This is in order to allow JSON columns in Postgres and eventually other DB's which are usually
+  ordinary RDBMS's but then sometimes they have a denormalized column with JSON or some other semantics. Given a table
+  with denormalized columns which have nested field semantics (so, typed sub-fields which are still denormalized but
+  stable in type between rows), return value should be a NestedFCMetadata, a map of flattened key paths to the
+  detected sub-field. Field detection in syncing will then be enriched with those nested types. This is materially
+  different from the way we do it for mongo because every kind of JSON column is different, but it's going to run
+  every sync so it can't be too slow, even on enormous tables and enormous denormalized columns on those enormous tables.
+
 ## Metabase 0.42.0
 
 Changes in Metabase 0.42.0 affect drivers that derive from `:sql` (including `:sql-jdbc`).

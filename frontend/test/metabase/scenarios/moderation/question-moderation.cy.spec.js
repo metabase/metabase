@@ -1,6 +1,6 @@
-import { describeWithToken, restore } from "__support__/e2e/cypress";
+import { describeEE, restore } from "__support__/e2e/cypress";
 
-describeWithToken("scenarios > saved question moderation", () => {
+describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
     beforeEach(() => {
       restore();

@@ -21,13 +21,14 @@ import {
   calculateWaterfallEntries,
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
+import { POSITIONAL_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
   accessors: PropTypes.shape({
     x: PropTypes.func.isRequired,
     y: PropTypes.func.isRequired,
-  }).isRequired,
+  }),
   settings: PropTypes.shape({
     x: PropTypes.object,
     y: PropTypes.object,
@@ -68,7 +69,12 @@ const layout = {
   maxTickWidth: 100,
 };
 
-const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
+const CategoricalWaterfallChart = ({
+  data,
+  accessors = POSITIONAL_ACCESSORS,
+  settings,
+  labels,
+}) => {
   const entries = calculateWaterfallEntries(
     data,
     accessors,

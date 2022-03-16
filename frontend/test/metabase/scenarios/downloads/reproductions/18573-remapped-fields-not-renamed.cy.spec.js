@@ -3,6 +3,8 @@ import {
   visitQuestionAdhoc,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -11,7 +13,7 @@ const questionDetails = {
   dataset_query: {
     type: "query",
     query: { "source-table": ORDERS_ID, limit: 2 },
-    database: 1,
+    database: SAMPLE_DB_ID,
   },
   visualization_settings: {
     column_settings: {

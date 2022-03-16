@@ -322,7 +322,8 @@
                       (let [filter-clause       (into [(:mbql clause) field]
                                                       (repeat (dec (:args clause)) filter-value))
                             field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
-                            expected-identifier (cond-> (hx/identifier :field "ABC" (name temporal-type))
+                            expected-identifier (cond-> (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                               ::bigquery.qp/do-not-qualify? true)
                                                   (not field-literal?) (hx/with-database-type-info (name temporal-type)))
                             expected-value      (get-in value [:as temporal-type] (:value value))
                             expected-clause     (build-honeysql-clause-head clause
@@ -339,7 +340,8 @@
 
           (testing "\ndate extraction filters"
             (doseq [[temporal-type field] fields
-                    :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
+                    :let                  [identifier          (assoc (hx/identifier :field "ABC" (name temporal-type))
+                                                                      ::bigquery.qp/do-not-qualify? true)
                                            expected-identifier (case temporal-type
                                                                  :date      (hx/with-database-type-info identifier "date")
                                                                  :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
@@ -401,6 +403,20 @@
           (testing (format "\nclause = %s" (pr-str clause))
             (is (= expected-type
                    (#'bigquery.qp/temporal-type relative-datetime)))))))))
+
+(deftest field-literal-trunc-form-test
+  (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
+    (is (= ["datetime_trunc(CAST(`source`.`date` AS datetime), week(sunday))"]
+           (sql.qp/format-honeysql
+            :bigquery-cloud-sdk
+            (sql.qp/->honeysql
+             :bigquery-cloud-sdk
+             [:field "date" {:temporal-unit      :week
+                             :base-type          :type/Date
+                             ::add/source-table  ::add/source
+                             ::add/source-alias  "date"
+                             ::add/desired-alias "date"
+                             ::add/position      0}]))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -695,35 +711,29 @@
                                   "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
-(deftest ->valid-field-identifier-test
-  (testing "`->valid-field-identifier` should generate valid field identifiers"
+(deftest escape-alias-test
+  (testing "`escape-alias` should generate valid field identifiers"
     (testing "no need to change anything"
       (is (= "abc"
-             (#'bigquery.qp/->valid-field-identifier "abc"))))
+             (driver/escape-alias :bigquery-cloud-sdk "abc"))))
     (testing "replace spaces with underscores"
-      (is (= "A_B_C_0ef78513"
-             (#'bigquery.qp/->valid-field-identifier "A B C"))))
+      (is (= "A_B_C"
+             (driver/escape-alias :bigquery-cloud-sdk "A B C"))))
     (testing "trim spaces"
-      (is (= "A_B_61f5f1b3"
-             (#'bigquery.qp/->valid-field-identifier " A B "))))
+      (is (= "A_B"
+             (driver/escape-alias :bigquery-cloud-sdk " A B "))))
     (testing "diacritical marks"
-      (is (= "Organizacao_6c2736cd"
-             (#'bigquery.qp/->valid-field-identifier "Organização")))
-      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
-        (is (= "Organizacao_f3d24ea0"
-               (#'bigquery.qp/->valid-field-identifier "Organizacaó")))))
+      (is (= "Organizacao"
+             (driver/escape-alias :bigquery-cloud-sdk "Organização"))))
     (testing "cannot start with a number"
-      (is (= "_123_202cb962"
-             (#'bigquery.qp/->valid-field-identifier "123"))))
+      (is (= "_123"
+             (driver/escape-alias :bigquery-cloud-sdk "123"))))
     (testing "replace non-letter characters with underscores"
-      (is (= "__02612e19"
-             (#'bigquery.qp/->valid-field-identifier "😍")))
-      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
-        (is (= "__e88ec744"
-               (#'bigquery.qp/->valid-field-identifier "🥰")))))
+      (is (= "_"
+             (driver/escape-alias :bigquery-cloud-sdk "😍"))))
     (testing "trim long strings"
-      (is (= (str (str/join (repeat 119 "a")) "_4e5475d1")
-             (#'bigquery.qp/->valid-field-identifier (str/join (repeat 300 "a"))))))))
+      (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
+             (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
 
 (deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -734,10 +744,10 @@
                        :limit  1})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
             (is (sql= '{:select    [v3_test_data.checkins.id        AS id
-                                    Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
+                                    Organizacao__via__venue_id.name AS Organizacao__via__venue_id__name]
                         :from      [v3_test_data.checkins]
-                        :left-join [v3_test_data.Organização Organização__via__venue_id
-                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id]
+                        :left-join [v3_test_data.Organização Organizacao__via__venue_id
+                                    ON v3_test_data.checkins.venue_id = Organizacao__via__venue_id.id]
                         :limit     [1]}
                       query))))))))
 
@@ -787,8 +797,8 @@
                                     :breakout     [!month.date]}
                      :limit        2})]
         (mt/with-native-query-testing-context query
-          (is (sql= {:select   '[count        AS count
-                                 count (*)    AS count_2]
+          (is (sql= {:select   '[source.count  AS count
+                                 count (*)     AS count_2]
                      :from     [(let [prefix (project-id-prefix-if-set)]
                                   {:select   ['date_trunc (list (symbol (str prefix 'v3_test_data.checkins.date)) 'month) 'AS 'date
                                               'count '(*)                                                                 'AS 'count]
@@ -819,17 +829,20 @@
                                              {:name "CE", :display-name "CE"}]]
                               :limit       10}))))))))
 
-
 (deftest no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Breakout field name is not qualified if it is from source query (#18742)"
-      (is (sql= '{:select   [source    AS source
-                             count (*) AS count]
-                  :from     [(select 1 as val "2" as source)
-                             source]
-                  :group-by [source]
-                  :order-by [source ASC]}
-                (mt/mbql-query checkins
-                  {:aggregation  [[:count]]
-                   :breakout     [[:field "source" {:base-type :type/Text}]],
-                   :source-query {:native "select 1 as `val`, '2' as `source`"}}))))))
+    (testing "Make sure columns name `source` in source query work correctly (#18742)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation  [[:count]]
+                     :breakout     [[:field "source" {:base-type :type/Text}]],
+                     :source-query {:native "select 1 as `val`, '2' as `source`"}})]
+        (is (sql= '{:select   [source.source    AS source
+                               count (*)        AS count]
+                    :from     [(select 1 as val "2" as source)
+                               source]
+                    :group-by [source]
+                    :order-by [source ASC]}
+                  query))
+        (mt/with-native-query-testing-context query
+          (is (= [["2" 1]]
+                 (mt/rows (qp/process-query query)))))))))

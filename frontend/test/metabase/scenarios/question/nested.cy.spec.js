@@ -9,6 +9,7 @@ import {
   summarize,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -19,37 +20,31 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     cy.signInAsAdmin();
 
     // Create a simple question of orders by week
-    cy.createQuestion({
-      name: "GH_12568: Simple",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+    cy.createQuestion(
+      {
+        name: "GH_12568: Simple",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@cardMetadata");
-    });
+      { loadMetadata: true },
+    );
 
     // Create a native question of orders by day
-    cy.createNativeQuestion({
-      name: "GH_12568: SQL",
-      native: {
-        query:
-          "SELECT date_trunc('day', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('day', CREATED_AT)",
+    cy.createNativeQuestion(
+      {
+        name: "GH_12568: SQL",
+        native: {
+          query:
+            "SELECT date_trunc('day', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('day', CREATED_AT)",
+        },
+        display: "scalar",
       },
-      display: "scalar",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("nativeMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@nativeMetadata");
-    });
+      { loadMetadata: true, interceptAlias: "secondCardQuery" },
+    );
 
     // [quarantine] The whole CI was timing out
     // Create a complex native question
@@ -151,29 +146,31 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.createQuestion({
-      name: "10511",
-      query: {
-        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
-        "source-query": {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
+    cy.createQuestion(
+      {
+        name: "10511",
+        query: {
+          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
+              ],
             ],
-          ],
+          },
         },
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("10511");
-      cy.findAllByText("June, 2016");
-      cy.findAllByText("13");
-    });
+      { visitQuestion: true },
+    );
+
+    cy.findByText("10511");
+    cy.findAllByText("June, 2016");
+    cy.findAllByText("13");
   });
 
   it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
@@ -271,8 +268,6 @@ describe("scenarios > question > nested", () => {
         name: "12507",
         query: ORIGINAL_QUERY,
       }).then(({ body: { id: questionId } }) => {
-        cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
         cy.log("Create and visit a nested question based on the previous one");
         visitQuestionAdhoc({
           dataset_query: {
@@ -281,15 +276,11 @@ describe("scenarios > question > nested", () => {
               "source-table": `card__${questionId}`,
               filter: [">", ["field", ORDERS.TOTAL, null], 50],
             },
-            database: 1,
+            database: SAMPLE_DB_ID,
           },
         });
 
         cy.log("Reported failing since v0.35.2");
-        cy.visit(`/question/${questionId}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
         cy.get(".cellData").contains(METRIC_NAME);
       });
     });
@@ -436,19 +427,16 @@ describe("scenarios > question > nested", () => {
     it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion({
-        name: "15397",
-        native: {
-          query:
-            "select count(*), orders.product_id from orders group by orders.product_id;",
+      cy.createNativeQuestion(
+        {
+          name: "15397",
+          native: {
+            query:
+              "select count(*), orders.product_id from orders group by orders.product_id;",
+          },
         },
-      }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-        // Visit the question to load the `result_metadata`
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
-      });
+        { loadMetadata: true },
+      );
 
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
@@ -517,19 +505,22 @@ describe("scenarios > question > nested", () => {
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      cy.createQuestion({
-        name,
-        query: {
-          "source-table": ORDERS_ID,
-          filter,
-          aggregation: [["count"]],
+      cy.createQuestion(
+        {
+          name,
+          query: {
+            "source-table": ORDERS_ID,
+            filter,
+            aggregation: [["count"]],
+          },
+          type: "query",
+          display: "scalar",
         },
-        type: "query",
-        display: "scalar",
-      }).then(({ body }) => {
-        cy.visit(`/question/${body.id}`);
-        cy.get(".ScalarValue").findByText(value);
-      });
+        { visitQuestion: true },
+      );
+
+      cy.get(".ScalarValue").findByText(value);
+
       // Start new question based on the saved one
       cy.visit("/question/new");
       cy.findByText("Simple question").click();

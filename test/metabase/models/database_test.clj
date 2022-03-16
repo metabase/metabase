@@ -6,7 +6,7 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
-            [metabase.models.database :as mdb]
+            [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.models.user :as user]
@@ -32,7 +32,10 @@
     (mt/with-temp Database [db]
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/data-perms-path db)))))))
+                                              (perms/data-perms-path db))))
+      (is (= true
+             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                              (perms/feature-perms-path :download :full db)))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -62,7 +65,7 @@
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
-        pg-db         (mdb/map->DatabaseInstance
+        pg-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testpg"
                         :details     {:additional-options            nil
@@ -80,7 +83,7 @@
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
                         :id          3})
-        bq-db         (mdb/map->DatabaseInstance
+        bq-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -159,9 +162,9 @@
            (driver.u/sensitive-fields :test-sensitive-driver))))
   (testing "get-sensitive-fields-for-db returns default fields for null or empty database map"
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db nil)))
+           (database/sensitive-fields-for-db nil)))
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db {})))))
+           (database/sensitive-fields-for-db {})))))
 
 (deftest secret-db-details-integration-test
   (testing "manipulating secret values in db-details works correctly"
@@ -215,6 +218,20 @@
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
                   (is (nil? (db/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+
+(deftest user-may-not-update-sample-database-test
+  (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
+                                                                    :is_sample true
+                                                                    :name      "Sample Database"
+                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+    (testing " updating the engine of a sample database is not allowed"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"The engine on a sample database cannot be changed."
+           (db/update! Database id :engine :sqlite))))
+    (testing " updating other attributes of a sample database is allowed"
+      (db/update! Database id :name "My New Name")
+      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 

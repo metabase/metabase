@@ -75,7 +75,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
@@ -1197,6 +1199,20 @@ export default class Question {
       );
     });
     return a.isDirtyComparedTo(b);
+  }
+
+  hasBreakoutByDateTime() {
+    if (!this.isStructured()) {
+      return false;
+    }
+
+    const query = this.query() as StructuredQuery;
+    const breakouts = query.breakouts();
+
+    return breakouts.some(breakout => {
+      const field = breakout.field();
+      return field.isDate() || field.isTime();
+    });
   }
 
   // Internal methods

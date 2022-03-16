@@ -1,9 +1,4 @@
-import {
-  restore,
-  popover,
-  modal,
-  describeWithToken,
-} from "__support__/e2e/cypress";
+import { restore, popover, modal, describeEE } from "__support__/e2e/cypress";
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -527,7 +522,7 @@ describe("scenarios > admin > permissions", () => {
   });
 });
 
-describeWithToken("scenarios > admin > permissions", () => {
+describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

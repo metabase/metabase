@@ -166,7 +166,7 @@
 (deftest no-session-id-in-request-test
   (testing "no session-id in the request"
     (is (= nil
-           (-> (wrapped-handler (mock/request :get "/anyurl") )
+           (-> (wrapped-handler (mock/request :get "/anyurl"))
                :metabase-session-id)))))
 
 (deftest header-test

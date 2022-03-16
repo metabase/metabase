@@ -13,6 +13,7 @@ import {
   filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -82,7 +83,7 @@ describe("scenarios > question > notebook", () => {
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           filter: ["between", ["field", ORDERS.ID, null], 96, 97],
@@ -151,36 +152,31 @@ describe("scenarios > question > notebook", () => {
     cy.contains(/^Price is less than 5/i);
   });
 
-  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading", () => {
-    // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Database").click();
-    cy.contains("Orders").click();
-
-    // Add filter for ID < 100
-    cy.findByText("Add filters to narrow your answer").click();
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "ID < 100" });
-    cy.button("Done")
-      .should("not.be.disabled")
-      .click();
-
-    visualize();
-
-    cy.contains("Showing 99 rows");
-
+  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
     const req = interceptPromise("POST", "/api/dataset");
-    cy.contains("ID is less than 100").click();
-    cy.get(".Icon-chevronleft").click();
-    cy.findByText("Custom Expression").click();
-    cy.get("@formula")
-      .clear()
-      .type("ID < 2010");
-    cy.button("Done").click();
-    cy.contains("Showing 99 rows");
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["=", ["field", ORDERS.PRODUCT_ID, null], 2],
+      },
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.contains("Showing 98 rows");
+
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByText("Product ID is 2").click();
+
+    popover()
+      .find("input")
+      .type("3{enter}");
+    cy.findByText("Product ID is 2 selections");
+
+    cy.contains("Showing 98 rows");
+
     req.resolve();
-    cy.contains("Showing first 2000 rows");
+    cy.contains("Showing 175 rows");
   });
 
   // flaky test (#19454)

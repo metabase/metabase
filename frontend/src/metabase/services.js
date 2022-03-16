@@ -15,6 +15,21 @@ export const ActivityApi = {
   recent_views: GET("/api/activity/recent_views"),
 };
 
+export const BookmarkApi = {
+  card: {
+    create: POST("/api/bookmark/card/:id"),
+    delete: DELETE("/api/bookmark/card/:id"),
+  },
+  collection: {
+    create: POST("/api/bookmark/collection/:id"),
+    delete: DELETE("/api/bookmark/collection/:id"),
+  },
+  dashboard: {
+    create: POST("/api/bookmark/dashboard/:id"),
+    delete: DELETE("/api/bookmark/dashboard/:id"),
+  },
+};
+
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -103,10 +118,10 @@ export const CardApi = {
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // isfavorite:                  GET("/api/card/:cardId/favorite"),
-  favorite: POST("/api/card/:cardId/favorite"),
-  unfavorite: DELETE("/api/card/:cardId/favorite"),
-
+  bookmark: {
+    create: POST("/api/card/:id/bookmark"),
+    delete: DELETE("/api/card/:id/bookmark"),
+  },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),

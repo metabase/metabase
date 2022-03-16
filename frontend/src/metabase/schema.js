@@ -5,6 +5,7 @@ import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
+export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
@@ -46,6 +47,8 @@ export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const TimelineSchema = new schema.Entity("timelines");
+export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -82,8 +85,13 @@ MetricSchema.define({
   table: TableSchema,
 });
 
+TimelineSchema.define({
+  events: [TimelineEventSchema],
+});
+
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
+  bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,

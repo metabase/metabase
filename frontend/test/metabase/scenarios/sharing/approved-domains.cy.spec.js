@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   modal,
   restore,
   setupSMTP,
@@ -13,7 +13,7 @@ const deniedEmail = `mailer@${deniedDomain}`;
 const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
-describeWithToken("scenarios > sharing > approved domains (EE)", () => {
+describeEE("scenarios > sharing > approved domains (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

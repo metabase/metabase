@@ -2,8 +2,8 @@ import {
   restore,
   modal,
   sidebar,
-  describeWithToken,
-  describeWithoutToken,
+  describeEE,
+  describeOSS,
   openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -18,7 +18,7 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-describeWithToken("collections types", () => {
+describeEE("collections types", () => {
   beforeEach(() => {
     restore();
   });
@@ -147,7 +147,7 @@ describeWithToken("collections types", () => {
   });
 });
 
-describeWithoutToken("collection types", () => {
+describeOSS("collection types", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

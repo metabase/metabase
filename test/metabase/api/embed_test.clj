@@ -9,7 +9,7 @@
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.api.dashboard-test :as dashboard-api-test]
-            [metabase.api.embed :as embed-api]
+            [metabase.api.embed :as api.embed]
             [metabase.api.pivots :as pivots]
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as http]
@@ -201,12 +201,14 @@
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
-(defn card-query-url [card response-format & [additional-token-params]]
+(defn card-query-url
   "Generate a query URL for an embedded card"
+  [card response-format-route-suffix & [additional-token-params]]
+  {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format-route-suffix)]}
   (str "embed/card/"
        (card-token card additional-token-params)
        "/query"
-       response-format))
+       response-format-route-suffix))
 
 (def ^:private response-format->request-options
   {""      nil
@@ -537,7 +539,7 @@
   (testing (str "parameters that are not in the `embedding-params` map at all should get removed by "
                 "`remove-locked-and-disabled-params`")
     (is (= {:parameters []}
-           (#'embed-api/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {})))))
+           (#'api.embed/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {})))))
 
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
@@ -1083,3 +1085,70 @@
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))))))))
+
+(deftest apply-slug->value-test
+  (testing "For operator filter types treat a lone value as a one-value sequence (#20438)"
+    (is (= (#'api.embed/apply-slug->value [{:type    :string/=
+                                            :target  [:dimension [:template-tag "NAME"]]
+                                            :name    "Name"
+                                            :slug    "NAME"
+                                            :default nil}]
+                                          {:NAME ["Aaron Hand"]})
+           (#'api.embed/apply-slug->value [{:type    :string/=
+                                            :target  [:dimension [:template-tag "NAME"]]
+                                            :name    "Name"
+                                            :slug    "NAME"
+                                            :default nil}]
+                                          {:NAME "Aaron Hand"})))))
+
+(deftest handle-single-params-for-operator-filters-test
+  (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
+    (mt/dataset sample-dataset
+      (with-embedding-enabled-and-new-secret-key
+        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                          :template-tags {"NAME"
+                                                                                          {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                           :name         "NAME"
+                                                                                           :display-name "Name"
+                                                                                           :type         :dimension
+                                                                                           :dimension    [:field (mt/id :people :name) nil]
+                                                                                           :widget-type  :string/=
+                                                                                           :default      nil}}})
+                                                     :enable_embedding true
+                                                     :embedding_params {:NAME "enabled"}}]
+          (testing "Card"
+            (is (= [[1]]
+                   (mt/rows (http/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer")))
+                   (mt/rows (http/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer&NAME=x"))))))
+          (testing "Dashcard"
+            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
+                                                                          :embedding_params {:name "enabled"}
+                                                                          :parameters       [{:name      "Name"
+                                                                                              :slug      "name"
+                                                                                              :id        "_name_"
+                                                                                              :type      :string/=
+                                                                                              :sectionId "string"}]}]
+
+                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
+                                                                            :dashboard_id       dashboard-id
+                                                                            :parameter_mappings [{:parameter_id "_name_"
+                                                                                                  :card_id      card-id
+                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+              (is (= [[1]]
+                     (mt/rows (http/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer")))
+                     (mt/rows (http/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer&name=x"))))))))))))
+
+(deftest pass-numeric-param-as-number-test
+  (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
+    (mt/dataset sample-dataset
+      (with-embedding-enabled-and-new-secret-key
+        (mt/with-temp Card [card {:dataset_query    (mt/native-query
+                                                      {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                       :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                     :display-name "Quantity (Locked)"
+                                                                                     :type         :number}}})
+                                  :enable_embedding true
+                                  :embedding_params {:qty_locked "locked"}}]
+          (is (= [3443]
+                 (mt/first-row (http/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))

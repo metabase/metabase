@@ -61,7 +61,7 @@
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
   (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
-      (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
+      (let [new-collection-name (collection/format-personal-collection-name first_name last_name :site)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
 
@@ -115,14 +115,15 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :group_id group_id])))
 
-
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
-  If `status` is `deactivated`, include deactivated users only.
-  If `status` is `all`, include all users (active and inactive).
-  Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
-  `status` and `included_deactivated` requires superuser permissions.
+   - If `status` is `deactivated`, include deactivated users only.
+   - If `status` is `all`, include all users (active and inactive).
+   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.
+   `status` and `include_deactivated` requires superuser permissions.
+   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
+   If both params are passed, `status` takes precedence.
 
   For users with segmented permissions, return only themselves.
 
@@ -136,17 +137,18 @@
    include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
     (api/check-superuser))
-  {:data   (cond-> (db/select
-                     (vec (cons User (user-visible-columns)))
-                     (cond-> (user-clauses status query group_id include_deactivated)
-                       true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                       (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
-                       (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
-             ;; For admins, also include the IDs of the  Users' Personal Collections
-             api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
-   :total  (db/count User (user-clauses status query group_id include_deactivated))
-   :limit  offset-paging/*limit*
-   :offset offset-paging/*offset*})
+  (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
+    {:data   (cond-> (db/select
+                       (vec (cons User (user-visible-columns)))
+                       (cond-> (user-clauses status query group_id include_deactivated)
+                            true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                            (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
+                            (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
+               ;; For admins, also include the IDs of the  Users' Personal Collections
+               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*}))
 
 
 (api/defendpoint GET "/current"
@@ -169,7 +171,7 @@
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email password group_ids login_attributes] :as body} :body}]
+  [:as {{:keys [first_name last_name email group_ids login_attributes] :as body} :body}]
   {first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email

@@ -6,6 +6,8 @@ import {
   visualize,
   summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -150,7 +152,7 @@ describe("scenarios > visualizations > waterfall", () => {
             ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
     });
@@ -173,7 +175,7 @@ describe("scenarios > visualizations > waterfall", () => {
           query:
             "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
     });
     cy.findByText("Visualization").click();
@@ -190,7 +192,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',0),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {
@@ -219,7 +221,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',null),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {

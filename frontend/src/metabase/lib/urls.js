@@ -310,7 +310,11 @@ export function newTimelineInCollection(collection) {
 }
 
 export function editTimelineInCollection(timeline, collection) {
-  return `${timelineInCollection(collection, timeline)}/edit`;
+  return `${timelineInCollection(timeline, collection)}/edit`;
+}
+
+export function timelineArchiveInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/archive`;
 }
 
 export function newEventInCollection(timeline, collection) {
@@ -319,6 +323,16 @@ export function newEventInCollection(timeline, collection) {
 
 export function newEventAndTimelineInCollection(collection) {
   return `${timelinesInCollection(collection)}/new/events/new`;
+}
+
+export function editEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/edit`;
+}
+
+export function deleteEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/delete`;
 }
 
 export function extractEntityId(slug) {
@@ -331,4 +345,18 @@ export function extractCollectionId(slug) {
     return slug;
   }
   return extractEntityId(slug);
+}
+
+/*
+ * Will transform a name like `This name has spaces and Uppercases`
+ * into `this-name-has-spaced-and-uppercases`
+ *
+ * then prepend an entity type, say "card" or "dashboard"
+ * plus the passed id.
+ * "
+ */
+export function bookmark({ type, id, name }) {
+  const [, idInteger] = id.split("-");
+
+  return `${type}/${appendSlug(idInteger, slugg(name))}`;
 }

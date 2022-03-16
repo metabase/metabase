@@ -1,7 +1,7 @@
 import { TimelineEvent, Timeline } from "../timeline";
 import { createMockUser } from "./user";
 
-export const createMockTimeline = (opts: Partial<Timeline>): Timeline => ({
+export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   id: 1,
   collection_id: 1,
   name: "Events",
@@ -20,7 +20,9 @@ export const createMockTimelineEvent = (
   name: "Christmas",
   description: null,
   icon: "star",
-  date: "2021-12-25",
+  timestamp: "2021-12-25T00:00:00Z",
+  timezone: "UTC",
+  time_matters: false,
   creator: createMockUser(),
   created_at: "2021-12-01",
   archived: false,

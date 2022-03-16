@@ -17,7 +17,7 @@
 ;;;; Graph-related stuff
 
 (defn- test-db-perms [group-id]
-  (get-in (perms/data-perms-graph) [:groups group-id (mt/id)]))
+  (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :data]))
 
 (defn- api-test-db-perms [group-id]
   (into {}
@@ -26,7 +26,8 @@
         (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
                 [:groups
                  (keyword (str group-id))
-                 (keyword (str (mt/id)))])))
+                 (keyword (str (mt/id)))
+                 :data])))
 
 (deftest graph-test
   (testing "block permissions should come back from"
@@ -60,17 +61,18 @@
                        (perms group-id)))))))))))
 
 (defn- grant-block-perms! [group-id]
-  (perms/update-data-perms-graph! [group-id (mt/id)] {:schemas :block}))
+  (perms/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
 
 (defn- api-grant-block-perms! [group-id]
   (let [current-graph (perms/data-perms-graph)
-        new-graph     (assoc-in current-graph [:groups group-id (mt/id)] {:schemas :block})
+        new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
         result        (premium-features-test/with-premium-features #{:advanced-permissions}
                         (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
     (is (= "block"
            (get-in result [:groups
                            (keyword (str group-id))
                            (keyword (str (mt/id)))
+                           :data
                            :schemas])))))
 
 (deftest api-throws-error-if-premium-feature-not-enabled
@@ -79,7 +81,7 @@
                   ":advanced-permissions premium feature enabled")
       (mt/with-temp PermissionsGroup [{group-id :id}]
         (let [current-graph (perms/data-perms-graph)
-              new-graph     (assoc-in current-graph [:groups group-id (mt/id)] {:schemas :block})
+              new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
               result        (premium-features-test/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
           (is (= "Can't use block permissions without having the advanced-permissions premium feature"
@@ -106,7 +108,7 @@
                      (test-db-perms group-id)))))
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-model-cleanup [Permissions]
-              (perms/grant-full-db-permissions! group-id (mt/id))
+              (perms/grant-full-data-permissions! group-id (mt/id))
               (grant! group-id)
               (is (= {:schemas :block}
                      (test-db-perms group-id)))
@@ -131,7 +133,7 @@
                     Permissions      [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]]
       (is (= {:schemas :block}
              (test-db-perms group-id)))
-      (perms/update-data-perms-graph! [group-id (mt/id) :schemas] {"public" {(mt/id :venues) {:read :all}}})
+      (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
       (is (= {:schemas {"public" {(mt/id :venues) {:read :all}}}}
              (test-db-perms group-id))))))
 
@@ -145,12 +147,12 @@
              ;; TODO -- this error message is totally garbage, fix this
              #"DB permissions with a valid combination of values for :native and :schemas"
              ;; #"DB permissions with a valid combination of values for :native and :schemas"
-             (perms/update-data-perms-graph! [group-id (mt/id)]
+             (perms/update-data-perms-graph! [group-id (mt/id) :data]
                                              {:schemas :block, :native :write}))))
       (testing "via the API"
         (let [current-graph (perms/data-perms-graph)
               new-graph     (assoc-in current-graph
-                                      [:groups group-id (mt/id)]
+                                      [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
           (is (schema= {:message  #".*DB permissions with a valid combination of values for :native and :schemas.*"
                         s/Keyword s/Any}
