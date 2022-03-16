@@ -1,6 +1,7 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   RESET_QB,
@@ -500,16 +501,16 @@ export const currentState = handleActions(
   null,
 );
 
-export const timelineVisibility = handleActions(
+export const timelineIds = handleActions(
   {
-    [INITIALIZE_QB]: { next: () => ({}) },
+    [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE]: {
-      next: (state, { payload }) => assoc(state, payload.id, true),
+      next: (state, { payload }) => [...state, payload.id],
     },
     [HIDE_TIMELINE]: {
-      next: (state, { payload }) => assoc(state, payload.id, false),
+      next: (state, { payload }) => _.without(state, payload.id),
     },
-    [RESET_QB]: { next: () => ({}) },
+    [RESET_QB]: { next: () => [] },
   },
-  {},
+  [],
 );
