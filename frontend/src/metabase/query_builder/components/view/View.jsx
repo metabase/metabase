@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
+import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -323,18 +324,21 @@ export default class View extends React.Component {
           setIsPreviewing={setIsPreviewing}
         />
 
-        <StyledDebouncedFrame enabled={!isLiveResizable}>
-          <QueryVisualization
-            {...this.props}
-            noHeader
-            className="spread"
-            onAddSeries={onAddSeries}
-            onEditSeries={onEditSeries}
-            onRemoveSeries={onRemoveSeries}
-            onEditBreakout={onEditBreakout}
-            validationError={validationError}
-          />
-        </StyledDebouncedFrame>
+        {validationError ? (
+          <QueryValidationError error={validationError} />
+        ) : (
+          <StyledDebouncedFrame enabled={!isLiveResizable}>
+            <QueryVisualization
+              {...this.props}
+              noHeader
+              className="spread"
+              onAddSeries={onAddSeries}
+              onEditSeries={onEditSeries}
+              onRemoveSeries={onRemoveSeries}
+              onEditBreakout={onEditBreakout}
+            />
+          </StyledDebouncedFrame>
+        )}
 
         {ModeFooter && (
           <ModeFooter {...this.props} className="flex-no-shrink" />

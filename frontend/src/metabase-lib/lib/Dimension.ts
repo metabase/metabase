@@ -19,6 +19,7 @@ import {
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
+import { ValidationError, VALIDATION_ERROR_TYPES } from "./ValidationError";
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
@@ -1522,8 +1523,9 @@ export class TemplateTagDimension extends FieldDimension {
     }
 
     if (this.isDimensionType() && tag.dimension == null) {
-      return new Error(
+      return new ValidationError(
         t`The variable "${this.tagName()}" needs to be mapped to a field.`,
+        VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
       );
     }
 
