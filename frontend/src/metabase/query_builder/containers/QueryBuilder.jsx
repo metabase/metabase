@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
+import Timelines from "metabase/entities/timelines";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -81,6 +82,11 @@ function autocompleteResults(card, prefix) {
   });
   return apiCall;
 }
+
+const timelineProps = {
+  query: { include: "events" },
+  loadingAndErrorWrapper: false,
+};
 
 const mapStateToProps = (state, props) => {
   return {
@@ -183,7 +189,6 @@ function QueryBuilder(props) {
     cancelQuery,
     createBookmark,
     deleteBookmark,
-    loadTimelinesForCard,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -274,12 +279,6 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
-    if (question && question.hasBreakoutByDateTime()) {
-      loadTimelinesForCard(question.card());
-    }
-  }, [question, loadTimelinesForCard]);
-
-  useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
     const {
       isShowingDataReference: wasShowingDataReference,
@@ -326,6 +325,7 @@ function QueryBuilder(props) {
 
 export default _.compose(
   Bookmark.loadList(),
+  Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),

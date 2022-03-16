@@ -21,7 +21,6 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
-import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
@@ -48,7 +47,7 @@ export const getParameterValues = state => state.qb.parameterValues;
 
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
-export const getEntities = state => state.entities;
+export const getTimelines = (state, props) => props.timelines;
 export const getTimelineIds = state => state.qb.timelineIds;
 
 const getRawQueryResults = state => state.qb.queryResults;
@@ -281,18 +280,6 @@ export const getQuestion = createSelector(
     return question.isDataset() && hasDataPermission
       ? question.composeDataset()
       : question;
-  },
-);
-
-export const getTimelines = createSelector(
-  [getEntities, getQuestion],
-  (entities, question) => {
-    if (!question) {
-      return [];
-    }
-
-    const entityQuery = { cardId: question.id(), include: "events" };
-    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
   },
 );
 
