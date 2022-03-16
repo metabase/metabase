@@ -2,7 +2,7 @@ import { createSelector } from "reselect";
 import _ from "underscore";
 import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
-import { diffDataPermissions } from "metabase/lib/permissions";
+import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { Group } from "metabase-types/api";
 
 const getDatabasesWithTables = createSelector(
