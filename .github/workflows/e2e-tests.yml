@@ -49,17 +49,11 @@ jobs:
         edition: [oss, ee]
         folder:
           - "custom-column"
-          - "dashboard"
           - "dashboard-filters"
           - "dashboard-filters-sql"
           - "downloads"
           - "moderation"
-          - "native"
-          - "native-filters"
           - "permissions"
-          - "question"
-          - "sharing"
-          - "smoketest"
     services:
       maildev:
         image: maildev/maildev
