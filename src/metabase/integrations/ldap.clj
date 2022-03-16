@@ -86,10 +86,11 @@
                (recur (json/parse-string new-value))
 
                (map? new-value)
+               ;; keys of new-value could be string or instance of DN
+               ;; in either cases they will be converted to a string before storing
                (do (doseq [k (keys new-value)]
                      (when-not (DN/isValidDN (if (keyword? k) (name k) (str k)))
                        (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
-                   ;; except both key with type str and DN.
                    (setting/set-value-of-type! :json :ldap-group-mappings (into {} (map (fn [[k v]] [(str k) v]) new-value)))))))
 
 (defsetting ldap-configured?

@@ -388,32 +388,32 @@ pM3Nb5iYaGOlQ+48/GP82cLxlVyi02va8tp7KP03ePSaZeBEKGpFtBtEN/dC3NKO
 g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 
 (defn- call-with-default-ldap-and-sso-config [ldap-group-mapping sso-group-mapping f]
-  (mt/with-temporary-setting-values
-    [jwt-enabled                        true
-     jwt-identity-provider-uri          "http://test.idp.metabase.com"
-     jwt-shared-secret                  (crypto-random/hex 32)
-     jwt-group-mappings                 sso-group-mapping
-     saml-enabled                       true
-     saml-identity-provider-uri         "http://test.idp.metabase.com"
-     saml-identity-provider-certificate default-saml-idp-certificate
-     saml-group-mappings                sso-group-mapping
-     ldap-enabled                       true
-     ldap-host                          "http://localhost:8888"
-     ldap-user-base                     "dc=metabase,dc=com"
-     ldap-group-mappings                ldap-group-mapping
-     ldap-sync-admin-group              false
-     data-migration-index               nil]
-    (f)))
+  (premium-features-test/with-premium-features #{:sso}
+    (mt/with-temporary-setting-values
+      [jwt-enabled                        true
+       jwt-identity-provider-uri          "http://test.idp.metabase.com"
+       jwt-shared-secret                  (crypto-random/hex 32)
+       jwt-group-mappings                 sso-group-mapping
+       saml-enabled                       true
+       saml-identity-provider-uri         "http://test.idp.metabase.com"
+       saml-identity-provider-certificate default-saml-idp-certificate
+       saml-group-mappings                sso-group-mapping
+       ldap-enabled                       true
+       ldap-host                          "http://localhost:8888"
+       ldap-user-base                     "dc=metabase,dc=com"
+       ldap-group-mappings                ldap-group-mapping
+       ldap-sync-admin-group              false
+       data-migration-index               nil]
+      (f))))
 
 (defmacro ^:private with-full-ldap-and-sso-configured
   [ldap-group-mapping sso-group-mapping & body]
-  (premium-features-test/with-premium-features #{:sso}
-    (binding [setting/*allow-retired-setting-names* true]
-      (setting/defsetting ldap-sync-admin-group
-        (deferred-tru "Sync the admin group?")
-        :type    :boolean
-        :default false)
-      `(call-with-default-ldap-and-sso-config ~ldap-group-mapping ~sso-group-mapping (fn [] ~@body)))))
+  (binding [setting/*allow-retired-setting-names* true]
+    (setting/defsetting ldap-sync-admin-group
+      (deferred-tru "Sync the admin group?")
+      :type    :boolean
+      :default false)
+    `(call-with-default-ldap-and-sso-config ~ldap-group-mapping ~sso-group-mapping (fn [] ~@body))))
 
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (group/admin))
