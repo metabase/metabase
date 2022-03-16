@@ -8,13 +8,16 @@
      CREATE TABLE ...               -- Bad
 
   In case we need to guarantee a data-migration is only run once, check out `run-with-data-migration-index`."
-  (:require [cheshire.core :as json]
+   (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.integrations.ldap :as ldap]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting :refer [Setting]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -227,10 +230,15 @@
   ;;  - for SAML, JWT remove all mapping for admin group
   (run-with-data-migration-index 1
     (let [admin-group-id (u/the-id (group/admin))]
-      (when (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group"))
+      (when (and (ldap/ldap-configured?)
+                 (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group")))
         (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
-      (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id)
-      (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id))))
+      (when (premium-features/enable-sso?)
+        (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
+        (when ((some-> (resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?) var-get))
+          (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id))
+        (when ((some-> (resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?) var-get))
+          (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

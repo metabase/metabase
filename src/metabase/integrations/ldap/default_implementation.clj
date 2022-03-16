@@ -125,7 +125,8 @@
 (s/defn ^:private fetch-or-create-user!* :- (class User)
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active] :%lower.email (u/lower-case-en email))
+  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active]
+                                :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)

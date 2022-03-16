@@ -3,12 +3,14 @@
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
+            [crypto.random :as crypto-random]
             [metabase.db.data-migrations :as migrations]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -365,38 +367,89 @@
         (is (= 42 @meaning-of-life))
         (is (= 2 (setting/get :data-migration-index)))))))
 
-(deftest migrate-remove-admin-from-group-mapping-if-needed-test
-  (testing "Remove admin from group mapping for LDAP, SAML, JWT"
+(def ^:private default-saml-idp-certificate
+  "Public certificate from Auth0, used to validate mock SAML responses from Auth0"
+  "MIIDEzCCAfugAwIBAgIJYpjQiNMYxf1GMA0GCSqGSIb3DQEBCwUAMCcxJTAjBgNV
+BAMTHHNhbWwtbWV0YWJhc2UtdGVzdC5hdXRoMC5jb20wHhcNMTgwNTI5MjEwMDIz
+WhcNMzIwMjA1MjEwMDIzWjAnMSUwIwYDVQQDExxzYW1sLW1ldGFiYXNlLXRlc3Qu
+YXV0aDAuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzNcrpju4
+sILZQNe1adwg3beXtAMFGB+Buuc414+FDv2OG7X7b9OSYar/nsYfWwiazZRxEGri
+agd0Sj5mJ4Qqx+zmB/r4UgX3q/KgocRLlShvvz5gTD99hR7LonDPSWET1E9PD4XE
+1fRaq+BwftFBl45pKTcCR9QrUAFZJ2R/3g06NPZdhe4bg/lTssY5emCxaZpQEku/
+v+zzpV2nLF4by0vSj7AHsubrsLgsCfV3JvJyTxCyo1aIOlv4Vrx7h9rOgl9eEmoU
+5XJAl3D7DuvSTEOy7MyDnKF17m7l5nOPZCVOSzmCWvxSCyysijgsM5DSgAE8DPJy
+oYezV3gTX2OO2QIDAQABo0IwQDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSp
+B3lvrtbSDuXkB6fhbjeUpFmL2DAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQEL
+BQADggEBAAEHGIAhR5GPD2JxgLtpNtZMCYiAM4Gr7hoTQMaKiXgVtdQu4iMFfbpE
+wIr6UVaDU2HKhvSRFIilOjRGmCGrIzvJgR2l+RL1Z3KrZypI1AXKJT5pF5g5FitB
+sZq+kiUpdRILl2hICzw9Q1M2Le+JSUcHcbHTVgF24xuzOZonxeE56Oc26Ju4CorL
+pM3Nb5iYaGOlQ+48/GP82cLxlVyi02va8tp7KP03ePSaZeBEKGpFtBtEN/dC3NKO
+1mmrT9284H0tvete6KLUH+dsS6bDEYGHZM5KGoSLWRr3qYlCB3AmAw+KvuiuSczL
+g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
+
+(defn- call-with-default-ldap-and-sso-config [ldap-group-mapping sso-group-mapping f]
+  (mt/with-temporary-setting-values
+    [jwt-enabled                        true
+     jwt-identity-provider-uri          "http://test.idp.metabase.com"
+     jwt-shared-secret                  (crypto-random/hex 32)
+     jwt-group-mappings                 sso-group-mapping
+     saml-enabled                       true
+     saml-identity-provider-uri         "http://test.idp.metabase.com"
+     saml-identity-provider-certificate default-saml-idp-certificate
+     saml-group-mappings                sso-group-mapping
+     ldap-enabled                       true
+     ldap-host                          "http://localhost:8888"
+     ldap-user-base                     "dc=metabase,dc=com"
+     ldap-group-mappings                ldap-group-mapping
+     ldap-sync-admin-group              false
+     data-migration-index               nil]
+    (f)))
+
+(defmacro ^:private with-full-ldap-and-sso-configured
+  [ldap-group-mapping sso-group-mapping & body]
+  (premium-features-test/with-premium-features #{:sso}
     (binding [setting/*allow-retired-setting-names* true]
       (setting/defsetting ldap-sync-admin-group
         (deferred-tru "Sync the admin group?")
         :type    :boolean
         :default false)
-      (let [admin-group-id        (u/the-id (group/admin))
-            sso-group-mapping     {:group-mapping-a [admin-group-id (+ 1 admin-group-id)]
-                                   :group-mapping-b [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
-            ldap-group-mapping    {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
-            sso-expected-mapping  {:group-mapping-a [(+ 1 admin-group-id)]
-                                   :group-mapping-b [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
-            ldap-expected-mapping {(DN. "dc=metabase,dc=com") [(+ 1 admin-group-id)]}]
-        (mt/with-temporary-setting-values
-          [jwt-group-mappings   sso-group-mapping
-           saml-group-mappings  sso-group-mapping
-           ldap-group-mappings  ldap-group-mapping
-           data-migration-index nil]
-          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-          (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
-          (is (= sso-expected-mapping (setting/get :saml-group-mappings)))
-          (is (= ldap-expected-mapping (setting/get :ldap-group-mappings))))))
+      `(call-with-default-ldap-and-sso-config ~ldap-group-mapping ~sso-group-mapping (fn [] ~@body)))))
 
-    (testing "But if ldap-sync-admin-group is true, don't remove it"
-      (let [admin-group-id     (u/the-id (group/admin))
-            group-ids          [admin-group-id (+ 1 admin-group-id)]
-            ldap-group-mapping    {"dc=metabase,dc=com" group-ids}
-            ldap-expected-mapping {(DN. "dc=metabase,dc=com") group-ids}]
+(deftest migrate-remove-admin-from-group-mapping-if-needed-test
+  (let [admin-group-id        (u/the-id (group/admin))
+        sso-group-mapping     {:group-mapping-a [admin-group-id (+ 1 admin-group-id)]
+                               :group-mapping-b [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-group-mapping    {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
+        sso-expected-mapping  {:group-mapping-a [(+ 1 admin-group-id)]
+                               :group-mapping-b [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-expected-mapping {(DN. "dc=metabase,dc=com") [(+ 1 admin-group-id)]}]
+
+    (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
+      (with-full-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
+        (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
+        (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
+        (is (= sso-expected-mapping (setting/get :saml-group-mappings)))
+        (is (= ldap-expected-mapping (setting/get :ldap-group-mappings)))))
+
+    (testing "Does not remove admin from group mapping for LDAP, SAML, JWT if they are disable"
+      (with-full-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
         (mt/with-temporary-setting-values
-          [ldap-group-mappings  ldap-group-mapping
-           ldap-sync-admin-group "true"
-           data-migration-index nil]
+          [saml-enabled false
+           jwt-enabled  false
+           ldap-enabled false]
+          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= sso-group-mapping (setting/get :jwt-group-mappings)))
+          (is (= sso-group-mapping (setting/get :saml-group-mappings)))
+          (is (= {(DN. "dc=metabase,dc=com") [admin-group-id(+ 1 admin-group-id)]}
+                 (setting/get :ldap-group-mappings)))))))
+
+  (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
+    (let [admin-group-id     (u/the-id (group/admin))
+          group-ids          [admin-group-id (+ 1 admin-group-id)]
+          ldap-group-mapping    {"dc=metabase,dc=com" group-ids}
+          ldap-expected-mapping {(DN. "dc=metabase,dc=com") group-ids}]
+      (with-full-ldap-and-sso-configured ldap-group-mapping nil
+        (mt/with-temporary-setting-values
+          [ldap-sync-admin-group true]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= ldap-expected-mapping (setting/get :ldap-group-mappings))))))))
