@@ -2,7 +2,8 @@
   "/api/timeline endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.interface :as mi]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
@@ -28,18 +29,19 @@
   (db/insert! Timeline (assoc body :creator_id api/*current-user-id*)))
 
 (api/defendpoint GET "/"
-  "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
+  "Fetch a list of [[Timelines]]. Use `include=events` to include unarchived events on the timelines. Can include `archived=true` to return archived timelines, including both archived and un-archived events when they are included."
   [include archived]
-  {include (s/maybe Include)
+  {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
         timelines (db/select Timeline [:where [:= :archived archived?]])]
     (cond->> (hydrate timelines :creator)
+      true (map #(assoc % :can_write (mi/can-write? Collection (:collection_id %))))
       (= include "events")
-      (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
+      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
 (api/defendpoint GET "/:id"
-  "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
+  "Fetch the [[Timeline]] with `id`. Use `include=events` to include unarchived events on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [id include archived start end]
   {include  (s/maybe Include)
@@ -49,6 +51,7 @@
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
     (cond-> (hydrate timeline :creator)
+      true (assoc :can_write (mi/can-write? Collection (:collection_id timeline)))
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?
                                                :events/start (when start (u.date/parse start))
