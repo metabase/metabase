@@ -942,7 +942,7 @@ jobs:
           steps:
             - run:
                 name: Adding commit message as variable to be used from Cypress
-                command: export COMMIT_INFO_MESSAGE=$(cat .COMMIT)
+                command: export COMMIT_INFO_MESSAGE=$(git log --format=oneline -n 1 $CIRCLE_SHA1)
             - run:
                 command: echo ${COMMIT_INFO_MESSAGE}
             - run-yarn-command:
