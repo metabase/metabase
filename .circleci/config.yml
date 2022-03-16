@@ -933,6 +933,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - checkout
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
@@ -1269,7 +1270,6 @@ workflows:
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
-            - checkout
             - build-uberjar-<< matrix.edition >>
             - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
