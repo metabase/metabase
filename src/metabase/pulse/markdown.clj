@@ -263,7 +263,9 @@
       :link-ref
       (if-let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
         (str "<" resolved-uri "|" joined-content ">")
-        joined-content)
+        ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
+        ;; restore them. This is a known discrepency between flexmark-java and Markdown rendering on the frontend.
+        (str "[" joined-content "]"))
 
       :auto-link
       (str "<" (:href attrs) ">")
@@ -309,6 +311,16 @@
 
       joined-content)))
 
+(defn- empty-link-ref?
+  "Returns true if this node was parsed as a link ref, but has no references. This probably means the original text
+  was just a pair of square brackets, and not an actual link ref. This is a known discrepency between flexmark-java
+  and Markdown rendering on the frontend."
+  [node]
+  (and (instance? LinkRef node)
+       (-> (.getDocument node)
+           (.get Parser/REFERENCES)
+           empty?)))
+
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
   (let [options    (.. (MutableDataSet.)
@@ -318,9 +330,10 @@
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
                        (reify LinkResolver
                          (resolveLink [_this node _context link]
-                           (if-let [url (if (instance? MailLink node)
-                                          (.getUrl link)
-                                          (resolve-uri (.getUrl link)))]
+                           (if-let [url (cond
+                                          (instance? MailLink node) (.getUrl link)
+                                          (empty-link-ref? node) nil
+                                          :else (resolve-uri (.getUrl link)))]
                              (.. link
                                  (withStatus LinkStatus/VALID)
                                  (withUrl url))
