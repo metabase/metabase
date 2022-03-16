@@ -59,10 +59,10 @@ import {
   onCloseTimelines,
   SHOW_TIMELINE,
   HIDE_TIMELINE,
+  SELECT_TIMELINE_EVENT,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
-  timelineEventIds: [],
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -84,7 +84,6 @@ const DEFAULT_UI_CONTROLS = {
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  timelineEventIds: [],
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
@@ -278,10 +277,9 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
     }),
-    [onOpenTimelines]: (state, { payload }) => ({
+    [onOpenTimelines]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      timelineEventIds: payload?.timelineEventIds ?? [],
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: state => ({
@@ -508,10 +506,25 @@ export const timelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE]: {
-      next: (state, { payload: timelineId }) => [...state, timelineId],
+      next: (state, { payload: timeline }) => [...state, timeline.id],
     },
     [HIDE_TIMELINE]: {
-      next: (state, { payload: timelineId }) => _.without(state, timelineId),
+      next: (state, { payload: timeline }) => _.without(state, timeline.id),
+    },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
+);
+
+export const timelineEventIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SELECT_TIMELINE_EVENT]: {
+      next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [HIDE_TIMELINE]: {
+      next: (state, { payload: timeline }) =>
+        _.without(state, ...timeline.events.map(e => e.id)),
     },
     [RESET_QB]: { next: () => [] },
   },

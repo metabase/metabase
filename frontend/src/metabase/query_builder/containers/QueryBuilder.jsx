@@ -67,6 +67,7 @@ import {
   getTimelineIds,
   getVisibleTimelines,
   getVisibleTimelineEvents,
+  getTimelineEventIds,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -118,6 +119,7 @@ const mapStateToProps = (state, props) => {
     timelines: getVisibleTimelines(state, props),
     timelineIds: getTimelineIds(state, props),
     timelineEvents: getVisibleTimelineEvents(state, props),
+    timelineEventIds: getTimelineEventIds(state, props),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),

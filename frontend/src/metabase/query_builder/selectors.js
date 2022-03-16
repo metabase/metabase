@@ -49,6 +49,7 @@ export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getTimelines = (state, props) => props.timelines;
 export const getTimelineIds = state => state.qb.timelineIds;
+export const getTimelineEventIds = state => state.qb.timelineEventIds;
 
 const getRawQueryResults = state => state.qb.queryResults;
 

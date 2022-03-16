@@ -10,8 +10,8 @@ export interface TimelineSidebarProps {
   question: Question;
   timelineIds: number[];
   timelineEventIds: number[];
-  onShowTimeline?: (timelineId: number) => void;
-  onHideTimeline?: (timelineId: number) => void;
+  onShowTimeline?: (timeline: Timeline) => void;
+  onHideTimeline?: (timeline: Timeline) => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
   onClose?: () => void;
 }
@@ -43,9 +43,9 @@ const TimelineSidebar = ({
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
-        onShowTimeline?.(timeline.id);
+        onShowTimeline?.(timeline);
       } else {
-        onHideTimeline?.(timeline.id);
+        onHideTimeline?.(timeline);
       }
     },
     [onShowTimeline, onHideTimeline],
