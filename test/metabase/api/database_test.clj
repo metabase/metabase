@@ -195,9 +195,8 @@
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
           (testing "Should check that connection details are valid on save"
-            (mt/suppress-output
-              (is (= false
-                     (:valid (update! 400))))))
+            (is (= false
+                   (:valid (update! 400)))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
@@ -212,17 +211,16 @@
                       :features     (driver.u/features :h2 curr-db)}
                      (into {} curr-db)))))))))
 
-    (mt/with-log-level :info
-      (testing "should be able to set `auto_run_queries`"
-        (testing "when creating a Database"
-          (is (= {:auto_run_queries false}
-                 (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
-        (testing "when updating a Database"
-          (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
-            (let [updates {:auto_run_queries false}]
-              (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
-            (is (= false
-                   (db/select-one-field :auto_run_queries Database, :id db-id)))))))
+    (testing "should be able to set `auto_run_queries`"
+      (testing "when creating a Database"
+        (is (= {:auto_run_queries false}
+               (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
+      (testing "when updating a Database"
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates {:auto_run_queries false}]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
+          (is (= false
+                 (db/select-one-field :auto_run_queries Database, :id db-id))))))
     (testing "should be able to unset cache_ttl"
       (mt/with-temp Database [{db-id :id}]
         (let [updates1 {:cache_ttl    1337}
