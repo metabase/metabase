@@ -8,7 +8,7 @@ export interface CardRootProps {
 
 export const CardRoot = styled.div<CardRootProps>`
   display: flex;
-  padding: 0 0.75rem;
+  padding: 0.25rem 0.75rem;
   border-left: 0.25rem solid
     ${props => (props.isSelected ? color("brand") : "transparent")};
   background-color: ${props =>
@@ -34,7 +34,7 @@ export const CardIconContainer = styled.div`
 
 export const CardBody = styled.div`
   flex: 1 1 auto;
-  padding: 0.25rem 0.75rem 0.5rem;
+  padding: 0.25rem 0.75rem 0;
 `;
 
 export const CardTitle = styled.div`
