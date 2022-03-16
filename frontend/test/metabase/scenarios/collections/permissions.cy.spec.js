@@ -47,7 +47,7 @@ describe("collection permissions", () => {
                   cy.visit("/collection/root");
                   sidebar().within(() => {
                     displaySidebarChildOf("First collection");
-                    displaySidebarChildOf("Second collection");
+                    cy.findByText("Second collection").click();
                   });
                   cy.get(".Nav").within(() => {
                     cy.icon("add").click();
