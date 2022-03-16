@@ -225,7 +225,7 @@ function parseTimestampAndWarn(value, unit) {
   if (value == null) {
     return { parsedValue: null, warning: nullDimensionWarning() };
   }
-  const m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit).startOf(unit);
   if (!m.isValid()) {
     return { parsedValue: null, warning: invalidDateWarning(value) };
   }
