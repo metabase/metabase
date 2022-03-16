@@ -33,6 +33,7 @@
   ;;
   ;; `put-clojure-indent' is a safe-local-eval-function, so use a bunch of calls to that
   ;; instead of one call to `define-clojure-indent'
+  (eval . (put-clojure-indent 'api/let-404 1))
   (eval . (put-clojure-indent 'c/step 1))
   (eval . (put-clojure-indent 'db/insert-many! 1))
   (eval . (put-clojure-indent 'db/update! 2))
