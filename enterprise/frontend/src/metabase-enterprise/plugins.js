@@ -20,7 +20,6 @@ import "./sharing";
 import "./moderation";
 import "./advanced_config";
 import "./advanced_permissions";
-import "./feature_level_permissions";
 import "./audit_app";
 import "./license";
 import "./feature_level_permissions";
