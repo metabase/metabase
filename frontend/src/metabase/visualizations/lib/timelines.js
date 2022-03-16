@@ -71,7 +71,13 @@ function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
 
 function renderEventTicks(
   chart,
-  { eventAxis, eventGroups, onHoverChange, onOpenTimelines },
+  {
+    eventAxis,
+    eventGroups,
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+  },
 ) {
   const svg = chart.svg();
   const brush = svg.select("g.brush");
@@ -142,7 +148,8 @@ function renderEventTicks(
         eventPointerLine.classed("hover", false);
       })
       .on("click", () => {
-        onOpenTimelines({ timelineEventIds: group.map(event => event.id) });
+        onOpenTimelines();
+        onSelectTimelineEvents(group);
       });
   });
 }
@@ -156,6 +163,7 @@ export function renderEvents(
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
   },
 ) {
   const xAxis = getXAxis(chart);
@@ -176,6 +184,7 @@ export function renderEvents(
     eventGroups,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
   });
 }
 

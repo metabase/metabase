@@ -819,6 +819,7 @@ export default function lineAreaBar(element, props) {
     onRender,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
   } = props;
 
   const warnings = {};
@@ -934,6 +935,7 @@ export default function lineAreaBar(element, props) {
     onGoalHover,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
   });
 
   // only ordinal axis can display "null" values
