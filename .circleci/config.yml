@@ -940,16 +940,13 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
-            - restore_cache:
-              name: Restore dummy file .SUCCESS if it exists for cache key << parameters.checksum >>
-              <<: *CacheKeyRunOnChange
             - run:
                 name: Adding commit message as variable to be used from Cypress
                 command: echo 'export COMMIT_INFO_MESSAGE=$(cat .COMMIT)'
             - run:
                 command: echo ${COMMIT_INFO_MESSAGE}
             - run:
-                command: echo cat .COMMIT
+                command: cat .COMMIT
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
