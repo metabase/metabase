@@ -315,7 +315,7 @@
   "Returns true if this node was parsed as a link ref, but has no references. This probably means the original text
   was just a pair of square brackets, and not an actual link ref. This is a known discrepency between flexmark-java
   and Markdown rendering on the frontend."
-  [node]
+  [^Node node]
   (and (instance? LinkRef node)
        (-> (.getDocument node)
            (.get Parser/REFERENCES)
