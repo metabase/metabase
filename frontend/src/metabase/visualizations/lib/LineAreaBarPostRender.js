@@ -392,6 +392,7 @@ function onRenderAddTimelineEvents(
   chart,
   {
     timelineEvents,
+    timelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
@@ -402,6 +403,7 @@ function onRenderAddTimelineEvents(
 ) {
   renderEvents(chart, {
     timelineEvents,
+    timelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
@@ -417,6 +419,7 @@ function onRender(
   {
     datas,
     timelineEvents,
+    timelineEventIds,
     isSplitAxis,
     xDomain,
     xInterval,
@@ -450,6 +453,7 @@ function onRender(
   onRenderSetZeroGridLineClassName(chart);
   onRenderAddTimelineEvents(chart, {
     timelineEvents,
+    timelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
