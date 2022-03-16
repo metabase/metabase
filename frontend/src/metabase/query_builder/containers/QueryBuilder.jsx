@@ -115,9 +115,9 @@ const mapStateToProps = (state, props) => {
     query: getQuery(state),
     metadata: getMetadata(state),
 
-    timelines: getVisibleTimelines(state),
-    timelineIds: getTimelineIds(state),
-    timelineEvents: getVisibleTimelineEvents(state),
+    timelines: getVisibleTimelines(state, props),
+    timelineIds: getTimelineIds(state, props),
+    timelineEvents: getVisibleTimelineEvents(state, props),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
