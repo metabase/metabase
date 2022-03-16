@@ -1,11 +1,18 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
 import { alpha, color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
-export const CardRoot = styled.div`
+export interface CardRootProps {
+  isSelected?: boolean;
+}
+
+export const CardRoot = styled.div<CardRootProps>`
   display: flex;
-  padding-left: 1rem;
-  padding-right: 0.75rem;
+  padding: 0 0.75rem;
+  border-left: 0.25rem solid
+    ${props => (props.isSelected ? color("brand") : "transparent")};
+  background-color: ${props =>
+    props.isSelected ? alpha("brand", 0.03) : "transparent"};
 `;
 
 export const CardIcon = styled(Icon)`

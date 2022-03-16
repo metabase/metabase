@@ -37,7 +37,7 @@ const EventCard = ({
   const creatorMessage = getCreatorMessage(event);
 
   return (
-    <CardRoot>
+    <CardRoot isSelected={isSelected}>
       <CardIconContainer>
         <CardIcon name={event.icon} />
       </CardIconContainer>
