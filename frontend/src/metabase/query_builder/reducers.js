@@ -505,10 +505,10 @@ export const timelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE]: {
-      next: (state, { payload }) => [...state, payload.id],
+      next: (state, { payload }) => [...state, payload],
     },
     [HIDE_TIMELINE]: {
-      next: (state, { payload }) => _.without(state, payload.id),
+      next: (state, { payload }) => _.without(state, payload),
     },
     [RESET_QB]: { next: () => [] },
   },
