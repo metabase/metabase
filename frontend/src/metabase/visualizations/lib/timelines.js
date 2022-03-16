@@ -142,7 +142,7 @@ function renderEventTicks(
         eventPointerLine.classed("hover", false);
       })
       .on("click", () => {
-        onOpenTimelines(group);
+        onOpenTimelines({ timelineEventIds: group.map(event => event.id) });
       });
   });
 }

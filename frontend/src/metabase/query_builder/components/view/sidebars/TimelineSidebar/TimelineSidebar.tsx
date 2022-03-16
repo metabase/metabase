@@ -9,8 +9,9 @@ import { Timeline, TimelineEvent } from "metabase-types/api";
 export interface TimelineSidebarProps {
   question: Question;
   timelineIds: number[];
-  onShowTimeline?: (timeline: Timeline) => void;
-  onHideTimeline?: (timeline: Timeline) => void;
+  timelineEventIds: number[];
+  onShowTimeline?: (timelineId: number) => void;
+  onHideTimeline?: (timelineId: number) => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
   onClose?: () => void;
 }
@@ -18,6 +19,7 @@ export interface TimelineSidebarProps {
 const TimelineSidebar = ({
   question,
   timelineIds,
+  timelineEventIds,
   onOpenModal,
   onShowTimeline,
   onHideTimeline,
@@ -41,9 +43,9 @@ const TimelineSidebar = ({
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
-        onShowTimeline?.(timeline);
+        onShowTimeline?.(timeline.id);
       } else {
-        onHideTimeline?.(timeline);
+        onHideTimeline?.(timeline.id);
       }
     },
     [onShowTimeline, onHideTimeline],
@@ -52,7 +54,8 @@ const TimelineSidebar = ({
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
-        timelineIds={timelineIds}
+        selectedEventIds={timelineEventIds}
+        selectedTimelineIds={timelineIds}
         collectionId={question.collectionId()}
         onNewEvent={handleNewEvent}
         onNewEventWithTimeline={handleNewEventWithTimeline}

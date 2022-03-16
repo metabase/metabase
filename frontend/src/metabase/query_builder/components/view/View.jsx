@@ -162,6 +162,7 @@ export default class View extends React.Component {
       isShowingTimelineSidebar,
       runQuestionQuery,
       timelineIds,
+      timelineEventIds,
       showTimeline,
       hideTimeline,
       onOpenModal,
@@ -190,6 +191,7 @@ export default class View extends React.Component {
         <TimelineSidebar
           question={question}
           timelineIds={timelineIds}
+          timelineEventIds={timelineEventIds}
           onShowTimeline={showTimeline}
           onHideTimeline={hideTimeline}
           onOpenModal={onOpenModal}

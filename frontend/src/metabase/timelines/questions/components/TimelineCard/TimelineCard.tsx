@@ -21,7 +21,8 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   collection: Collection;
-  isVisible?: boolean;
+  isSelected?: boolean;
+  selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -30,13 +31,15 @@ export interface TimelineCardProps {
 const TimelineCard = ({
   timeline,
   collection,
-  isVisible,
+  isSelected,
+  selectedEventIds = [],
   onToggleTimeline,
   onEditEvent,
   onArchiveEvent,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
+  const [isExpanded, setIsExpanded] = useState(isEventSelected);
 
   const handleHeaderClick = useCallback(() => {
     setIsExpanded(isExpanded => !isExpanded);
@@ -57,7 +60,7 @@ const TimelineCard = ({
     <CardRoot>
       <CardHeader onClick={handleHeaderClick}>
         <CardCheckbox
-          checked={isVisible}
+          checked={isSelected}
           onChange={handleCheckboxChange}
           onClick={handleCheckboxClick}
         />
@@ -71,6 +74,7 @@ const TimelineCard = ({
               key={event.id}
               event={event}
               collection={collection}
+              isSelected={selectedEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onArchive={onArchiveEvent}
             />

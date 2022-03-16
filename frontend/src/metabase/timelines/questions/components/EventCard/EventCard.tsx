@@ -20,6 +20,7 @@ import {
 export interface EventCardProps {
   event: TimelineEvent;
   collection: Collection;
+  isSelected?: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
 }
@@ -27,6 +28,7 @@ export interface EventCardProps {
 const EventCard = ({
   event,
   collection,
+  isSelected,
   onEdit,
   onArchive,
 }: EventCardProps): JSX.Element => {

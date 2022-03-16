@@ -278,10 +278,10 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
     }),
-    [onOpenTimelines]: (state, { payload: timelineEvents = [] }) => ({
+    [onOpenTimelines]: (state, payload) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      timelineEventIds: timelineEvents.map(e => e.id),
+      timelineEventIds: payload?.timelineEventIds ?? [],
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: state => ({
@@ -508,10 +508,10 @@ export const timelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE]: {
-      next: (state, { payload: timeline }) => [...state, timeline.id],
+      next: (state, { payload: timelineId }) => [...state, timelineId],
     },
     [HIDE_TIMELINE]: {
-      next: (state, { payload: timeline }) => _.without(state, timeline.id),
+      next: (state, { payload: timelineId }) => _.without(state, timelineId),
     },
     [RESET_QB]: { next: () => [] },
   },

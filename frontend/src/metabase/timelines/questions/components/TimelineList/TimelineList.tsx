@@ -5,7 +5,8 @@ import TimelineCard from "metabase/timelines/questions/components/TimelineCard/T
 export interface TimelineListProps {
   timelines: Timeline[];
   collection: Collection;
-  timelineIds?: number[];
+  selectedEventIds?: number[];
+  selectedTimelineIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -14,7 +15,8 @@ export interface TimelineListProps {
 const TimelineList = ({
   timelines,
   collection,
-  timelineIds = [],
+  selectedEventIds = [],
+  selectedTimelineIds = [],
   onEditEvent,
   onArchiveEvent,
   onToggleTimeline,
@@ -26,7 +28,8 @@ const TimelineList = ({
           key={timeline.id}
           timeline={timeline}
           collection={collection}
-          isVisible={timelineIds.includes(timeline.id)}
+          isSelected={selectedTimelineIds.includes(timeline.id)}
+          selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
           onArchiveEvent={onArchiveEvent}
