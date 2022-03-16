@@ -1,10 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import _ from "underscore";
+
 import { capitalize } from "metabase/lib/formatting";
 import { color, darken } from "metabase/lib/colors";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -35,8 +36,10 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    // PROTOTYPE CRUFT - added a check to stop things from blowing up, will need to keep an eye on this.
-    const admin = this.props.user && this.props.user.is_superuser;
+    const { user } = this.props;
+    const canAccessSettings =
+      user.is_superuser ||
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
 
     return [
       {
@@ -45,7 +48,7 @@ export default class ProfileLink extends Component {
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      admin && {
+      canAccessSettings && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",

@@ -84,7 +84,7 @@ export default class Navbar extends Component {
   renderAdminNav() {
     return (
       <>
-        <AdminNavbar path={this.props.path} />
+        <AdminNavbar {...this.props} />
         {this.renderModal()}
       </>
     );

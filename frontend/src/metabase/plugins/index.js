@@ -106,3 +106,9 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
 };
+
+export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
+  canAccessSettings: _user => false,
+  canAccessDataModel: _user => false,
+  canAccessDatabaseManagement: _user => false,
+};

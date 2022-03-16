@@ -14,6 +14,8 @@ export const createMockUser = ({
   personal_collection_id = 1,
   date_joined = new Date().toISOString(),
   last_login = new Date().toISOString(),
+  can_access_data_model = false,
+  can_access_database_management = false,
 }: Partial<User> = {}): User => ({
   id,
   common_name,
@@ -28,4 +30,6 @@ export const createMockUser = ({
   personal_collection_id,
   date_joined,
   last_login,
+  can_access_data_model,
+  can_access_database_management,
 });

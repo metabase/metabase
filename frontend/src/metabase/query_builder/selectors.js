@@ -310,10 +310,13 @@ export const getVisibleTimelines = createSelector(
 export const getVisibleTimelineEvents = createSelector(
   [getVisibleTimelines],
   timelines => {
-    return timelines
-      .flatMap(timeline => timeline.events ?? [])
+    return _.chain(timelines)
+      .map(timeline => timeline.events ?? [])
+      .flatten()
       .filter(event => !event.archived)
-      .map(event => updateIn(event, ["timestamp"], parseTimestamp));
+      .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+      .sortBy(event => event.timestamp)
+      .value();
   },
 );
 

@@ -390,13 +390,21 @@ function onRenderSetZeroGridLineClassName(chart) {
 
 function onRenderAddTimelineEvents(
   chart,
-  { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
+  {
+    timelineEvents,
+    xDomain,
+    xInterval,
+    isTimeseries,
+    onHoverChange,
+    onOpenTimelines,
+  },
 ) {
   renderEvents(chart, {
     timelineEvents,
     xDomain,
     xInterval,
     isTimeseries,
+    onHoverChange,
     onOpenTimelines,
   });
 }
@@ -415,6 +423,7 @@ function onRender(
     isTimeseries,
     formatYValue,
     onGoalHover,
+    onHoverChange,
     onOpenTimelines,
   },
 ) {
@@ -441,6 +450,7 @@ function onRender(
     xDomain,
     xInterval,
     isTimeseries,
+    onHoverChange,
     onOpenTimelines,
   });
 }
