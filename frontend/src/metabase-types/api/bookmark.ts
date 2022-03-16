@@ -1,8 +1,8 @@
 export type BookmarkableEntities = "card" | "collection";
 
 export interface Bookmark {
-  id: number;
-  item_id: string;
+  id: string;
+  item_id: number;
   card_id: string;
   name: string;
   type: BookmarkableEntities;

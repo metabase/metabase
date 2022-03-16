@@ -8,9 +8,9 @@ import { EntityItemMenu } from "./ActionMenu.styled";
 import { Bookmarks } from "metabase-types/api/bookmark";
 
 type Props = {
-  bookmarks: Bookmarks;
-  createBookmark: (id: string, collection: string) => void;
-  deleteBookmark: (id: string, collection: string) => void;
+  bookmarks?: Bookmarks;
+  createBookmark?: (id: string, collection: string) => void;
+  deleteBookmark?: (id: string, collection: string) => void;
   className?: string;
   item: Item;
   collection: Collection;
@@ -35,11 +35,11 @@ function ActionMenu({
   onMove,
 }: Props) {
   const [isBookmarked, setIsBookmarked] = useState(
-    getIsBookmarked(item, bookmarks),
+    bookmarks && getIsBookmarked(item, bookmarks),
   );
 
   useEffect(() => {
-    setIsBookmarked(getIsBookmarked(item, bookmarks));
+    bookmarks && setIsBookmarked(getIsBookmarked(item, bookmarks));
   }, [item, bookmarks]);
 
   const handlePin = useCallback(() => {
@@ -61,7 +61,7 @@ function ActionMenu({
   const handleToggleBookmark = useCallback(() => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(item.id + "", item.model);
+    toggleBookmark?.(item.id + "", item.model);
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   return (
