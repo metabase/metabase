@@ -12,6 +12,7 @@
             [metabase.api.dataset :as dataset-api]
             [metabase.api.timeline :as timeline-api]
             [metabase.async.util :as async.u]
+            [metabase.driver :as driver]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
@@ -21,6 +22,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
@@ -753,5 +755,41 @@
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
+
+(api/defendpoint POST "/:id/persist"
+  [id]
+  (api/check-403 api/*is-superuser?*)
+  ;; if we change from superuser make sure to start on read/write checks
+  (api/let-404 [card (Card id)]
+    (let [database (Database (:database_id card))]
+      (when-not (driver/database-supports? (:engine database) :persisted-models database)
+        (throw (ex-info (tru "Database does not support persisting")
+                        {:status-code 400
+                         :database (:name database)})))
+      (when-not (:dataset card)
+        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
+      (when (pos? (db/count PersistedInfo :db_id (:database_id card) :card_id id))
+        (throw (ex-info (tru "Model already persisted") {:status-code 400})))
+      (let [slug (-> card :name persisted-info/slug-name)]
+        (db/insert! PersistedInfo {:db_id (:id database)
+                                   :card_id id
+                                   :question_slug slug
+                                   :query_hash (persisted-info/query-hash (:dataset_query card))
+                                   :table_name (format "model_%s_%s" id slug)
+                                   :active false
+                                   :state "creating"}))
+      ;; todo: persist it
+      api/generic-204-no-content)))
+
+(api/defendpoint DELETE "/:id/persist"
+  [id]
+  (api/check-403 api/*is-superuser?*)
+  ;; if we change from superuser make sure to start on read/write checks
+  (api/let-404 [_card (Card id)]
+    (api/let-404 [persisted (PersistedInfo :card_id id)]
+      ;; todo: schedule unpersist
+      (db/delete! PersistedInfo :id (:id persisted))
+      api/generic-204-no-content))
+  )
 
 (api/define-routes)
