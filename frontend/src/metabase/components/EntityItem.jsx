@@ -83,6 +83,7 @@ function EntityItemName({ name, variant }) {
 }
 
 function EntityItemMenu({
+  isBookmarked,
   item,
   onPin,
   onMove,
@@ -124,13 +125,14 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
         onToggleBookmark && {
-          title: t`Bookmark`,
+          title: isBookmarked ? t`RemoveBookmark` : t`Bookmark`,
           icon: "bookmark",
           action: onToggleBookmark,
           event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
         },
       ].filter(action => action),
     [
+      isBookmarked,
       onToggleBookmark,
       showPinnedAction,
       isPinned,
