@@ -278,7 +278,7 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
     }),
-    [onOpenTimelines]: (state, payload) => ({
+    [onOpenTimelines]: (state, { payload }) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       timelineEventIds: payload?.timelineEventIds ?? [],
