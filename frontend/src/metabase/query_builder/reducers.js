@@ -62,6 +62,7 @@ import {
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
+  timelineEventIds: [],
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -79,10 +80,11 @@ const DEFAULT_UI_CONTROLS = {
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
+  datasetEditorTab: "query", // "query" / "metadata",
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
+  timelineEventIds: [],
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
@@ -276,9 +278,10 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
     }),
-    [onOpenTimelines]: state => ({
+    [onOpenTimelines]: (state, { payload: timelineEvents = [] }) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      timelineEventIds: timelineEvents.map(e => e.id),
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: state => ({
@@ -505,10 +508,10 @@ export const timelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE]: {
-      next: (state, { payload }) => [...state, payload],
+      next: (state, { payload: timeline }) => [...state, timeline.id],
     },
     [HIDE_TIMELINE]: {
-      next: (state, { payload }) => _.without(state, payload),
+      next: (state, { payload: timeline }) => _.without(state, timeline.id),
     },
     [RESET_QB]: { next: () => [] },
   },
