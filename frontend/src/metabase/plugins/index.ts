@@ -4,7 +4,7 @@ import {
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { GroupsPermissions } from "metabase-types/api";
+import { GroupsPermissions, User } from "metabase-types/api";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -115,6 +115,9 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
+  canAccessSettings: (_user: User) => false,
+  canAccessDataModel: (_user: User) => false,
+  canAccessDatabaseManagement: (_user: User) => false,
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
@@ -126,10 +129,4 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     return [] as any;
   },
   dataColumns: [] as any,
-};
-
-export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
-  canAccessSettings: _user => false,
-  canAccessDataModel: _user => false,
-  canAccessDatabaseManagement: _user => false,
 };
