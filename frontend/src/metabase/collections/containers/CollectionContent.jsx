@@ -9,6 +9,7 @@ import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsBookmarked } from "metabase/collections/selectors";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -35,9 +36,10 @@ const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function mapStateToProps(state) {
+function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
+    isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
   };
 }
