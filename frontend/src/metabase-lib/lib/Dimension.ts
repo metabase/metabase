@@ -1516,10 +1516,10 @@ export class TemplateTagDimension extends FieldDimension {
     return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
-  validateTemplateTag(): Error | null {
+  validateTemplateTag(): ValidationError | null {
     const tag = this.tag();
     if (!tag) {
-      return new Error(t`Invalid template tag "${this.tagName()}"`);
+      return new ValidationError(t`Invalid template tag "${this.tagName()}"`);
     }
 
     if (this.isDimensionType() && tag.dimension == null) {

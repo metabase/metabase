@@ -26,6 +26,8 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
+import { ValidationError } from "../ValidationError";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -301,12 +303,14 @@ export default class NativeQuery extends AtomicQuery {
           this,
         );
         if (!dimension) {
-          return new Error(t`Invalid template tag: ${tag.name}`);
+          return new ValidationError(t`Invalid template tag: ${tag.name}`);
         }
 
         return dimension.validateTemplateTag();
       })
-      .filter(Boolean);
+      .filter(
+        (maybeError): maybeError is ValidationError => maybeError != null,
+      );
   }
 
   allTemplateTagsAreValid() {
