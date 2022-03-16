@@ -88,6 +88,7 @@ function EntityItemMenu({
   onMove,
   onCopy,
   onArchive,
+  onToggleBookmark,
   className,
   analyticsContext,
 }) {
@@ -122,8 +123,15 @@ function EntityItemMenu({
           action: onArchive,
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
+        onToggleBookmark && {
+          title: t`Bookmark`,
+          icon: "bookmark",
+          action: onToggleBookmark,
+          event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,
+        },
       ].filter(action => action),
     [
+      onToggleBookmark,
       showPinnedAction,
       isPinned,
       onPin,

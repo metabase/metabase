@@ -45,8 +45,8 @@ function mapStateToProps(state, props) {
 }
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id, type: "collection" }),
-  deleteBookmark: id => Bookmark.actions.delete({ id, type: "collection" }),
+  createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
 };
 
 function CollectionContent({
@@ -138,7 +138,7 @@ function CollectionContent({
 
   const handleClickBookmark = () => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId);
+    toggleBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -228,6 +228,9 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
                         items={unpinnedItems}
                         collection={collection}
                         sortingOptions={unpinnedItemsSorting}

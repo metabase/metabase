@@ -5,8 +5,12 @@ import { Item, Collection, isItemPinned } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
+import { Bookmarks } from "metabase-types/api/bookmark";
 
 type Props = {
+  bookmarks: Bookmarks;
+  createBookmark: (id: string, collection: string) => void;
+  deleteBookmark: (id: string, collection: string) => void;
   className?: string;
   item: Item;
   collection: Collection;
@@ -14,7 +18,16 @@ type Props = {
   onMove: (items: Item[]) => void;
 };
 
-function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
+function ActionMenu({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
+  className,
+  item,
+  collection,
+  onCopy,
+  onMove,
+}: Props) {
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
   }, [item]);
@@ -31,6 +44,10 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
     item.setArchived(true);
   }, [item]);
 
+  const handleToggleBookmark = useCallback(() => {
+    console.log("🚀", "Hey");
+  }, []);
+
   return (
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
@@ -44,6 +61,7 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
         onArchive={
           collection.can_write && item.setArchived ? handleArchive : null
         }
+        onToggleBookmark={handleToggleBookmark}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
