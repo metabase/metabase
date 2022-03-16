@@ -1,7 +1,7 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
 import { Moment } from "moment";
 import {
-  getDateStyleFromSettings,
+  getNumericDateStyleFromSettings,
   getTimeStyleFromSettings,
   has24HourModeSetting,
   parseTimestamp,
@@ -54,7 +54,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       value={value}
       placeholder={placeholder}
       hasTime={hasTime}
-      dateFormat={getDateStyleFromSettings()}
+      dateFormat={getNumericDateStyleFromSettings()}
       timeFormat={getTimeStyleFromSettings()}
       is24HourMode={has24HourModeSetting()}
       readOnly={readOnly}

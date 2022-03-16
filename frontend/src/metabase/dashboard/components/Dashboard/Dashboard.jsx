@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
-import DashboardHeader from "../DashboardHeader";
+import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import {
   CardsContainer,
   DashboardStyled,
@@ -112,12 +112,12 @@ export default class Dashboard extends Component {
     });
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (this.props.dashboardId !== nextProps.dashboardId) {
-      this.loadDashboard(nextProps.dashboardId);
+  componentDidUpdate(prevProps) {
+    if (prevProps.dashboardId !== this.props.dashboardId) {
+      this.loadDashboard(this.props.dashboardId);
     } else if (
-      !_.isEqual(this.props.parameterValues, nextProps.parameterValues) ||
-      !this.props.dashboard
+      !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
+      !prevProps.dashboard
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }

@@ -3,7 +3,10 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { setOrUnsetParameterValues } from "metabase/dashboard/actions";
+import {
+  setOrUnsetParameterValues,
+  setParameterValue,
+} from "metabase/dashboard/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -37,19 +40,15 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "crossfilter") {
-    const valuesToSet = _.chain(parameterMapping)
-      .values()
-      .map(({ source, target, id }) => {
-        const value = formatSourceForTarget(source, target, {
-          data,
-          extraData,
-          clickBehavior,
-        });
-        return [id, value];
-      })
-      .value();
+    const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
 
-    behavior = { action: () => setOrUnsetParameterValues(valuesToSet) };
+    behavior = {
+      action: () => setOrUnsetParameterValues(parameterIdValuePairs),
+    };
   } else if (type === "link") {
     if (linkType === "url") {
       behavior = {
@@ -57,14 +56,33 @@ export default ({ question, clicked }) => {
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
     } else if (linkType === "dashboard") {
-      const url = new URL(`/dashboard/${targetId}`, location.href);
-      Object.entries(
-        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
-      ).forEach(([k, v]) => url.searchParams.append(k, v));
+      if (extraData.dashboard.id === targetId) {
+        const parameterIdValuePairs = getParameterIdValuePairs(
+          parameterMapping,
+          { data, extraData, clickBehavior },
+        );
 
-      behavior = { url: () => url.toString() };
+        behavior = {
+          action: () => {
+            return dispatch =>
+              parameterIdValuePairs.forEach(([id, value]) => {
+                setParameterValue(id, value)(dispatch);
+              });
+          },
+        };
+      } else {
+        const queryParams = getParameterValuesBySlug(parameterMapping, {
+          data,
+          extraData,
+          clickBehavior,
+        });
+
+        const urlSearchParams = new URLSearchParams(queryParams);
+        const url = `/dashboard/${targetId}?${urlSearchParams.toString()}`;
+        behavior = { url: () => url };
+      }
     } else if (linkType === "question" && extraData && extraData.questions) {
-      const queryParams = getQueryParams(parameterMapping, {
+      const queryParams = getParameterValuesBySlug(parameterMapping, {
         data,
         extraData,
         clickBehavior,
@@ -104,7 +122,28 @@ export default ({ question, clicked }) => {
   ];
 };
 
-function getQueryParams(parameterMapping, { data, extraData, clickBehavior }) {
+function getParameterIdValuePairs(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
+  const value = _.values(parameterMapping).map(({ source, target, id }) => {
+    return [
+      id,
+      formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      }),
+    ];
+  });
+
+  return value;
+}
+
+function getParameterValuesBySlug(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
   return _.chain(parameterMapping)
     .values()
     .map(({ source, target }) => [

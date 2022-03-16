@@ -110,9 +110,12 @@
   `User.settings` in the application DB. When bound, any Setting that *can* be User-local will have a value from this
   map returned preferentially to the site-wide value.
 
+  This is a delay so that the settings for a user are loaded only if and when they are actually needed during a given
+  API request.
+
   This is normally bound automatically by session middleware, in
   [[metabase.server.middleware.session/do-with-current-user]]."
-  (atom nil))
+  (delay (atom nil)))
 
 (def ^:private retired-setting-names
   "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
@@ -287,22 +290,22 @@
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
     (when (allows-user-local-values? setting)
-      (core/get @*user-local-values* setting-name))))
+      (core/get @@*user-local-values* setting-name))))
 
 (defn- should-set-user-local-value? [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (and (allows-user-local-values? setting)
-         @*user-local-values*)))
+         @@*user-local-values*)))
 
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
-    (swap! *user-local-values*
+    (swap! @*user-local-values*
            (fn [old-settings] (if value
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
-    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @*user-local-values*)})))
+    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -969,7 +972,7 @@
      []
      (comp (filter (fn [setting]
                      (and (not= (:visibility setting) :internal)
-                          (allows-site-wide-values? setting))))
+                          (not= (:database-local setting) :only))))
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
 
@@ -978,10 +981,19 @@
   excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
   be included with their site-wide value, if a site-wide value is set.
 
+  `options` are passed to [[user-facing-value]].
+
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
-  [& options]
-  (binding [*user-local-values* (atom nil)]
-    (apply admin-writable-settings options)))
+  [& {:as options}]
+  (binding [*user-local-values* (delay (atom nil))
+            *database-local-values* nil]
+    (into
+     []
+     (comp (filter (fn [setting]
+                     (and (not= (:visibility setting) :internal)
+                          (allows-site-wide-values? setting))))
+           (map #(m/mapply user-facing-info % options)))
+     (sort-by :name (vals @registered-settings)))))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.

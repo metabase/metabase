@@ -1,6 +1,6 @@
-import { POST, DELETE } from "metabase/lib/api";
 import { createEntity } from "metabase/lib/entities";
 import { BookmarkSchema } from "metabase/schema";
+import { BookmarkApi } from "metabase/services";
 
 const Bookmarks = createEntity({
   name: "bookmarks",
@@ -8,8 +8,14 @@ const Bookmarks = createEntity({
   path: "/api/bookmark",
   schema: BookmarkSchema,
   api: {
-    create: POST("/api/bookmark/card/:id"),
-    delete: DELETE("/api/bookmark/card/:id"),
+    create: async params => {
+      const { id, type } = params;
+      return BookmarkApi[type].create({ id });
+    },
+    delete: async params => {
+      const { id, type } = params;
+      return BookmarkApi[type].delete({ id });
+    },
   },
 });
 

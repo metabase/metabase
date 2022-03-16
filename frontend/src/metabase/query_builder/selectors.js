@@ -6,7 +6,6 @@ import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -22,9 +21,11 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { parseTimestamp } from "metabase/lib/time";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -46,6 +47,9 @@ export const getLastRunCard = state => state.qb.lastRunCard;
 export const getParameterValues = state => state.qb.parameterValues;
 
 export const getMetadataDiff = state => state.qb.metadataDiff;
+
+export const getEntities = state => state.entities;
+export const getTimelineVisibility = state => state.qb.timelineVisibility;
 
 const getRawQueryResults = state => state.qb.queryResults;
 
@@ -277,6 +281,42 @@ export const getQuestion = createSelector(
     return question.isDataset() && hasDataPermission
       ? question.composeDataset()
       : question;
+  },
+);
+
+export const getTimelines = createSelector(
+  [getEntities, getQuestion],
+  (entities, question) => {
+    if (!question) {
+      return [];
+    }
+
+    const entityQuery = { cardId: question.id(), include: "events" };
+    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+  },
+);
+
+export const getVisibleTimelines = createSelector(
+  [getQuestion, getTimelines, getTimelineVisibility],
+  (question, timelines, visibility) => {
+    if (!question) {
+      return [];
+    }
+
+    return timelines.filter(t => visibility[t.id] ?? question.isSaved());
+  },
+);
+
+export const getVisibleTimelineEvents = createSelector(
+  [getVisibleTimelines],
+  timelines => {
+    return _.chain(timelines)
+      .map(timeline => timeline.events ?? [])
+      .flatten()
+      .filter(event => !event.archived)
+      .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+      .sortBy(event => event.timestamp)
+      .value();
   },
 );
 

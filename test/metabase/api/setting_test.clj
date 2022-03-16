@@ -1,6 +1,7 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
-            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3]]
+            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3
+                                                  test-user-local-allowed-setting test-user-local-only-setting]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -137,3 +138,74 @@
              (test-setting-1)))
       (is (= "DEF"
              (test-setting-2))))))
+
+(defn- fetch-user-local-test-settings [user]
+  (for [setting (mt/user-http-request user :get 200 "setting")
+        :when   (re-find #"^test-user-local.*setting$" (name (:key setting)))]
+    setting))
+
+(defn- set-initial-user-local-values []
+  (mt/with-current-user (mt/user->id :crowberto)
+    (test-user-local-only-setting "ABC")
+    (test-user-local-allowed-setting "ABC"))
+  (mt/with-current-user (mt/user->id :rasta)
+    (test-user-local-only-setting "DEF")
+    (test-user-local-allowed-setting "DEF")))
+
+(defn- clear-user-local-values []
+  (mt/with-current-user (mt/user->id :crowberto)
+    (test-user-local-only-setting nil)
+    (test-user-local-allowed-setting nil))
+  (mt/with-current-user (mt/user->id :rasta)
+    (test-user-local-only-setting nil)
+    (test-user-local-allowed-setting nil)))
+
+(deftest user-local-settings-test
+  (testing "GET /api/setting/"
+    (testing "should return the user-local value of a user-local setting"
+      (set-initial-user-local-values)
+      (is (= [{:key "test-user-local-allowed-setting"
+               :value "ABC" ,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ALLOWED_SETTING",
+               :description "test Setting",
+               :default nil}
+              {:key "test-user-local-only-setting",
+               :value "ABC" ,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ONLY_SETTING",
+               :description "test Setting",
+               :default nil}]
+             (fetch-user-local-test-settings :crowberto)))
+      (clear-user-local-values)))
+
+  (testing "GET /api/setting/:key"
+    (testing "should return the user-local value of a user-local setting"
+      (set-initial-user-local-values)
+      (is (= "ABC"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
+      (is (= "ABC"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
+      (clear-user-local-values)))
+
+  (testing "PUT /api/setting/:key"
+    (testing "should update the user-local value of a user-local setting"
+      (set-initial-user-local-values)
+      (mt/user-http-request :crowberto :put 204 "setting/test-user-local-only-setting" {:value "GHI"})
+      (is (= "GHI"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
+      (mt/user-http-request :crowberto :put 204 "setting/test-user-local-allowed-setting" {:value "JKL"})
+      (is (= "JKL"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
+      (clear-user-local-values)))
+
+  (testing "PUT /api/setting"
+    (testing "can updated multiple user-local settings at once"
+      (set-initial-user-local-values)
+      (mt/user-http-request :crowberto :put 204 "setting" {:test-user-local-only-setting "GHI"
+                                                           :test-user-local-allowed-setting "JKL"})
+      (is (= "GHI"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
+      (is (= "JKL"
+             (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
+      (clear-user-local-values))))

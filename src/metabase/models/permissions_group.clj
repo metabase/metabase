@@ -124,3 +124,8 @@
                               [:= :pgm.group_id (u/the-id group-or-id)]]
              :order-by  [[:%lower.user.first_name :asc]
                          [:%lower.user.last_name :asc]]}))
+
+(defn non-admin-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
+  []
+  (db/select PermissionsGroup :name [:not= admin-group-name]))
