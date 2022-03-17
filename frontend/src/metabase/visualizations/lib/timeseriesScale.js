@@ -103,7 +103,6 @@ function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
     }
     tick = tick.clone().add(count, interval);
   }
-
   return ticks;
 }
 
