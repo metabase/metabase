@@ -53,6 +53,17 @@
     (assoc-in query [:query :limit] (min original-limit max-rows-in-limited-downloads))
     query))
 
+(defn limit-download-result-rows
+  "Post-processing middleware to limit the number of rows included in downloads if the user has `limited` download
+  perms. Mainly useful for native queries, which are not modified by the [[apply-download-limit]] pre-processing
+  middleware."
+  [query rff]
+  (if (and (is-download? query)
+           (= (current-user-download-perms-level query) :limited))
+    (fn limit-download-result-rows* [metadata]
+      ((take max-rows-in-limited-downloads) (rff metadata)))
+    rff))
+
 (defn check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
   of the query, and aborts the query or limits the number of results if necessary.

@@ -152,6 +152,7 @@
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
    #'limit/limit-result-rows
+   (resolve 'ee.perms/limit-download-result-rows)
    #'add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
    #'add-timezone-info/add-timezone-info
