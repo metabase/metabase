@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { Children } from "react";
 import {
   ButtonBarCenter,
   ButtonBarLeft,
@@ -14,7 +14,7 @@ function normalizeArray(array) {
       array = null;
     }
   }
-  return array;
+  return array ? Children.toArray(array) : null;
 }
 
 export default function ButtonBar({
