@@ -13,7 +13,7 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
 import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import SnippetRow from "./snippet-sidebar/SnippetRow";
@@ -202,9 +202,9 @@ export default class SnippetSidebar extends React.Component {
                 )}
 
                 {snippetCollection.can_write && (
-                  <PopoverWithTrigger
+                  <TippyPopoverWithTrigger
                     triggerClasses="flex"
-                    triggerElement={
+                    triggerContent={
                       <Icon
                         className={cx(
                           { hide: showSearch },
@@ -214,8 +214,8 @@ export default class SnippetSidebar extends React.Component {
                         size={HEADER_ICON_SIZE}
                       />
                     }
-                  >
-                    {({ onClose }) => (
+                    placement="bottom-end"
+                    popoverContent={({ closePopover }) => (
                       <div className="flex flex-column">
                         {[
                           {
@@ -232,7 +232,7 @@ export default class SnippetSidebar extends React.Component {
                             className="p2 bg-medium-hover flex cursor-pointer text-brand-hover"
                             onClick={() => {
                               onClick();
-                              onClose();
+                              closePopover();
                             }}
                           >
                             <Icon
@@ -245,7 +245,7 @@ export default class SnippetSidebar extends React.Component {
                         ))}
                       </div>
                     )}
-                  </PopoverWithTrigger>
+                  />
                 )}
                 <Icon
                   className={cx(
