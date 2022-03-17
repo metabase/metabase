@@ -345,23 +345,19 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defn- json-query [identifier nfc-path]
-  (reduce (fn [acc [curr-member next-member]]
-            (str acc
-                 " -> "
-                 (if-not (number? curr-member)
-                   (format "'%s'" (hformat/to-sql curr-member))
-                   curr-member)))
-          identifier
-          (partition-all 2 1 (rest nfc-path))))
+  (apply hsql/call [:json_extract_path_text
+                    (hx/cast :json (keyword (first nfc-path)))
+                    (mapv #(hx/cast :text %) (rest nfc-path))]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
-  (let [{database-type :database_type, nfc-path :nfc-path} (when (integer? id-or-name)
-                                                            (qp.store/field id-or-name))
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
+        identifier    (parent-method driver clause)
+        nfc-path      (:nfc_path stored-field)]
     (cond
-      (= database-type "money")
+      (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
