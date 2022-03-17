@@ -26,7 +26,7 @@ type ErrorActionButton = QueryValidationErrorProps & {
 function QueryValidationError({ error }: QueryValidationErrorProps) {
   return (
     <QueryValidationErrorRoot>
-      <QueryValidationErrorHeader>{t`Something's wrong with your Question`}</QueryValidationErrorHeader>
+      <QueryValidationErrorHeader>{t`Something's wrong with your question`}</QueryValidationErrorHeader>
       <QueryValidationErrorMessage>{error.message}</QueryValidationErrorMessage>
       <ErrorActionButton error={error} />
     </QueryValidationErrorRoot>
