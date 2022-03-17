@@ -38,7 +38,7 @@ export default class ProfileLink extends Component {
     const { tag } = MetabaseSettings.get("version");
     const { user } = this.props;
     const canAccessSettings =
-      user.is_superuser ||
+      user?.is_superuser ||
       PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
 
     return [
