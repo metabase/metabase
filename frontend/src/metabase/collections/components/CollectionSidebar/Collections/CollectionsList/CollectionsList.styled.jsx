@@ -8,7 +8,7 @@ import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
-import { SIDEBAR_SPACER } from "metabase/collections/constants";
+import { SIDEBAR_SPACER, SIDEBAR_WIDTH } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -42,8 +42,19 @@ export const ExpandCollectionButton = styled(IconButtonWrapper)`
   position: absolute;
 `;
 
+const COLLECTION_NAME_LABEL_WIDTH = Math.round(
+  parseInt(SIDEBAR_WIDTH, 10) * 0.75,
+);
+
 export const LabelContainer = styled.div`
   display: flex;
   align-items: center;
   position: relative;
+`;
+
+export const LabelText = styled.span`
+  width: ${COLLECTION_NAME_LABEL_WIDTH}px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;

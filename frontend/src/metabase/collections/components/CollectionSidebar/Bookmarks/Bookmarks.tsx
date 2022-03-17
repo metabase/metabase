@@ -4,7 +4,10 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
-import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
+import {
+  LabelContainer,
+  LabelText,
+} from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkLinkRoot,
   BookmarkTypeIcon,
@@ -38,7 +41,7 @@ const Label = ({ name, type }: LabelProps) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon name={iconName} />
-      {name}
+      <LabelText>{name}</LabelText>
     </LabelContainer>
   );
 };
