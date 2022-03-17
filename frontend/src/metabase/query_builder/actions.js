@@ -1678,6 +1678,10 @@ export const showTimelinesForCollection = collectionId => (
   dispatch,
   getState,
 ) => {
-  const timelines = getTimelines(getState());
-  dispatch(showTimelines(_.where(timelines, { collection_id: collectionId })));
+  const availableTimelines = getTimelines(getState());
+  const collectionTimelines = collectionId
+    ? availableTimelines.filter(t => t.collection_id === collectionId)
+    : availableTimelines.filter(t => t.collection_id == null);
+
+  dispatch(showTimelines(collectionTimelines));
 };
