@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import {
   ValidationError,
   VALIDATION_ERROR_TYPES,
+  ErrorType,
 } from "metabase-lib/lib/ValidationError";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
@@ -16,7 +17,7 @@ type QueryBuilderUiControls = {
   isShowingTemplateTagsEditor?: boolean;
 };
 
-type ErrorActionButton = QueryValidationErrorProps & {
+export type ErrorActionButtonProps = QueryValidationErrorProps & {
   uiControls: QueryBuilderUiControls;
   toggleTemplateTagsEditor: () => void;
 };
@@ -29,29 +30,35 @@ const mapDispatchToProps = {
   toggleTemplateTagsEditor,
 };
 
-function ErrorActionButton({
-  error,
-  uiControls,
-  toggleTemplateTagsEditor,
-}: ErrorActionButton) {
+export const BUTTON_ACTIONS: Record<
+  ErrorType,
+  [string, (props: ErrorActionButtonProps) => void]
+> = {
+  [VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION]: [
+    t`Edit variables`,
+    ({ uiControls, toggleTemplateTagsEditor }) => {
+      if (!uiControls.isShowingTemplateTagsEditor) {
+        toggleTemplateTagsEditor();
+      }
+    },
+  ],
+};
+
+export function ErrorActionButton(props: ErrorActionButtonProps) {
+  const { error } = props;
   const type = error instanceof ValidationError ? error.type : undefined;
 
-  switch (type) {
-    case VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION:
-      return (
-        <QueryErrorActionButton
-          onClick={() => {
-            if (!uiControls.isShowingTemplateTagsEditor) {
-              toggleTemplateTagsEditor();
-            }
-          }}
-        >
-          {t`Edit variables`}
-        </QueryErrorActionButton>
-      );
-    default:
-      return null;
+  if (!type || !BUTTON_ACTIONS[type]) {
+    return null;
   }
+
+  const [buttonLabel, actionFn] = BUTTON_ACTIONS[type];
+
+  return (
+    <QueryErrorActionButton onClick={() => actionFn(props)}>
+      {buttonLabel}
+    </QueryErrorActionButton>
+  );
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(ErrorActionButton);
