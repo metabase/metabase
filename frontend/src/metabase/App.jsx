@@ -60,9 +60,9 @@ const getErrorComponent = ({ status, data, context }) => {
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
 const PATHS_WITH_COLLAPSED_NAVBAR = [
-  /\/model\/.*/,
-  /\/question\/.*/,
-  /\/dashboard\/.*/,
+  /\/model.*/,
+  /\/question.*/,
+  /\/dashboard.*/,
 ];
 
 function checkIsSidebarInitiallyOpen(locationPathName) {
