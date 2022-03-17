@@ -19,11 +19,11 @@ After clicking **SQL query**, you'll see an editor where you can write and run q
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
 ```
-select 
+SELECT 
     sum(subtotal), 
     created_at
-from orders 
-group by created_at;
+FROM orders 
+GROUP BY created_at;
 ```
 
 Don't worry if you don't understand this just yet. Click the blue **Run query** button to execute your query. 
