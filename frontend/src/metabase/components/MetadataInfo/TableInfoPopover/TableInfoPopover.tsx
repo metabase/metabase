@@ -1,5 +1,4 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React, { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
 import TippyPopover, {
@@ -16,20 +15,12 @@ interface TableSubset {
   description?: string;
 }
 
-const propTypes = {
-  table: PropTypes.shape({
-    id: PropTypes.oneOf([PropTypes.number, PropTypes.string]),
-    description: PropTypes.string,
-  }).isRequired,
-  children: PropTypes.node,
-  placement: PropTypes.string,
-  offset: PropTypes.arrayOf(PropTypes.number),
-};
-
-type Props = { table: TableSubset } & Pick<
-  ITippyPopoverProps,
-  "children" | "placement" | "offset" | "delay"
->;
+type Props = {
+  table: TableSubset;
+  children: ReactElement;
+  placement: string;
+  offset: number[];
+} & Pick<ITippyPopoverProps, "children" | "placement" | "offset" | "delay">;
 
 const className = "table-info-popover";
 
@@ -77,7 +68,5 @@ function TableInfoPopover({
     children
   );
 }
-
-TableInfoPopover.propTypes = propTypes;
 
 export default TableInfoPopover;
