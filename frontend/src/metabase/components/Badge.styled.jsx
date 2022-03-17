@@ -5,6 +5,7 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
+import { shouldNotForwardTransientProp } from "metabase/lib/styling/emotion";
 
 const propTypes = {
   to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
@@ -33,6 +34,8 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon)`
-  margin-right: ${props => (props.hasMargin ? "5px" : 0)};
+export const BadgeIcon = styled(Icon, {
+  shouldForwardProp: shouldNotForwardTransientProp,
+})`
+  margin-right: ${props => (props.$hasMargin ? "5px" : 0)};
 `;
