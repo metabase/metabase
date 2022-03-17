@@ -79,5 +79,5 @@
                                          (set/union (download-perms-set query :full)
                                                     (download-perms-set query :limited)))))
       (qp query
-          (fn [metadata] (rff (assoc metadata :download-perms download-perms-level)))
+          (fn [metadata] (rff (assoc metadata :download_perms download-perms-level)))
           context))))
