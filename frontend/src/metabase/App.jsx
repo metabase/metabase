@@ -65,7 +65,7 @@ const PATHS_WITH_COLLAPSED_NAVBAR = [
   /\/dashboard\/.*/,
 ];
 
-function checkIsSidebarInitiallyOpen(locationPathName) {
+function getNextSidebarVisibilityState(locationPathName) {
   return !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
     pattern.test(locationPathName),
   );
@@ -75,7 +75,7 @@ function checkIsSidebarInitiallyOpen(locationPathName) {
 export default class App extends Component {
   state = {
     errorInfo: undefined,
-    sidebarOpen: checkIsSidebarInitiallyOpen(this.props.location.pathname),
+    sidebarOpen: getNextSidebarVisibilityState(this.props.location.pathname),
   };
 
   constructor(props) {
@@ -85,6 +85,15 @@ export default class App extends Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
+  }
+
+  componentDidUpdate() {
+    const { pathname } = this.props.location;
+    const { sidebarOpen } = this.state;
+    const shouldSidebarBeVisible = getNextSidebarVisibilityState(pathname);
+    if (sidebarOpen !== shouldSidebarBeVisible) {
+      this.setState({ sidebarOpen: shouldSidebarBeVisible });
+    }
   }
 
   hasNavbar = () => {
