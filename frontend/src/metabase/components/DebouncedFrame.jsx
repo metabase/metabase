@@ -57,9 +57,9 @@ export default class DebouncedFrame extends React.Component {
       if (this.state.width == null || this.state.height == null) {
         this.updateSizeDebounced();
       } else {
-        this.updateSizeDebounced();
         this._transition = true;
         this._updateTransitionStyle();
+        this.updateSizeDebounced();
       }
     }
   }
