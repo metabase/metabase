@@ -1246,26 +1246,14 @@ workflows:
               edition: ["ee", "oss"]
               folder:
                 [
-                  "admin",
                   "binning",
-                  "collections",
-                  "custom-column",
-                  "dashboard",
-                  "dashboard-filters",
-                  "dashboard-filters-sql",
-                  "downloads",
-                  "embedding",
-                  "joins",
-                  "models",
-                  "moderation",
-                  "native",
-                  "native-filters",
-                  "onboarding",
-                  "permissions",
-                  "question",
-                  "sharing",
-                  "smoketest",
-                  "visualizations",
+                  "binning",
+                  "binning",
+                  "binning",
+                  "binning",
+                  "binning",
+                  "binning",
+                  "binning",
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
