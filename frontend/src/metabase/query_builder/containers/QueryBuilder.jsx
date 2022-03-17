@@ -174,7 +174,6 @@ const mapDispatchToProps = {
 
 function QueryBuilder(props) {
   const {
-    isBookmarked,
     question,
     location,
     params,
@@ -189,8 +188,11 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    isBookmarked,
     createBookmark,
     deleteBookmark,
+    allLoaded,
+    showTimelinesForCollection,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -201,6 +203,8 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const hasQuestion = question != null;
+  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),
@@ -279,6 +283,12 @@ function QueryBuilder(props) {
     closeModal();
     clearTimeout(timeout.current);
   });
+
+  useEffect(() => {
+    if (allLoaded && hasQuestion) {
+      showTimelinesForCollection(collectionId);
+    }
+  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;

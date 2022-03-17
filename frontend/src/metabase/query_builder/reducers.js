@@ -509,7 +509,7 @@ export const timelineIds = handleActions(
     [SHOW_TIMELINES]: {
       next: (state, { payload: timelines }) => [
         ...state,
-        timelines.map(t => t.id),
+        ...timelines.map(t => t.id),
       ],
     },
     [HIDE_TIMELINES]: {
@@ -532,9 +532,10 @@ export const timelineEventIds = handleActions(
         _.without(state, ...events.map(e => e.id)),
     },
     [HIDE_TIMELINES]: {
-      next: (state, { payload: timeline }) =>
-        _.without(state, ...timeline.events.map(e => e.id)),
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
     },
+    [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },
   },
   [],

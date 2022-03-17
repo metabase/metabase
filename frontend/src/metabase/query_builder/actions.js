@@ -1,32 +1,31 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 /*global ace*/
-
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { getIn, assocIn, updateIn, merge } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
-import { setErrorPage, openUrl } from "metabase/redux/app";
+import { openUrl, setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
-  loadCard,
-  startNewCard,
-  deserializeCardFromUrl,
-  serializeCardForUrl,
   cleanCopyCard,
+  deserializeCardFromUrl,
+  loadCard,
+  serializeCardForUrl,
+  startNewCard,
 } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
@@ -42,33 +41,34 @@ import { normalize } from "cljs/metabase.mbql.js";
 
 import {
   getCard,
-  getQuestion,
-  getOriginalQuestion,
-  getOriginalCard,
-  getIsEditing,
-  getTransformedSeries,
-  getRawSeries,
-  getResultsMetadata,
-  getFirstQueryResult,
-  getIsPreviewing,
-  getTableForeignKeys,
-  getQueryBuilderMode,
-  getPreviousQueryBuilderMode,
   getDatasetEditorTab,
-  getIsShowingTemplateTagsEditor,
+  getFirstQueryResult,
+  getIsEditing,
+  getIsPreviewing,
   getIsRunning,
+  getIsShowingTemplateTagsEditor,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
-  getSnippetCollectionId,
-  getQueryResults,
-  getZoomedObjectId,
-  getPreviousRowPKValue,
   getNextRowPKValue,
+  getOriginalCard,
+  getOriginalQuestion,
+  getPreviousQueryBuilderMode,
+  getPreviousRowPKValue,
+  getQueryBuilderMode,
+  getQueryResults,
+  getQuestion,
+  getRawSeries,
+  getResultsMetadata,
+  getSnippetCollectionId,
+  getTableForeignKeys,
+  getTimelines,
+  getTransformedSeries,
+  getZoomedObjectId,
   isBasedOnExistingQuestion,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
-import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
+import { CardApi, DashboardApi, MetabaseApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -87,10 +87,10 @@ import { setRequestUnloaded } from "metabase/redux/requests";
 
 import {
   getCurrentQueryParams,
-  getURLForCardState,
-  getQueryBuilderModeFromLocation,
-  getPathNameFromQueryBuilderMode,
   getNextTemplateTagVisibilityState,
+  getPathNameFromQueryBuilderMode,
+  getQueryBuilderModeFromLocation,
+  getURLForCardState,
 } from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -1673,3 +1673,11 @@ export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
 export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
 export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
+
+export const showTimelinesForCollection = collectionId => (
+  dispatch,
+  getState,
+) => {
+  const timelines = getTimelines(getState());
+  dispatch(showTimelines(_.where(timelines, { collection_id: collectionId })));
+};
