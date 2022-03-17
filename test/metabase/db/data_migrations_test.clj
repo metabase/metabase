@@ -4,6 +4,7 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [crypto.random :as crypto-random]
+            [metabase.config :as config]
             [metabase.db.data-migrations :as migrations]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -370,24 +371,25 @@
 (def ^:private default-saml-idp-certificate
   "Public certificate from Auth0, used to validate mock SAML responses from Auth0"
   "MIIDEzCCAfugAwIBAgIJYpjQiNMYxf1GMA0GCSqGSIb3DQEBCwUAMCcxJTAjBgNV
-BAMTHHNhbWwtbWV0YWJhc2UtdGVzdC5hdXRoMC5jb20wHhcNMTgwNTI5MjEwMDIz
-WhcNMzIwMjA1MjEwMDIzWjAnMSUwIwYDVQQDExxzYW1sLW1ldGFiYXNlLXRlc3Qu
-YXV0aDAuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzNcrpju4
-sILZQNe1adwg3beXtAMFGB+Buuc414+FDv2OG7X7b9OSYar/nsYfWwiazZRxEGri
-agd0Sj5mJ4Qqx+zmB/r4UgX3q/KgocRLlShvvz5gTD99hR7LonDPSWET1E9PD4XE
-1fRaq+BwftFBl45pKTcCR9QrUAFZJ2R/3g06NPZdhe4bg/lTssY5emCxaZpQEku/
-v+zzpV2nLF4by0vSj7AHsubrsLgsCfV3JvJyTxCyo1aIOlv4Vrx7h9rOgl9eEmoU
-5XJAl3D7DuvSTEOy7MyDnKF17m7l5nOPZCVOSzmCWvxSCyysijgsM5DSgAE8DPJy
-oYezV3gTX2OO2QIDAQABo0IwQDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSp
-B3lvrtbSDuXkB6fhbjeUpFmL2DAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQEL
-BQADggEBAAEHGIAhR5GPD2JxgLtpNtZMCYiAM4Gr7hoTQMaKiXgVtdQu4iMFfbpE
-wIr6UVaDU2HKhvSRFIilOjRGmCGrIzvJgR2l+RL1Z3KrZypI1AXKJT5pF5g5FitB
-sZq+kiUpdRILl2hICzw9Q1M2Le+JSUcHcbHTVgF24xuzOZonxeE56Oc26Ju4CorL
-pM3Nb5iYaGOlQ+48/GP82cLxlVyi02va8tp7KP03ePSaZeBEKGpFtBtEN/dC3NKO
-1mmrT9284H0tvete6KLUH+dsS6bDEYGHZM5KGoSLWRr3qYlCB3AmAw+KvuiuSczL
-g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
+  BAMTHHNhbWwtbWV0YWJhc2UtdGVzdC5hdXRoMC5jb20wHhcNMTgwNTI5MjEwMDIz
+  WhcNMzIwMjA1MjEwMDIzWjAnMSUwIwYDVQQDExxzYW1sLW1ldGFiYXNlLXRlc3Qu
+  YXV0aDAuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzNcrpju4
+  sILZQNe1adwg3beXtAMFGB+Buuc414+FDv2OG7X7b9OSYar/nsYfWwiazZRxEGri
+  agd0Sj5mJ4Qqx+zmB/r4UgX3q/KgocRLlShvvz5gTD99hR7LonDPSWET1E9PD4XE
+  1fRaq+BwftFBl45pKTcCR9QrUAFZJ2R/3g06NPZdhe4bg/lTssY5emCxaZpQEku/
+  v+zzpV2nLF4by0vSj7AHsubrsLgsCfV3JvJyTxCyo1aIOlv4Vrx7h9rOgl9eEmoU
+  5XJAl3D7DuvSTEOy7MyDnKF17m7l5nOPZCVOSzmCWvxSCyysijgsM5DSgAE8DPJy
+  oYezV3gTX2OO2QIDAQABo0IwQDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSp
+  B3lvrtbSDuXkB6fhbjeUpFmL2DAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQEL
+  BQADggEBAAEHGIAhR5GPD2JxgLtpNtZMCYiAM4Gr7hoTQMaKiXgVtdQu4iMFfbpE
+  wIr6UVaDU2HKhvSRFIilOjRGmCGrIzvJgR2l+RL1Z3KrZypI1AXKJT5pF5g5FitB
+  sZq+kiUpdRILl2hICzw9Q1M2Le+JSUcHcbHTVgF24xuzOZonxeE56Oc26Ju4CorL
+  pM3Nb5iYaGOlQ+48/GP82cLxlVyi02va8tp7KP03ePSaZeBEKGpFtBtEN/dC3NKO
+  1mmrT9284H0tvete6KLUH+dsS6bDEYGHZM5KGoSLWRr3qYlCB3AmAw+KvuiuSczL
+  g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 
-(defn- call-with-default-ldap-and-sso-config [ldap-group-mapping sso-group-mapping f]
+(defn- call-with-sso-configured
+  [sso-group-mapping f]
   (premium-features-test/with-premium-features #{:sso}
     (mt/with-temporary-setting-values
       [jwt-enabled                        true
@@ -397,23 +399,34 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
        saml-enabled                       true
        saml-identity-provider-uri         "http://test.idp.metabase.com"
        saml-identity-provider-certificate default-saml-idp-certificate
-       saml-group-mappings                sso-group-mapping
-       ldap-enabled                       true
-       ldap-host                          "http://localhost:8888"
-       ldap-user-base                     "dc=metabase,dc=com"
-       ldap-group-mappings                ldap-group-mapping
-       ldap-sync-admin-group              false
-       data-migration-index               nil]
+       saml-group-mappings                sso-group-mapping]
       (f))))
 
-(defmacro ^:private with-full-ldap-and-sso-configured
+
+(defn- call-with-ldap-configured [ldap-group-mapping f]
+  (mt/with-temporary-setting-values
+    [ldap-enabled          true
+     ldap-host             "http://localhost:8888"
+     ldap-user-base        "dc=metabase,dc=com"
+     ldap-group-mappings   ldap-group-mapping
+     ldap-sync-admin-group false
+     data-migration-index  nil]
+    (f)))
+
+(defmacro ^:private with-ldap-and-sso-configured
+  "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mapping sso-group-mapping & body]
   (binding [setting/*allow-retired-setting-names* true]
     (setting/defsetting ldap-sync-admin-group
       (deferred-tru "Sync the admin group?")
       :type    :boolean
       :default false)
-    `(call-with-default-ldap-and-sso-config ~ldap-group-mapping ~sso-group-mapping (fn [] ~@body))))
+    `(let [body-fn# (fn [] ~@body)]
+       (if ~config/ee-available?
+         (call-with-ldap-configured ~ldap-group-mapping
+                                    (fn []
+                                      (call-with-sso-configured ~sso-group-mapping body-fn#)))
+         (call-with-ldap-configured ~ldap-group-mapping body-fn#)))))
 
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (group/admin))
@@ -425,30 +438,37 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
         ldap-expected-mapping {(DN. "dc=metabase,dc=com") [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-      (with-full-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
+      (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
         (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-        (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
-        (is (= sso-expected-mapping (setting/get :saml-group-mappings)))
-        (is (= ldap-expected-mapping (setting/get :ldap-group-mappings)))))
+        (is (= ldap-expected-mapping (setting/get :ldap-group-mappings)))
+        (when config/ee-available?
+          (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
+          (is (= sso-expected-mapping (setting/get :saml-group-mappings))))))
 
-    (testing "Does not remove admin from group mapping for LDAP, SAML, JWT if they are disable"
-      (with-full-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
+    (testing "Does not remove admin from group mapping for LDAP if it's are disabled"
+      (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
+        (mt/with-temporary-setting-values
+          [ldap-enabled false]
+          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= {(DN. "dc=metabase,dc=com") [admin-group-id (+ 1 admin-group-id)]}
+                 (setting/get :ldap-group-mappings))))))
+
+  (when config/ee-available?
+    (testing "Does not remove admin from group mapping for SAML, JWT if they are disabled"
+      (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
         (mt/with-temporary-setting-values
           [saml-enabled false
-           jwt-enabled  false
-           ldap-enabled false]
+           jwt-enabled  false]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= sso-group-mapping (setting/get :jwt-group-mappings)))
-          (is (= sso-group-mapping (setting/get :saml-group-mappings)))
-          (is (= {(DN. "dc=metabase,dc=com") [admin-group-id(+ 1 admin-group-id)]}
-                 (setting/get :ldap-group-mappings)))))))
+          (is (= sso-group-mapping (setting/get :saml-group-mappings))))))))
 
   (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-    (let [admin-group-id     (u/the-id (group/admin))
-          group-ids          [admin-group-id (+ 1 admin-group-id)]
+    (let [admin-group-id        (u/the-id (group/admin))
+          group-ids             [admin-group-id (+ 1 admin-group-id)]
           ldap-group-mapping    {"dc=metabase,dc=com" group-ids}
           ldap-expected-mapping {(DN. "dc=metabase,dc=com") group-ids}]
-      (with-full-ldap-and-sso-configured ldap-group-mapping nil
+      (with-ldap-and-sso-configured ldap-group-mapping nil
         (mt/with-temporary-setting-values
           [ldap-sync-admin-group true]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)

@@ -233,11 +233,12 @@
       (when (and (ldap/ldap-configured?)
                  (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group")))
         (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
+      ;; sso are enterprise feature, so only remove admin groups if enterprise available
       (when (premium-features/enable-sso?)
         (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
-        (when ((some-> (resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?) var-get))
+        (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
           (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id))
-        (when ((some-> (resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?) var-get))
+        (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
           (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
