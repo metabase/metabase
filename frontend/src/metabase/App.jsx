@@ -87,12 +87,16 @@ export default class App extends Component {
     this.setState({ errorInfo });
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    const { pathname: previousPathName } = prevProps.location;
     const { pathname } = this.props.location;
     const { sidebarOpen } = this.state;
-    const shouldSidebarBeVisible = getNextSidebarVisibilityState(pathname);
-    if (sidebarOpen !== shouldSidebarBeVisible) {
-      this.setState({ sidebarOpen: shouldSidebarBeVisible });
+    const isLocationChange = previousPathName !== pathname;
+    if (isLocationChange) {
+      const shouldSidebarBeVisible = getNextSidebarVisibilityState(pathname);
+      if (sidebarOpen !== shouldSidebarBeVisible) {
+        this.setState({ sidebarOpen: shouldSidebarBeVisible });
+      }
     }
   }
 
