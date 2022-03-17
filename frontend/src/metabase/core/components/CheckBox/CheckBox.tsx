@@ -58,7 +58,7 @@ const CheckBox = forwardRef(function Checkbox(
     <CheckBoxRoot ref={ref} {...props}>
       <CheckBoxInput
         type="checkbox"
-        checked={checked}
+        defaultChecked={checked}
         size={size}
         disabled={disabled}
         autoFocus={autoFocus}
