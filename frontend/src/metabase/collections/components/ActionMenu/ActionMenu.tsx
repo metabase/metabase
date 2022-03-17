@@ -34,13 +34,7 @@ function ActionMenu({
   onCopy,
   onMove,
 }: Props) {
-  const [isBookmarked, setIsBookmarked] = useState(
-    bookmarks && getIsBookmarked(item, bookmarks),
-  );
-
-  useEffect(() => {
-    bookmarks && setIsBookmarked(getIsBookmarked(item, bookmarks));
-  }, [item, bookmarks]);
+  const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
 
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
