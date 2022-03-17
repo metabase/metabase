@@ -6,9 +6,9 @@ const timeseriesScale = (
   { count, interval, timezone, shiftDays },
   linear = d3.scale.linear(),
 ) => {
-  const scale = x => linear(toInt(x));
+  const s = x => linear(toInt(x));
 
-  scale.domain = x => {
+  s.domain = x => {
     if (x === undefined) {
       return firstAndLast(linear.domain()).map(t => moment(t).tz(timezone));
     }
@@ -17,29 +17,29 @@ const timeseriesScale = (
       x = domainForEvenlySpacedMonths(x, { interval, timezone });
     }
     linear.domain(x.map(toInt));
-    return scale;
+    return s;
   };
 
-  scale.range = x => {
+  s.range = x => {
     if (x === undefined) {
       return firstAndLast(linear.range());
     }
     if (interval === "month") {
-      x = rangeForEvenlySpacedMonths(x, scale.domain(), { interval, timezone });
+      x = rangeForEvenlySpacedMonths(x, s.domain(), { interval, timezone });
     }
     linear.range(x);
-    return scale;
+    return s;
   };
 
-  scale.ticks = () =>
-    ticksForRange(scale.domain(), { count, timezone, interval, shiftDays });
+  s.ticks = () =>
+    ticksForRange(s.domain(), { count, timezone, interval, shiftDays });
 
-  scale.copy = () =>
+  s.copy = () =>
     timeseriesScale({ count, interval, timezone, shiftDays }, linear);
 
-  d3.rebind(scale, linear, "rangeRound", "interpolate", "clamp", "invert");
+  d3.rebind(s, linear, "rangeRound", "interpolate", "clamp", "invert");
 
-  return scale;
+  return s;
 };
 
 function domainForEvenlySpacedMonths(domain, { timezone, interval }) {
