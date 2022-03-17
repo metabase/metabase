@@ -1,6 +1,6 @@
 # The SQL editor
 
-If you ever need to ask questions that can't be expressed using the question builder, you can use [SQL][sql-gloss] instead.
+If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
 
 ## What's SQL?
 
