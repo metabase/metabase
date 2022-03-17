@@ -81,6 +81,7 @@ export default class Navbar extends Component {
       this._newPopover.close();
     }
   }
+
   renderAdminNav() {
     return (
       <>
@@ -119,11 +120,9 @@ export default class Navbar extends Component {
       router,
       user,
     } = this.props;
-    console.log("APP PROPS", this.props);
     const collectionId = Urls.extractCollectionId(router.params.slug);
     const isRoot = collectionId === "root";
 
-    console.log("ROOOT", isRoot, collectionId);
     const shouldDisplayMobileSidebar = this.state.shouldDisplayMobileSidebar;
 
     return (
