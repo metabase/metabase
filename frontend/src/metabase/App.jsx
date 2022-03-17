@@ -91,7 +91,13 @@ export default class App extends Component {
   };
 
   render() {
-    const { children, location, errorPage, onChangeLocation } = this.props;
+    const {
+      children,
+      location,
+      errorPage,
+      onChangeLocation,
+      currentUser,
+    } = this.props;
     const { errorInfo } = this.state;
 
     return (
@@ -104,27 +110,32 @@ export default class App extends Component {
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto flex flex-column">
-              <div
-                className="full flex align-center bg-white border-bottom px2 relative z4"
-                id="mainAppBar"
-              >
-                <Icon
-                  name="burger"
-                  className="text-brand-hover cursor-pointer"
-                  onClick={() => this.toggleSidebar()}
-                />
-                <SearchBarContainer>
-                  <SearchBarContent>
-                    <SearchBar
-                      location={location}
-                      onChangeLocation={onChangeLocation}
+              {currentUser && (
+                <div
+                  className="full flex align-center bg-white border-bottom px2 relative z4"
+                  id="mainAppBar"
+                >
+                  <Icon
+                    name="burger"
+                    className="text-brand-hover cursor-pointer"
+                    onClick={() => this.toggleSidebar()}
+                  />
+                  <SearchBarContainer>
+                    <SearchBarContent>
+                      <SearchBar
+                        location={location}
+                        onChangeLocation={onChangeLocation}
+                      />
+                    </SearchBarContent>
+                  </SearchBarContainer>
+                  <div className="ml-auto">
+                    <ProfileLink
+                      {...this.props}
+                      user={this.props.currentUser}
                     />
-                  </SearchBarContent>
-                </SearchBarContainer>
-                <div className="ml-auto">
-                  <ProfileLink {...this.props} user={this.props.currentUser} />
+                  </div>
                 </div>
-              </div>
+              )}
               {children}
             </div>
           )}
