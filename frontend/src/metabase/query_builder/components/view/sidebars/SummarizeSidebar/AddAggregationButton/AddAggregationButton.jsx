@@ -15,6 +15,10 @@ const propTypes = {
   shouldShowLabel: PropTypes.boolean,
 };
 
+const defaultProps = {
+  shouldShowLabel: false,
+};
+
 const LABEL = t`Add a metric`;
 
 export const AddAggregationButton = ({ query, shouldShowLabel }) => {
@@ -47,3 +51,4 @@ export const AddAggregationButton = ({ query, shouldShowLabel }) => {
 };
 
 AddAggregationButton.propTypes = propTypes;
+AddAggregationButton.defaultProps = defaultProps;
