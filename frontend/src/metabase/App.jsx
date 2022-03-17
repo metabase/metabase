@@ -58,6 +58,7 @@ const getErrorComponent = ({ status, data, context }) => {
 };
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
+const PATHS_WITHOUT_APP_BAR = [/\/admin\//];
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class App extends Component {
@@ -86,6 +87,17 @@ export default class App extends Component {
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
+  hasAppBar = () => {
+    const {
+      currentUser,
+      location: { pathname },
+    } = this.props;
+    return (
+      currentUser &&
+      !PATHS_WITHOUT_APP_BAR.some(pattern => pattern.test(pathname))
+    );
+  };
+
   toggleSidebar = () => {
     this.setState({ sidebarOpen: !this.state.sidebarOpen });
   };
@@ -96,7 +108,7 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <div className="relative flex" style={{ height: "100vh" }}>
+        <div className="relative hello flex" style={{ height: "100vh" }}>
           {this.hasNavbar() && this.state.sidebarOpen && (
             <Navbar location={location} />
           )}
@@ -104,27 +116,32 @@ export default class App extends Component {
             getErrorComponent(errorPage)
           ) : (
             <div className="full overflow-auto flex flex-column">
-              <div
-                className="full flex align-center bg-white border-bottom px2 relative z4"
-                id="mainAppBar"
-              >
-                <Icon
-                  name="burger"
-                  className="text-brand-hover cursor-pointer"
-                  onClick={() => this.toggleSidebar()}
-                />
-                <SearchBarContainer>
-                  <SearchBarContent>
-                    <SearchBar
-                      location={location}
-                      onChangeLocation={onChangeLocation}
+              {this.hasAppBar() && (
+                <div
+                  className="full flex align-center bg-white border-bottom px2 relative z4"
+                  id="mainAppBar"
+                >
+                  <Icon
+                    name="burger"
+                    className="text-brand-hover cursor-pointer"
+                    onClick={() => this.toggleSidebar()}
+                  />
+                  <SearchBarContainer>
+                    <SearchBarContent>
+                      <SearchBar
+                        location={location}
+                        onChangeLocation={onChangeLocation}
+                      />
+                    </SearchBarContent>
+                  </SearchBarContainer>
+                  <div className="ml-auto">
+                    <ProfileLink
+                      {...this.props}
+                      user={this.props.currentUser}
                     />
-                  </SearchBarContent>
-                </SearchBarContainer>
-                <div className="ml-auto">
-                  <ProfileLink {...this.props} user={this.props.currentUser} />
+                  </div>
                 </div>
-              </div>
+              )}
               {children}
             </div>
           )}
