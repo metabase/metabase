@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
             [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
             [metabase.server.middleware.util :as middleware.u]
