@@ -22,6 +22,7 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   collection: Collection;
+  isDefault?: boolean;
   isSelected?: boolean;
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
@@ -32,6 +33,7 @@ export interface TimelineCardProps {
 const TimelineCard = ({
   timeline,
   collection,
+  isDefault,
   isSelected,
   selectedEventIds = [],
   onToggleTimeline,
@@ -40,7 +42,7 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
-  const [isExpanded, setIsExpanded] = useState(isEventSelected);
+  const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
 
   const handleHeaderClick = useCallback(() => {
     setIsExpanded(isExpanded => !isExpanded);

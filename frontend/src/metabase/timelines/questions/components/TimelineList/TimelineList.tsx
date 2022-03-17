@@ -28,6 +28,7 @@ const TimelineList = ({
           key={timeline.id}
           timeline={timeline}
           collection={collection}
+          isDefault={timelines.length === 1}
           isSelected={selectedTimelineIds.includes(timeline.id)}
           selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
