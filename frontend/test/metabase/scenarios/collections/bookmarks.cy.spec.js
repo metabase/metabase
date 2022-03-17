@@ -1,8 +1,6 @@
 import _ from "underscore";
 import { restore, sidebar } from "__support__/e2e/cypress";
 
-// Z because the api lists them alphabetically by name, so it makes it easier to check
-
 describe("Bookmarks in a collection page", () => {
   beforeEach(() => {
     restore();
@@ -56,30 +54,34 @@ describe("Bookmarks in a collection page", () => {
   });
 
   it("can add/remove bookmark from question in collection", () => {
-    cy.visit("/collection/root");
+    addThenRemoveBookmarkTo("Orders");
+  });
 
-    openEllipsisMenuFor("Orders");
-    cy.findByText("Bookmark").click();
-
-    sidebar().within(() => {
-      cy.findByText("Bookmarks");
-      cy.findByText("Orders");
-    });
-
-    cy.get("td")
-      .contains("Orders")
-      .closest("tr")
-      .find(".Icon-ellipsis")
-      .click({ force: true });
-
-    cy.findByText("Remove Bookmark").click();
-
-    sidebar().within(() => {
-      cy.findByText("Bookmarks").should("not.exist");
-      cy.findByText("Orders").should("not.exist");
-    });
+  it("can add/remove bookmark from question in collection", () => {
+    addThenRemoveBookmarkTo("Orders in a dashboard");
   });
 });
+
+function addThenRemoveBookmarkTo(itemName) {
+  cy.visit("/collection/root");
+
+  openEllipsisMenuFor(itemName);
+  cy.findByText("Bookmark").click();
+
+  sidebar().within(() => {
+    cy.findByText("Bookmarks");
+    cy.findByText(itemName);
+  });
+
+  openEllipsisMenuFor(itemName);
+
+  cy.findByText("Remove Bookmark").click();
+
+  sidebar().within(() => {
+    cy.findByText("Bookmarks").should("not.exist");
+    cy.findByText(itemName).should("not.exist");
+  });
+}
 
 function openEllipsisMenuFor(item) {
   cy.get("td")
