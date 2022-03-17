@@ -30,9 +30,8 @@ export default class CollectionOptionsButton extends React.Component {
         style={{ height: ICON_SIZE }}
       >
         <TippyPopoverWithTrigger
-          triggerContent={
-            <Icon name="ellipsis" size={20} className="hover-child" />
-          }
+          triggerClasses="hover-child"
+          triggerContent={<Icon name="ellipsis" size={20} />}
           placement="bottom-end"
           popoverContent={({ closePopover }) => (
             <AccordionList
