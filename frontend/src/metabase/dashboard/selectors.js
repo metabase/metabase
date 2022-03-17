@@ -60,6 +60,12 @@ export const getDashboardComplete = createSelector(
     },
 );
 
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "dashboard" && bookmark.item_id === props.dashboardId,
+  );
+
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) =>
