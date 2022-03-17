@@ -31,7 +31,7 @@ export type PopoverWithTriggerContent =
   | React.ReactNode
   | ((args: PopoverWithTriggerContentArgs) => React.ReactNode);
 type PopoverWithTriggerContentArgs = {
-  onClose: () => void;
+  closePopover: () => void;
 };
 
 export type RenderTrigger = (
@@ -82,7 +82,7 @@ function ControlledPopoverWithTrigger({
   );
 
   const computedPopoverContent = _.isFunction(popoverContent)
-    ? popoverContent({ onClose })
+    ? popoverContent({ closePopover: onClose })
     : popoverContent;
 
   return (
