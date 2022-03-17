@@ -285,7 +285,7 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
-(detest json-query-test
+(deftest json-query-test
   (testing "Transforming MBQL query with JSON in it to postgres query works"
     (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text)))" "meh"]
            (hsql/format (#'postgres/json-query 'mlep [:bleh :meh])))))
