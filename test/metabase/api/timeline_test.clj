@@ -47,7 +47,15 @@
       (testing "check that we get the timeline with the id specified, even if the timeline is archived"
         (is (= "Timeline B"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-b)))
-                    :name)))))))
+                    :name)))))
+    (testing "check that `can_write` derives from the timeline's collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp* [Collection [collection {:name "No-Write-Collection"}]
+                        Timeline [timeline {:name "Timeline A" :collection_id (u/the-id collection)}]]
+          (mt/with-group [g {:name "group"}] (perms/grant-collection-read-permissions! g collection)
+            (is (= false
+                   (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id timeline)))
+                        :can_write)))))))))
 
 (defn- timelines-range-request
   [timeline {:keys [start end]}]
