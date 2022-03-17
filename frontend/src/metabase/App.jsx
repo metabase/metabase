@@ -59,11 +59,23 @@ const getErrorComponent = ({ status, data, context }) => {
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
+const PATHS_WITH_COLLAPSED_NAVBAR = [
+  /\/model\/.*/,
+  /\/question\/.*/,
+  /\/dashboard\/.*/,
+];
+
+function checkIsSidebarInitiallyOpen(locationPathName) {
+  return !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
+    pattern.test(locationPathName),
+  );
+}
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class App extends Component {
   state = {
     errorInfo: undefined,
-    sidebarOpen: true,
+    sidebarOpen: checkIsSidebarInitiallyOpen(this.props.location.pathname),
   };
 
   constructor(props) {
