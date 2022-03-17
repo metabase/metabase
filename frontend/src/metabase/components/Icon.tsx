@@ -29,7 +29,7 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   // special cases for certain icons
   // Icon-share has a taller viewbox than most so to optically center
   // the icon we need to translate it upwards
-  "> .icon.icon-share": {
+  & > .icon.icon-share {
     transform: translateY(-2px);
   }
   ${hover};
