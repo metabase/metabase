@@ -23,7 +23,7 @@
   "An instance of a Flexmark parser"
   (let [options (.. (MutableDataSet.)
                     (set Parser/EXTENSIONS [(AutolinkExtension/create)]))]
-    (delay (.build (Parser/builder options)))))
+    (.build (Parser/builder options))))
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
@@ -325,7 +325,7 @@
                                  (withStatus LinkStatus/VALID)
                                  (withUrl url))
                              link)))))]
-    (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
+    (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
@@ -334,12 +334,12 @@
 
 (defmethod process-markdown :mrkdwn
   [markdown _]
-  (-> (.parse ^Parser @parser ^String markdown)
+  (-> (.parse ^Parser parser ^String markdown)
       to-clojure
       ast->mrkdwn
       str/trim))
 
 (defmethod process-markdown :html
   [markdown _]
-  (let [ast (.parse ^Parser @parser ^String markdown)]
-    (.render ^HtmlRenderer @renderer ^Document ast)))
+  (let [ast (.parse ^Parser parser ^String markdown)]
+    (.render ^HtmlRenderer renderer ^Document ast)))
