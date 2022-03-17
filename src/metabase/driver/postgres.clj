@@ -345,9 +345,10 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defn- json-query [identifier nfc-path]
-  (apply hsql/call [:json_extract_path_text
-                    (hx/cast :json (keyword (first nfc-path)))
-                    (mapv #(hx/cast :text (name %)) (rest nfc-path))]))
+  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
+    (apply hsql/call [:json_extract_path_text
+                      (hx/cast :json (keyword (first nfc-path)))
+                      (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
