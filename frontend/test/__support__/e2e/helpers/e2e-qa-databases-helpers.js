@@ -53,8 +53,9 @@ function addQADatabase(engine, db_display_name, port) {
         schedule_type: "hourly",
       },
     },
-  }).then(({ status }) => {
+  }).then(({ status, body }) => {
     expect(status).to.equal(200);
+    cy.wrap(body.id).as(`${engine}ID`);
   });
 
   // Make sure we have all the metadata because we'll need to use it in tests
