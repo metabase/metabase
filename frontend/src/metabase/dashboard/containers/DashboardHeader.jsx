@@ -16,7 +16,7 @@ import { DashboardHeaderButton } from "./DashboardHeader.styled";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { getIsBookmarked } from "./selectors";
+import { getIsBookmarked } from "metabase/dashboard/selectors";
 
 import cx from "classnames";
 
