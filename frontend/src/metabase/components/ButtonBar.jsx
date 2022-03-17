@@ -12,9 +12,11 @@ function normalizeArray(array) {
     array = array.filter(a => a);
     if (array.length === 0) {
       array = null;
+    } else {
+      array = Children.toArray(array);
     }
   }
-  return array ? Children.toArray(array) : null;
+  return array;
 }
 
 export default function ButtonBar({
