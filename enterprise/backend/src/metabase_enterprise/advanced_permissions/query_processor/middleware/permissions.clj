@@ -1,8 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
   (:require [clojure.string :as str]
+            [clojure.set :as set]
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.models.query.permissions :as query-perms]))
+            [metabase.models.query.permissions :as query-perms]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.query-processor.middleware.permissions :as qp.perms]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
 
@@ -27,7 +30,6 @@
     (= query-type :native) #{(perms/native-feature-perms-path :download value database)}
     (= query-type :query)  (tables->download-perms-set database (query-perms/query->source-table-ids query) value)))
 
-
 (defn- current-user-download-perms-level
   [query]
   (cond
@@ -41,7 +43,9 @@
     :none))
 
 (defn apply-download-limit
-  "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms."
+  "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
+  does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
+  middleware."
   [{query-type :type, {original-limit :limit} :query, :as query}]
   (if (and (is-download? query)
            (= query-type :query)
@@ -49,21 +53,18 @@
     (assoc-in query [:query :limit] (min original-limit max-rows-in-limited-downloads))
     query))
 
-; (defn check-download-permissions
-;   "Middleware that fetches the download perms for the current user, and aborts or modifies the query if necessary.
+(defn check-download-permissions
+  "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
+  of the query, and aborts the query or limits the number of results if necessary.
 
-;   If this query is being run to generate an export:
-;     - If the user has no download permissions for the data, we abort the query.
-;     - If the user has full download permissions for the data, we do nothing.
-;     - If the user has limited download permissions for the data:
-;       - If the query is an MBQL query, we cap the number of rows fetched by the query to
-;         [[*limited-download-perms-row-limit*]].
-;       - If the query is a native query, we annotate the query metadata with the row count so that the number of rows
-;         included in the export can be limited.
-
-;   If this query is not run to generate an export (e.g. :export-format is :api) we return user's download permissions in
-;   the query metadata so that the frontend can determine whether to show the download option on the UI."
-;   [qp]
-;   (fn [query rff context]
-;     (check-query-permissions* query)
-;     (qp query rff context)))
+  If this query is not run to generate an export (e.g. :export-format is :api) we return user's download permissions in
+  the query metadata so that the frontend can determine whether to show the download option on the UI."
+  [qp]
+  (fn [query rff context]
+    (let [download-perms-level (current-user-download-perms-level query)]
+      (when (and (is-download? query)
+                 (= download-perms-level :none))
+        (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
+                                         (set/union (download-perms-set query :full)
+                                                    (download-perms-set query :limited))))))
+    (qp query rff context)))

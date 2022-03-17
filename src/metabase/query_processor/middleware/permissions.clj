@@ -21,7 +21,8 @@
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
 
-(defn- perms-exception
+(defn perms-exception
+  "Returns an ExceptionInfo instance containing data relevant for a permissions error."
   ([required-perms]
    (perms-exception (tru "You do not have permissions to run this query.") required-perms))
 
