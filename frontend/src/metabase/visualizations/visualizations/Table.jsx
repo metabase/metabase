@@ -348,7 +348,7 @@ export default class Table extends Component {
         ),
       });
     } else {
-      const { cols, rows } = data;
+      const { cols, rows, results_metadata } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(columnSetting => columnSetting.enabled)
@@ -357,12 +357,25 @@ export default class Table extends Component {
         )
         .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
-      this.setState({
-        data: {
-          cols: columnIndexes.map(i => cols[i]),
-          rows: rows.map(row => columnIndexes.map(i => row[i])),
-        },
-      });
+      if (results_metadata) {
+        this.setState({
+          data: {
+            cols: columnIndexes.map(i => cols[i]),
+            rows: rows.map(row => columnIndexes.map(i => row[i])),
+            results_metadata: {
+              ...results_metadata,
+              columns: columnIndexes.map(i => results_metadata.columns[i]),
+            },
+          },
+        });
+      } else {
+        this.setState({
+          data: {
+            cols: columnIndexes.map(i => cols[i]),
+            rows: rows.map(row => columnIndexes.map(i => row[i])),
+          },
+        });
+      }
     }
   }
 
@@ -379,9 +392,15 @@ export default class Table extends Component {
     if (isPivoted) {
       return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
     } else {
-      return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
-      );
+      const resultsMetadataColumn = this.state.data.results_metadata?.columns?.[
+        columnIndex
+      ];
+      const isMetadataDisplayNameOverridden =
+        resultsMetadataColumn &&
+        resultsMetadataColumn.name !== resultsMetadataColumn.display_name;
+      return isMetadataDisplayNameOverridden
+        ? resultsMetadataColumn.display_name
+        : settings.column(column)["_column_title_full"] || formatColumn(column);
     }
   };
 
