@@ -78,6 +78,6 @@
         (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
                                          (set/union (download-perms-set query :full)
                                                     (download-perms-set query :limited)))))
-      (qp query
-          (fn [metadata] (rff (assoc metadata :download_perms download-perms-level)))
-          context))))
+     (qp query
+         (fn [metadata] (rff (cond-> metadata (assoc :download_perms download-perms-level))))
+         context))))
