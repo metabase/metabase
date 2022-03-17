@@ -509,7 +509,7 @@
               [1.0]
               [2.0]]
              (xlsx-export [{:id             0
-                            #_:semantic_type  #_:type/CreationTimestamp
+                            :semantic_type  :type/CreationTimestamp
                             :unit           :month-of-year
                             :name           "CREATED_AT"
                             :effective_type :type/Integer
