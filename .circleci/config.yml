@@ -946,7 +946,7 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
-                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
+                # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
                   run test-cypress-no-build \
                   <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
