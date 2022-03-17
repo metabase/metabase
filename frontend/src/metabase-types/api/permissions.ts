@@ -2,6 +2,17 @@ import { DatabaseId } from "metabase-types/types/Database";
 import { SchemaName, TableId } from "metabase-types/types/Table";
 import { GroupId } from "./group";
 
+export type GeneralPermissionKey = "general_settings" | "subscriptions_alerts";
+export type GeneralPermissionValue = "yes" | "no";
+
+export type GroupGeneralPermissions = {
+  [key in GeneralPermissionKey]: GeneralPermissionValue;
+};
+
+export type GeneralPermissions = {
+  [key: GroupId]: GroupGeneralPermissions;
+};
+
 export type PermissionsGraph = {
   groups: GroupsPermissions;
   revision: number;

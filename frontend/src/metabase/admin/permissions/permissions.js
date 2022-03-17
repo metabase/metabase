@@ -345,6 +345,111 @@ const collectionPermissionsRevision = handleActions(
   null,
 );
 
+const INITIALIZE_GENERAL_PERMISSIONS =
+  "metabase-enterprise/general-permissions/INITIALIZE_GENERAL_PERMISSIONS";
+export const initializeGeneralPermissions = createThunkAction(
+  INITIALIZE_GENERAL_PERMISSIONS,
+  () => async dispatch => {
+    await Promise.all([dispatch(loadGeneralPermissions())]);
+  },
+);
+
+const LOAD_GENERAL_PERMISSIONS =
+  "metabase-enterprise/general-permissions/LOAD_GENERAL_PERMISSIONS";
+export const loadGeneralPermissions = createThunkAction(
+  LOAD_GENERAL_PERMISSIONS,
+  () => () => {
+    // return PermissionsApi.generalPermissions();
+    return {
+      groups: {
+        1: {
+          subscriptions_alerts: "no",
+          general_settings: "yes",
+        },
+        2: {
+          subscriptions_alerts: "no",
+          general_settings: "yes",
+        },
+        3: {
+          subscriptions_alerts: "yes",
+          general_settings: "no",
+        },
+      },
+    };
+  },
+);
+
+const UPDATE_GENERAL_PERMISSION =
+  "metabase-enterprise/general-permissions/UPDATE_GENERAL_PERMISSION";
+export const updateGeneralPermission = createThunkAction(
+  UPDATE_GENERAL_PERMISSION,
+  () => () => {
+    // TODO: tracking & update
+  },
+);
+
+const SAVE_GENERAL_PERMISSIONS =
+  "metabase-enterprise/general-permissions/data/SAVE_GENERAL_PERMISSIONS";
+export const saveGeneralPermissions = createThunkAction(
+  SAVE_GENERAL_PERMISSIONS,
+  () => async (_dispatch, getState) => {
+    MetabaseAnalytics.trackStructEvent("General Permissions", "save");
+
+    const {
+      generalPermissions,
+      generalPermissionsRevision,
+    } = getState().admin.permissions.generalPermissions;
+
+    const result = await PermissionsApi.updateGeneralPermissions({
+      groups: generalPermissions,
+      revision: generalPermissionsRevision,
+    });
+
+    return result;
+  },
+);
+
+const generalPermissions = handleActions(
+  {
+    [LOAD_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [UPDATE_GENERAL_PERMISSION]: {
+      next: (state, { payload }) => {
+        return state;
+      },
+    },
+  },
+  null,
+);
+
+const originalGeneralPermissions = handleActions(
+  {
+    [LOAD_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+  },
+  null,
+);
+
+const generalPermissionsRevision = handleActions(
+  {
+    [LOAD_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [SAVE_GENERAL_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+  },
+  null,
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -353,4 +458,7 @@ export default combineReducers({
   collectionPermissions,
   originalCollectionPermissions,
   collectionPermissionsRevision,
+  generalPermissions,
+  originalGeneralPermissions,
+  generalPermissionsRevision,
 });

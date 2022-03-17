@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
+import { PLUGIN_GENERAL_PERMISSIONS } from "metabase/plugins";
 
 const propTypes = {
   tab: PropTypes.oneOf(["data", "collections"]).isRequired,
@@ -15,8 +16,9 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       colorScheme="accent7"
       value={tab}
       options={[
-        { name: t`Data permissions`, value: `data` },
-        { name: t`Collection permissions`, value: `collections` },
+        { name: t`Data`, value: `data` },
+        { name: t`Collections`, value: `collections` },
+        ...PLUGIN_GENERAL_PERMISSIONS.tabs,
       ]}
       onOptionClick={onChangeTab}
       variant="underlined"

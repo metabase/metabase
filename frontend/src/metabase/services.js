@@ -409,6 +409,8 @@ export const PermissionsApi = {
   deleteMembership: DELETE("/api/permissions/membership/:id"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
+  generalPermissions: GET("/api/permissions/general_permissions"),
+  updateGeneralPermissions: POST("/api/permissions/general_permissions"),
 };
 
 export const SetupApi = {
