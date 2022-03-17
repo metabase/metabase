@@ -7,6 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
+import { shouldNotForwardTransientProp } from "metabase/lib/styling/emotion";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -115,7 +116,7 @@ class BaseIcon extends Component<IconProps> {
       );
     } else if (icon.svg) {
       return (
-        <svg
+        <StyledSVG
           {...svgProps}
           dangerouslySetInnerHTML={{ __html: icon.svg }}
           ref={forwardedRef}
@@ -123,9 +124,9 @@ class BaseIcon extends Component<IconProps> {
       );
     } else if (icon.path) {
       return (
-        <svg {...svgProps} ref={forwardedRef}>
+        <StyledSVG {...svgProps} ref={forwardedRef}>
           <path d={icon.path} />
-        </svg>
+        </StyledSVG>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
@@ -133,6 +134,10 @@ class BaseIcon extends Component<IconProps> {
     }
   }
 }
+
+const StyledSVG = styled("svg", {
+  shouldForwardProp: shouldNotForwardTransientProp,
+})``;
 
 const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
   function BaseIconWithRef(props, ref) {
