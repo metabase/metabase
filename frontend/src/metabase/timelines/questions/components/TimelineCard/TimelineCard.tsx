@@ -4,6 +4,7 @@ import React, {
   memo,
   useCallback,
   useState,
+  useEffect,
 } from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -55,6 +56,12 @@ const TimelineCard = ({
   const handleCheckboxClick = useCallback((event: MouseEvent) => {
     event.stopPropagation();
   }, []);
+
+  useEffect(() => {
+    if (isEventSelected) {
+      setIsExpanded(isEventSelected);
+    }
+  }, [isEventSelected, selectedEventIds]);
 
   return (
     <CardRoot>
