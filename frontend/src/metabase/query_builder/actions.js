@@ -1662,11 +1662,11 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
 
-export const SHOW_TIMELINE = "metabase/qb/SHOW_TIMELINE";
-export const showTimeline = createAction(SHOW_TIMELINE);
+export const SHOW_TIMELINES = "metabase/qb/SHOW_TIMELINES";
+export const showTimelines = createAction(SHOW_TIMELINES);
 
-export const HIDE_TIMELINE = "metabase/qb/HIDE_TIMELINE";
-export const hideTimeline = createAction(HIDE_TIMELINE);
+export const HIDE_TIMELINES = "metabase/qb/HIDE_TIMELINES";
+export const hideTimelines = createAction(HIDE_TIMELINES);
 
 export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
 export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);

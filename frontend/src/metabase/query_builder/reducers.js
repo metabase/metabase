@@ -57,8 +57,8 @@ import {
   onCloseQuestionHistory,
   onOpenTimelines,
   onCloseTimelines,
-  SHOW_TIMELINE,
-  HIDE_TIMELINE,
+  SHOW_TIMELINES,
+  HIDE_TIMELINES,
   SHOW_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
 } from "./actions";
@@ -506,11 +506,15 @@ export const currentState = handleActions(
 export const timelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [SHOW_TIMELINE]: {
-      next: (state, { payload: timeline }) => [...state, timeline.id],
+    [SHOW_TIMELINES]: {
+      next: (state, { payload: timelines }) => [
+        ...state,
+        timelines.map(t => t.id),
+      ],
     },
-    [HIDE_TIMELINE]: {
-      next: (state, { payload: timeline }) => _.without(state, timeline.id),
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.map(t => t.id)),
     },
     [RESET_QB]: { next: () => [] },
   },
@@ -527,7 +531,7 @@ export const timelineEventIds = handleActions(
       next: (state, { payload: events = [] }) =>
         _.without(state, ...events.map(e => e.id)),
     },
-    [HIDE_TIMELINE]: {
+    [HIDE_TIMELINES]: {
       next: (state, { payload: timeline }) =>
         _.without(state, ...timeline.events.map(e => e.id)),
     },

@@ -163,8 +163,8 @@ export default class View extends React.Component {
       runQuestionQuery,
       timelineIds,
       timelineEventIds,
-      showTimeline,
-      hideTimeline,
+      showTimelines,
+      hideTimelines,
       onOpenModal,
       onCloseSummary,
       onCloseFilter,
@@ -192,8 +192,8 @@ export default class View extends React.Component {
           question={question}
           timelineIds={timelineIds}
           timelineEventIds={timelineEventIds}
-          onShowTimeline={showTimeline}
-          onHideTimeline={hideTimeline}
+          onShowTimelines={showTimelines}
+          onHideTimelines={hideTimelines}
           onOpenModal={onOpenModal}
           onClose={onCloseTimelines}
         />
