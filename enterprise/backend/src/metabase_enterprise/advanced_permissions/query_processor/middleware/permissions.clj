@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
-  (:require [clojure.string :as str]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.query-processor.middleware.permissions :as qp.perms]))
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
 
