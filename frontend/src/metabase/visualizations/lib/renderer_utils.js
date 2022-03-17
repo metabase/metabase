@@ -161,7 +161,9 @@ export function getDatas({ settings, series }, warn) {
 
     return rows.map(row => {
       const [x, ...rest] = row;
-      const newRow = [parseXValue(x, parseOptions, warn), ...rest];
+      const { unit } = parseOptions;
+      const xValue = parseXValue(x, parseOptions, warn);
+      const newRow = [xValue.startOf(unit), ...rest];
       newRow._origin = row._origin;
       return newRow;
     });
@@ -225,7 +227,7 @@ function parseTimestampAndWarn(value, unit) {
   if (value == null) {
     return { parsedValue: null, warning: nullDimensionWarning() };
   }
-  const m = parseTimestamp(value, unit).startOf(unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return { parsedValue: null, warning: invalidDateWarning(value) };
   }
