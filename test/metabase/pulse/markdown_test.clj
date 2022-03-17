@@ -165,7 +165,11 @@
   (testing "HTML entities (outside of HTML tags) are converted to Unicode"
     (is (= "&" (mrkdwn "&amp;")))
     (is (= ">" (mrkdwn "&gt;")))
-    (is (= "ℋ" (mrkdwn "&HilbertSpace;")))))
+    (is (= "ℋ" (mrkdwn "&HilbertSpace;"))))
+
+  (testing "Square brackets that aren't used for a link are left as-is (#20993)"
+    (is (= "[]"     (mrkdwn "[]")))
+    (is (= "[test]" (mrkdwn "[test]")))))
 
 (defn- html
   [markdown]
@@ -198,6 +202,14 @@
            (html "https://metabase.com")))
     (is (= "<p><a href=\"mailto:test@metabase.com\">test@metabase.com</a></p>\n"
            (html "test@metabase.com"))))
+
+  (testing "Link references render as normal links"
+    (is (= "<p><a href=\"https://metabase.com\">metabase</a></p>\n"
+           (html "[metabase]: https://metabase.com\n[metabase]"))))
+
+  (testing "Lone square brackets are preserved as-is (#20993)"
+    (is (= "<p>[]</p>\n"     (html "[]")))
+    (is (= "<p>[test]</p>\n" (html "[test]"))))
 
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
