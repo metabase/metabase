@@ -715,7 +715,7 @@ jobs:
         type: string
       timeout:
         type: string
-        default: 15m
+        default: 20m
       before-steps:
         type: steps
         default: []
