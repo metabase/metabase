@@ -45,7 +45,7 @@ function Badge({
       activeColor={activeColor}
       {...props}
     >
-      {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
+      {icon && <BadgeIcon {...getIconProps(icon)} $hasMargin={!!children} />}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
   );
