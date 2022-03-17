@@ -911,8 +911,8 @@ jobs:
         type: string
         default: ""
       currents-record:
-        type: string
-        default: ""
+        type: boolean
+        default: false
       test-files:
         type: string
         default: ""
@@ -929,7 +929,7 @@ jobs:
     executor: << parameters.e >>
     environment:
       MB_EDITION: << parameters.edition >>
-      CYPRESS_GROUP:  << parameters.cypress-group >>
+      CYPRESS_GROUP: << parameters.cypress-group >>
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
@@ -947,7 +947,10 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >> <<# parameters.currents-record >> --record << parameters.currents-record >> <</ parameters.currents-record >> <<# parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
+                  run test-cypress-no-build \
+                  <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
+                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record << parameters.currents-record >> <</ parameters.currents-record >> \
+                  <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1275,7 +1278,7 @@ workflows:
             - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
-          currents-record: "--key $CURRENTS_KEY"
+          currents-record: true
           qa-db: true
           snowplow: true
           before-steps:
