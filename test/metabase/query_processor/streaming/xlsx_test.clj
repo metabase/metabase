@@ -20,7 +20,8 @@
    (format-string format-settings nil))
 
   ([format-settings semantic-type]
-   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type semantic-type})]
+   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
+                                                                                  :effective_type :type/Temporal})]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
@@ -294,7 +295,7 @@
                                 [[1.23]]
                                 parse-format-strings))))
     (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-           (second (xlsx-export [{:id 0, :name "Col"}]
+           (second (xlsx-export [{:id 0, :name "Col", :effective_type :type/Temporal}]
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                            {::mb.viz/date-style "YYYY/M/D",
                                                             ::mb.viz/date-separator ".",
