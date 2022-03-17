@@ -84,7 +84,6 @@
       (api/check-500
        (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
@@ -132,14 +131,13 @@
                  (not (get-in chan-types [:slack :configured]))
                  chan-types
 
-                 ;; if we have Slack enabled build a dynamic list of channels/users
+                 ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [slack-channels (for [channel (slack/conversations-list)]
-                                          (str \# (:name channel)))
-                         slack-users    (for [user (slack/users-list)]
-                                          (str \@ (:name user)))]
-                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (future (slack/refresh-channels-and-usernames-when-needed!))
+                   (assoc-in chan-types
+                             [:slack :fields 0 :options]
+                             (slack/slack-cached-channels-and-usernames))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
