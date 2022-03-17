@@ -72,12 +72,15 @@
   the query metadata so that the frontend can determine whether to show the download option on the UI."
   [qp]
   (fn [query rff context]
-    (let [download-perms-level (current-user-download-perms-level query)]
+    (let [download-perms-level (if api/*current-user-id*
+                                 (current-user-download-perms-level query)
+                                 ;; If no user is bound, assume full download permissions (e.g. for public questions))
+                                 :full)]
       (when (and (is-download? query)
                  (= download-perms-level :none))
         (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
                                          (set/union (download-perms-set query :full)
                                                     (download-perms-set query :limited)))))
-     (qp query
-         (fn [metadata] (rff (cond-> metadata (assoc :download_perms download-perms-level))))
-         context))))
+      (qp query
+          (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
+          context))))
