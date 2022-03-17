@@ -347,7 +347,7 @@
 (defn- json-query [identifier nfc-path]
   (apply hsql/call [:json_extract_path_text
                     (hx/cast :json (keyword (first nfc-path)))
-                    (mapv #(hx/cast :text %) (rest nfc-path))]))
+                    (mapv #(hx/cast :text (name %)) (rest nfc-path))]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
