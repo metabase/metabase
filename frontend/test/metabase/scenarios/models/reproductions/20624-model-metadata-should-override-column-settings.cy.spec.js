@@ -1,6 +1,7 @@
 import { restore } from "__support__/e2e/cypress";
 import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
+const originalColumn = "TITLE";
 const renamedColumn = "TITLE renamed";
 
 const questionDetails = {
@@ -8,11 +9,13 @@ const questionDetails = {
   dataset: true,
   native: { query: "select * from PRODUCTS limit 2" },
   visualization_settings: {
-    column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
+    column_settings: {
+      [`["name","${originalColumn}"]`]: { column_title: renamedColumn },
+    },
   },
 };
 
-describe.skip("issue 20624", () => {
+describe("issue 20624", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
@@ -27,9 +30,9 @@ describe.skip("issue 20624", () => {
     cy.findByText("Customize metadata").click();
 
     // Open settings for this column
-    cy.findByText(renamedColumn).click();
+    cy.findByText(originalColumn).click();
     // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn)
+    cy.findByDisplayValue(originalColumn)
       .clear()
       .type("Foo")
       .blur();
