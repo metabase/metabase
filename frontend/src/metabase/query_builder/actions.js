@@ -1670,3 +1670,6 @@ export const hideTimeline = createAction(HIDE_TIMELINE);
 
 export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
 export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
+
+export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
+export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);

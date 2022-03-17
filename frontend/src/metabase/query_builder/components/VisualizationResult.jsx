@@ -107,6 +107,7 @@ export default class VisualizationResult extends Component {
           handleVisualizationClick={this.props.handleVisualizationClick}
           onOpenTimelines={this.props.onOpenTimelines}
           onShowTimelineEvents={this.props.showTimelineEvents}
+          onHideTimelineEvents={this.props.hideTimelineEvents}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={

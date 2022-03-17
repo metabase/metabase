@@ -60,6 +60,7 @@ import {
   SHOW_TIMELINE,
   HIDE_TIMELINE,
   SHOW_TIMELINE_EVENTS,
+  HIDE_TIMELINE_EVENTS,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -521,6 +522,10 @@ export const timelineEventIds = handleActions(
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE_EVENTS]: {
       next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [HIDE_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) =>
+        _.without(state, ...events.map(e => e.id)),
     },
     [HIDE_TIMELINE]: {
       next: (state, { payload: timeline }) =>

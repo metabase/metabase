@@ -78,6 +78,7 @@ function renderEventTicks(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   },
 ) {
   const svg = chart.svg();
@@ -153,7 +154,11 @@ function renderEventTicks(
       })
       .on("click", () => {
         onOpenTimelines();
-        onShowTimelineEvents(group);
+        if (isSelected) {
+          onHideTimelineEvents(group);
+        } else {
+          onShowTimelineEvents(group);
+        }
       });
   });
 }
@@ -169,6 +174,7 @@ export function renderEvents(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   },
 ) {
   const xAxis = getXAxis(chart);
@@ -191,6 +197,7 @@ export function renderEvents(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   });
 }
 

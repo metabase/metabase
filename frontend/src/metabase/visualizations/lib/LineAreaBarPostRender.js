@@ -399,6 +399,7 @@ function onRenderAddTimelineEvents(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   },
 ) {
   renderEvents(chart, {
@@ -410,6 +411,7 @@ function onRenderAddTimelineEvents(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   });
 }
 
@@ -431,6 +433,7 @@ function onRender(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   },
 ) {
   onRenderRemoveClipPath(chart);
@@ -460,6 +463,7 @@ function onRender(
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,
+    onHideTimelineEvents,
   });
 }
 
