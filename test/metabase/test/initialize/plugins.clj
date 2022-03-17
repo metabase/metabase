@@ -8,6 +8,8 @@
             [metabase.util :as u]
             [yaml.core :as yaml]))
 
+;; [[metabase.plugins/load-local-plugin-manifests!]] actually does the same thing as the code below now; the only
+;; difference is this code also initializes plugins in `test_modules`. Besides that this code isn't needed
 (defn- driver-plugin-manifest [driver]
   (let [nm    (name driver)
         paths (mapv
