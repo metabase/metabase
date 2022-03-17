@@ -163,7 +163,11 @@ export function getDatas({ settings, series }, warn) {
       const [x, ...rest] = row;
       const { unit } = parseOptions;
       const xValue = parseXValue(x, parseOptions, warn);
-      const newRow = [xValue.startOf(unit), ...rest];
+      const formattedXValue =
+        xValue && unit && typeof xValue.startOf === "function"
+          ? xValue.startOf(unit)
+          : xValue;
+      const newRow = [formattedXValue, ...rest];
       newRow._origin = row._origin;
       return newRow;
     });
