@@ -86,7 +86,11 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Pivot the table`,
       widget: "toggle",
-      getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
+      getHidden: ([{ card, data }], visualization_settings) => {
+        const isPivoted = visualization_settings["table.pivot"];
+        const numCols = data?.cols?.length;
+        return numCols !== 3 && !isPivoted;
+      },
       getDefault: ([{ card, data }]) =>
         data &&
         data.cols.length === 3 &&
