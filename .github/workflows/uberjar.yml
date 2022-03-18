@@ -2,6 +2,8 @@ name: Uberjar
 
 on:
   push:
+    branches:
+    - 'gha-test'
     paths-ignore:
     - 'docs/**'
     - 'frontend/test/**'
