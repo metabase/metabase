@@ -30,16 +30,6 @@ See [Frontend development](#frontend-development).
 
 ### Backend
 
-Prep dependencies by changing into the Metabase directory and running:
-
-```bash
-clojure -X:deps prep
-cd modules/drivers
-clojure -X:deps prep
-cd ../..
-```
-
-You must run these commands before running any other `clojure` commands in the repository, but you only need to run the prep commands once.
 
 Run your backend development server with
 
