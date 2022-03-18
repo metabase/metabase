@@ -1,5 +1,6 @@
 /*eslint no-use-before-define: "error"*/
 
+import d3 from "d3";
 import { createSelector } from "reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
@@ -26,6 +27,10 @@ import Timelines from "metabase/entities/timelines";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { parseTimestamp } from "metabase/lib/time";
+import {
+  getXValues,
+  isTimeseries,
+} from "metabase/visualizations/lib/renderer_utils";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -283,35 +288,6 @@ export const getQuestion = createSelector(
     return question.isDataset() && hasDataPermission
       ? question.composeDataset()
       : question;
-  },
-);
-
-export const getTimelines = createSelector([getEntities], entities => {
-  const entityQuery = { include: "events" };
-  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
-});
-
-export const getVisibleTimelines = createSelector(
-  [getQuestion, getTimelines, getVisibleTimelineIds],
-  (question, timelines, timelineIds) => {
-    if (!question) {
-      return [];
-    }
-
-    return timelines.filter(t => timelineIds.includes(t.id));
-  },
-);
-
-export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines],
-  timelines => {
-    return _.chain(timelines)
-      .map(timeline => timeline.events ?? [])
-      .flatten()
-      .filter(event => !event.archived)
-      .map(event => updateIn(event, ["timestamp"], parseTimestamp))
-      .sortBy(event => event.timestamp)
-      .value();
   },
 );
 
@@ -616,6 +592,74 @@ export const getIsNativeEditorOpen = createSelector(
 const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+const getIsTimeseries = createSelector(
+  [getVisualizationSettings],
+  settings => settings && isTimeseries(settings),
+);
+
+const getTransformedXValues = createSelector(
+  [getTransformedSeries, getVisualizationSettings],
+  (series, settings) => series && settings && getXValues({ series, settings }),
+);
+
+const getTimeseriesXDomain = createSelector(
+  [getIsTimeseries, getTransformedXValues],
+  (xValues, isTimeseries) => xValues && isTimeseries && d3.extent(xValues),
+);
+
+export const getTimelines = createSelector([getEntities], entities => {
+  const entityQuery = { include: "events" };
+  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+});
+
+export const getTransformedTimelines = createSelector(
+  [getTimelines],
+  timelines => {
+    return timelines.map(timeline =>
+      updateIn(timeline, ["events"], (events = []) =>
+        _.chain(events)
+          .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+          .filter(event => !event.archived)
+          .sortBy(event => event.timestamp)
+          .value(),
+      ),
+    );
+  },
+);
+
+export const getDomainTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXDomain],
+  (timelines, xDomain) => {
+    if (!xDomain) {
+      return [];
+    }
+
+    return timelines
+      .map(timeline =>
+        updateIn(timeline, ["events"], events =>
+          events.filter(event => isEventWithinDomain(event, xDomain)),
+        ),
+      )
+      .filter(timeline => timeline.events.length > 0);
+  },
+);
+
+export const getVisibleTimelines = createSelector(
+  [getDomainTimelines, getVisibleTimelineIds],
+  (timelines, timelineIds) => {
+    return timelines.filter(t => timelineIds.includes(t.id));
+  },
+);
+
+export const getVisibleTimelineEvents = createSelector(
+  [getVisibleTimelines],
+  timelines => timelines.flatMap(timeline => timeline.events),
 );
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {
