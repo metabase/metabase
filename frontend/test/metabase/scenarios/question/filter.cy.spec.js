@@ -364,7 +364,9 @@ describe("scenarios > question > filter", () => {
 
     enterCustomColumnDetails({ formula: "[" });
 
-    popover().findByText("Body");
+    popover()
+      .last()
+      .findByText("Body");
 
     cy.get("@formula").type("p");
 

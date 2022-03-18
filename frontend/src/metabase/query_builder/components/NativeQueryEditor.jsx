@@ -40,6 +40,8 @@ import {
 
 import "./NativeQueryEditor.css";
 
+const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
+
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
 @SnippetCollections.loadList({ loadingAndErrorWrapper: false })
@@ -336,6 +338,12 @@ export default class NativeQueryEditor extends Component {
     }
   }
 
+  _retriggerAutocomplete = _.debounce(() => {
+    if (this._editor.completer?.popup?.isOpen) {
+      this._editor.execCommand("startAutocomplete");
+    }
+  }, AUTOCOMPLETE_DEBOUNCE_DURATION);
+
   onChange() {
     const { query } = this.props;
     if (this._editor && !this._localUpdate) {
@@ -347,6 +355,8 @@ export default class NativeQueryEditor extends Component {
           .update(this.props.setDatasetQuery);
       }
     }
+
+    this._retriggerAutocomplete();
   }
 
   toggleEditor = () => {

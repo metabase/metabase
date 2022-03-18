@@ -666,12 +666,11 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
-                                   {:where [:and
-                                            [:or
-                                             [:= :object (hx/literal "/")]
-                                             [:like :object (hx/literal "/db/%")]
-                                             [:like :object (hx/literal "/download/%")]
-                                             [:like :object (hx/literal "/block/db/%")]]]})
+                                   {:where [:or
+                                            [:= :object (hx/literal "/")]
+                                            [:like :object (hx/literal "/db/%")]
+                                            [:like :object (hx/literal "/download/%")]
+                                            [:like :object (hx/literal "/block/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
                          (fn [m {:keys [group-id path]}]
@@ -783,10 +782,15 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (all-schemas-path database-or-id)))
 
-(defn grant-full-db-permissions!
+(defn grant-full-data-permissions!
   "Grant full access to the database, including all schemas and readwrite native access."
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (data-perms-path database-or-id)))
+
+(defn grant-full-download-permissions!
+  "Grant full download permissions to the database."
+  [group-or-id database-or-id]
+  (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   (classloader/require 'metabase.models.collection)

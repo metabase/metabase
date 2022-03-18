@@ -9,6 +9,7 @@ import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsBookmarked } from "metabase/collections/selectors";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -35,16 +36,17 @@ const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function mapStateToProps(state) {
+function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
+    isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
   };
 }
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id: `collection-${id}` }),
-  deleteBookmark: id => Bookmark.actions.delete({ id: `collection-${id}` }),
+  createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
 };
 
 function CollectionContent({
@@ -136,7 +138,7 @@ function CollectionContent({
 
   const handleClickBookmark = () => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId);
+    toggleBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -226,6 +228,9 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
                         items={unpinnedItems}
                         collection={collection}
                         sortingOptions={unpinnedItemsSorting}

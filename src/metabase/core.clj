@@ -39,6 +39,7 @@
         (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
              "\n\n"
              (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")
+             " "
              (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
         (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
 

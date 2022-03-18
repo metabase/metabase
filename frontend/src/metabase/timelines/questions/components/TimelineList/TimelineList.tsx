@@ -7,9 +7,9 @@ export interface TimelineListProps {
   collection: Collection;
   visibility?: Record<number, boolean>;
   isVisibleByDefault?: boolean;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelineList = ({
@@ -17,9 +17,9 @@ const TimelineList = ({
   collection,
   visibility = {},
   isVisibleByDefault = false,
-  onToggleTimeline,
   onEditEvent,
   onArchiveEvent,
+  onToggleTimeline,
 }: TimelineListProps): JSX.Element => {
   return (
     <div>
