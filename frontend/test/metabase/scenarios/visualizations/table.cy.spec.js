@@ -208,7 +208,7 @@ describe("scenarios > visualizations > table", () => {
       cy.icon("gear");
       cy.findByText("Filter by this column");
       cy.findByText("Distribution");
-      cy.findByText("Distincts");
+      cy.findByText("Count Distinct");
     });
 
     cy.findByText("City").click();
