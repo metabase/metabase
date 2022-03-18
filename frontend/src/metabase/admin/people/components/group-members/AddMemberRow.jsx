@@ -1,15 +1,25 @@
-/* eslint-disable react/prop-types */
 import React, { useMemo, useRef } from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
-
 import { color } from "metabase/lib/colors";
 import Typeahead from "metabase/hoc/Typeahead";
 
 import { AddRow } from "../AddRow";
+
+AddMemberRow.propTypes = {
+  users: PropTypes.array.isRequired,
+  text: PropTypes.string.isRequired,
+  selectedUsers: PropTypes.array.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onDone: PropTypes.func.isRequired,
+  onTextChange: PropTypes.func.isRequired,
+  onSuggestionAccepted: PropTypes.func.isRequired,
+  onRemoveUserFromSelection: PropTypes.func.isRequired,
+};
 
 export default function AddMemberRow({
   users,
@@ -68,6 +78,15 @@ const getColorPalette = () => [
   color("accent4"),
 ];
 
+const AddMemberTypeaheadPopoverPropTypes = {
+  suggestions: PropTypes.array,
+  selectedSuggestion: PropTypes.object,
+  onSuggestionAccepted: PropTypes.func.isRequired,
+  target: PropTypes.shape({
+    current: PropTypes.instanceOf(Element),
+  }),
+};
+
 const AddMemberTypeaheadPopover = Typeahead({
   optionFilter: (text, user) =>
     (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
@@ -103,21 +122,27 @@ const AddMemberTypeaheadPopover = Typeahead({
   );
 });
 
-const AddMemberAutocompleteSuggestion = ({
-  user,
-  color,
-  selected,
-  onClick,
-}) => (
-  <div
-    className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
-    onClick={onClick}
-  >
-    <span className="inline-block mr2">
-      <UserAvatar background={color} user={user} />
-    </span>
-    <span className={cx("h3", { "text-white": selected })}>
-      {user.common_name}
-    </span>
-  </div>
-);
+AddMemberTypeaheadPopover.propTypes = AddMemberTypeaheadPopoverPropTypes;
+
+AddMemberAutocompleteSuggestion.propTypes = {
+  user: PropTypes.object.isRequired,
+  color: PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onClick: PropTypes.func.isRequired,
+};
+
+function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
+  return (
+    <div
+      className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
+      onClick={onClick}
+    >
+      <span className="inline-block mr2">
+        <UserAvatar background={color} user={user} />
+      </span>
+      <span className={cx("h3", { "text-white": selected })}>
+        {user.common_name}
+      </span>
+    </div>
+  );
+}

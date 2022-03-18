@@ -49,7 +49,7 @@ AddRow.propTypes = {
   value: PropTypes.string.isRequired,
   isValid: PropTypes.bool.isRequired,
   placeholder: PropTypes.string,
-  onKeyDown: PropTypes.func.isRequired,
+  onKeyDown: PropTypes.func,
   onChange: PropTypes.func.isRequired,
   onDone: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
