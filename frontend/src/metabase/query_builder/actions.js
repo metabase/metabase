@@ -1668,11 +1668,11 @@ export const showTimelines = createAction(SHOW_TIMELINES);
 export const HIDE_TIMELINES = "metabase/qb/HIDE_TIMELINES";
 export const hideTimelines = createAction(HIDE_TIMELINES);
 
-export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
-export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
+export const SELECT_TIMELINE_EVENTS = "metabase/qb/SELECT_TIMELINE_EVENTS";
+export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 
-export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
-export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
+export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
+export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
 
 export const showTimelinesForCollection = collectionId => (
   dispatch,

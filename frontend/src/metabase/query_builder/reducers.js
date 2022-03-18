@@ -59,8 +59,8 @@ import {
   onCloseTimelines,
   SHOW_TIMELINES,
   HIDE_TIMELINES,
-  SHOW_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
+  SELECT_TIMELINE_EVENTS,
+  DESELECT_TIMELINE_EVENTS,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -524,10 +524,10 @@ export const visibleTimelineIds = handleActions(
 export const selectedTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [SHOW_TIMELINE_EVENTS]: {
+    [SELECT_TIMELINE_EVENTS]: {
       next: (state, { payload: events = [] }) => events.map(e => e.id),
     },
-    [HIDE_TIMELINE_EVENTS]: {
+    [DESELECT_TIMELINE_EVENTS]: {
       next: (state, { payload: events = [] }) =>
         _.without(state, ...events.map(e => e.id)),
     },

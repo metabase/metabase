@@ -398,8 +398,8 @@ function onRenderAddTimelineEvents(
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
-    onShowTimelineEvents,
-    onHideTimelineEvents,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   },
 ) {
   renderEvents(chart, {
@@ -410,8 +410,8 @@ function onRenderAddTimelineEvents(
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
-    onShowTimelineEvents,
-    onHideTimelineEvents,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   });
 }
 
@@ -432,8 +432,8 @@ function onRender(
     onGoalHover,
     onHoverChange,
     onOpenTimelines,
-    onShowTimelineEvents,
-    onHideTimelineEvents,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   },
 ) {
   onRenderRemoveClipPath(chart);
@@ -462,8 +462,8 @@ function onRender(
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
-    onShowTimelineEvents,
-    onHideTimelineEvents,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   });
 }
 
