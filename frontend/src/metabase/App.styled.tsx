@@ -18,7 +18,7 @@ export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
   ${props => props.isAdminApp && adminCss}
 `;
 
-export const AppContent = styled.div`
+export const AppContent = styled.main`
   width: 100%;
   overflow: auto;
   background-color: ${color("content")};
