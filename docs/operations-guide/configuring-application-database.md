@@ -50,17 +50,26 @@ You can change the application database to use Postgres using a few simple envir
 
 Metabase will not create this database for you. Example command to create the database:
 
-    createdb --encoding=UTF8 -e metabase 
+    createdb --encoding=UTF8 -e metabase
 
-This will tell Metabase to look for its application database using the supplied Postgres connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
+This will tell Metabase to look for its application database using the supplied Postgres connection information.
+Metabase also supports providing a full JDBC connection string if you have additional parameters:
 
-    export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>"
+    export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
+
+`MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you want to pass one
+or both separately from the rest of the JDBC connection string (useful if the password contains special characters):
+
+    export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
     java -jar metabase.jar
 
 
 #### Upgrading from a Metabase version pre-0.38
 
-If you’re upgrading from a previous version of Metabase, note that for Metabase 0.38 we've removed the use of the PostgreSQL `NonValidatingFactory` for SSL validation. It’s possible that you could experience a failure either at startup (if you're using a PostgreSQL application database) or when querying a PostgreSQL data warehouse. 
+If you’re upgrading from a previous version of Metabase, note that for Metabase 0.38 we've removed the use of the PostgreSQL `NonValidatingFactory` for SSL validation. It’s possible that you could experience a failure either at startup (if you're using a PostgreSQL application database) or when querying a PostgreSQL data warehouse.
 
 You can resolve this failure in one of two ways:
 
@@ -85,7 +94,7 @@ export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&
 
 **For Postgres data warehouse databases**
 
-You can do the same inside the Metabase Admin page for the connection to your Postgres database. Add the following to the end of your JDBC connection URI for your database:
+You can do the same inside the Metabase Admin page for the connection to your Postgres database. Add the following to the end of your JDBC connection string for your database:
 
 ```
 &sslmode=verify-ca&sslrootcert=<path to CA root or intermediate root certificate>
@@ -97,13 +106,15 @@ If that does not work, you can enable `NonValidatingFactory` by adding the follo
 &ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
 ```
 
-For more options to further tune the SSL connection parameters, 
+For more options to further tune the SSL connection parameters,
 see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html).
 
 
 #### [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
-If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using environment variables like this:
+If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB
+10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
+environment variables like this:
 
     export MB_DB_TYPE=mysql
     export MB_DB_DBNAME=metabase
@@ -116,8 +127,17 @@ If you prefer to use MySQL or MariaDB we've got you covered. The minimum recomme
 Metabase will not create this database for you. Example SQL statement to create the database:
 
     CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    
-This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
 
-    export MB_DB_CONNECTION_URI="mysql://localhost:3306/metabase?user=<username>&password=<password>"
+This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase
+also supports providing a full JDBC connection string if you have additional parameters:
+
+    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
+
+As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
+want to pass one or both separately from the rest of the JDBC connection string:
+
+    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
     java -jar metabase.jar
