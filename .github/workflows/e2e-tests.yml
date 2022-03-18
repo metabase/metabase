@@ -1,5 +1,12 @@
 name: E2E Tests
 
+on:
+  workflow_run:
+    workflows: ["Create Uberjar"]
+    branches: [gha-test]
+    types:
+      - completed
+
 jobs:
   e2e-tests:
     runs-on: buildjet-2vcpu-ubuntu-2004
