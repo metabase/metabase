@@ -1,9 +1,11 @@
+import React from "react";
 import styled from "@emotion/styled";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import Tooltip from "metabase/components/Tooltip";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
@@ -42,9 +44,9 @@ export const ExpandCollectionButton = styled(IconButtonWrapper)`
   position: absolute;
 `;
 
-const COLLECTION_NAME_LABEL_WIDTH = Math.round(
-  parseInt(SIDEBAR_WIDTH, 10) * 0.75,
-);
+const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
+
+const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(SIDEBAR_WIDTH, 10) * 0.75);
 
 export const LabelContainer = styled.div`
   display: flex;
@@ -52,9 +54,20 @@ export const LabelContainer = styled.div`
   position: relative;
 `;
 
-export const LabelText = styled.span`
-  width: ${COLLECTION_NAME_LABEL_WIDTH}px;
+const Label = styled.span`
+  width: ${ITEM_NAME_LABEL_WIDTH}px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
+
+export function LabelText({ children: itemName }) {
+  if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
+    return (
+      <Tooltip tooltip={itemName} maxWidth={null}>
+        <Label>{itemName}</Label>
+      </Tooltip>
+    );
+  }
+  return itemName;
+}
