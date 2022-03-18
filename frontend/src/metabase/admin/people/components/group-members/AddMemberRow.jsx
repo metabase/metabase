@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
 
 import { color } from "metabase/lib/colors";
@@ -21,12 +21,15 @@ export default function AddMemberRow({
   onSuggestionAccepted,
   onRemoveUserFromSelection,
 }) {
+  const rowRef = useRef(null);
+
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
         <AddRow
+          ref={rowRef}
           value={text}
-          isValid={selectedUsers.length}
+          isValid={!!selectedUsers.length}
           placeholder="Julie McMemberson"
           onChange={e => onTextChange(e.target.value)}
           onDone={onDone}
@@ -45,13 +48,12 @@ export default function AddMemberRow({
               />
             </div>
           ))}
-          <div className="absolute bottom left">
-            <AddMemberTypeahead
-              value={text}
-              options={Object.values(users)}
-              onSuggestionAccepted={onSuggestionAccepted}
-            />
-          </div>
+          <AddMemberTypeaheadPopover
+            value={text}
+            options={Object.values(users)}
+            onSuggestionAccepted={onSuggestionAccepted}
+            target={rowRef}
+          />
         </AddRow>
       </td>
     </tr>
@@ -66,22 +68,27 @@ const getColorPalette = () => [
   color("accent4"),
 ];
 
-const AddMemberTypeahead = Typeahead({
+const AddMemberTypeaheadPopover = Typeahead({
   optionFilter: (text, user) =>
     (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
   optionIsEqual: (userA, userB) => userA.id === userB.id,
-})(({ suggestions, selectedSuggestion, onSuggestionAccepted }) => {
+})(function AddMemberTypeaheadPopover({
+  suggestions,
+  selectedSuggestion,
+  onSuggestionAccepted,
+  target,
+}) {
   const colors = useMemo(getColorPalette, []);
 
   return (
-    <Popover
+    <TippyPopover
       className="bordered"
-      hasArrow={false}
-      targetOffsetY={2}
-      targetOffsetX={0}
-      horizontalAttachments={["left"]}
-    >
-      {suggestions &&
+      offset={0}
+      placement="bottom-start"
+      visible={suggestions.length > 0}
+      reference={target}
+      content={
+        suggestions &&
         suggestions.map((user, index) => (
           <AddMemberAutocompleteSuggestion
             key={index}
@@ -90,8 +97,9 @@ const AddMemberTypeahead = Typeahead({
             selected={selectedSuggestion && user.id === selectedSuggestion.id}
             onClick={onSuggestionAccepted.bind(null, user)}
           />
-        ))}
-    </Popover>
+        ))
+      }
+    />
   );
 });
 
