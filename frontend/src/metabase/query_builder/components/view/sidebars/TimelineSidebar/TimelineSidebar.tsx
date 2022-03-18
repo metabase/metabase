@@ -31,10 +31,6 @@ const TimelineSidebar = ({
     onOpenModal?.(MODAL_TYPES.NEW_EVENT);
   }, [onOpenModal]);
 
-  const handleNewEventWithTimeline = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.NEW_EVENT_WITH_TIMELINE);
-  }, [onOpenModal]);
-
   const handleEditEvent = useCallback(
     (event: TimelineEvent) => {
       onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
@@ -61,7 +57,6 @@ const TimelineSidebar = ({
         visibleTimelineIds={visibleTimelineIds}
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
-        onNewEventWithTimeline={handleNewEventWithTimeline}
         onEditEvent={handleEditEvent}
         onToggleTimeline={handleToggleTimeline}
       />
