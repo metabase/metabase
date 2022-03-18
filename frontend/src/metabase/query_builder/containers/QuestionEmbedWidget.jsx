@@ -92,6 +92,10 @@ export default class QuestionEmbedWidget extends Component {
     isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
     isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
   }) {
+    if (question.isDataset()) {
+      return false;
+    }
+
     return (
       (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
       (isEmbeddingEnabled && isAdmin)
