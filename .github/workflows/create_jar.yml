@@ -3,8 +3,9 @@ name: Create Uberjar
 on:
   workflow_run:
     workflows: [E2E Tests, Uberjar]
-    types: [completed]
     branches: [gha-test]
+    types:
+      - completed
 
 jobs:
   build:
