@@ -2,7 +2,7 @@ name: E2E Tests
 
 on:
   workflow_run:
-    workflows: [uberjar]
+    workflows: [Uberjar]
     branches: [gha-test]
     types:
       - completed
