@@ -55,9 +55,9 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   percy:
-    timeout-minutes: 30
+    timeout-minutes: 45
+    runs-on: buildjet-8vcpu-ubuntu-2004
     needs: [build, pr_info]
-    runs-on: ubuntu-20.04
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
