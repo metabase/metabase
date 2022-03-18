@@ -4,6 +4,7 @@ import React, {
   memo,
   useCallback,
   useState,
+  useEffect,
 } from "react";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -21,7 +22,9 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   collection: Collection;
+  isDefault?: boolean;
   isVisible?: boolean;
+  selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -30,13 +33,16 @@ export interface TimelineCardProps {
 const TimelineCard = ({
   timeline,
   collection,
+  isDefault,
   isVisible,
+  selectedEventIds = [],
   onToggleTimeline,
   onEditEvent,
   onArchiveEvent,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
+  const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
 
   const handleHeaderClick = useCallback(() => {
     setIsExpanded(isExpanded => !isExpanded);
@@ -52,6 +58,12 @@ const TimelineCard = ({
   const handleCheckboxClick = useCallback((event: MouseEvent) => {
     event.stopPropagation();
   }, []);
+
+  useEffect(() => {
+    if (isEventSelected) {
+      setIsExpanded(isEventSelected);
+    }
+  }, [isEventSelected, selectedEventIds]);
 
   return (
     <CardRoot>
@@ -71,6 +83,7 @@ const TimelineCard = ({
               key={event.id}
               event={event}
               collection={collection}
+              isSelected={selectedEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onArchive={onArchiveEvent}
             />
