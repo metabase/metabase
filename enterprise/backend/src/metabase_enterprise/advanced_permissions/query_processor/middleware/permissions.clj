@@ -4,6 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util.i18n :refer [tru]]))
 
@@ -48,6 +49,7 @@
   middleware."
   [{query-type :type, {original-limit :limit} :query, :as query}]
   (if (and (is-download? query)
+           (premium-features/has-feature? :advanced-permissions)
            (= query-type :query)
            (= (current-user-download-perms-level query) :limited))
     (assoc-in query [:query :limit] (min original-limit max-rows-in-limited-downloads))
@@ -59,6 +61,7 @@
   middleware."
   [query rff]
   (if (and (is-download? query)
+           (premium-features/has-feature? :advanced-permissions)
            (= (current-user-download-perms-level query) :limited))
     (fn limit-download-result-rows* [metadata]
       ((take max-rows-in-limited-downloads) (rff metadata)))
@@ -72,15 +75,17 @@
   the query metadata so that the frontend can determine whether to show the download option on the UI."
   [qp]
   (fn [query rff context]
-    (let [download-perms-level (if api/*current-user-id*
-                                 (current-user-download-perms-level query)
-                                 ;; If no user is bound, assume full download permissions (e.g. for public questions))
-                                 :full)]
-      (when (and (is-download? query)
-                 (= download-perms-level :none))
-        (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
-                                         (set/union (download-perms-set query :full)
-                                                    (download-perms-set query :limited)))))
-      (qp query
-          (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
-          context))))
+    (when (premium-features/has-feature? :advanced-permissions)
+      (let [download-perms-level (if api/*current-user-id*
+                                   (current-user-download-perms-level query)
+                                   ;; If no user is bound, assume full download permissions (e.g. for public questions))
+                                   :full)]
+        (when (and (is-download? query)
+                   (= download-perms-level :none))
+          (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
+                                           (set/union (download-perms-set query :full)
+                                                      (download-perms-set query :limited)))))
+        (qp query
+            (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
+            context)))
+    (qp query rff context)))
