@@ -59,30 +59,24 @@
 
 (defmethod ddl.i/persist! :postgres
   [_driver database persisted-info card]
-  (let [conn       (sql-jdbc.conn/db->pooled-connection-spec database)
-        metadata   (:result_metadata card)
-        definition (metadata->definition metadata (:table_name persisted-info))]
-    (try
-      (log/warn "creating table")
-      (jdbc/execute! conn [(create-table-sql database definition)])
-      (log/warn "populating table")
-      (jdbc/execute! conn [(populate-table-sql database
-                                               definition
-                                               (-> (:dataset_query card)
-                                                   qp/compile
-                                                   :query))])
-      (log/warn "marking persisted")
-      (db/update! PersistedInfo (:id persisted-info) :active true, :state "persisted")
-      (catch Exception e
-        (log/warn e)
-        (throw e)))))
-
-(comment
-  )
+  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (let [metadata   (:result_metadata card)
+          definition (metadata->definition metadata (:table_name persisted-info))]
+      (try
+        (jdbc/execute! conn [(create-table-sql database definition)])
+        (jdbc/execute! conn [(populate-table-sql database
+                                                 definition
+                                                 (-> (:dataset_query card)
+                                                     qp/compile
+                                                     :query))])
+        (db/update! PersistedInfo (:id persisted-info) :active true, :state "persisted")
+        (catch Exception e
+          (log/warn e)
+          (throw e))))))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]
-  (with-open [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
     (try
       (jdbc/execute! conn [(drop-table-sql database (:table_name persisted-info))])
       (db/delete! PersistedInfo :id (:id persisted-info))
