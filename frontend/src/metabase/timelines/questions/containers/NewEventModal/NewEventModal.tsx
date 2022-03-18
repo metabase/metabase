@@ -1,8 +1,10 @@
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
+import { addUndo } from "metabase/redux/undo";
 import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
@@ -32,6 +34,8 @@ const mapDispatchToProps = (dispatch: any) => ({
     } else {
       await dispatch(Timelines.actions.createWithEvent(values, collection));
     }
+
+    dispatch(addUndo({ message: t`Created event` }));
   },
 });
 
