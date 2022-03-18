@@ -3,6 +3,7 @@
             [cheshire.generate :as json.generate]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.models :refer [Field]]
             [metabase.test.data :as data]
@@ -43,7 +44,7 @@
   [driver dbdef]
   (destroy-db! driver dbdef))
 
-(defmethod tx/format-name :mongo
+(defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
   (if (= table-or-field-name "id")
     "_id"

@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
@@ -64,7 +65,7 @@
                           2 :table
                           :field)]
     (->> (apply qualified-name-components driver names)
-         (map (partial tx/format-name driver))
+         (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
 
 
@@ -198,7 +199,7 @@
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))
+  (let [quot          #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
         pk-field-name (quot (pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)

@@ -12,6 +12,7 @@
             [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -314,7 +315,7 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
+(defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
 
 (defmulti has-questionable-timezone-support?

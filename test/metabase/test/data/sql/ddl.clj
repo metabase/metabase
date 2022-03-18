@@ -4,6 +4,7 @@
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -84,7 +85,7 @@
                     (sql.qp/->honeysql driver value)))
         h-cols  (for [column columns]
                   (sql.qp/->honeysql driver
-                    (hx/identifier :field (tx/format-name driver (u/qualified-name column)))))]
+                    (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))]
     ;; explanation for the hack that follows
     ;; h/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
     ;; first non-accumulator (i.e. not the map it's building) argument is a collection, and throws if so
