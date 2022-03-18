@@ -571,6 +571,11 @@ jobs:
       - run:
           name: Save last git commit message to .COMMIT
           command: git log -1 > .COMMIT
+      - save_cache:
+          name: Saving .git cache to be used on the E2E tests
+          key: gitCache-{{ .Branch }}
+          paths:
+            - /home/circleci/metabase/metabase/.git
       - run:
           name: Determine what to do to .git directory
           command: |
@@ -939,6 +944,9 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
+            - restore_cache:
+                keys:
+                  - gitCache-{{ .Branch }}
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
