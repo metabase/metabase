@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import DownloadButton from "metabase/components/DownloadButton";
 import Tooltip from "metabase/components/Tooltip";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -24,6 +25,10 @@ import {
 } from "./QueryDownloadWidget.styled";
 
 const EXPORT_FORMATS = Urls.exportFormats;
+
+const getLimitedDownloadSizeText = result =>
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
+  t`The maximum download size is 1 million rows.`;
 
 const QueryDownloadWidget = ({
   className,
@@ -56,7 +61,7 @@ const QueryDownloadWidget = ({
           {result.data != null && result.data.rows_truncated != null && (
             <WidgetMessage>
               <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
-              <p>{t`The maximum download size is 1 million rows.`}</p>
+              <p>{getLimitedDownloadSizeText(result)}</p>
             </WidgetMessage>
           )}
           <div>
@@ -288,6 +293,9 @@ QueryDownloadWidget.defaultProps = {
 };
 
 QueryDownloadWidget.shouldRender = ({ result, isResultDirty }) =>
-  !isResultDirty && result && !result.error;
+  !isResultDirty &&
+  result &&
+  !result.error &&
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result);
 
 export default QueryDownloadWidget;
