@@ -13,7 +13,7 @@
       "description": "Event name",
       "type": "string",
       "enum": [
-        "new_event_created",
+        "new_event_created"
       ],
       "maxLength": 1024
     },
@@ -54,7 +54,7 @@
         "boolean",
         "null"
       ]
-    },
+    }
   },
   "required": [
     "event"
