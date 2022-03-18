@@ -1,28 +1,13 @@
 name: Uberjar
 
-on: [push, pull_request]
+on:
+  workflow_run:
+    workflows: [Prepare Uberjar Artifact]
+    branches: [gha-test]
+    types:
+      - completed
 
 jobs:
-  build:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 40
-    strategy:
-      matrix:
-        edition: [ee, oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v2
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build
-        run: ./bin/build
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
 
   check_jar_health:
     runs-on: ubuntu-20.04

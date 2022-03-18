@@ -1,4 +1,7 @@
 name: Prepare Uberjar Artifact
+
+on: [push, pull_request]
+
 runs:
   using: "composite"
   steps:
