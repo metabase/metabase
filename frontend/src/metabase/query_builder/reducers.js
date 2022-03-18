@@ -81,7 +81,7 @@ const DEFAULT_UI_CONTROLS = {
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata",
+  datasetEditorTab: "query", // "query" / "metadata"
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
