@@ -283,44 +283,45 @@
 
 (deftest native-query-test
   (mt/test-driver :druid
-    (is (= {:row_count 2
-            :status    :completed
-            :data      {:rows             [[931 "Simcha Yan" 1 "Kinaree Thai Bistro"       1]
-                                           [285 "Kfir Caj"   2 "Ruen Pair Thai Restaurant" 1]]
-                        :cols             [{:name         "id"
-                                            :source       :native
-                                            :display_name "id"
-                                            :field_ref    [:field "id" {:base-type :type/Integer}]
-                                            :base_type    :type/Integer
-                                            :effective_type :type/Integer}
-                                           {:name         "user_name"
-                                            :source       :native
-                                            :display_name "user_name"
-                                            :base_type    :type/Text
-                                            :effective_type :type/Text
-                                            :field_ref    [:field "user_name" {:base-type :type/Text}]}
-                                           {:name         "venue_price"
-                                            :source       :native
-                                            :display_name "venue_price"
-                                            :base_type    :type/Integer
-                                            :effective_type :type/Integer
-                                            :field_ref    [:field "venue_price" {:base-type :type/Integer}]}
-                                           {:name         "venue_name"
-                                            :source       :native
-                                            :display_name "venue_name"
-                                            :base_type    :type/Text
-                                            :effective_type :type/Text
-                                            :field_ref    [:field "venue_name" {:base-type :type/Text}]}
-                                           {:name         "count"
-                                            :source       :native
-                                            :display_name "count"
-                                            :base_type    :type/Integer
-                                            :effective_type :type/Integer
-                                            :field_ref    [:field "count" {:base-type :type/Integer}]}]
-                        :native_form      {:query native-query-1}
-                        :results_timezone "UTC"}}
-           (-> (process-native-query native-query-1)
-               (m/dissoc-in [:data :insights]))))))
+    (is (partial=
+         {:row_count 2
+          :status    :completed
+          :data      {:rows             [[931 "Simcha Yan" 1 "Kinaree Thai Bistro"       1]
+                                         [285 "Kfir Caj"   2 "Ruen Pair Thai Restaurant" 1]]
+                      :cols             [{:name         "id"
+                                          :source       :native
+                                          :display_name "id"
+                                          :field_ref    [:field "id" {:base-type :type/Integer}]
+                                          :base_type    :type/Integer
+                                          :effective_type :type/Integer}
+                                         {:name         "user_name"
+                                          :source       :native
+                                          :display_name "user_name"
+                                          :base_type    :type/Text
+                                          :effective_type :type/Text
+                                          :field_ref    [:field "user_name" {:base-type :type/Text}]}
+                                         {:name         "venue_price"
+                                          :source       :native
+                                          :display_name "venue_price"
+                                          :base_type    :type/Integer
+                                          :effective_type :type/Integer
+                                          :field_ref    [:field "venue_price" {:base-type :type/Integer}]}
+                                         {:name         "venue_name"
+                                          :source       :native
+                                          :display_name "venue_name"
+                                          :base_type    :type/Text
+                                          :effective_type :type/Text
+                                          :field_ref    [:field "venue_name" {:base-type :type/Text}]}
+                                         {:name         "count"
+                                          :source       :native
+                                          :display_name "count"
+                                          :base_type    :type/Integer
+                                          :effective_type :type/Integer
+                                          :field_ref    [:field "count" {:base-type :type/Integer}]}]
+                      :native_form      {:query native-query-1}
+                      :results_timezone "UTC"}}
+         (-> (process-native-query native-query-1)
+             (m/dissoc-in [:data :insights]))))))
 
 (def ^:private native-query-2
   (json/generate-string
