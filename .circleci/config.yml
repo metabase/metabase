@@ -950,7 +950,7 @@ jobs:
                 command: |
                   run test-cypress-no-build \
                   <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
-                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record << parameters.currents-record >> <</ parameters.currents-record >> \
+                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
                   <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
