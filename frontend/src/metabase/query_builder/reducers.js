@@ -503,7 +503,7 @@ export const currentState = handleActions(
   null,
 );
 
-export const timelineIds = handleActions(
+export const visibleTimelineIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINES]: {
@@ -521,7 +521,7 @@ export const timelineIds = handleActions(
   [],
 );
 
-export const timelineEventIds = handleActions(
+export const selectedTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [SHOW_TIMELINE_EVENTS]: {

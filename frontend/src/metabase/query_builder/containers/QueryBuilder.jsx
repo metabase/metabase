@@ -64,10 +64,10 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
-  getTimelineIds,
+  getVisibleTimelineIds,
   getVisibleTimelines,
   getVisibleTimelineEvents,
-  getTimelineEventIds,
+  getSelectedTimelineEventIds,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -117,9 +117,9 @@ const mapStateToProps = (state, props) => {
     metadata: getMetadata(state),
 
     timelines: getVisibleTimelines(state, props),
-    timelineIds: getTimelineIds(state, props),
     timelineEvents: getVisibleTimelineEvents(state, props),
-    timelineEventIds: getTimelineEventIds(state, props),
+    visibleTimelineIds: getVisibleTimelineIds(state, props),
+    selectedTimelineEventIds: getSelectedTimelineEventIds(state, props),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),

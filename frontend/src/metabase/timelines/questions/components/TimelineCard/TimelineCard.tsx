@@ -23,7 +23,7 @@ export interface TimelineCardProps {
   timeline: Timeline;
   collection: Collection;
   isDefault?: boolean;
-  isSelected?: boolean;
+  isVisible?: boolean;
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
@@ -34,7 +34,7 @@ const TimelineCard = ({
   timeline,
   collection,
   isDefault,
-  isSelected,
+  isVisible,
   selectedEventIds = [],
   onToggleTimeline,
   onEditEvent,
@@ -69,7 +69,7 @@ const TimelineCard = ({
     <CardRoot>
       <CardHeader onClick={handleHeaderClick}>
         <CardCheckbox
-          checked={isSelected}
+          checked={isVisible}
           onChange={handleCheckboxChange}
           onClick={handleCheckboxClick}
         />

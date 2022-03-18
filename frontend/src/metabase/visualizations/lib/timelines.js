@@ -167,7 +167,7 @@ export function renderEvents(
   chart,
   {
     timelineEvents = [],
-    timelineEventIds = [],
+    selectedTimelineEventIds = [],
     xDomain,
     xInterval,
     isTimeseries,
@@ -193,7 +193,7 @@ export function renderEvents(
   renderEventTicks(chart, {
     eventAxis,
     eventGroups,
-    selectedEventIds: timelineEventIds,
+    selectedEventIds: selectedTimelineEventIds,
     onHoverChange,
     onOpenTimelines,
     onShowTimelineEvents,

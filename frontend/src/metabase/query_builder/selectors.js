@@ -49,8 +49,9 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getEntities = state => state.entities;
-export const getTimelineIds = state => state.qb.timelineIds;
-export const getTimelineEventIds = state => state.qb.timelineEventIds;
+export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getSelectedTimelineEventIds = state =>
+  state.qb.selectedTimelineEventIds;
 
 const getRawQueryResults = state => state.qb.queryResults;
 
@@ -291,7 +292,7 @@ export const getTimelines = createSelector([getEntities], entities => {
 });
 
 export const getVisibleTimelines = createSelector(
-  [getQuestion, getTimelines, getTimelineIds],
+  [getQuestion, getTimelines, getVisibleTimelineIds],
   (question, timelines, timelineIds) => {
     if (!question) {
       return [];

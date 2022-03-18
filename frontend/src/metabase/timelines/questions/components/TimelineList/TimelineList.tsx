@@ -6,7 +6,7 @@ export interface TimelineListProps {
   timelines: Timeline[];
   collection: Collection;
   selectedEventIds?: number[];
-  selectedTimelineIds?: number[];
+  visibleTimelineIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -16,7 +16,7 @@ const TimelineList = ({
   timelines,
   collection,
   selectedEventIds = [],
-  selectedTimelineIds = [],
+  visibleTimelineIds = [],
   onEditEvent,
   onArchiveEvent,
   onToggleTimeline,
@@ -29,7 +29,7 @@ const TimelineList = ({
           timeline={timeline}
           collection={collection}
           isDefault={timelines.length === 1}
-          isSelected={selectedTimelineIds.includes(timeline.id)}
+          isVisible={visibleTimelineIds.includes(timeline.id)}
           selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}

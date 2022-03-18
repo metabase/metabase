@@ -10,7 +10,7 @@ export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
   selectedEventIds?: number[];
-  selectedTimelineIds?: number[];
+  visibleTimelineIds?: number[];
   onNewEvent?: () => void;
   onNewEventWithTimeline?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
@@ -22,7 +22,7 @@ const TimelinePanel = ({
   timelines,
   collection,
   selectedEventIds,
-  selectedTimelineIds,
+  visibleTimelineIds,
   onNewEvent,
   onNewEventWithTimeline,
   onEditEvent,
@@ -44,7 +44,7 @@ const TimelinePanel = ({
           timelines={timelines}
           collection={collection}
           selectedEventIds={selectedEventIds}
-          selectedTimelineIds={selectedTimelineIds}
+          visibleTimelineIds={visibleTimelineIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
           onArchiveEvent={onArchiveEvent}
