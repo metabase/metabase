@@ -19,15 +19,6 @@
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
-(defn schema-name
-  "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
-  multiple connections from multiple metabae remain distinct. The UUID will have the first character of each section taken.
-
-  (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
-  [{:keys [id] :as _database} uuid-string]
-  (let [instance-string (apply str (map first (str/split uuid-string #"-")))]
-    (format "metabase_cache_%s_%s" instance-string id)))
-
 (defn quote-fn [driver]
   (fn quote [ident entity]
     (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
@@ -35,12 +26,12 @@
 (defn create-schema-sql [{driver :engine :as database}]
   (let [q (quote-fn driver)]
     (format "create schema %s"
-            (q :table (schema-name database (public-settings/site-uuid))))))
+            (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
 
 (defn create-table-sql [{driver :engine :as database} definition]
   (let [q (quote-fn driver)]
     (format "create table %s.%s (%s);"
-            (q :table (schema-name database (public-settings/site-uuid)))
+            (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table (:table-name definition))
             (str/join
              ", "
@@ -52,13 +43,13 @@
 (defn drop-table-sql [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
     (format "drop table %s.%s"
-            (q :table (schema-name database (public-settings/site-uuid)))
+            (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table table-name))))
 
 (defn populate-table-sql [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
    (format "insert into %s.%s (%s) %s"
-           (q :table (schema-name database (public-settings/site-uuid)))
+           (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
            (q :table (:table-name definition))
            (str/join
             ", "
