@@ -8,14 +8,14 @@ describe(`search > recently viewed`, () => {
 
   it("shows list of recently viewed items", () => {
     cy.visit("/browse/1-sample-database");
-    cy.findByText("People").click();
+    cy.findByTextEnsureVisible("People").click();
 
     // "Orders" question
     cy.visit("/question/1");
 
     // "Orders in a dashboard" dashboard
     cy.visit("/dashboard/1");
-    cy.findByText("Product ID");
+    cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
