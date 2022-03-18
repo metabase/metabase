@@ -610,7 +610,7 @@ const getTransformedXValues = createSelector(
 
 const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTransformedXValues],
-  (xValues, isTimeseries) => xValues && isTimeseries && d3.extent(xValues),
+  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
 );
 
 export const getTimelines = createSelector([getEntities], entities => {
