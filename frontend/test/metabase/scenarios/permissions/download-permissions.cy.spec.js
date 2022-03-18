@@ -29,8 +29,6 @@ describeEE("scenarios > admin > permissions", () => {
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
 
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
-
     cy.button("Save changes").click();
 
     modal().within(() => {
@@ -67,8 +65,6 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Change").click();
     });
 
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
-
     cy.button("Save changes").click();
 
     modal().within(() => {
@@ -99,7 +95,7 @@ describeEE("scenarios > admin > permissions", () => {
     ]);
   });
 
-  it("sets the download permission to `No` when the data access permission is revoked", () => {
+  it.skip("sets the download permission to `No` when the data access permission is revoked", () => {
     cy.visit("/admin/permissions/data/database/1");
     const groupName = "data";
 
