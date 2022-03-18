@@ -86,7 +86,7 @@ Metabase Pro and Enterprise Editions ship with more advanced LDAP features.
 
 {% include plans-blockquote.html feature="LDAP user attribute syncing" %}
 
-If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can use existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
+If you're running a [paid version of Metabase](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can use existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
 
 ### LDAP group membership filter
 

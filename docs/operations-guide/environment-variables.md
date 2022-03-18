@@ -67,7 +67,7 @@ Middleware that enforces validation of the client via the request header `X-Meta
 
 ### `MB_APPLICATION_COLORS`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -89,7 +89,7 @@ See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_ma
 
 ### `MB_APPLICATION_FAVICON_URL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"frontend_client/favicon.ico"`
 
@@ -97,7 +97,7 @@ Path or URL to favicon file.
 
 ### `MB_APPLICATION_LOGO_URL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"app/assets/img/logo.svg"`
 
@@ -105,7 +105,7 @@ Path or URL to logo file. For best results use SVG format.
 
 ### `MB_APPLICATION_NAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"Metabase"`
 
@@ -299,7 +299,7 @@ SMTP username.
 
 ### `MB_EMBEDDING_APP_ORIGIN`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -328,7 +328,7 @@ Allow using a saved question as the source for other queries.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `true`
 
@@ -528,7 +528,7 @@ Password for Java TrustStore file.
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"email"`
 
@@ -536,7 +536,7 @@ Key to retrieve the JWT user's email address.
 
 ### `MB_JWT_ATTRIBUTE_FIRSTNAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"first_name"`
 
@@ -544,7 +544,7 @@ Key to retrieve the JWT user's first name.
 
 ### `MB_JWT_ATTRIBUTE_GROUPS`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"groups"`
 
@@ -552,7 +552,7 @@ Key to retrieve the JWT user's groups.
 
 ### `MB_JWT_ATTRIBUTE_LASTNAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"groups"`
 
@@ -560,7 +560,7 @@ Key to retrieve the JWT user's last name.
 
 ### `MB_JWT_ENABLED`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `false`
 
@@ -568,7 +568,7 @@ When set to `true`, will enable JWT authentication with the options configured i
 
 ### `MB_JWT_GROUP_MAPPINGS`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -576,7 +576,7 @@ JSON object containing JWT to Metabase group mappings. Should be in the form: `'
 
 ### `MB_JWT_GROUP_SYNC`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `false`
 
@@ -584,7 +584,7 @@ Enable group membership synchronization with JWT.
 
 ### `MB_JWT_IDENTITY_PROVIDER_URI`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -592,7 +592,7 @@ URL of JWT based login page.
 
 ### `MB_JWT_SHARED_SECRET`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -600,7 +600,7 @@ String used to seed the private key used to validate JWT messages.
 
 ### `MB_LANDING_PAGE`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `""`
 
@@ -692,7 +692,7 @@ Use SSL, TLS or plain text.
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `true`
 
@@ -700,7 +700,7 @@ Sync user attributes when someone logs in via LDAP.
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"userPassword,dn,distinguishedName"`
 
@@ -736,7 +736,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -774,7 +774,7 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: string<br>
 Default: `null`
 
-Token for Enterprise Edition and Premium features.
+Token for [some plans](https://www.metabase.com/pricing) and Premium features.
 
 ### `MB_QP_CACHE_BACKEND`
 
@@ -836,7 +836,7 @@ Connection timezone to use when executing queries. Defaults to system timezone.
 
 ### `MB_SAML_APPLICATION_NAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"Metabase"`
 
@@ -844,7 +844,7 @@ This application name will be used for requests to the Identity Provider.
 
 ### `MB_SAML_ATTRIBUTE_EMAIL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"`
 
@@ -852,7 +852,7 @@ SAML attribute for the user's email address.
 
 ### `MB_SAML_ATTRIBUTE_FIRSTNAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"`
 
@@ -860,7 +860,7 @@ SAML attribute for the user's first name.
 
 ### `MB_SAML_ATTRIBUTE_GROUP`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"member_of"`
 
@@ -868,7 +868,7 @@ SAML attribute for group syncing.
 
 ### `MB_SAML_ATTRIBUTE_LASTNAME`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"`
 
@@ -876,7 +876,7 @@ SAML attribute for the user's last name.
 
 ### `MB_SAML_ENABLED`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `false`
 
@@ -884,7 +884,7 @@ When set to `true`, will enable SAML authentication with the options configured 
 
 ### `MB_SAML_GROUP_MAPPINGS`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -892,7 +892,7 @@ JSON object containing SAML to Metabase group mappings. Should be in the form: `
 
 ### `MB_SAML_GROUP_SYNC`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `false`
 
@@ -900,7 +900,7 @@ Enable group membership synchronization with SAML.
 
 ### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -908,7 +908,7 @@ Encoded certificate for the identity provider, provided as the content, not a fi
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -916,7 +916,7 @@ This is the URL where your users go to log in to your identity provider. Dependi
 
 ### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -924,7 +924,7 @@ This is a unique identifier for the IdP. Often referred to as Entity ID or simpl
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"metabase"`
 
@@ -932,7 +932,7 @@ Alias for the key that Metabase should use for signing SAML requests.
 
 ### `MB_SAML_KEYSTORE_PASSWORD`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"changeit"`
 
@@ -940,7 +940,7 @@ Password for opening the KeyStore.
 
 ### `MB_SAML_KEYSTORE_PATH`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `null`
 
@@ -948,7 +948,7 @@ Absolute path to the KeyStore file to use for signing SAML requests.
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
-Only available in Enterprise Edition<br>
+Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: boolean<br>
 Default: `true`
 
