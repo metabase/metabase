@@ -1,9 +1,11 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - 'gha-test'
+  workflow_run:
+    workflows: [uberjar]
+    branches: [gha-test]
+    types:
+      - completed
 
 jobs:
   e2e-tests:
@@ -57,26 +59,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/download-artifact@v2
-      name: Retrieve uberjar artifact for ${{ matrix.edition }}
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-    - name: Get the version info
-      run: |
-        jar xf target/uberjar/metabase.jar version.properties
-        mv version.properties resources/
-    - name: Launch uberjar
-      run: java -jar ./target/uberjar/metabase.jar &
-    - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
-      name: Run Cypress tests on ${{ matrix.folder }}
-      env:
-        TERM: xterm
-    - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v2
-      if: failure()
-      with:
-        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
-        path: ./cypress
-        if-no-files-found: ignore
+      - uses: actions/download-artifact@v2
+        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Launch uberjar
+        run: java -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+        name: Run Cypress tests on ${{ matrix.folder }}
+        env:
+          TERM: xterm
+      - name: Upload Cypress recording upon failure
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+          path: ./cypress
+          if-no-files-found: ignore
