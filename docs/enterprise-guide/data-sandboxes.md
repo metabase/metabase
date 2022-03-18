@@ -2,7 +2,7 @@
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
-Data sandboxes are a powerful and flexible permissions tool in Metabase Enterprise Edition that allow you to grant filtered access to specific tables. If you haven't already, check out our [overview of how permissions work in Metabase][permissions-overview].
+Data sandboxes are a powerful and flexible permissions tool that allow you to grant filtered access to specific tables. If you haven't already, check out our [overview of how permissions work in Metabase][permissions-overview].
 
 Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Sandboxes let you do just that.
 
