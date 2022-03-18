@@ -9,8 +9,8 @@ import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
-  selectedEventIds?: number[];
   visibleTimelineIds?: number[];
+  selectedEventIds?: number[];
   onNewEvent?: () => void;
   onNewEventWithTimeline?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
@@ -21,8 +21,8 @@ export interface TimelinePanelProps {
 const TimelinePanel = ({
   timelines,
   collection,
-  selectedEventIds,
   visibleTimelineIds,
+  selectedEventIds,
   onNewEvent,
   onNewEventWithTimeline,
   onEditEvent,
@@ -43,8 +43,8 @@ const TimelinePanel = ({
         <TimelineList
           timelines={timelines}
           collection={collection}
-          selectedEventIds={selectedEventIds}
           visibleTimelineIds={visibleTimelineIds}
+          selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
           onArchiveEvent={onArchiveEvent}
