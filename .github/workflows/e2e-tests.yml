@@ -54,6 +54,7 @@ jobs:
           - "downloads"
           - "moderation"
           - "permissions"
+          - "question"
     services:
       maildev:
         image: maildev/maildev
