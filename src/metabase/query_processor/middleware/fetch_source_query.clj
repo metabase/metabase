@@ -25,10 +25,12 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
@@ -98,8 +100,13 @@
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
-        (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
-              :id card-id)
+        (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
+                                     :persisted.active :persisted.table_name :persisted.query_hash]
+                            :from      [[Card :card]]
+                            :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
+                            :where     [:= :card.id 4075]})
+                 (db/do-post-select Card)
+                 first)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
 
@@ -112,7 +119,14 @@
         card
 
         source-query
-        (or mbql-query
+        (or (when (and (:active card)
+                       (:query_hash card)
+                       (= (:query_hash card) (persisted-info/query-hash (:dataset_query card))))
+              ;; todo: select columns from the metadata
+              {:native (format "select * from %s.%s"
+                               (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                               (:table_name card))})
+            mbql-query
             (when native-query
               ;; rename `:query` to `:native` because source queries have a slightly different shape
               (let [native-query (set/rename-keys native-query {:query :native})]
