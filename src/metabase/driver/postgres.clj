@@ -12,6 +12,8 @@
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.ddl.postgres]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -455,6 +457,22 @@
    (keyword "time without time zone")     :type/Time
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
+
+(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
+                             :type/Boolean        "BOOL"
+                             :type/Date           "DATE"
+                             :type/DateTime       "TIMESTAMP"
+                             :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal        "DECIMAL"
+                             :type/Float          "FLOAT"
+                             :type/Integer        "INTEGER"
+                             :type/IPAddress      "INET"
+                             :type/Text           "TEXT"
+                             :type/Time           "TIME"
+                             :type/TimeWithTZ     "TIME WITH TIME ZONE"
+                             :type/UUID           "UUID"}]
+  ;; todo: we get DB types in the metadata, let's persist these in model metadata
+  (defmethod ddl.i/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver column]

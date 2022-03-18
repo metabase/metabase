@@ -251,7 +251,7 @@
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
-  (let [quot            #(sql.u/quote-name driver %1 (tx/format-name driver %2))
+  (let [quot            #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
         dest-table-name (name dest-table-name)]
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
