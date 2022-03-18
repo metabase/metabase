@@ -4,8 +4,8 @@ name: Percy
 on:
   push:
     branches:
-    # - master
-    # - "release-**"
+      - master
+      - "release-**"
     paths-ignore:
       - "docs/**"
       - "**.md"
