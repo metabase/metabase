@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
+import Timelines from "metabase/entities/timelines";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -63,9 +64,10 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
-  getTimelineVisibility,
+  getVisibleTimelineIds,
   getVisibleTimelines,
   getVisibleTimelineEvents,
+  getSelectedTimelineEventIds,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -81,6 +83,11 @@ function autocompleteResults(card, prefix) {
   });
   return apiCall;
 }
+
+const timelineProps = {
+  query: { include: "events" },
+  loadingAndErrorWrapper: false,
+};
 
 const mapStateToProps = (state, props) => {
   return {
@@ -109,9 +116,10 @@ const mapStateToProps = (state, props) => {
     query: getQuery(state),
     metadata: getMetadata(state),
 
-    timelines: getVisibleTimelines(state),
-    timelineEvents: getVisibleTimelineEvents(state),
-    timelineVisibility: getTimelineVisibility(state),
+    timelines: getVisibleTimelines(state, props),
+    timelineEvents: getVisibleTimelineEvents(state, props),
+    visibleTimelineIds: getVisibleTimelineIds(state, props),
+    selectedTimelineEventIds: getSelectedTimelineEventIds(state, props),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -166,7 +174,6 @@ const mapDispatchToProps = {
 
 function QueryBuilder(props) {
   const {
-    isBookmarked,
     question,
     location,
     params,
@@ -181,9 +188,11 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    isBookmarked,
     createBookmark,
     deleteBookmark,
-    loadTimelinesForCard,
+    allLoaded,
+    showTimelinesForCollection,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -194,6 +203,8 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const hasQuestion = question != null;
+  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),
@@ -274,10 +285,10 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
-    if (question && question.hasBreakoutByDateTime()) {
-      loadTimelinesForCard(question.card());
+    if (allLoaded && hasQuestion) {
+      showTimelinesForCollection(collectionId);
     }
-  }, [question, loadTimelinesForCard]);
+  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -326,6 +337,7 @@ function QueryBuilder(props) {
 
 export default _.compose(
   Bookmark.loadList(),
+  Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),

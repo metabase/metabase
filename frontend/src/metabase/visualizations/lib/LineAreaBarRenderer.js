@@ -816,9 +816,12 @@ export default function lineAreaBar(element, props) {
     settings,
     series,
     timelineEvents,
+    selectedTimelineEventIds,
     onRender,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   } = props;
 
   const warnings = {};
@@ -924,6 +927,7 @@ export default function lineAreaBar(element, props) {
   lineAndBarOnRender(parent, {
     datas,
     timelineEvents,
+    selectedTimelineEventIds,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
     xDomain: xAxisProps.xDomain,
@@ -934,6 +938,8 @@ export default function lineAreaBar(element, props) {
     onGoalHover,
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   });
 
   // only ordinal axis can display "null" values

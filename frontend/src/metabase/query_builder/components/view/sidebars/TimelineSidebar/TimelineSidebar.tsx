@@ -8,19 +8,21 @@ import { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
   question: Question;
-  visibility: Record<number, boolean>;
-  onShowTimeline?: (timeline: Timeline) => void;
-  onHideTimeline?: (timeline: Timeline) => void;
+  visibleTimelineIds: number[];
+  selectedTimelineEventIds: number[];
+  onShowTimelines?: (timelines: Timeline[]) => void;
+  onHideTimelines?: (timelines: Timeline[]) => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
   onClose?: () => void;
 }
 
 const TimelineSidebar = ({
   question,
-  visibility,
+  visibleTimelineIds,
+  selectedTimelineEventIds,
   onOpenModal,
-  onShowTimeline,
-  onHideTimeline,
+  onShowTimelines,
+  onHideTimelines,
   onClose,
 }: TimelineSidebarProps) => {
   const handleNewEvent = useCallback(() => {
@@ -41,21 +43,20 @@ const TimelineSidebar = ({
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
-        onShowTimeline?.(timeline);
+        onShowTimelines?.([timeline]);
       } else {
-        onHideTimeline?.(timeline);
+        onHideTimelines?.([timeline]);
       }
     },
-    [onShowTimeline, onHideTimeline],
+    [onShowTimelines, onHideTimelines],
   );
 
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
-        cardId={question.id()}
+        visibleTimelineIds={visibleTimelineIds}
+        selectedEventIds={selectedTimelineEventIds}
         collectionId={question.collectionId()}
-        visibility={visibility}
-        isVisibleByDefault={question.isSaved()}
         onNewEvent={handleNewEvent}
         onNewEventWithTimeline={handleNewEventWithTimeline}
         onEditEvent={handleEditEvent}
