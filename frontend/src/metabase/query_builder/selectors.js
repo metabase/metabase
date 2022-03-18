@@ -613,13 +613,13 @@ const getTimeseriesXDomain = createSelector(
   (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
 );
 
-export const getTimelines = createSelector([getEntities], entities => {
+export const getFetchedTimelines = createSelector([getEntities], entities => {
   const entityQuery = { include: "events" };
   return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
 });
 
 export const getTransformedTimelines = createSelector(
-  [getTimelines],
+  [getFetchedTimelines],
   timelines => {
     return timelines.map(timeline =>
       updateIn(timeline, ["events"], (events = []) =>
@@ -633,7 +633,7 @@ export const getTransformedTimelines = createSelector(
   },
 );
 
-export const getDomainTimelines = createSelector(
+export const getFilteredTimelines = createSelector(
   [getTransformedTimelines, getTimeseriesXDomain],
   (timelines, xDomain) => {
     if (!xDomain) {
@@ -651,7 +651,7 @@ export const getDomainTimelines = createSelector(
 );
 
 export const getVisibleTimelines = createSelector(
-  [getDomainTimelines, getVisibleTimelineIds],
+  [getFilteredTimelines, getVisibleTimelineIds],
   (timelines, timelineIds) => {
     return timelines.filter(t => timelineIds.includes(t.id));
   },

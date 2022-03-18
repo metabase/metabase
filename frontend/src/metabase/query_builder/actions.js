@@ -61,7 +61,7 @@ import {
   getResultsMetadata,
   getSnippetCollectionId,
   getTableForeignKeys,
-  getTimelines,
+  getFetchedTimelines,
   getTransformedSeries,
   getZoomedObjectId,
   isBasedOnExistingQuestion,
@@ -1678,7 +1678,7 @@ export const showTimelinesForCollection = collectionId => (
   dispatch,
   getState,
 ) => {
-  const availableTimelines = getTimelines(getState());
+  const availableTimelines = getFetchedTimelines(getState());
   const collectionTimelines = collectionId
     ? availableTimelines.filter(t => t.collection_id === collectionId)
     : availableTimelines.filter(t => t.collection_id == null);

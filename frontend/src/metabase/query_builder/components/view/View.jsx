@@ -156,6 +156,7 @@ export default class View extends React.Component {
   getRightSidebarForStructuredQuery = () => {
     const {
       question,
+      timelines,
       isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
@@ -190,6 +191,7 @@ export default class View extends React.Component {
       return (
         <TimelineSidebar
           question={question}
+          timelines={timelines}
           visibleTimelineIds={visibleTimelineIds}
           selectedTimelineEventIds={selectedTimelineEventIds}
           onShowTimelines={showTimelines}
