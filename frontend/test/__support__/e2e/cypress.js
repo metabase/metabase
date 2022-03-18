@@ -28,5 +28,6 @@ export * from "./helpers/e2e-dimension-list-helpers";
 export * from "./helpers/e2e-downloads-helpers";
 export * from "./helpers/e2e-bi-basics-helpers";
 export * from "./helpers/e2e-embedding-helpers";
+export * from "./helpers/e2e-permissions-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);

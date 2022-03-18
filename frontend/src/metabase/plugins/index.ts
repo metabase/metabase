@@ -1,5 +1,10 @@
 import { t } from "ttag";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import {
+  DatabaseEntityId,
+  PermissionSubject,
+} from "metabase/admin/permissions/types";
+import { GroupsPermissions, User } from "metabase-types/api";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -43,15 +48,15 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
-export const PLUGIN_AUTH_PROVIDERS = [];
+export const PLUGIN_AUTH_PROVIDERS = [] as any;
 
 // Only show the password tab in account settings if these functions all return true
 export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getShowAuthScene: (state, props) => true,
-  getLogoBackgroundClass: (state, props) => "bg-white",
+  getShowAuthScene: (state: any, props: any) => true,
+  getLogoBackgroundClass: (state: any, props: any) => "bg-white",
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -77,7 +82,7 @@ export const PLUGIN_COLLECTIONS = {
   isRegularCollection: () => true,
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
-    [AUTHORITY_LEVEL_REGULAR.type]: AUTHORITY_LEVEL_REGULAR,
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
 };
 
@@ -101,8 +106,27 @@ export const PLUGIN_CACHING = {
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
-  addDatabasePermissionOptions: (permissions, _value) => permissions,
-  addSchemaPermissionOptions: (permissions, _value) => permissions,
-  addTablePermissionOptions: (permissions, _value) => permissions,
-  isBlockPermission: _value => false,
+  addDatabasePermissionOptions: (permissions: any[]) => permissions,
+  addSchemaPermissionOptions: (permissions: any[], _value: string) =>
+    permissions,
+  addTablePermissionOptions: (permissions: any[], _value: string) =>
+    permissions,
+  isBlockPermission: (_value: string) => false,
+};
+
+export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
+  canAccessSettings: (_user: User) => false,
+  canAccessDataModel: (_user: User) => false,
+  canAccessDatabaseManagement: (_user: User) => false,
+  getFeatureLevelDataPermissions: (
+    _entityId: DatabaseEntityId,
+    _groupId: number,
+    _isAdmin: boolean,
+    _permissions: GroupsPermissions,
+    _dataAccessPermissionValue: string,
+    _permissionSubject: PermissionSubject,
+  ) => {
+    return [] as any;
+  },
+  dataColumns: [] as any,
 };

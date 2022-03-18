@@ -12,14 +12,14 @@ This gives you a cryptographically-secure, randomly-generated 32-character key t
 start Metabase as usual:
 
     MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
-
+    
 **Note** Some versions of Linux interpret single-quotes (`'`) and double-quotes (`"`) differently for environment variable values, so if you upgrade to a newer version of Linux, and the key originally used single-quotes, you might need to wrap the key in double-quotes, so that the single-quotes are interpreted literally. For example, `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would be `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
-
-Metabase will securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
-Existing databases with unencrypted details will continue to work normally.
 
 >Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
 
+Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will securely encrypt and store the connection details for each new database that you add. 
+
+If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you can encrypt the connection details by going to each one of those databases in **Admin settings** > **Databases** and clicking on the **Save** button. Existing databases with unencrypted details will continue to work normally.
 
 # Key rotation
 

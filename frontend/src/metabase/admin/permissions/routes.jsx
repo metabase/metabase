@@ -13,7 +13,7 @@ import {
 } from "metabase/plugins";
 
 const getRoutes = () => (
-  <Route title={t`Permissions`} path="permissions">
+  <Route title={t`Permissions`}>
     <IndexRedirect to="data" />
 
     <Route path="data" component={DataPermissionsPage}>

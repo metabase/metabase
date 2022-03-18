@@ -678,7 +678,10 @@ describe("smoketest > admin_setup", () => {
       cy.icon("check")
         .eq(1)
         .click();
-      cy.findByText("No").click();
+
+      popover().within(() => {
+        cy.findByText("No").click();
+      });
 
       cy.findByText("Save changes").click();
 

@@ -30,6 +30,7 @@ describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("allows to turn a GUI question into a model", () => {
@@ -170,6 +171,7 @@ describe("scenarios > models", () => {
   it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/question/1");
+    cy.wait("@dataset");
     openDetailsSidebar();
     assertIsModel();
     cy.url().should("include", "/model");
@@ -289,6 +291,7 @@ describe("scenarios > models", () => {
 
     it("can create a question by filtering and summarizing a model", () => {
       cy.visit("/question/1");
+      cy.wait("@dataset");
 
       filter();
       selectDimensionOptionFromSidebar("Discount");
@@ -328,6 +331,7 @@ describe("scenarios > models", () => {
 
     it("can create a question using table click actions", () => {
       cy.visit("/question/1");
+      cy.wait("@dataset");
 
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
@@ -354,6 +358,7 @@ describe("scenarios > models", () => {
     it("can edit model info", () => {
       cy.intercept("PUT", "/api/card/1").as("updateCard");
       cy.visit("/question/1");
+      cy.wait("@dataset");
 
       openDetailsSidebar();
       getDetailsSidebarActions().within(() => {
@@ -547,7 +552,7 @@ describe("scenarios > models", () => {
         parseSpecialCharSequences: false,
       });
       sidebar()
-        .findByText("Pick a question or a model")
+        .contains("Pick a question or a model")
         .click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");
