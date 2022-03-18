@@ -242,6 +242,7 @@
                 :name            "grandparent.parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
