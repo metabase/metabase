@@ -1,12 +1,5 @@
 name: Uberjar
 
-on:
-  workflow_run:
-    workflows: [create_jar]
-    branches: [gha-test]
-    types:
-      - completed
-
 jobs:
 
   check_jar_health:

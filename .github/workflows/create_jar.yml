@@ -1,6 +1,10 @@
 name: Create Uberjar
 
-on: [push, pull_request]
+on:
+  workflow_run:
+    workflows: [E2E Tests, Uberjar]
+    types: [completed]
+    branches: [gha-test]
 
 jobs:
   build:
