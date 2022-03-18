@@ -2,13 +2,14 @@ name: E2E Tests
 
 on:
   workflow_run:
-    workflows: [Create Uberjar]
+    workflows: [Uberjar]
     types:
       - completed
 
 jobs:
   e2e-tests:
     runs-on: buildjet-2vcpu-ubuntu-2004
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     timeout-minutes: 30
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:

@@ -1,4 +1,4 @@
-name: Create Uberjar
+name: Uberjar
 
 on: [push, pull_request]
 
