@@ -2,7 +2,7 @@ name: Uberjar
 
 on:
   workflow_run:
-    workflows: [Create Uberjar]
+    workflows: [create_jar]
     branches: [gha-test]
     types:
       - completed
