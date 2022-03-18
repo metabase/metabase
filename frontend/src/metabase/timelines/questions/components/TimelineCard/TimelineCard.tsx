@@ -6,8 +6,6 @@ import React, {
   useState,
   useEffect,
 } from "react";
-import _ from "underscore";
-import { parseTimestamp } from "metabase/lib/time";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
@@ -40,7 +38,7 @@ const TimelineCard = ({
   onEditEvent,
   onArchiveEvent,
 }: TimelineCardProps): JSX.Element => {
-  const events = getEvents(timeline.events);
+  const events = timeline.events ?? [];
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
 
@@ -92,14 +90,6 @@ const TimelineCard = ({
       )}
     </CardRoot>
   );
-};
-
-const getEvents = (events: TimelineEvent[] = []) => {
-  return _.chain(events)
-    .filter(e => !e.archived)
-    .sortBy(e => parseTimestamp(e.timestamp))
-    .reverse()
-    .value();
 };
 
 export default memo(TimelineCard);
