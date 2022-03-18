@@ -1018,6 +1018,8 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
+      cy.intercept("POST", "/api/pulse/test").as("emailSent");
+
       setupSMTP();
 
       cy.sandboxTable({
@@ -1035,7 +1037,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
       cy.findByText("Send email now").click();
-      cy.findByText("Email sent");
+      cy.wait("@emailSent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).to.include("Orders in a dashboard");
         expect(body[0].html).to.include("37.65");
