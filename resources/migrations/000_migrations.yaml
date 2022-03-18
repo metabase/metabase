@@ -11237,7 +11237,7 @@ databaseChangeLog:
                      ON p.group_id = all_users.id
                     AND db.object = p.object
               WHERE p.object IS NULL;
-      
+
   - changeSet:
       id: v43.00-043
       author: howonlee
