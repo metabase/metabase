@@ -10,6 +10,7 @@ import {
   Bookmark,
   GroupsPermissions,
   User,
+  Dataset,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
@@ -139,6 +140,8 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     return [] as any;
   },
   dataColumns: [] as any,
+  getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
+  canDownloadResults: (_result: Dataset): boolean => true,
 };
 
 export const PLUGIN_GENERAL_PERMISSIONS = {
