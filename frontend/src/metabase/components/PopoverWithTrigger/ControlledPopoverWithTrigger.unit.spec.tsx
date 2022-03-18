@@ -128,8 +128,8 @@ describe("ControlledPopoverWithTrigger", () => {
 
   describe("popoverContent fn prop", () => {
     beforeEach(() => {
-      const popoverContent: PopoverWithTriggerContent = ({ onClose }) => (
-        <button onClick={onClose}>popover content</button>
+      const popoverContent: PopoverWithTriggerContent = ({ closePopover }) => (
+        <button onClick={closePopover}>popover content</button>
       );
 
       setup({
