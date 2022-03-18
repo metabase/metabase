@@ -22,7 +22,7 @@ By default, any new collection will have the same permissions settings as the co
 
 One great feature in Metabase is that you can pin the most important couple of items in each of your collections to the top. Pinning an item in a collection turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important. And if you pin a question, Metabase will display a preview of its visualization. 
 
-Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, select the **pin icon** next to the item's name. Note that collections themselves can't be pinned, but if you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
+Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, select the **pin icon** next to the item's name. Note that collections themselves can't be pinned, but if you're running [a paid plan](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
 
 ### Setting permissions for collections
 
