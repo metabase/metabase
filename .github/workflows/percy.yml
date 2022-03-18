@@ -36,7 +36,7 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   percy:
-    timeout-minutes: 45
+    timeout-minutes: 30
     runs-on: buildjet-8vcpu-ubuntu-2004
     needs: build
     steps:
