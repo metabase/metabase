@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'testRunningWithJar'
 
 jobs:
 
@@ -87,10 +87,14 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
+
+    - name: Prepare JRE (Java Run-time Environment)
+      uses: actions/setup-java@v1
+      with:
+        java-package: jre
+        java-version: 8
+    - run: java -version
+
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
 
@@ -102,6 +106,11 @@ jobs:
       run: |
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
+    - name: Launch uberjar
+      run: java -jar ./target/uberjar/metabase.jar &
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+
 
     - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       name: Run Cypress tests on ${{ matrix.folder }}
