@@ -8,6 +8,7 @@ import {
   visualize,
   summarize,
   openNotebookEditor,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -437,7 +438,7 @@ describe("scenarios > question > new", () => {
 
     it("'read-only' user should be able to resize column width (metabase#9772)", () => {
       cy.signIn("readonly");
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.findByText("Tax")
         .closest(".TableInteractive-headerCellData")
         .as("headerCell")

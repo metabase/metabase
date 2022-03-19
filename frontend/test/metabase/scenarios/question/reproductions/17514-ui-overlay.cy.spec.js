@@ -91,6 +91,7 @@ describe("issue 17514", () => {
 
       filterWidget().click();
       setAdHocFilter({ timeBucket: "Years" });
+      cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
 
@@ -104,8 +105,6 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.findByTestId("viz-settings-button").click();
@@ -142,7 +141,7 @@ describe("issue 17514", () => {
 
 function openVisualizationOptions() {
   showDashboardCardActions();
-  cy.icon("palette").click();
+  cy.icon("palette").click({ force: true });
 }
 
 function hideColumn(columnName) {
@@ -165,6 +164,7 @@ function openNotebookMode() {
 
 function removeJoinedTable() {
   cy.findAllByText("Join data")
+    .first()
     .parent()
     .findByTestId("remove-step")
     .click({ force: true });
