@@ -12,12 +12,21 @@
            (fn [dir]
              (str/starts-with? path dir))
            ["src" "backend" "enterprise/backend" "shared"]))
-        source-references))
+        ;; sometimes 2 paths exist in a single string, space separated
+        ;; if a backend path is second, it is missed if we don't str/split
+        (mapcat #(str/split % #" ") source-references)))
+
+(defn- plural->singular [{:keys [str-plural] :as message}]
+  (merge message
+         (when str-plural {:str (first str-plural)
+                           :id-plural nil
+                           :str-plural nil
+                           :plural? false})))
 
 (defn- ->edn [{:keys [messages]}]
   (eduction
    (filter backend-message?)
-   (remove :plural?)
+   (map plural->singular)
    i18n/print-message-count-xform
    messages))
 
