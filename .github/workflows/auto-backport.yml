@@ -134,3 +134,9 @@ jobs:
               repo: context.repo.repo,
               body: `@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})`
             })
+
+      - uses: vishnudxb/cancel-workflow@v1.2
+        with:
+          repo: metabase/metabase
+          workflow_id: ${{ github.run_id }}
+          access_token: ${{ github.token }}
