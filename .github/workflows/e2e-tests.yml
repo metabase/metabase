@@ -94,7 +94,8 @@ jobs:
         java-package: jre
         java-version: 8
     - run: java -version
-
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
 
