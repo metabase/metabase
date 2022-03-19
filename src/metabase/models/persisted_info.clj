@@ -4,7 +4,9 @@
             [metabase.query-processor.util :as qputil]
             [toucan.models :as models]))
 
-(defn slug-name [nom]
+(defn slug-name
+  "A slug from a card suitable for a table name."
+  [nom]
   (->> (str/replace (str/lower-case nom) #"\s+" "_")
        (take 10)
        (apply str)))

@@ -33,7 +33,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti unpersist!
-  ""
+  "Unpersist a persisted model. Will delete the persisted info after removing the persisted table."
   {:arglists '([driver database persisted-info])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

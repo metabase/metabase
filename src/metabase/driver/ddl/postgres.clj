@@ -10,16 +10,20 @@
             [metabase.query-processor :as qp]
             [toucan.db :as db]))
 
-(defn field-metadata->field-defintion
+(defn- field-metadata->field-defintion
+  "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
+  of a field."
   [{:keys [name base_type effective_type]}]
   {:field-name name
    :base-type  (or effective_type base_type)})
 
-(defn metadata->definition [metadata table-name]
+(defn- metadata->definition
+  "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
+  [metadata table-name]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
-(defn quote-fn [driver]
+(defn- quote-fn [driver]
   (fn quote [ident entity]
     (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
 
@@ -28,7 +32,7 @@
     (format "create schema %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
 
-(defn create-table-sql [{driver :engine :as database} definition]
+(defn- create-table-sql [{driver :engine :as database} definition]
   (let [q (quote-fn driver)]
     (format "create table %s.%s (%s);"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
@@ -40,13 +44,13 @@
                        (q :field field-name)
                        (ddl.i/field-base-type->sql-type driver base-type)))))))
 
-(defn drop-table-sql [{driver :engine :as database} table-name]
+(defn- drop-table-sql [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
     (format "drop table %s.%s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table table-name))))
 
-(defn populate-table-sql [{driver :engine :as database} definition query]
+(defn- populate-table-sql [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
    (format "insert into %s.%s (%s) %s"
            (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
