@@ -5,6 +5,7 @@ const MYSQL_DB_NAME = "QA MySQL8";
 describe("scenatios > question > native > mysql", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore("mysql-8");
     cy.signInAsAdmin();
@@ -23,6 +24,9 @@ describe("scenatios > question > native > mysql", () => {
       },
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.wait("@dataset");
+    cy.findByTextEnsureVisible("CATEGORY");
 
     cy.get(".Visualization").as("queryPreview");
 
@@ -45,6 +49,10 @@ describe("scenatios > question > native > mysql", () => {
   it("can save a native MySQL query", () => {
     cy.get(".ace_content").type(`SELECT * FROM ORDERS`);
     cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.wait("@dataset");
+    cy.findByTextEnsureVisible("SUBTOTAL");
+
     cy.contains("37.65");
 
     // Save the query
@@ -62,7 +70,7 @@ describe("scenatios > question > native > mysql", () => {
 
     cy.wait("@createQuestion");
 
-    cy.findByText("Not now").click();
+    cy.findByTextEnsureVisible("Not now").click();
 
     cy.contains("Save").should("not.exist");
     cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
