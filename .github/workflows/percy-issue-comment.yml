@@ -2,8 +2,11 @@
 name: PercyIssueComment
 
 on:
-  issue_comment:
-    types: [created]
+  workflow_run:
+    workflows: [Uberjar]
+    types: [requested]
+    issue_comment:
+      types: [created]
 
 jobs:
   pr_info:
@@ -29,31 +32,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    runs-on: ubuntu-20.04
-    needs: pr_info
-    timeout-minutes: 60
-    strategy:
-      matrix:
-        edition: [oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ needs.pr_info.outputs.branch_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - run: ./bin/build
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-
   percy:
     timeout-minutes: 30
     runs-on: buildjet-8vcpu-ubuntu-2004
@@ -67,10 +45,14 @@ jobs:
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare JRE (Java Run-time Environment)
+        uses: actions/setup-java@v1
+          with:
+            java-package: jre
+            java-version: 8
+      - run: java -version
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
 
@@ -84,6 +66,10 @@ jobs:
           mv version.properties resources/
       - name: Run maildev
         run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+      - name: Launch uberjar
+        run: java -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

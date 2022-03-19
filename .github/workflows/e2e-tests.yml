@@ -1,38 +1,12 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - 'testRunningWithJar'
+  workflow_run:
+    workflows: [Uberjar]
+    types: [completed]
+    branches: [master]
 
 jobs:
-
-  build:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-    - uses: actions/checkout@v2
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-
-    - run: ./bin/build version
-    - run: ./bin/build translations
-    - run: ./bin/build frontend
-    - run: ./bin/build licenses
-    - run: ./bin/build drivers
-    - run: ./bin/build uberjar
-
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
-
   e2e-tests:
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 30
@@ -98,7 +72,6 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
-
     - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
@@ -111,7 +84,6 @@ jobs:
       run: java -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
 
     - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       name: Run Cypress tests on ${{ matrix.folder }}
