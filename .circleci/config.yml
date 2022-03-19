@@ -939,19 +939,25 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
-            - run-yarn-command:
+            - run:
                 command-name: Run Cypress tests
                 before-steps:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
-                  - steps: << parameters.before-steps >>
+                  - steps: 
+                    - << parameters.before-steps >>
+                    - restore-fe-deps-cache
                 # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
-                  run test-cypress-no-build \
+                  yarn test-cypress-no-build \
                   <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
-                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
-                  <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
+                  <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >> \
+                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  || $CIRCLE_BRANCH == onlyMaster ]]; then
+                    echo 'This is a release or master branch; running with Currents.dev' \
+                    <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
+                    <<# parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
+                  fi
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
