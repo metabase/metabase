@@ -47,7 +47,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
     }: TextInputProps,
     ref,
   ) {
-    const handleClearClick = () => {
+    const handleClear = () => {
       onChange("");
     };
 
@@ -73,7 +73,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
         />
 
         {showClearButton && (
-          <ClearButton onClick={handleClearClick}>
+          <ClearButton onClick={handleClear}>
             <Icon name="close" size={12} />
           </ClearButton>
         )}
