@@ -21,7 +21,9 @@
 
 (defmethod format-name :default [_ table-or-field-name] table-or-field-name)
 
-(defmulti field-base-type->sql-type (fn [driver base-type] [driver base-type]))
+(defmulti field-base-type->sql-type
+  "A suitable db type for a base-type per database."
+  (fn [driver base-type] [driver base-type]))
 
 ;; db_id, table def, table metadata, table_id
 (defmulti persist!

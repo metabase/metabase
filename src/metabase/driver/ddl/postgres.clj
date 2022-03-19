@@ -27,7 +27,9 @@
   (fn quote [ident entity]
     (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
 
-(defn create-schema-sql [{driver :engine :as database}]
+(defn create-schema-sql
+  "SQL string to create a schema suitable for postgres"
+  [{driver :engine :as database}]
   (let [q (quote-fn driver)]
     (format "create schema %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
