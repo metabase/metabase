@@ -4,11 +4,16 @@ describe(`search > recently viewed`, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("shows list of recently viewed items", () => {
     cy.visit("/browse/1-sample-database");
+
+    // "People" table
     cy.findByTextEnsureVisible("People").click();
+    cy.wait("@dataset");
+    cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
     cy.visit("/question/1");
