@@ -26,11 +26,12 @@ describe("scenatios > question > native > mysql", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset");
-    cy.findByTextEnsureVisible("CATEGORY");
 
     cy.get(".Visualization").as("queryPreview");
 
-    cy.get("@queryPreview").contains("Widget");
+    cy.get("@queryPreview")
+      .should("be.visible")
+      .contains("Widget");
 
     // Filter by Product ID = 1 (its category is Gizmo)
     cy.findByPlaceholderText(/Id/i)
