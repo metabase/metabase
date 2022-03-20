@@ -112,6 +112,9 @@ The following table lists the configurable parameters of the Metabase chart and 
 | nodeSelector                       | Node labels for pod assignment                              | {}                |
 | tolerations                        | Toleration labels for pod assignment                        | []                |
 | affinity                           | Affinity settings for pod assignment                        | {}                |
+| initContainers                     | Init containers to add to the pod                           | []                |
+| extraVolumes                       | Extra volumes for the pod                                   | []                |
+| extraVolumeMounts                  | Extra volume mounts for the metabase container              | []                |
 | config.jetty.maxThreads            | Jetty max number of threads                                 | 50                |
 | config.jetty.minThreads            | Jetty min number of threads                                 | 8                 |
 | config.dw.maxConnectionPoolSize    | Maximum number of connections to a data warehouse           | 15                |
@@ -140,4 +143,38 @@ Want to run [Metabase Enterprise](https://www.metabase.com/enterprise/)? Run:
 $ helm install meta-helm-chart \
   --set image.tag=v1.41.0,image.repository=metabase/metabase-enterprise \
     metabase/metabase
+```
+
+**Adding extra volumes**
+
+To add extra volumes, you can use the `extraVolumes` and `extraVolumeMounts` parameters.
+
+For example, to add Metabase plugins stored on a [persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) you could provide the following in your `values.yaml`:
+
+```yaml
+extraVolumeMounts:
+  - name: metabase-plugins
+    mountPath: /app/plugins
+
+extraVolumes:
+  - name: metabase-plugins
+    persistentVolumeClaim:
+      claimName: pv-metabase-plugins
+```
+
+**Adding init containers**
+
+To add [init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) to the Metabase pod, you can use the `initContainers` parameter.
+
+For example, to add an init container that sleeps until the database is ready, you could provide the following in your `values.yaml`:
+
+```yaml
+initContainers:
+  - name: init-mydb
+    image: busybox:1.28
+    command: [
+      'sh',
+      '-c',
+      "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"
+    ]
 ```
