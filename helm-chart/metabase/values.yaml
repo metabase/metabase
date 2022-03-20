@@ -66,6 +66,20 @@ extraArgs:
 extraEnv:
   # JAVA_OPTS: "-Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.rmi.port=1099 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=metabase.local"
 
+initContainers: []
+  # - name: init-mydb
+  #   image: busybox:1.28
+  #   command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
+
+extraVolumeMounts: []
+  # - name: metabase-plugins
+  #   mountPath: /app/plugins
+
+extraVolumes: []
+  # - name: metabase-plugins
+  #   persistentVolumeClaim:
+  #     claimName: pv-metabase-plugins
+
 config:
   debug:
     namespaceTrace: ""
