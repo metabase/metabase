@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'e2e-moar-tests'
 
 jobs:
 
@@ -48,13 +48,17 @@ jobs:
       matrix:
         edition: [oss, ee]
         folder:
+          - "binning"
           - "custom-column"
+          - "dashboard"
           - "dashboard-filters"
           - "dashboard-filters-sql"
           - "downloads"
+          - "joins"
           - "moderation"
           - "permissions"
           - "question"
+          - "visualizations"
     services:
       maildev:
         image: maildev/maildev
