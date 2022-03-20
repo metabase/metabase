@@ -46,6 +46,7 @@ describe("issue 17514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("scenario 1", () => {
@@ -96,6 +97,8 @@ describe("issue 17514", () => {
       cy.findByText("Previous 30 Years");
 
       cy.findByText("17514").click();
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();
