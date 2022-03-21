@@ -4,13 +4,14 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
+const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
 const ICON_LARGE_SCALE = 0.35;
-const ICON_X = -16;
+const ICON_X = -ICON_SIZE;
 const ICON_Y = 10;
 const TEXT_X = 10;
 const TEXT_Y = ICON_Y + 8;
-const RECT_SIZE = 32;
+const RECT_SIZE = ICON_SIZE;
 
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
@@ -47,19 +48,33 @@ function isSelected(events, selectedEventIds) {
   return events.some(event => selectedEventIds.includes(event.id));
 }
 
-function getIcon(events) {
-  return events.length === 1 ? events[0].icon : "star";
+function getIcon(events, eventIndex, eventScale, eventDates) {
+  if (isIconNarrow(eventIndex, eventScale, eventDates)) {
+    return "unknown";
+  } else {
+    return events.length === 1 ? events[0].icon : "star";
+  }
 }
 
-function getIconPath(events) {
-  const icon = getIcon(events);
+function getIconPath(events, eventIndex, eventScale, eventDates) {
+  const icon = getIcon(events, eventIndex, eventScale, eventDates);
   return ICON_PATHS[icon].path ? ICON_PATHS[icon].path : ICON_PATHS[icon];
 }
 
-function getIconTransform(events) {
-  const icon = getIcon(events);
+function getIconTransform(events, eventIndex, eventScale, eventDates) {
+  const icon = getIcon(events, eventIndex, eventScale, eventDates);
   const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
   return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
+}
+
+function isIconNarrow(eventIndex, eventScale, eventDates) {
+  const thisDate = eventDates[eventIndex];
+  const prevDate = eventDates[eventIndex - 1];
+  const nextDate = eventDates[eventIndex + 1];
+  const prevDiff = prevDate && eventScale(thisDate) - eventScale(prevDate);
+  const nextDiff = nextDate && eventScale(nextDate) - eventScale(thisDate);
+
+  return prevDiff < ICON_SIZE || nextDiff < ICON_SIZE;
 }
 
 function renderEventLines({
@@ -118,15 +133,19 @@ function renderEventTicks({
   eventTicks
     .append("path")
     .attr("class", "event-icon")
-    .attr("d", d => getIconPath(d))
-    .attr("transform", d => getIconTransform(d));
+    .attr("d", (d, i) => getIconPath(d, i, eventScale, eventDates))
+    .attr("transform", (d, i) =>
+      getIconTransform(d, i, eventScale, eventDates),
+    );
 
   eventTicks
     .append("rect")
     .attr("fill", "none")
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
-    .attr("transform", d => getIconTransform(d));
+    .attr("transform", (d, i) =>
+      getIconTransform(d, i, eventScale, eventDates),
+    );
 
   eventTicks
     .filter(d => d.length > 1)
