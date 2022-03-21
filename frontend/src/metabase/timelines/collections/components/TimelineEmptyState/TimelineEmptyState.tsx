@@ -33,7 +33,7 @@ const TimelineEmptyState = ({
   const link = timeline
     ? Urls.newEventInCollection(timeline, collection)
     : Urls.newEventAndTimelineInCollection(collection);
-  const canWrite = collection.can_write;
+  const canWrite = timeline ? timeline.can_write : collection.can_write;
 
   return (
     <EmptyStateRoot>
