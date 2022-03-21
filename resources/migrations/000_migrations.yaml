@@ -11240,7 +11240,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v43.00-046
-      author: camsaul
+      author: qnkhuat
       validCheckSum: ANY
       changes:
         - createTable:
