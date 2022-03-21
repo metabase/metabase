@@ -249,26 +249,26 @@ text.value-label-white {
 
 /* timeline events */
 
-.dc-chart .events-axis .event-tick {
+.dc-chart .event-axis .event-tick {
   cursor: pointer;
   pointer-events: all;
 }
 
-.dc-chart .events-axis .event-tick .event-icon {
+.dc-chart .event-axis .event-icon {
   stroke: var(--color-text-light);
   fill: var(--color-text-light);
 }
 
-.dc-chart .events-axis .event-tick.hover .event-icon {
+.dc-chart .event-axis .event-text {
+  fill: var(--color-text-light);
+}
+
+.dc-chart .event-axis .event-tick.hover .event-icon {
   stroke: var(--color-brand);
   fill: var(--color-brand);
 }
 
-.dc-chart .events-axis .event-tick text {
-  fill: var(--color-text-light);
-}
-
-.dc-chart .events-axis .event-tick.hover text {
+.dc-chart .event-axis .event-tick.hover .event-text {
   fill: var(--color-brand);
 }
 

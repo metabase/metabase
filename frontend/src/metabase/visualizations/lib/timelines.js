@@ -3,6 +3,12 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
+const ICON_SCALE = 0.45;
+const ICON_LARGE_SCALE = 0.35;
+const ICON_X = -16;
+const ICON_Y = 10;
+const RECT_SIZE = 32;
+
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
 }
@@ -47,6 +53,12 @@ function getIconPath(events) {
   return ICON_PATHS[icon].path ? ICON_PATHS[icon].path : ICON_PATHS[icon];
 }
 
+function getIconTransform(events) {
+  const icon = getIcon(events);
+  const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
+  return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
+}
+
 function renderEventLines({
   brush,
   eventScale,
@@ -69,28 +81,43 @@ function renderEventLines({
     .attr("y2", brushHeight);
 }
 
-function renderEventTicks({
+function renderEventAxis({
   axis,
   eventScale,
   eventDates,
   eventGroups,
   selectedEventIds,
 }) {
-  const eventTicks = axis.selectAll(".event-tick").data(eventGroups);
+  const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  eventAxis.exit().remove();
+
+  eventAxis
+    .enter()
+    .append("g")
+    .attr("class", "event-axis");
+
+  const eventTicks = eventAxis.selectAll(".event-tick").data(eventGroups);
   eventTicks.exit().remove();
 
   eventTicks
     .enter()
     .append("g")
     .attr("class", "event-tick")
-    .classed("selected", d => isSelected(d, selectedEventIds))
+    .classed("hover", d => isSelected(d, selectedEventIds))
     .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
 
   eventTicks
     .append("path")
     .attr("class", "event-icon")
     .attr("d", d => getIconPath(d))
-    .attr("transform", "scale(0.5) translate(-16, 10)");
+    .attr("transform", d => getIconTransform(d));
+
+  eventTicks
+    .append("rect")
+    .attr("fill", "none")
+    .attr("width", RECT_SIZE)
+    .attr("height", RECT_SIZE)
+    .attr("transform", d => getIconTransform(d));
 }
 
 export function renderEvents(
@@ -106,7 +133,7 @@ export function renderEvents(
   const eventGroups = getEventGroups(eventMapping);
 
   if (axis) {
-    renderEventTicks({
+    renderEventAxis({
       axis,
       eventScale,
       eventDates,
