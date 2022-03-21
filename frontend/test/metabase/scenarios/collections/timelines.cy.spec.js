@@ -1,4 +1,9 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  describeWithSnowplow,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  restore,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -254,6 +259,31 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Releases");
       cy.findByText("Add an event").should("not.exist");
     });
+  });
+});
+
+describeWithSnowplow.only("scenarios > collections > timelines", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send a snowplow event when creating a timeline event", () => {
+    cy.visit("/collection/root");
+    cy.findByLabelText("calendar icon").click();
+
+    cy.findByText("Add an event").click();
+    cy.findByLabelText("Event name").type("Event");
+    cy.findByLabelText("Date").type("10/20/2020");
+    cy.button("Create").click();
+
+    // new_instance_created
+    // new_event_created
+    expectGoodSnowplowEvents(2);
   });
 });
 
