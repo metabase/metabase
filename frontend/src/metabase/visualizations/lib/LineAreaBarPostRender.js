@@ -404,7 +404,7 @@ function onRenderAddTimelineEvents(
 ) {
   renderEvents(chart, {
     events: timelineEvents,
-    selectedTimelineEventIds,
+    selectedEventIds: selectedTimelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
