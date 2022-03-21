@@ -9,8 +9,10 @@ const ICON_SCALE = 0.45;
 const ICON_LARGE_SCALE = 0.35;
 const ICON_X = -ICON_SIZE;
 const ICON_Y = 10;
+const ICON_DISTANCE = ICON_SIZE;
 const TEXT_X = 10;
-const TEXT_Y = ICON_Y + 8;
+const TEXT_Y = 16;
+const TEXT_DISTANCE = ICON_SIZE * 1.75;
 const RECT_SIZE = ICON_SIZE;
 
 function getXAxis(chart) {
@@ -49,7 +51,7 @@ function isSelected(events, selectedEventIds) {
 }
 
 function getIcon(events, eventIndex, eventScale, eventDates) {
-  if (isIconNarrow(eventIndex, eventScale, eventDates)) {
+  if (isEventNarrow(eventIndex, eventScale, eventDates)) {
     return "unknown";
   } else {
     return events.length === 1 ? events[0].icon : "star";
@@ -67,14 +69,26 @@ function getIconTransform(events, eventIndex, eventScale, eventDates) {
   return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
 }
 
-function isIconNarrow(eventIndex, eventScale, eventDates) {
+function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
   const thisDate = eventDates[eventIndex];
   const prevDate = eventDates[eventIndex - 1];
   const nextDate = eventDates[eventIndex + 1];
-  const prevDiff = prevDate && eventScale(thisDate) - eventScale(prevDate);
-  const nextDiff = nextDate && eventScale(nextDate) - eventScale(thisDate);
+  const prevDistance = prevDate && eventScale(thisDate) - eventScale(prevDate);
+  const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
 
-  return prevDiff < ICON_SIZE || nextDiff < ICON_SIZE;
+  return prevDistance < eventDistance || nextDistance < eventDistance;
+}
+
+function isEventNarrow(eventIndex, eventScale, eventDates) {
+  return isEventWithin(eventIndex, eventScale, eventDates, ICON_DISTANCE);
+}
+
+function hasEventText(events, eventIndex, eventScale, eventDates) {
+  if (events.length > 1) {
+    return !isEventWithin(eventIndex, eventScale, eventDates, TEXT_DISTANCE);
+  } else {
+    return false;
+  }
 }
 
 function renderEventLines({
@@ -148,7 +162,7 @@ function renderEventTicks({
     );
 
   eventTicks
-    .filter(d => d.length > 1)
+    .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
