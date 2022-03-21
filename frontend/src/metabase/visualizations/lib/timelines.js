@@ -183,8 +183,8 @@ function renderEventTicks({
       const eventLine = eventLines.filter(data => d === data);
 
       onHoverChange(null);
-      eventTick.classed("hover", false);
-      eventLine.classed("hover", false);
+      eventTick.classed("hover", isSelected(d, selectedEventIds));
+      eventLine.classed("hover", isSelected(d, selectedEventIds));
     })
     .on("click", function(d) {
       onOpenTimelines();
