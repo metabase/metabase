@@ -262,7 +262,7 @@ describe("scenarios > collections > timelines", () => {
   });
 });
 
-describeWithSnowplow.only("scenarios > collections > timelines", () => {
+describeWithSnowplow("scenarios > collections > timelines", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
