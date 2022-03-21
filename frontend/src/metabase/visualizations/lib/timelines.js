@@ -4,10 +4,14 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
-const EVENT_ICON_OFFSET_X = -16;
-const EVENT_ICON_MARGIN_TOP = 10;
-const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
-const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
+const ICON_SCALE = 0.45;
+const ICON_LARGE_SCALE = 0.35;
+const ICON_SIZE = 16;
+const ICON_X = -ICON_SIZE;
+const ICON_Y = 10;
+const TEXT_X = 10;
+const TEXT_Y = ICON_Y + 8;
+const RECT_SIZE = 32;
 
 function getEventGroups(events, xInterval) {
   return _.groupBy(events, event =>
@@ -89,7 +93,7 @@ function renderEventTicks(
     const iconPath = ICON_PATHS[iconName].path
       ? ICON_PATHS[iconName].path
       : ICON_PATHS[iconName];
-    const iconScale = iconName === "mail" ? 0.4 : 0.45;
+    const iconScale = iconName === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
 
     const eventLine = brush
       .append("line")
@@ -111,19 +115,20 @@ function renderEventTicks(
       .attr("class", "event-icon")
       .attr("d", iconPath)
       .attr("aria-label", `${iconName} icon`)
-      .attr(
-        "transform",
-        `scale(${iconScale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
-      );
+      .attr("transform", `scale(${iconScale}) translate(${ICON_X},${ICON_Y})`);
+
+    eventTick
+      .append("rect")
+      .attr("fill", "none")
+      .attr("width", RECT_SIZE)
+      .attr("height", RECT_SIZE)
+      .attr("transform", `scale(${iconScale}) translate(${ICON_X}, ${ICON_Y})`);
 
     if (!isOnlyOneEvent) {
       eventTick
         .append("text")
         .text(group.length)
-        .attr(
-          "transform",
-          `translate(${EVENT_GROUP_COUNT_MARGIN_LEFT},${EVENT_GROUP_COUNT_MARGIN_TOP})`,
-        );
+        .attr("transform", `translate(${TEXT_X},${TEXT_Y})`);
     }
 
     eventTick
