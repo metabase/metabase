@@ -403,7 +403,7 @@ function onRenderAddTimelineEvents(
   },
 ) {
   renderEvents(chart, {
-    timelineEvents,
+    events: timelineEvents,
     selectedTimelineEventIds,
     xDomain,
     xInterval,
