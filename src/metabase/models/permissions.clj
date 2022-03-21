@@ -255,6 +255,15 @@
                                (and "schema/"
                                     (opt (and path-char "*/"
                                               (opt #"table/\d+/"))))))))
+               ;; any path starting with /general is a permission to access certain features of admin settings page
+               ;; /general/setting/    -> permissions to access /admin/settings page
+               ;; /general/monitoring/ -> permissions to access tools, audit and troubleshooting
+               (and "general/"
+                    (or
+                     "setting/"
+                     "monitoring/"))
+               ;; /subscription/ -> permisisons to create/edit subscriptions and alerts
+               "subscription/"
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -442,6 +451,17 @@
   [perm-type perm-value db-id]
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
 
+(s/defn general-perms-path :- Path
+  [perm-type]
+  (case perm-type
+    :setting
+    "/general/setting/"
+
+    :monitoring
+    "/general/monitoring/"
+
+    :subscription
+    "/subscription/"))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
