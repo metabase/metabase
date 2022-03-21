@@ -125,6 +125,7 @@ jobs:
       - uses: actions/github-script@v4
         with:
           script: |
+            const core = require('@actions/core');
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
 
@@ -134,3 +135,4 @@ jobs:
               repo: context.repo.repo,
               body: `@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})`
             })
+            core.warning('Backport Failed for some reason. Please, check it.')
