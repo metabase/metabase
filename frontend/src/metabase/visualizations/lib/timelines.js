@@ -84,7 +84,7 @@ function renderEventLines({
     .attr("y2", brushHeight);
 }
 
-function renderEventAxis({
+function renderEventTicks({
   axis,
   brush,
   eventScale,
@@ -196,7 +196,7 @@ export function renderEvents(
   }
 
   if (axis) {
-    renderEventAxis({
+    renderEventTicks({
       axis,
       brush,
       eventScale,
