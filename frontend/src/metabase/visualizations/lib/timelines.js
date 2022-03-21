@@ -211,6 +211,6 @@ export function renderEvents(
   }
 }
 
-export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
+export function hasEventAxis({ timelineEvents = [], isTimeseries }) {
   return isTimeseries && timelineEvents.length > 0;
 }
