@@ -100,7 +100,7 @@ function renderEventLines({
   selectedEventIds,
 }) {
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
-  const brushHeight = chart.effectiveWidth();
+  const brushHeight = chart.effectiveHeight();
   eventLines.exit().remove();
 
   eventLines
