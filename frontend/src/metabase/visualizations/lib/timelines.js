@@ -49,6 +49,7 @@ function renderEventLines({
 }) {
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
   const brushHeight = brush.select(".background").attr("height");
+  eventLines.exit().remove();
 
   eventLines
     .enter()
@@ -59,8 +60,24 @@ function renderEventLines({
     .attr("x2", (d, i) => eventScale(eventDates[i]))
     .attr("y1", "0")
     .attr("y2", brushHeight);
+}
 
-  eventLines.exit().remove();
+function renderEventTicks({
+  axis,
+  eventScale,
+  eventDates,
+  eventGroups,
+  selectedEventIds,
+}) {
+  const eventTicks = axis.selectAll(".event-tick").data(eventGroups);
+  eventTicks.exit().remove();
+
+  eventTicks
+    .enter()
+    .append("g")
+    .attr("class", "event-tick")
+    .classed("selected", d => isSelected(d, selectedEventIds))
+    .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
 }
 
 export function renderEvents(
@@ -74,6 +91,16 @@ export function renderEvents(
   const eventMapping = getEventMapping(events, xInterval);
   const eventDates = getEventDates(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
+
+  if (axis) {
+    renderEventTicks({
+      axis,
+      eventScale,
+      eventDates,
+      eventGroups,
+      selectedEventIds,
+    });
+  }
 
   if (brush) {
     renderEventLines({
