@@ -7,7 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import _ from "underscore";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   CardHeader,
@@ -20,7 +20,6 @@ import {
 
 export interface TimelineCardProps {
   timeline: Timeline;
-  collection: Collection;
   isDefault?: boolean;
   isVisible?: boolean;
   selectedEventIds?: number[];
@@ -31,7 +30,6 @@ export interface TimelineCardProps {
 
 const TimelineCard = ({
   timeline,
-  collection,
   isDefault,
   isVisible,
   selectedEventIds = [],
@@ -81,7 +79,7 @@ const TimelineCard = ({
             <EventCard
               key={event.id}
               event={event}
-              collection={collection}
+              timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onArchive={onArchiveEvent}

@@ -40,7 +40,6 @@ const TimelinePanel = ({
       {!isEmpty ? (
         <TimelineList
           timelines={timelines}
-          collection={collection}
           visibleTimelineIds={visibleTimelineIds}
           selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
