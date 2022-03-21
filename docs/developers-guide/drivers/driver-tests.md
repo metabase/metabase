@@ -196,7 +196,7 @@ See [Running unit tests](devenv.md#running-unit-tests) and [Testing drivers](dev
 
 ## Running the linter
 
-See [Run the linters](devenv.md#run-the-linters).
+See [Run the linters](devenv.md#running-the-linters).
 
 # Setting up CI
 
