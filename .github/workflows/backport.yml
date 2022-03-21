@@ -129,9 +129,5 @@ jobs:
               repo: context.repo.repo,
               body: `@${author} could not automatically a backport PR 😩 [[Logs]](${runUrl})`
             })
-
-      - uses: vishnudxb/cancel-workflow@v1.2
-        with:
-          repo: alxnddr/metabase
-          workflow_id: ${{ github.run_id }}
-          access_token: ${{ github.token }}
+      - name: cancelling
+        uses: andymckay/cancel-action@0.2
