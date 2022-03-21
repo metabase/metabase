@@ -34,6 +34,11 @@ describe.skip("issue 21135", () => {
     // to narrow the results to the preview area to avoid false positive result.
     cy.get("[class*=PreviewRoot]").within(() => {
       cy.findByText("Rustic Paper Wallet");
+
+      cy.findAllByText("Price").should("have.length", 2);
+
+      cy.findByText("29.46"); // actual Price column
+      cy.findByText("31.46"); // custom column
     });
   });
 });
