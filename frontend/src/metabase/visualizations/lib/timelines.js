@@ -13,7 +13,7 @@ const ICON_DISTANCE = ICON_SIZE;
 const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 1.75;
-const RECT_SIZE = ICON_SIZE;
+const RECT_SIZE = ICON_SIZE * 2;
 
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
