@@ -323,7 +323,7 @@ const DashCardActionButtons = ({
   if (getVisualizationRaw(series).visualization.supportPreviewing) {
     buttons.push(
       <ToggleCardPreviewButton
-        key="ToggleCardPreviewButton"
+        key="toggle_preview"
         isPreviewing={isPreviewing}
         onPreviewToggle={onPreviewToggle}
       />,
@@ -337,7 +337,7 @@ const DashCardActionButtons = ({
     ) {
       buttons.push(
         <ChartSettingsButton
-          key="ChartSettingsButton"
+          key="chart_settings"
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
@@ -345,7 +345,7 @@ const DashCardActionButtons = ({
     }
     if (!isVirtualDashCard) {
       buttons.push(
-        <Tooltip key="Tooltip" tooltip={t`Click behavior`}>
+        <Tooltip key="tooltip" tooltip={t`Click behavior`}>
           <a
             className="text-dark-hover drag-disabled mr1"
             data-metabase-event="Dashboard;Open Click Behavior Sidebar"
@@ -361,7 +361,7 @@ const DashCardActionButtons = ({
     if (getVisualizationRaw(series).visualization.supportsSeries) {
       buttons.push(
         <AddSeriesButton
-          key="AddSeriesButton"
+          key="add_series"
           series={series}
           onAddSeries={onAddSeries}
         />,
