@@ -108,7 +108,6 @@ jobs:
           BACKPORT_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).backportBranch }}
           START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
           END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify_when_failed:
     runs-on: ubuntu-latest
