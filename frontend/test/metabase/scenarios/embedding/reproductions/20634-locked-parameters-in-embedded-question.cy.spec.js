@@ -5,24 +5,24 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "20634",
-      native: {
-        query: "select {{text}}",
-        "template-tags": {
-          text: {
-            id: "abc-123",
-            name: "text",
-            "display-name": "Text",
-            type: "text",
-            default: null,
+    cy.createNativeQuestion(
+      {
+        name: "20634",
+        native: {
+          query: "select {{text}}",
+          "template-tags": {
+            text: {
+              id: "abc-123",
+              name: "text",
+              "display-name": "Text",
+              type: "text",
+              default: null,
+            },
           },
         },
       },
-    }).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}`);
-      cy.findByTestId("loading-spinner").should("not.exist");
-    });
+      { visitQuestion: true },
+    );
   });
 
   it("should let the user lock parameters to specific values", () => {
