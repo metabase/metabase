@@ -86,6 +86,7 @@ function renderEventLines({
 
 function renderEventAxis({
   axis,
+  brush,
   eventScale,
   eventDates,
   eventGroups,
@@ -96,6 +97,7 @@ function renderEventAxis({
   onDeselectTimelineEvents,
 }) {
   const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  const eventLines = brush.selectAll(".event-line").data(eventGroups);
   eventAxis.exit().remove();
 
   eventAxis
@@ -134,15 +136,24 @@ function renderEventAxis({
     .text(d => d.length);
 
   eventTicks
-    .on("mousemove", d => {
+    .on("mousemove", function(d) {
       const eventTick = d3.select(this);
-      const eventIcon = eventTick.select(".event-icon");
+      const eventIcon = eventTicks.filter(data => d === data);
+      const eventLine = eventLines.filter(data => d === data);
+
       onHoverChange({ element: eventIcon.node(), timelineEvents: d });
+      eventTick.classed("hover", true);
+      eventLine.classed("hover", true);
     })
-    .on("mouseleave", () => {
+    .on("mouseleave", function(d) {
+      const eventTick = d3.select(this);
+      const eventLine = eventLines.filter(data => d === data);
+
       onHoverChange(null);
+      eventTick.classed("hover", false);
+      eventLine.classed("hover", false);
     })
-    .on("click", d => {
+    .on("click", function(d) {
       onOpenTimelines();
 
       if (isSelected(d, selectedEventIds)) {
@@ -187,6 +198,7 @@ export function renderEvents(
   if (axis) {
     renderEventAxis({
       axis,
+      brush,
       eventScale,
       eventDates,
       eventGroups,
