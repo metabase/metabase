@@ -205,6 +205,7 @@ describe("NativeQuery", () => {
 
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
             type: "dimension",
             "widget-type": "category",
             dimension: ["field", 123, null],

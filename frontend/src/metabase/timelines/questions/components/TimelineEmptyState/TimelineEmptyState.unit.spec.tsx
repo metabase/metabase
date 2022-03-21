@@ -37,6 +37,6 @@ const getProps = (
   opts?: Partial<TimelineEmptyStateProps>,
 ): TimelineEmptyStateProps => ({
   collection: createMockCollection(),
-  onNewEventWithTimeline: jest.fn(),
+  onNewEvent: jest.fn(),
   ...opts,
 });

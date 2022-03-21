@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ParameterTargetList from "../components/ParameterTargetList";
 import SelectButton from "metabase/core/components/SelectButton";
 

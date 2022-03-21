@@ -34,5 +34,5 @@ export const CardIcon = styled(Icon)`
 `;
 
 export const CardContent = styled.div`
-  margin: 1rem -0.75rem 1rem -0.5rem;
+  margin: 1rem -1.5rem 1rem -1.5rem;
 `;

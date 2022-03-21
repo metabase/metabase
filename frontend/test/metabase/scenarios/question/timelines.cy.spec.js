@@ -19,7 +19,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Date").type("10/20/2018");
       cy.button("Create").click();
 
-      cy.findByText("Our analytics events").click();
+      cy.findByText("Our analytics events");
       cy.findByText("RC1");
     });
 
@@ -37,7 +37,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Date").type("10/30/2018");
       cy.button("Create").click();
 
-      cy.findByText("Releases").click();
+      cy.findByText("Releases");
       cy.findByText("RC1");
       cy.findByText("RC2");
     });
@@ -50,7 +50,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.visit("/question/3");
       cy.findByLabelText("calendar icon").click();
-      cy.findByText("Releases").click();
+      cy.findByText("Releases");
       cy.findByLabelText("ellipsis icon").click();
       cy.findByText("Edit event").click();
 
@@ -71,7 +71,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.visit("/question/3");
       cy.findByLabelText("calendar icon").click();
-      cy.findByText("Releases").click();
+      cy.findByText("Releases");
       cy.findByLabelText("ellipsis icon").click();
       cy.findByText("Archive event").click();
       cy.findByText("RC1").should("not.exist");
@@ -102,7 +102,7 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/question/3");
 
       cy.findByLabelText("calendar icon").click();
-      cy.findByText("Releases").click();
+      cy.findByText("Releases");
       cy.findByText("Add an event").should("not.exist");
       cy.findByLabelText("ellipsis icon").should("not.exist");
     });
