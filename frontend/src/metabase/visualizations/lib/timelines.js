@@ -89,7 +89,7 @@ function renderEventTicks(
     const iconPath = ICON_PATHS[iconName].path
       ? ICON_PATHS[iconName].path
       : ICON_PATHS[iconName];
-    const iconScale = iconName === "mail" ? 0.45 : 0.5;
+    const iconScale = iconName === "mail" ? 0.4 : 0.45;
 
     const eventLine = brush
       .append("line")
