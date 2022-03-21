@@ -245,7 +245,7 @@
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
-  [permissions-set :- #{perms/Path}]
+  [permissions-set]
   (if (contains? permissions-set "/")
     :all
     (set
