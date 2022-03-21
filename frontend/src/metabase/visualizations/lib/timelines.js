@@ -9,18 +9,6 @@ const EVENT_ICON_MARGIN_TOP = 10;
 const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
 const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
 
-function isAxisEvent(event, [xAxisMin, xAxisMax]) {
-  return (
-    event.timestamp.isSame(xAxisMin) ||
-    event.timestamp.isBetween(xAxisMin, xAxisMax) ||
-    event.timestamp.isSame(xAxisMax)
-  );
-}
-
-function getAxisEvents(events, xDomain) {
-  return events.filter(event => isAxisEvent(event, xDomain));
-}
-
 function getEventGroups(events, xInterval) {
   return _.groupBy(events, event =>
     event.timestamp
@@ -178,16 +166,12 @@ export function renderEvents(
   },
 ) {
   const xAxis = getXAxis(chart);
-  if (!xAxis || !isTimeseries) {
+  if (!xAxis || !isTimeseries || !timelineEvents.length) {
     return;
   }
 
-  const events = getAxisEvents(timelineEvents, xDomain);
-  const eventGroups = getEventGroups(events, xInterval);
+  const eventGroups = getEventGroups(timelineEvents, xInterval);
   const eventTicks = getEventTicks(eventGroups);
-  if (!events.length) {
-    return;
-  }
 
   const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
   renderEventTicks(chart, {
@@ -202,9 +186,5 @@ export function renderEvents(
 }
 
 export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
-  if (!isTimeseries) {
-    return false;
-  }
-
-  return timelineEvents.some(event => isAxisEvent(event, xDomain));
+  return isTimeseries && timelineEvents.length > 0;
 }

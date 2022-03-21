@@ -10,12 +10,12 @@ import {
 
 export interface TimelineEmptyStateProps {
   collection: Collection;
-  onNewEventWithTimeline?: () => void;
+  onNewEvent?: () => void;
 }
 
 const TimelineEmptyState = ({
   collection,
-  onNewEventWithTimeline,
+  onNewEvent,
 }: TimelineEmptyStateProps): JSX.Element => {
   const canWrite = collection.can_write;
 
@@ -28,7 +28,7 @@ const TimelineEmptyState = ({
           : t`Events in Metabase let you see helpful context alongside your data.`}
       </EmptyStateText>
       {canWrite && (
-        <EmptyStateButton primary onClick={onNewEventWithTimeline}>
+        <EmptyStateButton primary onClick={onNewEvent}>
           {t`Add an event`}
         </EmptyStateButton>
       )}

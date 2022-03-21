@@ -7,7 +7,6 @@ import React, {
   useEffect,
 } from "react";
 import _ from "underscore";
-import { parseTimestamp } from "metabase/lib/time";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
@@ -96,8 +95,7 @@ const TimelineCard = ({
 
 const getEvents = (events: TimelineEvent[] = []) => {
   return _.chain(events)
-    .filter(e => !e.archived)
-    .sortBy(e => parseTimestamp(e.timestamp))
+    .sortBy(e => e.timestamp)
     .reverse()
     .value();
 };
