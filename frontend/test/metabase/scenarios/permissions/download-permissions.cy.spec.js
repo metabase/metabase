@@ -81,18 +81,6 @@ describeEE("scenarios > admin > permissions", () => {
       ["nosql", "Unrestricted", "No", "No"],
       ["readonly", "No self-service", "No", "No"],
     ]);
-
-    // Shows granular download permission on the database level
-    cy.visit("/admin/permissions/data/database/1");
-
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Granular", "No", "Granular"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
   });
 
   it.skip("sets the download permission to `No` when the data access permission is revoked", () => {
