@@ -306,17 +306,7 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
-(defmulti format-name
-  "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
-  upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.
-  Defaults to an identity implementation."
-  {:arglists '([driver table-or-field-name])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
-
 
 (defmulti has-questionable-timezone-support?
   "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
