@@ -676,12 +676,11 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
-                                   {:where [:and
-                                            [:or
-                                             [:= :object (hx/literal "/")]
-                                             [:like :object (hx/literal "/db/%")]
-                                             [:like :object (hx/literal "/download/%")]
-                                             [:like :object (hx/literal "/block/db/%")]]]})
+                                   {:where [:or
+                                            [:= :object (hx/literal "/")]
+                                            [:like :object (hx/literal "/db/%")]
+                                            [:like :object (hx/literal "/download/%")]
+                                            [:like :object (hx/literal "/block/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
                          (fn [m {:keys [group-id path]}]

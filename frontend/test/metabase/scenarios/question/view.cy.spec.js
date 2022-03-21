@@ -2,9 +2,6 @@ import {
   restore,
   openOrdersTable,
   popover,
-  getAddDimensionButton,
-  summarize,
-  sidebar,
   filter,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -15,51 +12,6 @@ describe("scenarios > question > view", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  describe("summarize sidebar", () => {
-    it("should summarize by category and show a bar chart", () => {
-      openOrdersTable();
-
-      summarize();
-      cy.contains("Category").click();
-      cy.contains("Done").click();
-      cy.contains("Count by Product → Category");
-    });
-
-    it("should show orders by year and product category", () => {
-      openOrdersTable();
-
-      summarize();
-
-      sidebar()
-        .contains("Created At")
-        .click();
-      cy.findByText("Done").click();
-
-      cy.contains("Count by Created At: Month");
-
-      // Go back into sidebar
-      summarize();
-
-      sidebar()
-        .contains("by month")
-        .click();
-      cy.get(".PopoverBody")
-        .contains("Year")
-        .click();
-
-      cy.contains("Count by Created At: Year");
-
-      getAddDimensionButton({ name: "Category" }).click();
-
-      cy.contains("Done").click();
-
-      // check for title, legend, and x axis labels
-      cy.contains("Count by Created At: Year and Product → Category");
-      ["2016", "2017", "2018", "2019", "2020"].forEach(l => cy.contains(l));
-      ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(l => cy.contains(l));
-    });
   });
 
   describe("filter sidebar", () => {

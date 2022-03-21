@@ -25,8 +25,6 @@ describe("TimelineList", () => {
 const getProps = (opts?: Partial<TimelineListProps>): TimelineListProps => ({
   timelines: [],
   collection: createMockCollection(),
-  visibility: {},
-  isVisibleByDefault: false,
   onToggleTimeline: jest.fn(),
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),

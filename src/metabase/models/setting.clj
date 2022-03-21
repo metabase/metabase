@@ -863,7 +863,13 @@
   ###### `:deprecated`
 
   If this setting is deprecated, this should contain a string of the Metabase version in which the setting was
-  deprecated. A deprecation notice will be logged whenever the setting is written. (Default: `nil`)."
+  deprecated. A deprecation notice will be logged whenever the setting is written. (Default: `nil`).
+
+  ###### `:on-change`
+
+  Do you want to update something else when this setting changes? Takes a function which takes 2 arguments, `old`, and
+  `new` and calls it with the old and new settings values. By default, the :on-change will be missing, and nothing
+  will happen, in [[call-on-change]] below."
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}

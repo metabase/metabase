@@ -165,7 +165,7 @@ describe("scenarios > embedding > smoke tests", () => {
     });
   });
 
-  it.skip("should not offer to share or embed models (metabase#20815)", () => {
+  it("should not offer to share or embed models (metabase#20815)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.request("PUT", "/api/card/1", { dataset: true });

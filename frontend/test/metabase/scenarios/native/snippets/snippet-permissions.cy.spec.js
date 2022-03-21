@@ -154,7 +154,7 @@ describeEE("scenarios > question > snippets", () => {
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    cy.queryByText("snippet 1").should("not.exist");
+    cy.findByText("snippet 1").should("not.exist");
     cy.findByText("my favorite snippets").click();
     cy.findByText("snippet 1");
   });
