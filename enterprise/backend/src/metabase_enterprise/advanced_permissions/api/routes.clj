@@ -1,14 +1,14 @@
 (ns metabase-enterprise.advanced-permissions.api.routes
   "`/advanced-permisisons/sso` Routes.
 
-  Implements the SSO routes needed for SAML and JWT. This namespace primarily provides hooks for those two backends so
-  we can have a uniform interface both via the API and code"
+  Implements the Permissions routes needed for general permission - a class of permissions that control access to features
+  like access Setting pages, access monitoring tools ... etc"
   (:require [compojure.core :refer [GET POST]]
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
             [metabase.api.common :as api]))
 
 (api/defendpoint GET "/general/graph"
-  "SSO entry-point for an SSO user that has not logged in yet"
+  "Fetch a graph of General Permissions"
   [:as _req]
   (g-perms/graph))
 
@@ -30,7 +30,7 @@
   (update graph :groups dejsonify-groups))
 
 (api/defendpoint PUT "/general/graph"
-  "Route the SSO backends call with successful login details"
+  "Do a batch update of General Permissions by passing a modified graph."
   [:as {:keys [body]}]
   (-> body
       dejsonify-graph
