@@ -13,32 +13,25 @@ describe("TimelineCard", () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
-        events: [
-          createMockTimelineEvent({ name: "RC1" }),
-          createMockTimelineEvent({ name: "RC2" }),
-          createMockTimelineEvent({ name: "RC3", archived: true }),
-        ],
+        events: [createMockTimelineEvent({ name: "RC" })],
       }),
     });
 
     render(<TimelineCard {...props} />);
-    expect(screen.queryByText("RC1")).not.toBeInTheDocument();
-    expect(screen.queryByText("RC3")).not.toBeInTheDocument();
+    expect(screen.queryByText("RC")).not.toBeInTheDocument();
 
     userEvent.click(screen.getByText("Releases"));
-    expect(screen.getByText("RC1")).toBeInTheDocument();
-    expect(screen.queryByText("RC3")).not.toBeInTheDocument();
+    expect(screen.getByText("RC")).toBeInTheDocument();
 
     userEvent.click(screen.getByText("Releases"));
-    expect(screen.queryByText("RC1")).not.toBeInTheDocument();
-    expect(screen.queryByText("RC3")).not.toBeInTheDocument();
+    expect(screen.queryByText("RC")).not.toBeInTheDocument();
   });
 
   it("should toggle visibility of the card", () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
-        events: [createMockTimelineEvent({ name: "RC1" })],
+        events: [createMockTimelineEvent({ name: "RC" })],
       }),
     });
 

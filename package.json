@@ -116,8 +116,8 @@
     "@cypress/skip-test": "^2.6.1",
     "@cypress/webpack-preprocessor": "^5.11.1",
     "@emotion/babel-plugin": "^11.7.2",
-    "@percy/cli": "^1.0.0-beta.48",
-    "@percy/cypress": "^3.0.0",
+    "@percy/cli": "^1.0.0-beta.76",
+    "@percy/cypress": "^3.1.1",
     "@storybook/addon-actions": "^6.3.12",
     "@storybook/addon-essentials": "^6.3.12",
     "@storybook/addon-links": "^6.3.12",
@@ -250,7 +250,8 @@
     "set-value": "4.0.1",
     "immer": "9.0.6",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "prismjs": "1.27.0"
+    "prismjs": "1.27.0",
+    "nanoid": "3.1.31"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",

@@ -12,7 +12,6 @@ export interface TimelinePanelProps {
   visibleTimelineIds?: number[];
   selectedEventIds?: number[];
   onNewEvent?: () => void;
-  onNewEventWithTimeline?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -24,7 +23,6 @@ const TimelinePanel = ({
   visibleTimelineIds,
   selectedEventIds,
   onNewEvent,
-  onNewEventWithTimeline,
   onEditEvent,
   onArchiveEvent,
   onToggleTimeline,
@@ -50,10 +48,7 @@ const TimelinePanel = ({
           onArchiveEvent={onArchiveEvent}
         />
       ) : (
-        <TimelineEmptyState
-          collection={collection}
-          onNewEventWithTimeline={onNewEventWithTimeline}
-        />
+        <TimelineEmptyState collection={collection} onNewEvent={onNewEvent} />
       )}
     </PanelRoot>
   );
