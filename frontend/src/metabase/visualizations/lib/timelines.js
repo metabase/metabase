@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
@@ -10,13 +11,10 @@ function getBrush(chart) {
   return chart.svg().select(".brush");
 }
 
-function getEventScale(axis, xDomain, xInterval) {
-  const axisNode = axis.select(".domain").node();
-  const axisBounds = axisNode.getBoundingClientRect();
-
+function getEventScale(chart, xDomain, xInterval) {
   return timeseriesScale(xInterval)
     .domain(stretchTimeseriesDomain(xDomain, xInterval))
-    .range([0, axisBounds.width]);
+    .range([0, chart.effectiveWidth()]);
 }
 
 function getEventMapping(events, xInterval) {
@@ -38,6 +36,15 @@ function getEventGroups(eventMapping) {
 
 function isSelected(events, selectedEventIds) {
   return events.some(event => selectedEventIds.includes(event.id));
+}
+
+function getIcon(events) {
+  return events.length === 1 ? events[0].icon : "star";
+}
+
+function getIconPath(events) {
+  const icon = getIcon(events);
+  return ICON_PATHS[icon].path ? ICON_PATHS[icon].path : ICON_PATHS[icon];
 }
 
 function renderEventLines({
@@ -78,6 +85,12 @@ function renderEventTicks({
     .attr("class", "event-tick")
     .classed("selected", d => isSelected(d, selectedEventIds))
     .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
+
+  eventTicks
+    .append("path")
+    .attr("class", "event-icon")
+    .attr("d", d => getIconPath(d))
+    .attr("transform", "scale(0.5) translate(-16, 10)");
 }
 
 export function renderEvents(
@@ -87,7 +100,7 @@ export function renderEvents(
   const axis = getXAxis(chart);
   const brush = getBrush(chart);
 
-  const eventScale = getEventScale(axis, xDomain, xInterval);
+  const eventScale = getEventScale(chart, xDomain, xInterval);
   const eventMapping = getEventMapping(events, xInterval);
   const eventDates = getEventDates(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
