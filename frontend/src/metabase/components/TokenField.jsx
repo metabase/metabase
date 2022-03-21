@@ -534,7 +534,7 @@ export default class TokenField extends Component {
             // set size to be small enough that it fits in a parameter.
             size={10}
             placeholder={placeholder}
-            value={inputValue}
+            defaultValue={inputValue}
             onKeyDown={this.onInputKeyDown}
             onChange={this.onInputChange}
             onFocus={this.onInputFocus}
