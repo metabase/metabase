@@ -68,35 +68,39 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          git config --global user.email "metabase-github-automation@metabase.com"
-          git config --global user.name "$GITHUB_ACTOR"
+          {
+             git config --global user.email "metabase-github-automation@metabase.com"
+             git config --global user.name "$GITHUB_ACTOR"
 
-          git fetch --all
+             git fetch --all
 
-          git checkout "${BACKPORT_BRANCH}"
-          git reset --hard origin/${TARGET_BRANCH}
+             git checkout "${BACKPORT_BRANCH}"
+             git reset --hard origin/${TARGET_BRANCH}
 
-          if [[ -z $(git ls-remote --heads origin ${ORIGINAL_HEAD_REF}) ]]; then
-            echo "PR has been merged, searching for a squashed commit in the base branch"
-            echo "searching for a commit in a ${ORIGINAL_BASE_REF} that contains pull request number ${ORIGINAL_PULL_REQUEST_NUMBER}"
-            SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="(#${ORIGINAL_PULL_REQUEST_NUMBER})" --format="%H")
-            echo "found commit ${SQUASHED_COMMIT}"
-            git cherry-pick ${SQUASHED_COMMIT}
-          else
-            echo "PR has not been merged, copying all commits"
-            git cherry-pick ${ORIGINAL_BASE_SHA}..${ORIGINAL_HEAD_SHA}
-          fi
+             if [[ -z $(git ls-remote --heads origin ${ORIGINAL_HEAD_REF}) ]]; then
+               echo "PR has been merged, searching for a squashed commit in the base branch"
+               echo "searching for a commit in a ${ORIGINAL_BASE_REF} that contains pull request number ${ORIGINAL_PULL_REQUEST_NUMBER}"
+               SQUASHED_COMMIT=$(env -i git log ${ORIGINAL_BASE_REF} --grep="(#${ORIGINAL_PULL_REQUEST_NUMBER})" --format="%H")
+               echo "found commit ${SQUASHED_COMMIT}"
+               git cherry-pick ${SQUASHED_COMMIT}
+             else
+               echo "PR has not been merged, copying all commits"
+               git cherry-pick ${ORIGINAL_BASE_SHA}..${ORIGINAL_HEAD_SHA}
+             fi
 
-          git push origin "${BACKPORT_BRANCH}" --force-with-lease
+             git push origin "${BACKPORT_BRANCH}" --force-with-lease
 
-          if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
-              echo "PR already exists"
-          else
-              hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+             if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
+                 echo "PR already exists"
+             else
+                 hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
-              #${ORIGINAL_PULL_REQUEST_NUMBER}"
-              echo "New PR has been created"
-          fi
+                 #${ORIGINAL_PULL_REQUEST_NUMBER}"
+                 echo "New PR has been created"
+             fi
+           } || {
+             core.notice('Backport Failed for some reason. Please, check it.')
+           }
         env:
           ORIGINAL_TITLE: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.title }}
           ORIGINAL_BASE_REF: ${{ fromJson(steps.branch_info.outputs.result).originalPullRequest.base.ref }}
@@ -122,8 +126,6 @@ jobs:
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
             const author = context.payload.comment.user.login;
-
-            core.notice('Backport Failed for some reason. Please, check it.')
 
             github.issues.createComment({
               issue_number: context.payload.issue.number,

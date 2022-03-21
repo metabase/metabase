@@ -102,6 +102,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
+          {
           git config --global user.email "metabase-github-automation@metabase.com"
           git config --global user.name "$GITHUB_ACTOR"
 
@@ -115,6 +116,9 @@ jobs:
           hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
           #${ORIGINAL_PULL_REQUEST_NUMBER}"
+          } || {
+            core.notice('Backport Failed for some reason. Please, check it.')
+          }
 
   notify_when_failed:
     runs-on: ubuntu-latest
@@ -127,9 +131,6 @@ jobs:
           script: |
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
-
-            core.notice('Backport Failed for some reason. Please, check it.')
-
             github.issues.createComment({
               issue_number: ${{ needs.pr_info.outputs.number }},
               owner: context.repo.owner,
