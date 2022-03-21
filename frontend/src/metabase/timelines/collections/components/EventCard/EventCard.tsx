@@ -77,7 +77,7 @@ const getMenuItems = (
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!collection.can_write) {
+  if (!timeline.can_write) {
     return [];
   } else if (!event.archived) {
     return [
