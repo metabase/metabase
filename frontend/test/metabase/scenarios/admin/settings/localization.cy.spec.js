@@ -159,6 +159,7 @@ describe("scenarios > admin > localization", () => {
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
+    cy.intercept("POST", "/api/card/1/query").as("cardQuery");
 
     cy.visit("/admin/settings/localization");
 
@@ -172,7 +173,7 @@ describe("scenarios > admin > localization", () => {
     cy.wait("@updateFormatting");
 
     cy.visit("/question/1");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.wait("@cardQuery");
 
     // create a date filter and set it to the 'On' view to see a specific date
     cy.findByText("Created At").click();
