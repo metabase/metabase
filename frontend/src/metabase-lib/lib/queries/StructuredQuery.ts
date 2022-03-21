@@ -314,7 +314,7 @@ export default class StructuredQuery extends AtomicQuery {
               // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
               id: [
                 "field",
-                column.name,
+                column.id || column.name,
                 {
                   "base-type": column.base_type,
                 },
