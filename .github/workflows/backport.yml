@@ -119,10 +119,11 @@ jobs:
       - uses: actions/github-script@v4
         with:
           script: |
-            const core = require('@actions/core');
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
             const author = context.payload.comment.user.login;
+
+            core.notice('Backport Failed for some reason. Please, check it.')
 
             github.issues.createComment({
               issue_number: context.payload.issue.number,
@@ -130,4 +131,3 @@ jobs:
               repo: context.repo.repo,
               body: `@${author} could not automatically a backport PR 😩 [[Logs]](${runUrl})`
             })
-            core.notice('Backport Failed for some reason. Please, check it.')

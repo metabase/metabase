@@ -128,6 +128,8 @@ jobs:
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
 
+            core.notice('Backport Failed for some reason. Please, check it.')
+
             github.issues.createComment({
               issue_number: ${{ needs.pr_info.outputs.number }},
               owner: context.repo.owner,
