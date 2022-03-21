@@ -134,3 +134,4 @@ jobs:
               repo: context.repo.repo,
               body: `@${{ needs.pr_info.outputs.author }} could not automatically create a backport PR 😩 [[Logs]](${runUrl})`
             })
+            core.notice('Backport Failed for some reason. Please, check it.')
