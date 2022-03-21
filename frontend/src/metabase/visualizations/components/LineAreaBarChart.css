@@ -251,6 +251,7 @@ text.value-label-white {
 
 .dc-chart .events-axis .event-tick {
   cursor: pointer;
+  pointer-events: all;
 }
 
 .dc-chart .events-axis .event-tick .event-icon {
