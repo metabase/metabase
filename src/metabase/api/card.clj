@@ -763,13 +763,13 @@
   {card-id su/IntGreaterThanZero}
   (api/check-403 api/*is-superuser?*)
   ;; if we change from superuser make sure to start on read/write checks
-  (api/let-404 [card (Card card-id)]
+  (api/let-404 [{:keys [dataset dataset_query result_metadata] :as card} (Card card-id)]
     (let [database (Database (:database_id card))]
       (when-not (driver/database-supports? (:engine database) :persisted-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (:dataset card)
+      (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when (pos? (db/count PersistedInfo :db_id (:database_id card) :card_id card-id))
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
@@ -777,8 +777,9 @@
             persisted-info (db/insert! PersistedInfo {:db_id         (:id database)
                                                       :card_id       card-id
                                                       :question_slug slug
-                                                      :query_hash    (persisted-info/query-hash (:dataset_query card))
+                                                      :query_hash    (persisted-info/query-hash dataset_query)
                                                       :table_name    (format "model_%s_%s" card-id slug)
+                                                      :columns       (mapv :name result_metadata)
                                                       :active        false
                                                       :state         "creating"})]
         (ddl.concurrent/submit-task

@@ -101,15 +101,15 @@
   [card-id :- su/IntGreaterThanZero]
   (let [card
         (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
-                                     :persisted.active :persisted.table_name :persisted.query_hash]
+                                        :persisted.active :persisted.table_name :persisted.query_hash :persisted.columns]
                             :from      [[Card :card]]
                             :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
                             :where     [:= :card.id 4075]})
                  (db/do-post-select Card)
+                 (db/do-post-select PersistedInfo)
                  first)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
-
         {{mbql-query                   :query
           database-id                  :database
           {template-tags :template-tags
@@ -120,10 +120,11 @@
 
         source-query
         (or (when (and (:active card)
+                       ;; todo: handle the toggle in details being off here
                        (:query_hash card)
                        (= (:query_hash card) (persisted-info/query-hash (:dataset_query card))))
-              ;; todo: select columns from the metadata
-              {:native (format "select * from %s.%s"
+              {:native (format "select %s from %s.%s"
+                               (str/join ", " (:columns card))
                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
                                (:table_name card))})
             mbql-query

@@ -2,6 +2,7 @@
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
             [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [toucan.models :as models]))
 
 (defn slug-name
@@ -17,3 +18,8 @@
   (String. (codecs/bytes->b64 (qputil/query-hash query))))
 
 (models/defmodel PersistedInfo :persisted_info)
+
+(u/strict-extend (class PersistedInfo)
+  models/IModel
+  (merge models/IModelDefaults
+         {:types (constantly {:columns :json})}))
