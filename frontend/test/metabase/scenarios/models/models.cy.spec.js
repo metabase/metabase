@@ -171,7 +171,8 @@ describe("scenarios > models", () => {
 
   it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
-    visitQuestion(1);
+    // Important - do not use visitQuestion(1) here!
+    cy.visit("/question/1");
     cy.wait("@dataset");
     openDetailsSidebar();
     assertIsModel();
@@ -291,7 +292,7 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question by filtering and summarizing a model", () => {
-      visitQuestion(1);
+      cy.visit("/model/1");
       cy.wait("@dataset");
 
       filter();
@@ -331,7 +332,7 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question using table click actions", () => {
-      visitQuestion(1);
+      cy.visit("/model/1");
       cy.wait("@dataset");
 
       cy.findByText("Subtotal").click();
@@ -358,7 +359,7 @@ describe("scenarios > models", () => {
 
     it("can edit model info", () => {
       cy.intercept("PUT", "/api/card/1").as("updateCard");
-      visitQuestion(1);
+      cy.visit("/model/1");
       cy.wait("@dataset");
 
       openDetailsSidebar();

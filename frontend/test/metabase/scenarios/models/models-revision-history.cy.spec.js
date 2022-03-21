@@ -26,7 +26,7 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state", () => {
-    visitQuestion(3);
+    cy.visit("/model/3");
     openDetailsSidebar();
     assertIsModel();
 
