@@ -92,6 +92,7 @@ function hasEventText(events, eventIndex, eventScale, eventDates) {
 }
 
 function renderEventLines({
+  chart,
   brush,
   eventScale,
   eventDates,
@@ -99,7 +100,7 @@ function renderEventLines({
   selectedEventIds,
 }) {
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
-  const brushHeight = brush.select(".background").attr("height");
+  const brushHeight = chart.effectiveWidth();
   eventLines.exit().remove();
 
   eventLines
@@ -220,6 +221,7 @@ export function renderEvents(
 
   if (brush) {
     renderEventLines({
+      chart,
       brush,
       eventScale,
       eventDates,
