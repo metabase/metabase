@@ -104,7 +104,7 @@
                                         :persisted.active :persisted.table_name :persisted.query_hash :persisted.columns]
                             :from      [[Card :card]]
                             :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
-                            :where     [:= :card.id 4075]})
+                            :where     [:= :card.id card-id]})
                  (db/do-post-select Card)
                  (db/do-post-select PersistedInfo)
                  first)
