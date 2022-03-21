@@ -451,17 +451,7 @@
   [perm-type perm-value db-id]
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
 
-(s/defn general-perms-path :- Path
-  [perm-type]
-  (case perm-type
-    :setting
-    "/general/setting/"
 
-    :monitoring
-    "/general/monitoring/"
-
-    :subscription
-    "/subscription/"))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
