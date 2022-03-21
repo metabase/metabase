@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.ddl.postgres]
+            [metabase.driver.ddl.postgres :as ddl.postgres]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -31,6 +31,9 @@
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
+
+(comment
+  ddl.postgres/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
