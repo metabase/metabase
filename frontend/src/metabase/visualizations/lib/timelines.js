@@ -1,3 +1,4 @@
+import d3 from "d3";
 import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
@@ -76,7 +77,7 @@ function renderEventLines({
     .enter()
     .append("line")
     .attr("class", "event-line")
-    .classed("selected", d => isSelected(d, selectedEventIds))
+    .classed("hover", d => isSelected(d, selectedEventIds))
     .attr("x1", (d, i) => eventScale(eventDates[i]))
     .attr("x2", (d, i) => eventScale(eventDates[i]))
     .attr("y1", "0")
@@ -89,6 +90,10 @@ function renderEventAxis({
   eventDates,
   eventGroups,
   selectedEventIds,
+  onHoverChange,
+  onOpenTimelines,
+  onSelectTimelineEvents,
+  onDeselectTimelineEvents,
 }) {
   const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
   eventAxis.exit().remove();
@@ -127,11 +132,39 @@ function renderEventAxis({
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
     .text(d => d.length);
+
+  eventTicks
+    .on("mousemove", d => {
+      const eventTick = d3.select(this);
+      const eventIcon = eventTick.select(".event-icon");
+      onHoverChange({ element: eventIcon.node(), timelineEvents: d });
+    })
+    .on("mouseleave", () => {
+      onHoverChange(null);
+    })
+    .on("click", d => {
+      onOpenTimelines();
+
+      if (isSelected(d, selectedEventIds)) {
+        onDeselectTimelineEvents(d);
+      } else {
+        onSelectTimelineEvents(d);
+      }
+    });
 }
 
 export function renderEvents(
   chart,
-  { events = [], selectedEventIds, xDomain, xInterval },
+  {
+    events = [],
+    selectedEventIds = [],
+    xDomain,
+    xInterval,
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  },
 ) {
   const axis = getXAxis(chart);
   const brush = getBrush(chart);
@@ -141,16 +174,6 @@ export function renderEvents(
   const eventDates = getEventDates(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 
-  if (axis) {
-    renderEventAxis({
-      axis,
-      eventScale,
-      eventDates,
-      eventGroups,
-      selectedEventIds,
-    });
-  }
-
   if (brush) {
     renderEventLines({
       brush,
@@ -158,6 +181,20 @@ export function renderEvents(
       eventDates,
       eventGroups,
       selectedEventIds,
+    });
+  }
+
+  if (axis) {
+    renderEventAxis({
+      axis,
+      eventScale,
+      eventDates,
+      eventGroups,
+      selectedEventIds,
+      onHoverChange,
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
     });
   }
 }
