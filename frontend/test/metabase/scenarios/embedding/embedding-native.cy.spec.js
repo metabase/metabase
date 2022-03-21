@@ -5,7 +5,7 @@ const { ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
 const query = `
 SELECT orders.id, orders.product_id, orders.created_at AS production_date, orders.total, people.state, people.name, people.source
-FROM orders LEFT JOIN people ON orders.USER_ID = PEOPLE.id
+FROM orders LEFT JOIN people ON orders.user_id = people.id
 WHERE true
   [[AND {{id}}]]
   [[AND orders.product_id = {{productId}}]]
