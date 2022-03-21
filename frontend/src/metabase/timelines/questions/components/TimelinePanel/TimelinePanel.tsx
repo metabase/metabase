@@ -47,7 +47,11 @@ const TimelinePanel = ({
           onArchiveEvent={onArchiveEvent}
         />
       ) : (
-        <TimelineEmptyState collection={collection} onNewEvent={onNewEvent} />
+        <TimelineEmptyState
+          timelines={timelines}
+          collection={collection}
+          onNewEvent={onNewEvent}
+        />
       )}
     </PanelRoot>
   );
