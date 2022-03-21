@@ -4,7 +4,7 @@
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as i]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
