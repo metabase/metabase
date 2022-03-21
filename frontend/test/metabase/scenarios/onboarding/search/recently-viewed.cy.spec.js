@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/cypress";
 
 describe(`search > recently viewed`, () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe(`search > recently viewed`, () => {
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     // "Orders in a dashboard" dashboard
     cy.visit("/dashboard/1");

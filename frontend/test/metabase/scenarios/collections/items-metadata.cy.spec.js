@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 describe("scenarios > collection items metadata", () => {
@@ -18,7 +18,7 @@ describe("scenarios > collection items metadata", () => {
     });
 
     it("should display last edit moment for questions", () => {
-      cy.visit("/question/1");
+      visitQuestion(1);
       changeQuestion();
       cy.findByText(/Edited a few seconds ago/i);
     });
@@ -29,7 +29,7 @@ describe("scenarios > collection items metadata", () => {
       cy.signInAsAdmin();
       cy.visit("/dashboard/1");
       cy.findByText(/Edited .* by you/i);
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.findByText(/Edited .* by you/i);
     });
 
@@ -41,7 +41,7 @@ describe("scenarios > collection items metadata", () => {
       cy.signIn("normal");
       cy.visit("/dashboard/1");
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });
 

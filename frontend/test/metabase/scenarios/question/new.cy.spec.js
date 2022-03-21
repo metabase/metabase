@@ -353,7 +353,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show a table info popover when hovering over the table name in the header", () => {
-      cy.visit("/question/1");
+      visitQuestion(1);
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
