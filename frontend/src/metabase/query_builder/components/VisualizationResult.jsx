@@ -41,6 +41,7 @@ export default class VisualizationResult extends Component {
       result,
       rawSeries,
       timelineEvents,
+      selectedTimelineEventIds,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -102,8 +103,11 @@ export default class VisualizationResult extends Component {
           showTitle={false}
           metadata={question.metadata()}
           timelineEvents={timelineEvents}
+          selectedTimelineEventIds={selectedTimelineEventIds}
           handleVisualizationClick={this.props.handleVisualizationClick}
           onOpenTimelines={this.props.onOpenTimelines}
+          onSelectTimelineEvents={this.props.selectTimelineEvents}
+          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={

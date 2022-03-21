@@ -364,7 +364,9 @@ describe("scenarios > question > filter", () => {
 
     enterCustomColumnDetails({ formula: "[" });
 
-    popover().findByText("Body");
+    popover()
+      .last()
+      .findByText("Body");
 
     cy.get("@formula").type("p");
 
@@ -526,20 +528,20 @@ describe("scenarios > question > filter", () => {
     // Via the GUI, create a filter with "include-current" option
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.get("input[type='text']").type("{selectall}{del}5");
     cy.contains("Include today").click();
-    cy.findByText("Add filter").click();
+    cy.button("Add filter").click();
 
     // Switch to custom expression
-    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByText("Created At Previous 30 Days").click();
+
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    cy.findByText("Done").click();
+    cy.button("Done").click();
 
     // Back to GUI and "Include today" should be still checked
-    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByText("Created At Previous 30 Days").click();
     cy.findByLabelText("Include today").should("be.checked");
   });
 

@@ -390,14 +390,28 @@ function onRenderSetZeroGridLineClassName(chart) {
 
 function onRenderAddTimelineEvents(
   chart,
-  { timelineEvents, xDomain, xInterval, isTimeseries, onOpenTimelines },
-) {
-  renderEvents(chart, {
+  {
     timelineEvents,
+    selectedTimelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
+    onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  },
+) {
+  renderEvents(chart, {
+    timelineEvents,
+    selectedTimelineEventIds,
+    xDomain,
+    xInterval,
+    isTimeseries,
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   });
 }
 
@@ -407,6 +421,7 @@ function onRender(
   {
     datas,
     timelineEvents,
+    selectedTimelineEventIds,
     isSplitAxis,
     xDomain,
     xInterval,
@@ -415,7 +430,10 @@ function onRender(
     isTimeseries,
     formatYValue,
     onGoalHover,
+    onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   },
 ) {
   onRenderRemoveClipPath(chart);
@@ -438,10 +456,14 @@ function onRender(
   onRenderSetZeroGridLineClassName(chart);
   onRenderAddTimelineEvents(chart, {
     timelineEvents,
+    selectedTimelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,
+    onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   });
 }
 

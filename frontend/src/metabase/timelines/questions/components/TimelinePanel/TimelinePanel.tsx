@@ -9,10 +9,9 @@ import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
-  visibility?: Record<number, boolean>;
-  isVisibleByDefault?: boolean;
+  visibleTimelineIds?: number[];
+  selectedEventIds?: number[];
   onNewEvent?: () => void;
-  onNewEventWithTimeline?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -21,10 +20,9 @@ export interface TimelinePanelProps {
 const TimelinePanel = ({
   timelines,
   collection,
-  visibility,
-  isVisibleByDefault,
+  visibleTimelineIds,
+  selectedEventIds,
   onNewEvent,
-  onNewEventWithTimeline,
   onEditEvent,
   onArchiveEvent,
   onToggleTimeline,
@@ -43,17 +41,14 @@ const TimelinePanel = ({
         <TimelineList
           timelines={timelines}
           collection={collection}
-          visibility={visibility}
-          isVisibleByDefault={isVisibleByDefault}
+          visibleTimelineIds={visibleTimelineIds}
+          selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
           onArchiveEvent={onArchiveEvent}
         />
       ) : (
-        <TimelineEmptyState
-          collection={collection}
-          onNewEventWithTimeline={onNewEventWithTimeline}
-        />
+        <TimelineEmptyState collection={collection} onNewEvent={onNewEvent} />
       )}
     </PanelRoot>
   );

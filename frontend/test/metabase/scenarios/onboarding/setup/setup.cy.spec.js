@@ -65,10 +65,10 @@ describe("scenarios > setup", () => {
 
       // now try a strong password that doesn't match
       const strongPassword = "QJbHYJN3tPW[";
-      cy.findByLabelText("Create a password")
+      cy.findByLabelText(/^Create a password/)
         .clear()
         .type(strongPassword);
-      cy.findByLabelText("Confirm your password")
+      cy.findByLabelText(/^Confirm your password/)
         .clear()
         .type(strongPassword + "foobar")
         .blur();
@@ -80,7 +80,7 @@ describe("scenarios > setup", () => {
       cy.findByText("passwords do not match", { exact: false });
 
       // fix that mismatch
-      cy.findByLabelText("Confirm your password")
+      cy.findByLabelText(/^Confirm your password/)
         .clear()
         .type(strongPassword);
 

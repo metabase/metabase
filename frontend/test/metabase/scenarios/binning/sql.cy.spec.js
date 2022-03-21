@@ -38,6 +38,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
       cy.wait("@dataset");
+      cy.findByTextEnsureVisible("LONGITUDE");
       summarize();
     });
 
@@ -166,6 +167,8 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("LONGITUDE");
     });
 
     it("should work for time series", () => {

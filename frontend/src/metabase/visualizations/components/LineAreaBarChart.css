@@ -168,7 +168,8 @@
 .LineAreaBarChart .dc-chart .line,
 .LineAreaBarChart .dc-chart .dot,
 .LineAreaBarChart .dc-chart .row,
-.LineAreaBarChart .dc-chart .bubble {
+.LineAreaBarChart .dc-chart .bubble,
+.LineAreaBarChart .dc-chart .event-line {
   transition: opacity 0.15s linear;
 }
 

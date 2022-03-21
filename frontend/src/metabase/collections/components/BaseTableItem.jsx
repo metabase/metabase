@@ -19,6 +19,9 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  bookmarks: PropTypes.arrayOf(PropTypes.object),
+  createBookmark: PropTypes.func,
+  deleteBookmark: PropTypes.func,
   item: PropTypes.object,
   draggable: PropTypes.bool,
   collection: PropTypes.object,
@@ -34,6 +37,9 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
   item,
   draggable = true,
   collection = {},
@@ -46,6 +52,7 @@ export function BaseTableItem({
   onMove,
   onDrop,
   onToggleSelected,
+  ...props
 }) {
   const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
 
@@ -120,6 +127,9 @@ export function BaseTableItem({
         </ItemCell>
         <ItemCell>
           <ActionMenu
+            createBookmark={createBookmark}
+            deleteBookmark={deleteBookmark}
+            bookmarks={bookmarks}
             item={item}
             collection={collection}
             onCopy={onCopy}
@@ -129,6 +139,9 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    bookmarks,
+    createBookmark,
+    deleteBookmark,
     onToggleSelected,
     item,
     isPinned,

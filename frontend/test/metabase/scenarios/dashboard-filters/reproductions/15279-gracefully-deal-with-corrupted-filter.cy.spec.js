@@ -36,6 +36,7 @@ describe("issue 15279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
   });
 
   it("a corrupted parameter filter should still appear in the UI (metabase #15279)", () => {
@@ -82,6 +83,9 @@ describe("issue 15279", () => {
     filterWidget()
       .contains("List")
       .click();
+
+    cy.wait("@values");
+    cy.findByTextEnsureVisible("Add filter");
 
     cy.findByPlaceholderText("Enter some text")
       .type("Organic")

@@ -116,11 +116,13 @@
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command driver-methods
-  "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
-  driver."
-  []
-  (classloader/require 'metabase.cmd.driver-methods)
-  ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
+  "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
+  ([]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) false))
+  ([docs]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
 (defn- cmd-args->map
   [args]
