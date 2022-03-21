@@ -11,10 +11,11 @@ jobs:
     if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v4
+      - uses: actions/github-script@v6
         id: branch_info
         with:
           script: |
+
             // Example: @metabase-bot backport release-x.40.x
             const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
             console.log(`Target branch is ${targetBranch}`);
@@ -63,6 +64,8 @@ jobs:
               startSha: commits[0].sha,
               endSha: commits[commits.length - 1].sha
             }
+            
+            core.notice('Backport Failed for some reason. Please, check it.')
       - uses: actions/checkout@v2
         name: Cherry-pick commits and create PR
         with:
@@ -120,7 +123,7 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/github-script@v4
+      - uses: actions/github-script@v6
         with:
           script: |
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
