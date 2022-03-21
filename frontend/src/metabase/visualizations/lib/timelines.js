@@ -7,6 +7,8 @@ const ICON_SCALE = 0.45;
 const ICON_LARGE_SCALE = 0.35;
 const ICON_X = -16;
 const ICON_Y = 10;
+const TEXT_X = 10;
+const TEXT_Y = ICON_Y + 8;
 const RECT_SIZE = 32;
 
 function getXAxis(chart) {
@@ -118,6 +120,13 @@ function renderEventAxis({
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
     .attr("transform", d => getIconTransform(d));
+
+  eventTicks
+    .filter(d => d.length > 1)
+    .append("text")
+    .attr("class", "event-text")
+    .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
+    .text(d => d.length);
 }
 
 export function renderEvents(
