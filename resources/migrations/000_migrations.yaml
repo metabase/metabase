@@ -11261,6 +11261,71 @@ databaseChangeLog:
         - sql:
             sql: DELETE FROM permissions_group WHERE name = 'MetaBot'
 
+  - changeSet:
+      id: v43.00-046
+      author: dpsutton
+      comment: Added 0.43.0 - Persisted Info for models
+      changes:
+        - createTable:
+            tableName: persisted_info
+            remarks: Table holding information about persisted models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card model persisted'
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: Slug of the card which will form the persisted table name
+                  name: question_slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the table persisted
+                  name: table_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON array of columns in the persisted table
+                  name: columns
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Indicating whether the persisted table is active and can be swapped
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Persisted table state (creating, persisted, refreshing, deleted)
+                  name: state
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

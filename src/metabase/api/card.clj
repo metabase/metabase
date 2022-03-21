@@ -771,11 +771,10 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when (pos? (db/count PersistedInfo :db_id (:database_id card) :card_id card-id))
+      (when (pos? (db/count PersistedInfo :card_id card-id))
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
       (let [slug           (-> card :name persisted-info/slug-name)
-            persisted-info (db/insert! PersistedInfo {:db_id         (:id database)
-                                                      :card_id       card-id
+            persisted-info (db/insert! PersistedInfo {:card_id       card-id
                                                       :question_slug slug
                                                       :query_hash    (persisted-info/query-hash dataset_query)
                                                       :table_name    (format "model_%s_%s" card-id slug)
