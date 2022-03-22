@@ -47,6 +47,7 @@ export const CardTitle = styled.div`
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+  word-wrap: break-word;
 `;
 
 export const CardDescription = styled.div`

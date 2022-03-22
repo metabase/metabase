@@ -21,6 +21,7 @@ export const CardTitle = styled.span`
   color: ${color("text-dark")};
   font-weight: bold;
   margin-bottom: 0.125rem;
+  word-wrap: break-word;
 `;
 
 export const CardDescription = styled.span`
