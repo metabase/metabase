@@ -452,7 +452,6 @@
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
 
 
-
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
 (defn is-permissions-for-object?

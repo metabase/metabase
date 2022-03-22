@@ -134,8 +134,8 @@
 
 (s/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
-  namespace). This works just like the function of the same name in `metabase.models.permissions`, but for
-  Collections; refer to that function's extensive documentation to get a sense for how this works."
+  namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
+  refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph]
    (update-graph! nil new-graph))
 

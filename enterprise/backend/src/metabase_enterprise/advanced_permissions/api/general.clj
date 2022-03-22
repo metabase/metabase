@@ -9,6 +9,7 @@
 (api/defendpoint GET "/graph"
   "Fetch a graph of General Permissions"
   [:as _req]
+  (api/check-superuser)
   (g-perms/graph))
 
 (defn- dejsonify-general-permissions
@@ -31,6 +32,7 @@
 (api/defendpoint PUT "/graph"
   "Do a batch update of General Permissions by passing a modified graph."
   [:as {:keys [body]}]
+  (api/check-superuser)
   (-> body
       dejsonify-graph
       g-perms/update-graph!)

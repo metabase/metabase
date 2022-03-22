@@ -190,6 +190,7 @@
   file->bytes
   is-uuid-string?
   obj->json->obj
+  int->kw
   postwalk-pred
   random-email
   random-name

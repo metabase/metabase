@@ -1,8 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions
+  "Code for generating and updating the General Permission graph. See [[metabase.models.permissions]] for more
+  details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models.general-permissions-revision :as g-perm-revision :refer [GeneralPermissionsRevision]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.general-permissions-revision :as g-perm-revision]
+            [metabase.models.permissions :as perms]
+            [metabase.models :refer [Permissions PermissionsGroup GeneralPermissionsRevision]]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -15,7 +18,8 @@
 (def ^:private GroupPermissionsGraph
   {:setting      GeneralPermissions
    :monitoring   GeneralPermissions
-   :subscription GeneralPermissions})
+   :subscription GeneralPermissions
+   s/Keyword     GeneralPermissions})
 
 (def ^:private GeneralPermissionsGraph
   {:revision s/Int
@@ -23,16 +27,25 @@
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
-(defn- group-id->permissions-set []
-  (into {} (for [[group-id perms]
-                 (group-by :group-id (db/select [Permissions [:group_id :group-id] [:object :path]]
-                                                {:where [:and
-                                                         [:or
-                                                          [:= :object "/subscription/"]
-                                                          [:like :object (hx/literal "/general/%")]]]}))]
-             {group-id (set (map :path perms))})))
+(defn- group-id->permissions-set
+  "Get a map of general permissions for all existing group-ids"
+  []
+  (let [group-ids           (db/select-field :id PermissionsGroup)
+        general-permissions (db/select Permissions
+                                       {:where [:and
+                                                [:or
+                                                 [:= :object "/subscription/"]
+                                                 [:like :object (hx/literal "/general/%")]]]})
+        permissions-set-from-group-id (fn [group-id]
+                                        (->> general-permissions
+                                             (filter #(= (:group_id %) group-id))
+                                             (map :object)
+                                             set))]
+    (into {} (for [group-id group-ids]
+               {group-id (permissions-set-from-group-id group-id)}))))
 
 (s/defn general-perms-path :- perms/Path
+  "Get general permission's path form a type"
   [perm-type]
   (case perm-type
     :setting
@@ -51,6 +64,7 @@
     :no))
 
 (s/defn permissions-set->general-perms :- GroupPermissionsGraph
+  "Get all general permission for a group"
   [permission-set]
   {:setting      (permissions-type-for-general permission-set :setting)
    :monitoring   (permissions-type-for-general permission-set :monitoring)
@@ -68,18 +82,19 @@
 
 (defn- save-perms-revision!
   "Save changes made to the permissions graph for logging/auditing purposes.
-   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
   [current-revision old changes]
   (when *current-user-id*
     (db/insert! GeneralPermissionsRevision
-      ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-      ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id      (inc current-revision)
-      :before  old
-      :changes changes
-      :user_id *current-user-id*)))
+                ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+                ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+                :id      (inc current-revision)
+                :before  old
+                :changes changes
+                :user_id *current-user-id*)))
 
 (defn update-general-permissions!
+  "Perform update general permissions for a group-id"
   [group-id changes]
   (doseq [[permission-type permission-value] changes]
     (case permission-value
@@ -90,6 +105,9 @@
       (perms/delete-related-permissions! group-id (general-perms-path permission-type)))))
 
 (s/defn update-graph!
+  "Update the General Permissions graph.
+  This works just like [[metabase.models.permission/update-data-perms-graph!]], but for General permissions;
+  refer to that function's extensive documentation to get a sense for how this works."
   [new-graph :- GeneralPermissionsGraph]
   (let [old-graph          (graph)
         old-perms          (:groups old-graph)

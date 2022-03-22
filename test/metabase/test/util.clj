@@ -264,6 +264,11 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
+(defn int->kw
+  "Convert an integer to a keyword. I.e : 3 -> :3"
+  [x]
+  (keyword (str x)))
+
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
       (str/replace #"_" "-")
