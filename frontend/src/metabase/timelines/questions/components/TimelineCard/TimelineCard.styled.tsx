@@ -25,6 +25,8 @@ export const CardLabel = styled.span`
   color: ${color("text-dark")};
   font-weight: bold;
   font-size: 0.875rem;
+  min-width: 0;
+  word-wrap: break-word;
 `;
 
 export const CardIcon = styled(Icon)`
