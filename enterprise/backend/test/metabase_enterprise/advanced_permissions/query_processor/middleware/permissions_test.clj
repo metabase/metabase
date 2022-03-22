@@ -119,9 +119,13 @@
         (is (thrown-with-msg?
              ExceptionInfo
              download-perms-error-msg
-             (check-download-permisions (mbql-download-query)))))))
+             (check-download-permisions (mbql-download-query))))
 
-  (testing "No exception is thrown if the user has any download permissions for the DB"
+        (testing "No exception is thrown for non-download queries"
+              (let [query (dissoc (mbql-download-query 'venues) :info)]
+                (is (= query (check-download-permisions query))))))))
+
+  (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)

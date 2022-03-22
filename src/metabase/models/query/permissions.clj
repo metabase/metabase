@@ -73,7 +73,7 @@
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
 
   Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
-  permissions."
+  permissions, such as download permissions."
   [database-or-id             :- (s/cond-pre su/IntGreaterThanZero su/Map)
    tables-or-ids              :- #{TableOrIDOrNativePlaceholder}
    {:keys [segmented-perms? table-perms-fn native-perms-fn]} :- PermsOptions]
