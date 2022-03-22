@@ -121,7 +121,7 @@
         (try
           (if google-auth?
             (user/create-new-google-auth-user! (dissoc new-user :password))
-            (user/create-and-invite-user! new-user invitor))
+            (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)

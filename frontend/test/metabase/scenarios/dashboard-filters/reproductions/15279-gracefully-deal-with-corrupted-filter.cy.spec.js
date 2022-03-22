@@ -1,7 +1,7 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const firstFilter = {
   name: "List",
@@ -36,9 +36,10 @@ describe("issue 15279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
   });
 
-  it("filters should work even if one of them is corrupted (metabase #15279)", () => {
+  it("a corrupted parameter filter should still appear in the UI (metabase #15279)", () => {
     cy.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         // Add filters to the dashboard
@@ -83,6 +84,9 @@ describe("issue 15279", () => {
       .contains("List")
       .click();
 
+    cy.wait("@values");
+    cy.findByTextEnsureVisible("Add filter");
+
     cy.findByPlaceholderText("Enter some text")
       .type("Organic")
       .blur();
@@ -94,9 +98,6 @@ describe("issue 15279", () => {
       .click();
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
-
-    cy.findByText("Gold Beach");
-    cy.findByText("Arcadia").should("not.exist");
 
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it

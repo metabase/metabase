@@ -5,16 +5,12 @@ import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
 
-import {
-  NotebookCell,
-  NotebookCellItem,
-  NotebookCellAdd,
-} from "../NotebookCell";
+import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
   FieldsPickerIcon,
   FieldPickerContentContainer,
@@ -39,6 +35,8 @@ import {
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
+  PrimaryJoinCell,
+  SecondaryJoinCell,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -211,7 +209,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   return (
     <JoinClauseRoot>
-      <NotebookCell color={color} flex={1} alignSelf="start">
+      <PrimaryJoinCell color={color}>
         <NotebookCellItem color={color}>
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
@@ -226,18 +224,15 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
-      </NotebookCell>
+      </PrimaryJoinCell>
 
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabelContainer>
             <JoinWhereConditionLabel />
           </JoinWhereConditionLabelContainer>
-          <NotebookCell
+          <SecondaryJoinCell
             color={color}
-            flex={1}
-            flexDirection="column"
-            align="start"
             padding={hasAtLeastOneDimensionSelected && "8px"}
           >
             {displayConditions.map((condition, index) => {
@@ -320,7 +315,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                 </JoinDimensionControlsContainer>
               );
             })}
-          </NotebookCell>
+          </SecondaryJoinCell>
         </React.Fragment>
       )}
 
@@ -417,7 +412,7 @@ function JoinTablePicker({
       containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
       rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
     >
-      <DatabaseSchemaAndTableDataSelector
+      <DataSourceSelector
         hasTableSearch
         canChangeDatabase={false}
         databases={databases}
@@ -547,7 +542,7 @@ function getDimensionDisplayName(dimension) {
   if (!dimension) {
     return t`Pick a column...`;
   }
-  if (dimension.temporalUnit()) {
+  if (isDateTimeField(dimension.mbql())) {
     return `${dimension.displayName()}: ${dimension.subDisplayName()}`;
   }
   return dimension.displayName();
@@ -629,6 +624,7 @@ class JoinDimensionPicker extends React.Component {
               onClose();
             }}
             enableSubDimensions
+            preventNumberSubDimensions
             data-testid={`${testID}-picker`}
           />
         )}

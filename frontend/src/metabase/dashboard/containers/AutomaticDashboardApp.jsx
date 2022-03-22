@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -8,29 +7,36 @@ import cx from "classnames";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
-import { getValuePopulatedParameters } from "metabase/meta/Parameter";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
+import {
+  ItemContent,
+  ItemDescription,
+  ListRoot,
+  SidebarHeader,
+  SidebarRoot,
+} from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
@@ -44,10 +50,7 @@ const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -80,7 +83,7 @@ class AutomaticDashboardApp extends React.Component {
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
-    MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
+    MetabaseAnalytics.trackStructEvent("AutoDashboard", "Save");
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -96,7 +99,6 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
-      location,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -144,15 +146,13 @@ class AutomaticDashboardApp extends React.Component {
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
-                <Parameters
+                <SyncedParametersList
+                  className="mt1"
                   parameters={getValuePopulatedParameters(
                     parameters,
                     parameterValues,
                   )}
-                  query={location.query}
                   setParameterValue={setParameterValue}
-                  syncQueryString
-                  isQB
                 />
               </div>
             )}
@@ -164,7 +164,10 @@ class AutomaticDashboardApp extends React.Component {
                 to={more}
                 className="ml2"
                 onClick={() =>
-                  MetabaseAnalytics.trackEvent("AutoDashboard", "ClickMore")
+                  MetabaseAnalytics.trackStructEvent(
+                    "AutoDashboard",
+                    "ClickMore",
+                  )
                 }
               >
                 <Button iconRight="chevronright">{t`Show more about this`}</Button>
@@ -235,7 +238,7 @@ const RELATED_CONTENT = {
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <Box is="ol" my={1}>
+  <ListRoot>
     {Object.keys(suggestions).map((s, i) => (
       <li key={i} className="my2">
         <SuggestionSectionHeading>
@@ -252,7 +255,7 @@ const SuggestionsList = ({ suggestions, section }) => (
               mb={1}
             >
               <Card p={2} hoverable>
-                <Flex align="center">
+                <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
@@ -260,18 +263,18 @@ const SuggestionsList = ({ suggestions, section }) => (
                     size={22}
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <Box ml="auto" className="hover-child">
+                  <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
                       <Icon name="question" color={color("bg-dark")} />
                     </Tooltip>
-                  </Box>
-                </Flex>
+                  </ItemDescription>
+                </ItemContent>
               </Card>
             </Link>
           ))}
       </li>
     ))}
-  </Box>
+  </ListRoot>
 );
 
 const SuggestionSectionHeading = ({ children }) => (
@@ -287,12 +290,10 @@ const SuggestionSectionHeading = ({ children }) => (
   </h5>
 );
 const SuggestionsSidebar = ({ related }) => (
-  <Flex flexDirection="column" py={2} px={3}>
-    <Box is="h2" py={1}>
-      {t`More X-rays`}
-    </Box>
+  <SidebarRoot>
+    <SidebarHeader>{t`More X-rays`}</SidebarHeader>
     <SuggestionsList suggestions={related} />
-  </Flex>
+  </SidebarRoot>
 );
 
 export default AutomaticDashboardApp;

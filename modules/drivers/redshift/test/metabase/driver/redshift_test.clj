@@ -9,7 +9,6 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.public-settings :as pubset]
@@ -22,8 +21,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.sql ResultSet ResultSetMetaData]
-           metabase.plugins.jdbc_proxy.ProxyDriver))
+  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -66,22 +64,20 @@
                      " OR \"%schema%\".\"test_data_users\".\"id\" = 3)"
                      " LIMIT 2000")
                     "%schema%" redshift.test/session-schema-name)]
-     (mt/test-driver
-      :redshift
-      (is (= expected
-             (query->native
-              (assoc
-               (mt/mbql-query users {:limit 2000})
-               :parameters [{:type   "id"
-                             :target [:dimension [:field (mt/id :users :id) nil]]
-                             :value  ["1" "2" "3"]}]
-               :info {:executed-by 1000
-                      :card-id     1234
-                      :context     :ad-hoc
-                      :nested?     false
-                      :query-hash  (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
-          "if I run a Redshift query, does it get a remark added to it?")))))
+      (mt/test-driver :redshift
+        (is (= expected
+               (query->native
+                (assoc
+                 (mt/mbql-query users {:limit 2000})
+                 :parameters [{:type   "id"
+                               :target [:dimension [:field (mt/id :users :id) nil]]
+                               :value  ["1" "2" "3"]}]
+                 :info {:executed-by        1000
+                        :card-id            1234
+                        :context            :ad-hoc
+                        :query-hash         (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                         93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            "if I run a Redshift query, does it get a remark added to it?")))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.
 ;; See https://docs.aws.amazon.com/redshift/latest/dg/c-getting-started-using-spectrum.html
@@ -173,6 +169,7 @@
                               :template-tags {"date" {:name         "date"
                                                       :display-name "date"
                                                       :type         :dimension
+                                                      :widget-type  :date/all-options
                                                       :dimension    [:field (mt/id :checkins :date) nil]}}}
                  :parameters [{:type   :date/all-options
                                :target [:dimension [:template-tag "date"]]
@@ -208,36 +205,7 @@
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
-(defn- assert-jdbc-url-fetch-size [db fetch-size]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]
-    (let [md  (.getMetaData conn)
-          url (.getURL md)]
-      (is (str/includes? url (str "defaultRowFetchSize=" fetch-size))))))
-
-(deftest test-jdbc-fetch-size
-  (testing "Redshift JDBC fetch size is set correctly in PreparedStatement"
-    (mt/test-driver :redshift
-      ;; the default value should always be picked up if nothing is set
-      (assert-jdbc-url-fetch-size (mt/db) (:default (setting/resolve-setting :redshift-fetch-size)))
-      (mt/with-temporary-setting-values [redshift-fetch-size "14"]
-        ;; create a new DB in order to pick up the change to the setting here
-        (mt/with-temp Database [db {:engine :redshift, :details (:details (mt/db))}]
-          (mt/with-db db
-            ;; make sure the JDBC URL has the defaultRowFetchSize parameter set correctly
-            (assert-jdbc-url-fetch-size db 14)
-            ;; now, actually run a query and see if the PreparedStatement has the right fetchSize set
-            (mt/with-everything-store
-              (let [orig-fn sql-jdbc.execute/reducible-rows
-                    new-fn  (fn [driver ^ResultSet rs ^ResultSetMetaData rsmeta canceled-chan]
-                              (is (= 14 (.getFetchSize (.getStatement rs))))
-                              (orig-fn driver rs rsmeta canceled-chan))]
-                (with-redefs [sql-jdbc.execute/reducible-rows new-fn]
-                  (is (= [[1]] (-> {:query "SELECT 1"}
-                                   (mt/native-query)
-                                   (qp/process-query)
-                                   (mt/rows)))))))))))))
-
-(deftest syncable-schemas-test
+(deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
@@ -246,36 +214,40 @@
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (redshift.test/execute! (str "CREATE SCHEMA %s;"
-                                       "CREATE USER %s PASSWORD '%s';%n"
-                                       "GRANT USAGE ON SCHEMA %s TO %s;%n")
-                                  random-schema
-                                  temp-username
-                                  user-pw
-                                  random-schema
-                                  temp-username)
+                                     "CREATE USER %s PASSWORD '%s';%n"
+                                     "GRANT USAGE ON SCHEMA %s TO %s;%n")
+                                random-schema
+                                temp-username
+                                user-pw
+                                random-schema
+                                temp-username)
         (try
-          (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+          (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
             (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
               (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
                 (let [schemas (reduce conj
                                       #{}
-                                      (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
-                  (testing "syncable-schemas for the user should contain the newly created random schema"
+                                      (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                               conn
+                                                                               (.getMetaData conn)
+                                                                               nil
+                                                                               nil))]
+                  (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
                     (is (contains? schemas random-schema)))
                   (testing "should not contain the current session-schema name (since that was never granted)"
                     (is (not (contains? schemas redshift.test/session-schema-name))))))))
           (finally
             (redshift.test/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                                           "DROP USER IF EXISTS %s;%n"
-                                           "DROP SCHEMA IF EXISTS %s;%n")
-             random-schema
-             temp-username
-             temp-username
-             random-schema)))))
+                                         "DROP USER IF EXISTS %s;%n"
+                                         "DROP SCHEMA IF EXISTS %s;%n")
+                                    random-schema
+                                    temp-username
+                                    temp-username
+                                    random-schema)))))
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+        (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
           ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
           (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
                                                              (fn [metadata]
@@ -288,7 +260,7 @@
                           (reduce
                            conj
                            #{}
-                           (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                           (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
                   (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
                     (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
                                                                                       reducible)]
@@ -296,30 +268,24 @@
                   (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                     (is (not (contains? (schemas) fake-schema-name)))))))))))))
 
-(deftest connection-details->spec-test
-  (mt/with-temporary-setting-values [redshift-fetch-size "14"]
-    (testing "Configure connection without additional-options should include defaultRowFetchSize"
-      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
-              :subprotocol                   "redshift"
-              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14"
-              :OpenSourceSubProtocolOverride false
-              :user                          "testuser"
-              :ssl                           true}
-             (sql-jdbc.conn/connection-details->spec :redshift
-               {:host "testhost"
-                :port 5432
-                :db   "testdb"
-                :user "testuser"}))))
-    (testing "Configure connection with additional-options should not replace defaultRowFetchSize"
-      (is (= {:classname                     "com.amazon.redshift.jdbc42.Driver"
-              :subprotocol                   "redshift"
-              :subname                       "//testhost:5432/testdb?defaultRowFetchSize=14&TCPKeepAlive=FALSE"
-              :OpenSourceSubProtocolOverride false
-              :user                          "testuser"
-              :ssl                           true}
-             (sql-jdbc.conn/connection-details->spec :redshift
-               {:host               "testhost"
-                :port               5432
-                :db                 "testdb"
-                :user               "testuser"
-                :additional-options "TCPKeepAlive=FALSE"}))))))
+(mt/defdataset numeric-unix-timestamps
+  [["timestamps"
+    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [[1642704550656]]]])
+
+(deftest numeric-unix-timestamp-test
+  (mt/test-driver :redshift
+    (testing "NUMERIC columns should work with UNIX timestamp conversion (#7487)"
+      (mt/dataset numeric-unix-timestamps
+        (testing "without coercion strategy"
+          (let [query (mt/mbql-query timestamps)]
+            (mt/with-native-query-testing-context query
+              (is (= [1 1642704550656M]
+                     (mt/first-row (qp/process-query query)))))))
+        (testing "WITH coercion strategy"
+          (mt/with-temp-vals-in-db Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                                         :effective_type    :type/Instant}
+            (let [query (mt/mbql-query timestamps)]
+              (mt/with-native-query-testing-context query
+                (is (= [1 "2022-01-20T18:49:10.656Z"]
+                       (mt/first-row (qp/process-query query))))))))))))

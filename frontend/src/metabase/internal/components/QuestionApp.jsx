@@ -1,23 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Route } from "react-router";
 
 import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
-type Props = {
-  location: {
-    hash: ?string,
-  },
-  params: {
-    questionId?: string,
-  },
-};
-
 export default class QuestionApp extends React.Component {
-  props: Props;
-
-  static routes: ?[React.Element];
-
   render() {
     const { location, params } = this.props;
     if (!location.hash && !params.questionId) {
@@ -34,7 +22,7 @@ export default class QuestionApp extends React.Component {
           questionHash={location.hash}
           questionId={params.questionId ? parseInt(params.questionId) : null}
         >
-          {({ rawSeries }) =>
+          {({ question, rawSeries }) =>
             rawSeries && (
               <Visualization className="flex-full" rawSeries={rawSeries} />
             )

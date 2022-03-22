@@ -1,7 +1,7 @@
 import { restore, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 17777", () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe.skip("issue 17777", () => {
     cy.visit("/admin/permissions/data/group/1");
 
     cy.findByText("Permissions for the All Users group");
-    cy.findByText("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
 
     cy.location("pathname").should(
       "eq",

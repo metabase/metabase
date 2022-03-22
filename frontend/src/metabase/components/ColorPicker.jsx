@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import { SketchPicker } from "react-color";
 
@@ -20,6 +20,11 @@ const ColorSquare = ({ color, size }) => (
       borderRadius: size / 8,
     }}
   />
+);
+
+const ColorPickerFancyContent = ({ children }) => <div>{children}</div>;
+const ColorPickerContent = ({ children }) => (
+  <div className="p1">{children}</div>
 );
 
 class ColorPicker extends Component {
@@ -59,7 +64,7 @@ class ColorPicker extends Component {
           }
         >
           {fancy ? (
-            <div>
+            <ColorPickerFancyContent>
               {/* HACK to hide SketchPicker's border/shadow */}
               <div className="rounded overflow-hidden">
                 <SketchPicker
@@ -74,9 +79,9 @@ class ColorPicker extends Component {
                   Done
                 </Button>
               </div>
-            </div>
+            </ColorPickerFancyContent>
           ) : (
-            <div className="p1">
+            <ColorPickerContent>
               <ol
                 className="flex flex-wrap"
                 style={{
@@ -97,7 +102,7 @@ class ColorPicker extends Component {
                   </li>
                 ))}
               </ol>
-            </div>
+            </ColorPickerContent>
           )}
         </PopoverWithTrigger>
       </div>

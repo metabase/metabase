@@ -40,10 +40,9 @@
      (format " [%s: %s]" (trs "ASYNC") async-status))))
 
 (defn- format-performance-info
-  [{:keys [start-time call-count-fn diag-info-fn]
+  [{:keys [start-time call-count-fn _diag-info-fn]
     :or {start-time    (System/nanoTime)
-         call-count-fn (constantly -1)
-         diag-info-fn  (constantly {})}}]
+         call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
@@ -151,14 +150,14 @@
 (defn- log-core-async-response
   "For async responses that return a `core.async` channel, wait for the channel to return a response before logging the
   API request info."
-  [{{chan :body, :as response} :response, :as info}]
+  [{{chan :body, :as _response} :response, :as info}]
   {:pre [(async.u/promise-chan? chan)]}
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
       (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
 
-(defn- log-streaming-response [{{streaming-response :body, :as response} :response, :as info}]
+(defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go

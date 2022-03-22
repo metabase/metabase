@@ -99,7 +99,10 @@ export function onRenderValueLabels(
         if (!isStacked) {
           return [[x, yp + yn, 1]];
         } else if (yp !== yn) {
-          return [[x, yp, 2], [x, yn, 2]];
+          return [
+            [x, yp, 2],
+            [x, yn, 2],
+          ];
         } else {
           return [[x, yp, 1]];
         }

@@ -85,6 +85,10 @@
   (result-set-read-column [clob _ _]
     (clob->str clob))
 
+  org.h2.jdbc.JdbcBlob
+  (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
+    (.getBytes blob 0 (.length blob)))
+
   org.h2.api.TimestampWithTimeZone
   (result-set-read-column [t _ _]
     (let [date        (t/local-date (.getYear t) (.getMonth t) (.getDay t))

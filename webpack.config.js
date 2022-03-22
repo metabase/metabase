@@ -26,6 +26,10 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
+const useFilesystemCache = process.env.FS_CACHE === "true";
+const shouldUseEslint =
+  process.env.WEBPACK_BUNDLE !== "production" &&
+  process.env.USE_ESLINT === "true";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -67,18 +71,22 @@ const config = (module.exports = {
         exclude: /node_modules|cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
-      {
-        test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|\.spec\.js/,
-        use: [
-          {
-            loader: "eslint-loader",
-            options: {
-              rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
+      ...(shouldUseEslint
+        ? [
+            {
+              test: /\.(tsx?|jsx?)$/,
+              exclude: /node_modules|cljs|\.spec\.js/,
+              use: [
+                {
+                  loader: "eslint-loader",
+                  options: {
+                    rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
+                  },
+                },
+              ],
             },
-          },
-        ],
-      },
+          ]
+        : []),
       {
         test: /\.(eot|woff2?|ttf|svg|png)$/,
         type: "asset/resource",
@@ -133,7 +141,15 @@ const config = (module.exports = {
           : SRC_PATH + "/lib/noop",
     },
   },
-
+  cache: useFilesystemCache
+    ? {
+        type: "filesystem",
+        buildDependencies: {
+          // invalidates the cache on configuration change
+          config: [__filename],
+        },
+      }
+    : undefined,
   optimization: {
     splitChunks: {
       cacheGroups: {
@@ -189,6 +205,9 @@ const config = (module.exports = {
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
     new NodePolyfillPlugin(), // for crypto, among others
+    new webpack.EnvironmentPlugin({
+      WEBPACK_BUNDLE: "development",
+    }),
   ],
 });
 
@@ -216,25 +235,28 @@ if (WEBPACK_BUNDLE === "hot") {
 
   config.devServer = {
     hot: true,
-    inline: true,
-    contentBase: "frontend",
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+    static: {
+      directory: "frontend",
+    },
     // tweak stats to make the output in the console more legible
     // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
-    stats: {
-      assets: false,
-      cached: false,
-      cachedAssets: false,
-      chunks: false,
-      chunkModules: false,
-      chunkOrigins: false,
-      modules: false,
-      color: true,
-      hash: false,
-      warnings: true,
-      errorDetals: false,
+    devMiddleware: {
+      stats: {
+        assets: false,
+        cached: false,
+        cachedAssets: false,
+        chunks: false,
+        chunkModules: false,
+        chunkOrigins: false,
+        modules: false,
+        color: true,
+        hash: false,
+        warnings: true,
+        errorDetals: false,
+      },
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {
@@ -278,13 +300,6 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-  // Don't bother with ESLint for CI/production (we catch linting errors with another CI run)
-  config.module.rules = config.module.rules.filter(rule => {
-    return Array.isArray(rule.use)
-      ? rule.use[0].loader != "eslint-loader"
-      : true;
-  });
-
   config.plugins.push(
     new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
   );

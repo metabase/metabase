@@ -1,8 +1,13 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  summarize,
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > null", () => {
   beforeEach(() => {
@@ -99,7 +104,7 @@ describe("scenarios > question > null", () => {
 
           cy.log("Reported failing in v0.37.0.2");
           cy.get(".DashCard").within(() => {
-            cy.get(".LoadingSpinner").should("not.exist");
+            cy.findByTestId("loading-spinner").should("not.exist");
             cy.findByText("13626");
             // [quarantine]: flaking in CircleCI, passing locally
             // TODO: figure out the cause of the failed test in CI after #13721 is merged
@@ -150,25 +155,41 @@ describe("scenarios > question > null", () => {
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.log("P0 regression in v0.37.1!");
-          cy.get(".LoadingSpinner").should("not.exist");
+          cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
-          cy.get(".ScalarValue").contains("0");
+          cy.get(".ScalarValue").should("contain", "0");
           cy.findByText("13801_Q2");
         });
       });
     });
   });
 
-  describe("aggregations with null values", () => {
-    beforeEach(() => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-    });
+  it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
+    openOrdersTable();
 
+    // Total of "39.72", and the next cell is the `discount` (which is empty)
+    cy.findByText("39.72")
+      .closest(".TableInteractive-cellWrapper")
+      .next()
+      .find("div")
+      .should("be.empty")
+      // Open the context menu that lets us apply filter using this column directly
+      .click({ force: true });
+
+    popover()
+      .contains("=")
+      .click();
+
+    cy.findByText("39.72");
+    // This row ([id] 3) had the `discount` column value and should be filtered out now
+    cy.findByText("49.21").should("not.exist");
+  });
+
+  describe("aggregations with null values", () => {
     it("summarize with null values (metabase#12585)", () => {
       openOrdersTable();
-      cy.wait("@dataset");
-      cy.contains("Summarize").click();
+
+      summarize();
       // remove pre-selected "Count"
       cy.icon("close").click();
       // dropdown immediately opens with the new set of metrics to choose from
@@ -179,10 +200,6 @@ describe("scenarios > question > null", () => {
       // Group by
       cy.contains("Created At").click();
       cy.contains("Cumulative sum of Discount by Created At: Month");
-      cy.wait(["@dataset", "@dataset"]).then(xhrs => {
-        expect(xhrs[0].status).to.equal(202);
-        expect(xhrs[1].status).to.equal(202);
-      });
 
       cy.findByText("There was a problem with your question").should(
         "not.exist",

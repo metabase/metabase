@@ -33,6 +33,15 @@
              "/db/1/schema/1234/table/1/"
              "/db/1/schema/PUBLIC/table/1/query/"
              "/db/1/schema/PUBLIC/table/1/query/segmented/"
+             ;; download permissions
+             "/download/db/1/"
+             "/download/limited/db/1/"
+             "/download/db/1/native/"
+             "/download/limited/db/1/native/"
+             "/download/db/1/schema/PUBLIC/"
+             "/download/limited/db/1/schema/PUBLIC/"
+             "/download/db/1/schema/PUBLIC/table/1/"
+             "/download/limited/db/1/schema/PUBLIC/table/1/"
              ;; block permissions
              "/block/db/1/"
              "/block/db/1000/"
@@ -43,7 +52,7 @@
                (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-      (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+      (doseq [path [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
                     "/db/16/schema/COMPANY-NET\\\\john.doe/"
                     ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
                     "/db/16/schema/COMPANY-NET\\/john.doe/"
@@ -156,7 +165,14 @@
               "/block/db/1/schema/PUBLIC/"
               "/block/db/1/schema/PUBLIC/table/"
               "/block/db/1/schema/PUBLIC/table/2/"
-              "/block/collection/1/"]}]
+              "/block/collection/1/"]
+
+             "invalid download permissions"
+             ["/download/"
+              "/download/limited/"
+              "/download/db/1/schema/PUBLIC/table/1/query/"
+              "/download/db/1/schema/PUBLIC/table/1/query/segmented/"]}]
+
       (testing reason
         (doseq [path paths]
           (testing (str "\n" (pr-str path))
@@ -447,18 +463,7 @@
           [perms paths] inputs]
     (testing (pr-str (list 'set-has-full-permissions-for-set? perms paths))
       (is (= expected
-             (perms/set-has-full-permissions-for-set? perms paths)))))
-
-  (testing "If either set is invalid, it should throw an exception"
-    (doseq [[perms paths] [[#{"/" "/toucans/"}           #{"/db/1/"}]
-                           [#{"/db/1/" "//"}             #{"/db/1/"}]
-                           [#{"/db/1/table/2/" "/db/1/"} #{"/db/1/"}]
-                           [#{"/db/1/"}                  #{"/db/1/native/schema/"}]
-                           [#{"/db/1/"}                  #{"/db/1/schema/public/" "/kanye/"}]
-                           [#{"/db/1/"}                  #{"/ocean/" "/db/1/schema/public/table/1/"}]]]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (perms/set-has-full-permissions-for-set? perms paths))))))
+             (perms/set-has-full-permissions-for-set? perms paths))))))
 
 
 ;;; -------------------------------------- set-has-partial-permissions-for-set? --------------------------------------
@@ -546,7 +551,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- test-data-graph [group]
-  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
+  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))
 
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
@@ -559,7 +564,7 @@
       (testing "after"
         ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
         ;; retained (#3888)
-        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
+        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas "PUBLIC" (mt/id :categories)] :all)
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
@@ -569,21 +574,11 @@
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
       ;; try to grant idential permissions to the table twice
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
-             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
-
-(deftest metabot-graph-test
-  (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
-                "only have Collection permissions")
-    ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
-    (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
-      (mt/with-temp* [Database    [db]
-                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/data-perms-path db)}]]
-        (is (= false
-               (contains? (:groups (perms/data-perms-graph)) (u/the-id (group/metabot)))))))))
+             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :data :schemas]))))))
 
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
@@ -598,7 +593,7 @@
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas]
+      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas]
                                       {"PUBLIC"
                                        {(mt/id :venues)
                                         {:read :all, :query :segmented}}})
@@ -609,9 +604,13 @@
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
-      (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
-        (is (= {db-id {:native  :write
-                       :schemas :all}}
+      (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
+        (is (= {db-id {:data
+                       {:native  :write
+                        :schemas :all}
+                       :download
+                       {:native  :full
+                        :schemas :full}}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))
@@ -620,7 +619,7 @@
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
       (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id]]
+      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
         (letfn [(perms []
                   (get-in (perms/data-perms-graph) ks))
                 (set-perms! [new-perms]

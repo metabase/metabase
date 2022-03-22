@@ -4,10 +4,13 @@ import {
   openOrdersTable,
   visitQuestionAdhoc,
   popover,
+  sidebar,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
@@ -30,10 +33,7 @@ describe("scenarios > question > settings", () => {
         .invoke("width")
         .should("be.gt", 350);
 
-      cy.contains("Table options")
-        .parents(".scroll-y")
-        .first()
-        .as("tableOptions");
+      cy.findByTestId("sidebar-content").as("tableOptions");
 
       // remove Total column
       cy.get("@tableOptions")
@@ -92,14 +92,13 @@ describe("scenarios > question > settings", () => {
               },
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "table",
       });
 
       cy.findByText("Settings").click();
-      cy.findByText("Click and drag to change their order")
-        .should("be.visible")
+      cy.findByTextEnsureVisible("Click and drag to change their order")
         .parent()
         .find(".cursor-grab")
         .as("sidebarColumns"); // Store all columns in an array
@@ -152,7 +151,7 @@ describe("scenarios > question > settings", () => {
         dataset_query: {
           type: "query",
           query: { "source-table": ORDERS_ID },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 
@@ -172,6 +171,34 @@ describe("scenarios > question > settings", () => {
       popover().within(() => cy.icon("gear").click()); // open created_at column settings
       cy.findByText("Date style"); // shows created_at column settings
     });
+
+    it.skip("should respect renamed column names in the settings sidebar (metabase#18476)", () => {
+      const newColumnTitle = "Pre-tax";
+
+      const questionDetails = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: { "source-table": 2 },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {
+          column_settings: {
+            [`["ref",["field",${ORDERS.SUBTOTAL},null]]`]: {
+              column_title: newColumnTitle,
+            },
+          },
+        },
+      };
+
+      visitQuestionAdhoc(questionDetails);
+
+      cy.findByText(newColumnTitle);
+
+      cy.findByTestId("viz-settings-button").click();
+
+      sidebar().findByText(newColumnTitle);
+    });
   });
 
   describe("resetting state", () => {
@@ -188,7 +215,7 @@ describe("scenarios > question > settings", () => {
 
       // create a new question to see if the "add to a dashboard" modal is still there
       browse().click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after

@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 
 import { getScrollY } from "metabase/lib/dom";
@@ -11,6 +10,7 @@ import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+import { HeaderBadges, HeaderContent } from "./Header.styled";
 
 const propTypes = {
   analyticsContext: PropTypes.string,
@@ -167,10 +167,10 @@ class Header extends Component {
           }
           ref={this.header}
         >
-          <Box py={2}>
+          <HeaderContent>
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
-            <Flex direction="row" align="center">
+            <HeaderBadges>
               {hasBadge && (
                 <CollectionBadge
                   collectionId={item.collection_id}
@@ -181,8 +181,8 @@ class Header extends Component {
                 <span className="mx1 text-light text-smaller">•</span>
               )}
               {hasLastEditInfo && <LastEditInfoLabel item={item} />}
-            </Flex>
-          </Box>
+            </HeaderBadges>
+          </HeaderContent>
 
           <div
             className="flex align-center flex-align-right"

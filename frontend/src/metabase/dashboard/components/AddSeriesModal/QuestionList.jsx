@@ -5,7 +5,7 @@ import { AutoSizer, List } from "react-virtualized";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
@@ -55,7 +55,11 @@ export const QuestionList = React.memo(function QuestionList({
   );
 
   const handleSearchFocus = () => {
-    MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "search");
+    MetabaseAnalytics.trackStructEvent(
+      "Dashboard",
+      "Edit Series Modal",
+      "search",
+    );
   };
 
   const filteredQuestions = useMemo(() => {

@@ -44,4 +44,4 @@
   [& clauses]
   `(metabase.mbql.schema.helpers/one-of*
     ~@(for [clause clauses]
-        [`(:clause-name (meta (resolve '~clause))) clause])))
+        [`(or (:clause-name (meta (resolve '~clause))) '~clause) clause])))

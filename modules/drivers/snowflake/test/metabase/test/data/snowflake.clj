@@ -39,14 +39,15 @@
 (defmethod tx/dbdef->connection-details :snowflake
   [_ context {:keys [database-name]}]
   (merge
-   {:account   (tx/db-test-env-var-or-throw :snowflake :account)
-    :user      (tx/db-test-env-var-or-throw :snowflake :user)
-    :password  (tx/db-test-env-var-or-throw :snowflake :password)
+   {:account             (tx/db-test-env-var-or-throw :snowflake :account)
+    :user                (tx/db-test-env-var-or-throw :snowflake :user)
+    :password            (tx/db-test-env-var-or-throw :snowflake :password)
+    :additional-options  (tx/db-test-env-var :snowflake :additional-options)
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
-    :warehouse (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
     ;; SESSION parameters
-    :timezone "UTC"}
+    :timezone            "UTC"}
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
@@ -111,8 +112,10 @@
 
 (defmethod tx/destroy-db! :snowflake
   [_ {:keys [database-name]}]
-  (let [database-name (qualified-db-name database-name)]
-    (jdbc/execute! (no-db-connection-spec) [(format "DROP DATABASE \"%s\";" database-name)])
+  (let [database-name (qualified-db-name database-name)
+        sql           (format "DROP DATABASE \"%s\";" database-name)]
+    (println "[Snowflake]" sql)
+    (jdbc/execute! (no-db-connection-spec) [sql])
     (remove-existing-dataset! database-name)))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized

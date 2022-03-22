@@ -74,7 +74,7 @@
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
 (defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
+  "Re-sync the frontend integration test DB's metadata for the Sample Database."
   []
   (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
   ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
@@ -116,11 +116,13 @@
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command driver-methods
-  "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
-  driver."
-  []
-  (classloader/require 'metabase.cmd.driver-methods)
-  ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
+  "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
+  ([]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) false))
+  ([docs]
+   (classloader/require 'metabase.cmd.driver-methods)
+   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
 (defn- cmd-args->map
   [args]
@@ -168,7 +170,7 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable e
+    (catch Throwable _e
       (log/error "ERROR ROTATING KEY.")
       (system-exit! 1))))
 

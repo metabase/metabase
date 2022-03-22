@@ -283,13 +283,13 @@
                     fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [table (Table (mt/id :checkins))
               results (fingerprint/refingerprint-fields-for-db! (mt/db)
-                                                                (repeat (* fingerprint/max-refingerprint-field-count 2) table)
+                                                                (repeat (* @#'fingerprint/max-refingerprint-field-count 2) table)
                                                                 (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
-          (is (<= fingerprint/max-refingerprint-field-count attempted))
+          (is (<= @#'fingerprint/max-refingerprint-field-count attempted))
           ;; but it is bounded.
-          (is (< attempted (+ fingerprint/max-refingerprint-field-count 10))))))))
+          (is (< attempted (+ @#'fingerprint/max-refingerprint-field-count 10))))))))
 
 (deftest fingerprint-schema-test
   (testing "allows for extra keywords"

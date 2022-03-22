@@ -4,9 +4,7 @@ import SummarizeColumnDrill from "../drill/SummarizeColumnDrill";
 import SummarizeColumnByTimeDrill from "../drill/SummarizeColumnByTimeDrill";
 import DistributionDrill from "../drill/DistributionDrill";
 
-import type { QueryMode } from "metabase-types/types/Visualization";
-
-const SegmentMode: QueryMode = {
+const SegmentMode = {
   name: "segment",
   drills: () => [
     ...getDefaultDrills(),

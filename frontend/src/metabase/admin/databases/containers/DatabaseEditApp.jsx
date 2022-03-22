@@ -5,17 +5,14 @@ import { connect } from "react-redux";
 import { getValues } from "redux-form";
 
 import { t } from "ttag";
-
-import { Box, Flex } from "grid-styled";
+import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 
-import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import DriverWarning from "metabase/components/DriverWarning";
-import Radio from "metabase/components/Radio";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
+import DriverWarning from "metabase/containers/DriverWarning";
 
 import Databases from "metabase/entities/databases";
 
@@ -28,7 +25,6 @@ import {
 import {
   reset,
   initializeDatabase,
-  proceedWithDbCreation,
   saveDatabase,
   syncDatabaseSchema,
   rescanDatabaseFields,
@@ -37,22 +33,23 @@ import {
   selectEngine,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getIn } from "icepick";
+import {
+  DatabaseEditContent,
+  DatabaseEditForm,
+  DatabaseEditHelp,
+  DatabaseEditMain,
+  DatabaseEditRoot,
+} from "./DatabaseEditApp.styled";
 
 const DATABASE_FORM_NAME = "database";
 
-const getLetUserControlScheduling = database =>
-  getIn(database, ["details", "let-user-control-scheduling"]);
-
-const mapStateToProps = (state, props) => {
+const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
   return {
     database,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
-    letUserControlSchedulingSaved: getLetUserControlScheduling(database),
-    letUserControlSchedulingForm: getLetUserControlScheduling(formValues),
     initializeError: getInitializeError(state),
   };
 };
@@ -60,7 +57,6 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   reset,
   initializeDatabase,
-  proceedWithDbCreation,
   saveDatabase,
   syncDatabaseSchema,
   rescanDatabaseFields,
@@ -69,29 +65,11 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
-const TABS = [
-  {
-    name: t`Connection`,
-    value: "connection",
-  },
-  {
-    name: t`Scheduling`,
-    value: "scheduling",
-  },
-];
-
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   constructor(props, context) {
     super(props, context);
-
-    this.state = {
-      currentTab: TABS[0].value,
-    };
   }
 
   static propTypes = {
@@ -103,24 +81,15 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
-    proceedWithDbCreation: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
   };
 
-  async UNSAFE_componentWillMount() {
+  async componentDidMount() {
     await this.props.reset();
     await this.props.initializeDatabase(this.props.params.databaseId);
-  }
-
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    const isNew = !nextProps.database || !nextProps.database.id;
-    if (isNew) {
-      // Update the current creation step (= active tab) if adding a new database
-      this.setState({ currentTab: nextProps.databaseCreationStep });
-    }
   }
 
   render() {
@@ -129,17 +98,12 @@ export default class DatabaseEditApp extends Component {
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
-      letUserControlSchedulingSaved,
-      letUserControlSchedulingForm,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
     } = this.props;
-    const { currentTab } = this.state;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
-
-    const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
     const crumbs = [
       [t`Databases`, "/admin/databases"],
@@ -147,22 +111,12 @@ export default class DatabaseEditApp extends Component {
     ];
 
     return (
-      <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
+      <DatabaseEditRoot>
         <Breadcrumbs className="py4" crumbs={crumbs} />
 
-        <Flex pb={2}>
-          <Box>
+        <DatabaseEditMain>
+          <div>
             <div className="pt0">
-              {showTabs && (
-                <div className="border-bottom mb2">
-                  <Radio
-                    value={currentTab}
-                    options={TABS}
-                    onChange={currentTab => this.setState({ currentTab })}
-                    variant="underlined"
-                  />
-                </div>
-              )}
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}
@@ -170,30 +124,10 @@ export default class DatabaseEditApp extends Component {
                 {() => (
                   <Databases.Form
                     database={database}
-                    form={Databases.forms[currentTab]}
+                    form={Databases.forms.connection}
                     formName={DATABASE_FORM_NAME}
-                    onSubmit={
-                      addingNewDatabase && currentTab === "connection"
-                        ? this.props.proceedWithDbCreation
-                        : this.props.saveDatabase
-                    }
+                    onSubmit={this.props.saveDatabase}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
-                    renderSubmit={
-                      // override use of ActionButton for the `Next` button, for adding a new database in which
-                      // scheduling is being overridden
-                      addingNewDatabase &&
-                      currentTab === "connection" &&
-                      letUserControlSchedulingForm &&
-                      (({ handleSubmit, canSubmit }) => (
-                        <Button
-                          primary={canSubmit}
-                          disabled={!canSubmit}
-                          onClick={handleSubmit}
-                        >
-                          {t`Next`}
-                        </Button>
-                      ))
-                    }
                     submitButtonComponent={Button}
                   >
                     {({
@@ -202,19 +136,29 @@ export default class DatabaseEditApp extends Component {
                       FormMessage,
                       FormSubmit,
                       formFields,
-                      onChangeField,
+                      values,
                       submitTitle,
+                      onChangeField,
                     }) => {
                       return (
-                        <Flex>
-                          <Box width={620}>
+                        <DatabaseEditContent>
+                          <DatabaseEditForm>
                             <Form>
-                              {formFields.map(formField => (
-                                <FormField
-                                  key={formField.name}
-                                  name={formField.name}
-                                />
-                              ))}
+                              <FormField
+                                name="engine"
+                                disabled={database.is_sample}
+                              />
+                              <DriverWarning
+                                engine={values.engine}
+                                onChange={engine =>
+                                  onChangeField("engine", engine)
+                                }
+                              />
+                              {_.reject(formFields, { name: "engine" }).map(
+                                ({ name }) => (
+                                  <FormField key={name} name={name} />
+                                ),
+                              )}
                               <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
@@ -222,32 +166,20 @@ export default class DatabaseEditApp extends Component {
                                 </FormSubmit>
                               </div>
                             </Form>
-                          </Box>
-                          <Box>
+                          </DatabaseEditForm>
+                          <div>
                             {addingNewDatabase && (
-                              <AddDatabaseHelpCard
-                                engine={selectedEngine}
-                                ml={26}
-                                data-testid="database-setup-help-card"
-                              />
+                              <DatabaseEditHelp engine={selectedEngine} />
                             )}
-                            <DriverWarning
-                              engine={selectedEngine}
-                              ml={26}
-                              onChangeEngine={engine => {
-                                onChangeField("engine", engine);
-                              }}
-                              data-testid="database-setup-driver-warning"
-                            />
-                          </Box>
-                        </Flex>
+                          </div>
+                        </DatabaseEditContent>
                       );
                     }}
                   </Databases.Form>
                 )}
               </LoadingAndErrorWrapper>
             </div>
-          </Box>
+          </div>
 
           {editingExistingDatabase && (
             <Sidebar
@@ -258,8 +190,8 @@ export default class DatabaseEditApp extends Component {
               syncDatabaseSchema={syncDatabaseSchema}
             />
           )}
-        </Flex>
-      </Box>
+        </DatabaseEditMain>
+      </DatabaseEditRoot>
     );
   }
 }

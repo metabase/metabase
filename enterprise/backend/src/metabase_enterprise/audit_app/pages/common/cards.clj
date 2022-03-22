@@ -12,29 +12,28 @@
 
 (def avg-exec-time-45
   "HoneySQL for a CTE to include the average execution time for each Card for 45 days."
-  [:avg_exec_time (-> {:select   [:card_id
-                                  [:%avg.running_time :avg_running_time_ms]]
-                       :from     [:query_execution]
-                       :group-by [:card_id]}
-                      (common/add-45-days-clause :started_at))])
+  [:avg_exec_time_45 (-> {:select   [:card_id
+                                     [:%avg.running_time :avg_running_time_ms]]
+                          :from     [:query_execution]
+                          :group-by [:card_id]}
+                         (common/add-45-days-clause :started_at))])
 
 (def total-exec-time-45
   "HoneySQL for a CTE to include the total execution time for each Card for 45 days."
-  [:total_runtime (-> {:select   [:card_id
-                                  [:%sum.running_time :total_running_time_ms]]
-                       :from     [:query_execution]
-                       :group-by [:card_id]}
-                      (common/add-45-days-clause :started_at))])
+  [:total_runtime_45 (-> {:select   [:card_id
+                                     [:%sum.running_time :total_running_time_ms]]
+                          :from     [:query_execution]
+                          :group-by [:card_id]}
+                         (common/add-45-days-clause :started_at))])
 
 (def latest-qe
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
-  [:latest_qe {:select [:query_execution.card_id :error :query_execution.started_at]
-               :from   [:query_execution]
-               :join   [[{:select [:card_id [:%max.started_at :started_at]]
-                          :from [:query_execution]
-                          :group-by [:card_id]} :inner_qe]
-                        [:= :query_execution.started_at :inner_qe.started_at]]
-               :limit  1}])
+  [:latest_qe {:select   [:query_execution.card_id :error :query_execution.started_at]
+               :from     [:query_execution]
+               :join     [[{:select [:card_id [:%max.started_at :started_at]]
+                            :from [:query_execution]
+                            :group-by [:card_id]} :inner_qe]
+                          [:= :query_execution.started_at :inner_qe.started_at]]}])
 
 (def query-runs
   "HoneySQL for a CTE to include the total number of queries for each Card forever."

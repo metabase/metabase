@@ -19,9 +19,10 @@
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-         {:type     :query
-          :database db-id
-          :query    mbql-query}))
+         {:type       :query
+          :database   db-id
+          :query      mbql-query
+          :middleware {:disable-remaps? true}}))
       :data
       :rows))
 
@@ -60,7 +61,7 @@
 
   This number should be a balance of:
 
-  * Not being too low, which would definitly result in GitHub issues along the lines of 'My 500-distinct-value Field
+  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
     that I marked as List is not showing all values in the List Widget'
   * Not being too high, which would result in Metabase running out of memory dealing with too many values"
   (int 5000))
@@ -71,7 +72,7 @@
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 
-  ([field, max-results :- su/IntGreaterThanZero]
+  ([field max-results :- su/IntGreaterThanZero]
    (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
                                    :limit    max-results}))))
 

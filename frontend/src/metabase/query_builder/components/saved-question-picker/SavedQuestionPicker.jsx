@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { Box } from "grid-styled";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -22,10 +21,12 @@ import {
   SavedQuestionPickerRoot,
   CollectionsContainer,
   BackButton,
+  TreeContainer,
 } from "./SavedQuestionPicker.styled";
 import { buildCollectionTree, findCollectionByName } from "./utils";
 
 const propTypes = {
+  isDatasets: PropTypes.bool,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
@@ -46,6 +47,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
 };
 
 function SavedQuestionPicker({
+  isDatasets,
   onBack,
   onSelect,
   collections,
@@ -55,6 +57,8 @@ function SavedQuestionPicker({
   collectionName,
 }) {
   const collectionTree = useMemo(() => {
+    const targetModels = isDatasets ? ["dataset"] : null;
+
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
@@ -84,9 +88,9 @@ function SavedQuestionPicker({
 
     return [
       OUR_ANALYTICS_COLLECTION,
-      ...buildCollectionTree(preparedCollections),
+      ...buildCollectionTree(preparedCollections, { targetModels }),
     ];
-  }, [collections, currentUser]);
+  }, [collections, currentUser, isDatasets]);
 
   const initialCollection = useMemo(
     () => findCollectionByName(collectionTree, collectionName),
@@ -110,17 +114,18 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {t`Saved Questions`}
+          {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
-        <Box my={1}>
+        <TreeContainer>
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
             selectedId={selectedCollection.id}
           />
-        </Box>
+        </TreeContainer>
       </CollectionsContainer>
       <SavedQuestionList
+        isDatasets={isDatasets}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}

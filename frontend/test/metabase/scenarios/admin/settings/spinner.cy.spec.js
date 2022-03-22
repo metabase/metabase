@@ -9,7 +9,7 @@ describe("scenarios > admin > spinner", () => {
   describe("API request", () => {
     it("should return correct DB", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Add Database").should("not.exist");
     });
 

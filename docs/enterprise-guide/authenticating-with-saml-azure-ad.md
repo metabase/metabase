@@ -1,6 +1,6 @@
 ## Using Azure AD as the Identity Provider with Metabase and SAML
 
-To enable SAML authentication and use Azure AD as an identity provider, you need to have [Metabase Enterprise Edition](https://www.metabase.com/enterprise/index.html).
+{% include plans-blockquote.html feature="SAML authentication" %}
 
 ## Steps
 

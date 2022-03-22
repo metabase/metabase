@@ -42,7 +42,7 @@
 (defn- print-result-description [{:keys [file line message testing-contexts], :as result}]
   (println (format "%s:%d" file line))
   (doseq [s (reverse testing-contexts)]
-    (println (str/trim (decolorize-and-escape s))))
+    (println (str/trim (decolorize-and-escape (str s)))))
   (when message
     (println (decolorize-and-escape message))))
 

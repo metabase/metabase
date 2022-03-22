@@ -14,8 +14,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
 const MAX_WIDTH = 500;
 const PADDING_BOTTOM = 10;
 
@@ -54,8 +52,6 @@ const degrees = radians => (radians * 180) / Math.PI;
 const segmentIsValid = s => !isNaN(s.min) && !isNaN(s.max);
 
 export default class Gauge extends Component {
-  props: VisualizationProps;
-
   static uiName = t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
@@ -80,7 +76,7 @@ export default class Gauge extends Component {
     mounted: false,
   };
 
-  _label: ?HTMLElement;
+  _label;
 
   static settings = {
     ...columnSettings({
@@ -115,7 +111,7 @@ export default class Gauge extends Component {
       getDefault(series) {
         let value = 100;
         try {
-          value = series[0].data.rows[0][0];
+          value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
         return [
           { min: 0, max: value / 2, color: color("error"), label: "" },
@@ -207,7 +203,7 @@ export default class Gauge extends Component {
       ])
       .clamp(true);
 
-    const value = rows[0][0];
+    const value = rows[0][0] || 0;
     const column = cols[0];
 
     const valuePosition = (value, distance) => {

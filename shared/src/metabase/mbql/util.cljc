@@ -156,53 +156,60 @@
     [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
     [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
 
+(defn- replace-field-or-expression
+  "Replace a field or expression inside :time-interval"
+  [m unit]
+  (mbql.match/replace m
+    [:field id-or-name opts] [:field id-or-name (assoc opts :temporal-unit unit)]
+    [:expression expression-name] [:expression expression-name]))
+
 (defn desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   [m]
   (mbql.match/replace m
-    [:time-interval field n unit] (recur [:time-interval field n unit nil])
+    [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
 
     ;; replace current/last/next with corresponding value of n and recur
-    [:time-interval field :current unit options] (recur [:time-interval field  0 unit options])
-    [:time-interval field :last    unit options] (recur [:time-interval field -1 unit options])
-    [:time-interval field :next    unit options] (recur [:time-interval field  1 unit options])
+    [:time-interval field-or-expression :current unit options] (recur [:time-interval field-or-expression  0 unit options])
+    [:time-interval field-or-expression :last    unit options] (recur [:time-interval field-or-expression -1 unit options])
+    [:time-interval field-or-expression :next    unit options] (recur [:time-interval field-or-expression  1 unit options])
 
-    [:time-interval [_ id-or-name opts] (n :guard #{-1}) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard #{-1}) unit (_ :guard :include-current)]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
 
-    [:time-interval [_ id-or-name opts] (n :guard #{1}) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard #{1}) unit (_ :guard :include-current)]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
      [:relative-datetime n unit]]
 
-    [:time-interval [_ id-or-name opts] (n :guard #{-1 0 1}) unit _]
-    [:= [:field id-or-name (assoc opts :temporal-unit unit)] [:relative-datetime n unit]]
+    [:time-interval field-or-expression (n :guard #{-1 0 1}) unit _]
+    [:= (replace-field-or-expression field-or-expression unit) [:relative-datetime n unit]]
 
-    [:time-interval [_ id-or-name opts] (n :guard neg?) unit (_ :guard :include-current)]
+    [:time-interval field-or-expression (n :guard neg?) unit (_ :guard :include-current)]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
 
-    [:time-interval [_ id-or-name opts] (n :guard neg?) unit _]
+    [:time-interval field-or-expression (n :guard neg?) unit _]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime -1 unit]]
 
-    [:time-interval [_ id-or-name opts] n unit (_ :guard :include-current)]
+    [:time-interval field-or-expression n unit (_ :guard :include-current)]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
      [:relative-datetime n unit]]
 
-    [:time-interval [_ id-or-name opts] n unit _]
+    [:time-interval field-or-expression n unit _]
     [:between
-     [:field id-or-name (assoc opts :temporal-unit unit)]
+     (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 1 unit]
      [:relative-datetime n unit]]))
 
@@ -233,9 +240,12 @@
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
   (mbql.match/replace m
-    [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (mbql.match/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
-                                            :default)]]))
+    [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
+    (let [temporal-unit (or (mbql.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+                            :default)]
+      (into [clause field] (mbql.match/replace args
+                             [:relative-datetime :current]
+                             [:relative-datetime 0 temporal-unit])))))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -319,7 +329,7 @@
 (s/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as field], :as order-by-clause] :- mbql.s/OrderBy]
+  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
   (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
                                id-or-name))]
     (if (existing-fields id-or-name)
@@ -340,7 +350,7 @@
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
-  [inner-query, expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
+  [inner-query expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
@@ -433,7 +443,14 @@
        (unique-name \"A\")])
     ;; -> [\"A\" \"B\" \"A_2\"]
 
-  If idempotence is desired, the function returned by the generator also has a 2 airity version where the first argument is the object for which we are generating the name.
+  By default, unique aliases are generated for each unique `[id original-name]` key pair. By default, a unique `id` is
+  generated for every call, meaning repeated calls to [[unique-name-generator]] with the same `original-name` will
+  return different unique aliases. If idempotence is desired, the function returned by the generator also has a 2
+  airity version with the signature
+
+    (unique-name-fn id original-name)
+
+  for example:
 
     (let [unique-name (unique-name-generator)]
       [(unique-name :x \"A\")
@@ -441,21 +458,76 @@
        (unique-name :x \"A\")
        (unique-name :y \"A\")])
     ;; -> [\"A\" \"B\" \"A\" \"A_2\"]
-  "
-  []
-  (let [identity-objects->aliases (atom {})
-        aliases                   (atom {})]
+
+  Finally, [[unique-name-generator]] accepts the following options to further customize behavior:
+
+  ### `:name-key-fn`
+
+  Generated aliases are unique by the value of `[id (name-key-fn original-name)]`; the default is `identity`, so by
+  default aliases are unique by `[id name-key-fn]`. Specify something custom here if you want to make the unique
+  aliases unique by some other value, for example to make them unique without regards to case:
+
+    (let [f (unique-name-generator :name-key-fn str/lower-case)]
+      [(f \"x\")
+       (f \"X\")
+       (f \"X\")])
+    ;; -> [\"x\" \"X_2\" \"X_3\"]
+
+  This is useful for databases that treat column aliases as case-insensitive (see #19618 for some examples of this).
+
+  ### `:unique-alias-fn`
+
+  The function used to generate a potentially-unique alias given an original alias and unique suffix with the signature
+
+    (unique-alias-fn original suffix)
+
+  By default, combines them like `original_suffix`, but you can supply a custom function if you need to change this
+  behavior:
+
+    (let [f (unique-name-generator :unique-alias-fn (fn [x y] (format \"%s~~%s\" y x)))]
+      [(f \"x\")
+       (f \"x\")])
+  ;; -> [\"x\" \"2~~x\"]
+
+  This is useful if you need to constrain the generated suffix in some way, for example by limiting its length or
+  escaping characters disallowed in a column alias.
+
+  Values generated by this function are recursively checked for uniqueness, and will keep trying values a unique value
+  is generated; for this reason the function *must* return a unique value for every unique input. Use caution when
+  limiting the length of the identifier generated (consider appending a hash in cases like these)."
+  [& {:keys [name-key-fn unique-alias-fn]
+      :or   {name-key-fn     identity
+             unique-alias-fn (fn [original suffix]
+                               (str original \_ suffix))}}]
+  (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
+        original->count     (atom {})]  ; map of original-alias -> count
     (fn generate-name
-      ([alias] (generate-name (gensym) alias))
-      ([identity-object alias]
-       (or (@identity-objects->aliases [identity-object alias])
-           (loop [maybe-unique alias]
-             (let [total-count (get (swap! aliases update maybe-unique (fnil inc 0)) maybe-unique)]
-               (if (= total-count 1)
-                 (do
-                   (swap! identity-objects->aliases assoc [identity-object alias] maybe-unique)
-                   maybe-unique)
-                 (recur (str maybe-unique \_ total-count))))))))))
+      ([alias]
+       (generate-name (gensym) alias))
+
+      ([id original]
+       (let [name-key (name-key-fn original)]
+         (or
+          ;; if we already have generated an alias for this key (e.g. `[id original]`), return it as-is.
+          (@id+original->unique [id name-key])
+          ;; otherwise generate a new unique alias.
+          ;; see if we're the first to try to use this candidate alias. Update the usage count in `original->count`
+          (let [total-count (get (swap! original->count update name-key (fnil inc 0)) name-key)]
+            (if (= total-count 1)
+              ;; if we are the first to do it, record it in `id+original->unique` and return it.
+              (do
+                (swap! id+original->unique assoc [id name-key] original)
+                original)
+              ;; otherwise prefix the alias by the current total count (e.g. `id` becomes `id_2`) and recur. If `id_2`
+              ;; is unused, it will get returned. Otherwise we'll recursively try `id_2_2`, and so forth.
+              (let [candidate (unique-alias-fn original (str total-count))]
+                ;; double-check that `unique-alias-fn` isn't doing something silly like truncating the generated alias
+                ;; to aggressively or forgetting to include the `suffix` -- otherwise we could end up with an infinite
+                ;; loop
+                (assert (not= candidate original)
+                        (str "unique-alias-fn must return a different string than its input. Input: "
+                             (pr-str candidate)))
+                (recur id candidate))))))))))
 
 (s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
@@ -483,7 +555,7 @@
   "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
   [named-aggregations :- [NamedAggregation]]
   (let [unique-names (uniquify-names
-                      (for [[_ wrapped-ag {ag-name :name}] named-aggregations]
+                      (for [[_ _wrapped-ag {ag-name :name}] named-aggregations]
                         ag-name))]
     (map
      (fn [[_ wrapped-ag options] unique-name]
@@ -555,21 +627,6 @@
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
 
-(def ^:private default-join-alias "source")
-
-(s/defn deduplicate-join-aliases :- mbql.s/Joins
-  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
-  one."
-  [joins :- [mbql.s/Join]]
-  (let [joins          (for [join joins]
-                         (update join :alias #(or % default-join-alias)))
-        unique-aliases (uniquify-names (map :alias joins))]
-    (mapv
-     (fn [join alias]
-       (assoc join :alias alias))
-     joins
-     unique-aliases)))
-
 (defn- remove-empty [x]
   (cond
     (map? x)
@@ -584,20 +641,40 @@
     :else
     x))
 
-(s/defn update-field-options :- mbql.s/field
-  "Like `clojure.core/update`, but for the options in a `:field` clause."
-  [[_ id-or-name opts] :- mbql.s/field f & args]
-  [:field id-or-name (remove-empty (apply f opts args))])
+(s/defn update-field-options :- mbql.s/FieldOrAggregationReference
+  "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
+  {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
+  [[clause-type id-or-name opts] :- mbql.s/FieldOrAggregationReference f & args]
+  (let [opts (not-empty (remove-empty (apply f opts args)))]
+    ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
+    ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the
+    ;; 3-arg versions the "official" normalized versions.)
+    (cond
+      opts                   [clause-type id-or-name opts]
+      (= clause-type :field) [clause-type id-or-name nil]
+      :else                  [clause-type id-or-name])))
 
 (defn assoc-field-options
-  "Like `clojure.core/assoc`, but for the options in a `:field` clause."
-  [field-clause & kvs]
-  (apply update-field-options field-clause assoc kvs))
+  "Like [[clojure.core/assoc]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
+  [clause & kvs]
+  (apply update-field-options clause assoc kvs))
 
 (defn with-temporal-unit
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
-  [field-clause unit]
-  (assoc-field-options field-clause :temporal-unit unit))
+  [clause unit]
+  ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
+  (assert (is-clause? :field clause))
+  (assoc-field-options clause :temporal-unit unit))
+
+(defn remove-namespaced-options
+  "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the
+  options map. This is mainly for clause equality comparison purposes -- in current usage namespaced keys are used by
+  individual pieces of middleware or driver implementations for tracking little bits of information that should not be
+  considered relevant when comparing clauses for equality."
+  [field-or-ref]
+  (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
+                                                                (when (keyword? k)
+                                                                  (namespace k)))))))
 
 #?(:clj
    (p/import-vars

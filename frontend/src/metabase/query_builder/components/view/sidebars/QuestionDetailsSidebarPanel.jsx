@@ -3,27 +3,32 @@ import PropTypes from "prop-types";
 
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
-import {
-  Container,
-  SidebarPaddedContent,
-} from "./QuestionDetailsSidebarPanel.styled";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
-export default QuestionDetailsSidebarPanel;
+import {
+  Container,
+  BorderedSectionContainer,
+  SidebarPaddedContent,
+  ModerationSectionContainer,
+} from "./QuestionDetailsSidebarPanel.styled";
+import DatasetManagementSection from "./DatasetManagementSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  removeModerationReview: PropTypes.func.isRequired,
+  isBookmarked: PropTypes.bool.isRequired,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebarPanel({
   question,
   onOpenModal,
-  removeModerationReview,
+  isBookmarked,
+  toggleBookmark,
 }) {
+  const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const description = question.description();
 
@@ -36,16 +41,34 @@ function QuestionDetailsSidebarPanel({
   return (
     <Container>
       <SidebarPaddedContent>
-        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
+        <QuestionActionButtons
+          question={question}
+          canWrite={canWrite}
+          onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
+        />
         <ClampedDescription
-          className="pl1 pb2"
           visibleLines={8}
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+        <BorderedSectionContainer>
+          {isDataset && canWrite && (
+            <DatasetManagementSection dataset={question} />
+          )}
+          {!isDataset && (
+            <ModerationSectionContainer>
+              <PLUGIN_MODERATION.QuestionModerationSection
+                question={question}
+              />
+            </ModerationSectionContainer>
+          )}
+        </BorderedSectionContainer>
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>
   );
 }
+
+export default QuestionDetailsSidebarPanel;

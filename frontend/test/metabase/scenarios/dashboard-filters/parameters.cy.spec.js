@@ -3,13 +3,12 @@ import {
   popover,
   restore,
   openNativeEditor,
-  mockSessionProperty,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -82,15 +81,6 @@ describe("scenarios > dashboard > parameters", () => {
     popover()
       .contains("Add filter")
       .click();
-
-    // There should be 0 orders from someone named "Gadget"
-    cy.get(".DashCard")
-      .first()
-      .contains("0");
-    // There should be 4939 orders for a product that is a gadget
-    cy.get(".DashCard")
-      .last()
-      .contains("4,939");
   });
 
   it("should query with a 2 argument parameter", () => {
@@ -241,12 +231,12 @@ describe("scenarios > dashboard > parameters", () => {
       parseSpecialCharSequences: false,
     });
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
-    cy.get(".AdminSelect")
+    cy.findAllByTestId("select-button")
       .contains("Text")
       .click();
     cy.findByText("Field Filter").click();
     popover().within(() => {
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Orders").click();
       cy.findByText("Created At").click();
     });
@@ -379,7 +369,6 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should render other categories filter that allows selecting multiple values (metabase#18113)", () => {
-    mockSessionProperty("field-filter-operators-enabled?", false);
     const filter = {
       id: "c2967a17",
       name: "Category",
@@ -459,6 +448,23 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.findByText("Baker").should("not.exist");
+  });
+
+  describe("when the user does not have self service data permissions", () => {
+    beforeEach(() => {
+      cy.visit("/dashboard/1");
+      addCityFilterWithDefault();
+
+      cy.signIn("nodata");
+      cy.reload();
+    });
+
+    it("should not see mapping options", () => {
+      cy.icon("pencil").click();
+      cy.findByText("Location").click({ force: true });
+
+      cy.icon("key");
+    });
   });
 });
 

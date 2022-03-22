@@ -17,8 +17,5 @@ export default _.compose(
   Users.load({
     id: (state, props) => Number.parseInt(props.params.userId),
   }),
-  connect(
-    null,
-    mapDispatchToProps,
-  ),
+  connect(null, mapDispatchToProps),
 )(UnsubscribeUserForm);

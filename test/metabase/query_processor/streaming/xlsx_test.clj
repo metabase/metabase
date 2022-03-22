@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming.xlsx-test
   (:require [cheshire.generate :as generate]
+            [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.query-processor.streaming.interface :as i]
@@ -8,6 +9,7 @@
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
@@ -18,7 +20,8 @@
    (format-string format-settings nil))
 
   ([format-settings semantic-type]
-   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings semantic-type)]
+   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
+                                                                                  :effective_type :type/Temporal})]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
@@ -61,7 +64,14 @@
         (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
         (is (= "[$$]#,##0" (format-string {::mb.viz/decimals -1,
                                            ::mb.viz/currency-in-header false,
-                                           ::mb.viz/number-style "currency"}))))
+                                           ::mb.viz/number-style "currency"})))
+
+        ;; Thousands separator can be omitted
+        (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."})))
+        ;; Custom separators are not supported
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))
 
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
@@ -225,10 +235,27 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- parse-cell-content
+;; These are tests that generate an XLSX binary and then parse and assert on its contents, to test logic and value
+;; formatting that is specific to the XLSX format. These do NOT test any of the column ordering logic in
+;; `metabase.query-processor.streaming`, or anything that happens in the API handlers for generating exports.
+
+(defn parse-cell-content
+  "Parses an XLSX sheet and returns the raw data in each row"
   [sheet]
-  (for [row (spreadsheet/into-seq sheet)]
-    (map spreadsheet/read-cell row)))
+  (mapv (fn [row]
+          (mapv spreadsheet/read-cell row))
+        (spreadsheet/into-seq sheet)))
+
+(defn parse-xlsx-results
+  "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
+  ([bytea]
+   (parse-xlsx-results bytea parse-cell-content))
+
+  ([bytea parse-fn]
+   (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+     (let [workbook (spreadsheet/load-workbook-from-stream is)
+           sheet    (spreadsheet/select-sheet "Query result" workbook)]
+       (parse-fn sheet)))))
 
 (defn- xlsx-export
   ([ordered-cols viz-settings rows]
@@ -244,10 +271,7 @@
                rows))
        (i/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
-       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-         (let [workbook (spreadsheet/load-workbook-from-stream is)
-               sheet    (spreadsheet/select-sheet "Query result" workbook)]
-           (parse-fn sheet)))))))
+       (parse-xlsx-results bytea parse-fn)))))
 
 (defn- parse-format-strings
   [sheet]
@@ -271,7 +295,7 @@
                                 [[1.23]]
                                 parse-format-strings))))
     (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-           (second (xlsx-export [{:id 0, :name "Col"}]
+           (second (xlsx-export [{:id 0, :name "Col", :effective_type :type/Temporal}]
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                            {::mb.viz/date-style "YYYY/M/D",
                                                             ::mb.viz/date-separator ".",
@@ -406,7 +430,13 @@
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06Z-03:21"]])))))
       (testing "ZonedDateTime"
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
-               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]]))))))))
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
+  (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= ["GB"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
+      (is (= ["Portugal"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
@@ -451,4 +481,39 @@
                                              {}
                                              [["abcdef"] ["abcedf"] ["abcdef"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2900))))))
+        (is (<= 2800 col-width 2900)))))
+  (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
+    (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
+                                           {}
+                                           [[(apply str (repeat 256 "0"))]]
+                                           parse-column-width))]
+      (is (= 65280 col-width)))))
+
+(deftest poi-tempfiles-test
+  (testing "POI temporary files are cleaned up if output stream is closed before export completes (#19480)"
+    (let [poifiles-directory      (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
+          expected-poifiles-count (count (file-seq poifiles-directory))
+          bos                (ByteArrayOutputStream.)
+          os                 (BufferedOutputStream. bos)
+          results-writer     (i/streaming-results-writer :xlsx os)]
+      (.close os)
+      (i/begin! results-writer {:data {:ordered-cols []}} {})
+      (i/finish! results-writer {:row_count 0})
+      ;; No additional files should exist in the temp directory
+      (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
+
+(deftest dont-format-non-temporal-columns-as-temporal-columns-test
+  (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
+    (mt/dataset sample-dataset
+      (is (= [["CREATED_AT"]
+              [1.0]
+              [2.0]]
+             (xlsx-export [{:id             0
+                            :semantic_type  :type/CreationTimestamp
+                            :unit           :month-of-year
+                            :name           "CREATED_AT"
+                            :effective_type :type/Integer
+                            :base_type      :type/Integer}]
+                          {}
+                          [[1]
+                           [2]]))))))

@@ -156,7 +156,7 @@
                       :query    {:source-table (mt/id table)
                                  :aggregation  [[:count]]
                                  :filter       filter-clause}}
-        native-query (qp/query->native-with-spliced-params query)
+        native-query (qp/compile-and-splice-parameters query)
         spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
     (ffirst
      (mt/formatted-rows [int]

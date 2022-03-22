@@ -9,9 +9,12 @@
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
@@ -115,13 +118,6 @@
 
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
-
-(mt/defdataset dots-in-names
-  [["objects.stuff"
-    [{:field-name "dotted.name", :base-type :type/Text}]
-    [["toucan_cage"]
-     ["four_loko"]
-     ["ouija_board"]]]])
 
 (deftest edge-case-identifiers-test
   (mt/test-driver :postgres
@@ -289,6 +285,46 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
+(deftest describe-nested-field-columns-test
+  (mt/test-driver :postgres
+    (testing "flattened-row"
+      (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
+            flattened {[:mob :bob :dobbs] 123
+                       [:mob :bob :cobbs] "boop"}]
+        (is (= flattened (#'postgres/flattened-row :mob row)))))
+    (testing "row->types"
+      (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
+            types {[:bob :cobbs] clojure.lang.PersistentVector
+                   [:bob :dobbs :robbs] java.lang.Long}]
+        (is (= types (#'postgres/row->types row)))))
+    (testing "describes json columns and gives types for ones with coherent schemas only"
+      (drop-if-exists-and-create-db! "describe-json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
+                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
+                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= '#{{:name              "incoherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:incoherent_json_val "b"]}
+                     {:name              "coherent_json_val → a",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "a"]}
+                     {:name              "coherent_json_val → b",
+                      :database-type     nil,
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :nfc-path          [:coherent_json_val "b"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:name "describe_json_table"}))))))))
+
 (mt/defdataset with-uuid
   [["users"
     [{:field-name "user_id", :base-type :type/UUID}]
@@ -324,6 +360,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  "number"
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -340,6 +377,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  :number
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -392,25 +430,31 @@
       (do-with-money-test-db
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
+           (is (= "SELECT avg(bird_prices.price::numeric) AS avg FROM bird_prices"
+                  (sql.qp-test-util/query->sql
+                   (mt/mbql-query bird_prices
+                     {:aggregation [[:avg $price]]}))))
            (is (= [[14.995M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:aggregation [[:avg $price]]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:aggregation [[:avg $price]]})))))
+
          (testing "Should be able to filter on a money column"
            (is (= [["Katie Parakeet" 23.99M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:= $price 23.99]}))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:= $price 23.99]}))))
            (is (= []
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:!= $price $price]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:!= $price $price]})))))
+
          (testing "Should be able to sort by price"
            (is (= [["Katie Parakeet" 23.99M]
                    ["Lucky Pigeon" 6.00M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:order-by [[:desc $price]]}))))))))))
+                   (mt/run-mbql-query bird_prices
+                     {:order-by [[:desc $price]]}))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
@@ -661,4 +705,86 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))
+
+(deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+  (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
+    (mt/test-driver :postgres
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query people
+                      {:fields [!month.birth_date
+                                !month.created_at
+                                !month.id]
+                       :limit  1})]
+          (is (sql= '{:select [date_trunc ("month" people.birth_date)             AS birth_date
+                               date_trunc ("month" people.created_at)             AS created_at
+                               ;; non-temporal types should still get casted.
+                               date_trunc ("month" CAST (people.id AS timestamp)) AS id]
+                      :from   [people]
+                      :limit  [1]}
+                    query)))))))
+
+(deftest postgres-ssl-connectivity-test
+  (mt/test-driver :postgres
+    (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")
+      (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
+          (id-field-parameter-test)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "postgres-ssl-connectivity-test"
+                               "MB_POSTGRES_SSL_TEST_SSL")))))
+
+(def ^:private dummy-pem-contents
+  (str "-----BEGIN CERTIFICATE-----\n"
+       "-----END CERTIFICATE-----"))
+
+(deftest handle-nil-client-ssl-properties-test
+  (mt/test-driver :postgres
+    (testing "Setting only one of the client SSL params doesn't result in an NPE error (#19984)"
+      (mt/with-temp-file [dummy-root-cert   "dummy-root-cert.pem"
+                          dummy-client-cert "dummy-client-cert.pem"]
+        (spit dummy-root-cert dummy-pem-contents)
+        (spit dummy-client-cert dummy-pem-contents)
+        (let [db-details {:host "dummy-hostname"
+                          :dbname "test-db"
+                          :port 5432
+                          :user "dummy-login"
+                          :password "dummy-password"
+                          :ssl true
+                          :ssl-use-client-auth true
+                          :ssl-mode "verify-full"
+                          :ssl-root-cert-options "local"
+                          :ssl-root-cert-path dummy-root-cert
+                          :ssl-client-cert-options "local"
+                          :ssl-client-cert-value dummy-client-cert}]
+          ;; this will fail/throw an NPE if the fix for #19984 is not put in place (since the server code will
+          ;; attempt to "store" a non-existent :ssl-client-key-value to a temp file)
+          (is (map? (#'postgres/ssl-params db-details))))))))
+
+(deftest can-set-ssl-key-via-gui
+  (testing "ssl key can be set via the gui (#20319)"
+    (with-redefs [secret/value->file!
+                  (fn [{:keys [connection-property-name id value] :as secret} driver?]
+                    (str "file:" connection-property-name "=" value))]
+      (is (= "file:ssl-key=/clientkey.pkcs12"
+             (:sslkey
+              (#'postgres/ssl-params
+               {:ssl true
+                :ssl-client-cert-options "local"
+                :ssl-client-cert-path "/client.pem"
+                :ssl-key-options "local"
+                :ssl-key-password-value "sslclientkeypw!"
+                :ssl-key-path "/clientkey.pkcs12", ;; <-- this is what is set via ui.
+                :ssl-mode "verify-ca"
+                :ssl-root-cert-options "local"
+                :ssl-root-cert-path "/root.pem"
+                :ssl-use-client-auth true
+                :tunnel-enabled false
+                :advanced-options false
+                :dbname "metabase"
+                :engine :postgres
+                :host "localhost"
+                :user "bcm"
+                :password "abcdef123"
+                :port 5432})))))))

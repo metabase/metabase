@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 
 import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
@@ -264,9 +264,11 @@ export default class AggregationPopover extends Component {
 
     // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
     if (alwaysExpanded && sections.length > 1) {
-      const [commonAggregationItems, basicAggregationItems] = _.partition(
-        aggregationItems,
-        item => COMMON_AGGREGATIONS.has(item.aggregation.short),
+      const [
+        commonAggregationItems,
+        basicAggregationItems,
+      ] = _.partition(aggregationItems, item =>
+        COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;
@@ -349,7 +351,8 @@ export default class AggregationPopover extends Component {
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
             onFieldChange={this.onPickField}
-            enableSubDimensions={false}
+            enableSubDimensions={true}
+            preventNumberSubDimensions={true}
           />
         </div>
       );

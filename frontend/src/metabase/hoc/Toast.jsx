@@ -9,10 +9,7 @@ const mapDispatchToProps = {
 };
 
 const withToaster = ComposedComponent => {
-  @connect(
-    null,
-    mapDispatchToProps,
-  )
+  @connect(null, mapDispatchToProps)
   class ToastedComponent extends React.Component {
     _triggerToast = (message, options = {}) => {
       const { addUndo } = this.props;

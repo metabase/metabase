@@ -31,8 +31,5 @@ export default _.compose(
     query: state => ({ user_id: getUserId(state) }),
     reload: true,
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NotificationList);

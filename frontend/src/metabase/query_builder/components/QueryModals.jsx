@@ -19,7 +19,11 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
+import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 
 export default class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -41,7 +45,14 @@ export default class QueryModals extends React.Component {
   };
 
   render() {
-    const { modal, question, onCloseModal, onOpenModal } = this.props;
+    const {
+      modal,
+      modalContext,
+      question,
+      onCloseModal,
+      onOpenModal,
+    } = this.props;
+
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
@@ -201,6 +212,26 @@ export default class QueryModals extends React.Component {
           onClose={onCloseModal}
           onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
         />
+      </Modal>
+    ) : modal === MODAL_TYPES.TURN_INTO_DATASET ? (
+      <Modal small onClose={onCloseModal}>
+        <NewDatasetModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CAN_NOT_CREATE_MODEL ? (
+      <Modal onClose={onCloseModal}>
+        <ImpossibleToCreateModelModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.NEW_EVENT ? (
+      <Modal onClose={onCloseModal}>
+        <NewEventModal
+          cardId={question.id()}
+          collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.EDIT_EVENT ? (
+      <Modal onClose={onCloseModal}>
+        <EditEventModal eventId={modalContext} onClose={onCloseModal} />
       </Modal>
     ) : null;
   }

@@ -1,19 +1,19 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_SQL_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
@@ -22,17 +22,11 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         restore();
         cy.signInAsAdmin();
 
-        mockSessionProperty("field-filter-operators-enabled?", true);
-
         const questionDetails = getQuestionDetails(sqlFilter);
 
         cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { id, card_id, dashboard_id } }) => {
-            cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-            cy.visit(`/question/${card_id}`);
-
-            // Wait for `result_metadata` to load
-            cy.wait("@cardQuery");
+          ({ body: { card_id, dashboard_id } }) => {
+            visitQuestion(card_id);
 
             cy.visit(`/dashboard/${dashboard_id}`);
           },
@@ -41,10 +35,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         editDashboard();
         setFilter("Text or Category", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();
@@ -54,25 +45,33 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value);
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
         });
       });
 
-      it(`should work for "${filter}" when set as the default filter`, () => {
+      it(`should work for "${filter}" when set as the default filter and when that filter is removed (metabase#20493)`, () => {
         cy.findByText("Default value")
           .next()
           .click();
 
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value);
 
         saveDashboard();
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
         });
+
+        filterWidget()
+          .find(".Icon-close")
+          .click();
+
+        cy.url().should("not.include", value);
+
+        cy.findByText("Rustic Paper Wallet");
       });
     });
   },

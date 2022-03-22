@@ -20,9 +20,6 @@ cd "$script_directory/../.."
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-source "./bin/prep.sh"
-prep_deps
-
 POT_NAME="locales/metabase.pot"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 # NOTE: hardcoded in .babelrc
@@ -37,7 +34,7 @@ mkdir -p "locales"
 #######################
 
 # NOTE: about twice as fast to call babel directly rather than a full webpack build
-BABEL_ENV=extract ./node_modules/.bin/babel --quiet -x .js,.jsx -o /dev/null {enterprise/,}frontend/src
+BABEL_ENV=extract ./node_modules/.bin/babel --quiet -x .js,.jsx,.ts,.tsx -o /dev/null {enterprise/,}frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
 # NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency

@@ -7,7 +7,7 @@
 }
 
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
-  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-dasharray: 5, 5;
 }
 
@@ -73,7 +73,7 @@
 
 /* restyle X axis for stacked charts to look like a grid line */
 .LineAreaBarChart .dc-chart .stacked .domain {
-  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-dasharray: 5, 5;
 }
 
@@ -168,7 +168,8 @@
 .LineAreaBarChart .dc-chart .line,
 .LineAreaBarChart .dc-chart .dot,
 .LineAreaBarChart .dc-chart .row,
-.LineAreaBarChart .dc-chart .bubble {
+.LineAreaBarChart .dc-chart .bubble,
+.LineAreaBarChart .dc-chart .event-line {
   transition: opacity 0.15s linear;
 }
 
@@ -244,4 +245,40 @@ text.value-label {
 text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
+}
+
+/* timeline events */
+
+.dc-chart .events-axis .event-tick {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.dc-chart .events-axis .event-tick .event-icon {
+  stroke: var(--color-text-light);
+  fill: var(--color-text-light);
+}
+
+.dc-chart .events-axis .event-tick.hover .event-icon {
+  stroke: var(--color-brand);
+  fill: var(--color-brand);
+}
+
+.dc-chart .events-axis .event-tick text {
+  fill: var(--color-text-light);
+}
+
+.dc-chart .events-axis .event-tick.hover text {
+  fill: var(--color-brand);
+}
+
+.dc-chart .event-line {
+  stroke: var(--color-brand);
+  stroke-width: 2;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.dc-chart .event-line.hover {
+  opacity: 1;
 }

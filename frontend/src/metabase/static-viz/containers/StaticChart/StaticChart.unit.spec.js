@@ -8,11 +8,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/line"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           settings: {
             y: {
               number_style: "currency",
@@ -39,11 +38,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/area"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           settings: {
             y: {
               number_style: "currency",
@@ -70,11 +68,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/bar"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           settings: {
             y: {
               number_style: "currency",
@@ -101,14 +98,13 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/donut"
         options={{
-          data: [["donut", 2000], ["cronut", 3100]],
+          data: [
+            ["donut", 2000],
+            ["cronut", 3100],
+          ],
           colors: {
             donut: "#509EE3",
             cronut: "#DDECFA",
-          },
-          accessors: {
-            dimension: row => row[0],
-            metric: row => row[1],
           },
           settings: {
             metric: {
@@ -130,11 +126,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/line"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           settings: {
             x: {
               date_style: "dddd",
@@ -157,11 +152,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/area"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           settings: {
             x: {
               date_style: "MMM",
@@ -184,11 +178,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/bar"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           settings: {
             x: {
               date_style: "dddd",

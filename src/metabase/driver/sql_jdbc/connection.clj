@@ -11,7 +11,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.mchange.v2.c3p0.DataSources
+           javax.sql.DataSource))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -19,7 +21,7 @@
 
 (defmulti connection-details->spec
   "Given a Database `details-map`, return a JDBC connection spec."
-  {:arglists '([driver details-map]), :style/indent 1}
+  {:arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -87,6 +89,13 @@
                                                                                                          :sid
                                                                                                          :catalog))))})
 
+(defn- connection-pool-spec
+  "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
+  [{:keys [^DataSource datasource], :as spec} pool-properties]
+  (if datasource
+    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
+    (connection-pool/connection-pool-spec spec pool-properties)))
+
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
@@ -96,7 +105,7 @@
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool/connection-pool-spec spec properties)
+      (connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
@@ -172,18 +181,23 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (and (instance? (type Database) db-or-id-or-spec) db-or-id-or-spec) ; passed in
-                        (db/select-one [Database :id :engine :details] :id database-id)       ; look up by ID
-                        (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                 {:status-code 404
-                                  :type        qp.error-type/invalid-query
-                                  :database-id database-id})))
+                          (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+                          (throw (ex-info (tru "Database {0} does not exist." database-id)
+                                   {:status-code 404
+                                    :type        qp.error-type/invalid-query
+                                    :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
                           (cond
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->db-details-hashes db-id)
                                   new-hash  (db-details-hash db)]
-                              (and (some? curr-hash) (not= curr-hash new-hash)))
+                              (when (and (some? curr-hash) (not= curr-hash new-hash))
+                                ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+                                ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+                                ;; our app DB, and see if it STILL doesn't match
+                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
+                                                    db-details-hash))))
                             (if log-invalidation?
                               (log-db-details-hash-change-msg! db-id)
                               nil)

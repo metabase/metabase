@@ -54,7 +54,7 @@ docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-D
 
 ## Disable emoji or colorized logging
 
-By default Metabase will include emoji characters in logs. You can disable emoji by using the `MB_EMOJIN_IN_LOGS` environment variable:
+By default Metabase will include emoji characters in logs. You can disable emoji by using the `MB_EMOJI_IN_LOGS` environment variable:
 
 ### Configuring Emoji Logging
 

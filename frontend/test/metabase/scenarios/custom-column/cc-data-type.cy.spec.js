@@ -3,11 +3,12 @@ import {
   openTable,
   popover,
   enterCustomColumnDetails,
+  filter,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > data type", () => {
   beforeEach(() => {
@@ -25,7 +26,8 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
+
     popover()
       .findByText("CategoryTitle")
       .click();
@@ -40,7 +42,7 @@ describe("scenarios > question > custom column > data type", () => {
     enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .findByText("DoB")
       .click();
@@ -60,7 +62,7 @@ describe("scenarios > question > custom column > data type", () => {
     });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .findByText("MiscDate")
       .click();
@@ -80,7 +82,7 @@ describe("scenarios > question > custom column > data type", () => {
     });
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .findByText("MiscDate")
       .click();

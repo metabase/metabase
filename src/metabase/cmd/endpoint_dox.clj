@@ -87,7 +87,7 @@
   []
   (for [ns-symb     u/metabase-namespace-symbols
         :when       (str/includes? (name ns-symb) "metabase.api")
-        [symb varr] (do (classloader/require ns-symb)
+        [_sym varr] (do (classloader/require ns-symb)
                         (sort (ns-interns ns-symb)))
         :when       (:is-endpoint? (meta varr))]
     (meta varr)))
@@ -95,7 +95,7 @@
 (defn- section-endpoints
   "Builds a list of endpoints and their parameters. Relies on docstring generation in /api/common/internal.clj."
   [ep-data]
-  (str/join "\n\n" (map :doc ep-data)))
+  (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
 ;;;; Generate API sections
 

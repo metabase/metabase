@@ -1,12 +1,87 @@
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import _ from "underscore";
+import Dimension, {
+  FieldDimension,
+  TemplateTagDimension,
+} from "metabase-lib/lib/Dimension";
 import Field from "metabase-lib/lib/metadata/Field";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/lib/Question";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+
 import {
   metadata,
   ORDERS,
   PRODUCTS,
-  SAMPLE_DATASET,
-} from "__support__/sample_dataset_fixture";
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
+
+const nestedQuestionCard = {
+  table_id: null,
+  result_metadata: [
+    {
+      name: "boolean",
+      display_name: "boolean",
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+      semantic_type: null,
+      field_ref: [
+        "field",
+        "boolean",
+        {
+          "base-type": "type/Boolean",
+        },
+      ],
+    },
+    {
+      base_type: "type/Text",
+      display_name: "Foo",
+      effective_type: "type/Text",
+      field_ref: ["expression", "Foo"],
+      id: ["field", "Foo", { "base-type": "type/Text" }],
+      name: "Foo",
+      semantic_type: null,
+      table_id: "card__61",
+    },
+  ],
+  database_id: 1,
+  query_type: "query",
+  name: "nested question",
+  dataset_query: {
+    database: 1,
+    query: {
+      "source-table": "card__61",
+    },
+    type: "query",
+  },
+  id: 62,
+  display: "table",
+};
+
+const PRODUCT_CATEGORY_FIELD_ID = 21;
+
+const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
+
+const OVERWRITTEN_USER_ID_FIELD_METADATA = {
+  ...ORDERS_USER_ID_FIELD,
+  display_name: "Foo",
+  description: "Bar",
+  fk_target_field_id: 1,
+  semantic_type: "type/Price",
+  settings: {
+    show_mini_bar: true,
+  },
+};
+
+const ORDERS_DATASET = ORDERS.question()
+  .setDataset(true)
+  .setResultsMetadata({
+    columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
+  });
+
+// It isn't actually possible to overwrite metadata for non-models,
+// it's just needed to test it's only possible for models
+const ORDERS_WITH_OVERWRITTEN_METADATA = ORDERS_DATASET.setDataset(false);
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -225,13 +300,15 @@ describe("Dimension", () => {
         });
       });
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: 6,
-          name: "TOTAL",
-          display_name: "Total",
-          base_type: "type/Float",
-          semantic_type: "type/Currency",
-          field_ref: ["field", ORDERS.TOTAL.id, null],
+        it("should return the column", () => {
+          expect(dimension.column()).toEqual({
+            id: 6,
+            name: "TOTAL",
+            display_name: "Total",
+            base_type: "type/Float",
+            semantic_type: "type/Currency",
+            field_ref: ["field", ORDERS.TOTAL.id, null],
+          });
         });
       });
       describe("field()", () => {
@@ -239,6 +316,60 @@ describe("Dimension", () => {
           expect(dimension.field().id).toEqual(ORDERS.TOTAL.id);
           expect(dimension.field().metadata).toEqual(metadata);
           expect(dimension.field().displayName()).toEqual("Total");
+        });
+
+        it("should return the correct Field from a query's result_metadata when the metadata object is missing the Field", () => {
+          const emptyMetadata = {
+            field: () => {},
+            table: () => {},
+          };
+
+          const question = ORDERS.question().setResultsMetadata({
+            columns: [ORDERS.TOTAL],
+          });
+          const query = new StructuredQuery(question, {
+            type: "query",
+            database: SAMPLE_DATABASE.id,
+            query: {
+              "source-table": ORDERS.id,
+            },
+          });
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.TOTAL.id, null],
+            emptyMetadata,
+            query,
+          );
+
+          const field = dimension.field();
+
+          expect(field.id).toEqual(ORDERS.TOTAL.id);
+          expect(field.base_type).toEqual("type/Float");
+        });
+
+        it("should merge model's field results metadata with field info", () => {
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.USER_ID.id, null],
+            metadata,
+            ORDERS_DATASET.query(),
+          );
+
+          const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
+
+          expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
+        });
+
+        it("should not merge regular question's field results metadata with field info", () => {
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.USER_ID.id, null],
+            metadata,
+            ORDERS_WITH_OVERWRITTEN_METADATA.query(),
+          );
+
+          const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
+
+          expect(fieldInfo).toEqual(ORDERS_USER_ID_FIELD);
         });
       });
     });
@@ -320,18 +451,20 @@ describe("Dimension", () => {
         });
       });
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: PRODUCTS.TITLE.id,
-          name: "TITLE",
-          display_name: "Title",
-          base_type: "type/Text",
-          semantic_type: "type/Category",
-          fk_field_id: ORDERS.PRODUCT_ID.id,
-          field_ref: [
-            "field",
-            PRODUCTS.TITLE.id,
-            { "source-field": ORDERS.PRODUCT_ID.id },
-          ],
+        it("should return the column", () => {
+          expect(dimension.column()).toEqual({
+            id: PRODUCTS.TITLE.id,
+            name: "TITLE",
+            display_name: "Title",
+            base_type: "type/Text",
+            semantic_type: "type/Category",
+            fk_field_id: ORDERS.PRODUCT_ID.id,
+            field_ref: [
+              "field",
+              PRODUCTS.TITLE.id,
+              { "source-field": ORDERS.PRODUCT_ID.id },
+            ],
+          });
         });
       });
       describe("fk()", () => {
@@ -377,18 +510,20 @@ describe("Dimension", () => {
       });
 
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: ORDERS.CREATED_AT.id,
-          name: "CREATED_AT",
-          display_name: "Created At",
-          base_type: "type/DateTime",
-          semantic_type: null,
-          field_ref: [
-            "field",
-            ORDERS.CREATED_AT.id,
-            { "temporal-unit": "month" },
-          ],
-          unit: "month",
+        it("should return the column", () => {
+          expect(dimension.column()).toEqual({
+            id: ORDERS.CREATED_AT.id,
+            name: "CREATED_AT",
+            display_name: "Created At",
+            base_type: "type/DateTime",
+            semantic_type: null,
+            field_ref: [
+              "field",
+              ORDERS.CREATED_AT.id,
+              { "temporal-unit": "month" },
+            ],
+            unit: "month",
+          });
         });
       });
 
@@ -529,7 +664,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
         });
       });
       describe("displayName()", () => {
@@ -540,13 +675,50 @@ describe("Dimension", () => {
 
       describe("column()", () => {
         expect(dimension.column()).toEqual({
-          id: ["expression", "Hello World"],
+          id: ["expression", "Hello World", null],
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Text",
-          semantic_type: null,
-          field_ref: ["expression", "Hello World"],
+          semantic_type: "type/Text",
+          field_ref: ["expression", "Hello World", null],
         });
+      });
+
+      describe("field", () => {
+        it("should return a field inferred from the expression", () => {
+          const field = dimension.field();
+
+          expect(field).toBeInstanceOf(Field);
+          expect(field.name).toEqual("Hello World");
+        });
+
+        describe("when an expression dimension has a query that relies on a nested card", () => {
+          const question = new Question(nestedQuestionCard, metadata);
+          const dimension = Dimension.parseMBQL(
+            ["expression", "Foo"],
+            metadata,
+            question.query(),
+          );
+
+          it("should return a field inferred from the expression", () => {
+            const field = dimension.field();
+
+            expect(field).toBeInstanceOf(Field);
+            expect(field.name).toEqual("Foo");
+          });
+        });
+      });
+    });
+
+    describe("dimensions()", () => {
+      it("should return subdimensions according to the field type", () => {
+        const question = new Question(nestedQuestionCard, metadata);
+        const dimension = Dimension.parseMBQL(
+          ["expression", 42],
+          metadata,
+          question.query(),
+        );
+        expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
     });
   });
@@ -621,14 +793,14 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "aggregation" clause', () => {
-          expect(dimension.mbql()).toEqual(["aggregation", 1]);
+          expect(dimension.mbql()).toEqual(["aggregation", 1, null]);
         });
       });
 
       function aggregation(agg) {
         const query = new StructuredQuery(ORDERS.question(), {
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [agg],
@@ -675,6 +847,413 @@ describe("Dimension", () => {
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
           expect(base_type).toBe("type/Integer");
+        });
+      });
+    });
+  });
+
+  describe("Nested Question Field Dimension", () => {
+    const question = new Question(nestedQuestionCard, metadata);
+
+    const dimension = Dimension.parseMBQL(
+      ["field", "boolean", { "base-type": "type/Boolean" }],
+      metadata,
+      question.query(),
+    );
+
+    describe("INSTANCE METHODS", () => {
+      describe("mbql", () => {
+        it("returns the field clause", () => {
+          expect(dimension.mbql()).toEqual([
+            "field",
+            "boolean",
+            { "base-type": "type/Boolean" },
+          ]);
+        });
+      });
+
+      describe("displayName", () => {
+        it("returns the field name", () => {
+          expect(dimension.displayName()).toEqual("boolean");
+        });
+      });
+
+      describe("column", () => {
+        it("returns the column", () => {
+          expect(dimension.column()).toEqual({
+            name: "boolean",
+            display_name: "boolean",
+            base_type: "type/Boolean",
+            semantic_type: null,
+            field_ref: [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean",
+              },
+            ],
+          });
+        });
+      });
+
+      describe("field", () => {
+        it("should return the `field` from the card's result_metadata", () => {
+          const field = dimension.field();
+          expect(field.id).toBeUndefined();
+          expect(field.name).toEqual("boolean");
+          expect(field.isBoolean()).toBe(true);
+          expect(field.metadata).toBeDefined();
+          expect(field.query).toBeDefined();
+        });
+      });
+    });
+  });
+
+  describe("TemplateTagDimension", () => {
+    describe("dimension tag (ie a field filter)", () => {
+      const templateTagClause = ["template-tag", "foo"];
+      const query = new NativeQuery(PRODUCTS.question(), {
+        database: SAMPLE_DATABASE.id,
+        type: "native",
+        native: {
+          query: "select * from PRODUCTS where {{foo}}",
+          "template-tags": {
+            foo: {
+              id: "5928ca74-ca36-8706-7bed-0143d7646b6a",
+              name: "foo",
+              "display-name": "Foo",
+              type: "dimension",
+              dimension: ["field", PRODUCT_CATEGORY_FIELD_ID, null],
+              "widget-type": "category",
+            },
+          },
+        },
+      });
+
+      const dimension = Dimension.parseMBQL(templateTagClause, metadata, query);
+
+      describe("STATIC METHODS", () => {
+        describe("parseMBQL", () => {
+          it("returns a TemplateTagDimension", () => {
+            expect(dimension).toBeInstanceOf(TemplateTagDimension);
+          });
+
+          it("should return null when not given a template tag clause", () => {
+            expect(
+              TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
+            ).toBeNull();
+          });
+        });
+
+        describe("isTemplateTagClause", () => {
+          it("returns false for a field clause", () => {
+            expect(
+              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
+            ).toBe(false);
+          });
+
+          it("returns false for a non-array clause", () => {
+            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
+          });
+
+          it("returns true for a template tag clause", () => {
+            expect(
+              TemplateTagDimension.isTemplateTagClause(templateTagClause),
+            ).toBe(true);
+          });
+        });
+      });
+
+      describe("INSTANCE METHODS", () => {
+        describe("tag", () => {
+          it("should return the associated tag object from the native query", () => {
+            expect(dimension.tag()).toEqual(query.templateTagsMap().foo);
+          });
+        });
+
+        describe("isDimensionType", () => {
+          it("should evaluate to true", () => {
+            expect(dimension.isDimensionType()).toBe(true);
+          });
+        });
+
+        describe("isValidDimensionType", () => {
+          it("should evaluate to true", () => {
+            expect(dimension.isValidDimensionType()).toBe(true);
+          });
+        });
+
+        describe("isVariableType", () => {
+          it("should evaluate to false", () => {
+            expect(dimension.isVariableType()).toBe(false);
+          });
+        });
+
+        describe("dimension", () => {
+          it("should return the underlying dimension of the template tag", () => {
+            const d = dimension.dimension();
+            expect(d instanceof FieldDimension).toBe(true);
+            expect(d.mbql()).toEqual([
+              "field",
+              PRODUCT_CATEGORY_FIELD_ID,
+              null,
+            ]);
+          });
+
+          it("should default to null for a TemplateTagDimension without a query", () => {
+            const missingQueryTemplateTag = TemplateTagDimension.parseMBQL(
+              templateTagClause,
+              metadata,
+            );
+
+            expect(missingQueryTemplateTag.dimension()).toBeNull();
+          });
+
+          it("should default to null for a TemplateTagDimension without a query", () => {
+            const missingTagTemplateTag = TemplateTagDimension.parseMBQL(
+              ["template-tag", "bar"],
+              metadata,
+              query,
+            );
+
+            expect(missingTagTemplateTag.dimension()).toBeNull();
+          });
+        });
+
+        describe("variable", () => {
+          it("should be null since this is a dimension type", () => {
+            const variable = dimension.variable();
+            expect(variable).toBeNull();
+          });
+        });
+
+        describe("field", () => {
+          it("should return the underlying field of the underlying dimension", () => {
+            const field = dimension.field();
+            expect(field.id).toEqual(PRODUCT_CATEGORY_FIELD_ID);
+            expect(field.isCategory()).toBe(true);
+          });
+        });
+
+        describe("name", () => {
+          it("should return the underlying field name", () => {
+            expect(dimension.name()).toEqual("CATEGORY");
+          });
+        });
+
+        describe("tagName", () => {
+          it("should return the template tag name", () => {
+            expect(dimension.tagName()).toEqual("foo");
+          });
+        });
+
+        describe("displayName", () => {
+          it("should return the display name of the tag", () => {
+            expect(dimension.displayName()).toEqual("Foo");
+          });
+        });
+
+        describe("mbql", () => {
+          it("should return the template tag clause", () => {
+            expect(dimension.mbql()).toEqual(templateTagClause);
+          });
+        });
+
+        describe("icon", () => {
+          it("should return the icon associated with the underlying field", () => {
+            expect(dimension.icon()).toEqual("string");
+          });
+        });
+      });
+    });
+
+    describe("variable tag", () => {
+      const templateTagClause = ["template-tag", "cat"];
+      const query = new NativeQuery(PRODUCTS.question(), {
+        database: SAMPLE_DATABASE.id,
+        type: "native",
+        native: {
+          query: "select * from PRODUCTS where CATEGORY = {{cat}}",
+          "template-tags": {
+            cat: {
+              id: "abc",
+              name: "cat",
+              "display-name": "Cat",
+              type: "text",
+            },
+          },
+        },
+      });
+
+      const dimension = Dimension.parseMBQL(templateTagClause, metadata, query);
+
+      describe("STATIC METHODS", () => {
+        describe("parseMBQL", () => {
+          it("returns a TemplateTagDimension", () => {
+            expect(dimension).toBeInstanceOf(TemplateTagDimension);
+          });
+
+          it("should return null when not given a template tag clause", () => {
+            expect(
+              TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
+            ).toBeNull();
+          });
+        });
+
+        describe("isTemplateTagClause", () => {
+          it("returns false for a field clause", () => {
+            expect(
+              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
+            ).toBe(false);
+          });
+
+          it("returns false for a non-array clause", () => {
+            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
+          });
+
+          it("returns true for a template tag clause", () => {
+            expect(
+              TemplateTagDimension.isTemplateTagClause(templateTagClause),
+            ).toBe(true);
+          });
+        });
+      });
+
+      describe("INSTANCE METHODS", () => {
+        describe("tag", () => {
+          it("should return the associated tag object from the native query", () => {
+            expect(dimension.tag()).toEqual(query.templateTagsMap().cat);
+          });
+        });
+
+        describe("isDimensionType", () => {
+          it("should evaluate to false", () => {
+            expect(dimension.isDimensionType()).toBe(false);
+          });
+        });
+
+        describe("isVariableType", () => {
+          it("should evaluate to true", () => {
+            expect(dimension.isVariableType()).toBe(true);
+          });
+        });
+
+        describe("dimension", () => {
+          it("should return null since there is no underlying field dimension", () => {
+            const d = dimension.dimension();
+            expect(d).toBeNull();
+          });
+        });
+
+        describe("variable", () => {
+          it("should return a TemplateTagVariable instance", () => {
+            const variable = dimension.variable();
+            expect(variable).toBeInstanceOf(TemplateTagVariable);
+            expect(variable.displayName()).toEqual("Cat");
+          });
+        });
+
+        describe("field", () => {
+          it("should return null since there is no underlying field", () => {
+            const field = dimension.field();
+            expect(field).toBeNull();
+          });
+        });
+
+        describe("name", () => {
+          it("should return the underlying field name", () => {
+            expect(dimension.name()).toEqual("cat");
+          });
+        });
+
+        describe("tagName", () => {
+          it("should return the template tag name", () => {
+            expect(dimension.tagName()).toEqual("cat");
+          });
+        });
+
+        describe("displayName", () => {
+          it("should return the display name of the tag", () => {
+            expect(dimension.displayName()).toEqual("Cat");
+          });
+        });
+
+        describe("mbql", () => {
+          it("should return the template tag clause", () => {
+            expect(dimension.mbql()).toEqual(templateTagClause);
+          });
+        });
+
+        describe("icon", () => {
+          it("should return the icon associated with the underlying field", () => {
+            expect(dimension.icon()).toEqual("string");
+          });
+        });
+      });
+    });
+
+    describe("broken dimension tag", () => {
+      const templateTagClause = ["template-tag", "foo"];
+      const query = new NativeQuery(PRODUCTS.question(), {
+        database: SAMPLE_DATABASE.id,
+        type: "native",
+        native: {
+          query: "select * from PRODUCTS where {{foo}}",
+          "template-tags": {
+            foo: {
+              id: "5928ca74-ca36-8706-7bed-0143d7646b6a",
+              name: "foo",
+              "display-name": "Foo",
+              type: "dimension",
+              "widget-type": "category",
+              // this should be defined
+              dimension: null,
+            },
+          },
+        },
+      });
+
+      const brokenDimension = Dimension.parseMBQL(
+        templateTagClause,
+        metadata,
+        query,
+      );
+
+      describe("instance methods", () => {
+        describe("isDimensionType", () => {
+          it("should evaluate to true", () => {
+            expect(brokenDimension.isDimensionType()).toBe(true);
+          });
+        });
+
+        describe("isValidDimensionType", () => {
+          it("should return false", () => {
+            expect(brokenDimension.isValidDimensionType()).toBe(false);
+          });
+        });
+
+        describe("isVariableType", () => {
+          it("should evaluate to false", () => {
+            expect(brokenDimension.isVariableType()).toBe(false);
+          });
+        });
+
+        describe("field", () => {
+          it("should evaluate to null", () => {
+            expect(brokenDimension.field()).toBeNull();
+          });
+        });
+
+        describe("name", () => {
+          it("should evaluate to the tag's name instead of the field's", () => {
+            expect(brokenDimension.name()).toEqual("foo");
+          });
+        });
+
+        describe("icon", () => {
+          it("should use a fallback icon", () => {
+            expect(brokenDimension.icon()).toEqual("label");
+          });
         });
       });
     });

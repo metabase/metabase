@@ -14,19 +14,20 @@
   specified), then invokes
 
     (f pulse)"
-  [{:keys [dashboard pulse pulse-card channel card]
+  [{:keys [dashboard pulse pulse-card channel card dashcard]
     :or   {channel :email}}
    f]
   (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
-                                 (->> pulse
-                                      (merge {:name         "Aviary KPIs"
-                                              :dashboard_id (u/the-id dashboard)}))]
+                                 (merge {:name         "Aviary KPIs"
+                                         :dashboard_id (u/the-id dashboard)}
+                                        pulse)]
                   PulseCard     [_ (merge {:pulse_id pulse-id
                                            :card_id  (u/the-id card)
                                            :position 0}
                                           pulse-card)]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id (u/the-id dashboard)
-                                                    :card_id (u/the-id card)}]
+                  DashboardCard [_ (merge {:dashboard_id (u/the-id dashboard)
+                                           :card_id (u/the-id card)}
+                                          dashcard)]
                   PulseChannel  [{pc-id :id} (case channel
                                                :email
                                                {:pulse_id pulse-id}
@@ -64,7 +65,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card dashboard pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card dashboard dashcard pulse pulse-card fixture display], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -74,11 +75,13 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name card-name} card)]]
+                      Card          [{card-id :id} (merge {:name card-name
+                                                           :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
                                        :dashboard  dashboard-id
+                                       :dashcard   dashcard
                                        :pulse      pulse
                                        :pulse-card pulse-card
                                        :channel    channel-type}]
@@ -133,11 +136,11 @@
   (testing "it runs for each non-virtual card"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
                     User [{user-id :id}]]
-      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
                        :dashcard (s/pred map?)
@@ -147,32 +150,33 @@
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Card          [{card-id-3 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
                     User [{user-id :id}]]
-      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id
                                                :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (pulse/execute-dashboard {:creator_id user-id} dashboard-id))))))
+      (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment aside from dashboard icon"
     {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
        (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
-         (thunk)))
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -238,14 +242,18 @@
                    (output @#'render.body/attached-results-text))))))}}))
 
 (deftest virtual-card-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a virtual (markdown) card"
     {:card (checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
-       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "# header"}}]
-         (thunk)))
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id
+                                       :row 1
+                                       :col 1
+                                       :visualization_settings {:text "# header"}}]
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -286,6 +294,11 @@
     "Dashboard subscription that includes a dashboard filters"
     {:card (checkins-query-card {})
 
+     :fixture
+     (fn [_ thunk]
+       (mt/with-temporary-setting-values [site-name "Metabase Test"]
+          (thunk)))
+
      :assert
      {:email
        (fn [_ _]
@@ -322,13 +335,16 @@
                  (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
     {:card (checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
-       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id
+                                       :row 1
+                                       :col 1
+                                       :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
          (binding [pulse/*slack-mrkdwn-length-limit* 10]
            (thunk))))
 
@@ -337,3 +353,74 @@
       (fn [{:keys [card-id]} [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
                (nth (:attachments (thunk->boolean pulse-results)) 2))))}}))
+
+(deftest archived-dashboard-test
+  (tests {:dashboard {:archived true}}
+    "Dashboard subscriptions are not sent if dashboard is archived"
+    {:card (checkins-query-card {})
+
+     :assert
+     {:slack
+      (fn [_ [pulse-results]]
+        (is (= {:attachments []} (thunk->boolean pulse-results))))
+
+      :email
+      (fn [_ _]
+        (is (= {} (mt/summarize-multipart-email))))}}))
+
+(deftest use-default-values-test
+  (testing "Dashboard Subscriptions SHOULD use default values for Dashboard parameters when running (#20516)"
+    (mt/dataset sample-dataset
+      (mt/with-temp Dashboard [{dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
+                                                                  :parameters [{:name    "Category"
+                                                                                :slug    "category"
+                                                                                :id      "_MBQL_CATEGORY_"
+                                                                                :type    :category
+                                                                                :default ["Doohickey"]}
+                                                                               {:name    "SQL Category"
+                                                                                :slug    "sql_category"
+                                                                                :id      "_SQL_CATEGORY_"
+                                                                                :type    :category
+                                                                                :default ["Gizmo"]}]}]
+        (testing "MBQL query"
+          (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"
+                                                    :dataset_query (mt/mbql-query products
+                                                                     {:fields   [$id $title $category]
+                                                                      :order-by [[:asc $id]]
+                                                                      :limit    2})}]
+                          DashboardCard [_ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
+                                                                  :card_id      mbql-card-id
+                                                                  :target       [:dimension [:field (mt/id :products :category) nil]]}]
+                                            :card_id            mbql-card-id
+                                            :dashboard_id       dashboard-id}]]
+            (let [[mbql-results] (map :result (@#'pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+              (is (= [[2 "Small Marble Shoes"        "Doohickey"]
+                      [3 "Synergistic Granite Chair" "Doohickey"]]
+                     (mt/rows mbql-results))))))
+        (testing "SQL Query"
+          (mt/with-temp* [Card [{sql-card-id :id} {:name          "Products (SQL)"
+                                                   :dataset_query (mt/native-query
+                                                                    {:query
+                                                                     (str "SELECT id, title, category\n"
+                                                                          "FROM products\n"
+                                                                          "WHERE {{category}}\n"
+                                                                          "ORDER BY id ASC\n"
+                                                                          "LIMIT 2")
+
+                                                                     :template-tags
+                                                                     {"category"
+                                                                      {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                       :name         "category"
+                                                                       :display-name "Category"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :products :category) nil]
+                                                                       :widget-type  :category}}})}]
+                          DashboardCard [_ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
+                                                                  :card_id      sql-card-id
+                                                                  :target       [:dimension [:template-tag "category"]]}]
+                                            :card_id            sql-card-id
+                                            :dashboard_id       dashboard-id}]]
+            (let [[results] (map :result (@#'pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+              (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
+                      [10 "Mediocre Wooden Table" "Gizmo"]]
+                     (mt/rows results))))))))))

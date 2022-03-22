@@ -1,4 +1,7 @@
-import styled, { css } from "styled-components";
+import React from "react";
+import cx from "classnames";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -10,12 +13,18 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
-  LoadingAndErrorWrapper,
-).attrs({
-  className: ({ isFullscreen, isNightMode }) =>
-    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
-      "Dashboard--night"}`,
-})`
+  ({ isFullscreen, isNightMode, className, ...props }) => {
+    return (
+      <LoadingAndErrorWrapper
+        className={cx(className, "Dashboard", {
+          "Dashboard--fullscreen": isFullscreen,
+          "Dashboard--night": isNightMode,
+        })}
+        {...props}
+      />
+    );
+  },
+)`
   flex: 1 0 auto;
 
   // prevents header from scrolling so we can have a fixed sidebar

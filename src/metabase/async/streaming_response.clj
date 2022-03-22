@@ -60,7 +60,7 @@
         (catch Throwable e
           (log/error e (trs "Error writing error to output stream") obj))))))
 
-(defn- do-f* [f ^OutputStream os finished-chan canceled-chan]
+(defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
     (f os canceled-chan)
     (catch EofException _
@@ -79,7 +79,7 @@
   `async-context`."
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
-  (let [task (bound-fn []
+  (let [task (^:once fn* []
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
@@ -178,7 +178,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as options} finished-chan]
+   f {:keys [content-type status headers], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
       (.setStatus response (or status 202))
@@ -209,7 +209,7 @@
     (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
-  (respond [this context]
+  (respond [_this context]
     (respond context f options donechan))
 
   ;; sync responses only (in some cases?)
@@ -263,5 +263,5 @@
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(streaming-response* (fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
+  `(streaming-response* (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))

@@ -1,16 +1,33 @@
+import _ from "underscore";
 import { getCollectionIcon } from "metabase/entities/collections";
 
-export function buildCollectionTree(collections) {
+function hasIntersection(list1, list2) {
+  return _.intersection(list1, list2).length > 0;
+}
+
+export function buildCollectionTree(collections, { targetModels } = {}) {
   if (collections == null) {
     return [];
   }
-  return collections.map(collection => ({
-    id: collection.id,
-    name: collection.name,
-    schemaName: collection.originalName || collection.name,
-    icon: getCollectionIcon(collection),
-    children: buildCollectionTree(collection.children),
-  }));
+
+  const shouldFilterCollections = Array.isArray(targetModels);
+
+  return collections.flatMap(collection => {
+    const hasTargetModels =
+      !shouldFilterCollections ||
+      hasIntersection(targetModels, collection.below) ||
+      hasIntersection(targetModels, collection.here);
+
+    return hasTargetModels
+      ? {
+          id: collection.id,
+          name: collection.name,
+          schemaName: collection.originalName || collection.name,
+          icon: getCollectionIcon(collection),
+          children: buildCollectionTree(collection.children, { targetModels }),
+        }
+      : [];
+  });
 }
 
 export const findCollectionByName = (collections, name) => {

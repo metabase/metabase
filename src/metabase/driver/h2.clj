@@ -34,10 +34,17 @@
 
 (defmethod driver/connection-properties :h2
   [_]
-  [{:name         "db"
-    :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
-    :required     true}])
+  (->>
+   [{:name         "db"
+     :display-name (tru "Connection String")
+     :helper-text (deferred-tru "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension.")
+     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
+     :required     true}
+    driver.common/cloud-ip-address-info
+    driver.common/advanced-options-start
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod driver/db-start-of-week :h2
   [_]
@@ -63,7 +70,7 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
+(defn- check-native-query-not-using-default-user [{query-type :type, :as query}]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
@@ -299,14 +306,14 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (dbspec/h2 (update details :db connection-string-set-safe-options)))
+  (dbspec/spec :h2 (update details :db connection-string-set-safe-options)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 (defmethod sql-jdbc.execute/connection-with-timezone :h2
-  [driver database ^String timezone-id]
+  [driver database ^String _timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]

@@ -2,12 +2,13 @@ import {
   restore,
   modal,
   sidebar,
-  describeWithToken,
-  describeWithoutToken,
+  describeEE,
+  describeOSS,
+  openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const COLLECTION_NAME = "Official Collection Test";
 
@@ -17,7 +18,7 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-describeWithToken("collections types", () => {
+describeEE("collections types", () => {
   beforeEach(() => {
     restore();
   });
@@ -59,7 +60,7 @@ describeWithToken("collections types", () => {
     cy.findByText("First collection").click();
 
     // Test not visible when creating a new collection
-    cy.icon("new_folder").click();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
       cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
@@ -110,7 +111,7 @@ describeWithToken("collections types", () => {
 
     openCollection("First collection");
 
-    cy.icon("new_folder").click();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       assertNoCollectionTypeInput();
       cy.icon("close").click();
@@ -129,7 +130,7 @@ describeWithToken("collections types", () => {
     openCollection("Your personal collection");
     cy.icon("pencil").should("not.exist");
 
-    cy.icon("new_folder").click();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       assertNoCollectionTypeInput();
       cy.findByLabelText("Name").type("Personal collection child");
@@ -138,7 +139,7 @@ describeWithToken("collections types", () => {
 
     openCollection("Personal collection child");
 
-    cy.icon("new_folder").click();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       assertNoCollectionTypeInput();
       cy.icon("close").click();
@@ -146,7 +147,7 @@ describeWithToken("collections types", () => {
   });
 });
 
-describeWithoutToken("collection types", () => {
+describeOSS("collection types", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -155,7 +156,7 @@ describeWithoutToken("collection types", () => {
   it("should not be able to manage collection's authority level", () => {
     cy.visit("/collection/root");
 
-    cy.icon("new_folder").click();
+    openNewCollectionItemFlowFor("collection");
     modal().within(() => {
       assertNoCollectionTypeInput();
       cy.icon("close").click();
@@ -301,7 +302,7 @@ function setOfficial(official = true) {
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  cy.icon("new_folder").click();
+  openNewCollectionItemFlowFor("collection");
   modal().within(() => {
     cy.findByLabelText("Name").type(name);
     setOfficial();

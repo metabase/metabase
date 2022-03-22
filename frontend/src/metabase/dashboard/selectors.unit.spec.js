@@ -22,11 +22,11 @@ const STATE = {
     },
     dashcards: {
       0: {
-        card: { id: 0 },
+        card: { id: 0, dataset_query: { type: "query", query: {} } },
         parameter_mappings: [],
       },
       1: {
-        card: { id: 1 },
+        card: { id: 1, dataset_query: { type: "query", query: {} } },
         parameter_mappings: [],
       },
     },

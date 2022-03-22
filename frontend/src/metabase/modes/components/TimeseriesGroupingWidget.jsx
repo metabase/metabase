@@ -7,7 +7,7 @@ import { isStructured } from "metabase/lib/query";
 
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 // set the display automatically then run
 function updateAndRun(query) {
@@ -22,7 +22,7 @@ export default class TimeseriesGroupingWidget extends Component {
     query: PropTypes.object.isRequired,
   };
 
-  _popover: ?any;
+  _popover;
 
   render() {
     const { query } = this.props;

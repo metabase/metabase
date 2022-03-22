@@ -7,8 +7,8 @@ import { DashboardApi } from "metabase/services";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 
-import Radio from "metabase/components/Radio";
-import Toggle from "metabase/components/Toggle";
+import Radio from "metabase/core/components/Radio";
+import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -146,9 +146,10 @@ class OtherParameterList extends React.Component {
       filtered,
       filtering,
     });
-    const columnPairs = Object.entries(result).flatMap(
-      ([filteredId, filteringIds]) =>
-        filteringIds.map(filteringId => [filteringId, filteredId]),
+    const columnPairs = Object.entries(
+      result,
+    ).flatMap(([filteredId, filteringIds]) =>
+      filteringIds.map(filteringId => [filteringId, filteredId]),
     );
 
     this.setState({ columnPairs, loading: false });

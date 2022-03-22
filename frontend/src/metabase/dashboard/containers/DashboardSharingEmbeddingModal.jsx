@@ -6,9 +6,9 @@ import cx from "classnames";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
-
+import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
   createPublicLink,
@@ -21,6 +21,10 @@ const defaultProps = {
   isLinkEnabled: true,
 };
 
+const mapStateToProps = (state, props) => ({
+  parameters: getParameters(state, props),
+});
+
 const mapDispatchToProps = {
   createPublicLink,
   deletePublicLink,
@@ -29,7 +33,7 @@ const mapDispatchToProps = {
 };
 
 class DashboardSharingEmbeddingModal extends Component {
-  _modal: ?ModalWithTrigger;
+  _modal;
 
   render() {
     const {
@@ -37,6 +41,7 @@ class DashboardSharingEmbeddingModal extends Component {
       className,
       createPublicLink,
       dashboard,
+      parameters,
       deletePublicLink,
       enabled,
       linkClassNames,
@@ -60,7 +65,7 @@ class DashboardSharingEmbeddingModal extends Component {
             aria-disabled={!isLinkEnabled}
             onClick={() => {
               if (isLinkEnabled) {
-                MetabaseAnalytics.trackEvent(
+                MetabaseAnalytics.trackStructEvent(
                   "Sharing / Embedding",
                   "dashboard",
                   "Sharing Link Clicked",
@@ -78,7 +83,7 @@ class DashboardSharingEmbeddingModal extends Component {
           {...props}
           className={className}
           resource={dashboard}
-          resourceParameters={dashboard && dashboard.parameters}
+          resourceParameters={parameters}
           resourceType="dashboard"
           onCreatePublicLink={() => createPublicLink(dashboard)}
           onDisablePublicLink={() => deletePublicLink(dashboard)}
@@ -102,6 +107,6 @@ class DashboardSharingEmbeddingModal extends Component {
 DashboardSharingEmbeddingModal.defaultProps = defaultProps;
 
 export default connect(
-  null,
+  mapStateToProps,
   mapDispatchToProps,
 )(DashboardSharingEmbeddingModal);

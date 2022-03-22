@@ -39,7 +39,7 @@ const LegendCaption = ({
       </LegendLabel>
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
-          <LegendDescriptionIcon />
+          <LegendDescriptionIcon className="hover-child" />
         </Tooltip>
       )}
       {actionButtons && <LegendActions>{actionButtons}</LegendActions>}

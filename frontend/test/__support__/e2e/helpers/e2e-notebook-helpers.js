@@ -11,3 +11,20 @@
 export function getNotebookStep(type, { stage = 0, index = 0 } = {}) {
   return cy.findByTestId(`step-${type}-${stage}-${index}`);
 }
+
+/**
+ * Visualize notebook query results.
+ *
+ * @param {function} callback
+ */
+export function visualize(callback) {
+  cy.intercept("POST", "/api/dataset").as("dataset");
+
+  cy.button("Visualize").click();
+
+  cy.wait("@dataset").then(({ response }) => {
+    if (callback) {
+      callback(response);
+    }
+  });
+}

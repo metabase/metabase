@@ -13,7 +13,16 @@ To configure this interactivity, you'll use the **click behavior** option on a d
 
 ### Customizing click behavior
 
-From your dashboard, click on the **pencil** icon to enter dashboard edit mode. Hover over the card containing the question you want to customize. Metabase will display a menu at the top right of the card. Select the **Click behavior** option (the icon with the mouse cursor clicking on a card).
+From your dashboard, first click on the **pencil** icon to enter dashboard edit mode. 
+
+If you hover over the card that contains question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right: 
+
+- **Visualization options**: This icon looks like a painter's palette.
+- **Click behavior**: This is the icon with the mouse cursor clicking on a card.
+- **Add series**: If your question has a visualization to which you can add an [additional series](09-multi-series-charting) (like a line or bar chart), you'll see this icon as a **+** next to a small representation of that chart type. Not all cards will show this option.
+- **Remove**: This icon is an **X**. Selecting this will remove your question from the dashboard.
+
+Select the **Click behavior** option. 
 
 ![Click behavior icon](images/interactive-dashboards/click-behavior-icon.png)
 
@@ -63,7 +72,7 @@ Once you select the column that contains the value you want to pass, the sidebar
 
 In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked `Product -> Category` to the destination dashboard ("Interactive Dashboard"), which will then filter its cards by that `Category`.
 
-You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/index.html), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
+You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. In [some plans](https://www.metabase.com/pricing), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
 
 When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {% raw %}{{Category}}{% endraw %}", where `Category` is the name of your column.
 

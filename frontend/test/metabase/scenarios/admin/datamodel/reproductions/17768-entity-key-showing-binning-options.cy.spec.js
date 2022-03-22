@@ -1,7 +1,12 @@
-import { restore, openReviewsTable, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import {
+  restore,
+  openReviewsTable,
+  popover,
+  summarize,
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { REVIEWS } = SAMPLE_DATASET;
+const { REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 17768", () => {
   beforeEach(() => {
@@ -13,7 +18,7 @@ describe("issue 17768", () => {
       has_field_values: "list",
     });
 
-    // Sync "Sample Dataset" schema
+    // Sync "Sample Database" schema
     cy.request("POST", `/api/database/1/sync_schema`);
 
     waitForSyncToFinish();
@@ -27,7 +32,7 @@ describe("issue 17768", () => {
   it("should not show binning options for an entity key, regardless of its underlying type (metabase#17768)", () => {
     openReviewsTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Pick a column to group by").click();
 
     popover().within(() => {

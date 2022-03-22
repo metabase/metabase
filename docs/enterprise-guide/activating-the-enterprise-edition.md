@@ -17,7 +17,7 @@ You can either:
 - [Download the latest metabase-enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar) (the filename is the same, irrespective of your plan), or
 - [Get the latest Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`. 
 
-Run Metabase as you would normally, then go to the __Admin__ > __Enterprise__ tab, click the __Activate a license__ button, and paste in your license token. The page will show you the features that are now active.
+Run Metabase as you would normally, then go to __Settings__ > __Admin settings__, and click __License and Billing__ in the lefthand sidebar. Paste in your license token under __License__ and click __Activate__.
 
 ### **Validating your token**
 

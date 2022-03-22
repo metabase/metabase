@@ -247,7 +247,7 @@
                                         [:> [:field 4 nil] 1]]]]]})))))))
 
 (defn- expand-macros [query]
-  (:pre (mt/test-qp-middleware expand-macros/expand-macros query)))
+  (expand-macros/expand-macros query))
 
 (deftest expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"

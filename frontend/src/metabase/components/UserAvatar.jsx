@@ -1,10 +1,12 @@
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+/* eslint-disable react/prop-types */
+import React from "react";
+import styled from "@emotion/styled";
 import { color, height, width } from "styled-system";
 
 import { color as brandColor } from "metabase/lib/colors";
 
-const Avatar = styled(Flex)`
+const Avatar = styled.div`
+  display: flex;
   justify-content: center;
   align-items: center;
   border-radius: 999px;
@@ -30,8 +32,10 @@ function userInitials(user) {
   return user ? initial(user.first_name) + initial(user.last_name) : null;
 }
 
-const UserAvatar = styled(Avatar).attrs({
-  children: ({ user }) => userInitials(user) || "?",
-})``;
+const UserAvatar = ({ user, ...props }) => (
+  <Avatar {...props}>{userInitials(user) || "?"}</Avatar>
+);
+
+UserAvatar.displayName = "UserAvatar";
 
 export default UserAvatar;

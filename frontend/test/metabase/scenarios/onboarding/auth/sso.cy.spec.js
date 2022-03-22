@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   restore,
   mockCurrentUserProperty,
 } from "__support__/e2e/cypress";
@@ -13,7 +13,7 @@ describe("scenarios > auth > signin > SSO", () => {
     cy.signInAsAdmin();
     // Set fake Google client ID
     cy.request("PUT", "/api/setting/google-auth-client-id", {
-      value: "123",
+      value: "fake-client-id.apps.googleusercontent.com",
     });
   });
 
@@ -41,7 +41,7 @@ describe("scenarios > auth > signin > SSO", () => {
       cy.findByLabelText("Email address");
       cy.findByLabelText("Password");
       cy.button("Sign in").should("be.disabled");
-      cy.findByText("Sign in with Google").should("not.exist");
+      cy.findByText("Sign in with Google");
     });
 
     it("should surface login errors with Google sign in enabled (metabase#16122)", () => {
@@ -63,7 +63,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  describeWithToken("EE", () => {
+  describeEE("EE", () => {
     beforeEach(() => {
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {

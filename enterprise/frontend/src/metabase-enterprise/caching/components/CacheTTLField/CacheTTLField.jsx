@@ -20,7 +20,7 @@ const propTypes = {
 export function CacheTTLField({ field, message, ...props }) {
   const hasError = !!field.error;
   return (
-    <CacheTTLFieldContainer {...props}>
+    <CacheTTLFieldContainer {...props} data-testid="cache-ttl-field">
       {message && (
         <FieldText margin="right" hasError={hasError}>
           {message}
@@ -32,6 +32,7 @@ export function CacheTTLField({ field, message, ...props }) {
         value={field.value}
         placeholder="24"
         hasError={hasError}
+        data-testid="cache-ttl-input"
       />
       <FieldText margin="left" hasError={hasError}>{t`hours`}</FieldText>
     </CacheTTLFieldContainer>

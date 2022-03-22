@@ -1,6 +1,9 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
@@ -13,14 +16,14 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import HomepageApp from "metabase/home/containers/HomepageApp";
+import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/AuthApp";
+import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import ResetPasswordApp from "metabase/auth/containers/ResetPasswordApp";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -42,7 +45,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -73,6 +75,7 @@ import FieldDetailContainer from "metabase/reference/databases/FieldDetailContai
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
+import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
@@ -84,15 +87,16 @@ import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetail
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import Overworld from "metabase/containers/Overworld";
+import HomepageApp from "metabase/home/homepage/containers/HomepageApp";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
+import { trackPageView } from "metabase/lib/analytics";
 
 const MetabaseIsSetup = UserAuthWrapper({
-  predicate: authData => !authData.hasSetupToken,
+  predicate: authData => authData.hasUserSetup,
   failureRedirectPath: "/setup",
-  authSelector: state => ({ hasSetupToken: MetabaseSettings.hasSetupToken() }), // HACK
+  authSelector: state => ({ hasUserSetup: MetabaseSettings.hasUserSetup() }), // HACK
   wrapperDisplayName: "MetabaseIsSetup",
   allowRedirectBack: false,
   redirectAction: routerActions.replace,
@@ -123,6 +127,31 @@ const UserIsNotAuthenticated = UserAuthWrapper({
   redirectAction: routerActions.replace,
 });
 
+const UserCanAccessSettings = UserAuthWrapper({
+  predicate: currentUser =>
+    currentUser?.is_superuser ||
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(currentUser),
+  failureRedirectPath: "/unauthorized",
+  authSelector: state => state.currentUser,
+  allowRedirectBack: false,
+  wrapperDisplayName: "UserCanAccessSettings",
+  redirectAction: routerActions.replace,
+});
+
+const createRouteGuard = (userPredicate, displayName) => {
+  const Wrapper = UserAuthWrapper({
+    predicate: currentUser =>
+      currentUser?.is_superuser || userPredicate(currentUser),
+    failureRedirectPath: "/unauthorized",
+    authSelector: state => state.currentUser,
+    allowRedirectBack: false,
+    wrapperDisplayName: displayName,
+    redirectAction: routerActions.replace,
+  });
+
+  return Wrapper(({ children }) => children);
+};
+
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -134,6 +163,20 @@ const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );
 
+const CanAccessSettings = MetabaseIsSetup(
+  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+);
+
+const CanAccessDataModel = createRouteGuard(
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  "CanAccessDataModel",
+);
+
+const CanAccessDatabaseManagement = createRouteGuard(
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDatabaseManagement,
+  "CanAccessDatabasesManagement",
+);
+
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
@@ -141,9 +184,13 @@ export const getRoutes = store => (
       path="/setup"
       component={SetupApp}
       onEnter={(nextState, replace) => {
-        if (!MetabaseSettings.hasSetupToken()) {
+        if (MetabaseSettings.hasUserSetup()) {
           replace("/");
         }
+        trackPageView(location.pathname);
+      }}
+      onChange={(prevState, nextState) => {
+        trackPageView(nextState.location.pathname);
       }}
     />
 
@@ -157,7 +204,11 @@ export const getRoutes = store => (
     <Route
       onEnter={async (nextState, replace, done) => {
         await store.dispatch(loadCurrentUser());
+        trackPageView(nextState.location.pathname);
         done();
+      }}
+      onChange={(prevState, nextState) => {
+        trackPageView(nextState.location.pathname);
       }}
     >
       {/* AUTH */}
@@ -169,7 +220,7 @@ export const getRoutes = store => (
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={PasswordResetApp} />
+        <Route path="reset_password/:token" component={ResetPasswordApp} />
       </Route>
 
       {/* MAIN */}
@@ -177,7 +228,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={Overworld}
+          component={HomepageApp}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
@@ -185,9 +236,6 @@ export const getRoutes = store => (
             }
           }}
         />
-
-        <Route path="/explore" component={PostSetupApp} />
-        <Route path="/explore/:databaseId" component={PostSetupApp} />
 
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
@@ -202,9 +250,10 @@ export const getRoutes = store => (
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          {getCollectionTimelineRoutes()}
         </Route>
 
-        <Route path="activity" component={HomepageApp} />
+        <Route path="activity" component={ActivityApp} />
 
         <Route
           path="dashboard/:slug"
@@ -229,9 +278,18 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
-        <Route path="/ready" component={PostSetupApp} />
+        <Route path="/model">
+          <IndexRoute component={QueryBuilder} />
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/query" component={QueryBuilder} />
+          <Route path=":slug/metadata" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
+        </Route>
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
@@ -324,7 +382,13 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(store, IsAdmin)}
+      {getAdminRoutes(
+        store,
+        CanAccessSettings,
+        IsAdmin,
+        CanAccessDataModel,
+        CanAccessDatabaseManagement,
+      )}
     </Route>
 
     {/* INTERNAL */}

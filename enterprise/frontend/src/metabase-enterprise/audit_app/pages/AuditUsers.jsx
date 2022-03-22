@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import AuditContent from "../components/AuditContent";
@@ -7,11 +8,7 @@ import AuditTableWithSearch from "../containers/AuditTableWithSearch";
 
 import * as UsersCards from "../lib/cards/users";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditUsers = (props: Props) => (
+const AuditUsers = props => (
   <AuditContent {...props} title="Team members" tabs={AuditUsers.tabs} />
 );
 

@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Badge from "metabase/components/Badge";
 
 export default function QuestionLineage({
@@ -25,4 +25,4 @@ export default function QuestionLineage({
 }
 
 QuestionLineage.shouldRender = ({ question, originalQuestion }) =>
-  !question.isSaved() && !!originalQuestion;
+  !question.isSaved() && !!originalQuestion && !originalQuestion.isDataset();

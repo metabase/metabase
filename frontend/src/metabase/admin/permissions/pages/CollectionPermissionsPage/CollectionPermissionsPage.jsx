@@ -25,12 +25,9 @@ import {
   getCollectionsPermissionEditor,
   getCollectionEntity,
   getIsDirty,
-  getDiff,
+  collectionsQuery,
 } from "../../selectors/collection-permissions";
-import {
-  PermissionsSidebar,
-  permissionSidebarPropTypes,
-} from "../../components/PermissionsSidebar";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
@@ -45,7 +42,6 @@ const mapStateToProps = (state, props) => {
     sidebar: getCollectionsSidebar(state, props),
     permissionEditor: getCollectionsPermissionEditor(state, props),
     isDirty: getIsDirty(state, props),
-    diff: getDiff(state, props),
     collection: getCollectionEntity(state, props),
   };
 };
@@ -55,13 +51,12 @@ const propTypes = {
     collectionId: PropTypes.string,
   }),
   children: PropTypes.node.isRequired,
-  sidebar: PropTypes.shape(permissionSidebarPropTypes),
+  sidebar: PropTypes.object,
   permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   collection: PropTypes.object,
   navigateToItem: PropTypes.func.isRequired,
   updateCollectionPermission: PropTypes.func.isRequired,
   isDirty: PropTypes.bool,
-  diff: PropTypes.object,
   savePermissions: PropTypes.func.isRequired,
   loadPermissions: PropTypes.func.isRequired,
   initialize: PropTypes.func.isRequired,
@@ -73,7 +68,6 @@ function CollectionsPermissionsPage({
   permissionEditor,
   collection,
   isDirty,
-  diff,
   savePermissions,
   loadPermissions,
   updateCollectionPermission,
@@ -100,7 +94,6 @@ function CollectionsPermissionsPage({
   return (
     <PermissionsPageLayout
       tab="collections"
-      diff={diff}
       isDirty={isDirty}
       route={route}
       onSave={savePermissions}
@@ -110,7 +103,7 @@ function CollectionsPermissionsPage({
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState
-          icon="all"
+          icon="folder"
           message={t`Select a collection to see its permissions`}
         />
       )}
@@ -129,11 +122,8 @@ CollectionsPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Collections.loadList({
-    query: () => ({ tree: true }),
+    entityQuery: collectionsQuery,
   }),
   Groups.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPage);

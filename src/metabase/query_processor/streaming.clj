@@ -3,6 +3,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.streaming.csv :as streaming.csv]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
@@ -33,20 +34,17 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn- field-ref->map-key
-  "Converts the field-ref of a column to a vector that is used for lookups in the `cols-index` map in
-  `export-column-order`.
-
-  This key is similar to the original field-ref, but should only contain the minimum amount of information necessary to
-  uniquely identify a field, while omitting extra metadata.
-
-  TODO: It would be better if we could use the entire field-ref directly as the map key, or use a separate identifier.
-  The issue currently is that `table-columns` is passed down from the frontend for unsaved cards (in the viz settings)
-  and has to be parsed from JSON, so some fields in metadata might be strings instead of keywords."
-  [field-ref]
-  (if-let [join-alias (:join-alias (last field-ref))]
-    [(keyword (first field-ref)) (second field-ref) {:join-alias join-alias}]
-    [(keyword (first field-ref)) (second field-ref)]))
+(defn- validate-table-columms
+  "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
+  field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
+  Otherwise returns `table-columns`."
+  [table-columns cols]
+  (let [col-field-refs (set (remove nil? (map :field_ref cols)))
+        col-names      (set (remove nil? (map :name cols)))]
+    (when (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
+                                      (col-names (::mb.viz/table-column-name table-col))))
+                  table-columns)
+      table-columns)))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
@@ -54,37 +52,40 @@
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
-  (let [table-columns'     (or table-columns
+  (let [table-columns'     (or (validate-table-columms table-columns cols)
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
                                (for [col cols]
-                                 (let [id-or-name (or (:id col) (:name col))
+                                 (let [col-name   (:name col)
+                                       id-or-name (or (:id col) col-name)
                                        field-ref  (:field_ref col)]
                                    {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-                                    ::mb.viz/table-column-enabled true})))
+                                    ::mb.viz/table-column-enabled true
+                                    ::mb.viz/table-column-name col-name})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
+        ;; cols-index is a map from keys representing fields to their indices into `cols`
         cols-index         (reduce-kv (fn [m i col]
-                                        (if-let [field-ref (:field_ref col)]
-                                          ;; Use first two entries of field-ref, if available
-                                          (assoc m (field-ref->map-key field-ref) i)
-                                          ;; Otherwise construct a key using the name and/or id of the column
-                                          (let [m' (assoc m [:field (:name col)] i)]
-                                            (if (:id col)
-                                              (assoc m' [:field (:id col)] i) m'))))
+                                        ;; Always add col-name as a key, so that native queries and remapped fields work correctly
+                                        (let [m' (assoc m (:name col) i)]
+                                          (if-let [field-ref (:field_ref col)]
+                                            ;; Add a map key based on the column's field-ref, if available
+                                            (assoc m' field-ref i)
+                                            m')))
                                       {}
                                       cols-vector)]
     (->> (map
-          (fn [{field-ref ::mb.viz/table-column-field-ref}]
-            (let [index         (get cols-index (field-ref->map-key field-ref))
-                  col           (get cols-vector index)
-                  remapped-to   (:remapped_to col)
-                  remapped-from (:remapped_from col)]
+          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+            (let [index              (or (get cols-index field-ref)
+                                         (get cols-index col-name))
+                  col                (get cols-vector index)
+                  remapped-to-name   (:remapped_to col)
+                  remapped-from-name (:remapped_from col)]
               (cond
-                remapped-to
-                (get cols-index [:field remapped-to])
+                remapped-to-name
+                (get cols-index remapped-to-name)
 
-                (not remapped-from)
+                (not remapped-from-name)
                 index)))
           enabled-table-cols)
          (remove nil?))))
@@ -123,7 +124,7 @@
          metadata)))))
 
 (defn- streaming-reducedf [results-writer ^OutputStream os]
-  (fn [_ final-metadata context]
+  (fn [final-metadata context]
     (i/finish! results-writer final-metadata)
     (u/ignore-exceptions
       (.flush os)
@@ -138,8 +139,9 @@
       (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
   ([export-format os]
    (let [results-writer (i/streaming-results-writer export-format os)]
-     {:rff      (streaming-rff results-writer)
-      :reducedf (streaming-reducedf results-writer os)}))
+     (merge (context.default/default-context)
+            {:rff      (streaming-rff results-writer)
+             :reducedf (streaming-reducedf results-writer os)})))
 
   ([export-format os canceled-chan]
    (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
@@ -182,7 +184,7 @@
   cancelations properly."
   {:style/indent 1}
   [[context-binding export-format filename-prefix] & body]
-  `(streaming-response* ~export-format ~filename-prefix (fn [~context-binding] ~@body)))
+  `(streaming-response* ~export-format ~filename-prefix (bound-fn [~context-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

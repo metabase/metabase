@@ -3,17 +3,18 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
+import Databases from "metabase/entities/databases";
 
-import { getIsDirty, getDiff } from "../../selectors/data-permissions";
+import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
   loadDataPermissions,
   initializeDataPermissions,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 
 const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
@@ -75,11 +76,7 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
-      helpContent={
-        PLUGIN_ADVANCED_PERMISSIONS.DataPermissionsHelp && (
-          <PLUGIN_ADVANCED_PERMISSIONS.DataPermissionsHelp />
-        )
-      }
+      helpContent={<DataPermissionsHelp />}
     >
       {children}
     </PermissionsPageLayout>
@@ -90,8 +87,6 @@ DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Groups.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  Databases.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

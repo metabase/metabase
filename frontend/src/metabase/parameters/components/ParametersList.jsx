@@ -9,37 +9,7 @@ import {
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
-import {
-  getValuePopulatedParameters,
-  getVisibleParameters,
-} from "metabase/meta/Parameter";
-
-import type {
-  ParameterId,
-  Parameter,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-
-type Props = {
-  className?: string,
-
-  parameters: Parameter[],
-  dashboard?: DashboardWithCards,
-  editingParameter?: ?Parameter,
-  parameterValues?: ParameterValues,
-
-  isFullscreen?: boolean,
-  isNightMode?: boolean,
-  hideParameters?: ?string, // comma separated list of slugs
-  isEditing?: boolean,
-  isQB?: boolean,
-  vertical?: boolean,
-  commitImmediately?: boolean,
-
-  setParameterIndex?: (parameterId: ParameterId, index: number) => void,
-  setEditingParameter?: (parameterId: ParameterId) => void,
-};
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 
 const StaticParameterWidgetList = ({
   children,
@@ -67,13 +37,11 @@ function ParametersList({
   parameters,
   dashboard,
   editingParameter,
-  parameterValues,
 
   isFullscreen,
   isNightMode,
   hideParameters,
   isEditing,
-  isQB,
   vertical,
   commitImmediately,
 
@@ -81,31 +49,20 @@ function ParametersList({
   setParameterIndex,
   removeParameter,
   setEditingParameter,
-}: Props) {
+}) {
   const handleSortStart = () => {
     document.body.classList.add("grabbing");
   };
 
-  const handleSortEnd = ({
-    oldIndex,
-    newIndex,
-  }: {
-    oldIndex: number,
-    newIndex: number,
-  }) => {
+  const handleSortEnd = ({ oldIndex, newIndex }) => {
     document.body.classList.remove("grabbing");
     if (setParameterIndex) {
       setParameterIndex(parameters[oldIndex].id, newIndex);
     }
   };
 
-  const valuePopulatedParameters = getValuePopulatedParameters(
-    parameters,
-    parameterValues,
-  );
-
   const visibleValuePopulatedParameters = getVisibleParameters(
-    valuePopulatedParameters,
+    parameters,
     hideParameters,
   );
 
@@ -119,13 +76,12 @@ function ParametersList({
     ParameterWidgetList = StaticParameterWidgetList;
   }
 
-  return (
+  return visibleValuePopulatedParameters.length > 0 ? (
     <ParameterWidgetList
       className={cx(
         className,
         "flex align-end flex-wrap",
         vertical ? "flex-column" : "flex-row",
-        { mt1: isQB },
       )}
       axis="x"
       distance={9}
@@ -140,7 +96,7 @@ function ParametersList({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
-          parameters={valuePopulatedParameters}
+          parameters={parameters}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}
@@ -156,7 +112,7 @@ function ParametersList({
         />
       ))}
     </ParameterWidgetList>
-  );
+  ) : null;
 }
 
 ParametersList.defaultProps = {

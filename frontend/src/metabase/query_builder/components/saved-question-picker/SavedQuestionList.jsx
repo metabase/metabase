@@ -2,21 +2,21 @@ import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { Box } from "grid-styled";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { getCollectionVirtualSchemaId } from "metabase/lib/saved-questions";
 import EmptyState from "metabase/components/EmptyState";
-import { generateSchemaId } from "metabase/schema";
 
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,
+  SavedQuestionListEmptyState,
 } from "./SavedQuestionList.styled";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 const propTypes = {
+  isDatasets: PropTypes.bool,
   databaseId: PropTypes.string,
   schema: PropTypes.object.isRequired,
   onSelect: PropTypes.func.isRequired,
@@ -30,29 +30,26 @@ const propTypes = {
   }).isRequired,
 };
 
-export default function SavedQuestionList({
+function SavedQuestionList({
+  isDatasets,
   onSelect,
   databaseId,
   selectedId,
   collection,
 }) {
   const emptyState = (
-    <Box my="120px">
+    <SavedQuestionListEmptyState>
       <EmptyState message={t`Nothing here`} icon="all" />
-    </Box>
+    </SavedQuestionListEmptyState>
   );
 
   const isVirtualCollection = collection.id === PERSONAL_COLLECTIONS.id;
+  const schemaId = getCollectionVirtualSchemaId(collection, { isDatasets });
 
   return (
     <SavedQuestionListRoot>
       {!isVirtualCollection && (
-        <Schemas.Loader
-          id={generateSchemaId(
-            SAVED_QUESTIONS_VIRTUAL_DB_ID,
-            collection.schemaName,
-          )}
-        >
+        <Schemas.Loader id={schemaId}>
           {({ schema }) => {
             const tables =
               databaseId != null
@@ -67,7 +64,10 @@ export default function SavedQuestionList({
                     key={t.id}
                     size="small"
                     name={t.display_name}
-                    icon="table2"
+                    icon={{
+                      name: isDatasets ? "model" : "table2",
+                      size: 16,
+                    }}
                     onSelect={() => onSelect(t)}
                     rightIcon={PLUGIN_MODERATION.getStatusIcon(
                       t.moderated_status,
@@ -87,3 +87,5 @@ export default function SavedQuestionList({
 }
 
 SavedQuestionList.propTypes = propTypes;
+
+export default SavedQuestionList;

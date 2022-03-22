@@ -167,6 +167,23 @@ describe("schema entity", () => {
       });
     });
 
+    it("should create collection schema's tables when adding a saved question", () => {
+      const question = getQuestion();
+
+      const nextState = Schemas.reducer(
+        {
+          [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {},
+        },
+        getCreateAction(question),
+      );
+
+      expect(nextState).toEqual({
+        [ROOT_COLLECTION_VIRTUAL_SCHEMA]: {
+          tables: [`card__${question.id}`],
+        },
+      });
+    });
+
     it("should not add new question ID if it's already present", () => {
       const question = getQuestion();
       const id = `card__${question.id}`;

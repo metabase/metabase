@@ -1,41 +1,19 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
-import ExternalLink from "metabase/components/ExternalLink";
+import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
-
-type PublicLink = {
-  id: string,
-  name: string,
-  public_uuid: string,
-};
-
-type Props = {
-  load: () => Promise<PublicLink[]>,
-  revoke?: (link: PublicLink) => Promise<void>,
-  getUrl: (link: PublicLink) => string,
-  getPublicUrl?: (link: PublicLink) => string,
-  noLinksMessage: string,
-  type: string,
-};
-
-type State = {
-  list: ?(PublicLink[]),
-  error: ?any,
-};
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export default class PublicLinksListing extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       list: null,
@@ -43,7 +21,7 @@ export default class PublicLinksListing extends Component {
     };
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     this.load();
   }
 
@@ -56,7 +34,7 @@ export default class PublicLinksListing extends Component {
     }
   }
 
-  async revoke(link: PublicLink) {
+  async revoke(link) {
     if (!this.props.revoke) {
       return;
     }
@@ -68,8 +46,8 @@ export default class PublicLinksListing extends Component {
     }
   }
 
-  trackEvent(label: string) {
-    MetabaseAnalytics.trackEvent(`Admin ${this.props.type}`, label);
+  trackEvent(label) {
+    MetabaseAnalytics.trackStructEvent(`Admin ${this.props.type}`, label);
   }
 
   render() {

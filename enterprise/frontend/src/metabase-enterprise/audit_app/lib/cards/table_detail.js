@@ -1,4 +1,4 @@
-export const auditLog = (tableId: number) => ({
+export const auditLog = tableId => ({
   card: {
     name: "Audit log",
     display: "table",

@@ -1,10 +1,8 @@
 import { t, ngettext, msgid } from "ttag";
 // NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
 
-type ChartSettingsInitial = { section?: ?string, widget?: ?any };
-
 export class MinColumnsError extends Error {
-  constructor(minColumns: number, actualColumns: number) {
+  constructor(minColumns, actualColumns) {
     super(
       t`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${ngettext(
         msgid`column`,
@@ -16,7 +14,7 @@ export class MinColumnsError extends Error {
 }
 
 export class MinRowsError extends Error {
-  constructor(minRows: number, actualRows: number) {
+  constructor(minRows, actualRows) {
     super(
       t`No dice. We have ${actualRows} data ${ngettext(
         msgid`point`,
@@ -36,20 +34,16 @@ export class LatitudeLongitudeError extends Error {
 }
 
 export class NoBreakoutError extends Error {
-  constructor(message: string) {
+  constructor(message) {
     super(message || t`This visualization requires you to group by a field.`);
   }
 }
 
 export class ChartSettingsError extends Error {
-  initial: ?ChartSettingsInitial;
-  buttonText: ?string;
+  initial;
+  buttonText;
 
-  constructor(
-    message: string,
-    initial?: ChartSettingsInitial,
-    buttonText?: string,
-  ) {
+  constructor(message, initial, buttonText) {
     super(message || t`Please configure this chart in the chart settings`);
     this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;

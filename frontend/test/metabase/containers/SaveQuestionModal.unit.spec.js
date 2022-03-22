@@ -1,51 +1,57 @@
 import React from "react";
-import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_CACHING } from "metabase/plugins";
 
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
-import { getStore } from "__support__/entities-store";
+} from "__support__/sample_database_fixture";
+import { setupEnterpriseTest } from "__support__/enterprise";
 
 function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get;
+  const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
       return enabled;
+    }
+    if (key === "application-name") {
+      return "Metabase Test";
+    }
+    if (key === "version") {
+      return { tag: "" };
+    }
+    if (key === "is-hosted?") {
+      return false;
+    }
+    if (key === "enable-enhancements?") {
+      return false;
     }
     return original(key);
   });
 }
 
 const renderSaveQuestionModal = (question, originalQuestion) => {
-  const store = getStore({ form });
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
-  render(
-    <Provider store={store}>
-      <SaveQuestionModal
-        card={question.card()}
-        originalCard={originalQuestion && originalQuestion.card()}
-        tableMetadata={question.table()}
-        onCreate={onCreateMock}
-        onSave={onSaveMock}
-        onClose={onCloseMock}
-      />
-    </Provider>,
+  renderWithProviders(
+    <SaveQuestionModal
+      card={question.card()}
+      originalCard={originalQuestion && originalQuestion.card()}
+      tableMetadata={question.table()}
+      onCreate={onCreateMock}
+      onSave={onSaveMock}
+      onClose={onCloseMock}
+    />,
   );
-  return { store, onSaveMock, onCreateMock, onCloseMock };
+  return { onSaveMock, onCreateMock, onCloseMock };
 };
 
 const EXPECTED_SUGGESTED_NAME = "Orders, Count";
@@ -72,7 +78,7 @@ function getQuestion({
       visualization_settings: {},
       dataset_query: {
         type: "query",
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         query: {
           "source-table": ORDERS.id,
           aggregation: [["count"]],
@@ -482,7 +488,7 @@ describe("SaveQuestionModal", () => {
     });
 
     const question = Question.create({
-      databaseId: SAMPLE_DATASET.id,
+      databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
       metadata,
     })
@@ -502,14 +508,7 @@ describe("SaveQuestionModal", () => {
 
     describe("EE", () => {
       beforeEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = {
-          name: "cache_ttl",
-          type: "integer",
-        };
-      });
-
-      afterEach(() => {
-        PLUGIN_CACHING.cacheTTLFormField = null;
+        setupEnterpriseTest();
       });
 
       it("is not shown", () => {

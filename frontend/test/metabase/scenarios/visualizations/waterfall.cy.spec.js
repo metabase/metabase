@@ -3,10 +3,14 @@ import {
   restore,
   visitQuestionAdhoc,
   openNativeEditor,
+  visualize,
+  summarize,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -101,18 +105,19 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should work with time-series data", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -121,12 +126,13 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should hide the Total label if there is no space", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -136,9 +142,6 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -149,12 +152,10 @@ describe("scenarios > visualizations > waterfall", () => {
             ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
     });
-
-    cy.wait("@dataset");
 
     cy.findByText("Visualization").click();
     cy.findByTestId("Waterfall-button").click();
@@ -174,7 +175,7 @@ describe("scenarios > visualizations > waterfall", () => {
           query:
             "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
     });
     cy.findByText("Visualization").click();
@@ -191,7 +192,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',0),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {
@@ -220,7 +221,7 @@ describe("scenarios > visualizations > waterfall", () => {
             "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',null),\n('g', -2)\n)\n",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "waterfall",
       visualization_settings: {

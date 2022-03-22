@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Utils from "metabase/lib/utils";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
 import Ellipsified from "metabase/components/Ellipsified";
 import Modal from "metabase/components/Modal";
@@ -137,6 +137,10 @@ export default class CustomGeoJSONWidget extends Component {
 
   render() {
     const { setting } = this.props;
+
+    if (!setting.value || setting.is_env_setting) {
+      return null;
+    }
 
     return (
       <div className="flex-full">

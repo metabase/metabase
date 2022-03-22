@@ -3,11 +3,11 @@
   page tasks."
   (:require [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
+            [metabase.analytics.stats :as stats]
             [metabase.api.common :as api]
             [metabase.logger :as logger]
             [metabase.troubleshooting :as troubleshooting]
             [metabase.util.schema :as su]
-            [metabase.util.stats :as stats]
             [ring.util.response :as ring.response]))
 
 (api/defendpoint POST "/password_check"

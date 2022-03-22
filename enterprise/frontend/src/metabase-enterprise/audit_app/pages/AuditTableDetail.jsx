@@ -8,11 +8,7 @@ import EntityName from "metabase/entities/containers/EntityName";
 
 import * as TableDetailCards from "../lib/cards/table_detail";
 
-type Props = {
-  params: { [key: string]: string },
-};
-
-const AuditTableDetail = ({ params, ...props }: Props) => {
+const AuditTableDetail = ({ params, ...props }) => {
   const tableId = parseInt(params.tableId);
   return (
     <AuditContent

@@ -1,39 +1,25 @@
-/* eslint "react/prop-types": "warn" */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import type { Question } from "metabase-lib/lib/Question";
-
-type Props = {
-  className?: string,
-  question: Question,
-  isObjectDetail: boolean,
-  result: any,
-  results: any[],
-  isDirty: boolean,
-  lastRunDatasetQuery: DatasetQuery,
-  navigateToNewCardInsideQB: any => void,
-  rawSeries: any,
-
-  onOpenChartSettings: () => void,
-  onUpdateWarnings: () => void,
-  onUpdateVisualizationSettings: (settings: any) => void,
-  query?: StructuredQuery,
-};
+const ALLOWED_VISUALIZATION_PROPS = [
+  // Table Interactive
+  "hasMetadataPopovers",
+  "tableHeaderHeight",
+  "scrollToColumn",
+  "renderTableHeaderWrapper",
+];
 
 export default class VisualizationResult extends Component {
-  props: Props;
   state = {
     showCreateAlertModal: false,
   };
@@ -50,9 +36,12 @@ export default class VisualizationResult extends Component {
     const {
       question,
       isDirty,
+      queryBuilderMode,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
+      timelineEvents,
+      selectedTimelineEventIds,
       className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -99,6 +88,10 @@ export default class VisualizationResult extends Component {
         </div>
       );
     } else {
+      const vizSpecificProps = _.pick(
+        this.props,
+        ...ALLOWED_VISUALIZATION_PROPS,
+      );
       return (
         <Visualization
           className={className}
@@ -106,14 +99,22 @@ export default class VisualizationResult extends Component {
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
           isQueryBuilder={true}
+          queryBuilderMode={queryBuilderMode}
           showTitle={false}
           metadata={question.metadata()}
+          timelineEvents={timelineEvents}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          handleVisualizationClick={this.props.handleVisualizationClick}
+          onOpenTimelines={this.props.onOpenTimelines}
+          onSelectTimelineEvents={this.props.selectTimelineEvents}
+          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={
             this.props.onUpdateVisualizationSettings
           }
           query={this.props.query}
+          {...vizSpecificProps}
         />
       );
     }

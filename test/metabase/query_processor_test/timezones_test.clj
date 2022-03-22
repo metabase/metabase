@@ -34,7 +34,7 @@
 (defn- timezone-aware-column-drivers
   "Drivers that support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
   []
-  (conj (set-timezone-drivers) :h2 :bigquery :sqlserver :mongo))
+  (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver :mongo))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
@@ -138,7 +138,8 @@
                  :template-tags {:ts_range {:name         "ts_range"
                                             :display_name "Timestamp Range"
                                             :type         "dimension"
-                                            :dimension    [:field-id (mt/id :users :last_login)]}}}
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field (mt/id :users :last_login) nil]}}}
     :parameters [{:type   "date/range"
                   :target ["dimension" ["template-tag" "ts_range"]]
                   :value  "2014-08-02~2014-08-03"}]}
@@ -152,8 +153,9 @@
                                   :order-by [[(field-identifier :users :id) :asc]]})
                  :template-tags {:just_a_date {:name         "just_a_date"
                                                :display_name "Just A Date"
-                                               :type         "dimension",
-                                               :dimension    [:field-id (mt/id :users :last_login)]}}}
+                                               :type         "dimension"
+                                               :widget-type  :date/all-options
+                                               :dimension    [:field (mt/id :users :last_login) nil]}}}
     :parameters [{:type   "date/single"
                   :target ["dimension" ["template-tag" "just_a_date"]]
                   :value  "2014-08-02"}]}})

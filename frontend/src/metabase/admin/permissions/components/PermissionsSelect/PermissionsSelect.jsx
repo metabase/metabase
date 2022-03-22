@@ -2,9 +2,7 @@ import React, { useState, memo } from "react";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/components/Tooltip";
 
 import {
@@ -21,6 +19,7 @@ import {
   ToggleLabel,
   WarningIcon,
   DisabledPermissionOption,
+  SelectedOption,
 } from "./PermissionsSelect.styled";
 
 const propTypes = {
@@ -66,7 +65,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           iconColor="text-light"
         />
       ) : (
-        <PermissionsSelectOption {...selectedOption} />
+        <SelectedOption {...selectedOption} />
       )}
 
       {warning && (
@@ -74,13 +73,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           <WarningIcon />
         </Tooltip>
       )}
-
-      <Icon
-        style={{ visibility: isDisabled ? "hidden" : "visible" }}
-        name="chevrondown"
-        size={16}
-        color={lighten("text-light", 0.15)}
-      />
     </PermissionsSelectRoot>
   );
 

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { connect } from "react-redux";
@@ -11,15 +12,9 @@ const DashboardWithData = DashboardData(Dashboard);
 
 import { AuditMode } from "../lib/mode";
 
-import type { AuditCard } from "../types";
-
 import { harmony } from "metabase/lib/colors";
 
-type Props = {
-  cards: AuditCard[],
-};
-
-const AuditDashboard = ({ cards, ...props }: Props) => (
+const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData
     style={{ backgroundColor: "transparent", padding: 0 }}
     // HACK: to get inline dashboards working quickly
@@ -54,7 +49,4 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(AuditDashboard);
+export default connect(mapStateToProps, mapDispatchToProps)(AuditDashboard);

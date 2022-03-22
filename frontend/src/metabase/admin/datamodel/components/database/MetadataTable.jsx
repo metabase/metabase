@@ -33,7 +33,7 @@ export default class MetadataTable extends Component {
     updateField: PropTypes.func.isRequired,
   };
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     const { database } = this.props;
     if (database) {
       database.fetchIdfields();
@@ -53,7 +53,7 @@ export default class MetadataTable extends Component {
 
   updateProperty(name, value) {
     this.setState({ saving: true });
-    this.props.table.update({ [name]: value });
+    this.props.table.updateProperty(name, value);
   }
 
   onNameChange(event) {
@@ -120,16 +120,16 @@ export default class MetadataTable extends Component {
 
     return (
       <div className="MetadataTable full px3">
-        <div className="MetadataTable-title flex flex-column bordered rounded">
+        <div className="MetadataTable-title flex flex-column">
           <InputBlurChange
-            className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
+            className="AdminInput TableEditor-table-name text-bold rounded-top bordered"
             name="display_name"
             type="text"
             value={table.display_name || ""}
             onBlurChange={this.onNameChange}
           />
           <InputBlurChange
-            className="AdminInput TableEditor-table-description rounded-bottom"
+            className="AdminInput TableEditor-table-description rounded-bottom bordered"
             name="description"
             type="text"
             value={table.description || ""}

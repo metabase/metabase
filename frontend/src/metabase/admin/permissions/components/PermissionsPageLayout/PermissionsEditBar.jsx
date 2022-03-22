@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import Confirm from "metabase/components/Confirm";
 import EditBar from "metabase/components/EditBar";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import PermissionsConfirm from "../PermissionsConfirm";
 
@@ -28,7 +28,7 @@ export function PermissionsEditBar({
     <Confirm
       title={t`Save permissions?`}
       action={onSave}
-      content={<PermissionsConfirm diff={diff} />}
+      content={diff ? <PermissionsConfirm diff={diff} /> : null}
       triggerClasses={cx({ disabled: !isDirty })}
       key="save"
     >

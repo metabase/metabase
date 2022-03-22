@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { generateSchemaId } from "metabase/lib/schema";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = t`Everything else`;
@@ -8,18 +9,36 @@ export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
 });
 
 export function getCollectionVirtualSchemaName(collection) {
-  return !collection || collection.id === null
+  const isRoot =
+    !collection || collection.id === null || collection.id === "root";
+  return isRoot
     ? ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME
-    : collection.name;
+    : collection.schemaName || collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection) {
+export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
   const collectionName = getCollectionVirtualSchemaName(collection);
-  return `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${collectionName}`;
+  return generateSchemaId(
+    SAVED_QUESTIONS_VIRTUAL_DB_ID,
+    collectionName,
+    isDatasets ? { isDatasets } : undefined,
+  );
 }
 
 export function getQuestionVirtualTableId(card) {
   return `card__${card.id}`;
+}
+
+export function isVirtualCardId(tableId) {
+  return typeof tableId === "string" && tableId.startsWith("card__");
+}
+
+export function getQuestionIdFromVirtualTableId(tableId) {
+  if (typeof tableId !== "string") {
+    return null;
+  }
+  const id = parseInt(tableId.replace("card__", ""));
+  return Number.isSafeInteger(id) ? id : null;
 }
 
 export function convertSavedQuestionToVirtualTable(card) {

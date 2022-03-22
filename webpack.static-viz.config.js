@@ -9,6 +9,10 @@ module.exports = {
   mode: "production",
   context: SRC_PATH,
 
+  performance: {
+    hints: false,
+  },
+
   entry: {
     "lib-static-viz": {
       import: "./static-viz/index.js",
@@ -30,18 +34,6 @@ module.exports = {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
-      },
-      {
-        test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "eslint-loader",
-            options: {
-              rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
-            },
-          },
-        ],
       },
     ],
   },

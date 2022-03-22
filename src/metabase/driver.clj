@@ -8,6 +8,7 @@
   [[metabase.driver.sql-jdbc]] for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
@@ -15,8 +16,7 @@
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+            [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -34,12 +34,27 @@
       (catch Throwable e
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
+(defn- short-timezone-name [timezone-id]
+  (let [^java.time.ZoneId zone (if (seq timezone-id)
+                                 (t/zone-id timezone-id)
+                                 (t/zone-id))]
+    (.getDisplayName
+     zone
+     java.time.format.TextStyle/SHORT
+     (java.util.Locale/getDefault))))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
-    (setting/set-string! :report-timezone new-value)
+    (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)))
+
+(defsetting report-timezone-short
+  "Current report timezone abbreviation"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (short-timezone-name (report-timezone))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -249,7 +264,7 @@
   driver has difference escaping rules for table or schema names when used from metadata.
 
   For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
-  {:arglists '([driver table-name])}
+  {:arglists '([driver table-name]), :added "0.37.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -275,6 +290,9 @@
 
     ;; Human-readable name that should be displayed to the User in UI for editing this field.
     :display-name su/NonBlankString
+
+    ;; Human-readable text that gives context about a field's input.
+    (s/optional-key :helper-text) s/Str
 
     ;; Type of this property. Defaults to `:string` if unspecified.
     ;; `:select` is a `String` in the backend.
@@ -340,8 +358,11 @@
     ;; Does this database support foreign key relationships?
     :foreign-keys
 
-    ;; Does this database support nested fields (e.g. Mongo)?
+    ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
     :nested-fields
+
+    ;; Does this database support nested fields but only for certain field types (e.g. Postgres and JSON / JSONB columns)?
+    :nested-field-columns
 
     ;; Does this driver support setting a timezone for the query?
     :set-timezone
@@ -398,14 +419,14 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti ^:deprecated supports?
+(defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   [[driver-features]].)
 
     (supports? :postgres :set-timezone) ; -> true
 
   deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature])}
+  {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -434,8 +455,8 @@
   whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
-  {:arglists '([driver feature database])}
-  (fn [driver feature database]
+  {:arglists '([driver feature database]), :added "0.41.0"}
+  (fn [driver feature _database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
@@ -443,36 +464,40 @@
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
-(defmulti ^:deprecated format-custom-field-name
-  "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
-  `:named` clause:
-
-    [:named [:count] \"My Count\"]
-
-  This name was used for both the `:display_name` in the query results, and for the `:name` used as an alias in the
-  query (e.g. the right-hand side of a SQL `AS` expression). Because some custom display names weren't allowed by some
-  drivers, or would be transformed in some way (for example, Redshift always lowercases custom aliases), this method
-  was needed so we could match the name we had given the column with the one in the query results.
-
-  In 0.33.0, we started using `:named` internally to alias aggregations in middleware in *all* queries to prevent
-  issues with referring to multiple aggregations of the same type when that query was used as a source query.
-  See [#9767](https://github.com/metabase/metabase/issues/9767) for more details. After this change, it became
-  desirable to differentiate between such internally-generated aliases and display names, which need not be used in
-  the query at all; thus in MBQL 1.3.0 [`:named` was replaced by the more general
-  `:aggregation-options`](https://github.com/metabase/mbql/pull/7). Because user-generated names are no longer used as
-  aliases in native queries themselves, this method is no longer needed and will be removed in a future release."
+(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
+  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
   {:arglists '([driver custom-field-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod format-custom-field-name ::driver [_ custom-field-name]
-  custom-field-name)
+(defmulti ^String escape-alias
+  "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
+  existing columns; aggregate functions and other expressions; joined tables; and joined subqueries; be sure to return
+  the lowest common denominator amongst if your database has different requirements for different identifier types.
+
+  These aliases can be dynamically generated in [[metabase.query-processor.util.add-alias-info]] or elsewhere
+  (usually based on underlying table or column names) but can also be specified in the MBQL query itself for explicit
+  joins. For `:sql` drivers, the aliases generated here will be quoted in the resulting SQL.
+
+  The default impl of [[escape-alias]] calls [[metabase.driver.impl/truncate-alias]] and truncates the alias
+  to [[metabase.driver.impl/default-alias-max-length-bytes]]. You can call this function with a different max length
+  if you need to generate shorter aliases.
+
+  That method is currently only used drivers that derive from `:sql` and for drivers that support joins. If your
+  driver is/does neither, you do not need to implement this method at this time."
+  {:added "0.42.0", :arglists '([driver column-or-table-alias])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod escape-alias ::driver
+  [_driver alias-name]
+  (impl/truncate-alias alias-name))
 
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
-  Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
+  Generic error messages are provided in [[metabase.driver.common/connection-error-messages]]; return one of these
   whenever possible.
-  Error messages can be strings, or localized strings, as returned by `metabase.util.i18n/trs` and
+  Error messages can be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
@@ -483,13 +508,14 @@
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  `metabase.mbql.schema/Query`; this function should return a native query that conforms to that schema.
+  [[metabase.mbql.schema/Query]]; this function should return a native query that conforms to that schema.
 
-  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an
-  appropriate message and include that in an appropriate place; alternatively a driver might directly include the
-  query's `:info` dictionary if the underlying language is JSON-based.
+  If the underlying query language supports remarks or comments, the driver should
+  use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
+  appropriate place; alternatively a driver might directly include the query's `:info` dictionary if the underlying
+  language is JSON-based.
 
-  The result of this function will be passed directly into calls to `execute-reducible-query`.
+  The result of this function will be passed directly into calls to [[execute-reducible-query]].
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
@@ -560,7 +586,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Dataset, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
   drivers to implement it at this time."
   {:arglists '([driver database table])}
   dispatch-on-initialized-driver

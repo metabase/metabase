@@ -3,7 +3,10 @@
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
+            [metabase.test :as mt]
+            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
@@ -29,7 +32,8 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token)
-      :query-params {:users (str (#'premium-features/active-user-count))}}
+      :query-params {:users     (str (#'premium-features/active-user-count))
+                     :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
 
@@ -39,15 +43,33 @@
                 :features ["test" "fixture"]
                 :trial    false}))
 
+(def ^:private random-fake-token
+  "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
+
 (deftest fetch-token-status-test
-  (tt/with-temp User [user {:email "admin@example.com"}]
-    (let [token "fa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3e"]
+  (tt/with-temp User [_user {:email "admin@example.com"}]
+    (let [print-token "d7ad...c611"]
+      (testing "Do not log the token (#18249)"
+        (let [logs        (mt/with-log-messages-for-level :info
+                            (#'premium-features/fetch-token-status* random-fake-token))
+              pr-str-logs (mapv pr-str logs)]
+          (is (every? (complement #(re-find (re-pattern random-fake-token) %)) pr-str-logs))
+          (is (= 1 (count (filter #(re-find (re-pattern print-token) %) pr-str-logs))))))
+
       (testing "With the backend unavailable"
-        (let [result (token-status-response token {:status 500})]
+        (let [result (token-status-response random-fake-token {:status 500})]
           (is (false? (:valid result)))))
 
       (testing "With a valid token"
-        (let [result (token-status-response token {:status 200
-                                                   :body   token-response-fixture})]
+        (let [result (token-status-response random-fake-token {:status 200
+                                                               :body   token-response-fixture})]
           (is (:valid result))
           (is (contains? (set (:features result)) "test")))))))
+
+(deftest not-found-test
+  (tu/with-log-level :fatal
+    ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
+    ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
+    ;; for bug reports to come in
+    (is (partial= {:valid false, :status "Token does not exist."}
+                  (#'premium-features/fetch-token-status* random-fake-token)))))

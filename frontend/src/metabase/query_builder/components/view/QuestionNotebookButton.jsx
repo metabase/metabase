@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 export default function QuestionNotebookButton({
   className,
@@ -15,12 +15,15 @@ export default function QuestionNotebookButton({
   ...props
 }) {
   return QuestionNotebookButton.shouldRender({ question }) ? (
-    <Tooltip tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}>
+    <Tooltip
+      tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
+      placement="bottom"
+    >
       <Button
         borderless={!isShowingNotebook}
         primary={isShowingNotebook}
         medium
-        className={cx(className, {
+        className={cx(className, isShowingNotebook ? undefined : "text-dark", {
           "text-brand-hover": !isShowingNotebook,
         })}
         icon="notebook"

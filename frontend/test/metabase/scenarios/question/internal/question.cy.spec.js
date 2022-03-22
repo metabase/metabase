@@ -1,5 +1,7 @@
 import { restore, adhocQuestionHash } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // This is really a test of the QuestionLoader component
 // It's used on /_internal/question among other places and loads questions by ID or url hash.
@@ -23,8 +25,8 @@ describe("scenarios > internal > question", () => {
     const hash = adhocQuestionHash({
       dataset_query: {
         type: "query",
-        query: { "source-table": SAMPLE_DATASET.ORDERS_ID },
-        database: 1,
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        database: SAMPLE_DB_ID,
       },
       display: "table",
       visualization_settings: {},

@@ -3,28 +3,34 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
-import ViewSection from "./ViewSection";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-import { QuestionFilterWidget } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import {
+  QuestionFilterWidget,
+  MobileQuestionFilterWidget,
+} from "./QuestionFilters";
+import {
+  QuestionSummarizeWidget,
+  MobileQuestionSummarizeWidget,
+} from "./QuestionSummaries";
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
+import { ViewFooterRoot } from "./ViewFooter.styled";
 
 import {
   getVisualizationRaw,
@@ -59,18 +65,26 @@ const ViewFooter = ({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
+  isShowingTimelineSidebar,
+  onOpenTimelines,
+  onCloseTimelines,
 }) => {
   if (!result || isObjectDetail) {
     return null;
   }
 
+  const hasDataPermission = question.query().isEditable();
+
   return (
-    <ViewSection className={cx(className, "text-medium border-top")} py={1}>
+    <ViewFooterRoot
+      className={cx(className, "text-medium border-top")}
+      data-testid="view-footer"
+    >
       <ButtonBar
         className="flex-full"
         left={[
           QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
-            <QuestionFilterWidget
+            <MobileQuestionFilterWidget
               className="sm-hide"
               mr={1}
               p={2}
@@ -83,7 +97,7 @@ const ViewFooter = ({
             question,
             queryBuilderMode,
           }) && (
-            <QuestionSummarizeWidget
+            <MobileQuestionSummarizeWidget
               className="sm-hide"
               mr={1}
               p={2}
@@ -92,26 +106,30 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          <VizTypeButton
-            key="viz-type"
-            question={question}
-            result={result}
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-            }
-          />,
-          <VizSettingsButton
-            key="viz-settings"
-            ml={1}
-            mr={[3, 0]}
-            active={isShowingChartSettingsSidebar}
-            onClick={
-              isShowingChartSettingsSidebar
-                ? onCloseChartSettings
-                : onOpenChartSettings
-            }
-          />,
+          hasDataPermission && (
+            <VizTypeButton
+              key="viz-type"
+              question={question}
+              result={result}
+              active={isShowingChartTypeSidebar}
+              onClick={
+                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+              }
+            />
+          ),
+          hasDataPermission && (
+            <VizSettingsButton
+              key="viz-settings"
+              ml={1}
+              mr={[3, 0]}
+              active={isShowingChartSettingsSidebar}
+              onClick={
+                isShowingChartSettingsSidebar
+                  ? onCloseChartSettings
+                  : onOpenChartSettings
+              }
+            />
+          ),
         ]}
         center={
           isVisualized && (
@@ -171,6 +189,7 @@ const ViewFooter = ({
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <QuestionEmbedWidgetTrigger
+              key="embeds"
               onClick={() =>
                 question.isSaved()
                   ? onOpenModal("embed")
@@ -178,9 +197,18 @@ const ViewFooter = ({
               }
             />
           ),
+          QuestionTimelineWidget.shouldRender({ question }) && (
+            <QuestionTimelineWidget
+              key="timelines"
+              className="mx1 hide sm-show"
+              isShowingTimelineSidebar={isShowingTimelineSidebar}
+              onOpenTimelines={onOpenTimelines}
+              onCloseTimelines={onCloseTimelines}
+            />
+          ),
         ]}
       />
-    </ViewSection>
+    </ViewFooterRoot>
   );
 };
 
@@ -218,7 +246,10 @@ const VizSettingsButton = ({ ...props }) => (
   </ViewButton>
 );
 
-const Well = styled(Flex)`
+const Well = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
   border-radius: 99px;
   background-color: ${color("bg-medium")};
   &:hover {
@@ -227,23 +258,14 @@ const Well = styled(Flex)`
   transition: background 300ms linear;
 `;
 
-Well.defaultProps = {
-  px: "6px",
-  py: "4px",
-  align: "center",
-};
-
-const ToggleIcon = styled(Flex)`
+const ToggleIcon = styled.div`
+  display: flex;
+  padding: 4px 8px;
   cursor: pointer;
   background-color: ${props => (props.active ? color("brand") : "transparent")};
   color: ${props => (props.active ? "white" : "inherit")};
   border-radius: 99px;
 `;
-
-ToggleIcon.defaultProps = {
-  p: "4px",
-  px: "8px",
-};
 
 const VizTableToggle = ({
   className,
@@ -254,10 +276,13 @@ const VizTableToggle = ({
   const vizIcon = getIconForVisualizationType(question.display());
   return (
     <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
-      <ToggleIcon active={isShowingRawTable}>
+      <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
         <Icon name="table2" />
       </ToggleIcon>
-      <ToggleIcon active={!isShowingRawTable}>
+      <ToggleIcon
+        active={!isShowingRawTable}
+        aria-label={t`Switch to visualization`}
+      >
         <Icon name={vizIcon} />
       </ToggleIcon>
     </Well>

@@ -41,7 +41,7 @@ const QuestionLoadAndDisplay = ({
         return (
           <LoadingAndErrorWrapper
             loading={shouldShowLoader}
-            error={error}
+            error={error || resultProps?.result?.error}
             noWrapper
           >
             <Visualization {...props} {...resultProps} />

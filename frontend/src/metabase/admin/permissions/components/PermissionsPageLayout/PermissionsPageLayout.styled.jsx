@@ -1,6 +1,6 @@
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const PermissionPageRoot = styled.div`
   display: flex;
@@ -49,7 +49,7 @@ export const HelpButton = styled.button`
   font-weight: 700;
 `;
 
-export const CloseSidebarButton = styled(Icon).attrs({ name: "close" })`
+export const CloseSidebarButton = styled(Icon)`
   top: 24px;
   right: 24px;
   color: ${color("text-light")};
@@ -61,3 +61,5 @@ export const CloseSidebarButton = styled(Icon).attrs({ name: "close" })`
     color: ${color("text-medium")};
   }
 `;
+
+CloseSidebarButton.defaultProps = { name: "close" };

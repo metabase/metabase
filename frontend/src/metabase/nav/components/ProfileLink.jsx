@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
-
 import { t } from "ttag";
 import _ from "underscore";
+
 import { capitalize } from "metabase/lib/formatting";
 import { color, darken } from "metabase/lib/colors";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -36,8 +36,11 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const admin = this.props.user.is_superuser;
-    const adminContext = this.props.context === "admin";
+    const { user } = this.props;
+    const canAccessSettings =
+      user.is_superuser ||
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
+
     return [
       {
         title: t`Account settings`,
@@ -45,20 +48,11 @@ export default class ProfileLink extends Component {
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      MetabaseSettings.isHosted() &&
-        admin && {
-          title: t`Manage Metabase Cloud`,
-          link: MetabaseSettings.storeUrl("login"),
-          event: `Navbar;Profile Dropdown;ManageHosting ${tag}`,
-          externalLink: true,
-        },
-      admin && {
-        title: adminContext ? t`Exit admin` : t`Admin`,
+      canAccessSettings && {
+        title: t`Admin settings`,
         icon: null,
-        link: adminContext ? "/" : "/admin",
-        event: `Navbar;Profile Dropdown;${
-          adminContext ? "Exit Admin" : "Enter Admin"
-        }`,
+        link: "/admin",
+        event: `Navbar;Profile Dropdown;Enter Admin`,
       },
       {
         title: t`Activity`,
@@ -90,21 +84,18 @@ export default class ProfileLink extends Component {
 
   render() {
     const { modalOpen } = this.state;
-    const adminContext = this.props.context === "admin";
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
     // don't show trademark if application name is whitelabeled
     const showTrademark = t`Metabase` === "Metabase";
     return (
-      <Box>
+      <div>
         <EntityMenu
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
           triggerProps={{
             hover: {
-              backgroundColor: adminContext
-                ? darken(color("accent7"))
-                : darken(color("brand")),
+              backgroundColor: darken(color("brand")),
               color: "white",
             },
           }}
@@ -146,12 +137,12 @@ export default class ProfileLink extends Component {
                   <span className="text-bold">Metabase</span>{" "}
                   {t`is a Trademark of`} Metabase, Inc
                 </span>
-                <span>{t`and is built with care in San Francisco, CA`}</span>
+                <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
               </div>
             )}
           </Modal>
         ) : null}
-      </Box>
+      </div>
     );
   }
 }

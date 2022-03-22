@@ -60,12 +60,14 @@
   [token :- ValidToken]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
+  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
+                 ;; ValidToken will ensure the length of token is 64 chars long
+                 (str (subs token 0 4) "..." (subs token 60 64))))
   (deref
    (future
-     (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users (active-user-count)}})
+                  (http/get {:query-params {:users     (active-user-count)
+                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
                   (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the
@@ -73,7 +75,7 @@
           ;; we do not want something complicated
           (catch clojure.lang.ExceptionInfo e
             (log/error e (trs "Error fetching token status:"))
-            (let [body (u/ignore-exceptions (some-> (ex-data e) :object :body (json/parse-string keyword)))]
+            (let [body (u/ignore-exceptions (some-> (ex-data e) :body (json/parse-string keyword)))]
               (or
                body
                {:valid         false
@@ -130,7 +132,7 @@
                    {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
-      (setting/set-string! :premium-embedding-token new-value)
+      (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (catch Throwable e
         (log/error e (trs "Error setting premium features token"))
         (throw (ex-info (.getMessage e) (merge

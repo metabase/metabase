@@ -25,12 +25,6 @@ import {
   null,
 )
 export default class AlertListPopoverContent extends Component {
-  props: {
-    questionAlerts: any[],
-    setMenuFreeze: boolean => void,
-    closeMenu: () => void,
-  };
-
   state = {
     adding: false,
     hasJustUnsubscribedFromOwnAlert: false,
@@ -98,7 +92,7 @@ export default class AlertListPopoverContent extends Component {
               className="link flex align-center text-bold text-small"
               onClick={this.onAdd}
             >
-              <Icon name="add" style={{ marginLeft: 9, marignRight: 17 }} />{" "}
+              <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
               {t`Set up your own alert`}
             </a>
           </div>
@@ -116,22 +110,11 @@ export default class AlertListPopoverContent extends Component {
   }
 }
 
-@connect(
-  state => ({ user: getUser(state) }),
-  {
-    unsubscribeFromAlert,
-    deleteAlert,
-  },
-)
+@connect(state => ({ user: getUser(state) }), {
+  unsubscribeFromAlert,
+  deleteAlert,
+})
 export class AlertListItem extends Component {
-  props: {
-    alert: any,
-    user: any,
-    setMenuFreeze: boolean => void,
-    closeMenu: () => void,
-    onUnsubscribe: () => void,
-  };
-
   state = {
     unsubscribingProgress: null,
     hasJustUnsubscribed: false,

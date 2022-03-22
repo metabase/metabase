@@ -33,17 +33,17 @@ export default ComposedComponent =>
       closeOnObscuredTrigger: false,
     };
 
-    open() {
+    open = () => {
       this.toggle(true);
-    }
+    };
 
-    close() {
+    close = () => {
       this.toggle(false);
-    }
+    };
 
-    toggle(isOpen = !this.state.isOpen) {
+    toggle = (isOpen = !this.state.isOpen) => {
       this.setState({ isOpen });
-    }
+    };
 
     onClose(e) {
       // don't close if clicked the actual trigger, it will toggle
@@ -153,7 +153,11 @@ export default ComposedComponent =>
           style={triggerStyle}
         >
           {typeof triggerElement === "function"
-            ? triggerElement({ isTriggeredComponentOpen: isOpen })
+            ? triggerElement({
+                isTriggeredComponentOpen: isOpen,
+                open: this.open,
+                close: this.close,
+              })
             : triggerElement}
           <ComposedComponent
             {...this.props}

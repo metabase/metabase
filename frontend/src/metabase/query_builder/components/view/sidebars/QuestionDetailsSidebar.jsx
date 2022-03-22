@@ -7,9 +7,16 @@ import { SIDEBAR_VIEWS } from "./constants";
 QuestionDetailsSidebar.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
+  isBookmarked: PropTypes.bool.isRequired,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebar({ question, onOpenModal }) {
+function QuestionDetailsSidebar({
+  question,
+  onOpenModal,
+  isBookmarked,
+  toggleBookmark,
+}) {
   const [view, setView] = useState(view);
 
   switch (view) {
@@ -20,6 +27,8 @@ function QuestionDetailsSidebar({ question, onOpenModal }) {
           setView={setView}
           question={question}
           onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
         />
       );
   }

@@ -4,16 +4,16 @@ import {
   modal,
   popover,
   setupSMTP,
-  describeWithToken,
+  describeEE,
 } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
-const { ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -223,14 +223,24 @@ describe("scenarios > admin > people", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
 
+      const waitForUserRequests = () => {
+        cy.wait("@users");
+        cy.wait("@memberships");
+      };
+
       beforeEach(() => {
         generateUsers(NEW_USERS);
+
+        cy.intercept("GET", "/api/user*").as("users");
+        cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
       it("should allow paginating people forward and backward", () => {
         const PAGE_SIZE = 25;
 
         cy.visit("/admin/people");
+
+        waitForUserRequests();
 
         // Total
         cy.findByText(`${NEW_TOTAL_USERS} people found`);
@@ -241,6 +251,8 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
+
+        waitForUserRequests();
 
         // Page 2
         cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
@@ -283,7 +295,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-describeWithToken("scenarios > admin > people", () => {
+describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

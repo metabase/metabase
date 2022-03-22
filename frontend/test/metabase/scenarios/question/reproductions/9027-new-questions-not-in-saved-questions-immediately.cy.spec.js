@@ -1,4 +1,9 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openNativeEditor,
+  openNotebookEditor,
+} from "__support__/e2e/cypress";
 
 const QUESTION_NAME = "Foo";
 
@@ -14,7 +19,7 @@ describe("issue 9027", () => {
     // Wait for the existing questions to load
     cy.findByText("Orders");
 
-    cy.icon("sql").click();
+    openNativeEditor({ fromCurrentPage: true });
 
     cy.get(".ace_content").type("select 0");
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -32,18 +37,21 @@ describe("issue 9027", () => {
 });
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
-  cy.findByText("Ask a question").click();
-  cy.findByText("Custom question").click();
+  openNotebookEditor({ fromCurrentPage: true });
   cy.findByText("Saved Questions").click();
 
   cy.findByText(questionName).should(exists ? "exist" : "not.exist");
 }
 
 function saveQuestion(name) {
+  cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").type(name);
+  cy.findByLabelText("Name")
+    .clear()
+    .type(name);
   cy.button("Save").click();
   cy.button("Not now").click();
+  cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {
@@ -51,7 +59,7 @@ function archiveQuestion(questionName) {
   cy.findByText("Browse all items").click();
   openEllipsisMenuFor(questionName);
   popover()
-    .findByText("Archive this item")
+    .findByText("Archive")
     .click();
 }
 

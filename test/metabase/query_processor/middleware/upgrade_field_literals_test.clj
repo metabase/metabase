@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
             [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.test :as mt]))
 
 (defn- upgrade-field-literals [query]
-  (-> (mt/test-qp-middleware upgrade-field-literals/upgrade-field-literals query)
-      :pre))
+  (mt/with-everything-store
+    (upgrade-field-literals/upgrade-field-literals query)))
 
 (deftest dont-replace-aggregations-test
   (testing "Don't replace field-literals forms with aggregation references"
@@ -84,3 +86,27 @@
                      :source-metadata source-metadata
                      ;; not sure why FE is using `field-literal` here... but it should work anyway.
                      :filter          [:= *CATEGORY/Text "Widget"]})))))))))
+
+(deftest attempt-case-insensitive-match-test
+  (testing "Attempt to fix things even if the name used is the wrong case (#16389)"
+    (mt/dataset sample-dataset
+      (mt/with-everything-store
+        (is (query= (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [!month.product_id->products.created_at]}
+                       :aggregation  [[:sum *count/Integer]]
+                       :breakout     [[:field %products.created_at {:source-field  %product_id
+                                                                    :temporal-unit :month}]]
+                       :limit        1})
+                    ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
+                    (-> (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :aggregation  [[:count]]
+                                          :breakout     [!month.product_id->products.created_at]}
+                           :aggregation  [[:sum *count/Integer]]
+                           :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
+                           :limit        1})
+                        add-source-metadata/add-source-metadata-for-source-queries
+                        upgrade-field-literals
+                        (m/dissoc-in [:query :source-metadata]))))))))

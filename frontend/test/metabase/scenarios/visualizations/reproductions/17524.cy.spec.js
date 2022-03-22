@@ -1,7 +1,7 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, filterWidget, filter } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const nativeQuestionDetails = {
   native: {
@@ -70,9 +70,8 @@ describe("issue 17524", () => {
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
       cy.get("polygon");
 
-      cy.findAllByRole("button")
-        .contains("Filter")
-        .click();
+      filter();
+
       cy.findByText("ID").click();
       cy.findByText("Is").click();
       cy.findByText("Greater than").click();

@@ -1,13 +1,17 @@
 import { browse, restore } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
-const sizes = [[1280, 800], [640, 360]];
+const sizes = [
+  [1280, 800],
+  [640, 360],
+];
 const { admin } = USERS;
 
 describe("scenarios > auth > signin", () => {
   beforeEach(() => {
     restore();
     cy.signOut();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should redirect to  /auth/login", () => {
@@ -54,8 +58,9 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
+    cy.wait("@dataset");
     cy.contains("37.65");
 
     // signout and reload page with question hash in url
@@ -68,6 +73,7 @@ describe("scenarios > auth > signin", () => {
     cy.findByText("Sign in").click();
 
     // order table should load after login
+    cy.wait("@dataset");
     cy.contains("37.65");
   });
 
@@ -83,7 +89,7 @@ describe("scenarios > auth > signin", () => {
       cy.url().should("contain", "auth/login");
       cy.findByText("I seem to have forgotten my password").click();
       cy.url().should("contain", "auth/forgot_password");
-      cy.findByText("Back to login").click();
+      cy.findByText("Back to sign in").click();
       cy.url().should("contain", "auth/login");
     });
   });

@@ -24,7 +24,12 @@ jobs:
             const pullRequestNumbers = Array.from(commitMessage.matchAll(/\(#(.*?)\)/g))
 
             if (pullRequestNumbers.length === 0) {
-              return;
+              return {
+                author: "",
+                pullRequestNumber: 0,
+                title: "",
+                hasBackportLabel: false
+              };
             }
 
             if (pullRequestNumbers > 1) {
@@ -74,7 +79,7 @@ jobs:
             };
             const latestReleaseBranch = releaseBranches.data
               .filter(branch => getVersionFromBranch(branch.ref) !== null)
-              .reduce((prev, current) => getVersionFromBranch(prev.ref) > getVersionFromBranch(current.ref) ? prev : current);
+              .reduce((prev, current) => getVersionFromBranch(prev.ref) > getVersionFromBranch(current.ref) ? prev : current, { ref: "" });
             const latestReleaseBranchName = latestReleaseBranch.ref.replace(/^refs\/heads\//, "");
 
             console.log(`Latest release branch: ${latestReleaseBranchName}`)

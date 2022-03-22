@@ -12,7 +12,7 @@ import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase/meta/Parameter";
+} from "metabase/parameters/utils/filters";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import { ModalLink, ModalMessage } from "./HelpModal.styled";
 

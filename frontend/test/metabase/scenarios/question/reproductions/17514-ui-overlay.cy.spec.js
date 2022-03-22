@@ -4,13 +4,14 @@ import {
   filterWidget,
   saveDashboard,
   editDashboard,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "17514",
@@ -45,6 +46,7 @@ describe("issue 17514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("scenario 1", () => {
@@ -53,7 +55,10 @@ describe("issue 17514", () => {
         ({ body: card }) => {
           const { card_id, dashboard_id } = card;
 
-          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("cardQuery");
 
           const mapFilterToCard = {
             parameter_mappings: [
@@ -87,10 +92,13 @@ describe("issue 17514", () => {
 
       filterWidget().click();
       setAdHocFilter({ timeBucket: "Years" });
+      cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
 
       cy.findByText("17514").click();
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();
@@ -100,8 +108,6 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.findByTestId("viz-settings-button").click();
@@ -112,7 +118,7 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      visualizeResults();
+      visualize();
 
       cy.findByText("Save").click();
 
@@ -127,7 +133,7 @@ describe("issue 17514", () => {
       cy.findByText("Join data").click();
       cy.findByText("Products").click();
 
-      visualizeResults();
+      visualize();
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();
@@ -138,7 +144,7 @@ describe("issue 17514", () => {
 
 function openVisualizationOptions() {
   showDashboardCardActions();
-  cy.icon("palette").click();
+  cy.icon("palette").click({ force: true });
 }
 
 function hideColumn(columnName) {
@@ -155,17 +161,13 @@ function closeModal() {
   });
 }
 
-function visualizeResults() {
-  cy.button("Visualize").click();
-  cy.wait("@dataset");
-}
-
 function openNotebookMode() {
   cy.icon("notebook").click();
 }
 
 function removeJoinedTable() {
   cy.findAllByText("Join data")
+    .first()
     .parent()
     .findByTestId("remove-step")
     .click({ force: true });

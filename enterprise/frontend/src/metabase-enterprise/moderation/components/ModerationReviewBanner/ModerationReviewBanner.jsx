@@ -22,7 +22,6 @@ import {
 import Tooltip from "metabase/components/Tooltip";
 
 const ICON_BUTTON_SIZE = 20;
-const TOOLTIP_X_OFFSET = ICON_BUTTON_SIZE / 4;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
@@ -41,6 +40,7 @@ ModerationReviewBanner.propTypes = {
   user: PropTypes.object,
   currentUser: PropTypes.object.isRequired,
   onRemove: PropTypes.func,
+  className: PropTypes.func,
 };
 
 export function ModerationReviewBanner({
@@ -48,6 +48,7 @@ export function ModerationReviewBanner({
   user: moderator,
   currentUser,
   onRemove,
+  className,
 }) {
   const [isHovering, setIsHovering] = React.useState(false);
   const [isActive, setIsActive] = React.useState(false);
@@ -70,11 +71,9 @@ export function ModerationReviewBanner({
       backgroundColor={alpha(iconColor, 0.2)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      className={className}
     >
-      <Tooltip
-        targetOffsetX={TOOLTIP_X_OFFSET}
-        tooltip={onRemove && tooltipText}
-      >
+      <Tooltip tooltip={onRemove && tooltipText}>
         {onRemove ? (
           <IconButton
             data-testid="moderation-remove-review-action"

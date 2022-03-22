@@ -1,4 +1,5 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;
@@ -13,8 +14,8 @@ describe("visual tests > notebook > major UI elements", () => {
   it("renders correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     addJoin({
       rightTable: "Products",
@@ -68,8 +69,8 @@ describe("visual tests > notebook > Run buttons", () => {
   it("in Custom Question render correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Orders").click();
     // Waiting for notebook icon to load
     cy.wait(1000);
     cy.icon("notebook").click();
@@ -103,8 +104,32 @@ describe("visual tests > notebook > Run buttons", () => {
   });
 });
 
+describe("visual tests > notebook", () => {
+  const VIEWPORT_WIDTH = 1200;
+  const VIEWPORT_HEIGHT = 600;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+    _.range(10).forEach(index => {
+      const name = `Sample Database ${index + 1}`;
+      cy.addH2SampleDatabase({ name });
+    });
+  });
+
+  it("data picker", () => {
+    openNotebookEditor();
+    cy.findByText("Sample Database");
+    cy.percySnapshot();
+  });
+});
+
 function selectFromDropdown(itemName) {
-  return popover().findByText(itemName);
+  return popover()
+    .last()
+    .findByText(itemName);
 }
 
 function addJoin({ rightTable }) {
@@ -138,9 +163,9 @@ function addCustomColumn({ name, formula }) {
 function addSingleValueFilter({ field, filterType, filterValue }) {
   cy.findByText("Add filters to narrow your answer").click();
   selectFromDropdown(field).click();
-  popover()
-    .get(".AdminSelect")
-    .click();
+  popover().within(() => {
+    cy.findByTestId("select-button").click();
+  });
   selectFromDropdown(filterType).click();
   popover().within(() => {
     cy.get("input").type(filterValue);

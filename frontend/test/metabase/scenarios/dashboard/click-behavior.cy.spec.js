@@ -1,5 +1,5 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -8,7 +8,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -49,9 +49,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
               cy.visit(`/dashboard/${dashboardId}`);
 
-              cy.intercept("POST", `/api/card/${question1Id}/query`).as(
-                "cardQuery",
-              );
+              cy.intercept(
+                "POST",
+                `/api/dashboard/${dashboardId}/dashcard/*/card/${question1Id}/query`,
+              ).as("cardQuery");
 
               cy.intercept("POST", `/api/card/${nativeId}/query`).as(
                 "nativeQuery",
@@ -135,7 +136,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.visit(`/dashboard/${dashboard_id}`);
 
-          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("cardQuery");
         },
       );
     });

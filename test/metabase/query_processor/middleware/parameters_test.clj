@@ -22,7 +22,7 @@
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    (:pre (mt/test-qp-middleware parameters/substitute-parameters (normalize/normalize query)))))
+    (parameters/substitute-parameters (normalize/normalize query))))
 
 (deftest expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"

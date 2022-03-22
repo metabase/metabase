@@ -1,10 +1,11 @@
 import {
   restore,
   setupSMTP,
-  describeWithToken,
+  describeEE,
   popover,
-  mockSessionProperty,
   sidebar,
+  mockSlackConfigured,
+  isOSS,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -15,7 +16,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow sharing if there are no dashboard cards", () => {
+  it.skip("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
@@ -118,7 +119,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         .parent()
         .parent()
         .next()
-        .find("a") // Toggle
+        .find("input") // Toggle
         .click();
       cy.findByText("Questions to attach").click();
       clickButton("Done");
@@ -136,15 +137,15 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       cy.findByText("To:").click();
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("Hourly")
         .click();
       cy.findByText("Monthly").click();
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("First")
         .click();
       cy.findByText("15th (Midpoint)").click();
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("15th (Midpoint)")
         .click();
       cy.findByText("First").click();
@@ -154,9 +155,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      // In order to reproduce this test, we need to use the old syntac for dashboard filters
-      mockSessionProperty("field-filter-operators-enabled?", false);
-
       cy.createNativeQuestion({
         name: "15705",
         native: {
@@ -279,7 +277,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", () => {
     beforeEach(() => {
-      cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+      cy.onlyOn(isOSS);
       cy.visit(`/dashboard/1`);
       setupSMTP();
     });
@@ -299,7 +297,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describeWithToken("EE email subscriptions", () => {
+  describeEE("EE email subscriptions", () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
       setupSMTP();
@@ -434,37 +432,4 @@ function addParametersToDashboard() {
   cy.findByText("Save").click();
   // wait for dashboard to save
   cy.contains("You're editing this dashboard.").should("not.exist");
-}
-
-function mockSlackConfigured() {
-  // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
-  cy.server();
-  cy.route("GET", "/api/pulse/form_input", {
-    channels: {
-      email: {
-        type: "email",
-        name: "Email",
-        allows_recipients: false,
-        recipients: ["user", "email"],
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        configured: false,
-      },
-      slack: {
-        type: "slack",
-        name: "Slack",
-        allows_recipients: true,
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        fields: [
-          {
-            name: "channel",
-            type: "select",
-            displayName: "Post to",
-            options: ["#work", "#play"],
-            required: true,
-          },
-        ],
-        configured: true,
-      },
-    },
-  });
 }

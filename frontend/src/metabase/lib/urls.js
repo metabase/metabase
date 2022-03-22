@@ -3,6 +3,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+import { stringifyHashOptions } from "metabase/lib/browser";
 
 function appendSlug(path, slug) {
   return slug ? `${path}-${slug}` : path;
@@ -24,36 +25,63 @@ export const newPulse = () => `/pulse/create`;
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
 
-export function question(card, hash = "", query = "") {
+export function question(card, { hash = "", query = "", objectId } = {}) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
+
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }
+
   if (hash && hash.charAt(0) !== "#") {
     hash = "#" + hash;
   }
+
   if (query && query.charAt(0) !== "?") {
     query = "?" + query;
   }
+
   if (!card || !card.id) {
     return `/question${query}${hash}`;
   }
-  if (!card.name) {
-    return `/question/${card.id}${query}${hash}`;
+
+  const { card_id, id, name } = card;
+  let path = card?.dataset || card?.model === "dataset" ? "model" : "question";
+
+  /**
+   * If the question has been added to the dashboard we're reading the dashCard's properties.
+   * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
+   *
+   * There can be multiple instances of the same question in a dashboard, hence this distinction.
+   */
+  const questionId = card_id || id;
+  path = `/${path}/${questionId}`;
+
+  /**
+   * Although it's not possible to intentionally save a question without a name,
+   * it is possible that the `name` is not recognized if it contains symbols.
+   *
+   * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
+   */
+  if (name) {
+    path = appendSlug(path, slugg(name));
   }
-  const path = appendSlug(`/question/${card.id}`, slugg(card.name));
+
+  if (objectId) {
+    path = `${path}/${objectId}`;
+  }
+
   return `${path}${query}${hash}`;
 }
 
-export function serializedQuestion(card) {
-  return question(null, card);
+export function serializedQuestion(card, opts = {}) {
+  return question(null, { ...opts, hash: card });
 }
 
-export const extractQueryParams = (query: Object): Array => {
+export const extractQueryParams = query => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
 
@@ -65,8 +93,11 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function newQuestion({ mode, ...options } = {}) {
-  const url = Question.create(options).getUrl();
+export function newQuestion({ mode, creationType, objectId, ...options } = {}) {
+  const url = Question.create(options).getUrl({
+    creationType,
+    query: objectId && { objectId },
+  });
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
@@ -74,13 +105,19 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboard, { addCardWithId } = {}) {
+export function dataset(...args) {
+  return question(...args);
+}
+
+export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
+  const options = {
+    ...(addCardWithId ? { add: addCardWithId } : {}),
+    ...(editMode ? { edit: editMode } : {}),
+  };
+
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  return addCardWithId != null
-    ? // NOTE: no-color-literals rule thinks #add is a color, oops
-      // eslint-disable-next-line no-color-literals
-      `/dashboard/${path}#add=${addCardWithId}`
-    : `/dashboard/${path}`;
+  const hash = stringifyHashOptions(options);
+  return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
 }
 
 function prepareModel(item) {
@@ -99,6 +136,8 @@ export function modelToUrl(item) {
   switch (item.model) {
     case "card":
       return question(modelData);
+    case "dataset":
+      return dataset(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "pulse":
@@ -129,7 +168,10 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
     query += `&segment=${segmentId}`;
   }
 
-  return question(null, query);
+  // This will result in a URL like "/question#?db=1&table=1"
+  // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
+  // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
+  return question(null, { hash: query });
 }
 
 function slugifyPersonalCollection(collection) {
@@ -225,6 +267,18 @@ export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
 }
 
+export function newDatabase() {
+  return `/admin/databases/create`;
+}
+
+export function editDatabase(databaseId) {
+  return `/admin/databases/${databaseId}`;
+}
+
+export function exploreDatabase(database) {
+  return `/explore/${database.id}`;
+}
+
 export function browseDatabase(database) {
   const name =
     database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID
@@ -242,6 +296,45 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
+export function timelinesInCollection(collections) {
+  const collectionUrl = collection(collections);
+  return `${collectionUrl}/timelines`;
+}
+
+export function timelineInCollection(timeline, collection) {
+  return `${timelinesInCollection(collection)}/${timeline.id}`;
+}
+
+export function newTimelineInCollection(collection) {
+  return `${timelinesInCollection(collection)}/new`;
+}
+
+export function editTimelineInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/edit`;
+}
+
+export function timelineArchiveInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/archive`;
+}
+
+export function newEventInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/events/new`;
+}
+
+export function newEventAndTimelineInCollection(collection) {
+  return `${timelinesInCollection(collection)}/new/events/new`;
+}
+
+export function editEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/edit`;
+}
+
+export function deleteEventInCollection(event, timeline, collection) {
+  const timelineUrl = timelineInCollection(timeline, collection);
+  return `${timelineUrl}/events/${event.id}/delete`;
+}
+
 export function extractEntityId(slug) {
   const id = parseInt(slug, 10);
   return Number.isSafeInteger(id) ? id : undefined;
@@ -252,4 +345,18 @@ export function extractCollectionId(slug) {
     return slug;
   }
   return extractEntityId(slug);
+}
+
+/*
+ * Will transform a name like `This name has spaces and Uppercases`
+ * into `this-name-has-spaced-and-uppercases`
+ *
+ * then prepend an entity type, say "card" or "dashboard"
+ * plus the passed id.
+ * "
+ */
+export function bookmark({ type, id, name }) {
+  const [, idInteger] = id.split("-");
+
+  return `${type}/${appendSlug(idInteger, slugg(name))}`;
 }

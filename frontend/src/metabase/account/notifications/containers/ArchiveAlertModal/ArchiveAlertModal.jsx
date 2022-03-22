@@ -20,8 +20,5 @@ export default _.compose(
   Alerts.load({
     id: (state, props) => getAlertId(props),
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(ArchiveModal);

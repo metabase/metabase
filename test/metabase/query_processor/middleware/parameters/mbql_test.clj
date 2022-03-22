@@ -2,10 +2,8 @@
   "Tests for *MBQL* parameter substitution."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as params]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
             [metabase.test :as mt]))
 
@@ -161,18 +159,7 @@
                        :parameters [{:name   "name"
                                      :type   :string/starts-with
                                      :target $name
-                                     :value ["B"]}]})))))
-        (with-redefs [params/field-filter-operators-enabled? (constantly false)]
-          (testing "Throws if not enabled (#15488)"
-            (is (= {:type     qp.error-type/invalid-parameter
-                    :operator :number/between}
-                   (try (f (mt/query venues
-                             {:query      {:aggregation [[:count]]}
-                              :parameters [{:name   "price"
-                                            :type   :number/between
-                                            :target $price
-                                            :value  [2 5]}]}))
-                        (catch Exception e (ex-data e)))))))))))
+                                     :value ["B"]}]})))))))))
 
 (deftest basic-where-test
   (mt/test-drivers (params-test-drivers)
@@ -233,7 +220,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
                 :params nil}
-               (qp/query->native
+               (qp/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -257,7 +244,7 @@
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
                 :params nil}
-               (qp/query->native
+               (qp/compile
                 (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -277,11 +264,11 @@
                    #t "2014-07-01T00:00Z[UTC]"
                    #t "2015-06-01T00:00Z[UTC]"
                    #t "2015-07-01T00:00Z[UTC]"]}
-         (qp/query->native
+         (qp/compile
            (mt/query checkins
              {:query      {:aggregation [[:count]]}
               :parameters [{:name   "date"
-                            :type   "date/month"
+                            :type   "date/month-year"
                             :target $date
                             :value  ["2014-06" "2015-06"]}]})))))
 

@@ -170,7 +170,7 @@
         (describe-table* driver conn table)))))
 
 (defn- describe-table-fks*
-  [driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
    #{}
    (common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)

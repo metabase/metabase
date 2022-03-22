@@ -1,25 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
 import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
-import ErrorDetails from "metabase/components/ErrorDetails";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 
 import NoResults from "assets/img/no_results.svg";
+import { ErrorPageRoot } from "./ErrorPages.styled";
 
 const ErrorPageWrapper = fitViewport(({ fitClassNames, children }) => (
-  <Flex
-    align="center"
-    flexDirection="column"
-    justify="center"
-    className={fitClassNames}
-  >
-    {children}
-  </Flex>
+  <ErrorPageRoot className={fitClassNames}>{children}</ErrorPageRoot>
 ));
 
 export const GenericError = ({

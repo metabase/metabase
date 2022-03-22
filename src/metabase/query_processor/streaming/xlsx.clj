@@ -24,6 +24,7 @@
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
+    ::mb.viz/number-separators
     ::mb.viz/currency
     ::mb.viz/currency-style
     ::mb.viz/currency-in-header
@@ -95,6 +96,7 @@
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
+                     ::mb.viz/number-separators
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
@@ -111,10 +113,15 @@
               merged-settings (if is-currency?
                                 (merge-global-settings format-settings :type/Currency)
                                 format-settings)
+              base-string     (if (= (::mb.viz/number-separators format-settings) ".")
+                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; number separator settings, since custom separators are not supported in XLSX.
+                                "###0"
+                                "#,##0")
               base-strings    (if (default-number-format? merged-settings)
                                 ;; [int-format, float-format]
-                                ["#,##0", "#,##0.##"]
-                                (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+                                [base-string (str base-string ".##")]
+                                (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = (::mb.viz/number-style merged-settings)
             "percent"
             (map #(str % "%") base-strings)
@@ -197,15 +204,16 @@
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings semantic-type]
+  [format-settings {semantic-type :semantic_type, effective-type :effective_type, :as _col}]
   (u/one-or-many
    (cond
      ;; Primary key or foreign key
      (isa? semantic-type :Relation/*)
      "0"
 
-     (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-         (isa? semantic-type :type/Temporal))
+     (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+              (isa? semantic-type :type/Temporal))
+          (isa? effective-type :type/Temporal))
      (datetime-format-string format-settings)
 
      (or (some #(contains? number-setting-keys %) (keys format-settings))
@@ -257,8 +265,7 @@
                                    {::mb.viz/column-name (:name col)})
                    id-or-name    (first (vals settings-key))
                    settings      (get col-settings settings-key)
-                   semantic-type (:semantic_type col)
-                   format-strings (format-settings->format-strings settings semantic-type)]
+                   format-strings (format-settings->format-strings settings col)]
                (when (seq format-strings)
                  {id-or-name
                   (map
@@ -394,7 +401,7 @@
             parsed-value (if (and *parse-temporal-string-values* (string? value))
                            (try (u.date/parse value)
                                 ;; Fallback to plain string value if it couldn't be parsed
-                                (catch java.time.format.DateTimeParseException _ value))
+                                (catch Exception _ value))
                            scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
@@ -428,12 +435,17 @@
   This ensures the cells in the header row have enough room for the filter dropdown icon."
   (* 4 256))
 
+(def ^:private max-column-width
+  "Cap column widths at 255 characters"
+  (* 255 256))
+
 (defn- autosize-columns!
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet]
   (doseq [i (.getTrackedColumnsForAutoSizing ^SXSSFSheet sheet)]
     (.autoSizeColumn ^SXSSFSheet sheet i)
-    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
+    (.setColumnWidth ^SXSSFSheet sheet i (min max-column-width
+                                              (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width)))
     (.untrackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- setup-header-row!
@@ -471,6 +483,8 @@
         (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
           ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
           (autosize-columns! sheet))
-        (spreadsheet/save-workbook-into-stream! os workbook)
-        (.dispose workbook)
-        (.close os)))))
+        (try
+          (spreadsheet/save-workbook-into-stream! os workbook)
+          (finally
+            (.dispose workbook)
+            (.close os)))))))

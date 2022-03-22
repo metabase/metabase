@@ -114,7 +114,6 @@ const millisecondCard = {
       },
     ],
     results_metadata: {
-      checksum: "H2XV8wuuBkFrxukvDt+Ehw==",
       columns: [
         {
           base_type: "type/BigInteger",
@@ -292,7 +291,6 @@ const dateTimeCard = {
       },
     ],
     results_metadata: {
-      checksum: "XIqamTTUJ9nbWlTwKc8Bpg==",
       columns: [
         {
           base_type: "type/DateTime",
@@ -379,7 +377,13 @@ const numberCard = {
     public_uuid: null,
   },
   data: {
-    rows: [[1, 59], [2, 77], [3, 64], [4, 550], [5, 328]],
+    rows: [
+      [1, 59],
+      [2, 77],
+      [3, 64],
+      [4, 550],
+      [5, 328],
+    ],
     columns: ["RATING", "count"],
     native_form: {
       query:
@@ -418,7 +422,6 @@ const numberCard = {
       },
     ],
     results_metadata: {
-      checksum: "jTfxUHHttR31J8lQBqJ/EA==",
       columns: [
         {
           base_type: "type/Integer",

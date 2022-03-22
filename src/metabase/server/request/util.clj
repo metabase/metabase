@@ -30,12 +30,14 @@
 
 (defn cacheable?
   "Can the ring request be permanently cached?"
-  [{:keys [request-method uri query-string], :as request}]
+  [{:keys [request-method uri query-string], :as _request}]
   (and (= request-method :get)
        (or
         ;; match requests that are js/css and have a cache-busting query string
         (and query-string
              (re-matches #"^/app/dist/.*\.(js|css)$" uri))
+        ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
+        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri)
         ;; GeoJSON proxy requests should also be cached
         (re-matches #"^/api/geojson/.*" uri))))
 
@@ -101,7 +103,7 @@
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
-                        (log/warn (trs "Login in request is missing device ID information")))
+                        (log/warn (trs "Login request is missing device ID information")))
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")))
         ip-address  (or (ip-address request)
@@ -130,7 +132,7 @@
                              (tru "Unknown browser"))]
         (format "%s (%s/%s)" device-type browser-name os-name)))))
 
-(defn- describe-location [{:keys [city region country], :as info}]
+(defn- describe-location [{:keys [city region country]}]
   (when-let [info (not-empty (remove str/blank? [city region country]))]
     (str/join ", " info)))
 
@@ -151,18 +153,17 @@
   [ip-addresses :- [s/Str]]
   (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
     (when (seq ip-addresses)
-      (try
-        (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
-          (try
-            (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                              :socket-timeout     gecode-ip-address-timeout-ms
-                                              :connection-timeout gecode-ip-address-timeout-ms})
-                               :body
-                               (json/parse-string true))]
-              (into {} (for [info response]
-                         [(:ip info) {:description (or (describe-location info)
-                                                       "Unknown location")
-                                      :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-            (catch Throwable e
-              (log/error e (trs "Error geocoding IP addresses") {:url url})
-              nil)))))))
+      (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
+        (try
+          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                            :socket-timeout     gecode-ip-address-timeout-ms
+                                            :connection-timeout gecode-ip-address-timeout-ms})
+                             :body
+                             (json/parse-string true))]
+            (into {} (for [info response]
+                       [(:ip info) {:description (or (describe-location info)
+                                                     "Unknown location")
+                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+          (catch Throwable e
+            (log/error e (trs "Error geocoding IP addresses") {:url url})
+            nil))))))

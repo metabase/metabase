@@ -1,6 +1,8 @@
 {:paths ["src" "resources"]
 
  :deps
- {com.google.apis/google-api-services-analytics {:mvn/version "v3-rev20180622-1.27.0"}}
+ ;; ensure the version of google-http-client transitively depended on here matches that of bigquery-cloud-sdk
+ ;; (which, at the moment, is 1.39.2)
+ {com.google.apis/google-api-services-analytics {:mvn/version "v3-rev20190807-1.32.1"}}
 
  :metabase.driver/parents #{:google}}

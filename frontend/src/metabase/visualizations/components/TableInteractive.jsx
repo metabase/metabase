@@ -6,7 +6,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
@@ -30,6 +31,7 @@ import MiniBar from "./MiniBar";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -40,13 +42,6 @@ const HEADER_DRAG_THRESHOLD = 5;
 
 // HACK: used to get react-draggable to reset after a drag
 let DRAG_COUNTER = 0;
-
-import type {
-  VisualizationProps,
-  ClickObject,
-} from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { DatasetData, Value } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -63,62 +58,9 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-type Props = VisualizationProps & {
-  width: number,
-  height: number,
-  sort: any,
-  isPivoted: boolean,
-  onActionDismissal: () => void,
-  onContentWidthChange: (number, number[]) => void,
-  renderTableCellWrapper: any,
-  renderTableHeaderWrapper: any,
-  tableHeaderHeight: number,
-  getColumnTitle: number => string,
-  data: any,
-};
-type State = {
-  columnWidths: number[],
-  contentWidths: ?(number[]),
-
-  dragColIndex?: ?number,
-  dragColStyle?: ?{ [key: string]: any },
-  dragColNewLefts?: ?(number[]),
-  dragColNewIndex?: ?number,
-  columnPositions?: ?({
-    left: number,
-    right: number,
-    center: number,
-    width: number,
-  }[]),
-};
-
-type CellRendererProps = {
-  key: string,
-  style: { [key: string]: any },
-  columnIndex: number,
-  rowIndex: number,
-};
-
-type GridComponent = Component<void, void, void> & {
-  recomputeGridSize: () => void,
-};
-
 @ExplicitSize()
 export default class TableInteractive extends Component {
-  state: State;
-  props: Props;
-
-  columnHasResized: { [key: number]: boolean };
-  columnNeedsResize: { [key: number]: boolean };
-  _div: HTMLElement;
-  _totalContentWidth: ?number;
-  _previousOverscrollBehaviorX: any;
-
-  header: GridComponent;
-  grid: GridComponent;
-  headerRefs: HTMLElement[];
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -139,6 +81,7 @@ export default class TableInteractive extends Component {
 
   static defaultProps = {
     isPivoted: false,
+    hasMetadataPopovers: true,
     renderTableHeaderWrapper: children => (
       <div className="cellData">{children}</div>
     ),
@@ -168,12 +111,17 @@ export default class TableInteractive extends Component {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: Props) {
-    if (
-      this.props.data &&
-      newProps.data &&
-      !_.isEqual(this.props.data.cols, newProps.data.cols)
-    ) {
+  UNSAFE_componentWillReceiveProps(newProps) {
+    const { card, data } = this.props;
+    const { card: nextCard, data: nextData } = newProps;
+
+    const isDataChange =
+      data && nextData && !_.isEqual(data.cols, nextData.cols);
+    const isDatasetStatusChange =
+      isAdHocModelQuestionCard(nextCard, card) ||
+      isAdHocModelQuestionCard(card, nextCard);
+
+    if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
     }
 
@@ -185,12 +133,20 @@ export default class TableInteractive extends Component {
     }
   }
 
-  _getColumnSettings(props: Props) {
+  _getColumnSettings(props) {
     return props.data && props.data.cols.map(col => props.settings.column(col));
   }
 
-  shouldComponentUpdate(nextProps: Props, nextState: State) {
-    const PROP_KEYS: string[] = ["width", "height", "settings", "data"];
+  shouldComponentUpdate(nextProps, nextState) {
+    const PROP_KEYS = [
+      "width",
+      "height",
+      "settings",
+      "data",
+      "clicked",
+      "renderTableHeaderWrapper",
+      "scrollToColumn",
+    ];
     // compare specific props and state to determine if we should re-render
     return (
       !_.isEqual(
@@ -200,8 +156,11 @@ export default class TableInteractive extends Component {
     );
   }
 
-  componentDidUpdate() {
-    if (!this.state.contentWidths) {
+  componentDidUpdate(prevProps) {
+    if (
+      !this.state.contentWidths ||
+      prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
+    ) {
       this._measure();
     } else if (this.props.onContentWidthChange) {
       const total = this.state.columnWidths.reduce((sum, width) => sum + width);
@@ -241,6 +200,7 @@ export default class TableInteractive extends Component {
               rowIndex: 0,
               key: "header",
               style: {},
+              isVirtual: true,
             })}
             {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
               this.cellRenderer({
@@ -260,7 +220,7 @@ export default class TableInteractive extends Component {
           columnElement => columnElement.offsetWidth,
         );
 
-        const columnWidths: number[] = cols.map((col, index) => {
+        const columnWidths = cols.map((col, index) => {
           if (this.columnNeedsResize) {
             if (
               this.columnNeedsResize[index] &&
@@ -278,7 +238,10 @@ export default class TableInteractive extends Component {
           }
         });
 
-        ReactDOM.unmountComponentAtNode(this._div);
+        // Doing this on next tick makes sure it actually gets removed on initial measure
+        setTimeout(() => {
+          ReactDOM.unmountComponentAtNode(this._div);
+        }, 0);
 
         delete this.columnNeedsResize;
 
@@ -298,13 +261,13 @@ export default class TableInteractive extends Component {
     this.setState({ contentWidths: null });
   }, 100);
 
-  onCellResize(columnIndex: number) {
+  onCellResize(columnIndex) {
     this.columnNeedsResize = this.columnNeedsResize || {};
     this.columnNeedsResize[columnIndex] = true;
     this.recomputeColumnSizes();
   }
 
-  onColumnResize(columnIndex: number, width: number) {
+  onColumnResize(columnIndex, width) {
     const { settings } = this.props;
     const columnWidthsSetting = settings["table.column_widths"]
       ? settings["table.column_widths"].slice()
@@ -316,7 +279,7 @@ export default class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  onColumnReorder(columnIndex: number, newColumnIndex: number) {
+  onColumnReorder(columnIndex, newColumnIndex) {
     const { settings, onUpdateVisualizationSettings } = this.props;
     const columns = settings["table.columns"].slice(); // copy since splice mutates
     columns.splice(newColumnIndex, 0, columns.splice(columnIndex, 1)[0]);
@@ -325,14 +288,14 @@ export default class TableInteractive extends Component {
     });
   }
 
-  onVisualizationClick(clicked: ?ClickObject, element: HTMLElement) {
+  onVisualizationClick(clicked, element) {
     const { onVisualizationClick } = this.props;
     if (this.visualizationIsClickable(clicked)) {
       onVisualizationClick({ ...clicked, element });
     }
   }
 
-  getCellClickedObject(rowIndex: number, columnIndex: number) {
+  getCellClickedObject(rowIndex, columnIndex) {
     try {
       return this._getCellClickedObjectCached(
         this.props.data,
@@ -374,7 +337,7 @@ export default class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(columnIndex: number) {
+  getHeaderClickedObject(columnIndex) {
     try {
       return this._getHeaderClickedObjectCached(
         this.props.data,
@@ -387,15 +350,11 @@ export default class TableInteractive extends Component {
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
-  _getHeaderClickedObjectCached(
-    data: DatasetData,
-    columnIndex: number,
-    isPivoted: boolean,
-  ) {
+  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
     return getTableHeaderClickedObject(data, columnIndex, isPivoted);
   }
 
-  visualizationIsClickable(clicked: ?ClickObject) {
+  visualizationIsClickable(clicked) {
     try {
       const { onVisualizationClick, visualizationIsClickable } = this.props;
       const { dragColIndex } = this.state;
@@ -417,21 +376,13 @@ export default class TableInteractive extends Component {
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
-  _visualizationIsClickableCached(
-    visualizationIsClickable: Function,
-    clicked: ClickObject,
-  ) {
+  _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
   }
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
-  getCellBackgroundColor(
-    settings: VisualizationSettings,
-    value: Value,
-    rowIndex: number,
-    columnName: number,
-  ) {
+  getCellBackgroundColor(settings, value, rowIndex, columnName) {
     try {
       return settings["table._cell_background_getter"](
         value,
@@ -445,11 +396,7 @@ export default class TableInteractive extends Component {
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
-  getCellFormattedValue(
-    value: Value,
-    columnSettings: any,
-    clicked: ?ClickObject,
-  ) {
+  getCellFormattedValue(value, columnSettings, clicked) {
     try {
       return formatValue(value, {
         ...columnSettings,
@@ -463,7 +410,7 @@ export default class TableInteractive extends Component {
     }
   }
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
+  cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
     const { data, settings } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
@@ -540,7 +487,7 @@ export default class TableInteractive extends Component {
     );
   };
 
-  getDragColNewIndex(data: { x: number }) {
+  getDragColNewIndex(data) {
     const { columnPositions, dragColNewIndex, dragColStyle } = this.state;
     if (dragColStyle) {
       if (data.x < 0) {
@@ -575,7 +522,7 @@ export default class TableInteractive extends Component {
     });
   }
 
-  getNewColumnLefts(dragColNewIndex: number) {
+  getNewColumnLefts(dragColNewIndex) {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
@@ -590,7 +537,7 @@ export default class TableInteractive extends Component {
     return lefts.map(p => p.left);
   }
 
-  getColumnLeft(style: any, index: number) {
+  getColumnLeft(style, index) {
     const { dragColNewIndex, dragColNewLefts } = this.state;
     if (dragColNewIndex != null && dragColNewLefts) {
       return dragColNewLefts[index];
@@ -598,11 +545,36 @@ export default class TableInteractive extends Component {
     return style.left;
   }
 
-  tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
+  @memoize
+  getDimension(column, query) {
+    if (!query) {
+      return undefined;
+    }
+
+    const dimension = Dimension.parseMBQL(
+      column.field_ref,
+      query.metadata(),
+      query,
+    );
+
+    return dimension;
+  }
+
+  // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
+  // After the measurements are done, invisible columns get unmounted.
+  // Because table headers are wrapped into react-draggable, it can trigger
+  // https://github.com/react-grid-layout/react-draggable/issues/315
+  // (inputs loosing focus when draggable components unmount)
+  // We need to prevent that by passing `enableUserSelectHack={false}`
+  // to draggable components used in measurements
+  // We should maybe rethink the approach to measurements or render a very basic table header, without react-draggable
+  tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
+      query,
       data,
       sort,
       isPivoted,
+      hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
     } = this.props;
@@ -614,7 +586,7 @@ export default class TableInteractive extends Component {
 
     const clicked = this.getHeaderClickedObject(columnIndex);
 
-    const isDraggable = !isPivoted;
+    const isDraggable = !isPivoted && query && query.isEditable();
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
@@ -632,6 +604,7 @@ export default class TableInteractive extends Component {
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */
+        enableUserSelectHack={!isVirtual}
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -707,31 +680,45 @@ export default class TableInteractive extends Component {
               : undefined
           }
         >
-          {renderTableHeaderWrapper(
-            <Ellipsified tooltip={columnTitle}>
-              {isSortable && isRightAligned && (
-                <Icon
-                  className="Icon mr1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-              {columnTitle}
-              {isSortable && !isRightAligned && (
-                <Icon
-                  className="Icon ml1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-            </Ellipsified>,
-            column,
-            columnIndex,
-          )}
+          <DimensionInfoPopover
+            placement="bottom-start"
+            dimension={
+              hasMetadataPopovers
+                ? this.getDimension(column, this.props.query)
+                : null
+            }
+            disabled={this.props.clicked != null}
+          >
+            {renderTableHeaderWrapper(
+              <Ellipsified tooltip={columnTitle}>
+                {isSortable && isRightAligned && (
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+                {columnTitle}
+                {isSortable && !isRightAligned && (
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+              </Ellipsified>,
+              column,
+              columnIndex,
+            )}
+          </DimensionInfoPopover>
           <Draggable
+            enableUserSelectHack={!isVirtual}
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
-            position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+            position={{
+              x: this.getColumnWidth({ index: columnIndex }),
+              y: 0,
+            }}
             onStart={e => {
               e.stopPropagation();
               this.setState({ dragColIndex: columnIndex });
@@ -761,7 +748,7 @@ export default class TableInteractive extends Component {
     );
   };
 
-  getColumnWidth = ({ index }: { index: number }) => {
+  getColumnWidth = ({ index }) => {
     const { settings } = this.props;
     const { columnWidths } = this.state;
     const columnWidthsSetting = settings["table.column_widths"] || [];
@@ -786,6 +773,7 @@ export default class TableInteractive extends Component {
       height,
       data: { cols, rows },
       className,
+      scrollToColumn,
     } = this.props;
 
     if (!width || !height) {
@@ -796,79 +784,91 @@ export default class TableInteractive extends Component {
 
     return (
       <ScrollSync>
-        {({ onScroll, scrollLeft, scrollTop }) => (
-          <div
-            className={cx(className, "TableInteractive relative", {
-              "TableInteractive--pivot": this.props.isPivoted,
-              "TableInteractive--ready": this.state.contentWidths,
-              // no hover if we're dragging a column
-              "TableInteractive--noHover": this.state.dragColIndex != null,
-            })}
-            onMouseEnter={this.handleOnMouseEnter}
-            onMouseLeave={this.handleOnMouseLeave}
-          >
-            <canvas
-              className="spread"
-              style={{ pointerEvents: "none", zIndex: 999 }}
-              width={width}
-              height={height}
-            />
-            <Grid
-              ref={ref => (this.header = ref)}
-              style={{
-                top: 0,
-                left: 0,
-                right: 0,
-                height: headerHeight,
-                position: "absolute",
-                overflow: "hidden",
-              }}
-              className="TableInteractive-header scroll-hide-all"
-              width={width || 0}
-              height={headerHeight}
-              rowCount={1}
-              rowHeight={headerHeight}
-              // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
-              columnCount={cols.length + 1}
-              columnWidth={props =>
-                props.index < cols.length ? this.getColumnWidth(props) : 50
-              }
-              cellRenderer={props =>
-                props.columnIndex < cols.length
-                  ? this.tableHeaderRenderer(props)
-                  : null
-              }
-              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-              scrollLeft={scrollLeft}
-              tabIndex={null}
-            />
-            <Grid
-              ref={ref => (this.grid = ref)}
-              style={{
-                top: headerHeight,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                position: "absolute",
-              }}
-              className=""
-              width={width}
-              height={height - headerHeight}
-              columnCount={cols.length}
-              columnWidth={this.getColumnWidth}
-              rowCount={rows.length}
-              rowHeight={ROW_HEIGHT}
-              cellRenderer={this.cellRenderer}
-              onScroll={({ scrollLeft }) => {
-                this.props.onActionDismissal();
-                return onScroll({ scrollLeft });
-              }}
-              scrollLeft={scrollLeft}
-              tabIndex={null}
-              overscanRowCount={20}
-            />
-          </div>
-        )}
+        {({ onScroll, scrollLeft, scrollTop }) => {
+          // Grid's doc says scrollToColumn takes precedence over scrollLeft
+          // (https://github.com/bvaughn/react-virtualized/blob/master/docs/Grid.md#prop-types)
+          // For some reason, for TableInteractive's main grid scrollLeft appears to be more prior
+          const mainGridProps = {};
+          if (scrollToColumn >= 0) {
+            mainGridProps.scrollToColumn = scrollToColumn;
+          } else {
+            mainGridProps.scrollLeft = scrollLeft;
+          }
+          return (
+            <div
+              className={cx(className, "TableInteractive relative", {
+                "TableInteractive--pivot": this.props.isPivoted,
+                "TableInteractive--ready": this.state.contentWidths,
+                // no hover if we're dragging a column
+                "TableInteractive--noHover": this.state.dragColIndex != null,
+              })}
+              onMouseEnter={this.handleOnMouseEnter}
+              onMouseLeave={this.handleOnMouseLeave}
+            >
+              <canvas
+                className="spread"
+                style={{ pointerEvents: "none", zIndex: 999 }}
+                width={width}
+                height={height}
+              />
+              <Grid
+                ref={ref => (this.header = ref)}
+                style={{
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: headerHeight,
+                  position: "absolute",
+                  overflow: "hidden",
+                }}
+                className="TableInteractive-header scroll-hide-all"
+                width={width || 0}
+                height={headerHeight}
+                rowCount={1}
+                rowHeight={headerHeight}
+                // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
+                columnCount={cols.length + 1}
+                columnWidth={props =>
+                  props.index < cols.length ? this.getColumnWidth(props) : 50
+                }
+                cellRenderer={props =>
+                  props.columnIndex < cols.length
+                    ? this.tableHeaderRenderer(props)
+                    : null
+                }
+                onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                scrollLeft={scrollLeft}
+                tabIndex={null}
+                scrollToColumn={scrollToColumn}
+              />
+              <Grid
+                ref={ref => (this.grid = ref)}
+                style={{
+                  top: headerHeight,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  position: "absolute",
+                }}
+                className=""
+                width={width}
+                height={height - headerHeight}
+                columnCount={cols.length}
+                columnWidth={this.getColumnWidth}
+                rowCount={rows.length}
+                rowHeight={ROW_HEIGHT}
+                cellRenderer={this.cellRenderer}
+                onScroll={({ scrollLeft }) => {
+                  this.props.onActionDismissal();
+                  return onScroll({ scrollLeft });
+                }}
+                {...mainGridProps}
+                tabIndex={null}
+                overscanRowCount={20}
+              />
+            </div>
+          );
+        }}
       </ScrollSync>
     );
   }

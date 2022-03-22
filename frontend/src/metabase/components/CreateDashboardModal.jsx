@@ -22,10 +22,7 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class CreateDashboardModal extends Component {
   static propTypes = {
     onSaved: PropTypes.func,
@@ -34,10 +31,12 @@ export default class CreateDashboardModal extends Component {
 
   onSaved = dashboard => {
     const { onClose, onChangeLocation } = this.props;
-    onChangeLocation(Urls.dashboard(dashboard));
     if (onClose) {
       onClose();
     }
+
+    const url = Urls.dashboard(dashboard, { editMode: true });
+    onChangeLocation(url);
   };
 
   render() {

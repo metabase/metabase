@@ -222,7 +222,7 @@
                         (str/split #"\.")
                         first
                         Integer/parseInt)]
-    (and (some? version) (<= 5 version))))
+    (and (some? version) (<= 4 version))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]

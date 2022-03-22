@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
   compose,
@@ -73,12 +74,20 @@ const Tables = createEntity({
 
   // ACTION CREATORS
   objectActions: {
+    updateProperty(entityObject, name, value, opts) {
+      return Tables.actions.update(
+        entityObject,
+        { [name]: value },
+        notify(opts, `Table ${name}`, t`updated`),
+      );
+    },
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
+        entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
     )(({ id }, options = {}) => (dispatch, getState) =>
@@ -110,6 +119,7 @@ const Tables = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
+        entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
     )(entityObject => async (dispatch, getState) => {
@@ -117,9 +127,10 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
-      ({ id }, fieldOrder) => (dispatch, getState) =>
-        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    setFieldOrder: compose(
+      withAction(UPDATE_TABLE_FIELD_ORDER),
+    )(({ id }, fieldOrder) => (dispatch, getState) =>
+      updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
     ),
   },
 
@@ -132,6 +143,11 @@ const Tables = createEntity({
     if (type === Questions.actionTypes.CREATE) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
+
+      if (state[virtualQuestionTable.id]) {
+        return state;
+      }
+
       return {
         ...state,
         [virtualQuestionTable.id]: virtualQuestionTable,
@@ -144,6 +160,10 @@ const Tables = createEntity({
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];
+        return state;
+      }
+
+      if (state[virtualQuestionId]) {
         return state;
       }
 

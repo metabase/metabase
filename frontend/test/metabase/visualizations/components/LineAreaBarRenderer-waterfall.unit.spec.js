@@ -1,4 +1,4 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
+import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
 import {
   NumberColumn,
@@ -101,7 +101,10 @@ describe("LineAreaBarRenderer-waterfall", () => {
   it("should render a waterfall chart with two rows", () => {
     const onHoverChange = jest.fn();
     const settings = {};
-    const rows = [["Apple", 10], ["Banana", 4]];
+    const rows = [
+      ["Apple", 10],
+      ["Banana", 4],
+    ];
     renderLineAreaBar(element, [MainSeries(settings, rows)], {
       onHoverChange,
     });
@@ -130,7 +133,11 @@ describe("LineAreaBarRenderer-waterfall", () => {
   it("should render a waterfall chart with negative values", () => {
     const onHoverChange = jest.fn();
     const settings = {};
-    const rows = [["X", -5], ["Y", -13], ["Z", -7]];
+    const rows = [
+      ["X", -5],
+      ["Y", -13],
+      ["Z", -7],
+    ];
     renderLineAreaBar(element, [MainSeries(settings, rows)], {
       onHoverChange,
     });
@@ -166,7 +173,11 @@ describe("LineAreaBarRenderer-waterfall", () => {
     const settings = {
       "waterfall.show_total": false,
     };
-    const rows = [["A", 3], ["B", 5], ["C", 7]];
+    const rows = [
+      ["A", 3],
+      ["B", 5],
+      ["C", 7],
+    ];
     renderLineAreaBar(element, [MainSeries(settings, rows)], {
       onHoverChange,
     });

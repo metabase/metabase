@@ -1,4 +1,8 @@
-import { restore, openProductsTable } from "__support__/e2e/cypress";
+import {
+  enterCustomColumnDetails,
+  openProductsTable,
+  restore,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
@@ -10,43 +14,38 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 
   it("should not suggest arithmetic operators", () => {
-    cy.get("[contenteditable='true']").type("[Price] ");
-    cy.contains("/").should("not.exist");
+    enterCustomColumnDetails({ formula: "[Price] " });
+    cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 
   it("should correctly accept the chosen field suggestion", () => {
-    cy.get("[contenteditable='true']").type(
-      "[Rating]{leftarrow}{leftarrow}{leftarrow}",
-    );
+    enterCustomColumnDetails({
+      formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
+    });
 
     // accept the only suggested item, i.e. "[Rating]"
-    cy.get("[contenteditable='true']").type("{enter}");
+    cy.get("@formula").type("{enter}");
 
     // if the replacement is correct -> "[Rating]"
     // if the replacement is wrong -> "[Rating] ng"
-    cy.get("[contenteditable='true']")
-      .contains("[Rating] ng")
-      .should("not.exist");
+    cy.contains("[Rating] ng").should("not.exist");
   });
 
   it("should correctly accept the chosen function suggestion", () => {
-    cy.get("[contenteditable='true']").type("LTRIM([Title])");
+    enterCustomColumnDetails({ formula: "LTRIM([Title])" });
 
     // Place the cursor between "is" and "empty"
-    cy.get("[contenteditable='true']").type(
-      Array(13)
-        .fill("{leftarrow}")
-        .join(""),
-    );
+    cy.get("@formula").type("{leftarrow}".repeat(13));
 
     // accept the first suggested function, i.e. "length"
-    cy.get("[contenteditable='true']").type("{enter}");
+    cy.get("@formula").type("{enter}");
 
-    cy.get("[contenteditable='true']").contains("length([Title])");
+    cy.contains("length([Title])");
   });
 
   it("should correctly insert function suggestion with the opening parenthesis", () => {
-    cy.get("[contenteditable='true']").type("LOW{enter}");
-    cy.get("[contenteditable='true']").contains("lower(");
+    enterCustomColumnDetails({ formula: "LOW{enter}" });
+
+    cy.contains("lower(");
   });
 });

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visualize } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -27,8 +27,7 @@ describe.skip("issue 13097", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.log("Reported failing on stats ~v0.36.3");
     cy.findAllByText("1,966").should("have.length", 1); // City

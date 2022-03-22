@@ -1,11 +1,13 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.api.card-test :as card-api-test]
             [metabase.api.pulse :as pulse-api]
             [metabase.http-client :as http]
             [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel
+                                     PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse-channel :as pulse-channel]
@@ -508,8 +510,9 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
+          (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                        s/Keyword s/Any}
+                       (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
   (testing "Can we change the Collection position of a Pulse?"
@@ -791,12 +794,12 @@
         (is (= #{"LuckyRecipient" "Other"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :rasta)))))))
         (is (= #{}
-               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))))
+               (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :trashbird)))))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               GET /api/pulse/:id                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
+    (testing "excludes dashboard subscriptions associated with archived dashboards"
+      (mt/with-temp* [Dashboard [{dashboard-id :id} {:archived true}]
+                      Pulse     [_ {:dashboard_id dashboard-id}]]
+        (is (= [] (mt/user-http-request :rasta :get 200 "pulse")))))))
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"
@@ -873,6 +876,45 @@
               (is (not (contains? (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))
                                   "test@metabase.com"))))))))))
 
+(deftest send-test-pulse-native-query-default-parameters-test
+  (testing "POST /api/pulse/test should work with a native query with default parameters"
+    (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query         "SELECT {{x}}"
+                                                                    :template-tags {"x" {:id           "abc"
+                                                                                         :name         "x"
+                                                                                         :display-name "X"
+                                                                                         :type         :number
+                                                                                         :required     true}}}}}]
+                    Dashboard [{dashboard-id :id} {:parameters [{:name    "X"
+                                                                 :slug    "x"
+                                                                 :id      "__X__"
+                                                                 :type    :category
+                                                                 :default 3}]}]
+                    DashboardCard [_ {:card_id            card-id
+                                      :dashboard_id       dashboard-id
+                                      :parameter_mappings [{:parameter_id "__X__"
+                                                            :card_id      card-id
+                                                            :target       [:variable [:template-tag "x"]]}]}]]
+      (mt/with-fake-inbox
+        (is (= {:ok true}
+               (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :dashboard_id  dashboard-id
+                                                                    :cards         [{:id                card-id
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
+                                    :body    {"Daily Sad Toucans" true}})
+               (mt/regex-email-bodies #"Daily Sad Toucans")))))))
+
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
 ;; of the same format that the pulse GET returns
@@ -924,33 +966,29 @@
                                            :limit        1}
                                 :async?   true}})))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         GET /api/pulse/form_input                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack-token "something"]
-        (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
-                      slack/users-list         (constantly [{:name "bar"}])]
-          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
+      (mt/with-temporary-setting-values [slack-token nil
+                                         slack-app-token "something"]
+        (with-redefs [slack/conversations-list (constantly ["#foo" "#two" "#general"])
+                      slack/users-list         (constantly ["@bar" "@baz"])]
+          ;; set the cache to these values
+          (slack/slack-cached-channels-and-usernames (concat (slack/conversations-list) (slack/users-list)))
+          ;; don't let the cache refresh itself (it will refetch if it is too old)
+          (slack/slack-channels-and-usernames-last-updated (t/zoned-date-time))
+          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "#two" "#general" "@bar" "@baz"], :required true}]
                  (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                      (get-in [:channels :slack :fields])))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil]
+      (mt/with-temporary-setting-values [slack-token nil
+                                         slack-app-token nil]
         (is (empty?
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields])
                    (first)
                    (:options))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        GET /api/pulse/preview_card/:id                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
@@ -978,11 +1016,6 @@
                             :via      s/Any
                             s/Keyword s/Any}
                      body)))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         DELETE /api/pulse/:id/subscription                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"

@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.api.setup :as setup-api]
             [metabase.email :as email]
             [metabase.events :as events]
@@ -60,12 +61,13 @@
     (do-with-setup*
      request-body
      (fn []
-       (testing "API response should return a Session UUID"
-         (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
-                      (http/client :post 200 "setup" request-body))))
-       ;; reset our setup token
-       (setup/create-token!)
-       (thunk)))))
+       (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
+         (testing "API response should return a Session UUID"
+           (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
+                        (http/client :post 200 "setup" request-body))))
+         ;; reset our setup token
+         (setup/create-token!)
+         (thunk))))))
 
 (defmacro ^:private with-setup [request-body & body]
   `(do-with-setup ~request-body (fn [] ~@body)))
@@ -89,6 +91,40 @@
                             :model    (s/eq "user")
                             s/Keyword s/Any}
                            (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+
+(deftest invite-user-test
+  (testing "POST /api/setup"
+    (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
+             a Snowplow analytics event is sent"
+      (mt/with-fake-inbox
+        (snowplow-test/with-fake-snowplow-collector
+          (let [email (mt/random-email)
+                first-name (mt/random-name)
+                last-name (mt/random-name)
+                invitor-first-name (mt/random-name)]
+            (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
+                         :user {:first_name invitor-first-name}
+                         :site_name "Metabase"}
+              (let [invited-user (User :email email)]
+                (is (= (:first_name invited-user) first-name))
+                (is (= (:last_name invited-user) last-name))
+                (is (:is_superuser invited-user))
+                (is (partial= [{:data {"event"           "invite_sent",
+                                       "invited_user_id" (u/the-id invited-user)
+                                       "source"          "setup"}}]
+                              (filter #(= (get-in % [:data "event"]) "invite_sent")
+                                      (snowplow-test/pop-event-data-and-user-id!))))
+                (is (mt/received-email-body?
+                     email
+                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))))))))
+
+    (testing "No second user is created if email is not set up"
+      (mt/with-temporary-setting-values [email-smtp-host nil]
+        (let [email (mt/random-email)
+              first-name (mt/random-name)
+              last-name (mt/random-name)]
+          (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}}
+            (is (not (db/exists? User :email email)))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
@@ -167,10 +203,11 @@
     (testing "error conditions"
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (http/client :post 400 "setup" (assoc (default-setup-input)
-                                                     :database {:engine  "my-fake-driver"
-                                                                :name    (mt/random-name)
-                                                                :details {}}))))))))
+               (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
+                 (http/client :post 400 "setup" (assoc (default-setup-input)
+                                                       :database {:engine  "my-fake-driver"
+                                                                  :name    (mt/random-name)
+                                                                  :details {}})))))))))
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)
@@ -242,6 +279,39 @@
         (with-setup {:database {:engine "h2", :name db-name}}
           (is (db/exists? Database :name db-name)))))))
 
+(deftest has-user-setup-setting-test
+  (testing "has-user-setup is true iff there are 1 or more users"
+    (let [user-count (db/count User)]
+      (if (zero? user-count)
+        (is (not (setup/has-user-setup)))
+        (is (setup/has-user-setup))))))
+
+(deftest create-superuser-only-once-test
+  (testing "POST /api/setup"
+    (testing "Check that we cannot create a new superuser via setup-token when a user exists"
+      (let [token (setup/create-token!)
+            body  {:token token
+                   :prefs {:site_locale "es_MX"
+                           :site_name   (mt/random-name)}
+                   :user  {:first_name (mt/random-name)
+                           :last_name  (mt/random-name)
+                           :email      (mt/random-email)
+                           :password   "p@ssword1"}}]
+        (with-redefs [setup/has-user-setup (let [value (atom false)]
+                                             (fn
+                                               ([] @value)
+                                               ([t-or-f] (reset! value t-or-f))))]
+          (mt/discard-setting-changes
+              [site-name site-locale anon-tracking-enabled admin-email]
+            (http/client :post 200 "setup" body))
+
+          ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
+          (setup/has-user-setup true)
+
+          (mt/discard-setting-changes
+              [site-name site-locale anon-tracking-enabled admin-email]
+            (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
+
 (deftest transaction-test
   (testing "POST /api/setup/"
     (testing "should run in a transaction -- if something fails, all changes should be rolled back"
@@ -261,7 +331,8 @@
         (do-with-setup*
          body
          (fn []
-           (with-redefs [setup-api/setup-set-settings! (let [orig @#'setup-api/setup-set-settings!]
+           (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true
+                         setup-api/setup-set-settings! (let [orig @#'setup-api/setup-set-settings!]
                                                          (fn [& args]
                                                            (apply orig args)
                                                            (throw (ex-info "Oops!" {}))))]
@@ -363,3 +434,19 @@
               :tasks (for [task tasks]
                        (-> (select-keys task [:title :completed :triggered :is_next_step])
                            (update :title str)))})))))
+
+(deftest user-defaults-test
+  (testing "with no user defaults configured"
+    (mt/with-temp-env-var-value [mb-user-defaults nil]
+      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+
+  (testing "with defaults containing no token"
+    (mt/with-temp-env-var-value [mb-user-defaults "{}"]
+      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+
+  (testing "with valid configuration"
+    (mt/with-temp-env-var-value [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
+      (testing "with mismatched token"
+        (is (= "You don't have permissions to do that." (http/client :get "setup/user_defaults?token=987654"))))
+      (testing "with valid token"
+        (is (= {:email "john.doe@example.com"} (http/client :get "setup/user_defaults?token=123456")))))))

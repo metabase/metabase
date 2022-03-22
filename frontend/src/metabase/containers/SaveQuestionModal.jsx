@@ -6,7 +6,7 @@ import { CSSTransitionGroup } from "react-transition-group";
 
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { generateQueryDescription } from "metabase/lib/query/description";
@@ -94,14 +94,14 @@ export default class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType: originalCard ? "overwrite" : "create",
+      saveType: originalCard && !originalCard.dataset ? "overwrite" : "create",
     };
 
     const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 
-    const showSaveType = !card.id && !!originalCard;
+    const showSaveType = !card.id && !!originalCard && !originalCard.dataset;
 
     return (
       <ModalContent

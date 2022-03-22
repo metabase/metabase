@@ -1,6 +1,7 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [clojure.set :as set]
+  (:require [clj-time.core :as time]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivot.test-utils]
@@ -95,7 +96,7 @@
                       :filter       [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at -2 :year {}]]}
+                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]}
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
@@ -238,10 +239,12 @@
                        :pivot-cols [1])]
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
-        (is (= (m/dissoc-in (pivot/run-pivot-query query)
-                            [:data :results_metadata :checksum])
-               (m/dissoc-in (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
-                            [:data :results_metadata :checksum]))))
+        (is (= (-> (pivot/run-pivot-query query)
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form]))
+               (-> (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form])))))
 
       (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
         ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle

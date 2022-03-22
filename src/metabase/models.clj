@@ -1,7 +1,7 @@
 (ns metabase.models
   (:require [metabase.models.activity :as activity]
+            [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
-            [metabase.models.card-favorite :as card-favorite]
             [metabase.models.collection :as collection]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision]
             [metabase.models.dashboard :as dashboard]
@@ -29,11 +29,14 @@
             [metabase.models.query-cache :as query-cache]
             [metabase.models.query-execution :as query-execution]
             [metabase.models.revision :as revision]
+            [metabase.models.secret :as secret]
             [metabase.models.segment :as segment]
             [metabase.models.session :as session]
             [metabase.models.setting :as setting]
             [metabase.models.table :as table]
             [metabase.models.task-history :as task-history]
+            [metabase.models.timeline :as timeline]
+            [metabase.models.timeline-event :as timeline-event]
             [metabase.models.user :as user]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
@@ -41,7 +44,7 @@
 ;; Fool the linter
 (comment activity/keep-me
          card/keep-me
-         card-favorite/keep-me
+         bookmark/keep-me
          collection/keep-me
          c-perm-revision/keep-me
          dashboard/keep-me
@@ -69,24 +72,28 @@
          query-cache/keep-me
          query-execution/keep-me
          revision/keep-me
+         secret/keep-me
          segment/keep-me
          session/keep-me
          setting/keep-me
          table/keep-me
          task-history/keep-me
+         timeline/keep-me
+         timeline-event/keep-me
          user/keep-me
          view-log/keep-me)
 
 (p/import-vars
  [activity Activity]
+ [bookmark CardBookmark]
+ [bookmark DashboardBookmark]
+ [bookmark CollectionBookmark]
  [card Card]
- [card-favorite CardFavorite]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]
- [dashboard-favorite DashboardFavorite]
  [database Database]
  [dependency Dependency]
  [dimension Dimension]
@@ -108,10 +115,13 @@
  [query-cache QueryCache]
  [query-execution QueryExecution]
  [revision Revision]
+ [secret Secret]
  [segment Segment]
  [session Session]
  [setting Setting]
  [table Table]
  [task-history TaskHistory]
+ [timeline Timeline]
+ [timeline-event TimelineEvent]
  [user User]
  [view-log ViewLog])

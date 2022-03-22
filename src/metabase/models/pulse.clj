@@ -143,7 +143,7 @@
 (defn will-delete-channel
   "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
   deleted. Archives `Pulse` if the channel being deleted is its last channel."
-  [{pulse-id :pulse_id, pulse-channel-id :id, :as pulse-channel}]
+  [{pulse-id :pulse_id, pulse-channel-id :id}]
   (when *automatically-archive-when-last-channel-is-deleted*
     (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
@@ -309,12 +309,17 @@
   (let [query {:select    [:p.* [:%lower.p.name :lower-name]]
                :modifiers [:distinct]
                :from      [[Pulse :p]]
-               :left-join (when user-id
-                            [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
-                             [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+               :left-join (concat
+                           [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                           (when user-id
+                             [[PulseChannel :pchan] [:= :p.id :pchan.pulse_id]
+                              [PulseChannelRecipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
                :where     [:and
                            [:= :p.alert_condition nil]
                            [:= :p.archived archived?]
+                           [:or
+                            [:= :p.dashboard_id nil]
+                            [:= :d.archived false]]
                            (when dashboard-id
                              [:= :p.dashboard_id dashboard-id])
                            (when user-id

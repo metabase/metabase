@@ -151,8 +151,9 @@
              (mt/first-row
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:not-null *date]}))))))))
+                   {:source-query {:source-table $$checkins}
+                    :aggregation  [[:count]]
+                    :filter       [:not-null *date]}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -425,7 +426,7 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp/query->native-with-spliced-params query))))
+            (testing (format "\nquery = %s" (pr-str (:query (qp/compile-and-splice-parameters query))))
               ;; Mongo returns empty results if count is zero -- see #5419
               (is (= (if (and (= driver/*driver* :mongo)
                               (zero? expected-count))

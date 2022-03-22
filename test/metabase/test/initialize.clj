@@ -1,7 +1,7 @@
 (ns metabase.test.initialize
   "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
-            [colorize.core :as colorize]
+            [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
             [metabase.test-runner.init :as test-runner.init]
@@ -15,11 +15,9 @@
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
         border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)]
-    (println
-     (colorize/blue
-      (str "\n"
-           (str/join "\n" [border body border])
-           "\n")))))
+    (log/info (u/colorize :blue (str "\n"
+                                     (str/join "\n" [border body border])
+                                     "\n")))))
 
 (def ^:private init-timeout-ms (* 30 1000))
 
@@ -41,8 +39,7 @@
       (u/with-timeout init-timeout-ms
         (do-initialization! step)))
     (catch Throwable e
-      (println "Error initializing" step)
-      (println e)
+      (log/fatalf e "Error initializing %s" step)
       (when config/is-test?
         (System/exit -1))
       (throw e))))
@@ -90,7 +87,7 @@
 (define-initialization :test-drivers
   (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
-   [:driver-deprecation-test-legacy :driver-deprecation-test-new]))
+   [:driver-deprecation-test-legacy :driver-deprecation-test-new :secret-test-driver]))
 
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)

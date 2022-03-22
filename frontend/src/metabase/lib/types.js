@@ -1,6 +1,6 @@
-import { isa as cljs_isa, TYPE } from "cljs/metabase.types";
+import { isa as cljs_isa, TYPE as cljs_TYPE } from "cljs/metabase.types";
 
-export { TYPE };
+export const TYPE = cljs_TYPE;
 
 /**
  * Is x the same as, or a descendant type of, y?

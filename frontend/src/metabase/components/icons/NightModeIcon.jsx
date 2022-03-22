@@ -1,13 +1,9 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Icon from "metabase/components/Icon";
 
-type Props = {
-  // ...IconProps,
-  isNightMode: boolean,
-};
-
-const NightModeIcon = ({ isNightMode, ...props }: Props) => (
+const NightModeIcon = ({ isNightMode, ...props }) => (
   <Icon name={isNightMode ? "sun" : "moon"} {...props} />
 );
 

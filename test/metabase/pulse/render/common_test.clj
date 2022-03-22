@@ -18,7 +18,8 @@
       (is (= "12*345^54" (fmt {::mb.viz/number-separators "^*"})))
       (is (= "prefix12,345.54suffix" (fmt {::mb.viz/prefix "prefix"
                                            ::mb.viz/suffix "suffix"})))
-      (is (= "12,345.5432000" (fmt {::mb.viz/decimals 7}))))
+      (is (= "12,345.5432000" (fmt {::mb.viz/decimals 7})))
+      (is (= "12,346" (fmt {::mb.viz/decimals 0}))))
     (testing "Currency"
       (testing "defaults to USD and two decimal places and symbol"
         (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"}))))
@@ -43,8 +44,8 @@
       (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
       (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
                               ::mb.viz/decimals 4})))
-      (is (= "1.E4" (fmt {::mb.viz/number-style "scientific"
-                          ::mb.viz/decimals 0}))))
+      (is (= "1E4" (fmt {::mb.viz/number-style "scientific"
+                         ::mb.viz/decimals 0}))))
     (testing "Percentage"
       (is (= "1,234,554.32%" (fmt {::mb.viz/number-style "percent"})))
       (is (= "1.234.554,3200%"

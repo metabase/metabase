@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -9,7 +9,10 @@ function getSeries(display) {
     {
       card: { display, visualization_settings: {} },
       data: {
-        rows: [["a", 1], ["b", 2]],
+        rows: [
+          ["a", 1],
+          ["b", 2],
+        ],
         cols: [{ name: "foo" }, { name: "bar" }],
       },
     },
@@ -17,7 +20,7 @@ function getSeries(display) {
 }
 describe("ChartNestedSettingSeries", () => {
   it("shouldn't show line/area/bar buttons for row charts", () => {
-    const { queryByRole } = render(
+    const { queryByRole } = renderWithProviders(
       <ChartSettings
         series={getSeries("row")}
         initial={{ section: "Display" }}
@@ -30,7 +33,7 @@ describe("ChartNestedSettingSeries", () => {
   });
 
   it("should show line/area/bar buttons for bar charts", () => {
-    const { getByRole } = render(
+    const { getByRole } = renderWithProviders(
       <ChartSettings
         series={getSeries("bar")}
         initial={{ section: "Display" }}

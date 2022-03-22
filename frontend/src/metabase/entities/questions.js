@@ -1,21 +1,16 @@
-import { assocIn } from "icepick";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
-
-const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
@@ -28,18 +23,22 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id, model }, archived, opts) =>
       Questions.actions.update(
         { id },
         { archived },
-        undo(opts, "question", archived ? "archived" : "unarchived"),
+        undo(
+          opts,
+          model === "dataset" ? "model" : "question",
+          archived ? "archived" : "unarchived",
+        ),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: ({ id, model }, collection, opts) =>
       Questions.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "question", "moved"),
+        undo(opts, model === "dataset" ? "model" : "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
@@ -51,16 +50,6 @@ const Questions = createEntity({
         },
         opts,
       ),
-
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Questions.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Questions.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
   },
 
   objectSelectors: {
@@ -69,19 +58,10 @@ const Questions = createEntity({
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
-    getIcon: question => ({
-      name:
-        (require("metabase/visualizations").default.get(question.display) || {})
-          .iconName || "beaker",
-    }),
+    getIcon,
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    }
     return state;
   },
 
@@ -89,6 +69,7 @@ const Questions = createEntity({
   writableProperties: [
     "name",
     "cache_ttl",
+    "dataset",
     "dataset_query",
     "display",
     "description",
@@ -99,7 +80,6 @@ const Questions = createEntity({
     "collection_id",
     "collection_position",
     "result_metadata",
-    "metadata_checksum",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {
@@ -109,5 +89,18 @@ const Questions = createEntity({
 
   forms,
 });
+
+function getIcon(question) {
+  if (question.dataset || question.model === "dataset") {
+    return { name: "model" };
+  }
+  const visualization = require("metabase/visualizations").default.get(
+    question.display,
+  );
+  return {
+    name: visualization?.iconName ?? "beaker",
+    color: color("bg-dark"),
+  };
+}
 
 export default Questions;

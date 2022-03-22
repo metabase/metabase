@@ -66,7 +66,7 @@
 
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
-  [id]
+  []
   (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
     (hydrate metrics :creator)
     (add-db-ids metrics)
@@ -76,7 +76,7 @@
 (defn- write-check-and-update-metric!
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
   event and returns updated/hydrated Metric."
-  [id {:keys [revision_message archived], :as body}]
+  [id {:keys [revision_message] :as body}]
   (let [existing   (api/write-check Metric id)
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :how_is_this_calculated :points_of_interest}

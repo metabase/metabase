@@ -10,14 +10,8 @@ import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 
-import type {
-  FilterClause,
-  Filter,
-  FilterOptions,
-} from "metabase-types/types/Query";
-
 // returns canonical list of Filters
-export function getFilters(filter: ?FilterClause): Filter[] {
+export function getFilters(filter) {
   if (!filter || (Array.isArray(filter) && filter.length === 0)) {
     return [];
   } else if (op(filter) === "and") {
@@ -28,42 +22,32 @@ export function getFilters(filter: ?FilterClause): Filter[] {
 }
 
 // turns a list of Filters into the canonical FilterClause, either `undefined`, `filter`, or `["and", filter...]`
-function getFilterClause(filters: Filter[]): ?FilterClause {
+function getFilterClause(filters) {
   if (filters.length === 0) {
     return undefined;
   } else if (filters.length === 1) {
     return filters[0];
   } else {
-    return (["and", ...filters]: any);
+    return ["and", ...filters];
   }
 }
 
-export function addFilter(
-  filter: ?FilterClause,
-  newFilter: FilterClause,
-): ?FilterClause {
+export function addFilter(filter, newFilter) {
   return getFilterClause(add(getFilters(filter), newFilter));
 }
-export function updateFilter(
-  filter: ?FilterClause,
-  index: number,
-  updatedFilter: FilterClause,
-): ?FilterClause {
+export function updateFilter(filter, index, updatedFilter) {
   return getFilterClause(update(getFilters(filter), index, updatedFilter));
 }
-export function removeFilter(
-  filter: ?FilterClause,
-  index: number,
-): ?FilterClause {
+export function removeFilter(filter, index) {
   return getFilterClause(remove(getFilters(filter), index));
 }
-export function clearFilters(filter: ?FilterClause): ?FilterClause {
+export function clearFilters(filter) {
   return getFilterClause(clear());
 }
 
 // MISC
 
-export function canAddFilter(filter: ?FilterClause): boolean {
+export function canAddFilter(filter) {
   const filters = getFilters(filter);
   if (filters.length > 0) {
     return noNullValues(filters[filters.length - 1]);
@@ -73,7 +57,7 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 
 // FILTER TYPES
 
-export function isStandard(filter: FilterClause): boolean {
+export function isStandard(filter) {
   if (!Array.isArray(filter)) {
     return false;
   }
@@ -106,29 +90,29 @@ export function isStandard(filter: FilterClause): boolean {
   );
 }
 
-export function isSegment(filter: FilterClause): boolean {
+export function isSegment(filter) {
   return Array.isArray(filter) && filter[0] === "segment";
 }
 
-export function isCustom(filter: FilterClause): boolean {
+export function isCustom(filter) {
   return !isStandard(filter) && !isSegment(filter);
 }
 
-export function isFieldFilter(filter: FilterClause): boolean {
+export function isFieldFilter(filter) {
   return !isSegment(filter) && isValidField(filter[1]);
 }
 
 // FILTER OPTIONS
 
 // TODO: is it safe to assume if the last item is an object then it's options?
-export function hasFilterOptions(filter: Filter): boolean {
+export function hasFilterOptions(filter) {
   const o = filter[filter.length - 1];
   return !!o && typeof o == "object" && o.constructor === Object;
 }
 
-export function getFilterOptions(filter: Filter): FilterOptions {
+export function getFilterOptions(filter) {
   // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
-  const _filter: any = filter;
+  const _filter = filter;
   if (hasFilterOptions(filter)) {
     return _filter[_filter.length - 1];
   } else {
@@ -136,12 +120,9 @@ export function getFilterOptions(filter: Filter): FilterOptions {
   }
 }
 
-export function setFilterOptions<T: Filter>(
-  filter: T,
-  options: FilterOptions,
-): T {
+export function setFilterOptions(filter, options) {
   // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
-  let _filter: any = filter;
+  let _filter = filter;
   // if we have option, strip it off for now
   if (hasFilterOptions(filter)) {
     _filter = _filter.slice(0, -1);

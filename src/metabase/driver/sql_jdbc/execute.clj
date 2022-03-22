@@ -13,10 +13,10 @@
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
@@ -196,6 +196,12 @@
         (catch Throwable e
           (log/debug e (trs "Error setting connection to read-only"))))
       (try
+        ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
+        ;; entire realized result set
+        (.setAutoCommit conn false)
+        (catch Throwable e
+          (log/debug e (trs "Error setting connection to autoCommit false"))))
+      (try
         (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
         (catch Throwable e
           (log/debug e (trs "Error setting default holdability for connection"))))
@@ -267,6 +273,13 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
+(defsetting ^:private sql-jdbc-fetch-size
+  "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
+  in memory."
+  :default 500
+  :type :integer
+  :visibility :internal)
+
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn
@@ -279,6 +292,11 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+      (try
+        (when (zero? (.getFetchSize stmt))
+          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+        (catch Throwable e
+          (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -301,6 +319,11 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+      (try
+        (when (zero? (.getFetchSize stmt))
+          (.setFetchSize stmt (sql-jdbc-fetch-size)))
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch size to fetch-size"))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -467,8 +490,7 @@
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qputil/query->remark driver outer-query)
          sql      (str "-- " remark "\n" sql)
-         max-rows (or (mbql.u/query->max-rows-limit outer-query)
-                      qp.i/absolute-max-results)]
+         max-rows (limit/determine-query-max-rows outer-query)]
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
@@ -477,7 +499,7 @@
                ^ResultSet rs (try
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
-                                 (throw (ex-info (tru "Error executing query")
+                                 (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                  {:sql sql, :params params, :type qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)

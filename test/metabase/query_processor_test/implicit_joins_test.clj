@@ -1,7 +1,9 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clojure.test :refer :all]
+  (:require [clj-time.core :as time]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]))
 
 (deftest breakout-on-fk-field-test
@@ -142,21 +144,23 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset sample-dataset
-        (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
-                ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
-                ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
-                ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
-                ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
-               (mt/formatted-rows [str str str int int]
-                 (mt/run-mbql-query orders
-                   {:aggregation [[:count]]
-                    :breakout    [$product_id->products.category
-                                  $user_id->people.source
-                                  !year.orders.created_at
-                                  [:expression "pivot-grouping"]]
-                    :filter      [:and
-                                  [:= $user_id->people.source "Facebook" "Google"]
-                                  [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                  [:time-interval $created_at -2 :year]]
-                    :expressions {:pivot-grouping [:abs 0]}
-                    :limit       5}))))))))
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [$product_id->products.category
+                                     $user_id->people.source
+                                     !year.orders.created_at
+                                     [:expression "pivot-grouping"]]
+                       :filter      [:and
+                                     [:= $user_id->people.source "Facebook" "Google"]
+                                     [:= $product_id->products.category "Doohickey" "Gizmo"]
+                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year]]
+                       :expressions {:pivot-grouping [:abs 0]}
+                       :limit       5})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
+                    ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
+                    ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
+                    ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
+                    ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
+                   (mt/formatted-rows [str str str int int]
+                     (qp/process-query query))))))))))

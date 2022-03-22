@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { setupEnterpriseTest } from "__support__/enterprise";
 import SearchResult from "./SearchResult";
 
 function collection({
@@ -56,24 +56,8 @@ describe("SearchResult > Collections", () => {
       getIcon: () => ({ name: "badge" }),
     });
 
-    const ORIGINAL_COLLECTIONS_PLUGIN = { ...PLUGIN_COLLECTIONS };
-
     beforeAll(() => {
-      PLUGIN_COLLECTIONS.isRegularCollection = c => !c.authority_level;
-      PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
-        ...ORIGINAL_COLLECTIONS_PLUGIN.AUTHORITY_LEVEL,
-        official: {
-          name: "Official",
-          icon: "badge",
-        },
-      };
-    });
-
-    afterAll(() => {
-      PLUGIN_COLLECTIONS.isRegularCollection =
-        ORIGINAL_COLLECTIONS_PLUGIN.isRegularCollection;
-      PLUGIN_COLLECTIONS.AUTHORITY_LEVEL =
-        ORIGINAL_COLLECTIONS_PLUGIN.AUTHORITY_LEVEL;
+      setupEnterpriseTest();
     });
 
     it("renders regular collection correctly", () => {

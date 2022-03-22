@@ -6,6 +6,7 @@
 
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [environ.core :refer [env]]
             [medley.core :as m]
@@ -93,7 +94,7 @@
   ;; no-op during AOT compilation
   (when-not *compile-files*
     (driver/add-parent! driver ::test-extensions)
-    (println "Added test extensions for" driver "💯")))
+    (log/infof "Added test extensions for %s 💯" driver)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -110,7 +111,7 @@
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
-          (println "doing before-run for" driver))
+          (log/infof "doing before-run for %s" driver))
         ;; avoid using the dispatch fn here because it dispatches on driver with test extensions which would result in
         ;; a circular call back to this function
         ((get-method before-run driver) driver)
@@ -120,8 +121,8 @@
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
-    (println (format "Loading driver %s test extensions %s"
-                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (log/infof "Loading driver %s test extensions %s"
+               (u/format-color 'blue driver) (apply list 'require expected-ns require-options))
     (apply classloader/require expected-ns require-options)))
 
 (defonce ^:private has-loaded-extensions (atom #{}))
@@ -182,6 +183,14 @@
   {:pre [(string? database-name)]}
   (str/replace database-name #"\s+" "_"))
 
+(def ^:dynamic *database-name-override*
+  "Bind this to a string to override the database name, for the purpose of calculating the qualified table name. The
+  purpose of this is to allow for a new Database to clone an existing one with the same details (ex: to test different
+  connection methods with syncing, etc.).
+
+  Currently, this only affects `db-qualified-table-name`."
+  nil)
+
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
@@ -190,7 +199,13 @@
   ^String [^String database-name, ^String table-name]
   {:pre [(string? database-name) (string? table-name)]}
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
-  (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
+  (-> (or *database-name-override* database-name)
+      (str \_ table-name)
+      str/lower-case
+      (str/replace #"-" "_")
+      (->>
+        (take-last 30)
+        (apply str))))
 
 (defn single-db-qualified-name-components
   "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing
@@ -394,7 +409,7 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [{:keys [coercion-strategy base-type] :as field-definition-map} :- DatasetFieldDefinition]
+  [field-definition-map :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   ;; if definition uses a coercion strategy they need to provide the effective-type
@@ -415,13 +430,12 @@
 (s/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  {:style/indent 1}
-  [database-name :- su/NonBlankString, & definition]
+  [database-name :- su/NonBlankString & table-definitions]
   (s/validate
    DatabaseDefinition
    (map->DatabaseDefinition
     {:database-name     database-name
-     :table-definitions (for [table definition]
+     :table-definitions (for [table table-definitions]
                           (dataset-table-definition table))})))
 
 (defmacro defdataset
@@ -654,5 +668,5 @@
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
                                   (name driver)
-                                  (str/upper-case (name driver))
+                                  (str/upper-case (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))

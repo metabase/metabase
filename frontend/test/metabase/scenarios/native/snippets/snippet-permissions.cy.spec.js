@@ -2,11 +2,11 @@ import {
   restore,
   modal,
   popover,
-  describeWithToken,
+  describeEE,
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
-describeWithToken("scenarios > question > snippets", () => {
+describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -154,7 +154,7 @@ describeWithToken("scenarios > question > snippets", () => {
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    cy.queryByText("snippet 1").should("not.exist");
+    cy.findByText("snippet 1").should("not.exist");
     cy.findByText("my favorite snippets").click();
     cy.findByText("snippet 1");
   });

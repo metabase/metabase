@@ -1,15 +1,18 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
   (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
+            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+            [metabase.test.data.interface :as tx]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
@@ -17,12 +20,12 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details (:details (mt/db))
-          fake-ds-id "definitely-not-a-real-dataset-no-way-no-how"]
+    (let [db-details   (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
-      (testing "can-connect? returns false for bogus dataset-id"
-        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :dataset-id fake-ds-id)))))
+      (testing "can-connect? returns false for bogus credentials"
+        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
@@ -91,6 +94,7 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
+             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
@@ -173,6 +177,11 @@
 (def ^:private bignumeric-val "-7.5E30")
 (def ^:private bigdecimal-val "5.2E35")
 
+(defn- bigquery-project-id []
+  (-> (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json)
+      bigquery.common/service-account-json->service-account-credential
+      (.getProjectId)))
+
 (defmacro with-numeric-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
                      (fn [tbl-nm#] [(str "CREATE TABLE `v3_test_data.%s` AS SELECT "
@@ -190,18 +199,18 @@
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
-    (with-view [view-name]
+    (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name view-name})
+                     {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   view-name
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema "v3_test_data"}))
           "`describe-tables` should see the fields in the view")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
         (is (= [[1 "Red Medicine" "Asian"]
                 [2 "Stout Burgers & Beers" "Burger"]
@@ -231,14 +240,16 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [temp-db {:engine  :bigquery-cloud-sdk
-                                       :details (-> (:details (mt/db))
-                                                    (assoc :project-id "bigquery-public-data"
-                                                           :dataset-id "chicago_taxi_trips"))}]
+      (mt/with-temp Database [{db-id :id :as temp-db}
+                              {:engine  :bigquery-cloud-sdk
+                               :details (-> (:details (mt/db))
+                                            (assoc :project-id "bigquery-public-data"
+                                                   :dataset-filters-type "inclusion"
+                                                   :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
-            (sync/sync-database! temp-db)
-            (let [[tbl & more-tbl] (db/select Table :db_id (u/the-id temp-db))]
+            (sync/sync-database! temp-db {:scan :schema})
+            (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
@@ -271,15 +282,17 @@
                    (mt/first-row
                      (mt/run-mbql-query taxi_trips
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
-                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]}))))))))))
+                                    "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
+          (testing " has project-id-from-credentials set correctly"
+            (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [tbl-nm]
+    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name tbl-nm})
+                     {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   tbl-nm
               :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
                         {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
@@ -291,9 +304,9 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should see the fields in the table")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
         (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
                                   [:decimal_col (bigdec decimal-val)]
@@ -318,11 +331,11 @@
                     tbl-nm])
       (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
       (fn [tbl-nm]
-        (is (= {:schema nil
+        (is (= {:schema "v3_test_data"
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest retry-certain-exceptions-test
@@ -370,3 +383,107 @@
               (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
                 (is (= max-rows (count rows)))
                 (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
+
+(defn- sync-and-assert-filtered-tables [database assert-table-fn]
+  (mt/with-temp Database [db-filtered database]
+    (sync/sync-database! db-filtered {:scan :schema})
+    (doseq [table (Table :db_id (u/the-id db-filtered))]
+      (assert-table-fn table))))
+
+(deftest dataset-filtering-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Filtering BigQuery connections for datasets works as expected"
+      (testing " with an inclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "inclusion"
+                                                              :dataset-filters-patterns "a*,t*"))}
+                                         (fn [{dataset-id :schema}]
+                                           (is (not (contains? #{\a \t} (first dataset-id)))))))
+      (testing " with an exclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "exclusion"
+                                                              :dataset-filters-patterns "v*"))}
+          (fn [{dataset-id :schema}]
+            (is (not= \v (first dataset-id)))))))))
+
+(deftest normalize-away-dataset-id-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
+      ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
+      ;; temp DB will cause driver/normalize-db-details to fire
+      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
+                                    :engine  :bigquery-cloud-sdk,
+                                    :details {:dataset-id "my-dataset"
+                                              :service-account-json "{}"}}]
+                      Table    [table1 {:name "Table 1"
+                                        :db_id (u/the-id db)}]
+                      Table    [table2 {:name "Table 2"
+                                        :db_id (u/the-id db)}]]
+        (let [db-id      (u/the-id db)
+              call-count (atom 0)
+              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
+          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                  (swap! call-count inc)
+                                                                  (orig-fn database dataset-id))]
+            ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
+            (doseq [_ (range 5)]
+              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+            ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
+            ;; that runs at the end of creating the temp object, above ^
+            ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
+            ;; queries the domain object, they should see that as having already been done
+            ;; hence, assert it was not called anymore here
+            (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
+          ;; now, so we need to manually update the temp DB again here, to force the "old" structure
+          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+            (is updated?)
+            (let [updated (Database db-id)]
+              (is (nil? (get-in updated [:details :dataset-id])))
+              ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
+              (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
+              (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
+              (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
+                ;; and the existing tables should have been updated with that schema
+                (is (= "my-dataset" (:schema table)))))))))))
+
+(deftest query-drive-external-tables
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
+      ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on
+      ;; https://docs.google.com/spreadsheets/d/1ETIY759w8Xd8ZXcL-IullMxWjKdO-sKSIUOfG1KYh8U/edit?usp=sharing
+      ;; the service account to which our CI credentials are associated:
+      ;;   metabase-ci@metabase-bigquery-ci.iam.gserviceaccount.com
+      ;; was given View permission to this sheet (via the Drive UI), and was ALSO given BigQuery Data Viewer
+      ;; permission in the BigQuery UI under the project (`metabase-bigquery-ci`), dataset (`google_drive_dataset`),
+      ;; and table (`metabase_ci_bigquery_sheet`)
+      (is (= [[1 "foo" "bar"]
+              [2 "alice" "bob"]
+              [3 "x" "y"]]
+            (-> {:query
+                 "SELECT * FROM `metabase-bigquery-ci.google_drive_dataset.metabase_ci_bigquery_sheet` ORDER BY `id`"}
+                mt/native-query
+                qp/process-query
+                mt/rows))))))
+
+(deftest datetime-truncate-field-literal-form-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Field literal forms should get datetime-truncated correctly (#20806)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str/join
+                                             \newline
+                                             ["SELECT date"
+                                              "FROM unnest(generate_date_array('2021-01-01', '2021-01-15')) date"])}
+                     :breakout    [[:field "date" {:temporal-unit :week, :base-type :type/Date}]]
+                     :aggregation [[:count]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2020-12-27T00:00:00Z" 2]
+                  ["2021-01-03T00:00:00Z" 7]
+                  ["2021-01-10T00:00:00Z" 6]]
+                 (mt/rows
+                  (qp/process-query query)))))))))

@@ -3,7 +3,11 @@ import {
   popover,
   modal,
   openNativeEditor,
+  visitQuestionAdhoc,
+  summarize,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -43,7 +47,7 @@ describe("scenarios > question > native", () => {
     cy.contains("Question #…")
       .parent()
       .parent()
-      .contains("Pick a saved question")
+      .contains("Pick a question or a model")
       .click({ force: true });
 
     // selecting a question should update the query
@@ -90,35 +94,30 @@ describe("scenarios > question > native", () => {
 
   it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
     const FILTERS = ["Is not", "Does not contain"];
-    const QUESTION = "QQ";
 
-    openNativeEditor().type(
-      `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
-    );
-    cy.findByText("Save").click();
+    const questionDetails = {
+      name: "13332",
+      native: {
+        query: `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+        "template-tags": {},
+      },
+    };
 
-    modal().within(() => {
-      cy.findByLabelText("Name").type(QUESTION);
-      cy.findByText("Save").click();
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+          },
+          type: "query",
+        },
+      });
     });
-    cy.findByText("Not now").click();
 
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Simple question").click();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
-      cy.findByText(QUESTION).click();
-    });
-
-    cy.url("should.contain", "/question#");
     cy.findByText("This has a value");
 
     FILTERS.forEach(filter => {
-      // Clicking on a question's name in UI resets previously applied filters
-      // We can ask variations of that question "on the fly"
-      cy.findByText(QUESTION).click();
-
       cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
@@ -143,11 +142,14 @@ describe("scenarios > question > native", () => {
         "**Final assertion: Count of rows with 'null' value should be 1**",
       );
       // "Count" is pre-selected option for "Summarize"
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+
+      cy.icon("close").click();
+      summarize();
+      cy.icon("close").click();
+      cy.findByText("Done").click();
     });
   });
 

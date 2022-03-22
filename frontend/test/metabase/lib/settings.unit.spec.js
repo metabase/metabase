@@ -14,6 +14,7 @@ describe("MetabaseSettings.docsUrl", () => {
   // all of these should point to the same doc URL
   [
     ["v0.41.0", "v0.41"],
+    [undefined, "latest"],
     ["v0.41.1-SNAPSHOT", "latest"],
     ["v0.41.2-rc1", "v0.41"],
     ["v0.41.3-RC2", "v0.41"],
