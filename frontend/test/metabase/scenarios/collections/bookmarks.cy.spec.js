@@ -8,8 +8,15 @@ describe("Bookmarks in a collection page", () => {
   });
 
   it("cannot add bookmark to root collection", () => {
+    cy.intercept("GET", "/api/collection/root/items?**").as(
+      "fetchRootCollectionItems",
+    );
+
     cy.visit("/collection/root");
 
+    cy.wait("@fetchRootCollectionItems");
+
+    cy.findByText("View archive");
     cy.icon("bookmark").should("not.exist");
   });
 
@@ -18,11 +25,6 @@ describe("Bookmarks in a collection page", () => {
 
     // Add bookmark
     cy.icon("bookmark").click();
-
-    // Bookmark Icon should be blue once Collection is bookmarked
-    cy.icon("bookmark")
-      .should("have.css", "color")
-      .and("eq", "rgb(80, 158, 227)");
 
     sidebar().within(() => {
       cy.findByText("Bookmarks");
@@ -46,11 +48,6 @@ describe("Bookmarks in a collection page", () => {
       // we remove the heading for the list of collections
       cy.findByText("Collections").should("not.exist");
     });
-
-    // Bookmark Icon should be dark gray once bookmark is removed from Collection
-    cy.icon("bookmark")
-      .should("have.css", "color")
-      .and("eq", "rgb(76, 87, 115)");
   });
 
   it("can add/remove bookmark from question in collection", () => {
