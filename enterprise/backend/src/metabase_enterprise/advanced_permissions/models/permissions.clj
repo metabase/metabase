@@ -7,13 +7,15 @@
 ;;; |                                          Shared Util Functions                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- all-schemas-path
-  [perm-type perm-value db-id]
-  (perms/base->feature-perms-path perm-type perm-value (perms/all-schemas-path db-id)))
-
-(defn- grant-permissions-for-all-schemas!
-  [perm-type perm-value group-id db-id]
-  (perms/grant-permissions! group-id (all-schemas-path perm-type perm-value db-id)))
+(defn- grant-permissions!
+  {:arglists '([perm-type perm-value group-id db-id]
+               [perm-type perm-value group-id db-id schema-name]
+               [perm-type perm-value group-id db-id schema-name table-or-id])}
+  [perm-type perm-value group-id & path-components]
+  (perms/grant-permissions! group-id (perms/base->feature-perms-path
+                                      perm-type
+                                      perm-value
+                                      (apply perms/data-perms-path path-components))))
 
 (defn- revoke-permissions!
   {:arglists '([perm-type perm-value group-id db-id]
@@ -27,6 +29,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- all-schemas-path
+  [perm-type perm-value db-id]
+  (perms/base->feature-perms-path perm-type perm-value (perms/all-schemas-path db-id)))
+
+(defn- grant-permissions-for-all-schemas!
+  [perm-type perm-value group-id db-id]
+  (perms/grant-permissions! group-id (all-schemas-path perm-type perm-value db-id)))
 
 (defn- revoke-download-permissions!
   {:arglists '([group-id db-id]
@@ -103,3 +113,51 @@
   ;; updated non-native donwload permissions. This is because native download permissions are fully computed from the
   ;; non-native download permissions.
   (perms/update-native-download-permissions! group-id db-id))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Data model permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- update-table-data-model-permissions!
+  [group-id db-id schema table-id new-table-perms]
+  (condp = new-table-perms
+    :full
+    (do
+      (revoke-permissions! :data-model :all group-id db-id schema table-id)
+      (grant-permissions! :data-model :all group-id db-id schema table-id))
+
+    :none
+    (revoke-permissions! :data-model :all group-id db-id schema table-id)))
+
+(defn- update-schema-data-model-permissions!
+  [group-id db-id schema new-schema-perms]
+  (condp = new-schema-perms
+    :full
+    (do
+      (revoke-permissions! :data-model :all group-id db-id schema)
+      (grant-permissions! :data-model :all group-id db-id schema))
+
+    :none
+    (revoke-permissions! :data-model :all group-id db-id schema)
+
+    (when (map? new-schema-perms)
+      (doseq [[table-id table-perms] new-schema-perms]
+        (update-table-data-model-permissions! group-id db-id schema table-id table-perms)))))
+
+(s/defn update-db-data-model-permissions!
+  "Update the data model permissions graph for a database."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
+  (when-let [schemas (:schemas new-data-model-perms)]
+    (condp = schemas
+      :all
+      (do
+        (revoke-permissions! :data-model :all group-id db-id)
+        (grant-permissions! :data-model :all group-id db-id))
+
+      :none
+      (revoke-permissions! :data-model :all group-id db-id)
+
+      (when (map? schemas)
+        (doseq [[schema new-schema-perms] (seq schemas)]
+          (update-schema-data-model-permissions! group-id db-id schema new-schema-perms))))))

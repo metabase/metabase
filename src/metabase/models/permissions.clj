@@ -437,7 +437,10 @@
     (str "/download" base-path)
 
     [:download :limited]
-    (str "/download/limited" base-path)))
+    (str "/download/limited" base-path)
+
+    [:data-model :all]
+    (str "/data-model" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -1033,6 +1036,12 @@
         (do
           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
           ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
+           group-id db-id new-perms))
+
+        :data-model
+        (do
+          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-data-model-permissions!)
            group-id db-id new-perms))))))
 
 (defn check-revision-numbers
