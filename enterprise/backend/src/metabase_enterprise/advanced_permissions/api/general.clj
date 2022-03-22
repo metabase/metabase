@@ -24,7 +24,7 @@
               (dejsonify-general-permissions general-permissions)])))
 
 (defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `yes` to `:yes` and
+  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"yes\"` to `:yes` and
   parsing object keys keyword "
   [graph]
   (update graph :groups dejsonify-groups))

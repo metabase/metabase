@@ -11249,7 +11249,7 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-046
       author: qnkhuat
-      comment: Added 0.43.0 - create General Permission revision table
+      comment: Added 0.43.0 - create General Permission Revision table
       changes:
         - createTable:
             tableName: general_permissions_revision

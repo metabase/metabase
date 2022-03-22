@@ -8,16 +8,13 @@
             [metabase.test :as mt]
             [toucan.db :as db]))
 
-(defn- clear-graph-revisions!
-  []
-  (db/delete! GeneralPermissionsRevision))
-
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (deftest general-permissions-graph-test
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
     (testing "Should return general permission graph for all group-ids"
-      (clear-graph-revisions!)
+      ;; clear the graph revisions
+      (db/delete! GeneralPermissionsRevision)
       (let [graph  (g-perms/graph)
             groups (:groups graph)]
         (is (= 0 (:revision graph)))
@@ -86,22 +83,23 @@
              #"Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
              (g-perms/update-graph! new-graph))))))
 
-  (testing "Ignore permissions that are not in current graph"
+  (testing "Ignore permissions that are not in current graph and revision won't changes"
     (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id :random-setting] :yes)
+      (let [new-graph     (assoc-in current-graph [:groups group-id :random-permission] :yes)
             _             (g-perms/update-graph! new-graph)
             updated-graph (g-perms/graph)]
         (is (= (:groups current-graph) (:groups updated-graph)))
         (is (= (:revision current-graph) (:revision updated-graph))))))
 
-  (testing "Ignore group-ids that are not in current graph"
+  (testing "Ignore group-ids that are not in current graph but still updates if other permissions changes"
     (with-new-group-and-current-graph group-id current-graph
-      (let [non-existing-group-id (inc group-id)
-            new-graph             (update current-graph :groups
-                                          assoc non-existing-group-id {:setting      :yes
-                                                                       :monitoring   :no
-                                                                       :subscription :yes})
-            _                     (g-perms/update-graph! new-graph)
+      (let [non-existing-group-id       (inc group-id)
+            new-graph                   (assoc-in current-graph [:groups group-id :setting] :yes)
+            new-graph-with-random-group (update new-graph :groups
+                                                assoc non-existing-group-id {:setting      :yes
+                                                                             :monitoring   :no
+                                                                             :subscription :yes})
+            _                     (g-perms/update-graph! new-graph-with-random-group)
             updated-graph         (g-perms/graph)]
-        (is (= (:groups current-graph) (:groups updated-graph)))
-        (is (= (:revision current-graph) (:revision updated-graph)))))))
+        (is (= (:groups new-graph) (:groups updated-graph)))
+        (is (= (inc (:revision current-graph)) (:revision updated-graph)))))))

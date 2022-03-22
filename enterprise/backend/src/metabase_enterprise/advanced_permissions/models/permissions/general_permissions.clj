@@ -32,11 +32,9 @@
   []
   (let [group-ids           (db/select-field :id PermissionsGroup)
         general-permissions (db/select Permissions
-                                       {:where [:and
-                                                [:or
-                                                 [:= :object "/"]
-                                                 [:= :object "/subscription/"]
-                                                 [:like :object (hx/literal "/general/%")]]]})
+                                       {:where [:or
+                                                [:= :object "/"]
+                                                [:like :object (hx/literal "/general/%")]]})
         permissions-set-from-group-id (fn [group-id]
                                         (->> general-permissions
                                              (filter #(= (:group_id %) group-id))
@@ -46,7 +44,7 @@
                {group-id (permissions-set-from-group-id group-id)}))))
 
 (s/defn general-perms-path :- perms/Path
-  "Get general permission's path form a type"
+  "Get general permission's path by permissions's type"
   [perm-type]
   (case perm-type
     :setting
@@ -56,20 +54,20 @@
     "/general/monitoring/"
 
     :subscription
-    "/subscription/"))
+    "/general/subscription/"))
 
-(defn- permissions-type-for-general
+(defn- perrmission-for-type
   [permissions-set perm-type]
   (if (perms/set-has-full-permissions? permissions-set (general-perms-path perm-type))
     :yes
     :no))
 
 (s/defn permissions-set->general-perms :- GroupPermissionsGraph
-  "Get all general permission for a group"
+  "Get a map of all general permissions for a group"
   [permission-set]
-  {:setting      (permissions-type-for-general permission-set :setting)
-   :monitoring   (permissions-type-for-general permission-set :monitoring)
-   :subscription (permissions-type-for-general permission-set :subscription)})
+  {:setting      (perrmission-for-type permission-set :setting)
+   :monitoring   (perrmission-for-type permission-set :monitoring)
+   :subscription (perrmission-for-type permission-set :subscription)})
 
 (s/defn graph :- GeneralPermissionsGraph
   "Fetch a graph representing the general permissions status for every group. This works just like the function of
@@ -82,7 +80,7 @@
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (defn- save-perms-revision!
-  "Save changes made to the permissions graph for logging/auditing purposes.
+  "Save changes made to the general permissions graph for logging/auditing purposes.
   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
   [current-revision old changes]
   (when *current-user-id*

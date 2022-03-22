@@ -258,12 +258,12 @@
                ;; any path starting with /general is a permission to access certain features of admin settings page
                ;; /general/setting/    -> permissions to access /admin/settings page
                ;; /general/monitoring/ -> permissions to access tools, audit and troubleshooting
+               ;; /general/subscription/ -> permisisons to create/edit subscriptions and alerts
                (and "general/"
                     (or
                      "setting/"
-                     "monitoring/"))
-               ;; /subscription/ -> permisisons to create/edit subscriptions and alerts
-               "subscription/"
+                     "monitoring/"
+                     "subscription/"))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
