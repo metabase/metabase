@@ -168,8 +168,7 @@
 .LineAreaBarChart .dc-chart .line,
 .LineAreaBarChart .dc-chart .dot,
 .LineAreaBarChart .dc-chart .row,
-.LineAreaBarChart .dc-chart .bubble,
-.LineAreaBarChart .dc-chart .event-line {
+.LineAreaBarChart .dc-chart .bubble {
   transition: opacity 0.15s linear;
 }
 
@@ -178,6 +177,10 @@
 .LineAreaBarChart .dc-chart .axis.yr,
 .LineAreaBarChart .dc-chart .yr-axis-label {
   transition: opacity 0.25s linear;
+}
+
+.LineAreaBarChart .dc-chart .event-line {
+  transition: stroke 0.15s linear;
 }
 
 /* .mute-* selectors dynamically generated in LineAreaBarChart.js*/
@@ -274,12 +277,11 @@ text.value-label-white {
 }
 
 .LineAreaBarChart .dc-chart .event-line {
-  stroke: var(--color-brand);
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-width: 2;
-  opacity: 0.2;
   pointer-events: none;
 }
 
 .LineAreaBarChart .dc-chart .event-line.hover {
-  opacity: 1;
+  stroke: var(--color-brand);
 }
