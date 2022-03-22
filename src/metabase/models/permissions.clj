@@ -641,12 +641,31 @@
   (s/named
    {(s/optional-key :native)  DownloadNativePermissionsGraph
     (s/optional-key :schemas) (s/cond-pre (s/enum :full :limited :none)
-                                      {s/Str DownloadSchemaPermissionsGraph})}
+                                          {s/Str DownloadSchemaPermissionsGraph})}
    "Valid download perms graph for a database"))
+
+(def ^:private DataModelTablePermissionsGraph
+  (s/named
+   (s/enum :all :none)
+   "Valid data model perms graph for a table"))
+
+(def ^:private DataModelSchemaPermissionsGraph
+  (s/named
+    (s/cond-pre (s/enum :all :none)
+                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+   "Valid data model perms graph for a schema"))
+
+(def DataModelPermissionsGraph
+  "Schema for a data model permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
+  (s/named
+   (s/cond-pre (s/enum :all :none)
+               {:schemas {s/Str DataModelSchemaPermissionsGraph}})
+   "Valid data model perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph}})
+                          (s/optional-key :download) DownloadPermissionsGraph
+                          (s/optional-key :data-model) DataModelPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -677,9 +696,7 @@
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
                                    {:where [:or
                                             [:= :object (hx/literal "/")]
-                                            [:like :object (hx/literal "/db/%")]
-                                            [:like :object (hx/literal "/download/%")]
-                                            [:like :object (hx/literal "/block/db/%")]]})
+                                            [:like :object (hx/literal "%/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
                          (fn [m {:keys [group-id path]}]
