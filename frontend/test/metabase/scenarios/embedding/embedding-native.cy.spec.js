@@ -1,7 +1,7 @@
 import { restore, popover, filterWidget } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const query = `
 SELECT orders.id, orders.product_id, orders.created_at AS production_date, orders.total, people.state, people.name, people.source
@@ -84,13 +84,6 @@ describe("scenarios > embedding > native questions", () => {
 
     restore();
     cy.signInAsAdmin();
-
-    // Remap Product ID -> Product Title
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID as Title",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
