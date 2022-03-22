@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { restore, sidebar } from "__support__/e2e/cypress";
 
 describe("Bookmarks in a collection page", () => {
