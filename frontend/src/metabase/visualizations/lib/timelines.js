@@ -71,6 +71,10 @@ function getIconTransform(icon) {
   return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
 }
 
+function getIconLabel(icon) {
+  return `${icon} icon`;
+}
+
 function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
   const thisDate = eventDates[eventIndex];
   const prevDate = eventDates[eventIndex - 1];
@@ -156,6 +160,9 @@ function renderEventTicks({
     )
     .attr("transform", (d, i) =>
       getIconTransform(getIcon(d, i, eventScale, eventDates)),
+    )
+    .attr("aria-label", (d, i) =>
+      getIconLabel(getIcon(d, i, eventScale, eventDates)),
     );
 
   eventTicks
