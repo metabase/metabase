@@ -22,6 +22,7 @@
             [metabase.models.permissions-group :as permissions-group]
             [metabase.models.permissions-group-membership :as permissions-group-membership]
             [metabase.models.permissions-revision :as permissions-revision]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-card :as pulse-card]
             [metabase.models.pulse-channel :as pulse-channel]
@@ -65,6 +66,7 @@
          permissions-group/keep-me
          permissions-group-membership/keep-me
          permissions-revision/keep-me
+         persisted-info/keep-me
          pulse/keep-me
          pulse-card/keep-me
          pulse-channel/keep-me
@@ -108,6 +110,7 @@
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]
  [permissions-revision PermissionsRevision]
+ [persisted-info PersistedInfo]
  [pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]
