@@ -2,12 +2,13 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee.perms]
             [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
-            [metabase.api.dataset :as dataset]
-            [metabase.models.permissions :as perms]
+            [metabase.api.dataset :as dataset] [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import clojure.lang.ExceptionInfo))
 
 (defn- do-with-download-perms
   [db-or-id graph f]
@@ -85,3 +86,48 @@
 
         (testing "If the query does not reference the table, a limit is not added"
           (is (nil? (download-limit (mbql-download-query 'checkins)))))))))
+
+;; Inspired by the similar middleware wrapper [[metabase.query-processor.middleware.limit-test/limit]]
+(defn- limit-download-result-rows [query]
+  (let [rff (ee.qp.perms/limit-download-result-rows query context.default/default-rff)
+        rf  (rff {})]
+    (transduce identity rf (repeat (inc @#'ee.qp.perms/max-rows-in-limited-downloads) [:ok]))))
+
+(deftest limit-download-result-rows-test
+  (let [limited-download-max-rows @#'ee.qp.perms/max-rows-in-limited-downloads]
+    (with-download-perms-for-db (mt/id) :limited
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "The number of rows in a native query result is limited if the user has limited download permissions"
+          (is (= limited-download-max-rows
+                 (-> (native-download-query) limit-download-result-rows mt/rows count))))))
+
+    (with-download-perms-for-db (mt/id) :full
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "The number of rows in a native query result is not limited if the user has full download permissions"
+          (is (= (inc limited-download-max-rows)
+                 (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
+
+(defn- check-download-permisions [query]
+  (:pre (mt/test-qp-middleware ee.qp.perms/check-download-permissions query)))
+
+(def ^:private download-perms-error-msg #"You do not have permissions to download the results of this query\.")
+
+(deftest check-download-permissions-test
+  (testing "An exception is thrown if the user does not have download permissions for the DB"
+    (with-download-perms-for-db (mt/id) :none
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg?
+             ExceptionInfo
+             download-perms-error-msg
+             (check-download-permisions (mbql-download-query)))))))
+
+  (testing "No exception is thrown if the user has any download permissions for the DB"
+    (with-download-perms-for-db (mt/id) :full
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (= (mbql-download-query)
+               (check-download-permisions (mbql-download-query))))))
+
+    (with-download-perms-for-db (mt/id) :limited
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (= (mbql-download-query)
+               (check-download-permisions (mbql-download-query))))))))

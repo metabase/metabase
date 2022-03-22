@@ -52,8 +52,9 @@
            (premium-features/has-feature? :advanced-permissions)
            (= query-type :query)
            (= (current-user-download-perms-level query) :limited))
-    (assoc-in query [:query :limit] (reduce min
-                                            (filter some? [original-limit max-rows-in-limited-downloads])))
+    (assoc-in query
+              [:query :limit]
+              (reduce min (filter some? [original-limit max-rows-in-limited-downloads])))
     query))
 
 (defn limit-download-result-rows
@@ -83,7 +84,7 @@
                                    :full)]
         (when (and (is-download? query)
                    (= download-perms-level :none))
-          (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query")
+          (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query.")
                                            (set/union (download-perms-set query :full)
                                                       (download-perms-set query :limited)))))
         (qp query
