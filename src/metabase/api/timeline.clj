@@ -34,7 +34,7 @@
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
         timelines (db/select Timeline [:where [:= :archived archived?]])]
-    (cond->> (hydrate timelines :creator)
+    (cond->> (hydrate timelines :creator :collection)
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
@@ -48,7 +48,7 @@
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
-    (cond-> (hydrate timeline :creator)
+    (cond-> (hydrate timeline :creator :collection)
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?
                                                :events/start (when start (u.date/parse start))
