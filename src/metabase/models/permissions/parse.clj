@@ -12,7 +12,7 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | download | collection | block )
+  "permission = ( all | db | download | data-model | collection | block )
   all         = <'/'>
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
@@ -29,6 +29,11 @@
   dl-schema   = #'[^/]*' <'/'> dl-table?
   dl-table    = <'table/'> #'\\d+' <'/'>
 
+  data-model  = <'/data-model'> dm-db
+  dm-db       = <'/db/'> #'\\d+' <'/'> dm-schema?
+  dm-schema   = <'schema/'> #'[^/]*' <'/'> dm-table?
+  dm-table    = <'table/'> #'\\d+' <'/'>
+
   collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?
 
   block       = <'/block/db/'> #'\\d+' <'/'>")
@@ -36,6 +41,9 @@
 (def ^:private ^{:arglists '([s])} parser
   "Function that parses permission strings"
   (insta/parser grammar))
+
+(parser "/data-model/db/3/schema/PUBLIC")
+(comment Vclojure.pprint/pprint (parser "/data-model/db/1/schema/PUBLIC/table/3/"))
 
 (defn- collection-id
   [id]
@@ -86,6 +94,15 @@
     [:dl-schema schema-name table] (into [schema-name] (path table))
     [:dl-table table-id]           [(Long/parseUnsignedLong table-id)]
     [:dl-native]                   [:download :native]
+    ;; data model perms
+    [:data-model db-node]          (path db-node)
+    [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
+                                      [:db db-id :data-model :all])
+    [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
+                                      (into [:db db-id :data-model :schemas] (path db-node)))
+    [:dm-schema schema-name]       [schema-name :all]
+    [:dm-schema schema-name table] (into [schema-name] (path table))
+    [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
     ;; collection perms
     [:collection id]               [:collection (collection-id id) :write]
     [:collection id "read"]        [:collection (collection-id id) :read]

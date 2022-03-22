@@ -255,6 +255,14 @@
                                (and "schema/"
                                     (opt (and path-char "*/"
                                               (opt #"table/\d+/"))))))))
+               ;; any path starting with /data-model/ is a DATA MODEL permissions path
+               ;; /download/db/:id/ -> permissions to access the data model for the DB
+               (and "data-model/"
+                    (and #"db/\d+/"
+                         (opt (and
+                                "schema/"
+                                (opt (and path-char "*/"
+                                          (opt #"table/\d+/")))))))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -301,6 +309,7 @@
   (boolean (when (and (string? path)
                       (seq path))
              (re-matches path-regex path))))
+
 
 (def Path
   "Schema for a valid permissions path."

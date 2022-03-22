@@ -42,6 +42,10 @@
              "/download/limited/db/1/schema/PUBLIC/"
              "/download/db/1/schema/PUBLIC/table/1/"
              "/download/limited/db/1/schema/PUBLIC/table/1/"
+             ;; data model permissions
+             "/data-model/db/1/"
+             "/data-model/db/1/schema/PUBLIC/"
+             "/data-model/db/1/schema/PUBLIC/table/1/"
              ;; block permissions
              "/block/db/1/"
              "/block/db/1000/"
