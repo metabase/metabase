@@ -64,9 +64,9 @@ const questionDetails = {
         "widget-type": "string/!=",
         default: null,
       },
-      productId: {
+      product_id: {
         id: "c967d72e-3687-aa01-8c47-458f7905305f",
-        name: "productId",
+        name: "product_id",
         "display-name": "Product ID",
         type: "number",
         default: null,
