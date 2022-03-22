@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -85,6 +86,13 @@ const Fields = createEntity({
       return { id, values };
     }),
 
+    updateField(field, opts) {
+      return Fields.actions.update(
+        { id: field.id },
+        field,
+        notify(opts, field.display_name, t`updated`),
+      );
+    },
     // Docstring from m.api.field:
     // Update the human-readable values for a `Field` whose semantic type is
     // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
