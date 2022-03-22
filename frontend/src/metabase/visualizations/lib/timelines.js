@@ -58,13 +58,15 @@ function getIcon(events, eventIndex, eventScale, eventDates) {
   }
 }
 
-function getIconPath(events, eventIndex, eventScale, eventDates) {
-  const icon = getIcon(events, eventIndex, eventScale, eventDates);
-  return ICON_PATHS[icon].path ? ICON_PATHS[icon].path : ICON_PATHS[icon];
+function getIconPath(icon) {
+  return ICON_PATHS[icon].path ?? ICON_PATHS[icon];
 }
 
-function getIconTransform(events, eventIndex, eventScale, eventDates) {
-  const icon = getIcon(events, eventIndex, eventScale, eventDates);
+function getIconFillRule(icon) {
+  return ICON_PATHS[icon].attrs?.fillRule;
+}
+
+function getIconTransform(icon) {
   const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
   return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
 }
@@ -148,9 +150,12 @@ function renderEventTicks({
   eventTicks
     .append("path")
     .attr("class", "event-icon")
-    .attr("d", (d, i) => getIconPath(d, i, eventScale, eventDates))
+    .attr("d", (d, i) => getIconPath(getIcon(d, i, eventScale, eventDates)))
+    .attr("fill-rule", (d, i) =>
+      getIconFillRule(getIcon(d, i, eventScale, eventDates)),
+    )
     .attr("transform", (d, i) =>
-      getIconTransform(d, i, eventScale, eventDates),
+      getIconTransform(getIcon(d, i, eventScale, eventDates)),
     );
 
   eventTicks
@@ -159,7 +164,7 @@ function renderEventTicks({
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
     .attr("transform", (d, i) =>
-      getIconTransform(d, i, eventScale, eventDates),
+      getIconTransform(getIcon(d, i, eventScale, eventDates)),
     );
 
   eventTicks
@@ -203,8 +208,8 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
-    xDomain,
-    xInterval,
+    xDomain = [],
+    xInterval = {},
     onHoverChange,
     onOpenTimelines,
     onSelectTimelineEvents,
@@ -213,7 +218,6 @@ export function renderEvents(
 ) {
   const axis = getXAxis(chart);
   const brush = getBrush(chart);
-
   const eventScale = getEventScale(chart, xDomain, xInterval);
   const eventMapping = getEventMapping(events, xInterval);
   const eventDates = getEventDates(eventMapping);
