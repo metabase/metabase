@@ -50,11 +50,11 @@ describe("Bookmarks in a collection page", () => {
     });
   });
 
-  it("can add/remove bookmark from question in collection", () => {
+  it("can add/remove bookmark from Question in collection", () => {
     addThenRemoveBookmarkTo("Orders");
   });
 
-  it("can add/remove bookmark from question in collection", () => {
+  it("can add/remove bookmark from Dashboard in collection", () => {
     addThenRemoveBookmarkTo("Orders in a dashboard");
   });
 });
