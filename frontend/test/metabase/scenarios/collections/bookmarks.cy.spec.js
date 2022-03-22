@@ -61,6 +61,19 @@ describe("Bookmarks in a collection page", () => {
   it("can add/remove bookmark from Dashboard in collection", () => {
     addThenRemoveBookmarkTo("Orders in a dashboard");
   });
+
+  it("can remove bookmark from item in sidebar", () => {
+    cy.visit("/collection/1");
+
+    // Add bookmark
+    cy.icon("bookmark").click();
+
+    sidebar().within(() => {
+      cy.icon("bookmark").click({ force: true });
+    });
+
+    getSectionTitle("Bookmarks").should("not.exist");
+  });
 });
 
 function addThenRemoveBookmarkTo(itemName) {
