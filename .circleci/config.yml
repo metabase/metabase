@@ -955,6 +955,7 @@ jobs:
                       <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
                       <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                     else
+                    echo 'This is NOT a release or master branch. Will not send the report to Currents.dev'
                       yarn test-cypress-no-build \
                       <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
                       <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
