@@ -1,8 +1,8 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions-test
   (:require [clojure.test :refer :all]
-            [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models :refer [Permissions PermissionsGroup GeneralPermissionsRevision]]
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
+            [metabase.api.common :as api :refer [*current-user-id*]]
+            [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
@@ -14,7 +14,7 @@
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
-(deftest graph-test
+(deftest general-permissions-graph-test
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
     (testing "Should return general permission graph for all group-ids"
       (clear-graph-revisions!)
@@ -46,7 +46,7 @@
      (binding [*current-user-id* (mt/user->id :crowberto)]
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
-(deftest update-graph!-test
+(deftest general-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
       (let [new-graph     (assoc-in current-graph [:groups group-id :setting] :yes)

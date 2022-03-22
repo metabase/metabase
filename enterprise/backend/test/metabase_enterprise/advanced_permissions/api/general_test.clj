@@ -1,8 +1,8 @@
 (ns metabase-enterprise.advanced-permissions.api.general-test
   (:require [clojure.test :refer :all]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.models :refer [PermissionsGroup]]
             [metabase.models.permissions-group :as group]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [toucan.db :as db]))
 

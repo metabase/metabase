@@ -3,9 +3,9 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
+            [metabase.models :refer [GeneralPermissionsRevision Permissions PermissionsGroup]]
             [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.permissions :as perms]
-            [metabase.models :refer [Permissions PermissionsGroup GeneralPermissionsRevision]]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -34,6 +34,7 @@
         general-permissions (db/select Permissions
                                        {:where [:and
                                                 [:or
+                                                 [:= :object "/"]
                                                  [:= :object "/subscription/"]
                                                  [:like :object (hx/literal "/general/%")]]]})
         permissions-set-from-group-id (fn [group-id]
