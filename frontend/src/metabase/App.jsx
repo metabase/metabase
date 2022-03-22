@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
 import SearchBar from "metabase/nav/components/SearchBar";
+import ProfileLink from "metabase/nav/components/ProfileLink";
 import {
   SearchBarContainer,
   SearchBarContent,
@@ -23,8 +24,13 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import ProfileLink from "metabase/nav/components/ProfileLink";
-import Icon from "metabase/components/Icon";
+import {
+  AppContentContainer,
+  AppContent,
+  AppBar,
+  SidebarVisibilityControlIcon,
+  ProfileLinkContainer,
+} from "./App.styled";
 
 const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
@@ -75,6 +81,11 @@ export default class App extends Component {
     this.setState({ errorInfo });
   }
 
+  isAdminApp = () => {
+    const { pathname } = this.props.location;
+    return pathname.startsWith("/admin/");
+  };
+
   hasNavbar = () => {
     const {
       currentUser,
@@ -86,51 +97,57 @@ export default class App extends Component {
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
+  hasAppBar = () => {
+    const { currentUser } = this.props;
+    return currentUser && !this.isAdminApp();
+  };
+
   toggleSidebar = () => {
     this.setState({ sidebarOpen: !this.state.sidebarOpen });
   };
 
+  renderAppBar = () => {
+    const { currentUser, location, onChangeLocation } = this.props;
+    return (
+      <AppBar>
+        <SidebarVisibilityControlIcon
+          name="burger"
+          onClick={this.toggleSidebar}
+        />
+        <SearchBarContainer>
+          <SearchBarContent>
+            <SearchBar
+              location={location}
+              onChangeLocation={onChangeLocation}
+            />
+          </SearchBarContent>
+        </SearchBarContainer>
+        <ProfileLinkContainer>
+          <ProfileLink {...this.props} user={currentUser} />
+        </ProfileLinkContainer>
+      </AppBar>
+    );
+  };
+
   render() {
-    const { children, location, errorPage, onChangeLocation } = this.props;
-    const { errorInfo } = this.state;
+    const { children, location, errorPage } = this.props;
+    const { errorInfo, sidebarOpen } = this.state;
 
     return (
       <ScrollToTop>
-        <div className="relative flex" style={{ height: "100vh" }}>
-          {this.hasNavbar() && this.state.sidebarOpen && (
-            <Navbar location={location} />
-          )}
+        <AppContentContainer isAdminApp={this.isAdminApp()}>
+          {this.hasNavbar() && sidebarOpen && <Navbar location={location} />}
           {errorPage ? (
             getErrorComponent(errorPage)
           ) : (
-            <div className="full overflow-auto flex flex-column">
-              <div
-                className="full flex align-center bg-white border-bottom px2 relative z4"
-                id="mainAppBar"
-              >
-                <Icon
-                  name="burger"
-                  className="text-brand-hover cursor-pointer"
-                  onClick={() => this.toggleSidebar()}
-                />
-                <SearchBarContainer>
-                  <SearchBarContent>
-                    <SearchBar
-                      location={location}
-                      onChangeLocation={onChangeLocation}
-                    />
-                  </SearchBarContent>
-                </SearchBarContainer>
-                <div className="ml-auto">
-                  <ProfileLink {...this.props} user={this.props.currentUser} />
-                </div>
-              </div>
+            <AppContent>
+              {this.hasAppBar() && this.renderAppBar()}
               {children}
-            </div>
+            </AppContent>
           )}
           <UndoListing />
           <StatusListing />
-        </div>
+        </AppContentContainer>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     );
