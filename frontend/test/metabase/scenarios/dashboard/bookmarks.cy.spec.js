@@ -6,7 +6,7 @@ describe("scenarios > dashboard > bookmarks", () => {
     cy.signInAsAdmin();
   });
 
-  it("should update the name and description", () => {
+  it("should add and then remove bookmark", () => {
     cy.visit("/dashboard/1");
 
     cy.icon("ellipsis").click();
