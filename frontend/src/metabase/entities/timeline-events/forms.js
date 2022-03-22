@@ -29,7 +29,6 @@ const createForm = ({ timelines }) => {
       name: "icon",
       title: t`Icon`,
       type: "select",
-      initial: "star",
       options: getTimelineIcons(),
       validate: validate.required(),
     },
@@ -54,7 +53,6 @@ const createForm = ({ timelines }) => {
     {
       name: "time_matters",
       type: "hidden",
-      initial: false,
     },
   ];
 };

@@ -35,6 +35,7 @@ export const CardIconContainer = styled.div`
 export const CardBody = styled.div`
   flex: 1 1 auto;
   padding: 0.25rem 0.75rem 0;
+  min-width: 0;
 `;
 
 export const CardTitle = styled.div`
@@ -42,11 +43,13 @@ export const CardTitle = styled.div`
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+  word-wrap: break-word;
 `;
 
 export const CardDescription = styled.div`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
+  word-wrap: break-word;
 `;
 
 export const CardDateInfo = styled.div`
