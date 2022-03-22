@@ -255,8 +255,9 @@ text.value-label-white {
 }
 
 .LineAreaBarChart .dc-chart .event-axis .event-icon {
-  stroke: var(--color-text-light);
   fill: var(--color-text-light);
+  stroke: var(--color-text-light);
+  shape-rendering: geometricPrecision;
 }
 
 .LineAreaBarChart .dc-chart .event-axis .event-text {
@@ -264,8 +265,8 @@ text.value-label-white {
 }
 
 .LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-icon {
-  stroke: var(--color-brand);
   fill: var(--color-brand);
+  stroke: var(--color-brand);
 }
 
 .LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-text {
