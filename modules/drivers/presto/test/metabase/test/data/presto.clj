@@ -6,7 +6,7 @@
             [honeysql.helpers :as h]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as i]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.presto :as presto]
             [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql.util :as sql.u]

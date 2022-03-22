@@ -15,7 +15,7 @@
 (defn query-hash
   "Base64 string of the hash of a query."
   [query]
-  (String. (codecs/bytes->b64 (qputil/query-hash query))))
+  (String. ^bytes (codecs/bytes->b64 (qputil/query-hash query))))
 
 (models/defmodel PersistedInfo :persisted_info)
 
