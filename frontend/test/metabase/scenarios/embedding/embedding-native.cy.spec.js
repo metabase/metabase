@@ -79,8 +79,6 @@ const questionDetails = {
 
 describe("scenarios > embedding > native questions", () => {
   beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("publishChanges");
-
     restore();
     cy.signInAsAdmin();
 
@@ -90,8 +88,7 @@ describe("scenarios > embedding > native questions", () => {
   it("should not display disabled parameters", () => {
     enableSharing();
 
-    cy.button("Publish").click();
-    cy.wait(["@publishChanges", "@publishChanges"]);
+    publishChanges();
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
@@ -129,8 +126,7 @@ describe("scenarios > embedding > native questions", () => {
       .blur();
     cy.button("Add filter").click();
 
-    cy.button("Publish").click();
-    cy.wait(["@publishChanges", "@publishChanges"]);
+    publishChanges();
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
@@ -209,4 +205,11 @@ function enableSharing() {
   cy.icon("share").click();
   cy.findByText("Embed this question in an application").click();
   cy.wait("@sessionProperties");
+}
+
+function publishChanges() {
+  cy.intercept("PUT", "/api/card/*").as("publishChanges");
+
+  cy.button("Publish").click();
+  cy.wait(["@publishChanges", "@publishChanges"]);
 }
