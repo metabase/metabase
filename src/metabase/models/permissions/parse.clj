@@ -42,9 +42,6 @@
   "Function that parses permission strings"
   (insta/parser grammar))
 
-(parser "/data-model/db/3/schema/PUBLIC")
-(comment Vclojure.pprint/pprint (parser "/data-model/db/1/schema/PUBLIC/table/3/"))
-
 (defn- collection-id
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
