@@ -39,6 +39,7 @@ clojure -M:run
 ```
 
 See [backend development](#backend-development).
+_This will require clojure 1.10.3 or higher. If this is your first time running the project, you may also need to to run `clojure -X:deps prep` in both the root of the project, as well as in `modules/drivers`_
 
 ## Frontend development
 
