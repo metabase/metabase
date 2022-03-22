@@ -1,4 +1,8 @@
 import { restore, sidebar } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
+
+const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
+const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
 
 describe("Bookmarks in a collection page", () => {
   beforeEach(() => {
@@ -26,12 +30,12 @@ describe("Bookmarks in a collection page", () => {
     cy.icon("bookmark").click();
 
     sidebar().within(() => {
-      cy.findByText("Bookmarks");
-      cy.findByText("Bobby Tables's Personal Collection");
+      getSectionTitle("Bookmarks");
+      cy.findByText(adminPersonalCollectionName);
 
       // Once there is a list of bookmarks,
       // we add a heading to the list of collections below the list of bookmarks
-      cy.findByText("Collections");
+      getSectionTitle("Collections");
     });
 
     // Remove bookmark
@@ -40,12 +44,13 @@ describe("Bookmarks in a collection page", () => {
     });
 
     sidebar().within(() => {
-      cy.findByText("Bobby Tables's Personal Collection").should("not.exist");
-      cy.findByText("Bookmarks").should("not.exist");
+      cy.findByText(adminPersonalCollectionName).should("not.exist");
+
+      getSectionTitle("Bookmarks").should("not.exist");
 
       // Once there is no list of bookmarks,
       // we remove the heading for the list of collections
-      cy.findByText("Collections").should("not.exist");
+      getSectionTitle("Collections").should("not.exist");
     });
   });
 
@@ -65,7 +70,7 @@ function addThenRemoveBookmarkTo(itemName) {
   cy.findByText("Bookmark").click();
 
   sidebar().within(() => {
-    cy.findByText("Bookmarks");
+    getSectionTitle("Bookmarks");
     cy.findByText(itemName);
   });
 
@@ -74,9 +79,13 @@ function addThenRemoveBookmarkTo(itemName) {
   cy.findByText("Remove bookmark").click();
 
   sidebar().within(() => {
-    cy.findByText("Bookmarks").should("not.exist");
+    getSectionTitle("Bookmarks").should("not.exist");
     cy.findByText(itemName).should("not.exist");
   });
+}
+
+function getSectionTitle(title) {
+  return cy.findAllByRole("heading", { name: title });
 }
 
 function openEllipsisMenuFor(item) {
