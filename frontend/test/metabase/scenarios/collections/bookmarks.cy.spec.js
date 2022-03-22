@@ -18,17 +18,4 @@ describe("Bookmarks in a collection page", () => {
 
     cy.percySnapshot();
   });
-
-  it("can remove bookmark from item in sidebar", () => {
-    cy.visit("/collection/1");
-
-    // Add bookmark
-    cy.icon("bookmark").click();
-
-    sidebar().within(() => {
-      cy.icon("bookmark").click({ force: true });
-    });
-
-    getSectionTitle("Bookmarks").should("not.exist");
-  });
 });
