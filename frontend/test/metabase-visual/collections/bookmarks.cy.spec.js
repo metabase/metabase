@@ -8,17 +8,10 @@ describe("Bookmarks in a collection page", () => {
   });
 
   it("updates sidebar and bookmark icon color when bookmarking a collection in its page", () => {
-<<<<<<< HEAD
     cy.request("POST", "/api/bookmark/collection/1");
 
     cy.visit("/collection/1");
 
-=======
-    cy.visit("/collection/1");
-
-    cy.icon("bookmark").click();
-
->>>>>>> c2b55da0cd (Add visual test)
     sidebar().within(() => {
       getSectionTitle("Bookmarks");
     });
