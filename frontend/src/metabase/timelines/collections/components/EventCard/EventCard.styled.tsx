@@ -39,6 +39,7 @@ export const CardThreadStroke = styled.div`
 export const CardBody = styled.div`
   flex: 1 1 auto;
   padding: 0.25rem 0.75rem 0.5rem;
+  min-width: 0;
 `;
 
 export const CardTitle = styled.div`
@@ -51,6 +52,7 @@ export const CardTitle = styled.div`
 export const CardDescription = styled.div`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
+  word-wrap: break-word;
 `;
 
 export const CardDateInfo = styled.div`
