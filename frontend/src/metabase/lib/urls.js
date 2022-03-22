@@ -301,6 +301,10 @@ export function timelinesInCollection(collections) {
   return `${collectionUrl}/timelines`;
 }
 
+export function timelinesArchiveInCollection(collection) {
+  return `${timelinesInCollection(collection)}/archive`;
+}
+
 export function timelineInCollection(timeline, collection) {
   return `${timelinesInCollection(collection)}/${timeline.id}`;
 }
