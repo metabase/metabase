@@ -61,7 +61,6 @@
     (f)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-
   `(disable-other-sso-types
     (fn []
       (saml-test/with-valid-premium-features-token

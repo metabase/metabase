@@ -7,7 +7,7 @@
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad
 
-  In case we need to guarantee a data-migration is only run once, check out `run-with-data-migration-index`."
+  In case we need to guarantee a data-migration to only run once, check out `run-with-data-migration-index`."
    (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -27,7 +27,7 @@
 (models/defmodel ^:deprecated DataMigrations :data_migrations)
 
 (setting/defsetting data-migration-index
-  "Used during data-migration to skip migrations that only need to run once"
+  "Used during data-migration to check if a data-migration is already ran before"
   :type       :integer
   :visibility :internal)
 
@@ -43,7 +43,7 @@
 
   When defining a new data migration, make sure the `data-migration-index` is incremented from the last data-migration,
   otherwise the migration will be skipped even when upgrading Metabase.
-  After running migration successfully, `data-migration-index` will be automatically updated"
+  After running migration successfully, the `data-migration-index` will be automatically updated"
   {:style/indent 1}
   [data-migration-index & body]
   `(when (should-run-data-migration? ~data-migration-index)
@@ -74,12 +74,12 @@
         :timestamp :%now))))
 
 (def data-migrations
-  "a list of all migration defined by defmigration"
+  "a list of data migrations defined by defmigration"
   ^:deprecated
   (atom []))
 
 (defmacro ^:deprecated defmigration
-  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
+  "Define a data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
   `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
