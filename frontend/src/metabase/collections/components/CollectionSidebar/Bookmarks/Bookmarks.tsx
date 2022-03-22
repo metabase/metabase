@@ -32,6 +32,20 @@ interface CollectionSidebarBookmarksProps {
   deleteBookmark: (id: string, type: string) => void;
 }
 
+function getIcon(display: string, type: BookmarkableEntities) {
+  if (display) {
+    return display;
+  }
+
+  const icons = {
+    card: "grid",
+    collection: "folder",
+    dashboard: "dashboard",
+  };
+
+  return icons[type];
+}
+
 const Label = ({ display, name, type }: LabelProps) => {
   const iconName = getIcon(display, type);
   return (
