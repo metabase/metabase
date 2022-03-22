@@ -1,7 +1,9 @@
 import {
   describeWithSnowplow,
+  enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  resetSnowplow,
   restore,
 } from "__support__/e2e/cypress";
 
@@ -265,25 +267,32 @@ describe("scenarios > collections > timelines", () => {
 describeWithSnowplow("scenarios > collections > timelines", () => {
   beforeEach(() => {
     restore();
+    resetSnowplow();
     cy.signInAsAdmin();
+    enableTracking();
   });
 
   afterEach(() => {
     expectNoBadSnowplowEvents();
   });
 
-  it("should send a snowplow event when creating a timeline event", () => {
+  it("should send snowplow events when creating a timeline event", () => {
+    // 1 - new_instance_created
+    // 2 - pageview
     cy.visit("/collection/root");
+
+    // 3 - pageview
     cy.findByLabelText("calendar icon").click();
 
     cy.findByText("Add an event").click();
     cy.findByLabelText("Event name").type("Event");
     cy.findByLabelText("Date").type("10/20/2020");
+
+    // 4 - new_event_created
+    // 5 - pageview
     cy.button("Create").click();
 
-    // new_instance_created
-    // new_event_created
-    expectGoodSnowplowEvents(2);
+    expectGoodSnowplowEvents(5);
   });
 });
 
