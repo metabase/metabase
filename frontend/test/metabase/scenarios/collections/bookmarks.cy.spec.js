@@ -1,5 +1,6 @@
 import { restore, sidebar } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
@@ -95,10 +96,6 @@ function addThenRemoveBookmarkTo(itemName) {
     getSectionTitle("Bookmarks").should("not.exist");
     cy.findByText(itemName).should("not.exist");
   });
-}
-
-function getSectionTitle(title) {
-  return cy.findAllByRole("heading", { name: title });
 }
 
 function openEllipsisMenuFor(item) {
