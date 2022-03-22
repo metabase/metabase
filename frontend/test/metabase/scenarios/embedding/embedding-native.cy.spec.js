@@ -79,20 +79,17 @@ const questionDetails = {
 
 describe("scenarios > embedding > native questions", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
     restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
-    cy.wait("@sessionProperties");
   });
 
   it("should not display disabled parameters", () => {
+    enableSharing();
+
     cy.button("Publish").click();
     cy.wait(["@publishChanges", "@publishChanges"]);
 
@@ -111,6 +108,8 @@ describe("scenarios > embedding > native questions", () => {
   });
 
   it("should display and work with enabled parameters while hiding the locked one", () => {
+    enableSharing();
+
     setParameter("Order ID", "Editable");
     setParameter("Created At", "Editable");
     setParameter("Total", "Locked");
@@ -202,4 +201,12 @@ function setParameter(name, filter) {
   popover()
     .contains(filter)
     .click();
+}
+
+function enableSharing() {
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  cy.icon("share").click();
+  cy.findByText("Embed this question in an application").click();
+  cy.wait("@sessionProperties");
 }
