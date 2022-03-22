@@ -11249,7 +11249,7 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-046
       author: qnkhuat
-      validCheckSum: ANY
+      comment: Added 0.43.0 - create General Permission revision table
       changes:
         - createTable:
             tableName: general_permissions_revision
@@ -11264,14 +11264,14 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: before
-                  type: text
+                  type: ${text.type}
                   remarks: 'Serialized JSON of the permission graph before the changes.'
                   constraints:
                     nullable: false
               - column:
-                  name: after
-                  type: text
-                  remarks: 'Serialized JSON of the permission graph after the changes.'
+                  name: changes
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the changes in permission graph.'
                   constraints:
                     nullable: false
               - column:
@@ -11291,7 +11291,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: remark
-                  type: text
+                  type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

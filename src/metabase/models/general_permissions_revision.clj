@@ -12,10 +12,10 @@
 (u/strict-extend (class GeneralPermissionsRevision)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:before :json
-                                   :after  :json})
+         {:types      (constantly {:before  :json
+                                   :changes :json})
           :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a GeneralPermissionsRevision"))))}))
+          :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a GeneralPermissionsRevision!"))))}))
 
 (defn latest-id
   "Return the ID of the newest `PermissionsRevision`, or zero if none have been made yet.

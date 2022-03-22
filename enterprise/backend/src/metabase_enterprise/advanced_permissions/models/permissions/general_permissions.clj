@@ -1,8 +1,8 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.general-permissions-revision :as g-perm-revision :refer [GeneralPermissionsRevision]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -69,14 +69,14 @@
 (defn- save-perms-revision!
   "Save changes made to the permissions graph for logging/auditing purposes.
    This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old new]
+  [current-revision old changes]
   (when *current-user-id*
     (db/insert! GeneralPermissionsRevision
       ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
       ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id     (inc current-revision)
+      :id      (inc current-revision)
       :before  old
-      :after   new
+      :changes changes
       :user_id *current-user-id*)))
 
 (defn update-general-permissions!
