@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import Tooltip from "metabase/components/Tooltip";
+import { getIcon } from "./getIcon";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkContainer,
@@ -26,20 +27,6 @@ interface LabelProps {
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmarks;
   deleteBookmark: (id: string, type: string) => void;
-}
-
-function getIcon(display: string, type: BookmarkableEntities) {
-  if (display) {
-    return display;
-  }
-
-  const icons = {
-    card: "grid",
-    collection: "folder",
-    dashboard: "dashboard",
-  };
-
-  return icons[type];
 }
 
 const Label = ({ display, name, type }: LabelProps) => {
