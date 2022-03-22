@@ -7,7 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
-import { shouldNotForwardTransientProp } from "metabase/lib/styling/emotion";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -136,7 +136,7 @@ class BaseIcon extends Component<IconProps> {
 }
 
 const StyledSVG = styled("svg", {
-  shouldForwardProp: shouldNotForwardTransientProp,
+  shouldForwardProp: shouldForwardNonTransientProp,
 })``;
 
 const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
