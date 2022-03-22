@@ -303,11 +303,6 @@ export default class StructuredQuery extends AtomicQuery {
     const sourceQuery = this.sourceQuery();
 
     if (sourceQuery) {
-      console.log(this.question().card());
-      console.log(this.question().getResultMetadata());
-      // console.log(sourceQuery);
-      // console.log("---");
-
       return new Table({
         name: "",
         display_name: "",
@@ -319,18 +314,14 @@ export default class StructuredQuery extends AtomicQuery {
               ({ base_type, name }) =>
                 column.base_type === base_type && column.name === name,
             );
-          console.log(hasMappingField);
-
           return new Field({
             ...column,
             // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
             id: [
               "field",
-              // sourceQuery instanceof NestedStructuredQuery
-              //   ? column.id || column.name
-              //   : column.name,
+              // FIX for nested questions
+              // https://github.com/metabase/metabase/issues/12985
               hasMappingField ? column.id || column.name : column.name,
-              // column.name,
               {
                 "base-type": column.base_type,
               },
