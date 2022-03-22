@@ -74,9 +74,11 @@
 
   Custom `table-perms-fn` and `native-perms-fn` can be passed as options to generate permissions paths for feature-level
   permissions, such as download permissions."
-  [database-or-id             :- (s/cond-pre su/IntGreaterThanZero su/Map)
-   tables-or-ids              :- #{TableOrIDOrNativePlaceholder}
-   {:keys [segmented-perms? table-perms-fn native-perms-fn]} :- PermsOptions]
+  [database-or-id            :- (s/cond-pre su/IntGreaterThanZero su/Map)
+   tables-or-ids             :- #{TableOrIDOrNativePlaceholder}
+   {:keys [segmented-perms?
+           table-perms-fn
+           native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
                               (db/select-id->field :schema Table :id [:in table-ids]))

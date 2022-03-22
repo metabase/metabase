@@ -16,22 +16,25 @@
   (some-> query :info :context name (str/includes? "download")))
 
 (defn- tables->download-perms-set
-  [database-or-id tables-or-ids value]
+  "Given a sequence of `tables-or-ids` referenced by a query, return a set of permissions required to download the
+  results of the query at the level specified by `download-level` (either :full or :limited)."
+  [database-or-id tables-or-ids download-level]
   (query-perms/tables->permissions-path-set
    database-or-id
    tables-or-ids
-   {:table-perms-fn (fn [& path-components] (apply perms/feature-perms-path :download value path-components))
-    :native-perms-fn (fn [db-id] (perms/native-feature-perms-path :download value db-id))}))
+   {:table-perms-fn (fn [& path-components] (apply perms/feature-perms-path :download download-level path-components))
+    :native-perms-fn (fn [db-id] (perms/native-feature-perms-path :download download-level db-id))}))
 
 (defn- download-perms-set
   "Returns a set of permissions that are required to download a given query."
-  [{query-type :type, database :database, :as query} value]
+  [{query-type :type, database :database, :as query} download-level]
   (cond
     (empty? query)         #{}
-    (= query-type :native) #{(perms/native-feature-perms-path :download value database)}
-    (= query-type :query)  (tables->download-perms-set database (query-perms/query->source-table-ids query) value)))
+    (= query-type :native) #{(perms/native-feature-perms-path :download download-level database)}
+    (= query-type :query)  (tables->download-perms-set database (query-perms/query->source-table-ids query) download-level)))
 
 (defn- current-user-download-perms-level
+  "Returns the download permissions level which the current user has for the given query."
   [query]
   (cond
     (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (download-perms-set query :full))
