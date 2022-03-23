@@ -934,6 +934,10 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - run:
+          command: |
+            mkdir -p /home/circleci/metabase/metabase/target/uberjar/
+            mkdir -p /home/circleci/metabase/metabase/resources/
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
