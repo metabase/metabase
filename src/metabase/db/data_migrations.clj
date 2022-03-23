@@ -28,7 +28,9 @@
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
+
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)
+
   Migrations may provide metadata with `:catch?` to indicate if errors should be caught or propagated."
   [ran-migrations migration-var]
   (let [{migration-name :name catch? :catch?} (meta migration-var)
@@ -36,8 +38,7 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (db/transaction
-        (@migration-var))
+       (@migration-var)
        (catch Exception e
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
@@ -68,7 +69,6 @@
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
 
   `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
-
   at the top level and
 
   {... view_as link_template link_text ...} to `{ ... click_behavior { type linkType linkTemplate linkTextTemplate } ...}`
