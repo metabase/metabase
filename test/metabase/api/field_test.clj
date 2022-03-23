@@ -74,7 +74,13 @@
            (mt/user-http-request :rasta :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
 (defn simple-field-details [field]
-  (select-keys field [:name :display_name :description :visibility_type :semantic_type :fk_target_field_id]))
+  (select-keys field [:name
+                      :display_name
+                      :description
+                      :visibility_type
+                      :semantic_type
+                      :fk_target_field_id
+                      :nfc_path]))
 
 (mt/defdataset integer-coerceable
   [["t" [{:field-name "f"
@@ -92,14 +98,16 @@
                     :description        nil
                     :semantic_type      nil
                     :visibility_type    :normal
-                    :fk_target_field_id nil}
+                    :fk_target_field_id nil
+                    :nfc_path           nil}
                    original-val)))
           ;; set it
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
                                                                                   :display_name    "yay"
                                                                                   :description     "foobar"
                                                                                   :semantic_type   :type/Name
-                                                                                  :visibility_type :sensitive})
+                                                                                  :visibility_type :sensitive
+                                                                                  :nfc_path        ["bob" "dobbs"]})
           (let [updated-val (simple-field-details (Field field-id))]
             (testing "updated value"
               (is (= {:name               "Field Test"
@@ -107,18 +115,21 @@
                       :description        "foobar"
                       :semantic_type      :type/Name
                       :visibility_type    :sensitive
-                      :fk_target_field_id nil}
+                      :fk_target_field_id nil
+                      :nfc_path           ["bob" "dobbs"]}
                      updated-val)))
             ;; unset it
             (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description   nil
-                                                                                    :semantic_type nil})
+                                                                                    :semantic_type nil
+                                                                                    :nfc_path      nil})
             (testing "response"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        nil
                       :semantic_type      nil
                       :visibility_type    :sensitive
-                      :fk_target_field_id nil}
+                      :fk_target_field_id nil
+                      :nfc_path           nil}
                      (simple-field-details (Field field-id)))))))))
     (testing "updating coercion strategies"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
