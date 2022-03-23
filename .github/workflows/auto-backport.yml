@@ -5,8 +5,7 @@ on:
 
 jobs:
   create-backport:
-    # if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') || github.event.label.name == 'backport')
-    if: github.event.label.name == 'backport'
+    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') || github.event.label.name == 'backport')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,8 +16,7 @@ jobs:
         name: Find commit
         id: find_commit
         with:
-          # pull-request-number: ${{ github.event.pull_request.number }}
-          pull-request-number: 68
+          pull-request-number: ${{ github.event.pull_request.number }}
           base-ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: ./.github/actions/get-latest-release-branch
@@ -29,8 +27,8 @@ jobs:
         name: Create backport pull request
         id: create_backport_pull_request
         with:
-          target-branch: ${{ format('backport-{0}', github.event.pull_request.number) }}
+          target-branch: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           original-pull-request-number: ${{ github.event.pull_request.number }}
           original-title: ${{ github.event.pull_request.title }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          commit: ${{ steps.find_commit.commit }}
+          commit: ${{ steps.find_commit.outputs.commit }}

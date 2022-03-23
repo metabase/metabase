@@ -7,5 +7,29 @@ inputs:
     default: true
 
 runs:
-  using: "node16"
-  main: "index.js"
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v4
+      id: get-latest-release-branch
+      with:
+        result-encoding: string
+        script: |
+          const message = core.getInput("message");
+          const shouldIncludeLog = core.getInput("include-log") === "true";
+
+          let body = `@${author} ${message}`;
+
+          if (shouldIncludeLog) {
+            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+            body += ` [[Logs]](${runUrl})`;
+          }
+
+          const author = context.payload.comment.user.login;
+
+          github.issues.createComment({
+            issue_number: context.payload.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body,
+          });

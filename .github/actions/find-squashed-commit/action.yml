@@ -1,16 +1,5 @@
 name: Find squashed commit
-<<<<<<< Updated upstream
-inputs:
-  pull-request-number:
-    required: true
 
-runs:
-  steps:
-    - run: ${{ github.action_path }}/entrypoint.sh
-      shell: bash
-      env:
-        PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
-=======
 description: Finds squashed commit in master by pull request name
 inputs:
   pull-request-number:
@@ -25,10 +14,17 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - run: ${{ github.action_path }}/find-squashed-commit.sh
+    - run: |
+        git checkout $BASE_REF
+        git fetch --all
+
+        echo "Looking for a commit that contains pull request number $PULL_REQUEST_NUMBER in $BASE_REF"
+        COMMIT=$(env -i git log $BASE_REF --grep="(#$PULL_REQUEST_NUMBER)" --format="%H")
+        echo "commit SHA $COMMIT"
+
+        echo "::set-output name=commit::$COMMIT"
       id: find-squashed-commit
       shell: bash
       env:
         PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
         BASE_REF: ${{ inputs.base-ref }}
->>>>>>> Stashed changes

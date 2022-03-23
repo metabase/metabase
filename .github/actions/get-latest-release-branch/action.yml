@@ -10,6 +10,7 @@ runs:
     - uses: actions/github-script@v4
       id: get-latest-release-branch
       with:
+        result-encoding: string
         script: |
           const releaseBranches = await github.git.listMatchingRefs({
             owner: context.repo.owner,
