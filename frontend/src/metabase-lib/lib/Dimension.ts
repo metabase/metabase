@@ -1272,6 +1272,23 @@ export class ExpressionDimension extends Dimension {
           })
         : null;
 
+    // // fallback for custom column
+    // const resultMetadata = query?.question()?.getResultMetadata?.();
+    // if (resultMetadata) {
+    //   const field = _.findWhere(resultMetadata, {
+    //     name: this.name(),
+    //     base_type: base_type,
+    //   });
+
+    //   if (field) {
+    //     return new Field({
+    //       ...field,
+    //       metadata: this._metadata,
+    //       query: this._query,
+    //     });
+    //   }
+    // }
+
     return new Field({
       id: this.mbql(),
       name: this.name(),
