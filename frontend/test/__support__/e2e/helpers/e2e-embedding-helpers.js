@@ -4,7 +4,12 @@ const jwtSignLocation =
   "frontend/test/__support__/e2e/external/e2e-jwt-sign.js";
 
 export function visitEmbeddedPage(payload) {
-  const stringifiedPayload = JSON.stringify(payload);
+  const payloadWithExpiration = {
+    ...payload,
+    exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+  };
+
+  const stringifiedPayload = JSON.stringify(payloadWithExpiration);
 
   cy.exec(
     `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`,
