@@ -36,7 +36,8 @@ export const SearchBarContent = styled.div`
   width: 100%;
   max-width: 500px;
   margin-left: auto;
-  margin-right: auto;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 `;
 
 export const EntityMenuContainer = styled.div`

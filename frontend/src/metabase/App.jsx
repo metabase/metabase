@@ -6,6 +6,7 @@ import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
 import SearchBar from "metabase/nav/components/SearchBar";
 import * as Urls from "metabase/lib/urls";
+import LogoIcon from "metabase/components/LogoIcon";
 
 import {
   SearchBarContainer,
@@ -34,7 +35,7 @@ import {
   AppContentContainer,
   AppContent,
   AppBar,
-  SidebarVisibilityControlIcon,
+  LogoIconWrapper,
 } from "./App.styled";
 
 export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -130,10 +131,9 @@ export default class App extends Component {
     const { location, onChangeLocation } = this.props;
     return (
       <AppBar>
-        <SidebarVisibilityControlIcon
-          name="burger"
-          onClick={this.toggleSidebar}
-        />
+        <LogoIconWrapper onClick={this.toggleSidebar}>
+          <LogoIcon size={24} />
+        </LogoIconWrapper>
         <SearchBarContainer>
           <SearchBarContent>
             <SearchBar

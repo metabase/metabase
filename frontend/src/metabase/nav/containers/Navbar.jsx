@@ -118,9 +118,7 @@ export default class Navbar extends Component {
             mx={1}
             hover={{ backgroundColor: getDefaultSearchColor() }}
           >
-            <LogoIconContainer>
-              <LogoIcon dark height={32} />
-            </LogoIconContainer>
+            <LogoIconContainer></LogoIconContainer>
           </Link>
           <ProfileLinkContainer>
             <ProfileLink {...this.props} user={user} />

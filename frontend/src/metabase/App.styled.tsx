@@ -36,12 +36,8 @@ export const AppBar = styled.div`
   z-index: 4;
 `;
 
-export const SidebarVisibilityControlIcon = styled(Icon)`
+export const LogoIconWrapper = styled.div`
   cursor: pointer;
-
-  &:hover {
-    color: ${color("brand")};
-  }
 `;
 
 export const ProfileLinkContainer = styled.div`
