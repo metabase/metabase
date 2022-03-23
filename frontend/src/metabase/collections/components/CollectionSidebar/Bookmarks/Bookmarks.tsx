@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -43,6 +43,8 @@ const CollectionSidebarBookmarks = ({
   bookmarks,
   deleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
+  const [shouldDisplayBookmarks, setShouldDisplayBookmarks] = useState(true);
+
   if (bookmarks.length === 0) {
     return null;
   }
@@ -51,28 +53,36 @@ const CollectionSidebarBookmarks = ({
     deleteBookmark(id.toString(), type);
   };
 
+  const toggleBookmarkListVisibility = () => {
+    setShouldDisplayBookmarks(!shouldDisplayBookmarks);
+  };
+
   return (
     <BookmarksRoot>
-      <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
+      <SidebarHeading onClick={toggleBookmarkListVisibility}>
+        {t`Bookmarks`}
+      </SidebarHeading>
 
-      <BookmarkListRoot>
-        {bookmarks.map((bookmark, index) => {
-          const { id, name, type, display } = bookmark;
-          const url = Urls.bookmark({ id, name, type });
-          return (
-            <BookmarkContainer key={`bookmark-${id}`}>
-              <Link to={url}>
-                <Label name={name} type={type} display={display} />
-              </Link>
-              <button onClick={() => handleDeleteBookmark(bookmark)}>
-                <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                  <Icon name="bookmark" />
-                </Tooltip>
-              </button>
-            </BookmarkContainer>
-          );
-        })}
-      </BookmarkListRoot>
+      {shouldDisplayBookmarks && (
+        <BookmarkListRoot>
+          {bookmarks.map((bookmark, index) => {
+            const { id, name, type } = bookmark;
+            const url = Urls.bookmark({ id, name, type });
+            return (
+              <BookmarkContainer key={`bookmark-${id}`}>
+                <Link to={url}>
+                  <Label name={name} type={type} />
+                </Link>
+                <button onClick={() => handleDeleteBookmark(bookmark)}>
+                  <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
+                    <Icon name="bookmark" />
+                  </Tooltip>
+                </button>
+              </BookmarkContainer>
+            );
+          })}
+        </BookmarkListRoot>
+      )}
     </BookmarksRoot>
   );
 };

@@ -55,6 +55,13 @@ export const SidebarHeading = styled.h4`
   font-weight: 700;
   margin-left: ${space(3)};
   text-transform: uppercase;
+  user-select: none;
+
+  ${({ onClick }) =>
+    onClick &&
+    css`
+      cursor: pointer;
+    `};
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon)`
