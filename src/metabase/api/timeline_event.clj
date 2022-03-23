@@ -4,7 +4,7 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
-            [metabase.models.timeline :refer [Timeline]]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -21,7 +21,7 @@
    timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
-   icon         (s/maybe timeline-event/Icons)
+   icon         (s/maybe timeline/Icons)
    timeline_id  su/IntGreaterThanZero
    source       (s/maybe timeline-event/Sources)
    question_id  (s/maybe su/IntGreaterThanZero)
@@ -63,7 +63,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
-   icon         (s/maybe timeline-event/Icons)
+   icon         (s/maybe timeline/Icons)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)

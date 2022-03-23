@@ -9,6 +9,16 @@
 
 (models/defmodel Timeline :timeline)
 
+;;;; schemas
+
+(def Icons
+  "Timeline and TimelineEvent icon string Schema"
+  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+
+(def DefaultIcon
+  "Timeline default icon"
+  "star")
+
 ;;;; functions
 
 (defn timelines-for-collection
