@@ -96,6 +96,7 @@
    :fingerprint
    :id
    :name
+   :nfc_path
    :parent_id
    :semantic_type
    :settings
@@ -117,6 +118,7 @@
     :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
     :fingerprint                        (s/maybe su/Map)
     :parent_id                          (s/maybe su/IntGreaterThanZero)
+    :nfc_path                           (s/maybe [su/NonBlankString])
     s/Any                               s/Any}))
 
 

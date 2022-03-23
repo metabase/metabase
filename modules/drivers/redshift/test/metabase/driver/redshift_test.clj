@@ -121,6 +121,7 @@
               :settings        nil
               :source          :fields
               :field_ref       [:field (mt/id :extsales :buyerid) nil]
+              :nfc_path        nil
               :parent_id       nil
               :id              (mt/id :extsales :buyerid)
               :visibility_type :normal
@@ -135,6 +136,7 @@
               :settings        nil
               :source          :fields
               :field_ref       [:field (mt/id :extsales :salesid) nil]
+              :nfc_path        nil
               :parent_id       nil
               :id              (mt/id :extsales :salesid)
               :visibility_type :normal

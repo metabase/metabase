@@ -38,7 +38,7 @@ If you are having problems with installing or using a community driver, your bes
 
 ## Driver development
 
-If the driver you're looking for isn't available, take a look at the [Writing a Driver](https://github.com/metabase/metabase/wiki/Writing-a-Driver) wiki page. It's still a work in progress, but should give you a good start. A few things to keep in mind:
+If the driver you're looking for isn't available, take a look at the [Guide to writing a Metabase driver](./developers-guide/drivers/start.md). It's still a work in progress, but should give you a good start. A few things to keep in mind:
 
 - If your database has a JDBC driver, you'll be able to make use of some common classes that already exist in Metabase.
 - We're still working on providing an independent test framework for drivers, but you can copy or symlink your driver into a local copy of the Metabase source code in order to utilize pre-existing tests. Take a look at [Test Extension Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Adding-Test-Extensions,-Tests,-and-Setting-up-CI#test-extensions-basics) on the wiki.
