@@ -30,6 +30,8 @@ const TimelineListModal = ({
   const title = getTitle(timelines, collection, isArchive);
   const menuItems = getMenuItems(timelines, collection, isArchive);
   const sortedTimelines = getSortedTimelines(timelines);
+  const hasTimelines = timelines.length > 0;
+  const hasMenuItems = menuItems.length > 0;
 
   const handleGoBack = useCallback(() => {
     onGoBack?.(collection);
@@ -42,12 +44,12 @@ const TimelineListModal = ({
         onClose={onClose}
         onGoBack={isArchive ? handleGoBack : undefined}
       >
-        {menuItems.length > 0 && (
+        {hasMenuItems && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}
       </ModalHeader>
-      <ModalBody>
-        {timelines.length ? (
+      <ModalBody isTopAligned={hasTimelines}>
+        {hasTimelines ? (
           <TimelineList
             timelines={sortedTimelines}
             collection={collection}
