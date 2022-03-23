@@ -3,6 +3,7 @@ import {
   sidebar,
   popover,
   visualize,
+  closeNavigationSidebar,
   openNotebookEditor,
   summarize,
 } from "__support__/e2e/cypress";
@@ -157,6 +158,7 @@ describe("smoketest > user", () => {
   it("should summarize via both the sidebar and notebook editor", () => {
     // Sidebar summary
 
+    closeNavigationSidebar();
     summarize();
     cy.findByText("Category").click();
     cy.findByText("Done").click();

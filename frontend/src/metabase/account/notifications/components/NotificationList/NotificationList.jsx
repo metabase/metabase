@@ -33,7 +33,7 @@ const NotificationList = ({
   }
 
   return (
-    <div>
+    <div data-testid="notifications-list">
       <NotificationHeader>
         <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
         <NotificationButton onClick={onHelp}>

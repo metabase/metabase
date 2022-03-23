@@ -102,7 +102,7 @@ describe("scenarios > account > notifications", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Question");
-      cy.findByLabelText("close icon").click();
+      clickUnsubscribe();
 
       modal().within(() => {
         cy.findByText("Confirm you want to unsubscribe");
@@ -123,7 +123,7 @@ describe("scenarios > account > notifications", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Question");
-      cy.findByLabelText("close icon").click();
+      clickUnsubscribe();
 
       modal().within(() => {
         cy.findByText("Confirm you want to unsubscribe");
@@ -170,7 +170,7 @@ describe("scenarios > account > notifications", () => {
       cy.visit("/account/notifications");
 
       cy.findByText("Subscription");
-      cy.findByLabelText("close icon").click();
+      clickUnsubscribe();
 
       modal().within(() => {
         cy.findByText("Delete this subscription?");
@@ -181,3 +181,9 @@ describe("scenarios > account > notifications", () => {
     });
   });
 });
+
+function clickUnsubscribe() {
+  cy.findByTestId("notifications-list").within(() => {
+    cy.findByLabelText("close icon").click();
+  });
+}
