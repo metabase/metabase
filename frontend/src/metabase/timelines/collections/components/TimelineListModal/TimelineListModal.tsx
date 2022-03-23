@@ -84,7 +84,7 @@ const getMenuItems = (
   collection: Collection,
   isArchive: boolean,
 ) => {
-  if (!collection.can_write || !timelines.length || isArchive) {
+  if (!collection.can_write || isArchive) {
     return [];
   }
 
