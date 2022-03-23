@@ -3,7 +3,19 @@ import { METABASE_SECRET_KEY } from "__support__/e2e/cypress_data";
 const jwtSignLocation =
   "frontend/test/__support__/e2e/external/e2e-jwt-sign.js";
 
-export function visitEmbeddedPage(payload) {
+/**
+ * Programatically generate token and visit the embedded page for question or dashboard
+ *
+ * @param {object} payload
+ * @param {{setFilters: string, hideFilters:string}}
+ *
+ * @examlpe
+ * visitEmbeddedPage(payload, { setFilters: "id=92&source=Organic", hideFilters: "created_at, state" });
+ */
+export function visitEmbeddedPage(
+  payload,
+  { setFilters = "", hideFilters = "" } = {},
+) {
   const payloadWithExpiration = {
     ...payload,
     exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
@@ -14,14 +26,41 @@ export function visitEmbeddedPage(payload) {
   const embeddableObject = getEmbeddableObject(payload);
 
   const urlRoot = `/embed/${embeddableObject}/`;
+  const filters = getFilterValues(setFilters);
+  const hiddenFilters = getHiddenFilters(hideFilters);
   // Style is hard coded for now because we're not concerned with testing its properties
   const style = "#bordered=true&titled=true";
 
   cy.exec(
     `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`,
   ).then(({ stdout: token }) => {
-    cy.visit(urlRoot + token + style);
+    const embeddableUrl = urlRoot + token + filters + style + hiddenFilters;
+
+    // Always visit embedded page logged out
+    cy.signOut();
+
+    cy.visit(embeddableUrl);
   });
+}
+
+/**
+ * Construct the string that sets value to certain filters
+ *
+ * @param {string} filters
+ * @returns string
+ */
+function getFilterValues(filters) {
+  return filters && "?" + filters;
+}
+
+/**
+ * Construct the string that hides certain filters
+ *
+ * @param {string} filters
+ * @returns string
+ */
+function getHiddenFilters(filters) {
+  return filters && "&hide_parameters=" + filters;
 }
 
 /**
