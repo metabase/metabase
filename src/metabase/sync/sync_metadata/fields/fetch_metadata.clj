@@ -85,5 +85,5 @@
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
   (cond-> (:fields (fetch-metadata/table-metadata database table))
-    (driver/supports? (:engine database) :nested-field-columns)
+    (driver/database-supports? (:engine database) :nested-field-columns database)
     (clojure.set/union (fetch-metadata/nfc-metadata database table))))
