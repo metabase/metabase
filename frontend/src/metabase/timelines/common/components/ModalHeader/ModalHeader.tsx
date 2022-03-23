@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
 import {
   HeaderActions,
   HeaderBackButton,
@@ -28,7 +29,9 @@ const ModalHeader = ({
           <Icon name="chevronleft" />
         </HeaderBackButton>
       )}
-      <HeaderTitle>{title}</HeaderTitle>
+      <HeaderTitle>
+        <Ellipsified tooltipMaxWidth="100%">{title}</Ellipsified>
+      </HeaderTitle>
       {children && <HeaderActions>{children}</HeaderActions>}
       {onClose && (
         <HeaderCloseButton onClick={onClose}>

@@ -15,6 +15,7 @@ export const HeaderTitle = styled.div`
   line-height: 1.5rem;
   font-weight: bold;
   margin-right: 1rem;
+  min-width: 0;
 `;
 
 export const HeaderActions = styled.div`

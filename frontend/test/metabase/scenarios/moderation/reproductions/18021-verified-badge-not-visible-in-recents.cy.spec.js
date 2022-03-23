@@ -1,4 +1,4 @@
-import { restore, isEE } from "__support__/e2e/cypress";
+import { restore, isEE, visitQuestion } from "__support__/e2e/cypress";
 
 describe.skip("issue 18021", () => {
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe.skip("issue 18021", () => {
       moderated_item_type: "card",
     });
 
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     cy.findByTestId("saved-question-header-button").find(".Icon-verified");
   });

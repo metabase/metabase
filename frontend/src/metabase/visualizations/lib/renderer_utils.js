@@ -161,7 +161,13 @@ export function getDatas({ settings, series }, warn) {
 
     return rows.map(row => {
       const [x, ...rest] = row;
-      const newRow = [parseXValue(x, parseOptions, warn), ...rest];
+      const { unit } = parseOptions;
+      const xValue = parseXValue(x, parseOptions, warn);
+      const formattedXValue =
+        xValue && unit && typeof xValue.startOf === "function"
+          ? xValue.startOf(unit)
+          : xValue;
+      const newRow = [formattedXValue, ...rest];
       newRow._origin = row._origin;
       return newRow;
     });

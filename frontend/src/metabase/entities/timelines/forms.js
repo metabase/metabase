@@ -21,7 +21,6 @@ const createForm = () => {
       name: "icon",
       title: t`Default icon`,
       type: "select",
-      initial: "star",
       options: getTimelineIcons(),
       validate: validate.required(),
     },

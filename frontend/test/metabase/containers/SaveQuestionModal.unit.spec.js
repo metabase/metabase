@@ -196,7 +196,7 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: EXPECTED_SUGGESTED_NAME,
         description: null,
-        collection_id: undefined,
+        collection_id: null,
       });
     });
 
@@ -212,7 +212,7 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: "My favorite orders",
         description: "So many of them",
-        collection_id: undefined,
+        collection_id: null,
       });
     });
 
@@ -231,7 +231,25 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: "My favorite orders",
         description: "So many of them",
-        collection_id: undefined,
+        collection_id: null,
+      });
+    });
+
+    it('should correctly handle saving a question in the "root" collection', () => {
+      const question = getQuestion({
+        collection_id: "root",
+      });
+      const { onCreateMock } = renderSaveQuestionModal(question);
+
+      fillForm({ name: "foo", description: "bar" });
+      userEvent.click(screen.getByText("Save"));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(onCreateMock).toHaveBeenCalledWith({
+        ...question.card(),
+        name: "foo",
+        description: "bar",
+        collection_id: null,
       });
     });
 

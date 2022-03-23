@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   popover,
   filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -87,7 +88,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show filters by search for Vendor", () => {
-      cy.visit("/question/4");
+      visitQuestion(4);
 
       cy.findAllByText("VENDOR")
         .first()
@@ -100,7 +101,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      cy.visit("/question/4");
+      visitQuestion(4);
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
