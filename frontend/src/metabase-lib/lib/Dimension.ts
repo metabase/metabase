@@ -1245,12 +1245,12 @@ export class ExpressionDimension extends Dimension {
     if (!type.startsWith("type/")) {
       base_type = "type/Float"; // fallback
 
-      switch (type.toLowerCase()) {
-        case MONOTYPE.String.toLowerCase():
+      switch (type) {
+        case MONOTYPE.String:
           base_type = "type/Text";
           break;
 
-        case MONOTYPE.Boolean.toLowerCase():
+        case MONOTYPE.Boolean:
           base_type = "type/Boolean";
           break;
 
