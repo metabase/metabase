@@ -303,17 +303,17 @@ export default class StructuredQuery extends AtomicQuery {
     const sourceQuery = this.sourceQuery();
 
     if (sourceQuery) {
+      const dimensions = sourceQuery.dimensions();
       return new Table({
         name: "",
         display_name: "",
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(column => {
-          const hasMappingField = this.question()
-            .getResultMetadata()
-            .find(
-              ({ base_type, name }) =>
-                column.base_type === base_type && column.name === name,
-            );
+          const hasDimension = dimensions.find(
+            dimension =>
+              dimension.column().name === column.name &&
+              dimension.column().base_type === column.base_type,
+          );
           return new Field({
             ...column,
             // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
@@ -321,7 +321,7 @@ export default class StructuredQuery extends AtomicQuery {
               "field",
               // FIX for nested questions
               // https://github.com/metabase/metabase/issues/12985
-              hasMappingField ? column.id || column.name : column.name,
+              hasDimension ? column.id || column.name : column.name,
               {
                 "base-type": column.base_type,
               },
