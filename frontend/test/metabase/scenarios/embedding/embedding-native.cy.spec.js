@@ -86,127 +86,134 @@ describe("scenarios > embedding > native questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    cy.createNativeQuestion(questionDetails, {
-      visitQuestion: true,
-      wrapId: true,
-    });
   });
 
-  it("should not display disabled parameters", () => {
-    enableSharing();
-
-    publishChanges(({ request }) => {
-      assert.deepEqual(request.body.embedding_params, {});
-    });
-
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
-
-    cy.contains("Lora Cronin");
-    cy.contains("Organic");
-    cy.contains("39.58");
-
-    filterWidget().should("not.exist");
-  });
-
-  it("should display and work with enabled parameters while hiding the locked one", () => {
-    enableSharing();
-
-    setParameter("Order ID", "Editable");
-    setParameter("Created At", "Editable");
-    setParameter("Total", "Locked");
-    setParameter("State", "Editable");
-    setParameter("Product ID", "Editable");
-
-    // We must enter a value for a locked parameter
-    cy.findByText("Preview Locked Parameters")
-      .parent()
-      .within(() => {
-        cy.findByText("Total").click();
+  context("UI", () => {
+    beforeEach(() => {
+      cy.createNativeQuestion(questionDetails, {
+        visitQuestion: true,
       });
 
-    // Total is greater than or equal to 0
-    cy.findByPlaceholderText("Enter a number")
-      .type("0")
-      .blur();
-    cy.button("Add filter").click();
-
-    publishChanges(({ request }) => {
-      const actual = request.body.embedding_params;
-
-      const expected = {
-        id: "enabled",
-        created_at: "enabled",
-        total: "locked",
-        state: "enabled",
-        product_id: "enabled",
-      };
-
-      assert.deepEqual(actual, expected);
+      enableSharing();
     });
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
+    it("should not display disabled parameters", () => {
+      publishChanges(({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {});
+      });
 
-      cy.signOut();
-      cy.visit(iframe.src);
+      cy.document().then(doc => {
+        const iframe = doc.querySelector("iframe");
+
+        cy.signOut();
+        cy.visit(iframe.src);
+      });
+
+      cy.contains("Lora Cronin");
+      cy.contains("Organic");
+      cy.contains("39.58");
+
+      filterWidget().should("not.exist");
     });
 
-    cy.contains("Organic");
-    cy.contains("Twitter").should("not.exist");
+    it("should display and work with enabled parameters while hiding the locked one", () => {
+      setParameter("Order ID", "Editable");
+      setParameter("Created At", "Editable");
+      setParameter("Total", "Locked");
+      setParameter("State", "Editable");
+      setParameter("Product ID", "Editable");
 
-    // Created At: Q2, 2018
-    filterWidget()
-      .contains("Created At")
-      .click();
-    cy.findByTestId("select-button").click();
-    popover()
-      .contains("2018")
-      .click();
-    cy.findByText("Q2").click();
+      // We must enter a value for a locked parameter
+      cy.findByText("Preview Locked Parameters")
+        .parent()
+        .within(() => {
+          cy.findByText("Total").click();
+        });
 
-    // State: is not KS
-    filterWidget()
-      .contains("State")
-      .click();
-    cy.findByPlaceholderText("Search the list").type("KS");
-    cy.findByTestId("KS-filter-value").click();
-    cy.button("Add filter").click();
+      // Total is greater than or equal to 0
+      cy.findByPlaceholderText("Enter a number")
+        .type("0")
+        .blur();
+      cy.button("Add filter").click();
 
-    cy.findByText("Logan Weber").should("not.exist");
+      publishChanges(({ request }) => {
+        const actual = request.body.embedding_params;
 
-    // Product ID is 10
-    cy.findByPlaceholderText("Product ID").type("10{enter}");
+        const expected = {
+          id: "enabled",
+          created_at: "enabled",
+          total: "locked",
+          state: "enabled",
+          product_id: "enabled",
+        };
 
-    cy.contains("Affiliate").should("not.exist");
+        assert.deepEqual(actual, expected);
+      });
 
-    // Let's try to remove one filter
-    cy.findByText("Q2, 2018")
-      .siblings(".Icon-close")
-      .click();
+      cy.document().then(doc => {
+        const iframe = doc.querySelector("iframe");
 
-    // Order ID is 926 - there should be only one result after this
-    filterWidget()
-      .contains("Order ID")
-      .click();
-    cy.findByPlaceholderText("Enter an ID").type("926");
-    cy.button("Add filter").click();
+        cy.signOut();
+        cy.visit(iframe.src);
+      });
 
-    cy.findByTestId("table-row").should("have.length", 1);
+      cy.contains("Organic");
+      cy.contains("Twitter").should("not.exist");
 
-    cy.findByText("December 29, 2018, 4:54 AM");
-    cy.findByText("CO");
-    cy.findByText("Sid Mills").should("not.exist");
+      // Created At: Q2, 2018
+      filterWidget()
+        .contains("Created At")
+        .click();
+      cy.findByTestId("select-button").click();
+      popover()
+        .contains("2018")
+        .click();
+      cy.findByText("Q2").click();
 
-    cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
+      // State: is not KS
+      filterWidget()
+        .contains("State")
+        .click();
+      cy.findByPlaceholderText("Search the list").type("KS");
+      cy.findByTestId("KS-filter-value").click();
+      cy.button("Add filter").click();
+
+      cy.findByText("Logan Weber").should("not.exist");
+
+      // Product ID is 10
+      cy.findByPlaceholderText("Product ID").type("10{enter}");
+
+      cy.contains("Affiliate").should("not.exist");
+
+      // Let's try to remove one filter
+      cy.findByText("Q2, 2018")
+        .siblings(".Icon-close")
+        .click();
+
+      // Order ID is 926 - there should be only one result after this
+      filterWidget()
+        .contains("Order ID")
+        .click();
+      cy.findByPlaceholderText("Enter an ID").type("926");
+      cy.button("Add filter").click();
+
+      cy.findByTestId("table-row").should("have.length", 1);
+
+      cy.findByText("December 29, 2018, 4:54 AM");
+      cy.findByText("CO");
+      cy.findByText("Sid Mills").should("not.exist");
+
+      cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
+    });
   });
 
   context("API", () => {
+    beforeEach(() => {
+      cy.createNativeQuestion(questionDetails, {
+        wrapId: true,
+      });
+    });
+
     it("should hide filters via url", () => {
       cy.get("@questionId").then(questionId => {
         cy.request("PUT", `/api/card/${questionId}`, {
