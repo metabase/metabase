@@ -723,6 +723,39 @@ describe("Dimension", () => {
     });
   });
 
+  describe("ExpressionDimension using `concat('foo ', 'bar')` expression", () => {
+    // this one passes
+    it("should return a field of type 'type/Text' for a dimension without a query", () => {
+      const dimension = Dimension.parseMBQL(
+        ["expression", "concat('foo ', 'bar')"],
+        metadata,
+      );
+
+      expect(dimension.field().semantic_type).toEqual("type/Text");
+    });
+
+    // this one fails with both "concat('foo ', 'bar')" and ["concat", "foo ", "bar"]
+    it("should return a field type of 'type/Text' for a dimension with a query", () => {
+      const query = new StructuredQuery(ORDERS.question(), {
+        type: "query",
+        database: SAMPLE_DATABASE.id,
+        // expressions: { foo: "concat('foo ', 'bar')" },
+        expressions: { foo: ["concat", "foo ", "bar"] },
+        query: {
+          "source-table": ORDERS.id,
+        },
+      });
+
+      const dimension = Dimension.parseMBQL(
+        ["expression", "foo"],
+        metadata,
+        query,
+      );
+
+      expect(dimension.field().semantic_type).toEqual("type/Text");
+    });
+  });
+
   describe("Field with join-alias", () => {
     const dimension = Dimension.parseMBQL(
       ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
