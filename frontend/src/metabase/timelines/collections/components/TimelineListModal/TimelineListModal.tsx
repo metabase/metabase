@@ -12,17 +12,19 @@ import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
 export interface TimelineListModalProps {
   timelines: Timeline[];
   collection: Collection;
+  isArchive?: boolean;
   onClose?: () => void;
 }
 
 const TimelineListModal = ({
   timelines,
   collection,
+  isArchive = false,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
   const hasTimelines = timelines.length > 0;
   const title = hasTimelines ? t`Events` : t`${collection.name} events`;
-  const menuItems = getMenuItems(timelines, collection);
+  const menuItems = getMenuItems(timelines, collection, isArchive);
   const sortedTimelines = getSortedTimelines(timelines);
 
   return (
@@ -51,8 +53,12 @@ const TimelineListModal = ({
   );
 };
 
-const getMenuItems = (timelines: Timeline[], collection: Collection) => {
-  if (!collection.can_write || !timelines.length) {
+const getMenuItems = (
+  timelines: Timeline[],
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  if (!collection.can_write || !timelines.length || isArchive) {
     return [];
   }
 
@@ -60,6 +66,10 @@ const getMenuItems = (timelines: Timeline[], collection: Collection) => {
     {
       title: t`New timeline`,
       link: Urls.newTimelineInCollection(collection),
+    },
+    {
+      title: t`View archived timelines`,
+      link: Urls.timelinesArchiveInCollection(collection),
     },
   ];
 };

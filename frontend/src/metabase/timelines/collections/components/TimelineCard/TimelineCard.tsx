@@ -20,11 +20,12 @@ const TimelineCard = ({
   timeline,
   collection,
 }: TimelineCardProps): JSX.Element => {
+  const timelineUrl = Urls.timelineInCollection(timeline, collection);
   const eventsCount = timeline.events?.length;
   const hasDescription = Boolean(timeline.description);
 
   return (
-    <CardRoot to={Urls.timelineInCollection(timeline, collection)}>
+    <CardRoot to={!timeline.archived ? timelineUrl : ""}>
       <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>
