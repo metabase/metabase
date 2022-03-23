@@ -24,8 +24,7 @@ const TimelineListModal = ({
   onClose,
   onGoBack,
 }: TimelineListModalProps): JSX.Element => {
-  const hasTimelines = timelines.length > 0;
-  const title = hasTimelines ? t`Events` : t`${collection.name} events`;
+  const title = getTitle(timelines, collection, isArchive);
   const menuItems = getMenuItems(timelines, collection, isArchive);
   const sortedTimelines = getSortedTimelines(timelines);
 
@@ -45,7 +44,7 @@ const TimelineListModal = ({
         )}
       </ModalHeader>
       <ModalBody>
-        {hasTimelines ? (
+        {timelines.length ? (
           <ListRoot>
             {sortedTimelines.map(timeline => (
               <TimelineCard
@@ -61,6 +60,20 @@ const TimelineListModal = ({
       </ModalBody>
     </ModalRoot>
   );
+};
+
+const getTitle = (
+  timelines: Timeline[],
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  if (isArchive) {
+    return t`Archived timelines`;
+  } else if (timelines.length) {
+    return t`Events`;
+  } else {
+    return t`${collection.name} events`;
+  }
 };
 
 const getMenuItems = (
