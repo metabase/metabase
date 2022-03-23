@@ -3,7 +3,8 @@
   about Fields in a Table, and for fetching the DB metadata itself. This metadata is used by the logic in other
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
   comparing the differences in the two sets of Metadata."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :as table]
@@ -86,4 +87,4 @@
   [database :- i/DatabaseInstance table :- i/TableInstance]
   (cond-> (:fields (fetch-metadata/table-metadata database table))
     (driver/database-supports? (:engine database) :nested-field-columns database)
-    (clojure.set/union (fetch-metadata/nfc-metadata database table))))
+    (set/union (fetch-metadata/nfc-metadata database table))))
