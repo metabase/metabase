@@ -1,0 +1,11 @@
+name: Find squashed commit
+inputs:
+  pull-request-number:
+    required: true
+
+runs:
+  steps:
+    - run: ${{ github.action_path }}/entrypoint.sh
+      shell: bash
+      env:
+        PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}

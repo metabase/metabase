@@ -1,0 +1,11 @@
+name: Notify Pull Request
+inputs:
+  message:
+    required: true
+  include-log:
+    required: false
+    default: true
+
+runs:
+  using: "node16"
+  main: "index.js"

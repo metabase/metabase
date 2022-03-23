@@ -1,0 +1,23 @@
+name: Create Backport
+inputs:
+  target-branch:
+    required: true
+  original-pull-request-number:
+    required: true
+  original-title:
+    required: true
+  github-token:
+    required: true
+  commit:
+    required: true
+
+runs:
+  steps:
+    - run: ${{ github.action_path }}/entrypoint.sh
+      shell: bash
+      env:
+        TARGET_BRANCH: ${{ inputs.target-branch }}
+        ORIGINAL_PULL_REQUEST_NUMBER: ${{ inputs.original-pull-request-number }}
+        ORIGINAL_TITLE: ${{ inputs.original-title }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        COMMIT: ${{ inputs.commit }}

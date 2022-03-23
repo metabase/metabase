@@ -1,0 +1,5 @@
+name: Get latest release branch
+
+runs:
+  using: "node16"
+  main: "index.js"
