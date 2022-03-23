@@ -20,6 +20,8 @@
   Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
   (s/enum "collections" "question"))
 
+(def DefaultIcon "star")
+
 ;;;; permissions
 
 (defn- perms-objects-set

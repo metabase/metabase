@@ -25,7 +25,12 @@
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (collection/check-write-perms-for-collection collection_id)
-  (db/insert! Timeline (assoc body :creator_id api/*current-user-id*)))
+  (let [tl (merge
+            body
+            {:creator_id api/*current-user-id*}
+            (when-not icon
+              {:icon timeline-event/DefaultIcon}))]
+    (db/insert! Timeline tl)))
 
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
