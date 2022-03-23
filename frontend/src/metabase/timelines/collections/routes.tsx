@@ -10,6 +10,7 @@ import NewTimelineModal from "./containers/NewTimelineModal";
 import TimelineArchiveModal from "./containers/TimelineArchiveModal";
 import TimelineDetailsModal from "./containers/TimelineDetailsModal";
 import TimelineIndexModal from "./containers/TimelineIndexModal";
+import TimelineListArchiveModal from "./containers/TimelineListArchiveModal";
 
 const getRoutes = () => {
   return (
@@ -25,6 +26,13 @@ const getRoutes = () => {
         {...{
           path: "timelines/new",
           modal: NewTimelineModal,
+          modalProps: { enableTransition: false },
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/archive",
+          modal: TimelineListArchiveModal,
           modalProps: { enableTransition: false },
         }}
       />
