@@ -24,7 +24,13 @@ describe("scenarios > dashboard > bookmarks", () => {
 
     cy.findByText("Remove bookmark").click();
 
+    cy.intercept("GET", "/api/collection/root/items?**").as(
+      "fetchRootCollectionItems",
+    );
+
     cy.visit("/collection/root");
+
+    cy.wait("@fetchRootCollectionItems");
 
     sidebar().within(() => {
       cy.findByText("Orders in a dashboard").should("not.exist");
