@@ -309,11 +309,18 @@ export default class StructuredQuery extends AtomicQuery {
         display_name: "",
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(column => {
+          // const hasDimension = !!this.question()
+          //   .getResultMetadata()
+          //   .map(
+          //     ({ name, base_type }) =>
+          //       column.name === name && column.base_type === base_type,
+          //   );
           const hasDimension = !!dimensions.find(
             dimension =>
               dimension.column().name === column.name &&
               dimension.column().base_type === column.base_type,
           );
+
           return new Field({
             ...column,
             // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
