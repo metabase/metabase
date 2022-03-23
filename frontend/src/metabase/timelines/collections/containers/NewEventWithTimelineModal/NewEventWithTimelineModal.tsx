@@ -18,7 +18,9 @@ const collectionProps = {
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
+    const query = { collectionId: collection.id, include: "events" };
     await dispatch(Timelines.actions.createWithEvent(values, collection));
+    await dispatch(Timelines.actions.fetchList(query));
     dispatch(push(Urls.timelinesInCollection(collection)));
   },
   onCancel: () => {
