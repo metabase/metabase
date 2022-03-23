@@ -134,7 +134,7 @@ export default class App extends Component {
   renderAppBar = () => {
     const { location, onChangeLocation } = this.props;
     return (
-      <AppBar>
+      <AppBar id="mainAppBar">
         <LogoIconWrapper>
           <Link to="/" data-metabase-event={"Navbar;Logo"}>
             <LogoIcon size={24} />
