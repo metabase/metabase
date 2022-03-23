@@ -55,8 +55,8 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection, isArchive);
-  }, [timeline, collection, isArchive]);
+    return getMenuItems(timeline, collection, isArchive, isDefault);
+  }, [timeline, collection, isArchive, isDefault]);
 
   const handleGoBack = useCallback(() => {
     onGoBack?.(collection);
@@ -139,6 +139,7 @@ const getMenuItems = (
   timeline: Timeline,
   collection: Collection,
   isArchive: boolean,
+  isDefault: boolean,
 ) => {
   const items: MenuItem[] = [];
 
@@ -159,6 +160,13 @@ const getMenuItems = (
     items.push({
       title: t`View archived events`,
       link: Urls.timelineArchiveInCollection(timeline, collection),
+    });
+  }
+
+  if (isDefault) {
+    items.push({
+      title: t`View archived timelines`,
+      link: Urls.timelinesArchiveInCollection(collection),
     });
   }
 
