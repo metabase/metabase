@@ -11,23 +11,16 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
-import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Modal from "metabase/components/Modal";
-
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { AdminNavbar } from "../components/AdminNavbar";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
   getHasDataAccess,
-  getHasNativeWrite,
   getPlainNativeQuery,
-  getHasDbWithJsonEngine,
 } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
 
@@ -37,21 +30,19 @@ const mapStateToProps = (state, props) => ({
   user: getUser(state),
   plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
-  hasNativeWrite: getHasNativeWrite(state),
-  hasDbWithJsonEngine: getHasDbWithJsonEngine(state, props),
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
+import {
+  ProfileLinkContainer,
+  LogoLinkContainer,
+  NavRoot,
+} from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
-import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter/CollectionSidebarFooter";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
 };
-
-const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
-const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
@@ -73,13 +64,6 @@ export default class Navbar extends Component {
 
   isActive(path) {
     return this.props.path.startsWith(path);
-  }
-
-  setModal(modal) {
-    this.setState({ modal });
-    if (this._newPopover) {
-      this._newPopover.close();
-    }
   }
 
   renderAdminNav() {
@@ -113,13 +97,7 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const {
-      hasDataAccess,
-      hasNativeWrite,
-      hasDbWithJsonEngine,
-      router,
-      user,
-    } = this.props;
+    const { hasDataAccess, router, user } = this.props;
     const collectionId = Urls.extractCollectionId(router.params.slug);
     const isRoot = collectionId === "root";
 
@@ -141,71 +119,12 @@ export default class Navbar extends Component {
             mx={1}
             hover={{ backgroundColor: getDefaultSearchColor() }}
           >
-            <LogoIconContainer>
-              <LogoIcon dark height={32} />
-            </LogoIconContainer>
+            {t`Home`}
           </Link>
-          <EntityMenu
-            className="hide sm-show mr1 ml-auto"
-            trigger={
-              <Link
-                mr={1}
-                p={1}
-                hover={{
-                  backgroundColor: darken(color("brand")),
-                }}
-                className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Create Menu Click`}
-              >
-                <Icon name="add" size={14} />
-                <h4 className="hide sm-show ml1 text-nowrap">{t`New`}</h4>
-              </Link>
-            }
-            items={[
-              ...(hasDataAccess
-                ? [
-                    {
-                      title: t`Question`,
-                      icon: `insight`,
-                      link: Urls.newQuestion({
-                        mode: "notebook",
-                        creationType: "custom_question",
-                      }),
-                      event: `NavBar;New Question Click;`,
-                    },
-                  ]
-                : []),
-              ...(hasNativeWrite
-                ? [
-                    {
-                      title: hasDbWithJsonEngine
-                        ? t`Native query`
-                        : t`SQL query`,
-                      icon: `sql`,
-                      link: Urls.newQuestion({
-                        type: "native",
-                        creationType: "native_question",
-                      }),
-                      event: `NavBar;New SQL Query Click;`,
-                    },
-                  ]
-                : []),
-              {
-                title: t`Dashboard`,
-                icon: `dashboard`,
-                action: () => this.setModal(MODAL_NEW_DASHBOARD),
-                event: `NavBar;New Dashboard Click;`,
-              },
-              {
-                title: t`Collection`,
-                icon: `folder`,
-                action: () => this.setModal(MODAL_NEW_COLLECTION),
-                event: `NavBar;New Collection Click;`,
-              },
-            ]}
-          />
+          <ProfileLinkContainer>
+            <ProfileLink {...this.props} user={user} />
+          </ProfileLinkContainer>
         </LogoLinkContainer>
-        {this.renderModal()}
         <CollectionSidebar
           isRoot={isRoot}
           handleToggleMobileSidebar={() => {
@@ -232,49 +151,8 @@ export default class Navbar extends Component {
             <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
           </Link>
         )}
-        <UserFooter user={user} />
       </NavRoot>
     );
-  }
-
-  renderModalContent() {
-    const { modal } = this.state;
-    const { onChangeLocation } = this.props;
-
-    switch (modal) {
-      case MODAL_NEW_COLLECTION:
-        return (
-          <CollectionCreate
-            onClose={() => this.setState({ modal: null })}
-            onSaved={collection => {
-              this.setState({ modal: null });
-              onChangeLocation(Urls.collection(collection));
-            }}
-          />
-        );
-      case MODAL_NEW_DASHBOARD:
-        return (
-          <CreateDashboardModal
-            onClose={() => this.setState({ modal: null })}
-          />
-        );
-      default:
-        return null;
-    }
-  }
-
-  renderModal() {
-    const { modal } = this.state;
-
-    if (modal) {
-      return (
-        <Modal onClose={() => this.setState({ modal: null })}>
-          {this.renderModalContent()}
-        </Modal>
-      );
-    } else {
-      return null;
-    }
   }
 
   render() {
@@ -297,22 +175,4 @@ export default class Navbar extends Component {
         return this.renderMainNav();
     }
   }
-}
-
-function UserFooter({ user }) {
-  return (
-    <div
-      className="border-top border-light fixed bottom p2 full flex align-center bg-brand z3"
-      style={{ width: 320 }}
-    >
-      <div>
-        {user.first_name} {user.last_name}
-      </div>
-      <div className="ml-auto">
-        <PopoverWithTrigger triggerElement={<Icon name="ellipsis" />}>
-          <Footer isAdmin={user.is_superuser} />
-        </PopoverWithTrigger>
-      </div>
-    </div>
-  );
 }
