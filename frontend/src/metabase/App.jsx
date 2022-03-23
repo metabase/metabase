@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
+
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
 import SearchBar from "metabase/nav/components/SearchBar";
@@ -33,6 +35,8 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
+
+import Database from "metabase/entities/databases";
 
 import {
   AppContentContainer,
@@ -90,8 +94,7 @@ function checkIsSidebarInitiallyOpen(locationPathName) {
   );
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class App extends Component {
+class App extends Component {
   state = {
     errorInfo: undefined,
     sidebarOpen: checkIsSidebarInitiallyOpen(this.props.location.pathname),
@@ -237,3 +240,8 @@ export default class App extends Component {
     );
   }
 }
+
+export default _.compose(
+  Database.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(App);
