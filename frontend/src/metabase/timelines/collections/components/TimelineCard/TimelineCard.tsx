@@ -3,7 +3,7 @@ import { t, msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Collection, Timeline } from "metabase-types/api";
 import {
-  CardAside,
+  CardCount,
   CardBody,
   CardDescription,
   CardIcon,
@@ -34,13 +34,13 @@ const TimelineCard = ({
         <CardDescription>{timeline.description}</CardDescription>
       </CardBody>
       {eventsCount != null && (
-        <CardAside isTopAligned={hasDescription}>
+        <CardCount isTopAligned={hasDescription}>
           {ngettext(
             msgid`${eventsCount} event`,
             `${eventsCount} events`,
             eventsCount,
           )}
-        </CardAside>
+        </CardCount>
       )}
     </CardRoot>
   );

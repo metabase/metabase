@@ -30,11 +30,11 @@ export const CardDescription = styled.span`
   word-wrap: break-word;
 `;
 
-export interface CardAsideProps {
+export interface CardCountProps {
   isTopAligned?: boolean;
 }
 
-export const CardAside = styled.span<CardAsideProps>`
+export const CardCount = styled.span<CardCountProps>`
   display: block;
   flex: 0 0 auto;
   color: ${color("text-dark")};
