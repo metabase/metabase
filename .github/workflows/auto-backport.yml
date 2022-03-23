@@ -5,17 +5,21 @@ on:
 
 jobs:
   create-backport:
-    if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') || github.event.label.name == 'backport')
+    # if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') || github.event.label.name == 'backport')
+    if: github.event.label.name == 'backport'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        name: Checkout
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/find-squashed-commit
         name: Find commit
         id: find_commit
         with:
-          pull-request-number: ${{ github.event.pull_request.number }}
+          # pull-request-number: ${{ github.event.pull_request.number }}
+          pull-request-number: 68
+          base-ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: ./.github/actions/get-latest-release-branch
         name: Get latest release branch

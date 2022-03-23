@@ -1,4 +1,5 @@
 name: Find squashed commit
+<<<<<<< Updated upstream
 inputs:
   pull-request-number:
     required: true
@@ -9,3 +10,25 @@ runs:
       shell: bash
       env:
         PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
+=======
+description: Finds squashed commit in master by pull request name
+inputs:
+  pull-request-number:
+    required: true
+  base-ref:
+    required: true
+outputs:
+  commit:
+    value: ${{ steps.find-squashed-commit.outputs.commit }}
+    description: Found commit SHA
+
+runs:
+  using: "composite"
+  steps:
+    - run: ${{ github.action_path }}/find-squashed-commit.sh
+      id: find-squashed-commit
+      shell: bash
+      env:
+        PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
+        BASE_REF: ${{ inputs.base-ref }}
+>>>>>>> Stashed changes

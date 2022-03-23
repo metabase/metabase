@@ -12,8 +12,9 @@ inputs:
     required: true
 
 runs:
+  using: "composite"
   steps:
-    - run: ${{ github.action_path }}/entrypoint.sh
+    - run: ${{ github.action_path }}/create-backport-pull-request.sh
       shell: bash
       env:
         TARGET_BRANCH: ${{ inputs.target-branch }}
