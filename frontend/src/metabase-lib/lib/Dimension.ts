@@ -1245,12 +1245,12 @@ export class ExpressionDimension extends Dimension {
     if (!type.startsWith("type/")) {
       base_type = "type/Float"; // fallback
 
-      switch (type) {
-        case MONOTYPE.String:
+      switch (type.toLowerCase()) {
+        case MONOTYPE.String.toLowerCase():
           base_type = "type/Text";
           break;
 
-        case MONOTYPE.Boolean:
+        case MONOTYPE.Boolean.toLowerCase():
           base_type = "type/Boolean";
           break;
 
@@ -1260,7 +1260,7 @@ export class ExpressionDimension extends Dimension {
       semantic_type = base_type;
     }
 
-    const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
+    const subsOptions = getOptions(semantic_type || base_type);
     const dimension_options =
       subsOptions && Array.isArray(subsOptions)
         ? subsOptions.map(({ name, options }) => {
