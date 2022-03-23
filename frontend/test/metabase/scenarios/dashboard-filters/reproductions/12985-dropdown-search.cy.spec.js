@@ -96,7 +96,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.findByText("Ergonomic Silk Coat");
   });
 
-  it.skip("should work for aggregated questions (metabase#12985-2)", () => {
+  it("should work for aggregated questions (metabase#12985-2)", () => {
     cy.createQuestion({
       name: "12985-v2",
       query: {
@@ -147,7 +147,11 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
                     card_id: QUESTION_ID,
                     target: [
                       "dimension",
-                      ["field", "CATEGORY", { "base-type": "type/Text" }],
+                      [
+                        "field",
+                        PRODUCTS.CATEGORY,
+                        { "base-type": "type/Text" },
+                      ],
                     ],
                   },
                 ],
