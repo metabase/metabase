@@ -32,17 +32,6 @@
               {:icon timeline/DefaultIcon}))]
     (db/insert! Timeline tl)))
 
-(api/defendpoint GET "/"
-  "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
-  [include archived]
-  {include (s/maybe Include)
-   archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)
-        timelines (db/select Timeline [:where [:= :archived archived?]])]
-    (cond->> (hydrate timelines :creator :collection)
-      (= include "events")
-      (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
-
 ;; todo: should this fn move into `metabase.model.collection`?
 ;; a nearly identical fn exists in `metabase.api.collection`
 (defn- root-collection
@@ -50,6 +39,21 @@
   (-> (collection/root-collection-with-ui-details nil)
       collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+
+(api/defendpoint GET "/"
+  "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
+  [include archived]
+  {include (s/maybe Include)
+   archived (s/maybe su/BooleanString)}
+  (let [archived? (Boolean/parseBoolean archived)
+        hydrate-root-collection (fn [tl]
+                                  (if (nil? (:collection_id tl))
+                                    (assoc tl :collection (root-collection))
+                                    tl))
+        timelines (map hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
+    (cond->> (hydrate timelines :creator :collection)
+      (= include "events")
+      (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
