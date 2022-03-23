@@ -9,8 +9,14 @@ const jwtSignLocation =
  * @param {object} payload
  * @param {{setFilters: string, hideFilters:string}}
  *
- * @examlpe
- * visitEmbeddedPage(payload, { setFilters: "id=92&source=Organic", hideFilters: "created_at, state" });
+ * @example
+ * visitEmbeddedPage(payload, {
+ *   // We divide filter values with an ampersand
+ *   setFilters: "id=92&source=Organic",
+ *   // We divide multiple hidden filters with coma.
+ *   // Make sure there are no spaces in between!
+ *   hideFilters: "created_at,state"
+ * });
  */
 export function visitEmbeddedPage(
   payload,
