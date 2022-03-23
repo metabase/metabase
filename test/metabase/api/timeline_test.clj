@@ -50,6 +50,10 @@
         (is (= "Timeline A"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
                     :name))))
+      (testing "check that we hydrate the timeline's `:collection` key"
+        (is (= "root"
+               (-> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
+                   (get-in [:collection :id])))))
       (testing "check that we get the timeline with the id specified, even if the timeline is archived"
         (is (= "Timeline B"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-b)))
@@ -117,9 +121,12 @@
                                   {:name          "Rasta's TL"
                                    :creator_id    (u/the-id (mt/fetch-user :rasta))
                                    :collection_id id})
-            ;; check the collection to see if the timeline is there
-            (is (= "Rasta's TL"
-                   (-> (db/select-one Timeline :collection_id id) :name)))))))))
+            (testing "check the collection to see if the timeline is there"
+              (is (= "Rasta's TL"
+                     (-> (db/select-one Timeline :collection_id id) :name))))
+            (testing "Check that the icon is 'star' by default"
+              (is (= "star"
+                     (-> (db/select-one-field :icon Timeline :collection_id id)))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
