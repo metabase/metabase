@@ -560,8 +560,8 @@
         (db/execute! {:insert-into PermissionsGroup
                       :values      [{:name "New Group"}]})
         (migrate!)
-        (is (= ["All Users" "New Group"]
-               (map :name (db/query {:select    [:pg.name]
-                                     :from      [[Permissions :p]]
-                                     :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                                     :where     [:= :p.object "/general/subscription/"]})))))))
+        (is (= #{"All Users" "New Group"}
+               (set (map :name (db/query {:select    [:pg.name]
+                                          :from      [[Permissions :p]]
+                                          :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                          :where     [:= :p.object "/general/subscription/"]}))))))))
