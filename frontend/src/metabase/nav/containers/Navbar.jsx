@@ -39,6 +39,7 @@ import {
   NavRoot,
 } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
+import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -151,6 +152,7 @@ export default class Navbar extends Component {
             <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
           </Link>
         )}
+        <Footer isAdmin={user.is_superuser} />
       </NavRoot>
     );
   }
