@@ -66,14 +66,20 @@
 
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
+
   `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
+
   at the top level and
+
   {... view_as link_template link_text ...} to `{ ... click_behavior { type linkType linkTemplate linkTextTemplate } ...}`
+
   at the column_settings level. Scours the card to find all click behavior, reshapes it, and deep merges it into the
   reshapen dashcard.  scour for all links in the card, fixup the dashcard and then merge in any new click_behaviors
   from the card. See extensive tests for different scenarios.
+
   We are in a migration so this returns nil if there is nothing to do so that it is filtered and we aren't running sql
   statements that are replacing data for no purpose.
+
   Merging the following click behaviors in order (later merges on top of earlier):
   - fixed card click behavior
   - fixed dash click behavior
