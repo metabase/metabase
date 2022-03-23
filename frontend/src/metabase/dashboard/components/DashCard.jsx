@@ -50,6 +50,7 @@ export default class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     gridItemWidth: PropTypes.number.isRequired,
+    numGridColumns: PropTypes.number.isRequired,
     dashcardData: PropTypes.object.isRequired,
     slowCards: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
@@ -221,6 +222,7 @@ export default class DashCard extends Component {
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
           gridSize={{ width: dashcard.sizeX, height: dashcard.sizeY }}
+          numGridColumns={this.props.numGridColumns}
           actionButtons={
             isEmbed ? (
               <QueryDownloadWidget

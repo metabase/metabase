@@ -15,10 +15,20 @@ export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
 );
 
-const ScalarValue = ({ value, isDashboard, gridSize }) => (
+const ScalarValue = ({
+  value,
+  isDashboard,
+  gridSize,
+  width,
+  height,
+  numGridColumns,
+}) => (
   <ScalarValueWrapper
     isDashboard={isDashboard}
     gridSize={gridSize}
+    width={width}
+    height={height}
+    numGridColumns={numGridColumns}
     className="ScalarValue"
   >
     {value}

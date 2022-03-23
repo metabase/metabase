@@ -78,9 +78,10 @@ function GridLayout({
         item,
         gridItemWidth,
         breakpoint: currentBreakpoint,
+        numGridColumns: cols,
       });
     },
-    [layout, cellSize, itemRenderer, currentBreakpoint],
+    [layout, cellSize, itemRenderer, currentBreakpoint, cols],
   );
 
   const height = useMemo(() => {

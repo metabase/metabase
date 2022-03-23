@@ -264,7 +264,7 @@ export default class DashboardGrid extends Component {
     }
   };
 
-  renderDashCard(dc, { isMobile, gridItemWidth }) {
+  renderDashCard(dc, { isMobile, gridItemWidth, numGridColumns }) {
     return (
       <DashCard
         dashcard={dc}
@@ -274,6 +274,7 @@ export default class DashboardGrid extends Component {
         slowCards={this.props.slowCards}
         fetchCardData={this.props.fetchCardData}
         gridItemWidth={gridItemWidth}
+        numGridColumns={numGridColumns}
         markNewCardSeen={this.props.markNewCardSeen}
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
@@ -313,11 +314,17 @@ export default class DashboardGrid extends Component {
     );
   }
 
-  renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
+  renderGridItem = ({
+    item: dc,
+    breakpoint,
+    gridItemWidth,
+    numGridColumns,
+  }) => (
     <div key={String(dc.id)} className="DashCard">
       {this.renderDashCard(dc, {
         isMobile: breakpoint === "mobile",
         gridItemWidth,
+        numGridColumns,
       })}
     </div>
   );
