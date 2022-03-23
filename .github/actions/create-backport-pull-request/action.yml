@@ -26,7 +26,9 @@ runs:
         git cherry-pick ${COMMIT}
         git push -u origin ${BACKPORT_BRANCH}
 
-        hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\" \n\n \#${ORIGINAL_PULL_REQUEST_NUMBER}"
+        hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+
+        #${ORIGINAL_PULL_REQUEST_NUMBER}"
 
       shell: bash
       env:
