@@ -183,6 +183,13 @@
       1
       0)))
 
+(defn- bookmarked-score
+  [{:keys [model collection_position]}]
+  (when (#{"card" "collection" "dashboard"} model)
+    (if ((fnil pos? 0) collection_position)
+      1
+      0)))
+
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
   (when (= model "card")
@@ -237,6 +244,9 @@
   [{:weight 2
     :score  (pinned-score result)
     :name   "pinned"}
+   {:weight 2
+    :score  (bookmarked-score result)
+    :name   "bookmarked"}
    {:weight 3/2
     :score  (recency-score result)
     :name   "recency"}
