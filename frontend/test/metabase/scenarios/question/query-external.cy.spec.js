@@ -16,6 +16,8 @@ const supportedDatabases = [
 supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
   describe("scenarios > question > query > external", () => {
     beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
       restore(snapshotName);
       cy.signInAsAdmin();
     });
@@ -26,6 +28,7 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
       cy.findByText(dbName).click();
       cy.findByText("Orders").click();
 
+      cy.wait("@dataset");
       cy.contains("37.65");
     });
   });

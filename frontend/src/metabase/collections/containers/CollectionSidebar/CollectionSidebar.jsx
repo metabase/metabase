@@ -34,6 +34,10 @@ const collectionEntityQuery = {
   loadingAndErrorWrapper: false,
 };
 
+const mapDispatchToProps = {
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
+};
+
 function mapStateToProps(state) {
   return {
     currentUser: getUser(state),
@@ -45,6 +49,7 @@ CollectionSidebar.propTypes = {
   collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,
   bookmarks: PropTypes.arrayOf(PropTypes.object),
+  deleteBookmark: PropTypes.func.isRequired,
   isRoot: PropTypes.bool,
   allFetched: PropTypes.bool,
   loading: PropTypes.bool,
@@ -58,6 +63,7 @@ function CollectionSidebar({
   currentUser,
   collectionId,
   collections,
+  deleteBookmark,
   isRoot,
   allFetched,
   loading,
@@ -103,7 +109,7 @@ function CollectionSidebar({
     >
       {allFetched ? (
         <React.Fragment>
-          <Bookmarks bookmarks={bookmarks} />
+          <Bookmarks bookmarks={bookmarks} deleteBookmark={deleteBookmark} />
 
           {bookmarks.length > 0 && (
             <SidebarHeading>{t`Collections`}</SidebarHeading>
@@ -143,5 +149,5 @@ function LoadingView() {
 export default _.compose(
   Bookmark.loadList(),
   Collection.loadList(collectionEntityQuery),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionSidebar);

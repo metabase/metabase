@@ -7,7 +7,7 @@ import Groups from "metabase/entities/groups";
 import { State } from "metabase-types/store";
 import { Group } from "metabase-types/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { RawGroupRouteParams } from "../types";
+import { RawGroupRouteParams } from "../../types";
 
 const isPinnedGroup = (group: Group) =>
   isAdminGroup(group) || isDefaultGroup(group);

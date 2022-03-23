@@ -15,8 +15,8 @@ import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import Popover from "metabase/components/Popover";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { getIsBookmarked } from "./selectors";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { getIsBookmarked } from "metabase/dashboard/selectors";
 
 import cx from "classnames";
 
@@ -341,19 +341,21 @@ export default class DashboardHeader extends Component {
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
-        <PopoverWithTrigger
-          triggerElement={
-            <DashboardHeaderButton>
+        <TippyPopoverWithTrigger
+          placement="bottom-end"
+          renderTrigger={({ onClick }) => (
+            <DashboardHeaderButton onClick={onClick}>
               <Icon name="ellipsis" size={20} className="text-brand-hover" />
             </DashboardHeaderButton>
+          )}
+          popoverContent={
+            <div className="py1">
+              {extraButtons.map((b, i) => (
+                <div key={i}>{b}</div>
+              ))}
+            </div>
           }
-        >
-          <div className="py1">
-            {extraButtons.map((b, i) => (
-              <div key={i}>{b}</div>
-            ))}
-          </div>
-        </PopoverWithTrigger>,
+        />,
       );
     }
 

@@ -378,6 +378,8 @@ describe("scenarios > question > nested", () => {
   });
 
   it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
@@ -387,10 +389,13 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Simple question").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("14787").click();
+    cy.wait("@dataset");
 
     // The column title
     cy.findByText("Products → Category").click();
     cy.findByText("Distribution").click();
+    cy.wait("@dataset");
+
     summarize();
     cy.findByText("Group by")
       .parent()

@@ -16,6 +16,7 @@ import {
   popover,
   sidebar,
   openNativeEditor,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -47,7 +48,7 @@ describe("collection permissions", () => {
                   cy.visit("/collection/root");
                   sidebar().within(() => {
                     displaySidebarChildOf("First collection");
-                    displaySidebarChildOf("Second collection");
+                    cy.findByText("Second collection").click();
                   });
                   cy.get(".Nav").within(() => {
                     cy.icon("add").click();
@@ -331,7 +332,7 @@ describe("collection permissions", () => {
               describe("managing question from the question's details sidebar action buttons (metabase#11719)", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
-                  cy.visit("/question/1");
+                  visitQuestion(1);
                   cy.findByTestId("saved-question-header-button").click();
                 });
 
@@ -535,7 +536,7 @@ describe("collection permissions", () => {
 
             describe("managing question from the question's details sidebar", () => {
               beforeEach(() => {
-                cy.visit("/question/1");
+                visitQuestion(1);
               });
 
               it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
@@ -572,7 +573,7 @@ describe("collection permissions", () => {
               });
 
               it("should not offer a user the ability to update or clone the question", () => {
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.findByTestId("saved-question-header-button").click();
 
                 cy.findByTestId("edit-details-button").should("not.exist");
@@ -736,7 +737,7 @@ describe("collection permissions", () => {
 
                 cy.skipOn(user === "nodata");
 
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.wait("@cardQuery");
 
                 cy.findByTestId("revision-history-button").click();
@@ -755,7 +756,7 @@ describe("collection permissions", () => {
 
                 cy.skipOn(user === "nodata");
 
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.wait("@cardQuery");
 
                 cy.findByTestId("saved-question-header-button").click();
@@ -786,7 +787,7 @@ describe("collection permissions", () => {
 
               it("should not see question revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.findByRole("button", { name: /Edited .*/ }).click();
 
                 cy.findAllByRole("button", { name: "Revert" }).should(

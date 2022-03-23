@@ -22,6 +22,7 @@ export interface ITippyPopoverProps extends TippyProps {
   lazy?: boolean;
   flip?: boolean;
   sizeToFit?: boolean;
+  onClose?: () => void;
 }
 
 const PAGE_PADDING = 10;
@@ -93,12 +94,14 @@ function TippyPopover({
   popperOptions,
   onShow,
   onHide,
+  onClose,
   ...props
 }: ITippyPopoverProps) {
   delay = isCypressActive ? 0 : delay;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const [mounted, setMounted] = useState(!lazy);
   const shouldShowContent = mounted && content != null;
+  const isControlled = props.visible != null;
 
   const {
     setupCloseHandler,
@@ -107,13 +110,15 @@ function TippyPopover({
 
   const handleShow = useCallback(
     (instance: TippyInstance) => {
-      setupCloseHandler(instance.popper, () => instance.hide());
+      setupCloseHandler(instance.popper, () =>
+        isControlled ? onClose?.() : instance.hide(),
+      );
 
       if (typeof onShow === "function") {
         return onShow(instance);
       }
     },
-    [onShow, setupCloseHandler],
+    [setupCloseHandler, onShow, isControlled, onClose],
   );
 
   const handleHide = useCallback(

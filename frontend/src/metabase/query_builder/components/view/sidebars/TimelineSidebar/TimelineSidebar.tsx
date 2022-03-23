@@ -8,27 +8,27 @@ import { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
   question: Question;
-  visibility: Record<number, boolean>;
-  onShowTimeline?: (timeline: Timeline) => void;
-  onHideTimeline?: (timeline: Timeline) => void;
+  timelines: Timeline[];
+  visibleTimelineIds: number[];
+  selectedTimelineEventIds: number[];
+  onShowTimelines?: (timelines: Timeline[]) => void;
+  onHideTimelines?: (timelines: Timeline[]) => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
   onClose?: () => void;
 }
 
 const TimelineSidebar = ({
   question,
-  visibility,
+  timelines,
+  visibleTimelineIds,
+  selectedTimelineEventIds,
   onOpenModal,
-  onShowTimeline,
-  onHideTimeline,
+  onShowTimelines,
+  onHideTimelines,
   onClose,
 }: TimelineSidebarProps) => {
   const handleNewEvent = useCallback(() => {
     onOpenModal?.(MODAL_TYPES.NEW_EVENT);
-  }, [onOpenModal]);
-
-  const handleNewEventWithTimeline = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.NEW_EVENT_WITH_TIMELINE);
   }, [onOpenModal]);
 
   const handleEditEvent = useCallback(
@@ -41,23 +41,22 @@ const TimelineSidebar = ({
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
-        onShowTimeline?.(timeline);
+        onShowTimelines?.([timeline]);
       } else {
-        onHideTimeline?.(timeline);
+        onHideTimelines?.([timeline]);
       }
     },
-    [onShowTimeline, onHideTimeline],
+    [onShowTimelines, onHideTimelines],
   );
 
   return (
     <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
-        cardId={question.id()}
+        timelines={timelines}
         collectionId={question.collectionId()}
-        visibility={visibility}
-        isVisibleByDefault={question.isSaved()}
+        visibleTimelineIds={visibleTimelineIds}
+        selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
-        onNewEventWithTimeline={handleNewEventWithTimeline}
         onEditEvent={handleEditEvent}
         onToggleTimeline={handleToggleTimeline}
       />

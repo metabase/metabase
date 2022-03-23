@@ -21,6 +21,7 @@ executors:
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
       - image: metabase/qa-databases:mysql-sample-8
+    resource_class: xlarge
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/
@@ -714,7 +715,7 @@ jobs:
         type: string
       timeout:
         type: string
-        default: 15m
+        default: 20m
       before-steps:
         type: steps
         default: []
@@ -910,6 +911,9 @@ jobs:
       folder:
         type: string
         default: ""
+      currents-record:
+        type: boolean
+        default: false
       test-files:
         type: string
         default: ""
@@ -932,6 +936,10 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - run:
+          command: |
+            mkdir -p /home/circleci/metabase/metabase/target/uberjar/
+            mkdir -p /home/circleci/metabase/metabase/resources/
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
@@ -942,9 +950,12 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
-                # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
+                # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
+                  run test-cypress-no-build \
+                  <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
+                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
+                  <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1272,6 +1283,7 @@ workflows:
             - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          currents-record: true
           qa-db: true
           snowplow: true
           before-steps:

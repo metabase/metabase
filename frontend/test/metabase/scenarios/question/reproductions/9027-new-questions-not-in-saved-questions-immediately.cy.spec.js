@@ -44,10 +44,14 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
 }
 
 function saveQuestion(name) {
+  cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").type(name);
+  cy.findByLabelText("Name")
+    .clear()
+    .type(name);
   cy.button("Save").click();
   cy.button("Not now").click();
+  cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {

@@ -21,10 +21,11 @@ export const CardCheckbox = styled(CheckBox)`
 
 export const CardLabel = styled.span`
   flex: 1 1 auto;
-  margin-left: 0.5rem;
+  margin: 0 0.5rem;
   color: ${color("text-dark")};
   font-weight: bold;
   font-size: 0.875rem;
+  min-width: 0;
 `;
 
 export const CardIcon = styled(Icon)`
@@ -34,5 +35,5 @@ export const CardIcon = styled(Icon)`
 `;
 
 export const CardContent = styled.div`
-  margin: 1rem -0.75rem 1rem -0.5rem;
+  margin: 1rem -1.5rem 1rem -1.5rem;
 `;
