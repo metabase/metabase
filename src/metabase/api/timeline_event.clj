@@ -30,12 +30,13 @@
                       {:status-code 404})))
     (collection/check-write-perms-for-collection (:collection_id timeline)))
   ;; todo: revision system
-  (let [parsed (if (nil? timestamp)
-                 (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
-                 (u.date/parse timestamp))]
-    (db/insert! TimelineEvent (assoc body
-                                     :creator_id api/*current-user-id*
-                                     :timestamp parsed))))
+  (let [parsed-timestamp (if (nil? timestamp)
+                           (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
+                           (u.date/parse timestamp))
+        evt              (merge body {:creator_id api/*current-user-id*
+                                      :timestamp  parsed-timestamp})]
+    (db/insert! TimelineEvent (cond-> evt
+                                (nil? icon) (assoc :icon "star")))))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
