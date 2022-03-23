@@ -1082,8 +1082,8 @@
   (perms-path-ids->names
    (zipmap (map :name collections)
            collections)
-   ;; ignoring subscription permission because it's a permission that added when create a new group and we don't
-   ;; care about it here
+   ;; ignoring subscription permission because it's a permission that is automatically added when creating
+   ;; a new group and we don't care about it here
    (db/select-field :object Permissions
                     {:where [:and
                              [:<> :object (perms/general-perms-path :subscription)]
