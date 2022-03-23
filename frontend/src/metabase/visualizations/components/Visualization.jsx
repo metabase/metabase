@@ -41,11 +41,15 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
 import { memoize } from "metabase-lib/lib/utils";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 @ExplicitSize({ selector: ".CardVisualization" })
 @connect()
 export default class Visualization extends React.PureComponent {
+  popoverTimeout = null;
+  previousClicked = null;
+
   constructor(props) {
     super(props);
 
@@ -101,6 +105,15 @@ export default class Visualization extends React.PureComponent {
       !Utils.equals(this.getWarnings(prevProps, prevState), this.getWarnings())
     ) {
       this.updateWarnings();
+    }
+
+    const justClosedPopover =
+      prevState.clicked !== this.state.clicked && this.state.clicked === null;
+    if (justClosedPopover) {
+      clearTimeout(this.popoverTimeout);
+      this.popoverTimeout = setTimeout(() => {
+        this.popoverTimeout = null;
+      }, 500);
     }
   }
 
@@ -207,11 +220,8 @@ export default class Visualization extends React.PureComponent {
     if (!clicked) {
       return [];
     }
-    const { metadata, getExtraDataForClick = () => ({}) } = this.props;
-    // TODO: push this logic into Question?
-    const seriesIndex = clicked.seriesIndex || 0;
-    const card = this.state.series[seriesIndex].card;
-    const question = this._getQuestionForCardCached(metadata, card);
+    const { getExtraDataForClick = () => ({}) } = this.props;
+    const question = this._getQuestion(clicked);
     const mode = this.props.mode
       ? question && new Mode(question, this.props.mode)
       : question && question.mode();
@@ -222,6 +232,14 @@ export default class Visualization extends React.PureComponent {
           {},
         )
       : [];
+  }
+
+  _getQuestion(clicked) {
+    const { metadata } = this.props;
+    // TODO: push this logic into Question?
+    const seriesIndex = clicked.seriesIndex || 0;
+    const card = this.state.series[seriesIndex].card;
+    return this._getQuestionForCardCached(metadata, card);
   }
 
   visualizationIsClickable = clicked => {
@@ -268,7 +286,16 @@ export default class Visualization extends React.PureComponent {
     }
 
     // needs to be delayed so we don't clear it when switching from one drill through to another
+    const previousClicked = this.previousClicked;
+    this.previousClicked = clicked;
     setTimeout(() => {
+      if (
+        this.popoverTimeout &&
+        isSamePosition(this._getQuestion(clicked), clicked, previousClicked)
+      ) {
+        return;
+      }
+
       this.setState({ clicked });
     }, 100);
   };
@@ -552,4 +579,45 @@ export default class Visualization extends React.PureComponent {
       </div>
     );
   }
+}
+
+function isSamePosition(question, clicked, previousClicked) {
+  if (clicked?.column?.id !== previousClicked?.column?.id) {
+    return false;
+  }
+
+  if (isColumnHeader(question, clicked)) {
+    return true;
+  }
+
+  // table
+  if (clicked.origin) {
+    return clicked?.origin?.rowIndex === previousClicked?.origin?.rowIndex;
+  }
+
+  // other visualization
+  if (clicked.seriesIndex && clicked.dimensions) {
+    return (
+      clicked.seriesIndex === previousClicked.seriesIndex &&
+      _.isEqual(clicked.dimensions, previousClicked.dimensions)
+    );
+  }
+
+  // Fallback to false to not break other visualizations behavior by treating the clicked position the same.
+  // As for unhandled visualizations, if we click on different position it could just close the context menu
+  // instead of opening a new context menu at a different position.
+  return false;
+}
+
+// Copied from https://github.com/metabase/metabase/blob/095ca0183597b658ca44c9c4fd0419c308d61046/frontend/src/metabase/modes/components/drill/ColumnFilterDrill.jsx#L11-L18
+function isColumnHeader(question, clicked) {
+  const query = question.query();
+  const isNotColumn =
+    !(query instanceof StructuredQuery) ||
+    !clicked ||
+    !clicked.column ||
+    clicked.column.field_ref == null ||
+    clicked.value !== undefined;
+
+  return !isNotColumn;
 }

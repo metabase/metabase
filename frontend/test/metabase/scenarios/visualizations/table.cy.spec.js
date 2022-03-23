@@ -192,7 +192,7 @@ describe("scenarios > visualizations > table", () => {
     });
   });
 
-  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable();
 
     cy.findByText("City").click();
@@ -209,6 +209,6 @@ describe("scenarios > visualizations > table", () => {
     // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
     // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
     cy.wait(100);
-    popover().should("not.exist");
+    cy.get(".popover.PopoverContainer").should("not.exist");
   });
 });
