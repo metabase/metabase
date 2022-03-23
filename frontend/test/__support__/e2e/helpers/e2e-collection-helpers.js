@@ -18,3 +18,7 @@ export function openNewCollectionItemFlowFor(type) {
     .findByText(new RegExp(type, "i"))
     .click();
 }
+
+export function getSidebarSectionTitle(title) {
+  return cy.findAllByRole("heading", { name: title });
+}
