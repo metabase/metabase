@@ -309,41 +309,40 @@ export default class StructuredQuery extends AtomicQuery {
         display_name: "",
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(column => {
-          // const hasDimension = !!this.question()
-          //   .getResultMetadata()
-          //   .map(
-          //     ({ name, base_type }) =>
-          //       column.name === name && column.base_type === base_type,
-          //   );
-          const hasDimension = !!dimensions.find(
-            dimension =>
-              dimension.column().name === column.name &&
-              dimension.column().base_type === column.base_type,
-          );
+          // FIX for https://github.com/metabase/metabase/issues/12985
+          // get dimension field if it is matching a column
+          const dimensionField = dimensions
+            .find(
+              dimension =>
+                dimension.column().name === column.name &&
+                dimension.column().base_type === column.base_type,
+            )
+            ?.field();
 
-          return new Field({
-            ...column,
-            // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-            id: [
-              "field",
-              // FIX for nested questions
-              // https://github.com/metabase/metabase/issues/12985
-              hasDimension ? column.id || column.name : column.name,
-              {
-                "base-type": column.base_type,
-              },
-            ],
-            source: "fields",
-            // HACK: need to thread the query through to this fake Field
-            query: this,
-          });
+          return (
+            dimensionField ||
+            new Field({
+              ...column,
+              // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
+              id: [
+                "field",
+                column.name,
+                {
+                  "base-type": column.base_type,
+                },
+              ],
+              source: "fields",
+              // HACK: need to thread the query through to this fake Field
+              query: this,
+            })
+          );
         }),
         segments: [],
         metrics: [],
       });
-    } else {
-      return this.metadata().table(this.sourceTableId());
     }
+
+    return this.metadata().table(this.sourceTableId());
   }
 
   /**
