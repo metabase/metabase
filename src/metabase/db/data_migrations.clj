@@ -1,9 +1,10 @@
 (ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
-  Data migrations are run once when Metabase is first launched, except when transferring data from an existing
+  Data migrations are run once when Metabase is first launched.
+  Note that there is no locking mechanism for data-migration - thus upon launching Metabase, It's possible
+  for a migration to be run multiple times (e.g: when running multiple Metabase instances).
 
-  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
-  thus, all of these migrations need to be repeatable, e.g.:
+  That said, these migrations should be idempotent, e.g:
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cheshire.core :as json]
