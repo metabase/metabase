@@ -467,7 +467,7 @@ commands:
                   - steps: << parameters.before-steps >>
                   - run:
                       name: << parameters.command-name >>
-                      command: yarn << parameters.command >>
+                      command: << parameters.command >>
                       no_output_timeout: 15m
                   - steps: << parameters.after-steps >>
       - unless:
@@ -477,7 +477,7 @@ commands:
             - steps: << parameters.before-steps >>
             - run:
                 name: << parameters.command-name >>
-                command: yarn << parameters.command >>
+                command: << parameters.command >>
                 no_output_timeout: 15m
             - steps: << parameters.after-steps >>
 
@@ -603,7 +603,7 @@ jobs:
             fi
       - run-yarn-command:
           command-name: Create static visualization js bundle
-          command: build-static-viz
+          command: yarn build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -936,6 +936,10 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
+      - run:
+          command: |
+            mkdir -p /home/circleci/metabase/metabase/target/uberjar/
+            mkdir -p /home/circleci/metabase/metabase/resources/
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
@@ -946,12 +950,20 @@ jobs:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
-                # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
+                  # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
-                  run test-cypress-no-build \
-                  <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
-                  <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
-                  <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
+                  if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master ]]; then
+                  echo 'This is a release or master branch. Sending report to Currents.dev'
+                    yarn test-cypress-no-build \
+                    <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
+                    <<# parameters.currents-record >> --key $CURRENTS_KEY --record <</ parameters.currents-record >> \
+                    <<# parameters.source-folder >> --folder << parameters.source-folder >> --group << parameters.source-folder >> <</ parameters.source-folder >>
+                  else
+                  echo 'This is NOT a release or master branch. Will not send the report to Currents.dev'
+                    yarn test-cypress-no-build \
+                    <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
+                    <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
+                  fi
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
