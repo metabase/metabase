@@ -88,7 +88,9 @@ describe("scenarios > embedding > native questions", () => {
   it("should not display disabled parameters", () => {
     enableSharing();
 
-    publishChanges();
+    publishChanges(({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {});
+    });
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
@@ -126,7 +128,19 @@ describe("scenarios > embedding > native questions", () => {
       .blur();
     cy.button("Add filter").click();
 
-    publishChanges();
+    publishChanges(({ request }) => {
+      const actual = request.body.embedding_params;
+
+      const expected = {
+        id: "enabled",
+        created_at: "enabled",
+        total: "locked",
+        state: "enabled",
+        product_id: "enabled",
+      };
+
+      assert.deepEqual(actual, expected);
+    });
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
@@ -207,9 +221,18 @@ function enableSharing() {
   cy.wait("@sessionProperties");
 }
 
-function publishChanges() {
+function publishChanges(callback) {
   cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
   cy.button("Publish").click();
-  cy.wait(["@publishChanges", "@publishChanges"]);
+
+  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
+    // Unfortunately, the order of requests is not always the same.
+    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
+    const targetXhr = xhrs.find(({ request }) =>
+      Object.keys(request.body).includes("embedding_params"),
+    );
+
+    callback && callback(targetXhr);
+  });
 }
