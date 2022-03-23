@@ -13,7 +13,7 @@ SELECT orders.id, orders.product_id, orders.created_at AS production_date, order
 FROM orders LEFT JOIN people ON orders.user_id = people.id
 WHERE true
   [[AND {{id}}]]
-  [[AND orders.product_id = {{productId}}]]
+  [[AND orders.product_id = {{product_id}}]]
   [[AND {{created_at}}]]
   [[AND {{total}}]]
   [[AND {{state}}]]
@@ -203,7 +203,7 @@ describe("scenarios > embedding > native questions", () => {
     cy.findByText("CO");
     cy.findByText("Sid Mills").should("not.exist");
 
-    cy.location("search").should("eq", "?id=926&state=KS&productId=10");
+    cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
   });
 
   context("API", () => {
