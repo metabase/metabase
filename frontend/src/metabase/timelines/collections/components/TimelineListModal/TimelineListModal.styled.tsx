@@ -15,9 +15,3 @@ export const ModalBody = styled.div`
   padding: 1rem 2rem 2rem;
   overflow-y: auto;
 `;
-
-export const ListRoot = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-`;

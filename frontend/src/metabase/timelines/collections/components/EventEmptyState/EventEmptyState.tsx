@@ -6,11 +6,17 @@ import {
   EmptyStateText,
 } from "./EventEmptyState.styled";
 
-const EventEmptyState = (): JSX.Element => {
+export interface EventEmptyStateProps {
+  isTimeline?: boolean;
+}
+
+const EventEmptyState = ({ isTimeline }: EventEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
       <EmptyStateIcon name="star" />
-      <EmptyStateText>{t`No events found`}</EmptyStateText>
+      <EmptyStateText>
+        {isTimeline ? t`No timelines found` : t`No events found`}
+      </EmptyStateText>
     </EmptyStateRoot>
   );
 };

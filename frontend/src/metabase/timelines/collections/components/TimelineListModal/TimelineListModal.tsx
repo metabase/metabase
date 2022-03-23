@@ -5,9 +5,10 @@ import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import TimelineCard from "../TimelineCard";
+import EventEmptyState from "../EventEmptyState";
+import TimelineList from "../TimelineList";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
+import { ModalBody, ModalRoot } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
@@ -47,16 +48,13 @@ const TimelineListModal = ({
       </ModalHeader>
       <ModalBody>
         {timelines.length ? (
-          <ListRoot>
-            {sortedTimelines.map(timeline => (
-              <TimelineCard
-                key={timeline.id}
-                timeline={timeline}
-                collection={collection}
-                onUnarchive={onUnarchive}
-              />
-            ))}
-          </ListRoot>
+          <TimelineList
+            timelines={sortedTimelines}
+            collection={collection}
+            onUnarchive={onUnarchive}
+          />
+        ) : isArchive ? (
+          <EventEmptyState isTimeline={isArchive} />
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
