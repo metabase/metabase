@@ -101,7 +101,8 @@
   [card-id :- su/IntGreaterThanZero]
   (let [card
         (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
-                                        :persisted.active :persisted.table_name :persisted.query_hash :persisted.columns]
+                                        :persisted.table_name :persisted.columns
+                                        :persisted.query_hash :persisted.state :persisted.active]
                             :from      [[Card :card]]
                             :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
                             :where     [:= :card.id card-id]})
@@ -120,9 +121,11 @@
 
         source-query
         (or (when (and (:active card)
-                       ;; todo: handle the toggle in details being off here
+                       ;; todo: handle the toggle in details being off here (or not, let that make its way to the
+                       ;; active flag?)
                        (:query_hash card)
-                       (= (:query_hash card) (persisted-info/query-hash (:dataset_query card))))
+                       (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
+                       (= (:state card) "active"))
               {:native (format "select %s from %s.%s"
                                (str/join ", " (:columns card))
                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
