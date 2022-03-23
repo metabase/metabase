@@ -6,6 +6,8 @@ import Timelines from "metabase/entities/timelines";
 import { State } from "metabase-types/store";
 import TimelineListModal from "../../components/TimelineListModal";
 import { ModalProps } from "../../types";
+import { Collection } from "metabase-types/api";
+import { push } from "react-router-redux";
 
 const timelineProps = {
   query: (state: State, props: ModalProps) => ({
@@ -24,8 +26,14 @@ const mapStateToProps = () => ({
   isArchive: true,
 });
 
+const mapDispatchToProps = (dispatch: any) => ({
+  onGoBack: (collection: Collection) => {
+    dispatch(push(Urls.timelinesInCollection(collection)));
+  },
+});
+
 export default _.compose(
   Timelines.loadList(timelineProps),
   Collections.load(collectionProps),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(TimelineListModal);

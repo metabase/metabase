@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
@@ -14,6 +14,7 @@ export interface TimelineListModalProps {
   collection: Collection;
   isArchive?: boolean;
   onClose?: () => void;
+  onGoBack?: (collection: Collection) => void;
 }
 
 const TimelineListModal = ({
@@ -21,15 +22,24 @@ const TimelineListModal = ({
   collection,
   isArchive = false,
   onClose,
+  onGoBack,
 }: TimelineListModalProps): JSX.Element => {
   const hasTimelines = timelines.length > 0;
   const title = hasTimelines ? t`Events` : t`${collection.name} events`;
   const menuItems = getMenuItems(timelines, collection, isArchive);
   const sortedTimelines = getSortedTimelines(timelines);
 
+  const handleGoBack = useCallback(() => {
+    onGoBack?.(collection);
+  }, [collection, onGoBack]);
+
   return (
     <ModalRoot>
-      <ModalHeader title={title} onClose={onClose}>
+      <ModalHeader
+        title={title}
+        onClose={onClose}
+        onGoBack={isArchive ? handleGoBack : undefined}
+      >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}
