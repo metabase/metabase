@@ -11,9 +11,25 @@ export function visitEmbeddedPage(payload) {
 
   const stringifiedPayload = JSON.stringify(payloadWithExpiration);
 
+  const embeddableObject = getEmbeddableObject(payload);
+
+  const urlRoot = `/embed/${embeddableObject}/`;
+  // Style is hard coded for now because we're not concerned with testing its properties
+  const style = "#bordered=true&titled=true";
+
   cy.exec(
     `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`,
   ).then(({ stdout: token }) => {
-    cy.visit("/embed/question/" + token + "#bordered=true&titled=true");
+    cy.visit(urlRoot + token + style);
   });
+}
+
+/**
+ * Extract the embeddable object type from the payload
+ *
+ * @param {object} payload
+ * @returns ("question"|"dashboard")
+ */
+function getEmbeddableObject(payload) {
+  return Object.keys(payload.resource)[0];
 }
