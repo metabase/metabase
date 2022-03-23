@@ -321,7 +321,7 @@ export function timelineArchiveInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/archive`;
 }
 
-export function deleteTimelineInCollection(event, timeline, collection) {
+export function deleteTimelineInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/delete`;
 }
 

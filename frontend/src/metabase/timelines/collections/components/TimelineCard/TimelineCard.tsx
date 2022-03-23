@@ -25,8 +25,10 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const timelineUrl = Urls.timelineInCollection(timeline, collection);
   const menuItems = getMenuItems(timeline, collection);
-  const eventsCount = timeline.events?.length;
+  const eventCount = timeline.events?.length;
   const hasDescription = Boolean(timeline.description);
+  const hasMenuItems = menuItems.length > 0;
+  const hasEventCount = !hasMenuItems && eventCount != null;
 
   return (
     <CardRoot to={!timeline.archived ? timelineUrl : ""}>
@@ -35,19 +37,19 @@ const TimelineCard = ({
         <CardTitle>{timeline.name}</CardTitle>
         <CardDescription>{timeline.description}</CardDescription>
       </CardBody>
-      {eventsCount != null && (
-        <CardCount isTopAligned={hasDescription}>
-          {ngettext(
-            msgid`${eventsCount} event`,
-            `${eventsCount} events`,
-            eventsCount,
-          )}
-        </CardCount>
-      )}
-      {menuItems.length > 0 && (
+      {hasMenuItems && (
         <CardMenu>
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         </CardMenu>
+      )}
+      {hasEventCount && (
+        <CardCount isTopAligned={hasDescription}>
+          {ngettext(
+            msgid`${eventCount} event`,
+            `${eventCount} events`,
+            eventCount,
+          )}
+        </CardCount>
       )}
     </CardRoot>
   );
