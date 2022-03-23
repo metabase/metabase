@@ -6,7 +6,7 @@ export const EmptyStateRoot = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4rem;
+  padding-bottom: 4rem;
 `;
 
 export const EmptyStateIcon = styled(Icon)`

@@ -93,7 +93,7 @@ const TimelineDetailsModal = ({
           )}
         </ModalToolbar>
       )}
-      <ModalBody>
+      <ModalBody isTopAligned={isNotEmpty}>
         {isNotEmpty ? (
           <EventList
             events={events}
