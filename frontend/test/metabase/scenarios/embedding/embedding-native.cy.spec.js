@@ -289,6 +289,41 @@ describe("scenarios > embedding > native questions", () => {
         cy.contains("35.7").should("not.exist");
       });
     });
+
+    it("should lock all parameters", () => {
+      cy.get("@questionId").then(questionId => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            id: "locked",
+            product_id: "locked",
+            state: "locked",
+            created_at: "locked",
+            total: "locked",
+            source: "locked",
+          },
+        });
+
+        const payload = {
+          resource: { question: questionId },
+          params: {
+            id: [92, 96, 102, 104],
+            product_id: [140],
+            state: ["AK", "TX"],
+            created_at: "Q3-2018",
+            total: [10],
+            source: ["Organic"],
+          },
+        };
+
+        visitEmbeddedPage(payload);
+
+        cy.findByTestId("table-row").should("have.length", 1);
+        cy.findByText("66.8");
+
+        filterWidget().should("not.exist");
+      });
+    });
   });
 });
 
