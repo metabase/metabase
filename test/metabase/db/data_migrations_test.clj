@@ -340,34 +340,6 @@
             (#'migrations/migrate-click-through)
             (is (= expected-settings (get-settings!)))))))))
 
-(deftest run-with-data-migration-index-test
-  (let [meaning-of-life (atom nil)]
-    (migrations/defmigration what-is-the-meaning-of-life?
-      (migrations/run-with-data-migration-index 2
-        (reset! meaning-of-life 42)))
-
-    (testing "shouldn't run if current data-migration-index is larger than requried index"
-      (mt/with-temporary-setting-values
-        [data-migration-index 3]
-        (what-is-the-meaning-of-life?)
-        (is (= nil @meaning-of-life))
-        (is (= 3 (setting/get :data-migration-index)))))
-
-    (testing "should run if current data-migration-index is smaller than requried index"
-      (mt/with-temporary-setting-values
-        [data-migration-index 1]
-        (what-is-the-meaning-of-life?)
-        (is (= 42 @meaning-of-life))
-        (is (= 2 (setting/get :data-migration-index)))))
-
-    (testing "should run if current data-migration-index even if current data-migration-index is nil"
-      (mt/with-temporary-setting-values
-        [data-migration-index nil]
-        (reset! meaning-of-life nil)
-        (what-is-the-meaning-of-life?)
-        (is (= 42 @meaning-of-life))
-        (is (= 2 (setting/get :data-migration-index)))))))
-
 (def ^:private default-saml-idp-certificate
   "Public certificate from Auth0, used to validate mock SAML responses from Auth0"
   "MIIDEzCCAfugAwIBAgIJYpjQiNMYxf1GMA0GCSqGSIb3DQEBCwUAMCcxJTAjBgNV
@@ -402,15 +374,13 @@
        saml-group-mappings                sso-group-mapping]
       (f))))
 
-
 (defn- call-with-ldap-configured [ldap-group-mapping f]
   (mt/with-temporary-setting-values
     [ldap-enabled          true
      ldap-host             "http://localhost:8888"
      ldap-user-base        "dc=metabase,dc=com"
      ldap-group-mappings   ldap-group-mapping
-     ldap-sync-admin-group false
-     data-migration-index  nil]
+     ldap-sync-admin-group false]
     (f)))
 
 (defmacro ^:private with-ldap-and-sso-configured
