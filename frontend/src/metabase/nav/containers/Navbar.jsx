@@ -15,7 +15,6 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import { AdminNavbar } from "../components/AdminNavbar";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import { ProfileLinkContainer } from "metabase/App.styled";
 
@@ -35,9 +34,8 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import { LogoIconContainer, LogoLinkContainer, NavRoot } from "./Navbar.styled";
+import { LogoLinkContainer, NavRoot } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
-import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter/CollectionSidebarFooter";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -118,7 +116,7 @@ export default class Navbar extends Component {
             mx={1}
             hover={{ backgroundColor: getDefaultSearchColor() }}
           >
-            <LogoIconContainer></LogoIconContainer>
+            {t`Home`}
           </Link>
           <ProfileLinkContainer>
             <ProfileLink {...this.props} user={user} />
@@ -150,7 +148,6 @@ export default class Navbar extends Component {
             <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
           </Link>
         )}
-        <UserFooter user={user} />
       </NavRoot>
     );
   }
@@ -175,22 +172,4 @@ export default class Navbar extends Component {
         return this.renderMainNav();
     }
   }
-}
-
-function UserFooter({ user }) {
-  return (
-    <div
-      className="border-top border-light fixed bottom p2 full flex align-center bg-brand z3"
-      style={{ width: 320 }}
-    >
-      <div>
-        {user.first_name} {user.last_name}
-      </div>
-      <div className="ml-auto">
-        <PopoverWithTrigger triggerElement={<Icon name="ellipsis" />}>
-          <Footer isAdmin={user.is_superuser} />
-        </PopoverWithTrigger>
-      </div>
-    </div>
-  );
 }
