@@ -14,6 +14,6 @@
            :missing-body-in-when         {:level :warning}
            :missing-docstring            {:level :warning}
            :refer-all                    {:level   :warning
-                                          :exclude [clojure.test]}
+                                          :exclude [clojure.test monger.operators]}
            :unsorted-required-namespaces {:level :warning}
            :use                          {:level :warning}}}

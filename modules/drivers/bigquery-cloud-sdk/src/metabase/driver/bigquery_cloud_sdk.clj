@@ -95,6 +95,7 @@
   (u/varargs BigQuery$TableOption))
 
 (s/defn get-table :- Table
+  "Get BigQuery table"
   ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
@@ -193,7 +194,7 @@
               ;; unfortunately, with this particular overload of .query, we have no access to (nor the ability to control)
               ;; the jobId, so we have no way to use the BigQuery client to cancel any job that might be running
               (future-cancel res-fut)
-              (if (future-done? res-fut) ; canceled received after it was finished; may as well return it
+              (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
     (catch BigQueryException e
@@ -355,6 +356,6 @@
                      " before sync and queries will work again")
                 (u/the-id database)))
   (if-let [dataset-id (get details :dataset-id)]
-    (if-not (str/blank? dataset-id)
+    (when-not (str/blank? dataset-id)
       (convert-dataset-id-to-filters! database dataset-id))
     database))
