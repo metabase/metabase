@@ -64,7 +64,7 @@ const TimelineDetailsModal = ({
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
-  const canWrite = timeline.can_write;
+  const canWrite = timeline.collection?.can_write;
 
   return (
     <ModalRoot>
@@ -142,7 +142,7 @@ const getMenuItems = (
 ) => {
   const items: MenuItem[] = [];
 
-  if (timeline.can_write && !isArchive) {
+  if (timeline.collection?.can_write && !isArchive) {
     items.push(
       {
         title: t`New timeline`,

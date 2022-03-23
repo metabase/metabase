@@ -29,7 +29,9 @@ describe("TimelineEmptyState", () => {
   it("should not allow to add events when the timeline is read-only", () => {
     const props = getProps({
       timeline: createMockTimeline({
-        can_write: false,
+        collection: createMockCollection({
+          can_write: false,
+        }),
       }),
       collection: createMockCollection({
         can_write: true,
@@ -44,7 +46,9 @@ describe("TimelineEmptyState", () => {
   it("should allow to add events when the timeline is not read-only", () => {
     const props = getProps({
       timeline: createMockTimeline({
-        can_write: true,
+        collection: createMockCollection({
+          can_write: true,
+        }),
       }),
       collection: createMockCollection({
         can_write: false,

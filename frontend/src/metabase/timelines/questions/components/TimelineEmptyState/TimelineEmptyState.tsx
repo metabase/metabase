@@ -19,7 +19,9 @@ const TimelineEmptyState = ({
   collection,
   onNewEvent,
 }: TimelineEmptyStateProps): JSX.Element => {
-  const canWrite = timelines.some(t => t.can_write) || collection.can_write;
+  const canWrite =
+    timelines.some(timeline => timeline.collection?.can_write) ||
+    collection.can_write;
 
   return (
     <EmptyStateRoot>

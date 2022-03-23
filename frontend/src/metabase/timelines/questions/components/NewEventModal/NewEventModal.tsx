@@ -22,7 +22,7 @@ const NewEventModal = ({
   onClose,
 }: NewEventModalProps): JSX.Element => {
   const availableTimelines = useMemo(() => {
-    return timelines.filter(t => t.can_write);
+    return timelines.filter(t => t.collection?.can_write);
   }, [timelines]);
 
   const form = useMemo(() => {

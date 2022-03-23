@@ -24,7 +24,11 @@ describe("TimelineEmptyState", () => {
 
   it("should allow event creation for users with write access to a timeline", () => {
     const props = getProps({
-      timelines: [createMockTimeline({ can_write: true })],
+      timelines: [
+        createMockTimeline({
+          collection: createMockCollection({ can_write: true }),
+        }),
+      ],
       collection: createMockCollection({
         can_write: false,
       }),

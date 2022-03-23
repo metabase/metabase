@@ -64,7 +64,7 @@ const getMenuItems = (
   onEdit?: (event: TimelineEvent) => void,
   onArchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!timeline.can_write) {
+  if (!timeline.collection?.can_write) {
     return [];
   }
 
