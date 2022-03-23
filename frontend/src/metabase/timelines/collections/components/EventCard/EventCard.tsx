@@ -4,6 +4,7 @@ import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import {
@@ -17,7 +18,8 @@ import {
   CardThreadIcon,
   CardThreadIconContainer,
   CardThreadStroke,
-  CardTitle,
+  CardTitleLink,
+  CardTitleText,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -44,6 +46,8 @@ const EventCard = ({
   );
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
+  const canEdit = collection.can_write && !event.archived;
+  const editLink = Urls.editEventInCollection(event, timeline, collection);
 
   return (
     <CardRoot>
@@ -55,7 +59,13 @@ const EventCard = ({
       </CardThread>
       <CardBody>
         <CardDateInfo>{dateMessage}</CardDateInfo>
-        <CardTitle>{event.name}</CardTitle>
+        {canEdit ? (
+          <CardTitleLink as={Link} to={editLink}>
+            {event.name}
+          </CardTitleLink>
+        ) : (
+          <CardTitleText>{event.name}</CardTitleText>
+        )}
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
         )}

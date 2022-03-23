@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Link from "metabase/core/components/Link/Link";
 import Icon from "metabase/components/Icon";
 
 export const CardRoot = styled.div`
@@ -42,12 +43,22 @@ export const CardBody = styled.div`
   min-width: 0;
 `;
 
-export const CardTitle = styled.div`
+export const CardTitleText = styled.div`
   color: ${color("text-dark")};
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
   word-wrap: break-word;
+`;
+
+export interface CardTitleLinkProps {
+  to?: string;
+}
+
+export const CardTitleLink = styled(CardTitleText)<CardTitleLinkProps>`
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
 
 export const CardDescription = styled.div`
