@@ -223,7 +223,7 @@ export default class App extends Component {
             {this.hasAppBar() && this.renderAppBar()}
             <AppContentContainer isAdminApp={this.isAdminApp()}>
               {this.hasNavbar() && sidebarOpen && (
-                <Navbar location={location} renderModal={this.renderModal} />
+                <Navbar location={location} />
               )}
               <AppContent>{children}</AppContent>
               {this.renderModal()}
