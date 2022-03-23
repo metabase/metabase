@@ -10,7 +10,7 @@ import {
 import { Container } from "./Collections.styled";
 
 const propTypes = {
-  collectionId: PropTypes.number,
+  collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   currentUserId: PropTypes.number,
   handleToggleMobileSidebar: PropTypes.func.isRequired,
   list: PropTypes.array,
