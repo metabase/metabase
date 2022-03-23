@@ -1,4 +1,9 @@
-import { restore, popover, filterWidget } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  filterWidget,
+  visitEmbeddedPage,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -82,7 +87,10 @@ describe("scenarios > embedding > native questions", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    cy.createNativeQuestion(questionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
   });
 
   it("should not display disabled parameters", () => {
@@ -196,6 +204,91 @@ describe("scenarios > embedding > native questions", () => {
     cy.findByText("Sid Mills").should("not.exist");
 
     cy.location("search").should("eq", "?id=926&state=KS&productId=10");
+  });
+
+  context("API", () => {
+    it("should hide filters via url", () => {
+      cy.get("@questionId").then(questionId => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            id: "enabled",
+            product_id: "enabled",
+            state: "enabled",
+            created_at: "enabled",
+            total: "enabled",
+          },
+        });
+
+        const payload = {
+          resource: { question: questionId },
+          params: {},
+        };
+
+        // It should be possible to both set the filter value and hide it at the same time.
+        // That's the synonymous to the locked filter.
+        visitEmbeddedPage(payload, {
+          setFilters: "id=92",
+          hideFilters: "id,product_id,state,created_at,total",
+        });
+
+        cy.findByTestId("table-row").should("have.length", 1);
+        cy.findByText("92");
+
+        filterWidget().should("not.exist");
+      });
+    });
+
+    it("should set multiple filter values via url", () => {
+      cy.get("@questionId").then(questionId => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            created_at: "enabled",
+            source: "enabled",
+            state: "enabled",
+            total: "enabled",
+          },
+        });
+
+        const payload = {
+          resource: { question: questionId },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload, {
+          setFilters: "created_at=Q2-2019&source=Organic&state=OR",
+        });
+
+        filterWidget()
+          .should("have.length", 4)
+          .and("contain", "OR")
+          .and("contain", "Q2, 2019");
+        // Why do we use input field in one filter widget but a simple `span` in the other one?
+        cy.findByDisplayValue("Organic");
+
+        // Total's value should fall back to the default one (`0`) because we didn't set it explicitly
+        cy.get("legend")
+          .contains("Total")
+          .parent("fieldset")
+          .contains("0");
+
+        cy.contains("Emilie Goyette");
+        cy.contains("35.7");
+
+        // OTOH, we should also be able to override the default filter value by eplixitly setting it
+        visitEmbeddedPage(payload, {
+          setFilters: "total=80",
+        });
+
+        cy.get("legend")
+          .contains("Total")
+          .parent("fieldset")
+          .contains("80");
+
+        cy.contains("35.7").should("not.exist");
+      });
+    });
   });
 });
 
