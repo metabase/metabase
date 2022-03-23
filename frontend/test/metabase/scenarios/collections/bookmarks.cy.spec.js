@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, navigationSidebar } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
@@ -30,7 +30,7 @@ describe("Bookmarks in a collection page", () => {
     // Add bookmark
     cy.icon("bookmark").click();
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       getSectionTitle("Bookmarks");
       cy.findByText(adminPersonalCollectionName);
 
@@ -44,7 +44,7 @@ describe("Bookmarks in a collection page", () => {
       cy.icon("bookmark").click();
     });
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
       getSectionTitle("Bookmarks").should("not.exist");
@@ -69,7 +69,7 @@ describe("Bookmarks in a collection page", () => {
     // Add bookmark
     cy.icon("bookmark").click();
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.icon("bookmark").click({ force: true });
     });
 
@@ -83,7 +83,7 @@ function addThenRemoveBookmarkTo(itemName) {
   openEllipsisMenuFor(itemName);
   cy.findByText("Bookmark").click();
 
-  sidebar().within(() => {
+  navigationSidebar().within(() => {
     getSectionTitle("Bookmarks");
     cy.findByText(itemName);
   });
@@ -92,7 +92,7 @@ function addThenRemoveBookmarkTo(itemName) {
 
   cy.findByText("Remove bookmark").click();
 
-  sidebar().within(() => {
+  navigationSidebar().within(() => {
     getSectionTitle("Bookmarks").should("not.exist");
     cy.findByText(itemName).should("not.exist");
   });

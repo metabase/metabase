@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   modal,
-  sidebar,
+  navigationSidebar,
   assertCanAddItemsToCollection,
   openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
@@ -54,7 +54,7 @@ describe("personal collections", () => {
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
       addNewCollection("Foo");
-      sidebar()
+      navigationSidebar()
         .findByText("Foo")
         .click();
       assertCanAddItemsToCollection();
@@ -69,7 +69,7 @@ describe("personal collections", () => {
         cy.url().should("eq", String(location));
 
         // Check can't open permissions modal via URL for personal collection child
-        sidebar()
+        navigationSidebar()
           .findByText("Foo")
           .click();
         cy.location().then(location => {
@@ -86,7 +86,7 @@ describe("personal collections", () => {
       cy.findByLabelText("Name").type("Foo");
       cy.button("Create").click();
       // This repro could possibly change depending on the design decision for this feature implementation
-      sidebar().findByText("Foo");
+      navigationSidebar().findByText("Foo");
     });
   });
 
@@ -99,7 +99,7 @@ describe("personal collections", () => {
           cy.findByText("Your personal collection").click();
           // Create initial collection inside the personal collection and navigate inside it
           addNewCollection("Foo");
-          sidebar()
+          navigationSidebar()
             .as("sidebar")
             .findByText("Foo")
             .click();
