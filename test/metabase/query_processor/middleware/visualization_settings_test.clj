@@ -118,7 +118,7 @@
           result (update-viz-settings query)]
       (is (= test-native-query-viz-settings result)))))
 
-(deftest includes-global-settings
+(deftest includes-global-settings-test
   (testing "Viz settings include global viz settings, in a normalized form"
     (mt/with-temp* [Field [{field-id-1 :id}]
                     Field [{field-id-2 :id}]
