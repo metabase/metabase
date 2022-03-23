@@ -52,3 +52,7 @@ export const EntityMenuContainer = styled.div`
     padding-left: 1rem;
   }
 `;
+
+export const ProfileLinkContainer = styled.div`
+  margin-left: auto;
+`;

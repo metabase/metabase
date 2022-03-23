@@ -39,7 +39,3 @@ export const AppBar = styled.div`
 export const LogoIconWrapper = styled.div`
   cursor: pointer;
 `;
-
-export const ProfileLinkContainer = styled.div`
-  margin-left: auto;
-`;

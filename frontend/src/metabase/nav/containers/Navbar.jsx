@@ -16,7 +16,6 @@ import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import { AdminNavbar } from "../components/AdminNavbar";
 import ProfileLink from "metabase/nav/components/ProfileLink";
-import { ProfileLinkContainer } from "metabase/App.styled";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
@@ -34,7 +33,11 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import { LogoLinkContainer, NavRoot } from "./Navbar.styled";
+import {
+  ProfileLinkContainer,
+  LogoLinkContainer,
+  NavRoot,
+} from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 
 const mapDispatchToProps = {

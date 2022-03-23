@@ -142,17 +142,21 @@ export default class App extends Component {
             />
           </SearchBarContent>
         </SearchBarContainer>
-        <NewButton setModal={this.setModal.bind(this)} />
+        <NewButton setModal={this.setModal} />
       </AppBar>
     );
   };
 
-  setModal(modal) {
+  closeModal = () => {
+    this.setState({ modal: null });
+  };
+
+  setModal = modal => {
     this.setState({ modal });
     if (this._newPopover) {
       this._newPopover.close();
     }
-  }
+  };
 
   renderModalContent() {
     const { modal } = this.state;
@@ -185,9 +189,7 @@ export default class App extends Component {
 
     if (modal) {
       return (
-        <Modal onClose={() => this.setState({ modal: null })}>
-          {this.renderModalContent()}
-        </Modal>
+        <Modal onClose={this.closeModal}>{this.renderModalContent()}</Modal>
       );
     } else {
       return null;
