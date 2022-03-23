@@ -9,10 +9,9 @@ const ICON_SCALE = 0.45;
 const ICON_LARGE_SCALE = 0.35;
 const ICON_X = -ICON_SIZE;
 const ICON_Y = 10;
-const ICON_DISTANCE = ICON_SIZE;
 const TEXT_X = 10;
 const TEXT_Y = 16;
-const TEXT_DISTANCE = ICON_SIZE * 1.75;
+const TEXT_DISTANCE = ICON_SIZE * 2;
 const RECT_SIZE = ICON_SIZE * 2;
 
 function getXAxis(chart) {
@@ -50,28 +49,28 @@ function isSelected(events, selectedEventIds) {
   return events.some(event => selectedEventIds.includes(event.id));
 }
 
-function getIcon(events, eventIndex, eventScale, eventDates) {
-  if (isEventNarrow(eventIndex, eventScale, eventDates)) {
-    return "unknown";
-  } else {
-    return events.length === 1 ? events[0].icon : "star";
-  }
+function getIcon(events) {
+  return events.length === 1 ? events[0].icon : "star";
 }
 
-function getIconPath(icon) {
+function getIconPath(events) {
+  const icon = getIcon(events);
   return ICON_PATHS[icon].path ?? ICON_PATHS[icon];
 }
 
-function getIconFillRule(icon) {
+function getIconFillRule(events) {
+  const icon = getIcon(events);
   return ICON_PATHS[icon].attrs?.fillRule;
 }
 
-function getIconTransform(icon) {
+function getIconTransform(events) {
+  const icon = getIcon(events);
   const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
   return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
 }
 
-function getIconLabel(icon) {
+function getIconLabel(events) {
+  const icon = getIcon(events);
   return `${icon} icon`;
 }
 
@@ -83,10 +82,6 @@ function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
   const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
 
   return prevDistance < eventDistance || nextDistance < eventDistance;
-}
-
-function isEventNarrow(eventIndex, eventScale, eventDates) {
-  return isEventWithin(eventIndex, eventScale, eventDates, ICON_DISTANCE);
 }
 
 function hasEventText(events, eventIndex, eventScale, eventDates) {
@@ -154,25 +149,17 @@ function renderEventTicks({
   eventTicks
     .append("path")
     .attr("class", "event-icon")
-    .attr("d", (d, i) => getIconPath(getIcon(d, i, eventScale, eventDates)))
-    .attr("fill-rule", (d, i) =>
-      getIconFillRule(getIcon(d, i, eventScale, eventDates)),
-    )
-    .attr("transform", (d, i) =>
-      getIconTransform(getIcon(d, i, eventScale, eventDates)),
-    )
-    .attr("aria-label", (d, i) =>
-      getIconLabel(getIcon(d, i, eventScale, eventDates)),
-    );
+    .attr("d", d => getIconPath(d))
+    .attr("fill-rule", d => getIconFillRule(d))
+    .attr("transform", d => getIconTransform(d))
+    .attr("aria-label", d => getIconLabel(d));
 
   eventTicks
     .append("rect")
     .attr("fill", "none")
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
-    .attr("transform", (d, i) =>
-      getIconTransform(getIcon(d, i, eventScale, eventDates)),
-    );
+    .attr("transform", d => getIconTransform(d));
 
   eventTicks
     .filter((d, i) => hasEventText(d, i, eventScale, eventDates))

@@ -622,15 +622,18 @@ export const getFetchedTimelines = createSelector([getEntities], entities => {
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
   timelines => {
-    return timelines.map(timeline =>
-      updateIn(timeline, ["events"], (events = []) =>
-        _.chain(events)
-          .map(event => updateIn(event, ["timestamp"], parseTimestamp))
-          .filter(event => !event.archived)
-          .sortBy(event => event.timestamp)
-          .value(),
-      ),
-    );
+    return _.chain(timelines)
+      .map(timeline =>
+        updateIn(timeline, ["events"], (events = []) =>
+          _.chain(events)
+            .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+            .filter(event => !event.archived)
+            .value(),
+        ),
+      )
+      .sortBy(timeline => timeline.collection?.personal_owner_id != null)
+      .sortBy(timeline => timeline.name)
+      .value();
   },
 );
 
@@ -660,7 +663,12 @@ export const getVisibleTimelines = createSelector(
 
 export const getVisibleTimelineEvents = createSelector(
   [getVisibleTimelines],
-  timelines => timelines.flatMap(timeline => timeline.events),
+  timelines =>
+    _.chain(timelines)
+      .map(timeline => timeline.events)
+      .flatten()
+      .sortBy(event => event.timestamp)
+      .value(),
 );
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {

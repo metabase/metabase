@@ -2,8 +2,11 @@ import styled from "@emotion/styled";
 import { display, space, hover, color } from "styled-system";
 import { Link } from "react-router";
 import { color as colors } from "metabase/lib/colors";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
-export const LinkRoot = styled(Link)`
+export const LinkRoot = styled(Link, {
+  shouldForwardProp: shouldForwardNonTransientProp,
+})`
   ${display};
   ${space};
   ${hover};

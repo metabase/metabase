@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
 
-import * as Urls from "metabase/lib/urls";
+import { extractCollectionId } from "metabase/lib/urls";
 
 import { PageWrapper } from "metabase/collections/components/Layout";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
-import CollectionSidebar from "metabase/collections/containers/CollectionSidebar/CollectionSidebar";
+import CollectionSidebar from "metabase/collections/containers/CollectionSidebar";
 import { ContentBox } from "./CollectionLanding.styled";
 
 const CollectionLanding = ({ params: { slug }, children }) => {
@@ -16,7 +16,7 @@ const CollectionLanding = ({ params: { slug }, children }) => {
   const handleToggleMobileSidebar = () =>
     setShouldDisplayMobileSidebar(!shouldDisplayMobileSidebar);
 
-  const collectionId = Urls.extractCollectionId(slug);
+  const collectionId = extractCollectionId(slug);
   const isRoot = collectionId === "root";
 
   return (

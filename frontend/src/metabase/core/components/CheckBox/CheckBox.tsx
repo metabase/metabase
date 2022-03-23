@@ -54,15 +54,17 @@ const CheckBox = forwardRef(function Checkbox(
   }: CheckBoxProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
+  const isControlledCheckBoxInput = !!onChange;
   return (
     <CheckBoxRoot ref={ref} {...props}>
       <CheckBoxInput
         type="checkbox"
-        checked={checked}
+        checked={isControlledCheckBoxInput ? !!checked : undefined}
+        defaultChecked={isControlledCheckBoxInput ? undefined : !!checked}
         size={size}
         disabled={disabled}
         autoFocus={autoFocus}
-        onChange={onChange}
+        onChange={isControlledCheckBoxInput ? onChange : undefined}
         onFocus={onFocus}
         onBlur={onBlur}
       />

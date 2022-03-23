@@ -181,7 +181,7 @@ export default class ParameterValueWidget extends Component {
               isFullscreen={isFullscreen}
               hasValue={hasValue}
               noReset={noReset}
-              noPopover={noPopover}
+              noPopover={!!noPopover}
               isFocused={isFocused}
               setValue={setValue}
             />
@@ -216,7 +216,7 @@ export default class ParameterValueWidget extends Component {
                   isFullscreen={isFullscreen}
                   hasValue={hasValue}
                   noReset={noReset}
-                  noPopover={noPopover}
+                  noPopover={!!noPopover}
                   isFocused={isFocused}
                   setValue={setValue}
                 />
