@@ -159,12 +159,15 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     filterWidget()
       .contains("Category")
       .click();
+
     // It will fail at this point until the issue is fixed because popover never appears
     popover()
       .contains("Gadget")
       .click();
-    cy.findByText("Add filter").click();
-    cy.url().should("contain", "?category=Gadget");
-    cy.findByText("Ergonomic Silk Coat");
+
+    cy.button("Add filter").click();
+
+    cy.location("search").should("eq", "?category=Gadget");
+    cy.findByText("53");
   });
 });
