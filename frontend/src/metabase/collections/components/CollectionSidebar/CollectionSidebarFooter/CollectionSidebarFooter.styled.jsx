@@ -19,7 +19,7 @@ export const Icon = styled(GenericIcon)`
 
 export const Link = styled(GenericLink)`
   align-items: center;
-  color: ${color("brand")};
+  color: ${color("white")};
   display: flex;
   font-weight: 700;
   margin-top: ${space(2)};
