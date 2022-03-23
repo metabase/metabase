@@ -30,7 +30,6 @@
       "/data-model/db/3/schema/PUBLIC/"               {:db {3 {:data-model {:schemas {"PUBLIC" :all}}}}}
       "/data-model/db/3/schema/PUBLIC/table/4/"       {:db {3 {:data-model {:schemas {"PUBLIC" {4 :all}}}}}})))
 
-
 (deftest combines-permissions-for-graph
   (testing "When given multiple permission hierarchies, chooses the one with the most permission"
     ;; This works by creating progressively smaller groups of permissions and asserting the constructed graph
