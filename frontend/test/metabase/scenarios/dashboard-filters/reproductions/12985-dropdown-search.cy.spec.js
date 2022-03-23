@@ -145,14 +145,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
                   {
                     parameter_id: "7c4htcv8",
                     card_id: QUESTION_ID,
-                    target: [
-                      "dimension",
-                      [
-                        "field",
-                        PRODUCTS.CATEGORY,
-                        { "base-type": "type/Text" },
-                      ],
-                    ],
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                   },
                 ],
               },
