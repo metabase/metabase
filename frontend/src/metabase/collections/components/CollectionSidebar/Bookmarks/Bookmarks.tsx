@@ -20,7 +20,7 @@ import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
 interface LabelProps {
   name: string;
-  display: string;
+  display?: string;
   type: BookmarkableEntities;
 }
 

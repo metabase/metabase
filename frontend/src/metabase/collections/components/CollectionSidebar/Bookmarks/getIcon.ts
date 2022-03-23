@@ -1,6 +1,9 @@
 import { BookmarkableEntities } from "metabase-types/api";
 
-export function getIcon(display: string, type: BookmarkableEntities) {
+export function getIcon(
+  display: string | undefined,
+  type: BookmarkableEntities,
+) {
   if (display) {
     return display;
   }
