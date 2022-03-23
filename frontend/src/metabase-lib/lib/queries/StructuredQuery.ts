@@ -310,7 +310,7 @@ export default class StructuredQuery extends AtomicQuery {
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(column => {
           // FIX for https://github.com/metabase/metabase/issues/12985
-          // get dimension field if it is matching a column
+          // retrieve dimension and generate field if it is matching the column
           const dimensionField = dimensions
             .find(
               dimension =>
