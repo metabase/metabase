@@ -32,7 +32,7 @@
                            (mt/int->kw group-id)
                            {:monitoring   "no"
                             :setting      "no"
-                            :subscription "no"}}
+                            :subscription "yes"}}
                           groups))))))
 
     (testing "PUT /api/ee/advanced-permissions/general/graph"
@@ -63,5 +63,5 @@
                            (mt/int->kw group-id)
                            {:monitoring   "no"
                             :setting      "yes"
-                            :subscription "no"}}
+                            :subscription "yes"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/general/graph" new-graph))))))))))

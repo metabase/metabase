@@ -100,12 +100,24 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
+(defn- grant-subscription-permission
+  [group-id]
+  ;; Require via classloader to avoid cyclic dependencies
+  (classloader/require 'metabase.models.permissions)
+  ((resolve 'metabase.models.permissions/grant-permissions!) group-id
+   ((resolve 'metabase.models.permissions/general-perms-path) :subscription)))
+
+(defn- post-insert [group]
+  (u/prog1 group
+    ;; Grant permission to create/edit subscriptions and alerts by default
+    (grant-subscription-permission (:id group))))
+
 (u/strict-extend (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
-                   {:pre-delete pre-delete
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update}))
-
+                   {:pre-delete  pre-delete
+                    :pre-insert  pre-insert
+                    :pre-update  pre-update
+                    :post-insert post-insert}))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

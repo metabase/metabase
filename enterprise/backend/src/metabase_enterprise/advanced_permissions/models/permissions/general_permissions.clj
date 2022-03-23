@@ -43,22 +43,9 @@
     (into {} (for [group-id group-ids]
                {group-id (permissions-set-from-group-id group-id)}))))
 
-(s/defn general-perms-path :- perms/Path
-  "Get general permission's path by permissions's type"
-  [perm-type]
-  (case perm-type
-    :setting
-    "/general/setting/"
-
-    :monitoring
-    "/general/monitoring/"
-
-    :subscription
-    "/general/subscription/"))
-
 (defn- perrmission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (general-perms-path perm-type))
+  (if (perms/set-has-full-permissions? permissions-set (perms/general-perms-path perm-type))
     :yes
     :no))
 
@@ -98,10 +85,10 @@
   (doseq [[permission-type permission-value] changes]
     (case permission-value
       :yes
-      (perms/grant-permissions! group-id (general-perms-path permission-type))
+      (perms/grant-permissions! group-id (perms/general-perms-path permission-type))
 
       :no
-      (perms/delete-related-permissions! group-id (general-perms-path permission-type)))))
+      (perms/delete-related-permissions! group-id (perms/general-perms-path permission-type)))))
 
 (s/defn update-graph!
   "Update the General Permissions graph.

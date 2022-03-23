@@ -3,7 +3,6 @@
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
-            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [toucan.db :as db]))
@@ -26,7 +25,7 @@
                        group-id
                        {:monitoring   :no
                         :setting      :no
-                        :subscription :no}}
+                        :subscription :yes}}
                       groups))))))
 
 ;;; ------------------------------------------------- Update Graph --------------------------------------------------
@@ -35,10 +34,6 @@
   "Create a new group-id and bind it with current-graph"
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
-     ;; currently all general permissions are disabled by default
-     ;; so we manually enable subscriptions for now so we could test revoke
-     ;; TODO: remove this once subscription are enabled by default
-     (perms/grant-permissions! group-id# (g-perms/general-perms-path :subscription))
      ;; need to bind *current-user-id* or the Revision won't get updated
      (binding [*current-user-id* (mt/user->id :crowberto)]
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))

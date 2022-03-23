@@ -706,7 +706,9 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions :group_id group-id))]
+              (db/select-field :object Permissions {:where [:and
+                                                            [:<> :object (perms/general-perms-path :subscription)]
+                                                            [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
