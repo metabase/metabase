@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import EventEmptyState from "../EventEmptyState";
+import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
 import {
@@ -103,7 +103,7 @@ const TimelineDetailsModal = ({
             onUnarchive={onUnarchive}
           />
         ) : isArchive || isSearching ? (
-          <EventEmptyState />
+          <SearchEmptyState />
         ) : (
           <TimelineEmptyState timeline={timeline} collection={collection} />
         )}

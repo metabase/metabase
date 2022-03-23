@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import EventEmptyState from "../EventEmptyState";
+import SearchEmptyState from "../SearchEmptyState";
 import TimelineList from "../TimelineList";
 import TimelineEmptyState from "../TimelineEmptyState";
 import { ModalBody, ModalRoot } from "./TimelineListModal.styled";
@@ -56,7 +56,7 @@ const TimelineListModal = ({
             onUnarchive={onUnarchive}
           />
         ) : isArchive ? (
-          <EventEmptyState isTimeline={isArchive} />
+          <SearchEmptyState isTimeline={isArchive} />
         ) : (
           <TimelineEmptyState collection={collection} />
         )}

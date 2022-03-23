@@ -4,13 +4,15 @@ import {
   EmptyStateIcon,
   EmptyStateRoot,
   EmptyStateText,
-} from "./EventEmptyState.styled";
+} from "./SearchEmptyState.styled";
 
-export interface EventEmptyStateProps {
+export interface SearchEmptyStateProps {
   isTimeline?: boolean;
 }
 
-const EventEmptyState = ({ isTimeline }: EventEmptyStateProps): JSX.Element => {
+const SearchEmptyState = ({
+  isTimeline,
+}: SearchEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
       <EmptyStateIcon name="star" />
@@ -21,4 +23,4 @@ const EventEmptyState = ({ isTimeline }: EventEmptyStateProps): JSX.Element => {
   );
 };
 
-export default EventEmptyState;
+export default SearchEmptyState;
