@@ -3,6 +3,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))

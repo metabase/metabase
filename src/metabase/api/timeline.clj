@@ -43,6 +43,14 @@
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
+;; todo: should this fn move into `metabase.model.collection`?
+;; a nearly identical fn exists in `metabase.api.collection`
+(defn- root-collection
+  []
+  (-> (collection/root-collection-with-ui-details nil)
+      collection/personal-collection-with-ui-details
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
@@ -54,6 +62,11 @@
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
     (cond-> (hydrate timeline :creator :collection)
+      ;; `collection_id` `nil` means we need to assoc 'root' collection
+      ;; because hydrate `:collection` needs a proper `:id` to work.
+      (nil? (:collection_id timeline))
+      (assoc :collection (root-collection))
+
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?
                                                :events/start (when start (u.date/parse start))
