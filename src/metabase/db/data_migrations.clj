@@ -1,10 +1,9 @@
 (ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
-  These migrations are all run once when Metabase is first launched.
+  Data migrations are run once when Metabase is first launched, except when transferring data from an existing
 
-  Note that there isn't a locking mechanism for data-migration, so it's possible for a migration
-  to be run multiple times (i.e: when running multiple MB instances)
-  Thus these migrations need to be idempotent, e.g:
+  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
+  thus, all of these migrations need to be repeatable, e.g.:
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cheshire.core :as json]
@@ -28,9 +27,7 @@
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
-
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)
-
   Migrations may provide metadata with `:catch?` to indicate if errors should be caught or propagated."
   [ran-migrations migration-var]
   (let [{migration-name :name catch? :catch?} (meta migration-var)
@@ -38,14 +35,15 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (@migration-var)
-       (catch Exception e
-         (if catch?
-           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-           (throw e)))))
+       (db/transaction
+        (@migration-var))
+        (catch Exception e
+          (if catch?
+            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+            (throw e))))
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp :%now)))
+        :timestamp :%now))))
 
 (def ^:private ^:deprecated data-migrations (atom []))
 
@@ -69,8 +67,8 @@
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
 
   `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
-  at the top level and
 
+  at the top level and
   {... view_as link_template link_text ...} to `{ ... click_behavior { type linkType linkTemplate linkTextTemplate } ...}`
 
   at the column_settings level. Scours the card to find all click behavior, reshapes it, and deep merges it into the
@@ -179,37 +177,37 @@
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (defn- remove-group-id-from-mappings-by-setting-key
-  [mapping-setting-key admin-group-id]
-  ;; Intentionally get setting using `db/select-one-field` instead of `setting/get` because for some reasons
-  ;; during start-up setting/get return the default value defined in defsetting instead of value from Setting table
-  (let [mapping (try
-                 (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
-                 (catch Exception _e
-                   {}))]
-    (when-not (empty? mapping)
-      (setting/set-value-of-type!
-       :json mapping-setting-key
-       (into {}
-             (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-             mapping)))))
+   [mapping-setting-key admin-group-id]
+   ;; Intentionally get setting using `db/select-one-field` instead of `setting/get` because for some reasons
+   ;; during start-up setting/get return the default value defined in defsetting instead of value from Setting table
+   (let [mapping (try
+                  (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
+                  (catch Exception _e
+                    {}))]
+     (when-not (empty? mapping)
+       (setting/set-value-of-type!
+        :json mapping-setting-key
+        (into {}
+              (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+              mapping)))))
 
-(defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
-  ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
-  ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
-  ;;  But with this change we want to make sure we don't accidently add/remove adminusers we need to :
-  ;;  - for LDAP, if the `ldap-sync-admin-group` is disabled, remove all mapping for admin group
-  ;;  - for SAML, JWT remove all mapping for admin group
-  (let [admin-group-id (u/the-id (group/admin))]
-    (when (and (ldap/ldap-configured?)
-               (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group")))
-      (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
-    ;; sso are enterprise feature, so only remove admin groups if enterprise available
-    (when (premium-features/enable-sso?)
-      (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
-      (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
-        (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id))
-      (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
-        (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id)))))
+ (defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
+   ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
+   ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+   ;;  But with this change we want to make sure we don't accidently add/remove adminusers we need to :
+   ;;  - for LDAP, if the `ldap-sync-admin-group` is disabled, remove all mapping for admin group
+   ;;  - for SAML, JWT remove all mapping for admin group
+   (let [admin-group-id (u/the-id (group/admin))]
+     (when (and (ldap/ldap-configured?)
+                (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group")))
+       (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
+     ;; sso are enterprise feature, so only remove admin groups if enterprise available
+     (when (premium-features/enable-sso?)
+       (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
+       (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
+         (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id))
+       (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
+         (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id)))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
