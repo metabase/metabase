@@ -32,6 +32,8 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -342,14 +344,27 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
+(defn- json-query [identifier nfc-path]
+  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
+    (apply hsql/call [:json_extract_path_text
+                      (hx/cast :json (keyword (first nfc-path)))
+                      (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))
+
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
-  (let [{database-type :database_type} (when (integer? id-or-name)
-                                         (qp.store/field id-or-name))
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
-    (if (= database-type "money")
+        identifier    (parent-method driver clause)
+        nfc-path      (:nfc_path stored-field)]
+    (cond
+      (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
+
+      (some? nfc-path)
+      (json-query identifier nfc-path)
+
+      :else
       identifier)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
