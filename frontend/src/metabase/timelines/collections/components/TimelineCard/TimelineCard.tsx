@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { t, msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import {
   CardCount,
@@ -9,6 +10,7 @@ import {
   CardIcon,
   CardRoot,
   CardTitle,
+  CardMenu,
 } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
@@ -41,6 +43,11 @@ const TimelineCard = ({
             eventsCount,
           )}
         </CardCount>
+      )}
+      {menuItems.length > 0 && (
+        <CardMenu>
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        </CardMenu>
       )}
     </CardRoot>
   );

@@ -41,6 +41,11 @@ export const CardCount = styled.span<CardCountProps>`
   align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
 `;
 
+export const CardMenu = styled.span`
+  display: block;
+  flex: 0 0 auto;
+`;
+
 export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;

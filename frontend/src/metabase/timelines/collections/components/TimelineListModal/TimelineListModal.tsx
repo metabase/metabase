@@ -13,6 +13,7 @@ export interface TimelineListModalProps {
   timelines: Timeline[];
   collection: Collection;
   isArchive?: boolean;
+  onUnarchive?: (timeline: Timeline) => void;
   onClose?: () => void;
   onGoBack?: (collection: Collection) => void;
 }
@@ -21,6 +22,7 @@ const TimelineListModal = ({
   timelines,
   collection,
   isArchive = false,
+  onUnarchive,
   onClose,
   onGoBack,
 }: TimelineListModalProps): JSX.Element => {
@@ -51,6 +53,7 @@ const TimelineListModal = ({
                 key={timeline.id}
                 timeline={timeline}
                 collection={collection}
+                onUnarchive={onUnarchive}
               />
             ))}
           </ListRoot>
