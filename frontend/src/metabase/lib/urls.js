@@ -321,6 +321,10 @@ export function timelineArchiveInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/archive`;
 }
 
+export function deleteTimelineInCollection(event, timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/delete`;
+}
+
 export function newEventInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/events/new`;
 }

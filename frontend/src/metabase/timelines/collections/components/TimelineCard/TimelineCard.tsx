@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { msgid, ngettext } from "ttag";
+import { t, msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -14,6 +14,7 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   collection: Collection;
+  onUnarchive?: (timeline: Timeline) => void;
 }
 
 const TimelineCard = ({
@@ -21,6 +22,7 @@ const TimelineCard = ({
   collection,
 }: TimelineCardProps): JSX.Element => {
   const timelineUrl = Urls.timelineInCollection(timeline, collection);
+  const menuItems = getMenuItems(timeline, collection);
   const eventsCount = timeline.events?.length;
   const hasDescription = Boolean(timeline.description);
 
@@ -42,6 +44,27 @@ const TimelineCard = ({
       )}
     </CardRoot>
   );
+};
+
+const getMenuItems = (
+  timeline: Timeline,
+  collection: Collection,
+  onUnarchive?: (timeline: Timeline) => void,
+) => {
+  if (!timeline.archived || !timeline.collection?.can_write) {
+    return [];
+  }
+
+  return [
+    {
+      title: t`Unarchive timeline`,
+      action: () => onUnarchive?.(timeline),
+    },
+    {
+      title: t`Delete timeline`,
+      link: Urls.deleteTimelineInCollection(timeline, collection),
+    },
+  ];
 };
 
 export default memo(TimelineCard);
