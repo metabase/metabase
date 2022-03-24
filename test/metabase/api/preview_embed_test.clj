@@ -140,20 +140,25 @@
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
                                                             "?venue_id=200")))))))))
-
 (deftest query-max-results-constraint-test
   (testing "GET /api/preview_embed/card/:token/query"
     (testing "Only 2000 results returned when there are many more"
-      (embed-test/with-embedding-enabled-and-new-secret-key
-        (let [;; this is the same sample question as setup in these steps to reproduce:
-              ;; https://github.com/metabase/metabase/issues/20938
-              sample-db-orders-question {:database 1
-                                         :query {:source-table 2}
-                                         :type "query"}]
-          (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
-            (is (>= 2000 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                             mt/rows
-                             count)))))))))
+      (let [orders-row-count (count
+                              (mt/rows
+                               (mt/dataset sample-dataset
+                                 (mt/process-query
+                                  (mt/query orders)))))
+            expected-row-count 1]
+        (with-redefs [metabase.api.preview-embed/max-results expected-row-count]
+          (mt/dataset sample-dataset
+            (embed-test/with-embedding-enabled-and-new-secret-key
+              (let [sample-db-orders-question (mt/query orders)]
+                (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
+                  (let [limited (count
+                                 (mt/rows
+                                  (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
+                    (is (= expected-row-count limited))
+                    (is (not= expected-row-count orders-row-count))))))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
