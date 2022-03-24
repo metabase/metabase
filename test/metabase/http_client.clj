@@ -76,20 +76,13 @@
         :else
         response))
 
-(defn- string->int-or-kw
-  "Convert a string to integer if possible, else keyword"
-  [k]
-  (if (every? #(Character/isDigit %) k)
-    (Integer/parseInt k)
-    (keyword k)))
-
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
   (if-not (string? body)
     body
     (try
-      (auto-deserialize-dates (json/parse-string body string->int-or-kw))
+      (auto-deserialize-dates (json/parse-string body keyword))
       (catch Throwable _e
         (when-not (str/blank? body)
           body)))))
