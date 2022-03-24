@@ -57,7 +57,7 @@ export const aliases: Record<string, string> = {
   database: "accent2",
   dashboard: "brand",
   pulse: "accent4",
-  nav: "bg-light",
+  nav: "bg-medium",
 };
 export const harmony: string[] = [];
 // DEPRECATED: we should remove these and use `colors` directly
