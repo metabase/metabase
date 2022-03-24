@@ -134,7 +134,7 @@
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
-(def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)s")
+(def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
 (def ^:private include-current-regex         #"(~?)")
 
 (def ^:private relative-date-string-decoders
@@ -157,7 +157,7 @@
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex include-current-regex))
+   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
                            [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
               (let [dt-res (maybe-reduce-resolution unit dt)]
@@ -166,7 +166,7 @@
     :filter (fn [{:keys [unit int-value include-current?]} field-clause]
               [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
-   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex include-current-regex))
+   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
                            [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
               (let [dt-res (maybe-reduce-resolution unit dt)]
