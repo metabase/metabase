@@ -7,6 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import _ from "underscore";
+import Ellipsified from "metabase/components/Ellipsified";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
@@ -72,7 +73,9 @@ const TimelineCard = ({
           onChange={handleCheckboxChange}
           onClick={handleCheckboxClick}
         />
-        <CardLabel>{timeline.name}</CardLabel>
+        <CardLabel>
+          <Ellipsified tooltipMaxWidth="100%">{timeline.name}</Ellipsified>
+        </CardLabel>
         <CardIcon name={isExpanded ? "chevronup" : "chevrondown"} />
       </CardHeader>
       {isExpanded && (

@@ -34,6 +34,7 @@ const NewEventModal = ({
       timeline_id: timeline?.id,
       icon: timeline ? timeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
+      source: "collections",
     }),
     [timeline],
   );
