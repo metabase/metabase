@@ -49,6 +49,7 @@ jobs:
         edition: [oss, ee]
         folder:
           - "binning"
+          - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"

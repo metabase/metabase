@@ -16,6 +16,7 @@ describe("scenarios > models metadata", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should edit GUI model metadata", () => {
@@ -42,7 +43,10 @@ describe("scenarios > models metadata", () => {
     );
 
     cy.findByText("Customize metadata").click();
+
+    cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
+    cy.findByTextEnsureVisible("Product ID");
 
     openColumnOptions("Subtotal");
 
@@ -83,7 +87,10 @@ describe("scenarios > models metadata", () => {
     );
 
     cy.findByText("Customize metadata").click();
+
+    cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
+    cy.findByTextEnsureVisible("PRODUCT_ID");
 
     openColumnOptions("SUBTOTAL");
 
@@ -112,6 +119,8 @@ describe("scenarios > models metadata", () => {
       },
     }).then(({ body: { id: nativeModelId } }) => {
       cy.visit(`/model/${nativeModelId}/metadata`);
+      cy.wait("@cardQuery");
+      cy.findByTextEnsureVisible("PRODUCT_ID");
     });
 
     openColumnOptions("SUBTOTAL");
@@ -124,6 +133,9 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)").should("not.exist");
     openDetailsSidebar();
     cy.findByText("Customize metadata").click();
+
+    cy.wait(["@cardQuery", "@cardQuery"]);
+    cy.findByTextEnsureVisible("TAX");
 
     // Revision 2
     openColumnOptions("TAX");
