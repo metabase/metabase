@@ -32,3 +32,15 @@ jobs:
           original-title: ${{ github.event.pull_request.title }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           commit: ${{ steps.find_commit.outputs.commit }}
+
+      - uses: ./.github/actions/notify-pull-request
+        if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}
+        with:
+          include-log: false
+          message: could not create a backport due to conflicts
+
+      - uses: ./.github/actions/notify-pull-request
+        if: ${{ failure() }}
+        with:
+          include-log: true
+          message: something went wrong while creating a backport
