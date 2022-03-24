@@ -1,6 +1,6 @@
 import React from "react";
-import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
 
@@ -11,9 +11,9 @@ export interface MarkdownProps {
 
 const Markdown = ({ className, children = "" }: MarkdownProps): JSX.Element => {
   return (
-    <ReactMarkdown className={className} remarkPlugins={REMARK_PLUGINS}>
+    <MarkdownRoot className={className} remarkPlugins={REMARK_PLUGINS}>
       {children}
-    </ReactMarkdown>
+    </MarkdownRoot>
   );
 };
 
