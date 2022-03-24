@@ -25,13 +25,19 @@
    {:table-perms-fn (fn [& path-components] (apply perms/feature-perms-path :download download-level path-components))
     :native-perms-fn (fn [db-id] (perms/native-feature-perms-path :download download-level db-id))}))
 
+(defn- query->source-table-ids
+  [query]
+  ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
+  ;; a native query. Actual native queries will still be detected appropriately.
+  (query-perms/query->source-table-ids (dissoc query :native)))
+
 (defn- download-perms-set
   "Returns a set of permissions that are required to download a given query."
   [{query-type :type, database :database, :as query} download-level]
   (cond
     (empty? query)         #{}
     (= query-type :native) #{(perms/native-feature-perms-path :download download-level database)}
-    (= query-type :query)  (tables->download-perms-set database (query-perms/query->source-table-ids query) download-level)))
+    (= query-type :query)  (tables->download-perms-set database (query->source-table-ids query) download-level)))
 
 (defn- current-user-download-perms-level
   "Returns the download permissions level which the current user has for the given query."

@@ -47,7 +47,7 @@
     (mbql.u/match query
       ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
       ;; add native permissions to the complete set below.
-      {:type :native}
+      (m :guard (every-pred map? :native))
       [::native]
 
       (m :guard (every-pred map? :source-table))
