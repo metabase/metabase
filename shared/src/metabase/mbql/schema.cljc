@@ -1444,8 +1444,8 @@
    s/Bool
 
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
-   ;; pre-processed query without attempting to convert it to native.
+   ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
+   ;; the fully pre-processed query without attempting to convert it to native.
    (s/optional-key :disable-mbql->native?)
    s/Bool
 

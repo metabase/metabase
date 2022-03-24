@@ -138,7 +138,7 @@
                         :query    source-query}
           preprocessed (binding [api/*current-user-id* nil]
                          (classloader/require 'metabase.query-processor)
-                         ((resolve 'metabase.query-processor/query->preprocessed) query))]
+                         ((resolve 'metabase.query-processor/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))

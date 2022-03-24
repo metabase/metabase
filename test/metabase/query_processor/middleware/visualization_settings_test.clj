@@ -118,14 +118,17 @@
           result (update-viz-settings query)]
       (is (= test-native-query-viz-settings result)))))
 
-(deftest includes-global-settings
-  (testing "Viz settings include global viz settings"
+(deftest includes-global-settings-test
+  (testing "Viz settings include global viz settings, in a normalized form"
     (mt/with-temp* [Field [{field-id-1 :id}]
-                    Field [{field-id-2 :id}]]
-      (let [query    (test-query [field-id-1 field-id-2] nil nil)
-            result   (update-viz-settings query false)
-            expected (assoc (processed-viz-settings field-id-1 field-id-2)
-                            ::mb.viz/global-column-settings
-                            #:type{:Number {::mb.viz/number_separators ".,"}
-                                   :Currency {::mb.viz/currency "BIF"
-                                              ::mb.viz/currency_style "code"}})]))))
+                    Field [{field-id-2 :id}]
+                    Card  [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]]
+      (let [global-viz-settings #:type{:Number   {:number_separators ".,"}
+                                       :Currency {:currency "BIF"}}]
+        (mt/with-temporary-setting-values [custom-formatting global-viz-settings]
+          (let [query    (test-query [field-id-1 field-id-2] card-id nil)
+                result   (update-viz-settings query false)
+                expected (assoc (processed-viz-settings field-id-1 field-id-2)
+                                ::mb.viz/global-column-settings #:type{:Number   {::mb.viz/number-separators ".,"}
+                                                                       :Currency {::mb.viz/currency "BIF"}})]
+            (is (= expected result))))))))
