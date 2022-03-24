@@ -6,6 +6,10 @@ inputs:
   clojure-version:
     required: true
     default: '1.10.3.933'
+  m2-cache-key:
+    description: 'Key to cache M2 packages from Maven Central'
+    required: true
+    default: 'm2'
 
 runs:
   using: "composite"
@@ -26,6 +30,6 @@ runs:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-be-deps-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: |
-          ${{ runner.os }}-be-deps-
+          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
