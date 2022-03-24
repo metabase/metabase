@@ -7,7 +7,7 @@ defaultFilterValues.forEach(value => {
     ? "and the required filter with the default value"
     : "";
 
-  describe.skip("issue 20845", () => {
+  describe("issue 20845", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 

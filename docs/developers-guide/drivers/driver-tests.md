@@ -190,14 +190,6 @@ There's a few other things Metabase needs to know when comparing test results. F
 
 This is actually a common problem, and luckily we have figured out how to work around it. The solution is usually something like using different _schemas_ in place of different databases, or prefixing table names with the database name, and creating everything in the same database. For SQL-based databases, you can implement `sql.tx/qualified-name-components` to have tests use a different identifier instead of what they would normally use, for example `"shared_db"."test-data_venues".id` instead of `"test-data".venues.id`. The SQL Server and Oracle test extensions are good examples of such black magic in action.
 
-# Running Tests and Linters
-
-See [Running unit tests](devenv.md#running-unit-tests) and [Testing drivers](devenv.md#testing-drivers).
-
-## Running the linter
-
-See [Run the linters](devenv.md#run-the-linters).
-
 # Setting up CI
 
 Once you have all the tests passing, you'll need to set up CircleCI to run those tests against your driver. You'll need to add a step to [`./circleci/config.yml`](https://github.com/metabase/metabase/blob/master/.circleci/config.yml) to run tests against your database, then add that step to the "workflows" at the bottom of the config file.

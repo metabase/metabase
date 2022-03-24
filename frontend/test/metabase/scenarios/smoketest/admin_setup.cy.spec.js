@@ -6,6 +6,7 @@ import {
   openPeopleTable,
   visualize,
   openNotebookEditor,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -846,7 +847,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.signOut();
       cy.signInAsNormalUser();
-      cy.visit("/question/1");
+      visitQuestion(1);
 
       // cy.findByText("Product ID");
       // cy.findByText("Quantity").should("not.exist");
@@ -934,7 +935,7 @@ describe("smoketest > admin_setup", () => {
       // This test will fail whenever the previous test fails
       cy.signIn("nocollection");
 
-      cy.visit("/question/4");
+      visitQuestion(4);
       cy.contains("sub-collection question").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
     });

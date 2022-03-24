@@ -403,8 +403,8 @@ function onRenderAddTimelineEvents(
   },
 ) {
   renderEvents(chart, {
-    timelineEvents,
-    selectedTimelineEventIds,
+    events: timelineEvents,
+    selectedEventIds: selectedTimelineEventIds,
     xDomain,
     xInterval,
     isTimeseries,

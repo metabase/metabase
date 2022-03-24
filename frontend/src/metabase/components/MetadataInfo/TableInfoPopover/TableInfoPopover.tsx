@@ -1,5 +1,4 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React, { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
 import TippyPopover, {
@@ -8,6 +7,7 @@ import TippyPopover, {
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
+import PropTypes from "prop-types";
 
 export const POPOVER_DELAY: [number, number] = [500, 300];
 
@@ -18,7 +18,7 @@ interface TableSubset {
 
 const propTypes = {
   table: PropTypes.shape({
-    id: PropTypes.oneOf([PropTypes.number, PropTypes.string]),
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     description: PropTypes.string,
   }).isRequired,
   children: PropTypes.node,
@@ -26,10 +26,12 @@ const propTypes = {
   offset: PropTypes.arrayOf(PropTypes.number),
 };
 
-type Props = { table: TableSubset } & Pick<
-  ITippyPopoverProps,
-  "children" | "placement" | "offset" | "delay"
->;
+type Props = {
+  table: TableSubset;
+  children: ReactElement;
+  placement: string;
+  offset: number[];
+} & Pick<ITippyPopoverProps, "children" | "placement" | "offset" | "delay">;
 
 const className = "table-info-popover";
 
