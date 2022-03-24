@@ -33,7 +33,6 @@ runs:
         CONFLICTS=$(git ls-files -u | wc -l)
         if [ "$CONFLICTS" -gt 0 ]; then
           echo "Could not cherry pick because of a conflict"
-          git cherry-pick --abort
           echo "::set-output name=has-conflicts::true"
           exit 0
         fi
