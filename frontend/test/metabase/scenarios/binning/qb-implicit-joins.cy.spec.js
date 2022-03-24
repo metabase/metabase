@@ -3,6 +3,7 @@ import {
   changeBinningForDimension,
   visualize,
   summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 /**
@@ -21,7 +22,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
   context("via simple question", () => {
     beforeEach(() => {
-      cy.visit("/question/1");
+      visitQuestion(1);
       summarize();
     });
 

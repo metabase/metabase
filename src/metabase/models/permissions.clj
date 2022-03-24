@@ -498,18 +498,18 @@
 
 (s/defn set-has-full-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set :- #{Path} paths-set :- #{Path}]
+  [permissions-set paths-set]
   (every? (partial set-has-full-permissions? permissions-set)
           paths-set))
 
 (s/defn set-has-partial-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
    (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
-  [permissions-set :- #{Path}, paths-set :- #{Path}]
+  [permissions-set paths-set]
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
-(s/defn perms-objects-set-for-parent-collection :- #{Path}
+(s/defn perms-objects-set-for-parent-collection
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."

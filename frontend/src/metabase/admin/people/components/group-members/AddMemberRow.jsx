@@ -1,15 +1,25 @@
-/* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
-
 import { color } from "metabase/lib/colors";
 import Typeahead from "metabase/hoc/Typeahead";
 
 import { AddRow } from "../AddRow";
+
+AddMemberRow.propTypes = {
+  users: PropTypes.array.isRequired,
+  text: PropTypes.string.isRequired,
+  selectedUsers: PropTypes.array.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onDone: PropTypes.func.isRequired,
+  onTextChange: PropTypes.func.isRequired,
+  onSuggestionAccepted: PropTypes.func.isRequired,
+  onRemoveUserFromSelection: PropTypes.func.isRequired,
+};
 
 export default function AddMemberRow({
   users,
@@ -21,12 +31,15 @@ export default function AddMemberRow({
   onSuggestionAccepted,
   onRemoveUserFromSelection,
 }) {
+  const rowRef = useRef(null);
+
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
         <AddRow
+          ref={rowRef}
           value={text}
-          isValid={selectedUsers.length}
+          isValid={!!selectedUsers.length}
           placeholder="Julie McMemberson"
           onChange={e => onTextChange(e.target.value)}
           onDone={onDone}
@@ -45,13 +58,12 @@ export default function AddMemberRow({
               />
             </div>
           ))}
-          <div className="absolute bottom left">
-            <AddMemberTypeahead
-              value={text}
-              options={Object.values(users)}
-              onSuggestionAccepted={onSuggestionAccepted}
-            />
-          </div>
+          <AddMemberTypeaheadPopover
+            value={text}
+            options={Object.values(users)}
+            onSuggestionAccepted={onSuggestionAccepted}
+            target={rowRef}
+          />
         </AddRow>
       </td>
     </tr>
@@ -66,22 +78,36 @@ const getColorPalette = () => [
   color("accent4"),
 ];
 
-const AddMemberTypeahead = Typeahead({
+const AddMemberTypeaheadPopoverPropTypes = {
+  suggestions: PropTypes.array,
+  selectedSuggestion: PropTypes.object,
+  onSuggestionAccepted: PropTypes.func.isRequired,
+  target: PropTypes.shape({
+    current: PropTypes.instanceOf(Element),
+  }),
+};
+
+const AddMemberTypeaheadPopover = Typeahead({
   optionFilter: (text, user) =>
     (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
   optionIsEqual: (userA, userB) => userA.id === userB.id,
-})(({ suggestions, selectedSuggestion, onSuggestionAccepted }) => {
+})(function AddMemberTypeaheadPopover({
+  suggestions,
+  selectedSuggestion,
+  onSuggestionAccepted,
+  target,
+}) {
   const colors = useMemo(getColorPalette, []);
 
   return (
-    <Popover
+    <TippyPopover
       className="bordered"
-      hasArrow={false}
-      targetOffsetY={2}
-      targetOffsetX={0}
-      horizontalAttachments={["left"]}
-    >
-      {suggestions &&
+      offset={0}
+      placement="bottom-start"
+      visible={suggestions.length > 0}
+      reference={target}
+      content={
+        suggestions &&
         suggestions.map((user, index) => (
           <AddMemberAutocompleteSuggestion
             key={index}
@@ -90,26 +116,33 @@ const AddMemberTypeahead = Typeahead({
             selected={selectedSuggestion && user.id === selectedSuggestion.id}
             onClick={onSuggestionAccepted.bind(null, user)}
           />
-        ))}
-    </Popover>
+        ))
+      }
+    />
   );
 });
 
-const AddMemberAutocompleteSuggestion = ({
-  user,
-  color,
-  selected,
-  onClick,
-}) => (
-  <div
-    className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
-    onClick={onClick}
-  >
-    <span className="inline-block mr2">
-      <UserAvatar background={color} user={user} />
-    </span>
-    <span className={cx("h3", { "text-white": selected })}>
-      {user.common_name}
-    </span>
-  </div>
-);
+AddMemberTypeaheadPopover.propTypes = AddMemberTypeaheadPopoverPropTypes;
+
+AddMemberAutocompleteSuggestion.propTypes = {
+  user: PropTypes.object.isRequired,
+  color: PropTypes.string.isRequired,
+  selected: PropTypes.bool,
+  onClick: PropTypes.func.isRequired,
+};
+
+function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
+  return (
+    <div
+      className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
+      onClick={onClick}
+    >
+      <span className="inline-block mr2">
+        <UserAvatar background={color} user={user} />
+      </span>
+      <span className={cx("h3", { "text-white": selected })}>
+        {user.common_name}
+      </span>
+    </div>
+  );
+}

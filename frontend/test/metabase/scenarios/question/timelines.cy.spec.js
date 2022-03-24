@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/cypress";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe("scenarios > collections > timelines", () => {
     });
 
     it("should create the first event and timeline", () => {
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.findByLabelText("calendar icon").click();
       cy.button("Add an event").click();
 
@@ -29,7 +29,7 @@ describe("scenarios > collections > timelines", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.findByLabelText("calendar icon").click();
       cy.button("Add an event").click();
 
@@ -48,7 +48,7 @@ describe("scenarios > collections > timelines", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.findByLabelText("calendar icon").click();
       cy.findByText("Releases");
       cy.findByLabelText("ellipsis icon").click();
@@ -69,7 +69,7 @@ describe("scenarios > collections > timelines", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      cy.visit("/question/3");
+      visitQuestion(3);
       cy.findByLabelText("calendar icon").click();
       cy.findByText("Releases");
       cy.findByLabelText("ellipsis icon").click();
@@ -84,7 +84,7 @@ describe("scenarios > collections > timelines", () => {
   describe("as readonly user", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
-      cy.visit("/question/3");
+      visitQuestion(3);
 
       cy.findByLabelText("calendar icon").click();
       cy.findByText(/Events in Metabase/);
@@ -99,7 +99,7 @@ describe("scenarios > collections > timelines", () => {
       });
       cy.signOut();
       cy.signIn("readonly");
-      cy.visit("/question/3");
+      visitQuestion(3);
 
       cy.findByLabelText("calendar icon").click();
       cy.findByText("Releases");

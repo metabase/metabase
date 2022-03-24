@@ -9,6 +9,7 @@ import {
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
@@ -508,7 +509,7 @@ describeOSS("scenarios > admin > permissions", () => {
   it.skip("block permission block access to questions that use blocked sources", () => {
     cy.signInAsNormalUser();
 
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findAllByText("Orders");
 
     cy.signInAsAdmin();
@@ -527,7 +528,7 @@ describeOSS("scenarios > admin > permissions", () => {
 
     cy.signInAsNormalUser();
 
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     cy.findAllByText("Orders").should("not.exist");
   });

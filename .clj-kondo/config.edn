@@ -73,8 +73,6 @@
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.sql-jdbc.sync.interface/syncable-schemas
                                       {:namespaces ["metabase\\.driver.*"]}
-                                      metabase.query-processor/query->preprocessed
-                                      {:namespaces ["metabase.*"]}
                                       schema.core/either
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both

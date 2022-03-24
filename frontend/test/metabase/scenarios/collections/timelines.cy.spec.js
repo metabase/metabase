@@ -1,4 +1,11 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  restore,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -100,7 +107,7 @@ describe("scenarios > collections > timelines", () => {
       cy.createTimelineWithEvents({ events: [{ name: "RC1" }] });
       cy.visit("/collection/root/timelines");
 
-      openEventMenu("RC1");
+      openMenu("RC1");
       cy.findByText("Edit event").click();
       cy.findByLabelText("Event name")
         .clear()
@@ -118,7 +125,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.visit("/collection/root/timelines");
 
-      openEventMenu("RC1");
+      openMenu("RC1");
       cy.findByText("Edit event").click();
       cy.findByText("Archive event").click();
 
@@ -134,7 +141,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.visit("/collection/root/timelines");
 
-      openEventMenu("RC1");
+      openMenu("RC1");
       cy.findByText("Archive event").click();
       cy.findByText("RC1").should("not.exist");
       cy.findByText("Undo").click();
@@ -148,11 +155,11 @@ describe("scenarios > collections > timelines", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      openTimelineMenu("Releases");
+      openMenu("Releases");
       cy.findByText("View archived events").click();
 
       cy.findByText("Archived events");
-      openEventMenu("RC1");
+      openMenu("RC1");
       cy.findByText("Unarchive event").click();
       cy.findByText("No events found");
 
@@ -167,11 +174,11 @@ describe("scenarios > collections > timelines", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      openTimelineMenu("Releases");
+      openMenu("Releases");
       cy.findByText("View archived events").click();
 
       cy.findByText("Archived events");
-      openEventMenu("RC1");
+      openMenu("RC1");
       cy.findByText("Delete event").click();
       cy.findByText("Delete").click();
       cy.findByText("No events found");
@@ -184,7 +191,7 @@ describe("scenarios > collections > timelines", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      openTimelineMenu("Releases");
+      openMenu("Releases");
       cy.findByText("New timeline").click();
       cy.findByLabelText("Timeline name").type("Launches");
       cy.findByText("Create").click();
@@ -200,7 +207,7 @@ describe("scenarios > collections > timelines", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      openTimelineMenu("Releases");
+      openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByLabelText("Timeline name")
         .clear()
@@ -217,7 +224,7 @@ describe("scenarios > collections > timelines", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      openTimelineMenu("Releases");
+      openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByText("Archive timeline and all events").click();
       cy.findByText("Our analytics events");
@@ -257,17 +264,42 @@ describe("scenarios > collections > timelines", () => {
   });
 });
 
-const openEventMenu = name => {
-  return cy
-    .findByText(name)
-    .parent()
-    .parent()
-    .within(() => cy.findByLabelText("ellipsis icon").click());
-};
+describeWithSnowplow("scenarios > collections > timelines", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
 
-const openTimelineMenu = name => {
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events when creating a timeline event", () => {
+    // 1 - new_instance_created
+    // 2 - pageview
+    cy.visit("/collection/root");
+
+    // 3 - pageview
+    cy.findByLabelText("calendar icon").click();
+
+    cy.findByText("Add an event").click();
+    cy.findByLabelText("Event name").type("Event");
+    cy.findByLabelText("Date").type("10/20/2020");
+
+    // 4 - new_event_created
+    // 5 - pageview
+    cy.button("Create").click();
+
+    expectGoodSnowplowEvents(5);
+  });
+});
+
+const openMenu = name => {
   return cy
     .findByText(name)
+    .parent()
     .parent()
     .within(() => cy.findByLabelText("ellipsis icon").click());
 };
