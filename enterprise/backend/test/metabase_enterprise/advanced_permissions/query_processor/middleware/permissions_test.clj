@@ -1,11 +1,13 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.data.csv :as csv]
+            [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee.perms]
             [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
             [metabase.api.dataset :as dataset] [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.context.default :as context.default]
+            [metabase.query-processor.streaming-test :as streaming-test]
             [metabase.test :as mt]
             [metabase.util :as u])
   (:import clojure.lang.ExceptionInfo))
@@ -135,3 +137,74 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
                (check-download-permisions (mbql-download-query))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                E2E tests                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- csv-row-count
+ [results]
+ (count
+   ;; Ignore first row, since it's the header
+   (rest (csv/read-csv results))))
+
+(deftest limited-download-perms-test
+  (testing "Limited download perms work as expected"
+    (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+      (with-download-perms-for-db (mt/id) :limited
+        (streaming-test/do-test
+         "A user with limited download perms for a DB has their query results limited"
+         {:query      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id 'venues)
+                                  :limit    10}}
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
+
+        (streaming-test/do-test
+         "An admin has full download permissions, even if downloads for All Users are limited"
+         {:query      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id 'venues)
+                                  :limit    10}}
+          :user       :crowberto
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
+
+      (with-download-perms (mt/id) {:schemas {"PUBLIC" :limited}}
+        (streaming-test/do-test
+         "A user with limited download perms for a schema has their query results limited for queries on that schema"
+         {:query      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id 'venues)
+                                  :limit    10}}
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
+
+      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :limited
+                                                        (mt/id 'checkins)   :full
+                                                        (mt/id 'users)      :full
+                                                        (mt/id 'categories) :full}}}
+        (streaming-test/do-test
+         "A user with limited download perms for a table has their query results limited for queries on that table"
+         {:query      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id 'venues)
+                                  :limit        10}}
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
+
+        (streaming-test/do-test
+         "A user with limited download perms for a table still has full download perms for MBQL queries on other tables"
+         {:query      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id 'users)
+                                  :limit        10}}
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
+
+        (streaming-test/do-test
+         "A user with limited download perms for a table has limited download perms for native queries on all tables"
+         {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))
