@@ -57,27 +57,23 @@ export const Sidebar = styled.aside<SidebarProps>`
 export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
   font-size: 12px;
-  letter-spacing: 0.5px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   margin-left: ${space(3)};
   text-transform: uppercase;
   user-select: none;
-
-  &:hover {
-    color: ${color("text-dark")};
-  }
 
   ${({ onClick }) =>
     onClick &&
     css`
       cursor: pointer;
+
+      &:hover {
+        color: ${color("text-dark")};
+      }
     `};
 `;
 
-<<<<<<< HEAD:frontend/src/metabase/collections/components/CollectionSidebar/CollectionSidebar.styled.jsx
-export const ToggleListDisplayButton = styled(Icon)`
-  margin-left: 4px;
-=======
 interface ToggleListDisplayButtonProps {
   shouldDisplayBookmarks: boolean;
 }
@@ -85,8 +81,7 @@ interface ToggleListDisplayButtonProps {
 export const ToggleListDisplayButton = styled(Icon)<
   ToggleListDisplayButtonProps
 >`
-  margin-left: 12px;
->>>>>>> cfd4786d55 (Convert file to TypeScript):frontend/src/metabase/collections/components/CollectionSidebar/CollectionSidebar.styled.tsx
+  margin-left: 4px;
   transform: translate(0px, -1px);
 
   ${({ shouldDisplayBookmarks }) =>
