@@ -44,7 +44,7 @@
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
-  "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
+  "Automatically recurse over `response` and look for values that are known to correspond to dates. Parse their values and
   convert to java temporal types."
   [response]
   (cond (sequential? response)
@@ -76,14 +76,22 @@
         :else
         response))
 
+(defn- parse-response-key
+  [json-key]
+  (binding [*read-eval* false]
+    (let [keyy (read-string json-key)]
+      (if (instance? clojure.lang.Symbol keyy)
+        (keyword keyy)
+        keyy))))
+
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
   (if-not (string? body)
     body
     (try
-      (auto-deserialize-dates (json/parse-string body keyword))
-      (catch Throwable e
+      (auto-deserialize-dates (json/parse-string body parse-response-key))
+      (catch Throwable _
         (when-not (str/blank? body)
           body)))))
 
