@@ -59,6 +59,9 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
+export const canCompareSubstrings = (a, b) =>
+  typeof a === "string" && typeof b === "string" && !!a.length && !!b.length;
+
 export const OPERATOR_FORMATTER_FACTORIES = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
@@ -73,21 +76,13 @@ export const OPERATOR_FORMATTER_FACTORIES = {
   "is-null": (_value, color) => v => (v === null ? color : null),
   "not-null": (_value, color) => v => (v !== null ? color : null),
   contains: (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) >= 0 ? color : null,
   "does-not-contain": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) < 0 ? color : null,
   "starts-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.startsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.startsWith(value) ? color : null,
   "ends-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.endsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.endsWith(value) ? color : null,
 };
 
 export function compileFormatter(
