@@ -152,8 +152,7 @@
                                          :type "query"}]
           (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
             (is (>= 2000 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                             :data
-                             :rows
+                             mt/rows
                              count)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
