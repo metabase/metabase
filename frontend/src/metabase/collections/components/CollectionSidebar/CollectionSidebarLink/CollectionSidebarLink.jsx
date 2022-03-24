@@ -26,7 +26,7 @@ const CollectionSidebarLink = styled(Link)`
   flex-shrink: 0;
   align-items: center;
   font-weight: bold;
-  color: ${props => (props.selected ? color("brand") : "white")};
+  color: ${props => (props.selected ? color("brand") : "text-medium")};
   background-color: ${props =>
     props.selected
       ? color("brand-light")

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import GenericIcon from "metabase/components/Icon";
@@ -19,7 +18,6 @@ export const Icon = styled(GenericIcon)`
 
 export const Link = styled(GenericLink)`
   align-items: center;
-  color: ${color("white")};
   display: flex;
   font-weight: 700;
   margin-top: ${space(2)};
