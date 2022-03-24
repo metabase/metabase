@@ -1,5 +1,6 @@
 (ns metabase.models.timeline
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models.collection :as collection]
+            [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
@@ -22,6 +23,19 @@
 
 ;;;; functions
 
+(defn- root-collection
+  []
+  (-> (collection/root-collection-with-ui-details nil)
+      collection/personal-collection-with-ui-details
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+
+(defn hydrate-root-collection
+  "Hydrate `:collection` on [[Timelines]] when the id is `nil`."
+  [{:keys [collection_id] :as timeline}]
+  (if (nil? collection_id)
+    (assoc timeline :collection (root-collection))
+    timeline))
+
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
@@ -29,7 +43,9 @@
   (cond-> (hydrate (db/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
-                   :creator)
+                   :creator
+                   :collection)
+    (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
 (u/strict-extend (class Timeline)
