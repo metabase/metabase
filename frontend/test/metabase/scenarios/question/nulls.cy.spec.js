@@ -192,7 +192,7 @@ describe("scenarios > question > null", () => {
       summarize();
       // remove pre-selected "Count"
       cy.icon("close").click();
-      // dropdown immediately opens with the new set of metrics to choose from
+      cy.findByText("Add a metric").click();
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();
         cy.findByText("Discount").click();
