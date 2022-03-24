@@ -1,8 +1,19 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
-export const NavRoot = styled.div`
+const openNavbarCSS = css`
+  width: 324px;
+  position: relative;
+`;
+
+const closedNavbarCSS = css`
+  width: 0;
+  visibility: hidden;
+`;
+
+export const NavRoot = styled.div<{ isOpen: boolean }>`
   position: fixed;
   align-items: center;
   padding: 0.5rem 0;
@@ -13,8 +24,7 @@ export const NavRoot = styled.div`
   border-right: 1px solid ${color("border")};
 
   ${breakpointMinSmall} {
-    width: 324px;
-    position: relative;
+    ${props => (props.isOpen ? openNavbarCSS : closedNavbarCSS)};
   }
 `;
 
