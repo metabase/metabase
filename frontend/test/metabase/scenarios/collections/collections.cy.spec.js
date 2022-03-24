@@ -5,6 +5,7 @@ import {
   popover,
   openOrdersTable,
   navigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -467,6 +468,7 @@ describe("scenarios > collection_defaults", () => {
       });
 
       cy.visit("/");
+      closeNavigationSidebar();
       cy.findByText("New").click();
       cy.findByText("Question")
         .should("be.visible")
