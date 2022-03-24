@@ -151,9 +151,11 @@
       (is (= "DEF"
              (test-setting-2))))
 
-    (testing "non-admin should be able to update multiple settings at once if any of them are not user-local"
+    (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"}))))))
+             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "ABC", :test-user-local-allowed-setting "DEF"}))))))
 
 (defn- fetch-user-local-test-settings [user]
   (for [setting (mt/user-http-request user :get 200 "setting")
