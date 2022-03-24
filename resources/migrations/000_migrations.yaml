@@ -11325,6 +11325,18 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh was started
+                  name: refresh_begin
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh ended
+                  name: refresh_end
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

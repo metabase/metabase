@@ -774,12 +774,15 @@
       (when (pos? (db/count PersistedInfo :card_id card-id))
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
       (let [slug           (-> card :name persisted-info/slug-name)
+            ;; todo: figure out the balance of what goes in here initially and what is set in the ddl.i/persist!
             persisted-info (db/insert! PersistedInfo {:card_id       card-id
                                                       :question_slug slug
                                                       :query_hash    (persisted-info/query-hash dataset_query)
                                                       :table_name    (format "model_%s_%s" card-id slug)
                                                       :columns       (mapv :name result_metadata)
                                                       :active        false
+                                                      :refresh_begin :%now
+                                                      :refresh_end   nil
                                                       :state         "creating"})]
         (ddl.concurrent/submit-task
          #(ddl.i/persist! (:engine database) database persisted-info card)))

@@ -8,6 +8,7 @@
             [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
@@ -70,13 +71,16 @@
     (let [metadata   (:result_metadata card)
           definition (metadata->definition metadata (:table_name persisted-info))]
       (try
+        (db/update! PersistedInfo (u/the-id persisted-info)
+          :refresh_begin :%now, :refresh_end nil)
         (jdbc/execute! conn [(create-table-sql database definition)])
         (jdbc/execute! conn [(populate-table-sql database
                                                  definition
                                                  (-> (:dataset_query card)
                                                      qp/compile
                                                      :query))])
-        (db/update! PersistedInfo (:id persisted-info) :active true, :state "persisted")
+        (db/update! PersistedInfo (u/the-id persisted-info)
+          :active true, :state "persisted", :refresh_end :%now)
         (catch Exception e
           (log/warn e)
           (throw e))))))
