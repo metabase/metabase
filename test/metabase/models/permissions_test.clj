@@ -707,7 +707,7 @@
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
               (db/select-field :object Permissions {:where [:and
-                                                            [:<> :object (perms/general-perms-path :subscription)]
+                                                            [:like :object "/collection/%"]
                                                             [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))

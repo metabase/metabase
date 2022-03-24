@@ -114,7 +114,7 @@
                      (test-db-perms group-id)))
               (is (= #{(perms/database-block-perms-path (mt/id))}
                      (db/select-field :object Permissions {:where [:and
-                                                                   [:<> :object (perms/general-perms-path :subscription)]
+                                                                   [:like :object "/block/%"]
                                                                    [:= :group_id group-id]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test

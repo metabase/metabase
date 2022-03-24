@@ -1086,7 +1086,7 @@
    ;; a new group and we don't care about it here
    (db/select-field :object Permissions
                     {:where [:and
-                             [:<> :object (perms/general-perms-path :subscription)]
+                             [:like :object "/collection/%"]
                              [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test

@@ -108,4 +108,4 @@
 (deftest post-insert-test
   (testing "Should grant subscription permission for newly created Group"
     (mt/with-temp PermissionsGroup [{group-id :id}]
-      (is (= 1 (db/count Permissions :group_id group-id :object (perms/general-perms-path :subscription)))))))
+      (is (db/exists? Permissions :group_id group-id :object (perms/general-perms-path :subscription))))))
