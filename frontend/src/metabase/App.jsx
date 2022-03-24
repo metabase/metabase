@@ -9,6 +9,7 @@ import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import * as Urls from "metabase/lib/urls";
 
+import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
@@ -31,13 +32,15 @@ import { AppContentContainer, AppContent } from "./App.styled";
 export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
-const mapStateToProps = (state, props) => ({
+const mapStateToProps = state => ({
   errorPage: state.app.errorPage,
+  isSidebarOpen: getIsNavbarOpen(state),
   currentUser: state.currentUser,
 });
 
 const mapDispatchToProps = {
   onChangeLocation: push,
+  toggleNavbar,
 };
 
 const getErrorComponent = ({ status, data, context }) => {
@@ -64,22 +67,9 @@ const getErrorComponent = ({ status, data, context }) => {
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
-const PATHS_WITH_COLLAPSED_NAVBAR = [
-  /\/model.*/,
-  /\/question.*/,
-  /\/dashboard.*/,
-];
-
-function checkIsSidebarInitiallyOpen(locationPathName) {
-  return !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
-    pattern.test(locationPathName),
-  );
-}
-
 class App extends Component {
   state = {
     errorInfo: undefined,
-    sidebarOpen: checkIsSidebarInitiallyOpen(this.props.location.pathname),
   };
 
   constructor(props) {
@@ -116,10 +106,6 @@ class App extends Component {
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  };
-
-  toggleSidebar = () => {
-    this.setState({ sidebarOpen: !this.state.sidebarOpen });
   };
 
   closeModal = () => {
@@ -172,8 +158,15 @@ class App extends Component {
   };
 
   render() {
-    const { children, location, errorPage, onChangeLocation } = this.props;
-    const { errorInfo, sidebarOpen } = this.state;
+    const {
+      isSidebarOpen,
+      children,
+      location,
+      errorPage,
+      onChangeLocation,
+      toggleNavbar,
+    } = this.props;
+    const { errorInfo } = this.state;
     const hasAppBar = this.hasAppBar();
     return (
       <ScrollToTop>
@@ -183,9 +176,9 @@ class App extends Component {
           <>
             {hasAppBar && (
               <AppBar
-                isSidebarOpen={sidebarOpen}
+                isSidebarOpen={isSidebarOpen}
                 location={location}
-                onToggleSidebarClick={this.toggleSidebar}
+                onToggleSidebarClick={toggleNavbar}
                 onNewClick={this.setModal}
                 onChangeLocation={onChangeLocation}
               />
@@ -194,7 +187,7 @@ class App extends Component {
               hasAppBar={hasAppBar}
               isAdminApp={this.isAdminApp()}
             >
-              {this.hasNavbar() && sidebarOpen && (
+              {this.hasNavbar() && isSidebarOpen && (
                 <Navbar location={location} />
               )}
               <AppContent>{children}</AppContent>
