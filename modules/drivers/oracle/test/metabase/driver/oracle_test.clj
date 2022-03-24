@@ -294,7 +294,7 @@
                   :where  [:<= (hsql/raw "rownum") 100]})
                (#'sql.qp/mbql->honeysql
                 :oracle
-                (qp/preproces
+                (qp/preprocess
                  (mt/mbql-query venues
                    {:source-table $$venues
                     :order-by     [[:asc $id]]
