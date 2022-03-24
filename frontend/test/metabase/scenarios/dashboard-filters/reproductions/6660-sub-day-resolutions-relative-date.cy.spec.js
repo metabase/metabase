@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 describe("issue 6660", () => {
   beforeEach(() => {
@@ -7,7 +7,7 @@ describe("issue 6660", () => {
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("pencil").click();
     cy.icon("filter").click();
 

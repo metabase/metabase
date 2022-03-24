@@ -4,6 +4,7 @@ import {
   popover,
   filter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -132,7 +133,7 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      cy.visit("/dashboard/2");
+      visitDashboard(2);
       cy.findByText("Question").click();
 
       // Filter by category and vendor

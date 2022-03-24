@@ -1,5 +1,5 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -109,7 +109,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                 sizeY: 12,
               });
 
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+              visitDashboard(DASHBOARD_ID);
               cy.findByText(DASHBOARD_NAME);
 
               cy.wait("@cardQuery"); // wait for the title to be re-rendered before we can click on it
@@ -200,7 +200,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             ).as("cardQuery");
             cy.route("POST", `/api/dataset`).as("dataset");
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.wait("@cardQuery");
             cy.findByText(QUESTION_NAME).click();
@@ -233,7 +233,7 @@ function addCardToNewDashboard(dashboard_name, card_id) {
         sizeY: 4,
       });
       // Visit newly created dashboard
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     },
   );
 }

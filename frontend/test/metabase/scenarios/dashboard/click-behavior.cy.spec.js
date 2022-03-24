@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -47,7 +47,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                 ],
               });
 
-              cy.visit(`/dashboard/${dashboardId}`);
+              visitDashboard(dashboardId);
 
               cy.intercept(
                 "POST",
@@ -134,7 +134,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             ],
           });
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
 
           cy.intercept(
             "POST",

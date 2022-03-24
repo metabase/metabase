@@ -3,6 +3,7 @@ import {
   editDashboard,
   setFilter,
   popover,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -30,7 +31,7 @@ describe.skip("issue 17212", () => {
             `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
 
           cy.wait("@cardQuery");
         },

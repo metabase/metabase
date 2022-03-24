@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {
@@ -92,7 +92,7 @@ describe("scenarios > dashboard > permissions", () => {
         });
       });
       dashboardId = dashId;
-      cy.visit(`/dashboard/${dashId}`);
+      visitDashboard(dashId);
     });
   });
 
@@ -106,7 +106,7 @@ describe("scenarios > dashboard > permissions", () => {
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
-    cy.visit(`/dashboard/${dashboardId}`);
+    visitDashboard(dashboardId);
     cy.findByText("Sorry, you don't have permission to see this card.");
     cy.findByText("Second Question");
     cy.findByText("bar");
@@ -114,7 +114,7 @@ describe("scenarios > dashboard > permissions", () => {
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
-    cy.visit(`/dashboard/${dashboardId}`);
+    visitDashboard(dashboardId);
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });

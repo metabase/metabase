@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -60,7 +60,7 @@ describe("issue 13960", () => {
           `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
         ).as("cardQuery");
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
 
         cy.wait("@cardQuery");
       },

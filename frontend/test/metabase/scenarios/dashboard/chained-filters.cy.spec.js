@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   showDashboardCardActions,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -122,7 +123,7 @@ describe("scenarios > dashboard > chained filter", () => {
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        cy.visit("/dashboard/1");
+        visitDashboard(1);
       // start editing
       cy.icon("pencil").click();
 
@@ -250,7 +251,7 @@ describe("scenarios > dashboard > chained filter", () => {
         },
         enable_embedding: true,
       });
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
     });
 
     // First make sure normal filtering works - we reuse the chained filter test above.
@@ -344,7 +345,7 @@ describe("scenarios > dashboard > chained filter", () => {
           });
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
         cy.icon("pencil").click();
         showDashboardCardActions();
         cy.icon("click").click();

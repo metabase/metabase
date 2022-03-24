@@ -5,6 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   visualize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -72,7 +73,7 @@ describe("issue 17514", () => {
 
           cy.editDashboardCard(card, mapFilterToCard);
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
 
           cy.wait("@cardQuery");
         },
