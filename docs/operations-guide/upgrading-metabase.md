@@ -1,31 +1,60 @@
 # Upgrading Metabase
 
-Before you attempt to upgrade Metabase, you should make a backup of the application database just in case. While it is unlikely you will need to roll back, it will do wonders for your peace of mind.
+## Step 1: Back up your application database
 
-How you upgrade Metabase depends on how you are running it. See below for information on how to update Metabase on managed platforms.
+The application database keeps track of all of your people, dashboards, questions, collections, permissions: all the application data in Metabase (that is, everything but the data you've connected to Metabase). While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind.
 
-## Specific Platforms
+See [Backing up Metabase application data](backing-up-metabase-application-data.md).
 
-### Docker Image
+## Step 2: Swap in the new Metabase version
 
-If you are running Metabase via docker, then you simply need to stop the Docker container and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
+Steps differ depending on whether you're running the JAR or a Docker image.
 
-To pull the latest Metabase:
+- [JAR](#jar)
+- [Docker](#docker)
 
-    $ docker pull metabase/metabase:latest
+### Upgrading the JAR
 
-### Jar file
+If you're running the JVM Jar file directly:
 
-If you are running the JVM Jar file directly, then you simply kill the process, replace the .jar file with the newer version and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
+1. [Backup your application database](backing-up-metabase-application-data.md).
 
-### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase-on-elastic-beanstalk)
+2. [Download the latest version](https://www.metabase.com/start/oss/jar.html).
 
-Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
+3. Use a terminal to access your existing Metabase process and kill it (usually CTRL-C).
 
-### [Upgrading Azure Web Apps deployments](running-metabase-on-azure.html#additional-configurations)
+4. Replace the existing JAR file (`metabase.jar`) in your Metabase directory with the newer version.
 
-Step-by-step instructions on how to upgrade Metabase running on Azure Web Apps.
+5. Restart the server:
 
-### [Upgrading Heroku deployments](running-metabase-on-heroku.html#deploying-new-versions-of-metabase)
+```
+java -jar metabase.jar
+```
 
-Step-by-step instructions on how to upgrade Metabase running on Heroku.
+On startup, Metabase will perform any tasks it needs to complete the upgrade. Once Metabase has completed those tasks, you'll be running the new version.
+
+### Upgrading the Docker image
+
+If you're running Metabase in a Docker container:
+
+1. [Backup your application database](backing-up-metabase-application-data.md).
+
+2. Stop the current Docker container.
+
+3. Pull the latest Metabase Docker image:
+
+```
+docker pull metabase/metabase:latest
+```
+
+4. Start the new Docker container. On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
+
+## Upgrading Metabase Cloud
+
+If you're on a [Metabase Cloud](/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly.
+
+## Upgrading Metabase on other platforms
+
+- [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase-on-elastic-beanstalk)
+- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.html#additional-configurations)
+- [Upgrading Heroku deployments](running-metabase-on-heroku.html#deploying-new-versions-of-metabase)
