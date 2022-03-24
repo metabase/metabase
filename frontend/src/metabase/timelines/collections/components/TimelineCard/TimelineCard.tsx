@@ -22,9 +22,10 @@ export interface TimelineCardProps {
 const TimelineCard = ({
   timeline,
   collection,
+  onUnarchive,
 }: TimelineCardProps): JSX.Element => {
   const timelineUrl = Urls.timelineInCollection(timeline, collection);
-  const menuItems = getMenuItems(timeline, collection);
+  const menuItems = getMenuItems(timeline, collection, onUnarchive);
   const eventCount = timeline.events?.length;
   const hasDescription = Boolean(timeline.description);
   const hasMenuItems = menuItems.length > 0;

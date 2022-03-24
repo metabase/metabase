@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
@@ -52,16 +53,17 @@ export const CardRoot = styled(Link)`
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 6px;
+  cursor: ${props => (props.to ? "pointer" : "default")};
 
   &:hover {
-    border-color: ${color("brand")};
+    border-color: ${props => (props.to ? color("brand") : "")};
 
     ${CardIcon} {
-      color: ${color("brand")};
+      color: ${props => (props.to ? color("brand") : "")};
     }
 
     ${CardTitle} {
-      color: ${color("brand")};
+      color: ${props => (props.to ? color("brand") : "")};
     }
   }
 `;
