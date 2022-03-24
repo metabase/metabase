@@ -134,6 +134,9 @@
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
+(def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
+(def ^:private include-current-regex         #"(~?)")
+
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
@@ -154,7 +157,8 @@
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser #"past([0-9]+)(second|minute|hour|day|week|month|year)s(~?)", [:int-value :unit :include-current?])
+   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
+                           [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
               (let [dt-res (maybe-reduce-resolution unit dt)]
                 (unit-range (t/minus dt-res (to-period int-value))
@@ -162,7 +166,8 @@
     :filter (fn [{:keys [unit int-value include-current?]} field-clause]
               [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
-   {:parser (regex->parser #"next([0-9]+)(second|minute|hour|day|week|month|year)s(~?)" [:int-value :unit :include-current?])
+   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
+                           [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
               (let [dt-res (maybe-reduce-resolution unit dt)]
                 (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
@@ -170,14 +175,16 @@
     :filter (fn [{:keys [unit int-value include-current?]} field-clause]
               [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
-   {:parser (regex->parser #"last(second|minute|hour|day|week|month|year)" [:unit])
+   {:parser (regex->parser (re-pattern (str #"last" relative-temporal-units-regex))
+                           [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
               [:time-interval field-clause :last (keyword unit)])}
 
-   {:parser (regex->parser #"this(second|minute|hour|day|week|month|year)" [:unit])
+   {:parser (regex->parser (re-pattern (str #"this" relative-temporal-units-regex))
+                           [:unit])
     :range  (fn [{:keys [unit unit-range]} dt]
               (let [dt-adj (maybe-reduce-resolution unit dt)]
                 (unit-range dt-adj dt-adj)))
@@ -291,8 +298,8 @@
   ([date-string]
    (date-string->range date-string nil))
 
-  ([date-string  :- s/Str, {:keys [inclusive-start? inclusive-end?]
-                            :or   {inclusive-start? true, inclusive-end? true}}]
+  ([date-string  :- s/Str {:keys [inclusive-start? inclusive-end?]
+                           :or   {inclusive-start? true, inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
@@ -307,11 +314,14 @@
               (m/map-vals u.date/format))
          ;; if both of the decoders above fail, then the date string is invalid
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
-                  {:param date-string
-                   :type  error-type/invalid-parameter}))))))
+                         {:param date-string
+                          :type  error-type/invalid-parameter}))))))
 
 (s/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
-  (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string))
+  (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
+      (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
+                      {:type        error-type/invalid-parameter
+                       :date-string date-string}))))
