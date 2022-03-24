@@ -5,7 +5,6 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
-import { color, darken } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -32,10 +31,7 @@ function NewButton({
         <Link
           mr={1}
           p={1}
-          hover={{
-            backgroundColor: darken(color("brand")),
-          }}
-          className="flex align-center rounded transition-background"
+          className="Button Button--primary flex align-center"
           data-metabase-event={`NavBar;Create Menu Click`}
         >
           <Icon name="add" size={14} />
