@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 
 describe("scenarios > dashboard > visualization options", () => {
   beforeEach(() => {
@@ -7,7 +7,7 @@ describe("scenarios > dashboard > visualization options", () => {
   });
 
   it("column reordering should work (metabase#16229)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("pencil").click();
     cy.get(".Card").realHover();
     cy.icon("palette").click();

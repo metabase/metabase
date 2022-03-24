@@ -6,6 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -104,7 +105,7 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
     ({ body: { card_id, dashboard_id } }) => {
       visitQuestion(card_id);
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      visitDashboard(dashboard_id);
     },
   );
 

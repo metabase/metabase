@@ -3,6 +3,7 @@ import {
   popover,
   restore,
   openNativeEditor,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -17,7 +18,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should be visible if previously added", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.findByText("Baker").should("not.exist");
 
     // Add a filter
@@ -130,7 +131,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should not search field for results non-exact parameter string operators", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     // Add a filter tied to a field that triggers a search for field values
     cy.icon("pencil").click();
@@ -177,7 +178,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Mirrored issue in metabase-enterprise#275
 
     // Go directly to "Orders in a dashboard" dashboard
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     // Add filter and save dashboard
     cy.icon("pencil").click();
@@ -296,7 +297,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("New question").should("not.exist");
 
     cy.log("Bug was breaking the dashboard at this point");
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // error was always ending in "is undefined" when dashboard broke in the past
     cy.contains(/is undefined$/).should("not.exist");
     cy.findByText("Orders in a dashboard");
@@ -358,7 +359,7 @@ describe("scenarios > dashboard > parameters", () => {
           });
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       });
     });
 
@@ -422,7 +423,7 @@ describe("scenarios > dashboard > parameters", () => {
             });
           });
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
         });
       });
     });
@@ -436,7 +437,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should be removable from dashboard", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // Add a filter
     addCityFilterWithDefault();
 
@@ -452,7 +453,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when the user does not have self service data permissions", () => {
     beforeEach(() => {
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       addCityFilterWithDefault();
 
       cy.signIn("nodata");

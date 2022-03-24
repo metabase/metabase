@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -36,7 +36,7 @@ describe("visual tests > dashboard > parameters widget", () => {
 
         cy.editDashboardCard(card, updatedSize);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });
