@@ -39,26 +39,31 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     // so we need to pick whichever is smallest.
     const gridSizeWidth = Math.min(numGridColumns, gridSize.width);
 
-    const pxPerUnit = width / gridSizeWidth;
-    const maxWidthPx = numGridColumns * pxPerUnit;
+    const widthPxPerUnit = width / gridSizeWidth;
+    const maxWidthPx = numGridColumns * widthPxPerUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minWidthPx = 3 * pxPerUnit;
+    const minWidthPx = 3 * widthPxPerUnit;
 
     // arbitrary maxSize
     const maxSize = 12;
     // minSize taken from previous styling code
     const minSize = 2.2;
     // the 4 is an arbitrary value between minSize and maxSize
-    const gridWidthAdjustment =
-      ((width - minWidthPx) / (maxWidthPx - minWidthPx)) * 4;
+    const gridWidthAdjustment = Math.max(
+      ((width - minWidthPx) / (maxWidthPx - minWidthPx)) * 4,
+      0,
+    );
 
+    const heightPxPerUnit = height / gridSize.height;
     // 10 is approximately the number of dashboard grid rows that are visible when browser is fully expanded
-    const maxHeightPx = 10 * pxPerUnit;
+    const maxHeightPx = 10 * heightPxPerUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minHeightPx = 3 * pxPerUnit;
+    const minHeightPx = 3 * heightPxPerUnit;
     // the 4 is an arbitrary value between minSize and maxSize
-    const gridHeightAdjustment =
-      ((height - minHeightPx) / (maxHeightPx - minHeightPx)) * 4;
+    const gridHeightAdjustment = Math.max(
+      ((height - minHeightPx) / (maxHeightPx - minHeightPx)) * 4,
+      0,
+    );
 
     // clamp the size in case the combo of gridWidthAdjustment and gridHeightAdjustment makes the font too small or too big
     const fontSize = Math.min(
