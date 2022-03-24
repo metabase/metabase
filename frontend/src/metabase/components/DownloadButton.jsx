@@ -53,10 +53,10 @@ const handleSubmit = async (
   if (method === `POST`) {
     options.body = formData;
   } else if (method === `GET`) {
-    options.query = formData;
+    options.query = formData.toString();
   }
 
-  fetch(url, options)
+  fetch(method === `POST` ? url : url + '?' + options.query, options)
     .then(async res => {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
