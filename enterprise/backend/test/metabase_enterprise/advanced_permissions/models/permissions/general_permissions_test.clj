@@ -6,6 +6,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
@@ -84,12 +85,13 @@
              (g-perms/update-graph! new-graph))))))
 
   (testing "Ignore permissions that are not in current graph and revision won't changes"
-    (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id :random-permission] :yes)
-            _             (g-perms/update-graph! new-graph)
-            updated-graph (g-perms/graph)]
-        (is (= (:groups current-graph) (:groups updated-graph)))
-        (is (= (:revision current-graph) (:revision updated-graph))))))
+    (s/without-fn-validation
+      (with-new-group-and-current-graph group-id current-graph
+        (let [new-graph     (assoc-in current-graph [:groups group-id :random-permission] :yes)
+              _             (g-perms/update-graph! new-graph)
+              updated-graph (g-perms/graph)]
+          (is (= (:groups current-graph) (:groups updated-graph)))
+          (is (= (:revision current-graph) (:revision updated-graph)))))))
 
   (testing "Ignore group-ids that are not in current graph but still updates if other permissions changes"
     (with-new-group-and-current-graph group-id current-graph
