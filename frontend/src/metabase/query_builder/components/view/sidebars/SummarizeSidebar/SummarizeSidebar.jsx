@@ -4,7 +4,6 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
-import { usePrevious } from "metabase/hooks/use-previous";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import { updateAndRunQuery } from "./utils";
@@ -25,6 +24,13 @@ const propTypes = {
   className: PropTypes.string,
 };
 
+function getQuery(question, isDefaultAggregationRemoved) {
+  const query = question.query().topLevelQuery();
+  const shouldAddDefaultAggregation =
+    !query.hasAggregations() && !isDefaultAggregationRemoved;
+  return shouldAddDefaultAggregation ? query.aggregate(["count"]) : query;
+}
+
 const SummarizeSidebar = ({
   question,
   isResultDirty,
@@ -32,29 +38,26 @@ const SummarizeSidebar = ({
   onClose,
   className,
 }) => {
-  const previousQuestion = usePrevious(question);
-  const [isModified, setIsModified] = useState(false);
+  const [isDefaultAggregationRemoved, setDefaultAggregationRemoved] = useState(
+    false,
+  );
 
-  // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
-  let query = question.query().topLevelQuery();
-  // if the query hasn't been modified and doesn't have an aggregation, automatically add one
-  const shouldAddDefaultAggregation = !isModified && !query.hasAggregations();
-  if (shouldAddDefaultAggregation) {
-    query = query.aggregate(["count"]);
-  }
-  const dimensions = query.breakouts().map(b => b.dimension());
-  const sections = query.breakoutOptions(true).sections() ?? [];
+  const [query, setQuery] = useState(
+    getQuery(question, isDefaultAggregationRemoved),
+  );
 
   useEffect(() => {
-    if (
-      previousQuestion == null ||
-      question.isEqual(previousQuestion, { compareResultsMetadata: false })
-    ) {
-      return;
-    }
+    const nextQuery = getQuery(question, isDefaultAggregationRemoved);
+    setQuery(nextQuery);
+  }, [question, isDefaultAggregationRemoved]);
 
-    setIsModified(true);
-  }, [question, previousQuestion]);
+  const hasAggregations = query.hasAggregations();
+  const topLevelQuery = question.query().topLevelQuery();
+  const hasDefaultAggregation =
+    !isDefaultAggregationRemoved && !topLevelQuery.hasAggregations();
+
+  const dimensions = query.breakouts().map(b => b.dimension());
+  const sections = query.breakoutOptions(true).sections() ?? [];
 
   const handleDimensionChange = dimension => {
     const index = dimensions.findIndex(d => d.isSameBaseDimension(dimension));
@@ -78,6 +81,13 @@ const SummarizeSidebar = ({
     }
   };
 
+  const handleAggregationRemove = (aggregation, index) => {
+    const lastAggregationRemoved = index === 0;
+    if (lastAggregationRemoved) {
+      setDefaultAggregationRemoved(true);
+    }
+  };
+
   return (
     <SidebarContent
       title={t`Summarize by`}
@@ -85,7 +95,8 @@ const SummarizeSidebar = ({
       onDone={() => {
         if (isResultDirty) {
           runQuestionQuery();
-        } else if (shouldAddDefaultAggregation) {
+        }
+        if (hasDefaultAggregation) {
           query.update(null, { run: true });
         }
         onClose();
@@ -99,15 +110,16 @@ const SummarizeSidebar = ({
             aggregation={aggregation}
             index={index}
             query={query}
+            onRemove={handleAggregationRemove}
           />
         ))}
         <AddAggregationButton
           query={query}
-          shouldShowLabel={!query.hasAggregations()}
+          shouldShowLabel={!hasAggregations}
         />
       </AggregationsContainer>
 
-      {query.hasAggregations() && (
+      {hasAggregations && (
         <DimensionListContainer>
           <SectionTitle>{t`Group by`}</SectionTitle>
 
