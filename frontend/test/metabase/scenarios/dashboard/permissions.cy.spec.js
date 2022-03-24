@@ -63,6 +63,8 @@ describe("scenarios > dashboard > permissions", () => {
     });
 
     cy.createDashboard().then(({ body: { id: dashId } }) => {
+      dashboardId = dashId;
+
       cy.request("POST", `/api/dashboard/${dashId}/cards`, {
         cardId: firstQuestionId,
       }).then(({ body: { id: dashCardIdA } }) => {
@@ -91,12 +93,11 @@ describe("scenarios > dashboard > permissions", () => {
           });
         });
       });
-      dashboardId = dashId;
-      visitDashboard(dashId);
     });
   });
 
   it("should let admins view all cards in a dashboard", () => {
+    visitDashboard(dashboardId);
     // Admin can see both questions
     cy.findByText("First Question");
     cy.findByText("foo");
