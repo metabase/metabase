@@ -10,6 +10,7 @@ import {
   sidebar,
   summarize,
   filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -30,11 +31,12 @@ describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("allows to turn a GUI question into a model", () => {
     cy.request("PUT", "/api/card/1", { name: "Orders Model" });
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     turnIntoModel();
     assertIsModel();
@@ -122,7 +124,7 @@ describe("scenarios > models", () => {
   });
 
   it("changes model's display to table", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
 
     cy.get(".LineAreaBarChart");
     cy.get(".TableInteractive").should("not.exist");
@@ -134,7 +136,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to undo turning a question into a model", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
     cy.get(".LineAreaBarChart");
 
     turnIntoModel();
@@ -169,7 +171,9 @@ describe("scenarios > models", () => {
 
   it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
+    // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
+    cy.wait("@dataset");
     openDetailsSidebar();
     assertIsModel();
     cy.url().should("include", "/model");
@@ -288,7 +292,8 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question by filtering and summarizing a model", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       filter();
       selectDimensionOptionFromSidebar("Discount");
@@ -327,7 +332,8 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question using table click actions", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
@@ -353,7 +359,8 @@ describe("scenarios > models", () => {
 
     it("can edit model info", () => {
       cy.intercept("PUT", "/api/card/1").as("updateCard");
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       openDetailsSidebar();
       getDetailsSidebarActions().within(() => {
@@ -547,7 +554,7 @@ describe("scenarios > models", () => {
         parseSpecialCharSequences: false,
       });
       sidebar()
-        .findByText("Pick a question or a model")
+        .contains("Pick a question or a model")
         .click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");

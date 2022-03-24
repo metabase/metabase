@@ -69,6 +69,7 @@
   {:description     nil
    :visibility_type :normal
    :settings        nil
+   :nfc_path        nil
    :parent_id       nil
    :source          :fields})
 

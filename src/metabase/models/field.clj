@@ -172,7 +172,8 @@
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword
                                        :fingerprint       :json-for-fingerprints
-                                       :settings          :json})
+                                       :settings          :json
+                                       :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
 

@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -171,7 +175,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@updateFormatting");
 
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findByTestId("loading-spinner").should("not.exist");
 
     // create a date filter and set it to the 'On' view to see a specific date

@@ -17,7 +17,7 @@
     (select-keys
      col
      [:id :table_id :name :display_name :base_type :effective_type :coercion_strategy
-      :semantic_type :unit :fingerprint :settings :field_ref :parent_id])))
+      :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
 
 (defn- venues-source-metadata
   ([]

@@ -1,9 +1,18 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
 import { alpha, color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
-export const CardRoot = styled.div`
+export interface CardRootProps {
+  isSelected?: boolean;
+}
+
+export const CardRoot = styled.div<CardRootProps>`
   display: flex;
+  padding: 0.25rem 0.75rem;
+  border-left: 0.25rem solid
+    ${props => (props.isSelected ? color("brand") : "transparent")};
+  background-color: ${props =>
+    props.isSelected ? alpha("brand", 0.03) : "transparent"};
 `;
 
 export const CardIcon = styled(Icon)`
@@ -25,7 +34,8 @@ export const CardIconContainer = styled.div`
 
 export const CardBody = styled.div`
   flex: 1 1 auto;
-  padding: 0.25rem 0.75rem 0.5rem;
+  padding: 0.25rem 0.75rem 0;
+  min-width: 0;
 `;
 
 export const CardTitle = styled.div`
@@ -33,11 +43,13 @@ export const CardTitle = styled.div`
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+  word-wrap: break-word;
 `;
 
 export const CardDescription = styled.div`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
+  word-wrap: break-word;
 `;
 
 export const CardDateInfo = styled.div`

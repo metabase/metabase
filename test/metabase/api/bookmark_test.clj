@@ -11,7 +11,7 @@
 (deftest bookmarks-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [collection {:name "Test Collection"}]
-                    Card       [card {:name "Test Card"}]
+                    Card       [card {:name "Test Card" :display "area"}]
                     Dashboard  [dashboard {:name "Test Dashboard"}]]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
@@ -21,6 +21,12 @@
         (is (= (u/the-id card)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
                     :card_id))))
+      (testing "check a card bookmark has `:display` key"
+        (is (= "area"
+               (->> (mt/user-http-request :rasta :get 200 "bookmark")
+                    (filter #(= (:type % ) "card"))
+                    first
+                    :display))))
       (testing "check that we can bookmark a Dashboard"
         (is (= (u/the-id dashboard)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))

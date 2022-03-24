@@ -16,7 +16,7 @@ import {
   AdminNavbarItems,
   AdminNavbarRoot,
 } from "./AdminNavbar.styled";
-import { User } from "metabase-types/types/User";
+import { User } from "metabase-types/api";
 
 interface AdminNavbarProps {
   path: string;

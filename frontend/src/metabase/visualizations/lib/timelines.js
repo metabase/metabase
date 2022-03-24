@@ -4,24 +4,31 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
-const EVENT_ICON_OFFSET_X = -16;
-const EVENT_ICON_MARGIN_TOP = 10;
-const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
-const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
+const ICON_SIZE = 16;
+const ICON_SCALE = 0.45;
+const ICON_LARGE_SCALE = 0.35;
+const ICON_X = -ICON_SIZE;
+const ICON_Y = 10;
+const TEXT_X = 10;
+const TEXT_Y = 16;
+const TEXT_DISTANCE = ICON_SIZE * 2;
+const RECT_SIZE = ICON_SIZE * 2;
 
-function isAxisEvent(event, [xAxisMin, xAxisMax]) {
-  return (
-    event.timestamp.isSame(xAxisMin) ||
-    event.timestamp.isBetween(xAxisMin, xAxisMax) ||
-    event.timestamp.isSame(xAxisMax)
-  );
+function getXAxis(chart) {
+  return chart.svg().select(".axis.x");
 }
 
-function getAxisEvents(events, xDomain) {
-  return events.filter(event => isAxisEvent(event, xDomain));
+function getBrush(chart) {
+  return chart.svg().select(".brush");
 }
 
-function getEventGroups(events, xInterval) {
+function getEventScale(chart, xDomain, xInterval) {
+  return timeseriesScale(xInterval)
+    .domain(stretchTimeseriesDomain(xDomain, xInterval))
+    .range([0, chart.effectiveWidth()]);
+}
+
+function getEventMapping(events, xInterval) {
   return _.groupBy(events, event =>
     event.timestamp
       .clone()
@@ -30,159 +37,213 @@ function getEventGroups(events, xInterval) {
   );
 }
 
-function getEventTicks(eventGroups) {
-  return Object.keys(eventGroups).map(value => new Date(parseInt(value)));
+function getEventDates(eventMapping) {
+  return Object.keys(eventMapping).map(value => new Date(parseInt(value)));
 }
 
-function getTranslateFromStyle(value) {
-  const style = value.replace("translate(", "").replace(")", "");
-  const [x, y] = style.split(",");
-  return [parseFloat(x), parseFloat(y)];
+function getEventGroups(eventMapping) {
+  return Object.values(eventMapping);
 }
 
-function getXAxis(chart) {
-  return chart.svg().select(".axis.x");
+function isSelected(events, selectedEventIds) {
+  return events.some(event => selectedEventIds.includes(event.id));
 }
 
-function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
-  const xAxisDomainLine = xAxis.select("path.domain").node();
-  const { width: axisWidth } = xAxisDomainLine.getBoundingClientRect();
-  xAxis.selectAll("event-axis").remove();
-
-  const scale = timeseriesScale(xInterval)
-    .domain(stretchTimeseriesDomain(xDomain, xInterval))
-    .range([0, axisWidth]);
-
-  const eventsAxisGenerator = d3.svg
-    .axis()
-    .scale(scale)
-    .orient("bottom")
-    .ticks(eventTicks.length)
-    .tickValues(eventTicks);
-
-  const eventsAxis = xAxis
-    .append("g")
-    .attr("class", "events-axis")
-    .call(eventsAxisGenerator);
-
-  eventsAxis.select("path.domain").remove();
-  return eventsAxis;
+function getIcon(events) {
+  return events.length === 1 ? events[0].icon : "star";
 }
 
-function renderEventTicks(
+function getIconPath(events) {
+  const icon = getIcon(events);
+  return ICON_PATHS[icon].path ?? ICON_PATHS[icon];
+}
+
+function getIconFillRule(events) {
+  const icon = getIcon(events);
+  return ICON_PATHS[icon].attrs?.fillRule;
+}
+
+function getIconTransform(events) {
+  const icon = getIcon(events);
+  const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
+  return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
+}
+
+function getIconLabel(events) {
+  const icon = getIcon(events);
+  return `${icon} icon`;
+}
+
+function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
+  const thisDate = eventDates[eventIndex];
+  const prevDate = eventDates[eventIndex - 1];
+  const nextDate = eventDates[eventIndex + 1];
+  const prevDistance = prevDate && eventScale(thisDate) - eventScale(prevDate);
+  const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
+
+  return prevDistance < eventDistance || nextDistance < eventDistance;
+}
+
+function hasEventText(events, eventIndex, eventScale, eventDates) {
+  if (events.length > 1) {
+    return !isEventWithin(eventIndex, eventScale, eventDates, TEXT_DISTANCE);
+  } else {
+    return false;
+  }
+}
+
+function renderEventLines({
   chart,
-  { eventAxis, eventGroups, onHoverChange, onOpenTimelines },
-) {
-  const svg = chart.svg();
-  const brush = svg.select("g.brush");
-  const brushHeight = brush.select("rect.background").attr("height");
+  brush,
+  eventScale,
+  eventDates,
+  eventGroups,
+  selectedEventIds,
+}) {
+  const eventLines = brush.selectAll(".event-line").data(eventGroups);
+  const brushHeight = chart.effectiveHeight();
+  eventLines.exit().remove();
 
-  svg.selectAll(".event-tick").remove();
-  svg.selectAll(".event-line").remove();
+  eventLines
+    .enter()
+    .append("line")
+    .attr("class", "event-line")
+    .classed("hover", d => isSelected(d, selectedEventIds))
+    .attr("x1", (d, i) => eventScale(eventDates[i]))
+    .attr("x2", (d, i) => eventScale(eventDates[i]))
+    .attr("y1", "0")
+    .attr("y2", brushHeight);
+}
 
-  Object.values(eventGroups).forEach(group => {
-    const defaultTick = eventAxis.select(".tick");
-    const transformStyle = defaultTick.attr("transform");
-    const [tickX] = getTranslateFromStyle(transformStyle);
-    defaultTick.remove();
+function renderEventTicks({
+  axis,
+  brush,
+  eventScale,
+  eventDates,
+  eventGroups,
+  selectedEventIds,
+  onHoverChange,
+  onOpenTimelines,
+  onSelectTimelineEvents,
+  onDeselectTimelineEvents,
+}) {
+  const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  const eventLines = brush.selectAll(".event-line").data(eventGroups);
+  eventAxis.exit().remove();
 
-    const isOnlyOneEvent = group.length === 1;
-    const iconName = isOnlyOneEvent ? group[0].icon : "star";
+  eventAxis
+    .enter()
+    .append("g")
+    .attr("class", "event-axis");
 
-    const iconPath = ICON_PATHS[iconName].path
-      ? ICON_PATHS[iconName].path
-      : ICON_PATHS[iconName];
-    const iconScale = iconName === "mail" ? 0.45 : 0.5;
+  const eventTicks = eventAxis.selectAll(".event-tick").data(eventGroups);
+  eventTicks.exit().remove();
 
-    const eventPointerLine = brush
-      .append("line")
-      .attr("class", "event-line")
-      .attr("x1", tickX)
-      .attr("x2", tickX)
-      .attr("y1", "0")
-      .attr("y2", brushHeight);
+  eventTicks
+    .enter()
+    .append("g")
+    .attr("class", "event-tick")
+    .classed("hover", d => isSelected(d, selectedEventIds))
+    .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
 
-    const eventIconContainer = eventAxis
-      .append("g")
-      .attr("class", "event-tick")
-      .attr("transform", transformStyle);
+  eventTicks
+    .append("path")
+    .attr("class", "event-icon")
+    .attr("d", d => getIconPath(d))
+    .attr("fill-rule", d => getIconFillRule(d))
+    .attr("transform", d => getIconTransform(d))
+    .attr("aria-label", d => getIconLabel(d));
 
-    const eventIcon = eventIconContainer
-      .append("path")
-      .attr("class", "event-icon")
-      .attr("d", iconPath)
-      .attr("aria-label", `${iconName} icon`)
-      .attr(
-        "transform",
-        `scale(${iconScale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
-      );
+  eventTicks
+    .append("rect")
+    .attr("fill", "none")
+    .attr("width", RECT_SIZE)
+    .attr("height", RECT_SIZE)
+    .attr("transform", d => getIconTransform(d));
 
-    if (!isOnlyOneEvent) {
-      eventIconContainer
-        .append("text")
-        .text(group.length)
-        .attr(
-          "transform",
-          `translate(${EVENT_GROUP_COUNT_MARGIN_LEFT},${EVENT_GROUP_COUNT_MARGIN_TOP})`,
-        );
-    }
+  eventTicks
+    .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
+    .append("text")
+    .attr("class", "event-text")
+    .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
+    .text(d => d.length);
 
-    eventIconContainer
-      .on("mousemove", () => {
-        onHoverChange({
-          element: eventIcon.node(),
-          timelineEvents: group,
-        });
-        eventIconContainer.classed("hover", true);
-        eventPointerLine.classed("hover", true);
-      })
-      .on("mouseleave", () => {
-        onHoverChange(null);
-        eventIconContainer.classed("hover", false);
-        eventPointerLine.classed("hover", false);
-      })
-      .on("click", () => {
-        onOpenTimelines();
-      });
-  });
+  eventTicks
+    .on("mousemove", function(d) {
+      const eventTick = d3.select(this);
+      const eventIcon = eventTicks.filter(data => d === data);
+      const eventLine = eventLines.filter(data => d === data);
+
+      onHoverChange({ element: eventIcon.node(), timelineEvents: d });
+      eventTick.classed("hover", true);
+      eventLine.classed("hover", true);
+    })
+    .on("mouseleave", function(d) {
+      const eventTick = d3.select(this);
+      const eventLine = eventLines.filter(data => d === data);
+
+      onHoverChange(null);
+      eventTick.classed("hover", isSelected(d, selectedEventIds));
+      eventLine.classed("hover", isSelected(d, selectedEventIds));
+    })
+    .on("click", function(d) {
+      onOpenTimelines();
+
+      if (isSelected(d, selectedEventIds)) {
+        onDeselectTimelineEvents(d);
+      } else {
+        onSelectTimelineEvents(d);
+      }
+    });
 }
 
 export function renderEvents(
   chart,
   {
-    timelineEvents = [],
-    xDomain,
-    xInterval,
-    isTimeseries,
+    events = [],
+    selectedEventIds = [],
+    xDomain = [],
+    xInterval = {},
     onHoverChange,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
   },
 ) {
-  const xAxis = getXAxis(chart);
-  if (!xAxis || !isTimeseries) {
-    return;
+  const axis = getXAxis(chart);
+  const brush = getBrush(chart);
+  const eventScale = getEventScale(chart, xDomain, xInterval);
+  const eventMapping = getEventMapping(events, xInterval);
+  const eventDates = getEventDates(eventMapping);
+  const eventGroups = getEventGroups(eventMapping);
+
+  if (brush) {
+    renderEventLines({
+      chart,
+      brush,
+      eventScale,
+      eventDates,
+      eventGroups,
+      selectedEventIds,
+    });
   }
 
-  const events = getAxisEvents(timelineEvents, xDomain);
-  const eventGroups = getEventGroups(events, xInterval);
-  const eventTicks = getEventTicks(eventGroups);
-  if (!events.length) {
-    return;
+  if (axis) {
+    renderEventTicks({
+      axis,
+      brush,
+      eventScale,
+      eventDates,
+      eventGroups,
+      selectedEventIds,
+      onHoverChange,
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
+    });
   }
-
-  const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
-  renderEventTicks(chart, {
-    eventAxis,
-    eventGroups,
-    onHoverChange,
-    onOpenTimelines,
-  });
 }
 
-export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
-  if (!isTimeseries) {
-    return false;
-  }
-
-  return timelineEvents.some(event => isAxisEvent(event, xDomain));
+export function hasEventAxis({ timelineEvents = [], isTimeseries }) {
+  return isTimeseries && timelineEvents.length > 0;
 }

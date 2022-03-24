@@ -17,7 +17,7 @@ describe("TimelinePanel", () => {
     render(<TimelinePanel {...props} />);
     userEvent.click(screen.getByText("Add an event"));
 
-    expect(props.onNewEventWithTimeline).toHaveBeenCalled();
+    expect(props.onNewEvent).toHaveBeenCalled();
   });
 
   it("should allow creating an event within existing timelines", () => {
@@ -47,10 +47,7 @@ describe("TimelinePanel", () => {
 const getProps = (opts?: Partial<TimelinePanelProps>): TimelinePanelProps => ({
   timelines: [],
   collection: createMockCollection(),
-  visibility: {},
-  isVisibleByDefault: false,
   onNewEvent: jest.fn(),
-  onNewEventWithTimeline: jest.fn(),
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),
   onToggleTimeline: jest.fn(),
