@@ -39,6 +39,36 @@ function formatSelected({ name, sectionName }) {
   return `${sectionName}.${name}`;
 }
 
+function getSelectedMappingOption(target, mappingOptions) {
+  if (target) {
+    const [targetType, targetField] = target;
+    return _.find(mappingOptions, mappingOption => {
+      const mappingOptionTarget = mappingOption.target;
+      const [
+        mappingOptionTargetType,
+        mappingOptionTargetField,
+      ] = mappingOptionTarget;
+      if (targetField.length !== mappingOptionTargetField.length) {
+        const updatedMappingOptionTargetField = mappingOptionTargetField.slice(
+          0,
+          2,
+        );
+        const updatedMappingOptionTarget = [
+          mappingOptionTargetType,
+          updatedMappingOptionTargetField,
+        ];
+        const updatedTargetField = targetField.slice(0, 2);
+        const updatedTarget = [targetType, updatedTargetField];
+        return _.isEqual(updatedMappingOptionTarget, updatedTarget);
+      }
+
+      return _.isEqual(mappingOptionTarget, target);
+    });
+  }
+
+  return undefined;
+}
+
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
@@ -78,8 +108,9 @@ function DashCardCardParameterMapper({
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
   const isDisabled = mappingOptions.length === 0;
-  const selectedMappingOption = _.find(mappingOptions, o =>
-    _.isEqual(o.target, target),
+  const selectedMappingOption = getSelectedMappingOption(
+    target,
+    mappingOptions,
   );
 
   const handleChangeTarget = useCallback(
