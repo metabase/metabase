@@ -150,3 +150,17 @@ export function visitQuestion(id) {
 
   cy.wait("@" + alias);
 }
+
+/**
+ * Visit a dashboard and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitDashboard(id) {
+  //  The very last request when visiting dashboard always checks the collection it is in.
+  cy.intercept("GET", `/api/collection/*`).as("getParentCollection");
+
+  cy.visit(`/dashboard/${id}`);
+
+  cy.wait("@getParentCollection");
+}
