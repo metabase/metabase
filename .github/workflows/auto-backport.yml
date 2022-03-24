@@ -1,7 +1,7 @@
 name: Auto-backport
 on:
   pull_request:
-    types: [closed, labeled]
+    # types: [closed, labeled]
 
 jobs:
   create-backport:
