@@ -4,7 +4,6 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const NavRoot = styled.div`
   position: fixed;
-  width: 320px;
   align-items: center;
   padding: 0.5rem 0;
   background-color: ${color("nav")};
@@ -14,6 +13,7 @@ export const NavRoot = styled.div`
   border-right: 1px solid ${color("border")};
 
   ${breakpointMinSmall} {
+    width: 324px;
     position: relative;
   }
 `;
