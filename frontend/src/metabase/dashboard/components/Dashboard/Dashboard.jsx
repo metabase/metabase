@@ -95,19 +95,19 @@ export default class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
+  throttleParameterWidgetStickiness = _.throttle(
+    () => updateParametersWidgetStickiness(this),
+    SCROLL_THROTTLE_INTERVAL,
+  );
+
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
 
-    const throttleParameterWidgetStickiness = _.throttle(
-      () => updateParametersWidgetStickiness(this),
-      SCROLL_THROTTLE_INTERVAL,
-    );
-
-    window.addEventListener("scroll", throttleParameterWidgetStickiness, {
+    window.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
-    window.addEventListener("resize", throttleParameterWidgetStickiness, {
+    window.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
   }
@@ -125,9 +125,14 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
-
-    window.removeEventListener("scroll", updateParametersWidgetStickiness);
-    window.removeEventListener("resize", updateParametersWidgetStickiness);
+    window.removeEventListener(
+      "scroll",
+      this.throttleParameterWidgetStickiness,
+    );
+    window.removeEventListener(
+      "resize",
+      this.throttleParameterWidgetStickiness,
+    );
   }
 
   async loadDashboard(dashboardId) {
