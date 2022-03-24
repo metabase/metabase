@@ -71,7 +71,7 @@ export const ToggleListDisplayButton = styled(Icon)`
   ${({ shouldDisplayBookmarks }) =>
     shouldDisplayBookmarks &&
     css`
-      transform: rotate(90deg);
+      transform: rotate(90deg) translate(-1px, -1px);
     `}
 `;
 
