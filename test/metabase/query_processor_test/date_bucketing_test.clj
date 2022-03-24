@@ -1160,3 +1160,14 @@
                        {:aggregation [[:count]]
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+
+(deftest filter-by-current-quarter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Should be able to filter by current quarter (#20683)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter [:= !quarter.date [:relative-datetime :now]]})]
+        (mt/with-native-query-testing-context query
+          ;; this isn't expected to return anything; for now it's enough just to make sure that the query doesn't fail.
+          (is (= [[0]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
