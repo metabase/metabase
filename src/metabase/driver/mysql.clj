@@ -91,6 +91,9 @@
     driver.common/default-user-details
     driver.common/default-password-details
     driver.common/cloud-ip-address-info
+    {:name "schema-filters"
+     :type :schema-filters
+     :display-name "Schemas"}
     driver.common/default-ssl-details
     default-ssl-cert-details
     driver.common/ssh-tunnel-preferences
