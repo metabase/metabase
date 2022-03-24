@@ -5,7 +5,7 @@
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
-(deftest date-string->filter-test
+(deftest ^:parallel date-string->filter-test
   (testing "year and month"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
