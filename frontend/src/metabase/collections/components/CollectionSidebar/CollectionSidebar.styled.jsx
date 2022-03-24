@@ -52,10 +52,16 @@ export const Sidebar = styled.aside`
 
 export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
+  font-size: 12px;
+  letter-spacing: 0.5px;
   font-weight: 700;
   margin-left: ${space(3)};
   text-transform: uppercase;
   user-select: none;
+
+  &:hover {
+    color: ${color("text-dark")};
+  }
 
   ${({ onClick }) =>
     onClick &&
@@ -65,7 +71,7 @@ export const SidebarHeading = styled.h4`
 `;
 
 export const ToggleListDisplayButton = styled(Icon)`
-  margin-left: 12px;
+  margin-left: 4px;
   transform: translate(0px, -1px);
 
   ${({ shouldDisplayBookmarks }) =>
