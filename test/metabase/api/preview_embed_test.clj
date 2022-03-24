@@ -1,5 +1,6 @@
 (ns metabase.api.preview-embed-test
   (:require [clojure.test :refer :all]
+            [metabase.api.preview-embed :as preview-embed]
             [metabase.api.embed-test :as embed-test]
             [metabase.api.pivots :as pivots]
             [metabase.models.card :refer [Card]]
@@ -149,7 +150,7 @@
                                  (mt/process-query
                                   (mt/query orders)))))
             expected-row-count 1]
-        (with-redefs [metabase.api.preview-embed/max-results expected-row-count]
+        (with-redefs [preview-embed/max-results expected-row-count]
           (mt/dataset sample-dataset
             (embed-test/with-embedding-enabled-and-new-secret-key
               (let [sample-db-orders-question (mt/query orders)]
