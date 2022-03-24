@@ -20,5 +20,6 @@ export function openNewCollectionItemFlowFor(type) {
 }
 
 export function getSidebarSectionTitle(title) {
-  return cy.findAllByRole("heading", { name: title });
+  const name = new RegExp(title);
+  return cy.findAllByRole("heading", { name });
 }

@@ -75,6 +75,23 @@ describe("Bookmarks in a collection page", () => {
 
     getSectionTitle("Bookmarks").should("not.exist");
   });
+
+  it("can toggle bookmark list visibility", () => {
+    cy.visit("/collection/1");
+
+    // Add bookmark
+    cy.icon("bookmark").click();
+
+    sidebar().within(() => {
+      getSectionTitle("Bookmarks").click();
+
+      cy.findByText(adminPersonalCollectionName).should("not.exist");
+
+      getSectionTitle("Bookmarks").click();
+
+      cy.findByText(adminPersonalCollectionName);
+    });
+  });
 });
 
 function addThenRemoveBookmarkTo(itemName) {
