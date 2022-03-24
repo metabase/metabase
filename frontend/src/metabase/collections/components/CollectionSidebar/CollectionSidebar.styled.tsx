@@ -18,7 +18,11 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const Sidebar = styled.aside`
+interface SidebarProps {
+  shouldDisplayMobileSidebar: boolean;
+}
+
+export const Sidebar = styled.aside<SidebarProps>`
   bottom: 0;
   display: flex;
   box-sizing: border-box;
@@ -70,8 +74,19 @@ export const SidebarHeading = styled.h4`
     `};
 `;
 
+<<<<<<< HEAD:frontend/src/metabase/collections/components/CollectionSidebar/CollectionSidebar.styled.jsx
 export const ToggleListDisplayButton = styled(Icon)`
   margin-left: 4px;
+=======
+interface ToggleListDisplayButtonProps {
+  shouldDisplayBookmarks: boolean;
+}
+
+export const ToggleListDisplayButton = styled(Icon)<
+  ToggleListDisplayButtonProps
+>`
+  margin-left: 12px;
+>>>>>>> cfd4786d55 (Convert file to TypeScript):frontend/src/metabase/collections/components/CollectionSidebar/CollectionSidebar.styled.tsx
   transform: translate(0px, -1px);
 
   ${({ shouldDisplayBookmarks }) =>
