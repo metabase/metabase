@@ -14,7 +14,10 @@ import BookmarksRoot, {
   BookmarkTypeIcon,
 } from "./Bookmarks.styled";
 
-import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
+import {
+  SidebarHeading,
+  ToggleListDisplayButton,
+} from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
 import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
@@ -43,7 +46,11 @@ const CollectionSidebarBookmarks = ({
   bookmarks,
   deleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
-  const [shouldDisplayBookmarks, setShouldDisplayBookmarks] = useState(true);
+  const storedShouldDisplayBookmarks =
+    localStorage.getItem("shouldDisplayBookmarks") !== "false";
+  const [shouldDisplayBookmarks, setShouldDisplayBookmarks] = useState(
+    storedShouldDisplayBookmarks,
+  );
 
   if (bookmarks.length === 0) {
     return null;
@@ -54,13 +61,23 @@ const CollectionSidebarBookmarks = ({
   };
 
   const toggleBookmarkListVisibility = () => {
+    const booleanForLocalStorage = new Boolean(
+      !shouldDisplayBookmarks,
+    ).toString();
+    localStorage.setItem("shouldDisplayBookmarks", booleanForLocalStorage);
+
     setShouldDisplayBookmarks(!shouldDisplayBookmarks);
   };
 
   return (
     <BookmarksRoot>
       <SidebarHeading onClick={toggleBookmarkListVisibility}>
-        {t`Bookmarks`}
+        {t`Bookmarks`}{" "}
+        <ToggleListDisplayButton
+          name="play"
+          shouldDisplayBookmarks={shouldDisplayBookmarks}
+          size="8"
+        />
       </SidebarHeading>
 
       {shouldDisplayBookmarks && (
@@ -68,11 +85,13 @@ const CollectionSidebarBookmarks = ({
           {bookmarks.map((bookmark, index) => {
             const { id, name, type } = bookmark;
             const url = Urls.bookmark({ id, name, type });
+
             return (
               <BookmarkContainer key={`bookmark-${id}`}>
                 <Link to={url}>
                   <Label name={name} type={type} />
                 </Link>
+
                 <button onClick={() => handleDeleteBookmark(bookmark)}>
                   <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
                     <Icon name="bookmark" />

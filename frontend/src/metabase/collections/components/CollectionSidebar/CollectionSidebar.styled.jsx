@@ -32,8 +32,8 @@ export const Sidebar = styled.aside`
   width: 0;
   background-color: ${color("white")};
 
-  ${props =>
-    props.shouldDisplayMobileSidebar &&
+  ${({ shouldDisplayMobileSidebar }) =>
+    shouldDisplayMobileSidebar &&
     css`
       box-shadow: 5px 0px 8px rgba(0, 0, 0, 0.35),
         40px 0px rgba(5, 14, 31, 0.32);
@@ -62,6 +62,17 @@ export const SidebarHeading = styled.h4`
     css`
       cursor: pointer;
     `};
+`;
+
+export const ToggleListDisplayButton = styled(Icon)`
+  margin-left: ${space(2)};
+  transform: translate(0px, -1px);
+
+  ${({ shouldDisplayBookmarks }) =>
+    shouldDisplayBookmarks &&
+    css`
+      transform: rotate(90deg);
+    `}
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon)`
