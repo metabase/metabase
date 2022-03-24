@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, navigationSidebar } from "__support__/e2e/cypress";
 
 describe("scenarios > collections > drag and drop functionality", () => {
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe("scenarios > collections > drag and drop functionality", () => {
     cy.findByText("First collection").click();
 
     cy.findByText("Orders").as("dragSubject");
-    sidebar()
+    navigationSidebar()
       .findByText("Our analytics")
       .as("dropTarget");
 

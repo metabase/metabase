@@ -1,7 +1,7 @@
 import {
   restore,
   modal,
-  sidebar,
+  navigationSidebar,
   describeEE,
   describeOSS,
   openNewCollectionItemFlowFor,
@@ -264,7 +264,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .click();
 }
@@ -283,7 +283,7 @@ function expandCollectionChildren(collectionName) {
 }
 
 function getSidebarCollectionChildrenFor(collectionName) {
-  return sidebar()
+  return navigationSidebar()
     .findByText(collectionName)
     .closest("a")
     .parent()
@@ -326,7 +326,7 @@ function assertNoCollectionTypeInput() {
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .parent()
     .within(() => {
