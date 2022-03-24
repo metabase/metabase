@@ -2,6 +2,7 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
             [clj-http.client :as client]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
@@ -78,11 +79,10 @@
 
 (defn- parse-response-key
   [json-key]
-  (binding [*read-eval* false]
-    (let [keyy (read-string json-key)]
-      (if (instance? clojure.lang.Symbol keyy)
-        (keyword json-key)
-        keyy))))
+  (let [parsed-key (edn/read-string json-key)]
+    (if (number? parsed-key)
+      parsed-key
+      (keyword json-key))))
 
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
