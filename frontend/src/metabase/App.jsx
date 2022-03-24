@@ -2,28 +2,18 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 import _ from "underscore";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
+import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import SearchBar from "metabase/nav/components/SearchBar";
 import * as Urls from "metabase/lib/urls";
-import LogoIcon from "metabase/components/LogoIcon";
-import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/components/Tooltip";
-
-import {
-  SearchBarContainer,
-  SearchBarContent,
-} from "metabase/nav/containers/Navbar.styled";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
 import StatusListing from "metabase/status/containers/StatusListing";
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
-import NewButton from "metabase/nav/containers/NewButton";
 import Modal from "metabase/components/Modal";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
@@ -36,15 +26,7 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import Database from "metabase/entities/databases";
-
-import {
-  AppContentContainer,
-  AppContent,
-  AppBar,
-  LogoIconWrapper,
-  SidebarButton,
-} from "./App.styled";
+import { AppContentContainer, AppContent } from "./App.styled";
 
 export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
@@ -134,36 +116,6 @@ class App extends Component {
     this.setState({ sidebarOpen: !this.state.sidebarOpen });
   };
 
-  renderAppBar = () => {
-    const { location, onChangeLocation } = this.props;
-    return (
-      <AppBar id="mainAppBar">
-        <LogoIconWrapper>
-          <Link to="/" data-metabase-event={"Navbar;Logo"}>
-            <LogoIcon size={24} />
-          </Link>
-        </LogoIconWrapper>
-        <Tooltip
-          tooltip={this.state.sidebarOpen ? t`Close sidebar` : t`Open sidebar`}
-        >
-          <SidebarButton
-            name={this.state.sidebarOpen ? "chevronleft" : "chevronright"}
-            onClick={this.toggleSidebar}
-          />
-        </Tooltip>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              location={location}
-              onChangeLocation={onChangeLocation}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <NewButton setModal={this.setModal} />
-      </AppBar>
-    );
-  };
-
   closeModal = () => {
     this.setState({ modal: null });
   };
@@ -214,7 +166,7 @@ class App extends Component {
   };
 
   render() {
-    const { children, location, errorPage } = this.props;
+    const { children, location, errorPage, onChangeLocation } = this.props;
     const { errorInfo, sidebarOpen } = this.state;
 
     return (
@@ -223,7 +175,15 @@ class App extends Component {
           getErrorComponent(errorPage)
         ) : (
           <>
-            {this.hasAppBar() && this.renderAppBar()}
+            {this.hasAppBar() && (
+              <AppBar
+                isSidebarOpen={sidebarOpen}
+                location={location}
+                onToggleSidebarClick={this.toggleSidebar}
+                onNewClick={this.setModal}
+                onChangeLocation={onChangeLocation}
+              />
+            )}
             <AppContentContainer isAdminApp={this.isAdminApp()}>
               {this.hasNavbar() && sidebarOpen && (
                 <Navbar location={location} />
@@ -241,7 +201,4 @@ class App extends Component {
   }
 }
 
-export default _.compose(
-  Database.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(App);
+export default connect(mapStateToProps, mapDispatchToProps)(App);
