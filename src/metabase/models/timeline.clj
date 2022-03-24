@@ -3,11 +3,22 @@
             [metabase.models.permissions :as perms]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel Timeline :timeline)
+
+;;;; schemas
+
+(def Icons
+  "Timeline and TimelineEvent icon string Schema"
+  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+
+(def DefaultIcon
+  "Timeline default icon"
+  "star")
 
 ;;;; functions
 
