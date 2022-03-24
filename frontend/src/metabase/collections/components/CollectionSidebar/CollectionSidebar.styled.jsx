@@ -65,7 +65,7 @@ export const SidebarHeading = styled.h4`
 `;
 
 export const ToggleListDisplayButton = styled(Icon)`
-  margin-left: ${space(2)};
+  margin-left: 12px;
   transform: translate(0px, -1px);
 
   ${({ shouldDisplayBookmarks }) =>
