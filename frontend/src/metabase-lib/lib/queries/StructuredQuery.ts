@@ -305,8 +305,6 @@ export default class StructuredQuery extends AtomicQuery {
     if (sourceQuery) {
       const dimensions = sourceQuery.dimensions();
       const dimensionFields = dimensions.map(dimension => dimension.field());
-      dimensionFields.forEach(field => console.log(field));
-
       return new Table({
         name: "",
         display_name: "",
@@ -314,10 +312,9 @@ export default class StructuredQuery extends AtomicQuery {
         fields: sourceQuery.columns().map(column => {
           // FIX for https://github.com/metabase/metabase/issues/12985
           // retrieve dimension and generate field if it is matching the column
-          const dimensionField = dimensionFields.find(
-            ({ name, base_type }) =>
-              column.name === name && column.base_type === base_type,
-          );
+          const dimensionField = dimensionFields.find(({ name, base_type }) => {
+            return column.name === name && column.base_type === base_type;
+          });
 
           return (
             dimensionField ||
