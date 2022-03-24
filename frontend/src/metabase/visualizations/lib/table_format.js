@@ -62,6 +62,8 @@ function getColumnIndexesByName(cols) {
 export const canCompareSubstrings = (a, b) =>
   typeof a === "string" && typeof b === "string" && !!a.length && !!b.length;
 
+export const isEmptyString = val => typeof val === "string" && !val.length;
+
 export const OPERATOR_FORMATTER_FACTORIES = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
@@ -72,7 +74,8 @@ export const OPERATOR_FORMATTER_FACTORIES = {
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
   "=": (value, color) => v => (v === value ? color : null),
-  "!=": (value, color) => v => (v !== value ? color : null),
+  "!=": (value, color) => v =>
+    !isEmptyString(value) && v !== value ? color : null,
   "is-null": (_value, color) => v => (v === null ? color : null),
   "not-null": (_value, color) => v => (v !== null ? color : null),
   contains: (value, color) => v =>

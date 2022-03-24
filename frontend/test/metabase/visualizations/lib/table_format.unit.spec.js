@@ -24,6 +24,43 @@ describe("compileFormatter", () => {
     expect(supportedOperators).toEqual(definedOperators);
   });
 
+  it("properly ignores empty string searches for all text formatters", () => {
+    const textFormatters = [
+      "!=",
+      "contains",
+      "does-not-contain",
+      "starts-with",
+      "ends-with",
+    ];
+
+    textFormatters.forEach(factoryName => {
+      const factory = OPERATOR_FORMATTER_FACTORIES[factoryName]("", "#fff");
+      expect(factory("foo")).toBeNull();
+      expect(factory("")).toBeNull();
+      expect(factory(0)).toBeNull();
+    });
+  });
+
+  it("properly detects not equal text", () => {
+    const formatter = OPERATOR_FORMATTER_FACTORIES["!="]("foo", "#fff");
+
+    expect(formatter("")).toBe("#fff");
+    expect(formatter("bar")).toBe("#fff");
+    expect(formatter(0)).toBe("#fff");
+
+    expect(formatter("foo")).toBe(null);
+  });
+
+  it("properly detects not equal numbers", () => {
+    const formatter = OPERATOR_FORMATTER_FACTORIES["!="](17, "#fff");
+
+    expect(formatter("foo")).toBe("#fff");
+    expect(formatter(0)).toBe("#fff");
+    expect(formatter(16)).toBe("#fff");
+
+    expect(formatter(17)).toBe(null);
+  });
+
   it("properly detects contains text", () => {
     const formatter = OPERATOR_FORMATTER_FACTORIES.contains("foo", "#fff");
 
