@@ -5,32 +5,31 @@
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
 
+;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api/defendpoint GET "/"
-  "Get all `Settings` and their values. You must be a superuser to do this."
+  "Get all `Settings` and their values. You must be a superuser to do this. For non-superusers, a list of visible
+  settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (api/check-superuser)
   (setting/admin-writable-settings))
 
 (api/defendpoint PUT "/"
-  "Update multiple `Settings` values.  You must be a superuser to do this."
+  "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [:as {settings :body}]
-  (api/check-superuser)
   (setting/set-many! settings)
   api/generic-204-no-content)
 
 (api/defendpoint GET "/:key"
-  "Fetch a single `Setting`. You must be a superuser to do this."
+  "Fetch a single `Setting`."
   [key]
   {key su/NonBlankString}
-  (api/check-superuser)
   (setting/user-facing-value key))
 
 (api/defendpoint PUT "/:key"
-  "Create/update a `Setting`. You must be a superuser to do this.
+  "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
   {key su/NonBlankString}
-  (api/check-superuser)
   (setting/set! key value)
   api/generic-204-no-content)
 

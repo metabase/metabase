@@ -235,8 +235,11 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
-        (throw (Exception.
-                (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))
+        (if api/*is-superuser?*
+          (throw (Exception. (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))
+          ;; Throw a generic 403 if a non-superuser is trying to access a non-existant setting so that we don't reveal
+          ;; existing setting names
+          (api/throw-403)))))
 
 (defn- call-on-change
   "Cache watcher that applies `:on-change` callback for all settings that have changed."
@@ -306,6 +309,12 @@
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
     (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+
+(defn- current-user-can-access-setting?
+  [setting]
+  (or (nil? api/*current-user-id*)
+      api/*is-superuser?*
+      (allows-user-local-values? setting)))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -652,6 +661,8 @@
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
+    (when-not (current-user-can-access-setting? setting)
+      (api/throw-403))
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
@@ -932,6 +943,9 @@
         value-is-default?                                             (= parsed-value default)
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
+      (not (current-user-can-access-setting? setting))
+      (api/throw-403)
+
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
       ;; the UI.
@@ -972,7 +986,7 @@
   page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
   are not allowed to modify them."
   [& {:as options}]
-  ;; ignore User-local and Database-local values
+  ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      []
@@ -991,6 +1005,7 @@
 
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
   [& {:as options}]
+  ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
     (into
