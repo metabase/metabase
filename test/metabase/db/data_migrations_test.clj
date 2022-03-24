@@ -4,7 +4,6 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [crypto.random :as crypto-random]
-            [metabase.config :as config]
             [metabase.db.data-migrations :as migrations]
             [metabase.models :refer [Card Dashboard DashboardCard Setting]]
             [metabase.models.permissions-group :as group]
@@ -13,9 +12,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru]]
-            [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.DN))
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

@@ -11,12 +11,9 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.integrations.ldap :as ldap]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
