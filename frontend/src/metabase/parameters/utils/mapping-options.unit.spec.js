@@ -107,7 +107,7 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Order",
             name: "Created At",
             icon: "calendar",
-            target: ["dimension", ["field", ORDERS.id, null]],
+            target: ["dimension", ["field", 1, null]],
             isForeign: false,
           },
           {
