@@ -196,21 +196,32 @@
 
 (defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
                                                                      :or   {normalize-fn normalize-clause}}]
-  (let [normalized (normalize-fn field-clause)
-        exports    (filter (partial mbql.u/is-clause? :field)
-                           (exports source-query))]
+  (let [normalized    (normalize-fn field-clause)
+        all-exports   (exports source-query)
+        field-exports (filter (partial mbql.u/is-clause? :field)
+                              all-exports)]
     ;; first look for an EXACT match in the `exports`
     (or (some (fn [a-clause]
                 (when (= (normalize-fn a-clause) normalized)
                   a-clause))
-              exports)
+              field-exports)
         ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
         (let [fuzzify          (fn [clause] (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
               fuzzy-normalized (fuzzify normalized)]
           (some (fn [a-clause]
                   (when (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized)
                     a-clause))
-                exports)))))
+                field-exports))
+        ;; look for a matching expression clause with the same name if still no match
+        (when-let [field-name (let [[_ id-or-name] field-clause]
+                                (when (string? id-or-name)
+                                  id-or-name))]
+          (when-let [expression-exports (not-empty (filter (partial mbql.u/is-clause? :expression) all-exports))]
+            (some
+             (fn [[_ expression-name :as expression-clause]]
+               (when (= expression-name field-name)
+                 expression-clause))
+             expression-exports))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
