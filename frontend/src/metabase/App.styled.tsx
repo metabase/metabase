@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
   display: flex;
   position: relative;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 61px);
   overflow: hidden;
 `;
 
@@ -15,16 +15,12 @@ export const AppContent = styled.div`
 `;
 
 export const AppBar = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  position: relative;
-  padding-left: 1rem;
-  padding-right: 1rem;
-
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
-
   z-index: 4;
 `;
 

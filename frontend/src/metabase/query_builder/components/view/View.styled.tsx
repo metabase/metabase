@@ -14,7 +14,7 @@ export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${color("bg-white")};
-  height: calc(100vh - 49px);
+  height: calc(100vh - 61px);
   position: relative;
 `;
 

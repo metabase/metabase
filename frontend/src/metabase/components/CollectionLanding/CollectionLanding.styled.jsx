@@ -4,7 +4,6 @@ import { breakpointMinSmall } from "metabase/styled-components/theme/media-queri
 
 export const ContentBox = styled.div`
   display: ${props => (props.shouldDisplayMobileSidebar ? "none" : "block")};
-  height: 100%;
   overflow-y: auto;
   padding-bottom: 64px;
 
