@@ -30,6 +30,7 @@
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
 (defn hydrate-root-collection
+  "Hydrate `:collection` on [[Timelines]] when the id is `nil`."
   [{:keys [collection_id] :as timeline}]
   (if (nil? collection_id)
     (assoc timeline :collection (root-collection))
