@@ -4,21 +4,14 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
+import Modal from "metabase/components/Modal";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import * as Urls from "metabase/lib/urls";
-
-import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
-import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
-
-import UndoListing from "metabase/containers/UndoListing";
-import StatusListing from "metabase/status/containers/StatusListing";
-import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
-import Modal from "metabase/components/Modal";
-
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import {
   Archived,
@@ -26,6 +19,13 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
+import UndoListing from "metabase/containers/UndoListing";
+import StatusListing from "metabase/status/containers/StatusListing";
+
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+
+import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import { AppContentContainer, AppContent } from "./App.styled";
 
