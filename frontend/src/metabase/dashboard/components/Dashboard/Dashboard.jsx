@@ -104,10 +104,11 @@ export default class Dashboard extends Component {
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
 
-    window.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
+    const [main] = document.getElementsByTagName("main");
+    main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
-    window.addEventListener("resize", this.throttleParameterWidgetStickiness, {
+    main.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
   }
@@ -125,14 +126,9 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
-    window.removeEventListener(
-      "scroll",
-      this.throttleParameterWidgetStickiness,
-    );
-    window.removeEventListener(
-      "resize",
-      this.throttleParameterWidgetStickiness,
-    );
+    const [main] = document.getElementsByTagName("main");
+    main.removeEventListener("scroll", this.throttleParameterWidgetStickiness);
+    main.removeEventListener("resize", this.throttleParameterWidgetStickiness);
   }
 
   async loadDashboard(dashboardId) {
