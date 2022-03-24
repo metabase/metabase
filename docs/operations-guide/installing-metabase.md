@@ -16,7 +16,7 @@ If you prefer to use a Docker container, we've got you covered.
 
 Our official hosted version, [Metabase Cloud](/start/hosted/). All you need to do is sign up for a free trial, and you're off to the races.
 
-## Building Metabase from source
+## [Building Metabase from source](../developers-guide/start.md)
 
 To run a development branch of Metabase, check out our [developer's guide](../developers-guide/start.md).
 

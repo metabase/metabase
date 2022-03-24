@@ -8,20 +8,16 @@ To run Metabase via a JAR file, you will need to have a Java Runtime Environment
 
 ## Quick start
 
-> The quick start is intended just for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+> The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 If you have Java installed, just
 
 1. [Download Metabase](https://metabase.com/start/jar.html).
-
 2. Create a new directory and move the JAR you downloaded into that new directory.
-
 3. Change into that directory and run:
-
-```
-java --jar metabase.jar
-```
-
+   ```
+   java --jar metabase.jar
+   ```
 4. Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
 
 ## Local installation
@@ -38,11 +34,11 @@ java --version
 
 If Java isn't installed, you'll need to install it before you can run Metabase. We recommend the latest LTS version of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported too.
 
-### 2. [Download Metabase](https://metabase.com/start/jar.html)
+### 2. Download Metabase
 
 [Download the Metabase JAR](https://www.metabase.com/start/oss/jar.html).
 
-### 3. Create a new directory and move the JAR into it.
+### 3. Create a new directory and move the JAR into it
 
 When you run Metabase, Metabase will create some new files, so it's important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
 
@@ -60,7 +56,7 @@ then
 mv /Users/person/Downloads/metabase.jar ~/metabase
 ```
 
-### 3. Change into your new Metabase directory and run the jar.
+### 3. Change into your new Metabase directory and run the jar
 
 Change into the directory you created in step 2:
 
@@ -73,8 +69,6 @@ Now that you have Java working you can run the JAR from a terminal with:
 ```
 java -jar metabase.jar
 ```
-
-## Launching Metabase
 
 Metabase will start using the default settings. You should see some log entries starting to run in your terminal window showing you the application progress as it starts up. Once Metabase is fully started you'll see a confirmation such as:
 
@@ -93,23 +87,21 @@ At this point you're ready to go! You can access your new Metabase server on por
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](./environment-variables.md) before running the jar.
 
-Note that in the default configuration Metabase will use a local H2 database for storing all its own application data. This is meant for simple evaluations or personal use, so if you want to run Metabase in production we recommend you [migrate away from H2](./migrating-from-h2.md).
+Note that in the default configuration Metabase will use a local H2 database for storing all its own application data. This default is meant for simple evaluation or personal use. If you want to run Metabase in production we recommend you [migrate away from H2](./migrating-from-h2.md).
 
 ## Production installation
 
-The steps are the same as above with one important difference: if you want to run Metabase in production, you'll want to use a production-ready database to store your Metabase application data. Here are some [databases we recommend](migrate-from-h2.md#databases-we-recommend-for-storing-your-metabase-application-data).
+The steps are the same as above with one important difference: if you want to run Metabase in production, you'll want to use a production-ready database to store your Metabase application data. Here are some [databases we recommend](migrating-from-h2.md#databases-we-recommend-for-storing-your-metabase-application-data).
 
-For example, say you want to use PostgreSQL. You would get a PostgreSQL service up and running and create a database:
+For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create a database:
 
 ```
 createdb metabaseappdb
 ```
 
-You can all your app DB whatever you want. No need to create any tables, Metabase will do that for you. You'll just need to set environment-variables so Metabase knows how to connect to your database. 
+You can all your app DB whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables so Metabase knows how to connect to your database. 
 
-You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you need to include some environment variables to tell Metabase how to connect to the `metabaseappdb` you created.
-
-You can prefix the `java -jar metabase.jar` command with these environment variables like so:
+You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
 
 ```
 export MB_DB_TYPE=postgres

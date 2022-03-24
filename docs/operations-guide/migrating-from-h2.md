@@ -1,7 +1,7 @@
 # Migrating from H2 database to a production database
 
 - [Metabase's application database](#metabases-application-database)
-- [Databases we recommend for a production application database](#databases-we-recommend-for-a-production-application-database)
+- [Databases we recommend for a storing your Metabase application data](#databases-we-recommend-for-storing-your-metabase-application-data)
 - [JAR: How to migrate from H2 to your production application database](#jar-how-to-migrate-from-h2-to-your-production-application-database)
 - [Docker: how to migrate from H2 to your production application database](#docker-how-to-migrate-from-h2-to-your-production-application-database)
 - [Troubleshooting migration issues](#troubleshooting-migration-issues)

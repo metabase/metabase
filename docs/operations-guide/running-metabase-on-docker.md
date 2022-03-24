@@ -11,9 +11,9 @@ If you're trying to upgrade your Metabase version on Docker, check out these [up
 
 ## Quick start
 
-> The quick start is intended just for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+> The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-Assuming you have Docker installed and running.
+Assuming you have [Docker](https://www.docker.com/) installed and running:
 
 ```
 docker pull metabase/metabase:latest
@@ -55,7 +55,7 @@ Let's say you set up a Postgres database by running:
 createdb metabaseappdb
 ```
 
-No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via my-database-host:5432 with username `name` and password `password`.
+No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
 Here's an example Docker command that tells Metabase to use that database:
 
@@ -78,7 +78,7 @@ If you've already been running Metabase with the default application database (H
 
 ## Additional Docker maintenance and configuration
 
-- [Customizing the Metabase Jetty server](#customzing-the-metabase-jetty-server)
+- [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
 - [Docker-specific environment variables](#docker-specific-environment-variables)
 - [Setting the Java Timezone](#setting-the-java-timezone)
 - [Copying the application database](#copying-the-application-database)

@@ -10,8 +10,8 @@ See [Backing up Metabase application data](backing-up-metabase-application-data.
 
 Steps differ depending on whether you're running the JAR or a Docker image.
 
-- [JAR](#jar)
-- [Docker](#docker)
+- [Upgrading the JAR](#upgrading-the-jar)
+- [Upgrading the Docker image](#upgrading-the-docker-image)
 
 ### Upgrading the JAR
 
