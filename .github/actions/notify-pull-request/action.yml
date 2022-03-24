@@ -16,6 +16,7 @@ runs:
         script: |
           const message = core.getInput("message");
           const shouldIncludeLog = core.getInput("include-log") === "true";
+          const author = context.payload.comment.user.login;
 
           let body = `@${author} ${message}`;
 
@@ -24,8 +25,6 @@ runs:
             const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
             body += ` [[Logs]](${runUrl})`;
           }
-
-          const author = context.payload.comment.user.login;
 
           github.issues.createComment({
             issue_number: context.payload.issue.number,
