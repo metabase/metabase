@@ -46,12 +46,12 @@
   [thunk]
   (if *already-have-everything-store?*
     (thunk)
-    (binding [*already-have-everything-store?* true]
-      (with-redefs [qp.store/table everything-store-table
-                    qp.store/field everything-store-field]
-        (qp.store/with-store
-          (qp.store/fetch-and-store-database! (data/id))
-          (thunk))))))
+    (binding [*already-have-everything-store?* true
+              qp.store/*table*                 everything-store-table
+              qp.store/*field*                 everything-store-field]
+      (qp.store/with-store
+        (qp.store/fetch-and-store-database! (data/id))
+        (thunk)))))
 
 (defmacro with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
