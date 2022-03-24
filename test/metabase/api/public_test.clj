@@ -613,9 +613,9 @@
          (db/select-one-field :values FieldValues :field_id (mt/id :venues :price)))))
 
 (defn- price-param-values []
-  {(keyword (str (mt/id :venues :price))) {:values                [1 2 3 4]
-                                           :human_readable_values []
-                                           :field_id              (mt/id :venues :price)}})
+  {(mt/id :venues :price) {:values                [1 2 3 4]
+                           :human_readable_values []
+                           :field_id              (mt/id :venues :price)}})
 
 (defn- add-price-param-to-dashboard! [dashboard]
   (db/update! Dashboard (u/the-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))

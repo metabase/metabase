@@ -81,7 +81,7 @@
   (binding [*read-eval* false]
     (let [keyy (read-string json-key)]
       (if (instance? clojure.lang.Symbol keyy)
-        (keyword keyy)
+        (keyword json-key)
         keyy))))
 
 (defn- parse-response

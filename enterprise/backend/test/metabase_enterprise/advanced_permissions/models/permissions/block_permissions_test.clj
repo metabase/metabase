@@ -24,10 +24,7 @@
         (map (fn [[k v]]
                [k (cond-> v (string? v) keyword)]))
         (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
-                [:groups
-                 (keyword (str group-id))
-                 (keyword (str (mt/id)))
-                 :data])))
+                [:groups group-id (mt/id) :data])))
 
 (deftest graph-test
   (testing "block permissions should come back from"
@@ -69,11 +66,7 @@
         result        (premium-features-test/with-premium-features #{:advanced-permissions}
                         (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
     (is (= "block"
-           (get-in result [:groups
-                           (keyword (str group-id))
-                           (keyword (str (mt/id)))
-                           :data
-                           :schemas])))))
+           (get-in result [:groups group-id (mt/id) :data :schemas])))))
 
 (deftest api-throws-error-if-premium-feature-not-enabled
   (testing "PUT /api/permissions/graph"

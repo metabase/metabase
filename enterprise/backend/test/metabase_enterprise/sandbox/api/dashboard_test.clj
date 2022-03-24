@@ -47,9 +47,8 @@
                                            :human_readable_values []
                                            :field_id              (mt/id :categories :name)}}
                (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[^String field-id-keyword m] response]
-                            [(Long/parseUnsignedLong (name field-id-keyword))
-                             (update m :values (partial take 3))])))))))))
+                 (into {} (for [[field-id m] response]
+                            [field-id (update m :values (partial take 3))])))))))))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
