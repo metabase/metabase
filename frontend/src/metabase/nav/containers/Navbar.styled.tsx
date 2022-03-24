@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const NavRoot = styled.div`
-  position: relative;
+  position: fixed;
   width: 320px;
   align-items: center;
   padding: 0.5rem 0;
@@ -12,6 +12,10 @@ export const NavRoot = styled.div`
   z-index: 3;
   flex-shrink: 0;
   border-right: 1px solid ${color("border")};
+
+  ${breakpointMinSmall} {
+    position: relative;
+  }
 `;
 
 export const LogoLinkContainer = styled.div`
