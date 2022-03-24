@@ -154,13 +154,26 @@ export function visitQuestion(id) {
 /**
  * Visit a dashboard and wait for its query to load.
  *
+ * NOTE: Avoid using this helper if you need to explicitly wait for
+ * and assert on the individual dashcard queries.
+ *
  * @param {number} id
  */
 export function visitDashboard(id) {
-  //  The very last request when visiting dashboard always checks the collection it is in.
+  cy.intercept("GET", `/api/dashboard/${id}`).as("getDashboard");
+  // The very last request when visiting dashboard always checks the collection it is in.
+  // That is - IF user has the permission to view that dashboard!
   cy.intercept("GET", `/api/collection/*`).as("getParentCollection");
 
   cy.visit(`/dashboard/${id}`);
 
-  cy.wait("@getParentCollection");
+  // If users doesn't have permissions to even view the dashboard,
+  // the last request for them would be `getDashboard`.
+  cy.wait("@getDashboard").then(({ response: { statusCode } }) => {
+    canViewDashboard(statusCode) && cy.wait("@getParentCollection");
+  });
+}
+
+function canViewDashboard(statusCode) {
+  return statusCode !== 403;
 }
