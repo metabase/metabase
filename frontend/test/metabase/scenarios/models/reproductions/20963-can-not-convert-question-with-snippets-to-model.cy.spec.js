@@ -7,7 +7,7 @@ import {
 const snippetName = `string 'test'`;
 const questionName = "Converting questions with snippets to models";
 
-describe.skip("issue 20963", () => {
+describe("issue 20963", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
