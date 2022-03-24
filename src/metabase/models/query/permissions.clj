@@ -103,7 +103,7 @@
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
   (binding [api/*current-user-id* nil]
-    ((resolve 'metabase.query-processor/query->preprocessed) query)))
+    ((resolve 'metabase.query-processor/preprocess) query)))
 
 (s/defn ^:private mbql-permissions-path-set :- #{perms/Path}
   "Return the set of required permissions needed to run an adhoc `query`.
