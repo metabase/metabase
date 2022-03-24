@@ -42,6 +42,7 @@ export default class Dashboard extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
+    isNavbarOpen: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -203,6 +204,7 @@ export default class Dashboard extends Component {
       isNightMode,
       isSharing,
       parameters,
+      isNavbarOpen,
       showAddQuestionSidebar,
       parameterValues,
       editingParameter,
@@ -280,6 +282,7 @@ export default class Dashboard extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     ref={element => (this.parametersWidgetRef = element)}
+                    isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
                   >
                     {parametersWidget}
