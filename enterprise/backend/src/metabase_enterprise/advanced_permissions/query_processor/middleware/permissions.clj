@@ -31,9 +31,7 @@
   (cond
     (empty? query)         #{}
     (= query-type :native) #{(perms/native-feature-perms-path :download download-level database)}
-    (= query-type :query)  (tables->download-perms-set database
-                                                       (query-perms/query->source-table-ids (dissoc query :native))
-                                                       download-level)))
+    (= query-type :query)  (tables->download-perms-set database (query-perms/query->source-table-ids query) download-level)))
 
 (defn- current-user-download-perms-level
   "Returns the download permissions level which the current user has for the given query."
