@@ -78,10 +78,14 @@
         response))
 
 (defn- parse-response-key
+  "Parse JSON keys as numbers if possible, else convert them to keywords indiscriminately."
   [json-key]
-  (let [parsed-key (edn/read-string json-key)]
-    (if (number? parsed-key)
-      parsed-key
+  (try
+    (let [parsed-key (edn/read-string json-key)]
+      (if (number? parsed-key)
+        parsed-key
+        (keyword json-key)))
+    (catch Throwable _
       (keyword json-key))))
 
 (defn- parse-response
