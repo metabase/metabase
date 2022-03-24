@@ -37,7 +37,7 @@ describe("scenarios > question > native > mongo", () => {
     modal().within(() => {
       cy.findByLabelText("Name")
         .clear()
-        .should("have.value", "")
+        .should("be.empty")
         .type("mongo count");
 
       cy.button("Save")
