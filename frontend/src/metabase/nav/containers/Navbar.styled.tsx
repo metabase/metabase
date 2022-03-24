@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 export const NavRoot = styled.div`
   position: fixed;
@@ -16,13 +16,6 @@ export const NavRoot = styled.div`
     width: 324px;
     position: relative;
   }
-`;
-
-export const LogoLinkContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-width: 4rem;
 `;
 
 export const LogoIconContainer = styled.div`
@@ -64,4 +57,7 @@ export const EntityMenuContainer = styled.div`
 
 export const ProfileLinkContainer = styled.div`
   margin-left: auto;
+  position: absolute;
+  bottom: 0;
+  right: ${space(2)};
 `;
