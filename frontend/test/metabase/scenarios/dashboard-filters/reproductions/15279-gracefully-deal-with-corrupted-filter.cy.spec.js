@@ -36,7 +36,6 @@ describe("issue 15279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
   });
 
   it("a corrupted parameter filter should still appear in the UI (metabase #15279)", () => {
@@ -78,6 +77,8 @@ describe("issue 15279", () => {
         visitDashboard(dashboard_id);
       },
     );
+
+    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
 
     // Check that list filter works
     filterWidget()

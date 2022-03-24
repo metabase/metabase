@@ -26,14 +26,7 @@ describe.skip("issue 17212", () => {
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { card_id, dashboard_id } }) => {
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
-
           visitDashboard(dashboard_id);
-
-          cy.wait("@cardQuery");
         },
       );
     });

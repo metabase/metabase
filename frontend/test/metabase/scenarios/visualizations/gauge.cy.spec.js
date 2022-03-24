@@ -7,7 +7,6 @@ describe("scenarios > visualizations > gauge chart", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept(`/api/dashboard/*/dashcard/*/card/*/query`).as("cardQuery");
   });
 
   it("should not rerender on gauge arc hover (metabase#15980)", () => {
@@ -38,7 +37,6 @@ describe("scenarios > visualizations > gauge chart", () => {
       },
     );
 
-    cy.wait("@cardQuery");
     cy.findByTestId("gauge-arc-1").trigger("mousemove");
     cy.findByText("Something went wrong").should("not.exist");
   });

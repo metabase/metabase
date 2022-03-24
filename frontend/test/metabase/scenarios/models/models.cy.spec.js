@@ -536,6 +536,7 @@ describe("scenarios > models", () => {
 
     it("should allow adding models to dashboards", () => {
       cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
         visitDashboard(dashboardId);
         cy.icon("pencil").click();
@@ -544,7 +545,9 @@ describe("scenarios > models", () => {
           .findByText("Orders Model")
           .click();
         cy.button("Save").click();
-        cy.wait("@fetchDashboard");
+        // The first fetch happened when visiting dashboard, and the second one upon saving it.
+        // We need to wait for both.
+        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
         cy.findByText("Orders Model");
       });
     });

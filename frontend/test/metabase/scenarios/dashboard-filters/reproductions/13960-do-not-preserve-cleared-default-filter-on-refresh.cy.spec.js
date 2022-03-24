@@ -55,14 +55,7 @@ describe("issue 13960", () => {
 
         cy.editDashboardCard(dashboardCard, mapFiltersToCard);
 
-        cy.intercept(
-          "POST",
-          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-        ).as("cardQuery");
-
         visitDashboard(dashboard_id);
-
-        cy.wait("@cardQuery");
       },
     );
 
@@ -87,6 +80,8 @@ describe("issue 13960", () => {
     cy.location("search").should("eq", "?category=&id=1");
 
     cy.reload();
+    // Alias was previously defined in `visitDashboard()` helper function
+    cy.wait("@getParentCollection");
 
     cy.findByText("13960");
     cy.findAllByText("Doohickey").should("not.exist");

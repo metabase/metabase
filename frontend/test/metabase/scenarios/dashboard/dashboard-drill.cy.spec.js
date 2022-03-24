@@ -476,15 +476,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
             ],
           });
         });
-        cy.server();
-        cy.route(
+
+        visitDashboard(DASHBOARD_ID);
+
+        cy.intercept(
           "POST",
           `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
-        visitDashboard(DASHBOARD_ID);
-
-        cy.wait("@cardQuery");
         cy.get(".bar")
           .eq(14) // August 2017 (Total of 12 reviews, 9 unique days)
           .click({ force: true });
@@ -723,13 +722,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
               ],
             });
           });
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION2_ID}/query`,
-          ).as("secondCardQuery");
 
           visitDashboard(DASHBOARD_ID);
-          cy.wait("@secondCardQuery");
 
           cy.get(".bar")
             .first()
