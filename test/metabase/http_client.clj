@@ -83,10 +83,9 @@
     body
     (try
       (auto-deserialize-dates (json/parse-string body keyword))
-      (catch Throwable e
+      (catch Throwable _e
         (when-not (str/blank? body)
           body)))))
-
 
 ;;; authentication
 

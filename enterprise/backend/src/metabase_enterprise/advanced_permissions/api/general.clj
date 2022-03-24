@@ -8,7 +8,7 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of General Permissions"
-  [:as _req]
+  []
   (api/check-superuser)
   (g-perms/graph))
 
