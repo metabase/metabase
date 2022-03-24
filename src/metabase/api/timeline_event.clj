@@ -4,7 +4,7 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
-            [metabase.models.timeline :refer [Timeline]]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -21,7 +21,7 @@
    timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
-   icon         (s/maybe timeline-event/Icons)
+   icon         (s/maybe timeline/Icons)
    timeline_id  su/IntGreaterThanZero
    source       (s/maybe timeline-event/Sources)
    question_id  (s/maybe su/IntGreaterThanZero)
@@ -33,17 +33,19 @@
                       {:status-code 404})))
     (collection/check-write-perms-for-collection (:collection_id timeline))
     ;; todo: revision system
-    (let [parsed (if (nil? timestamp)
-                   (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
+    (let [parsed   (if (nil? timestamp)
+                     (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))
                    (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
-                           :timestamp parsed})]
+                           :timestamp  parsed}
+                          (when-not icon
+                            {:icon (db/select-one-field :icon Timeline :id timeline_id)}))]
       (snowplow/track-event! ::snowplow/new-event-created
                              api/*current-user-id*
                              (cond-> {:time_matters time_matters
                                       :collection_id (:collection_id timeline)}
-                               (boolean source) (assoc :source source)
+                               (boolean source)      (assoc :source source)
                                (boolean question_id) (assoc :question_id question_id)))
       (db/insert! TimelineEvent tl-event))))
 
@@ -61,7 +63,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
-   icon         (s/maybe timeline-event/Icons)
+   icon         (s/maybe timeline/Icons)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)
