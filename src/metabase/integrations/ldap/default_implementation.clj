@@ -69,7 +69,7 @@
            last-name-attribute
            email-attribute
            sync-groups?]
-    :as settings}                :- i/LDAPSettings
+    :as   settings}              :- i/LDAPSettings
    group-membership-filter       :- su/NonBlankString]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)

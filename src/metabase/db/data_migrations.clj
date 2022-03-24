@@ -28,7 +28,9 @@
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
+
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)
+
   Migrations may provide metadata with `:catch?` to indicate if errors should be caught or propagated."
   [ran-migrations migration-var]
   (let [{migration-name :name catch? :catch?} (meta migration-var)
@@ -178,37 +180,39 @@
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (defn- remove-group-id-from-mappings-by-setting-key
-   [mapping-setting-key admin-group-id]
+   [mapping-setting-key]
    ;; Intentionally get setting using `db/select-one-field` instead of `setting/get` because for some reasons
    ;; during start-up setting/get return the default value defined in defsetting instead of value from Setting table
-   (let [mapping (try
-                  (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
-                  (catch Exception _e
-                    {}))]
+   (let [admin-group-id (:id (group/admin))
+         mapping        (try
+                         (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
+                         (catch Exception _e
+                           {}))]
      (when-not (empty? mapping)
        (setting/set-value-of-type!
-        :json mapping-setting-key
+        :json
+        mapping-setting-key
         (into {}
               (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
               mapping)))))
 
- (defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
-   ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
-   ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
-   ;;  But with this change we want to make sure we don't accidently add/remove adminusers we need to :
-   ;;  - for LDAP, if the `ldap-sync-admin-group` is disabled, remove all mapping for admin group
-   ;;  - for SAML, JWT remove all mapping for admin group
-   (let [admin-group-id (u/the-id (group/admin))]
-     (when (and (ldap/ldap-configured?)
-                (= "false" (db/select-one-field :value Setting :key "ldap-sync-admin-group")))
-       (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings admin-group-id))
-     ;; sso are enterprise feature, so only remove admin groups if enterprise available
-     (when (premium-features/enable-sso?)
-       (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
-       (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
-         (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings admin-group-id))
-       (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
-         (remove-group-id-from-mappings-by-setting-key :saml-group-mappings admin-group-id)))))
+(defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
+  ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
+  ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+  ;;  But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
+  ;;  - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
+  ;;  - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
+  (when (and (ldap/ldap-configured?)
+             ;; Check if ldap-sync-admin-group is currently disabled
+             (= (db/select-one-field :value Setting :key "ldap-sync-admin-group") "false"))
+    (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings))
+  ;; sso are enterprise feature, so only remove admin groups if enterprise available
+  (when (premium-features/enable-sso?)
+    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
+    (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
+      (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings))
+    (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
+      (remove-group-id-from-mappings-by-setting-key :saml-group-mappings))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

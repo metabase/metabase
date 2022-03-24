@@ -13,16 +13,16 @@
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only touches groups with mappings set."
   [user-or-id new-groups-or-ids mapped-groups-or-ids]
-  (let [mapped-groups-ids  (set (map u/the-id mapped-groups-or-ids))
+  (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
         excluded-group-ids #{(u/the-id (group/all-users))}
         user-id            (u/the-id user-or-id)
-        current-group-ids  (when (seq mapped-groups-ids)
+        current-group-ids  (when (seq mapped-group-ids)
                              (db/select-field :group_id PermissionsGroupMembership
                                               :user_id  user-id
-                                              :group_id [:in mapped-groups-ids]
+                                              :group_id [:in mapped-group-ids]
                                               :group_id [:not-in excluded-group-ids]))
         new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
-                                             mapped-groups-ids)
+                                             mapped-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed
