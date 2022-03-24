@@ -6,7 +6,7 @@ import { space } from "metabase/styled-components/theme";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 const dimmedIconCss = css`
-  fill: ${color("white")};
+  fill: ${color("brand")};
   opacity: 0.8;
 `;
 
