@@ -1,10 +1,12 @@
 import {
   restore,
   modal,
-  navigationSidebar,
   describeEE,
   describeOSS,
   openNewCollectionItemFlowFor,
+  appBar,
+  navigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -198,6 +200,7 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
+  closeNavigationSidebar();
   assertHasCollectionBadge(expectBadge);
 
   // Question Page
@@ -224,7 +227,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  cy.get(".Nav")
+  appBar()
     .findByPlaceholderText("Search…")
     .as("searchBar")
     .type(searchQuery);
