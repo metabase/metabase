@@ -9,6 +9,7 @@ import { space } from "metabase/styled-components/theme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -104,6 +105,14 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       position: fixed;
       top: 0;
       left: 0;
+    `}
+
+  ${({ isSticky, isNavbarOpen }) =>
+    isSticky &&
+    isNavbarOpen &&
+    css`
+      width: calc(100% - ${SIDEBAR_WIDTH});
+      left: ${SIDEBAR_WIDTH};
     `}
 `;
 
