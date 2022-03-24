@@ -131,7 +131,10 @@ export default class App extends Component {
     const { location, onChangeLocation } = this.props;
     return (
       <AppBar>
-        <LogoIconWrapper onClick={this.toggleSidebar}>
+        <LogoIconWrapper
+          onClick={this.toggleSidebar}
+          sidebarOpen={this.state.sidebarOpen}
+        >
           <LogoIcon size={24} />
         </LogoIconWrapper>
         <SearchBarContainer>
@@ -202,20 +205,22 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <AppContentContainer isAdminApp={this.isAdminApp()}>
-          {this.hasNavbar() && sidebarOpen && <Navbar location={location} />}
-          {errorPage ? (
-            getErrorComponent(errorPage)
-          ) : (
-            <AppContent>
-              {this.hasAppBar() && this.renderAppBar()}
-              {children}
+        {errorPage ? (
+          getErrorComponent(errorPage)
+        ) : (
+          <>
+            {this.hasAppBar() && this.renderAppBar()}
+            <AppContentContainer isAdminApp={this.isAdminApp()}>
+              {this.hasNavbar() && sidebarOpen && (
+                <Navbar location={location} />
+              )}
+              <AppContent>{children}</AppContent>
               {this.renderModal()}
-            </AppContent>
-          )}
-          <UndoListing />
-          <StatusListing />
-        </AppContentContainer>
+              <UndoListing />
+              <StatusListing />
+            </AppContentContainer>
+          </>
+        )}
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     );

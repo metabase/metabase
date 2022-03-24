@@ -6,7 +6,7 @@ export const NavRoot = styled.div`
   position: relative;
   width: 320px;
   align-items: center;
-  padding: 0.5rem 1rem 0.5rem 0;
+  padding: 0.5rem 0;
   background-color: ${color("nav")};
   overflow: auto;
   z-index: 3;

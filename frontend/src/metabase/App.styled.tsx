@@ -1,25 +1,17 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-const coreAppCss = css`
-  display: flex;
-`;
-
 export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
+  display: flex;
   position: relative;
-  height: 100vh;
-
-  ${props => !props.isAdminApp && coreAppCss}
+  height: calc(100vh - 60px);
+  overflow: hidden;
 `;
 
 export const AppContent = styled.div`
-  display: flex;
-  flex-direction: column;
   width: 100%;
-  height: 100%;
   overflow: auto;
+  background-color: ${color("bg-white")};
 `;
 
 export const AppBar = styled.div`
@@ -38,4 +30,14 @@ export const AppBar = styled.div`
 
 export const LogoIconWrapper = styled.div`
   cursor: pointer;
+  height: 60px;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props =>
+    props.sidebarOpen ? color("bg-medium") : "transparent"};
+  &:hover {
+    background-color: ${color("bg-medium")};
+  }
 `;
