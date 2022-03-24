@@ -50,7 +50,7 @@ describe("StructuredQuery nesting", () => {
           .filterDimensionOptions()
           .dimensions.map(d => d.mbql()),
       ).toEqual([
-        ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+        ["field", ORDERS.PRODUCT_ID.id, null],
         ["field", "count", { "base-type": "type/Integer" }],
       ]);
     });

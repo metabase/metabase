@@ -104,14 +104,59 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: null,
+            sectionName: "Order",
+            name: "Created At",
+            icon: "calendar",
+            target: ["dimension", ["field", ORDERS.id, null]],
+            isForeign: false,
+          },
+          {
+            sectionName: "Product",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
-              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              [
+                "field",
+                22,
+                {
+                  "source-field": 3,
+                },
+              ],
             ],
-            isForeign: false,
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Birth Date",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                9,
+                {
+                  "source-field": 7,
+                },
+              ],
+            ],
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                11,
+                {
+                  "source-field": 7,
+                },
+              ],
+            ],
+            isForeign: true,
           },
         ]);
       });
