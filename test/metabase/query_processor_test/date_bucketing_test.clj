@@ -1034,7 +1034,8 @@
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
-        (is (= ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+        (is (=
+             ;; Mongo returns empty row for count = 0. We should fix that (#5419)
              (case driver/*driver*
                :mongo []
                [[0]])
@@ -1169,5 +1170,9 @@
                      :filter [:= !quarter.date [:relative-datetime :now]]})]
         (mt/with-native-query-testing-context query
           ;; this isn't expected to return anything; for now it's enough just to make sure that the query doesn't fail.
-          (is (= [[0]]
-                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+          (is (=
+               ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+               (case driver/*driver*
+                 :mongo []
+                 [[0]])
+               (mt/formatted-rows [int] (qp/process-query query)))))))))
