@@ -6,9 +6,7 @@
             [crypto.random :as crypto-random]
             [metabase.config :as config]
             [metabase.db.data-migrations :as migrations]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models :refer [Card Dashboard DashboardCard Setting]]
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting]
             [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -340,88 +338,99 @@
             (#'migrations/migrate-click-through)
             (is (= expected-settings (get-settings!)))))))))
 
-(def ^:private default-saml-idp-certificate (slurp "test_resources/sso/auth0-public-idp"))
+(defn- do-with-temporary-setting-value
+  "Temporarily update the value of a setting, execute `thunk`, then re-establish the original value"
+  [setting-k value thunk]
+  (assert (and (string? setting-k) (string? value))
+          (format "key and value should be string, got %s and %s" (type setting-k) (type value)))
+  (let [original-value (db/select-one-field :value Setting :key setting-k)]
+    (try
+     (if original-value
+       (db/update! Setting setting-k :value value)
+       (db/insert! Setting :key setting-k :value value))
+     (thunk)
+     (finally
+       (if original-value
+         (db/update! Setting setting-k :value original-value)
+         (db/delete! Setting :key setting-k))))))
 
-(defn- call-with-sso-configured
-  [sso-group-mapping f]
+(defmacro ^:private with-temporary-raw-setting-values
+  "Temporarily write settings into Setting table, run body, re-establish the original settings.
+  Note that this will not bind these settings to cache so using `setting/get` might not return the
+  temporary values"
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    `(do-with-temporary-setting-value ~(name setting-k) ~value
+       (fn []
+         (with-temporary-raw-setting-values ~more
+           ~@body)))))
+
+(defn- call-with-ldap-and-sso-configured [ldap-group-mapping sso-group-mapping f]
   (premium-features-test/with-premium-features #{:sso}
-    (mt/with-temporary-setting-values
-      [jwt-enabled                        true
+    (with-temporary-raw-setting-values
+      [ldap-enabled                       "true"
+       ldap-host                          "http://localhost:8888"
+       ldap-user-base                     "dc=metabase,dc=com"
+       ldap-group-mappings                (json/generate-string ldap-group-mapping)
+       ldap-sync-admin-group              "false"
+       jwt-enabled                        "true"
        jwt-identity-provider-uri          "http://test.idp.metabase.com"
        jwt-shared-secret                  (crypto-random/hex 32)
-       jwt-group-mappings                 sso-group-mapping
-       saml-enabled                       true
+       jwt-group-mappings                 (json/generate-string sso-group-mapping)
+       saml-enabled                       "true"
        saml-identity-provider-uri         "http://test.idp.metabase.com"
-       saml-identity-provider-certificate default-saml-idp-certificate
-       saml-group-mappings                sso-group-mapping]
+       saml-identity-provider-certificate (slurp "test_resources/sso/auth0-public-idp")
+       saml-group-mappings                (json/generate-string sso-group-mapping)]
       (f))))
-
-(defn- call-with-ldap-configured [ldap-group-mapping f]
-  (mt/with-temporary-setting-values
-    [ldap-enabled          true
-     ldap-host             "http://localhost:8888"
-     ldap-user-base        "dc=metabase,dc=com"
-     ldap-group-mappings   ldap-group-mapping
-     ldap-sync-admin-group false]
-    (f)))
 
 (defmacro ^:private with-ldap-and-sso-configured
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mapping sso-group-mapping & body]
   (binding [setting/*allow-retired-setting-names* true]
-    (setting/defsetting ldap-sync-admin-group
-      (deferred-tru "Sync the admin group?")
-      :type    :boolean
-      :default false)
-    `(let [body-fn# (fn [] ~@body)]
-       (if ~config/ee-available?
-         (call-with-ldap-configured ~ldap-group-mapping
-                                    (fn []
-                                      (call-with-sso-configured ~sso-group-mapping body-fn#)))
-         (call-with-ldap-configured ~ldap-group-mapping body-fn#)))))
+    `(call-with-ldap-and-sso-configured ~ldap-group-mapping ~sso-group-mapping (fn [] ~@body))))
 
+(defn- get-json-setting
+  [setting-k]
+  (json/parse-string (db/select-one-field :value Setting :key (name setting-k))))
+
+;; The `remove-admin-from-group-mapping-if-needed` migration is designed to run in OSS version
+;; even though it might make changes to some enterprise-only settings.
+;; In order to write tests to make sure it checks the behavior in both OSS and EE,
+;; we can't use [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
+;; because they require all settings are defined.
+;; That's why we use a set of helper functions to access raw setting to perform the tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (group/admin))
-        sso-group-mapping     {:group-mapping-a [admin-group-id (+ 1 admin-group-id)]
-                               :group-mapping-b [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        sso-group-mapping     {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
+                               "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
         ldap-group-mapping    {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
-        sso-expected-mapping  {:group-mapping-a [(+ 1 admin-group-id)]
-                               :group-mapping-b [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
-        ldap-expected-mapping {(DN. "dc=metabase,dc=com") [(+ 1 admin-group-id)]}]
+        sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
+                               "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
       (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
         (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-        (is (= ldap-expected-mapping (setting/get :ldap-group-mappings)))
-        (when config/ee-available?
-          (is (= sso-expected-mapping (setting/get :jwt-group-mappings)))
-          (is (= sso-expected-mapping (setting/get :saml-group-mappings))))))
+        (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
 
-    (testing "Does not remove admin from group mapping for LDAP if it's are disabled"
+    (testing "Does not remove admin from group mapping for LDAP, SAML, JWT if they are disabled"
       (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
-        (mt/with-temporary-setting-values
-          [ldap-enabled false]
+        (with-temporary-raw-setting-values
+          [ldap-enabled "false"
+           saml-enabled "false"
+           jwt-enabled  "false"]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-          (is (= {(DN. "dc=metabase,dc=com") [admin-group-id (+ 1 admin-group-id)]}
-                 (setting/get :ldap-group-mappings))))))
+          (is (= ldap-group-mapping (get-json-setting :ldap-group-mappings)))
+          (is (= sso-group-mapping (get-json-setting :jwt-group-mappings)))
+          (is (= sso-group-mapping (get-json-setting :saml-group-mappings))))))
 
-  (when config/ee-available?
-    (testing "Does not remove admin from group mapping for SAML, JWT if they are disabled"
-      (with-ldap-and-sso-configured ldap-group-mapping sso-group-mapping
-        (mt/with-temporary-setting-values
-          [saml-enabled false
-           jwt-enabled  false]
-          (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-          (is (= sso-group-mapping (setting/get :jwt-group-mappings)))
-          (is (= sso-group-mapping (setting/get :saml-group-mappings))))))))
-
-  (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-    (let [admin-group-id        (u/the-id (group/admin))
-          group-ids             [admin-group-id (+ 1 admin-group-id)]
-          ldap-group-mapping    {"dc=metabase,dc=com" group-ids}
-          ldap-expected-mapping {(DN. "dc=metabase,dc=com") group-ids}]
+    (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
       (with-ldap-and-sso-configured ldap-group-mapping nil
-        (mt/with-temporary-setting-values
-          [ldap-sync-admin-group true]
+        (with-temporary-raw-setting-values
+          [ldap-sync-admin-group "true"]
           (#'migrations/migrate-remove-admin-from-group-mapping-if-needed)
-          (is (= ldap-expected-mapping (setting/get :ldap-group-mappings))))))))
+          (is (= ldap-group-mapping (get-json-setting :ldap-group-mappings))))))))

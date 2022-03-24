@@ -40,10 +40,10 @@
       (try
        (db/transaction
         (@migration-var))
-        (catch Exception e
-          (if catch?
-            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-            (throw e))))
+       (catch Exception e
+         (if catch?
+           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+           (throw e))))
       (db/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
@@ -179,22 +179,49 @@
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
+(defn- raw-setting
+  "Get raw setting directly from DB.
+  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
+  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  [k]
+  (db/select-one-field :value Setting :key (name k)))
+
 (defn- remove-group-id-from-mappings-by-setting-key
-   [mapping-setting-key]
-   ;; Intentionally get setting using `db/select-one-field` instead of `setting/get` because for some reasons
-   ;; during start-up setting/get return the default value defined in defsetting instead of value from Setting table
-   (let [admin-group-id (:id (group/admin))
-         mapping        (try
-                         (json/parse-string (db/select-one-field :value Setting :key (name mapping-setting-key)))
-                         (catch Exception _e
-                           {}))]
-     (when-not (empty? mapping)
-       (setting/set-value-of-type!
-        :json
-        mapping-setting-key
-        (into {}
-              (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-              mapping)))))
+  [mapping-setting-key]
+  (let [admin-group-id (:id (group/admin))
+        mapping        (try
+                        (json/parse-string (raw-setting mapping-setting-key))
+                        (catch Exception _e
+                          {}))]
+    (when-not (empty? mapping)
+      (db/update! Setting (name mapping-setting-key)
+                  :value
+                  (->> mapping
+                          (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                          (into {})
+                          (json/generate-string))))))
+
+(defn- auth-method-configured?
+  "Replicate the checks from
+  [[metabase.integrations.ldap/ldap-configured?]]
+  [[metabase-enterprise.sso.integrations.sso-settings/jwt-configured]]
+  [[metabase-enterprise.sso.integrations.sso-settings/saml-configured]]
+  The difference is that:
+  - We get the settings directly from DB
+  - We could perform this check for jwt,saml even in OSS version"
+  [method]
+  (case method
+    :ldap (boolean (and (= (raw-setting :ldap-enabled) "true")
+                        (raw-setting :ldap-host)
+                        (raw-setting :ldap-user-base)))
+
+    :jwt  (boolean (and (= (raw-setting :jwt-enabled) "true")
+                        (raw-setting :jwt-identity-provider-uri)
+                        (raw-setting :jwt-shared-secret)))
+
+    :saml (boolean (and (= (raw-setting :saml-enabled) "true")
+                        (raw-setting :saml-identity-provider-uri)
+                        (raw-setting :saml-identity-provider-certificate)))))
 
 (defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
   ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
@@ -202,17 +229,16 @@
   ;;  But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
   ;;  - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
   ;;  - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
-  (when (and (ldap/ldap-configured?)
+  (when (and (auth-method-configured? :ldap)
              ;; Check if ldap-sync-admin-group is currently disabled
              (= (db/select-one-field :value Setting :key "ldap-sync-admin-group") "false"))
     (remove-group-id-from-mappings-by-setting-key :ldap-group-mappings))
-  ;; sso are enterprise feature, so only remove admin groups if enterprise available
-  (when (premium-features/enable-sso?)
-    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings)
-    (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/jwt-configured?))
-      (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings))
-    (when ((resolve 'metabase-enterprise.sso.integrations.sso-settings/saml-configured?))
-      (remove-group-id-from-mappings-by-setting-key :saml-group-mappings))))
+  ;; sso are enterprise feature but we still run this even in OSS in case a customer
+  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  (when (auth-method-configured? :jwt)
+    (remove-group-id-from-mappings-by-setting-key :jwt-group-mappings))
+  (when (auth-method-configured? :saml)
+    (remove-group-id-from-mappings-by-setting-key :saml-group-mappings)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
