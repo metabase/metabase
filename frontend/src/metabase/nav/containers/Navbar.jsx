@@ -83,7 +83,7 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { hasDataAccess, router, user } = this.props;
+    const { isOpen, hasDataAccess, router, user } = this.props;
     const collectionId = Urls.extractCollectionId(router.params.slug);
     const isRoot = collectionId === "root";
 
@@ -94,6 +94,7 @@ export default class Navbar extends Component {
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
         className="Nav"
+        isOpen={isOpen}
       >
         <CollectionSidebar
           isRoot={isRoot}

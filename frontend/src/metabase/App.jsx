@@ -187,8 +187,8 @@ class App extends Component {
               hasAppBar={hasAppBar}
               isAdminApp={this.isAdminApp()}
             >
-              {this.hasNavbar() && isSidebarOpen && (
-                <Navbar location={location} />
+              {this.hasNavbar() && (
+                <Navbar isOpen={isSidebarOpen} location={location} />
               )}
               <AppContent>{children}</AppContent>
               {this.renderModal()}
