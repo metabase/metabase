@@ -9,10 +9,6 @@ on:
     - ".**"
     - "test*"
 
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-20.04
