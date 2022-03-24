@@ -1260,7 +1260,9 @@ export class ExpressionDimension extends Dimension {
       semantic_type = base_type;
     }
 
-    // fallback for custom column
+    // FIX
+    // when the app uses dimension().field().dimension().field()
+    // the last generated field is badly formatted
     const resultMetadata = query?.question()?.getResultMetadata?.();
     if (resultMetadata) {
       const field = _.findWhere(resultMetadata, {
