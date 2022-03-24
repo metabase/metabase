@@ -9,6 +9,7 @@
             [metabase.api.table :as table-api]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
             [metabase.mbql.schema :as mbql.s]
@@ -562,6 +563,41 @@
                 details))
             details
             (database/sensitive-fields-for-db database)))))
+
+(api/defendpoint POST "/:id/persist"
+  "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
+  [id]
+  {:id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [database (Database id)]
+    (if (-> database :details :persist-models)
+      ;; todo: some other response if already persisted?
+      api/generic-204-no-content
+      (let [[success? error] (ddl.i/check-can-persist database)
+            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
+        (if success?
+          ;; do secrets require special handling to not clobber them or mess up encryption?
+          (do (db/update! Database id :details (assoc (:details database)
+                                                      :persist-models true))
+              api/generic-204-no-content)
+          (throw (ex-info (ddl.i/error->message error schema)
+                          {:error error
+                           :database (:name database)})))))))
+
+;; todo: do we want these routes unified with some true/false payload?
+(api/defendpoint POST "/:id/unpersist"
+  "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
+  [id]
+  {:id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [database (Database id)]
+    (if (-> database :details :persist-models)
+      (do (db/update! Database id :details (assoc (:details database)
+                                                  :persist-models false))
+          ;; todo: need to mark all as active = false
+          api/generic-204-no-content)
+      ;; todo: a response saying this was a no-op? an error? same on the post to persist
+      api/generic-204-no-content)))
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."

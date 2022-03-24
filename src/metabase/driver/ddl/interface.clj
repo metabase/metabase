@@ -1,6 +1,7 @@
 (ns metabase.driver.ddl.interface
   (:require [clojure.string :as str]
-            [metabase.driver :as driver]))
+            [metabase.driver :as driver]
+            [metabase.util.i18n :refer [tru]]))
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
@@ -24,6 +25,19 @@
 (defmulti field-base-type->sql-type
   "A suitable db type for a base-type per database."
   (fn [driver base-type] [driver base-type]))
+
+(defmulti check-can-persist
+  "Verify that the source database is acceptable to persist. Returns a tuple"
+  (fn [database] (:engine database)))
+
+(defn error->message
+  "Human readable messages for different connection errors."
+  [error schema]
+  (case error
+    :persist.check/create-schema (tru "Lack permissions to create {0} schema" schema)
+    :persist.check/create-table (tru "Lack permission to create table in schema {0}" schema)
+    :persist.check/read-table (tru "Lack permission to read table in schema {0}" schema)
+    :persist.check/delete-table (tru "Lack permission to delete table in schema {0}" schema)))
 
 ;; db_id, table def, table metadata, table_id
 (defmulti persist!
