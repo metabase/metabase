@@ -1,12 +1,18 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 export const NavRoot = styled.div`
+  position: relative;
   width: 320px;
   align-items: center;
   padding: 0.5rem 1rem 0.5rem 0;
   background-color: ${color("nav")};
+  overflow: auto;
+  z-index: 3;
+  flex-shrink: 0;
+  border-right: 1px solid ${color("border")};
+  padding-bottom: ${space(4)};
 `;
 
 export const LogoLinkContainer = styled.div`
