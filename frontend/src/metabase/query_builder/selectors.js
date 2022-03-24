@@ -1,12 +1,12 @@
 /*eslint no-use-before-define: "error"*/
 
+import d3 from "d3";
 import { createSelector } from "reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -22,9 +22,15 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { parseTimestamp } from "metabase/lib/time";
+import {
+  getXValues,
+  isTimeseries,
+} from "metabase/visualizations/lib/renderer_utils";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -47,7 +53,18 @@ export const getParameterValues = state => state.qb.parameterValues;
 
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
+export const getEntities = state => state.entities;
+export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getSelectedTimelineEventIds = state =>
+  state.qb.selectedTimelineEventIds;
+
 const getRawQueryResults = state => state.qb.queryResults;
+
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
+  );
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],
@@ -575,6 +592,79 @@ export const getIsNativeEditorOpen = createSelector(
 const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+const getIsTimeseries = createSelector(
+  [getVisualizationSettings],
+  settings => settings && isTimeseries(settings),
+);
+
+const getTimeseriesXValues = createSelector(
+  [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
+  (isTimeseries, series, settings) =>
+    isTimeseries && series && settings && getXValues({ series, settings }),
+);
+
+const getTimeseriesXDomain = createSelector(
+  [getIsTimeseries, getTimeseriesXValues],
+  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+);
+
+export const getFetchedTimelines = createSelector([getEntities], entities => {
+  const entityQuery = { include: "events" };
+  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+});
+
+export const getTransformedTimelines = createSelector(
+  [getFetchedTimelines],
+  timelines => {
+    return timelines.map(timeline =>
+      updateIn(timeline, ["events"], (events = []) =>
+        _.chain(events)
+          .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+          .filter(event => !event.archived)
+          .value(),
+      ),
+    );
+  },
+);
+
+export const getFilteredTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXDomain],
+  (timelines, xDomain) => {
+    if (!xDomain) {
+      return [];
+    }
+
+    return timelines
+      .map(timeline =>
+        updateIn(timeline, ["events"], events =>
+          events.filter(event => isEventWithinDomain(event, xDomain)),
+        ),
+      )
+      .filter(timeline => timeline.events.length > 0);
+  },
+);
+
+export const getVisibleTimelines = createSelector(
+  [getFilteredTimelines, getVisibleTimelineIds],
+  (timelines, timelineIds) => {
+    return timelines.filter(t => timelineIds.includes(t.id));
+  },
+);
+
+export const getVisibleTimelineEvents = createSelector(
+  [getVisibleTimelines],
+  timelines =>
+    _.chain(timelines)
+      .map(timeline => timeline.events)
+      .flatten()
+      .sortBy(event => event.timestamp)
+      .value(),
 );
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {

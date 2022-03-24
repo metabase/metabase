@@ -1,32 +1,31 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 /*global ace*/
-
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { getIn, assocIn, updateIn, merge } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
-import { setErrorPage } from "metabase/redux/app";
+import { openUrl, setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
-  loadCard,
-  startNewCard,
-  deserializeCardFromUrl,
-  serializeCardForUrl,
   cleanCopyCard,
+  deserializeCardFromUrl,
+  loadCard,
+  serializeCardForUrl,
+  startNewCard,
 } from "metabase/lib/card";
-import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
@@ -42,33 +41,34 @@ import { normalize } from "cljs/metabase.mbql.js";
 
 import {
   getCard,
-  getQuestion,
-  getOriginalQuestion,
-  getOriginalCard,
-  getIsEditing,
-  getTransformedSeries,
-  getRawSeries,
-  getResultsMetadata,
-  getFirstQueryResult,
-  getIsPreviewing,
-  getTableForeignKeys,
-  getQueryBuilderMode,
-  getPreviousQueryBuilderMode,
   getDatasetEditorTab,
-  getIsShowingTemplateTagsEditor,
+  getFirstQueryResult,
+  getIsEditing,
+  getIsPreviewing,
   getIsRunning,
+  getIsShowingTemplateTagsEditor,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
-  getSnippetCollectionId,
-  getQueryResults,
-  getZoomedObjectId,
-  getPreviousRowPKValue,
   getNextRowPKValue,
+  getOriginalCard,
+  getOriginalQuestion,
+  getPreviousQueryBuilderMode,
+  getPreviousRowPKValue,
+  getQueryBuilderMode,
+  getQueryResults,
+  getQuestion,
+  getRawSeries,
+  getResultsMetadata,
+  getSnippetCollectionId,
+  getTableForeignKeys,
+  getFetchedTimelines,
+  getTransformedSeries,
+  getZoomedObjectId,
   isBasedOnExistingQuestion,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
-import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
+import { CardApi, DashboardApi, MetabaseApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -87,10 +87,10 @@ import { setRequestUnloaded } from "metabase/redux/requests";
 
 import {
   getCurrentQueryParams,
-  getURLForCardState,
-  getQueryBuilderModeFromLocation,
-  getPathNameFromQueryBuilderMode,
   getNextTemplateTagVisibilityState,
+  getPathNameFromQueryBuilderMode,
+  getQueryBuilderModeFromLocation,
+  getURLForCardState,
 } from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -146,6 +146,9 @@ export const onOpenQuestionHistory = createAction(
 export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
+
+export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
+export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
@@ -999,7 +1002,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
-          open(url);
+          dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
@@ -1657,4 +1660,28 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(updateQuestion(nextQuestion));
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
+};
+
+export const SHOW_TIMELINES = "metabase/qb/SHOW_TIMELINES";
+export const showTimelines = createAction(SHOW_TIMELINES);
+
+export const HIDE_TIMELINES = "metabase/qb/HIDE_TIMELINES";
+export const hideTimelines = createAction(HIDE_TIMELINES);
+
+export const SELECT_TIMELINE_EVENTS = "metabase/qb/SELECT_TIMELINE_EVENTS";
+export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
+
+export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
+export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
+
+export const showTimelinesForCollection = collectionId => (
+  dispatch,
+  getState,
+) => {
+  const fetchedTimelines = getFetchedTimelines(getState());
+  const collectionTimelines = collectionId
+    ? fetchedTimelines.filter(t => t.collection_id === collectionId)
+    : fetchedTimelines.filter(t => t.collection_id == null);
+
+  dispatch(showTimelines(collectionTimelines));
 };

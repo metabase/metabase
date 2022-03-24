@@ -53,8 +53,9 @@ function addQADatabase(engine, db_display_name, port) {
         schedule_type: "hourly",
       },
     },
-  }).then(({ status }) => {
+  }).then(({ status, body }) => {
     expect(status).to.equal(200);
+    cy.wrap(body.id).as(`${engine}ID`);
   });
 
   // Make sure we have all the metadata because we'll need to use it in tests
@@ -72,12 +73,12 @@ function assertOnDatabaseMetadata(engine) {
 }
 
 function recursiveCheck(id, i = 0) {
-  // Let's not wait more than 2s for the sync to finish
+  // Let's not wait more than 5s for the sync to finish
   if (i === 20) {
-    throw new Error();
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.wait(100);
+  cy.wait(250);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
     if (database.initial_sync_status !== "complete") {

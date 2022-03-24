@@ -463,18 +463,7 @@
           [perms paths] inputs]
     (testing (pr-str (list 'set-has-full-permissions-for-set? perms paths))
       (is (= expected
-             (perms/set-has-full-permissions-for-set? perms paths)))))
-
-  (testing "If either set is invalid, it should throw an exception"
-    (doseq [[perms paths] [[#{"/" "/toucans/"}           #{"/db/1/"}]
-                           [#{"/db/1/" "//"}             #{"/db/1/"}]
-                           [#{"/db/1/table/2/" "/db/1/"} #{"/db/1/"}]
-                           [#{"/db/1/"}                  #{"/db/1/native/schema/"}]
-                           [#{"/db/1/"}                  #{"/db/1/schema/public/" "/kanye/"}]
-                           [#{"/db/1/"}                  #{"/ocean/" "/db/1/schema/public/table/1/"}]]]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (perms/set-has-full-permissions-for-set? perms paths))))))
+             (perms/set-has-full-permissions-for-set? perms paths))))))
 
 
 ;;; -------------------------------------- set-has-partial-permissions-for-set? --------------------------------------
@@ -615,10 +604,13 @@
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
-      (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
+      (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
         (is (= {db-id {:data
                        {:native  :write
-                        :schemas :all}}}
+                        :schemas :all}
+                       :download
+                       {:native  :full
+                        :schemas :full}}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))

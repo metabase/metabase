@@ -1,6 +1,7 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   RESET_QB,
@@ -54,6 +55,12 @@ import {
   onCloseQuestionDetails,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
+  onOpenTimelines,
+  onCloseTimelines,
+  SHOW_TIMELINES,
+  HIDE_TIMELINES,
+  SELECT_TIMELINE_EVENTS,
+  DESELECT_TIMELINE_EVENTS,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -67,6 +74,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -82,6 +90,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -115,12 +124,14 @@ export const uiControls = handleActions(
     },
 
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...DEFAULT_UI_CONTROLS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        ...payload.uiControls,
-      }),
+      next: (state, { payload }) => {
+        return {
+          ...state,
+          ...DEFAULT_UI_CONTROLS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          ...payload.uiControls,
+        };
+      },
     },
 
     [TOGGLE_DATA_REFERENCE]: {
@@ -266,6 +277,15 @@ export const uiControls = handleActions(
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
+    }),
+    [onOpenTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingTimelineSidebar: true,
+    }),
+    [onCloseTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
     [onCloseSidebars]: state => ({
       ...state,
@@ -481,4 +501,42 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const visibleTimelineIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SHOW_TIMELINES]: {
+      next: (state, { payload: timelines }) => [
+        ...state,
+        ...timelines.map(t => t.id),
+      ],
+    },
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.map(t => t.id)),
+    },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
+);
+
+export const selectedTimelineEventIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SELECT_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [DESELECT_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) =>
+        _.without(state, ...events.map(e => e.id)),
+    },
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
+    },
+    [onCloseTimelines]: { next: () => [] },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
 );

@@ -131,8 +131,9 @@ describeEE("formatting > sandboxes", () => {
     describe("question with joins", () => {
       it("should be sandboxed even after applying a filter to the question", () => {
         cy.log("Open saved question with joins");
-        cy.visit("/collection/root");
-        cy.findByText(QUESTION_NAME).click();
+        cy.get("@questionId").then(id => {
+          visitQuestion(id);
+        });
 
         cy.log("Make sure user is initially sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -759,9 +760,6 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       createJoinedQuestion("14766_joined");
 
       cy.visit("/question/new");
@@ -801,9 +799,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
-        visitQuestion(QUESTION_ID);
-      });
+      createJoinedQuestion("14841", { visitQuestion: true });
 
       cy.findByText("Settings").click();
       cy.findByTestId("sidebar-left")
@@ -1018,6 +1014,8 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
+      cy.intercept("POST", "/api/pulse/test").as("emailSent");
+
       setupSMTP();
 
       cy.sandboxTable({
@@ -1035,7 +1033,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
       cy.findByText("Send email now").click();
-      cy.findByText("Email sent");
+      cy.wait("@emailSent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).to.include("Orders in a dashboard");
         expect(body[0].html).to.include("37.65");
@@ -1045,24 +1043,27 @@ describeEE("formatting > sandboxes", () => {
   });
 });
 
-function createJoinedQuestion(name) {
-  return cy.createQuestion({
-    name,
+function createJoinedQuestion(name, { visitQuestion = false } = {}) {
+  return cy.createQuestion(
+    {
+      name,
 
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          alias: "Products",
-        },
-      ],
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
     },
-  });
+    { wrapId: true, visitQuestion },
+  );
 }

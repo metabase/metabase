@@ -670,6 +670,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
     });
+    cy.findByTextEnsureVisible("Quantity");
     cy.get(".Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1

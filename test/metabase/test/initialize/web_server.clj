@@ -1,5 +1,6 @@
 (ns metabase.test.initialize.web-server
-  (:require [metabase.config :as config]
+  (:require [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.server :as server]
@@ -29,10 +30,9 @@
 (defn init! []
   (try
     (server/start-web-server! test-handler)
-    (printf "Started test server on port %d\n" (config/config-int :mb-jetty-port))
+    (log/infof "Started test server on port %d" (config/config-int :mb-jetty-port))
     (catch Throwable e
-      (println "Web server failed to start")
-      (println e)
+      (log/fatalf e "Web server failed to start")
       (when config/is-test?
         (System/exit -2))))
   (init-status/set-complete!)

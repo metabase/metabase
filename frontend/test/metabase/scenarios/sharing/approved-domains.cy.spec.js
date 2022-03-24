@@ -4,6 +4,7 @@ import {
   restore,
   setupSMTP,
   sidebar,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 const allowedDomain = "metabase.test";
@@ -22,7 +23,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a question alert", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     cy.icon("bell").click();
     cy.findByText("Set up an alert").click();
@@ -36,7 +37,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a question alert in the audit app", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.icon("bell").click();
     cy.findByText("Set up an alert").click();
     cy.button("Done").click();

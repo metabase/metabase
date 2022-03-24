@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
-import { getMBQLName, MBQL_CLAUSES } from "./index";
+import { getMBQLName, MBQL_CLAUSES, unescapeString } from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -70,7 +70,7 @@ function recursiveParse(source) {
 
   const field = name => {
     const ref = name[0] === "[" ? shrink(name) : name;
-    return ["dimension", ref];
+    return ["dimension", unescapeString(ref)];
   };
 
   // Primary ::= Literal |

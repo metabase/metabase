@@ -15,7 +15,7 @@
 
 (defn add-test-extensions! [driver]
   (driver/add-parent! driver :sql/test-extensions)
-  (println "Added SQL test extensions for" driver "✏️"))
+  (log/infof "Added SQL test extensions for %s ✏️" driver))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

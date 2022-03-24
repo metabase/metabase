@@ -1,7 +1,6 @@
 import {
   enterCustomColumnDetails,
   getNotebookStep,
-  interceptPromise,
   modal,
   openOrdersTable,
   openProductsTable,
@@ -152,36 +151,45 @@ describe("scenarios > question > notebook", () => {
     cy.contains(/^Price is less than 5/i);
   });
 
-  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading", () => {
-    // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Database").click();
-    cy.contains("Orders").click();
+  it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dataset",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          // Throttle the response to 500 Kbps to simulate a mobile 3G connection
+          res.setThrottle(500);
+        });
+      },
+    ).as("dataset");
 
-    // Add filter for ID < 100
-    cy.findByText("Add filters to narrow your answer").click();
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "ID < 100" });
-    cy.button("Done")
-      .should("not.be.disabled")
-      .click();
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["=", ["field", ORDERS.PRODUCT_ID, null], 2],
+      },
+    };
 
-    visualize();
+    cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.contains("Showing 99 rows");
+    cy.contains("Showing 98 rows");
 
-    const req = interceptPromise("POST", "/api/dataset");
-    cy.contains("ID is less than 100").click();
-    cy.get(".Icon-chevronleft").click();
-    cy.findByText("Custom Expression").click();
-    cy.get("@formula")
-      .clear()
-      .type("ID < 2010");
-    cy.button("Done").click();
-    cy.contains("Showing 99 rows");
-    req.resolve();
-    cy.contains("Showing first 2000 rows");
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByText("Product ID is 2").click();
+
+    popover()
+      .find("input")
+      .type("3{enter}");
+    cy.findByText("Product ID is 2 selections");
+
+    // Still loading
+    cy.contains("Showing 98 rows");
+
+    cy.wait("@dataset");
+    cy.contains("Showing 175 rows");
   });
 
   // flaky test (#19454)

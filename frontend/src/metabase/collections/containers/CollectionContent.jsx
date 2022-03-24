@@ -1,13 +1,15 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsBookmarked } from "metabase/collections/selectors";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -34,22 +36,32 @@ const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function mapStateToProps(state) {
+function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
+    isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
   };
 }
 
+const mapDispatchToProps = {
+  createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
+};
+
 function CollectionContent({
+  bookmarks,
   collection,
   collections: collectionList = [],
   collectionId,
+  createBookmark,
+  deleteBookmark,
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
   metadata,
 }) {
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
@@ -64,6 +76,15 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+
+  useEffect(() => {
+    const shouldBeBookmarked = bookmarks.some(
+      bookmark =>
+        bookmark.type === "collection" && bookmark.item_id === collectionId,
+    );
+
+    setIsBookmarked(shouldBeBookmarked);
+  }, [bookmarks, collectionId]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -115,6 +136,11 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
+  const handleClickBookmark = () => {
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    toggleBookmark(collectionId, "collection");
+  };
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -145,6 +171,8 @@ function CollectionContent({
           <CollectionRoot>
             <CollectionMain>
               <Header
+                onClickBookmark={handleClickBookmark}
+                isBookmarked={isBookmarked}
                 isRoot={isRoot}
                 isAdmin={isAdmin}
                 collectionId={collectionId}
@@ -200,6 +228,9 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
                         items={unpinnedItems}
                         collection={collection}
                         sortingOptions={unpinnedItemsSorting}
@@ -257,6 +288,7 @@ function CollectionContent({
 }
 
 export default _.compose(
+  Bookmark.loadList(),
   Collection.loadList({
     query: () => ({ tree: true }),
     loadingAndErrorWrapper: false,
@@ -265,5 +297,5 @@ export default _.compose(
     id: (_, props) => props.collectionId,
     reload: true,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionContent);

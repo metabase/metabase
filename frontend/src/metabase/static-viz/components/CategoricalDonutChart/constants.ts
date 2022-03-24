@@ -9,8 +9,4 @@ export const CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS = {
     donut: "#509EE3",
     cronut: "#DDECFA",
   },
-  accessors: {
-    dimension: (row: any[]) => row[0],
-    metric: (row: any[]) => row[1],
-  },
 };

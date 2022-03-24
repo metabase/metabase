@@ -5,7 +5,9 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
+import Timelines from "metabase/entities/timelines";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -61,6 +63,11 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getIsBookmarked,
+  getVisibleTimelineIds,
+  getVisibleTimelineEvents,
+  getSelectedTimelineEventIds,
+  getFilteredTimelines,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -76,6 +83,11 @@ function autocompleteResults(card, prefix) {
   });
   return apiCall;
 }
+
+const timelineProps = {
+  query: { include: "events" },
+  loadingAndErrorWrapper: false,
+};
 
 const mapStateToProps = (state, props) => {
   return {
@@ -104,6 +116,11 @@ const mapStateToProps = (state, props) => {
     query: getQuery(state),
     metadata: getMetadata(state),
 
+    timelines: getFilteredTimelines(state),
+    timelineEvents: getVisibleTimelineEvents(state),
+    visibleTimelineIds: getVisibleTimelineIds(state),
+    selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
     rawSeries: getRawSeries(state),
@@ -113,6 +130,7 @@ const mapStateToProps = (state, props) => {
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 
+    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
@@ -150,6 +168,8 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
+  createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
 };
 
 function QueryBuilder(props) {
@@ -168,6 +188,11 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    isBookmarked,
+    createBookmark,
+    deleteBookmark,
+    allLoaded,
+    showTimelinesForCollection,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -178,14 +203,18 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const hasQuestion = question != null;
+  const collectionId = question?.collectionId();
 
-  const openModal = useCallback(modal => setUIControls({ modal }), [
-    setUIControls,
-  ]);
+  const openModal = useCallback(
+    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    [setUIControls],
+  );
 
-  const closeModal = useCallback(() => setUIControls({ modal: null }), [
-    setUIControls,
-  ]);
+  const closeModal = useCallback(
+    () => setUIControls({ modal: null, modalContext: null }),
+    [setUIControls],
+  );
 
   const setRecentlySaved = useCallback(
     recentlySaved => {
@@ -197,6 +226,16 @@ function QueryBuilder(props) {
     },
     [setUIControls],
   );
+
+  const onClickBookmark = () => {
+    const {
+      card: { id },
+    } = props;
+
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+    toggleBookmark(id);
+  };
 
   const handleCreate = useCallback(
     async card => {
@@ -246,6 +285,12 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
+    if (allLoaded && hasQuestion) {
+      showTimelinesForCollection(collectionId);
+    }
+  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
+
+  useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
     const {
       isShowingDataReference: wasShowingDataReference,
@@ -285,11 +330,14 @@ function QueryBuilder(props) {
       onSave={handleSave}
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
+      toggleBookmark={onClickBookmark}
     />
   );
 }
 
 export default _.compose(
+  Bookmark.loadList(),
+  Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),

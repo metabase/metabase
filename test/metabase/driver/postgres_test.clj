@@ -14,6 +14,7 @@
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
@@ -283,6 +284,17 @@
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
+
+(deftest json-query-test
+  (testing "Transforming MBQL query with JSON in it to postgres query works"
+    (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text)))" "meh"]
+           (hsql/format (#'postgres/json-query 'mlep [:bleh :meh])))))
+  (testing "What if types are weird and we have lists"
+    (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text)))"
+            "meh"
+            "foobar"
+            "1234"]
+           (hsql/format (#'postgres/json-query 'mlep '(:bleh "meh" :foobar 1234)))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
@@ -760,3 +772,30 @@
           ;; this will fail/throw an NPE if the fix for #19984 is not put in place (since the server code will
           ;; attempt to "store" a non-existent :ssl-client-key-value to a temp file)
           (is (map? (#'postgres/ssl-params db-details))))))))
+
+(deftest can-set-ssl-key-via-gui
+  (testing "ssl key can be set via the gui (#20319)"
+    (with-redefs [secret/value->file!
+                  (fn [{:keys [connection-property-name id value] :as secret} driver?]
+                    (str "file:" connection-property-name "=" value))]
+      (is (= "file:ssl-key=/clientkey.pkcs12"
+             (:sslkey
+              (#'postgres/ssl-params
+               {:ssl true
+                :ssl-client-cert-options "local"
+                :ssl-client-cert-path "/client.pem"
+                :ssl-key-options "local"
+                :ssl-key-password-value "sslclientkeypw!"
+                :ssl-key-path "/clientkey.pkcs12", ;; <-- this is what is set via ui.
+                :ssl-mode "verify-ca"
+                :ssl-root-cert-options "local"
+                :ssl-root-cert-path "/root.pem"
+                :ssl-use-client-auth true
+                :tunnel-enabled false
+                :advanced-options false
+                :dbname "metabase"
+                :engine :postgres
+                :host "localhost"
+                :user "bcm"
+                :password "abcdef123"
+                :port 5432})))))))

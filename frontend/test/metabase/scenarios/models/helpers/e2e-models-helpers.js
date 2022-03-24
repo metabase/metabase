@@ -97,6 +97,7 @@ export function turnIntoModel() {
 
 export function selectFromDropdown(option, clickOpts) {
   popover()
+    .last()
     .findByText(option)
     .click(clickOpts);
 }
