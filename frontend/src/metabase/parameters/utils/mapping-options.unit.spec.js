@@ -222,14 +222,15 @@ describe("parameters/utils/mapping-options", () => {
       const fieldRefType = "expression";
       const fieldRefName = "Custom column";
       const field = [fieldType, [fieldRefType, fieldRefName], null];
+      const mappingOption = {
+        icon: "string",
+        isForeign: false,
+        name: "Custom column",
+        sectionName: null,
+        target: [fieldType, [fieldRefType, fieldRefName, null]],
+      };
       const mappingOptions = [
-        {
-          icon: "string",
-          isForeign: false,
-          name: "Custom column",
-          sectionName: null,
-          target: [fieldType, [fieldRefType, fieldRefName, null]],
-        },
+        mappingOption,
         {
           icon: "string",
           isForeign: false,
@@ -247,7 +248,7 @@ describe("parameters/utils/mapping-options", () => {
       ];
 
       const option = retrieveMappingOption(field, mappingOptions);
-      expect(option).toEqual([fieldType, [fieldRefType, fieldRefName, null]]);
+      expect(option).toEqual([fieldType, mappingOption]);
     });
 
     it("should return undefined as no option is found", () => {
