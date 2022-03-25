@@ -101,7 +101,10 @@ const getMenuItems = (
 };
 
 const getSortedTimelines = (timelines: Timeline[]) => {
-  return _.sortBy(timelines, timeline => timeline.name);
+  return _.chain(timelines)
+    .sortBy(timeline => timeline.name)
+    .sortBy(timeline => timeline.collection?.personal_owner_id != null)
+    .value();
 };
 
 export default TimelineListModal;
