@@ -12,6 +12,7 @@ import {
   summarize,
   filter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -898,7 +899,7 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.icon("share").click();
       cy.findByText("Dashboard subscriptions").click();
       // We're starting without email or Slack being set up so it's expected to see the following:
@@ -1026,7 +1027,7 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.icon("share").click();
       cy.findByText("Dashboard subscriptions").click();
       cy.findByText("Email it").click();

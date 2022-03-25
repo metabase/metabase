@@ -1,4 +1,8 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 describe("scenarios > collection items metadata", () => {
@@ -12,7 +16,7 @@ describe("scenarios > collection items metadata", () => {
     });
 
     it("should display last edit moment for dashboards", () => {
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       changeDashboard();
       cy.findByText(/Edited a few seconds ago/i);
     });
@@ -27,7 +31,7 @@ describe("scenarios > collection items metadata", () => {
   describe("last editor", () => {
     it("should display if user is the last editor", () => {
       cy.signInAsAdmin();
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.findByText(/Edited .* by you/i);
       visitQuestion(1);
       cy.findByText(/Edited .* by you/i);
@@ -39,7 +43,7 @@ describe("scenarios > collection items metadata", () => {
       const expectedName = `${first_name} ${last_name.charAt(0)}.`;
 
       cy.signIn("normal");
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
       visitQuestion(1);
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));

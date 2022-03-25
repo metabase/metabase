@@ -39,7 +39,7 @@
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
         timelines (map timeline/hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
-    (cond->> (hydrate timelines :creator :collection)
+    (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
@@ -53,7 +53,7 @@
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
-    (cond-> (hydrate timeline :creator :collection)
+    (cond-> (hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
