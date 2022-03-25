@@ -4,12 +4,13 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
-const ICON_SIZE = 32;
+const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_X = -16;
+const ICON_X = -ICON_SIZE;
 const ICON_Y = 10;
 const TEXT_X = 10;
 const TEXT_Y = 16;
+const RECT_SIZE = ICON_SIZE * 2;
 
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
@@ -139,12 +140,12 @@ function renderEventTicks({
   eventTicks
     .enter()
     .append("g")
-    .filter((d, i) => eventVisibility[i])
     .attr("class", "event-tick")
     .classed("hover", d => isSelected(d, selectedEventIds))
     .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
 
   eventTicks
+    .filter((d, i) => eventVisibility[i])
     .append("path")
     .attr("class", "event-icon")
     .attr("d", d => getIconPath(d))
@@ -153,13 +154,15 @@ function renderEventTicks({
     .attr("aria-label", d => getIconLabel(d));
 
   eventTicks
+    .filter((d, i) => eventVisibility[i])
     .append("rect")
     .attr("fill", "none")
-    .attr("width", ICON_SIZE)
-    .attr("height", ICON_SIZE)
+    .attr("width", RECT_SIZE)
+    .attr("height", RECT_SIZE)
     .attr("transform", () => getIconTransform());
 
   eventTicks
+    .filter((d, i) => d.length > 1 && eventVisibility[i])
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
