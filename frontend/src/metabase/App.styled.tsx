@@ -21,7 +21,7 @@ export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
 export const AppContent = styled.div`
   width: 100%;
   overflow: auto;
-  background-color: ${color("bg-white")};
+  background-color: ${color("content")};
 `;
 
 export const AppBar = styled.div`
