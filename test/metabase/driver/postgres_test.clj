@@ -287,14 +287,20 @@
 
 (deftest json-query-test
   (testing "Transforming MBQL query with JSON in it to postgres query works"
-    (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text)))" "meh"]
+    (is (= ["CAST(json_extract_path_text(CAST(bleh AS json), (CAST(? AS text))) AS Text)" "meh"]
            (hsql/format (#'postgres/json-query 'mlep [:bleh :meh])))))
   (testing "What if types are weird and we have lists"
-    (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text)))"
+    (is (= ["CAST(json_extract_path_text(CAST(bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Text)"
             "meh"
             "foobar"
             "1234"]
-           (hsql/format (#'postgres/json-query 'mlep '(:bleh "meh" :foobar 1234)))))))
+           (hsql/format (#'postgres/json-query 'mlep '(:bleh "meh" :foobar 1234))))))
+  (testing "Give us a boolean cast when the field is boolean"
+    (is (= ["CAST(json_extract_path_text(CAST(bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Boolean)"
+            "boop"
+            "foobar"
+            "1234"]
+           (hsql/format (#'postgres/json-query {:effective_type :type/Boolean} '(:bleh "boop" :foobar 1234)))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
