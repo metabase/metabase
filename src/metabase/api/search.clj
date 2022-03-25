@@ -273,9 +273,9 @@
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
       ;; TODO: get this working
-      #_(h/left-join [CollectionBookmark :bookmark]
+      (h/left-join [CollectionBookmark :bookmark]
                    [:and
-                    [:= :bookmark.collection_id 1 :collection.id]
+                    [:= :bookmark.collection_id :collection.id]
                     [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 

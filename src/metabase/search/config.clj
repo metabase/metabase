@@ -96,7 +96,7 @@
   [:id :name :description :archived :updated_at])
 
 (def ^:private bookmark-col
-  "Case statement to return boolean values of `:bookmark` for Card and Dashboard."
+  "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
   [(hsql/call :case [:not= :bookmark.id nil] true :else false) :bookmark])
 
 (def ^:private dashboardcard-count-col
@@ -154,7 +154,8 @@
 (defmethod columns-for-model "collection"
   [_]
   (conj (remove #{:updated_at} default-columns) [:id :collection_id] [:name :collection_name]
-        [:authority_level :collection_authority_level]))
+        [:authority_level :collection_authority_level]
+        bookmark-col))
 
 (defmethod columns-for-model "segment"
   [_]
