@@ -26,23 +26,25 @@ export const getPlainNativeQuery = state => {
   }
 };
 
-export const getHasDataAccess = createSelector(
-  [getDatabases],
-  (databaseMap = {}) =>
-    // This ensures there is at least one real (not saved questions) DB available
-    // If there is only the saved questions DB, it doesn't mean a user has data access
-    Object.values(databaseMap).some(db => !db.is_saved_questions),
+export const getDatabaseList = createSelector([getDatabases], databaseMap =>
+  Object.values(databaseMap ?? {}),
 );
 
-export const getHasNativeWrite = createSelector(
-  [getDatabases],
-  (databaseMap = {}) =>
-    Object.values(databaseMap).some(d => d.native_permissions === "write"),
+export const getHasDataAccess = createSelector([getDatabaseList], databases =>
+  // This ensures there is at least one real (not saved questions) DB available
+  // If there is only the saved questions DB, it doesn't mean a user has data access
+  databases.some(db => !db.is_saved_questions),
 );
 
-export const getHasDbWithJsonEngine = (state, props) => {
-  return (props.databases || []).some(database => {
-    const isJsonEngine = getEngineNativeType(database.engine) === "json";
-    return database.canWrite() && isJsonEngine;
-  });
-};
+export const getHasNativeWrite = createSelector([getDatabaseList], databases =>
+  databases.some(db => db.native_permissions === "write"),
+);
+
+const isJsonEngine = database =>
+  getEngineNativeType(database.engine) === "json";
+
+export const getHasDbWithJsonEngine = createSelector(
+  [getDatabaseList],
+  databases =>
+    databases.some(db => db.native_permissions === "write" && isJsonEngine(db)),
+);
