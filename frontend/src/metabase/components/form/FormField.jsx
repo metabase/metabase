@@ -58,6 +58,7 @@ function FormField(props) {
       "top",
     info = formField && formField.info,
     infoLabel = formField && formField.infoLabel,
+    infoLabelTooltip = formField && formField.infoLabelTooltip,
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
@@ -100,13 +101,13 @@ function FormField(props) {
                 {error && <span className="text-error">: {error}</span>}
               </Label>
             )}
-            {info && !infoLabel && (
+            {info && (
               <Tooltip tooltip={info}>
                 <InfoIcon name="info" size={12} />
               </Tooltip>
             )}
             {infoLabel && (
-              <Tooltip tooltip={info} maxWidth="100%">
+              <Tooltip tooltip={infoLabelTooltip} maxWidth="100%">
                 <InfoLabel>{infoLabel}</InfoLabel>
               </Tooltip>
             )}
