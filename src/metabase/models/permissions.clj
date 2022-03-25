@@ -509,6 +509,11 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
+(s/defn set-has-general-permission-of-type
+  "Does `permissions-set` grant *full* access to a general permission of type `perm-type`?"
+  [permissions-set perm-type]
+  (set-has-full-permissions? permissions-set (general-perms-path perm-type)))
+
 (s/defn perms-objects-set-for-parent-collection :- #{Path}
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root

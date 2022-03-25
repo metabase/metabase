@@ -28,7 +28,7 @@
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set
-  "Get a map of general permissions for all existing group-ids"
+  "Get a map of general permissions for all existing group-ids."
   []
   (let [group-ids           (db/select-field :id PermissionsGroup)
         general-permissions (db/select Permissions
