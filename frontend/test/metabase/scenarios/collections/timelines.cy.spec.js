@@ -79,6 +79,23 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("AM").should("not.exist");
     });
 
+    it("should create an event with description", () => {
+      cy.visit("/collection/root");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByLabelText("Date").type("5/12/2021");
+      cy.findByText("Markdown supported").should("be.visible");
+      cy.findByLabelText("Description").type("*1.0-rc1* release");
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText("1.0-rc1").should("be.visible");
+    });
+
     it("should create an event with date and time", () => {
       cy.visit("/collection/root");
 
