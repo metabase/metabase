@@ -304,7 +304,7 @@
                 "boop"
                 "foobar"
                 "1234"]
-               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field)))))))
+               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
