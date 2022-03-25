@@ -622,14 +622,18 @@ export const getFetchedTimelines = createSelector([getEntities], entities => {
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
   timelines => {
-    return timelines.map(timeline =>
-      updateIn(timeline, ["events"], (events = []) =>
-        _.chain(events)
-          .map(event => updateIn(event, ["timestamp"], parseTimestamp))
-          .filter(event => !event.archived)
-          .value(),
-      ),
-    );
+    return _.chain(timelines)
+      .map(timeline =>
+        updateIn(timeline, ["events"], (events = []) =>
+          _.chain(events)
+            .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+            .filter(event => !event.archived)
+            .value(),
+        ),
+      )
+      .sortBy(timeline => timeline.name)
+      .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
+      .value();
   },
 );
 

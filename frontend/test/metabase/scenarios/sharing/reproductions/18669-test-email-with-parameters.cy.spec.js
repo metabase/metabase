@@ -4,6 +4,7 @@ import {
   restore,
   setupSMTP,
   sidebar,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -21,7 +22,7 @@ describeEE("issue 18669", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
         cy.editDashboardCard(card, getFilterMapping(card));
-        cy.visit(`/dashboard/${card.dashboard_id}`);
+        visitDashboard(card.dashboard_id);
       },
     );
   });

@@ -1481,6 +1481,15 @@
       (testing "Timelines in the collection of the card are returned"
         (is (= #{"Timeline A"}
                (timeline-names (timelines-request coll-a false)))))
+      (testing "Timelines in the collection have a hydrated `:collection` key"
+        (is (= #{(u/the-id coll-a)}
+               (->> (timelines-request coll-a false)
+                    (map #(get-in % [:collection :id]))
+                    set))))
+      (testing "check that `:can_write` key is hydrated"
+        (is (every?
+             #(contains? % :can_write)
+             (map :collection (timelines-request coll-a false)))))
       (testing "Only un-archived timelines in the collection of the card are returned"
         (is (= #{"Timeline B"}
                (timeline-names (timelines-request coll-b false)))))

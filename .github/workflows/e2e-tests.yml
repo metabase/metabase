@@ -17,7 +17,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -57,6 +57,8 @@ jobs:
           - "downloads"
           - "joins"
           - "moderation"
+          - "native"
+          - "native-filters"
           - "permissions"
           - "question"
           - "visualizations"
@@ -91,7 +93,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -99,7 +101,7 @@ jobs:
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -113,7 +115,7 @@ jobs:
       env:
         TERM: xterm
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}

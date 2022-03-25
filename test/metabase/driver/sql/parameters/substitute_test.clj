@@ -23,7 +23,7 @@
     (mt/with-everything-store
       (substitute/substitute parsed param->value))))
 
-(deftest substitute-test
+(deftest ^:parallel substitute-test
   (testing "normal substitution"
     (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
            (substitute
@@ -86,7 +86,7 @@
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
-(deftest substitute-field-filter-test
+(deftest ^:parallel substitute-field-filter-test
   (testing "field-filters"
     (testing "non-optional"
       (let [query ["select * from checkins where " (param "date")]]
@@ -171,7 +171,7 @@
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
-(deftest substitute-referenced-card-query-test
+(deftest ^:parallel substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
@@ -180,7 +180,7 @@
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
-(deftest substitute-native-query-snippets-test
+(deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
@@ -195,7 +195,7 @@
                            (#'substitute/substitute (parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
-(deftest basic-substitution-test
+(deftest ^:parallel basic-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -219,7 +219,7 @@
 
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
-(deftest optional-substitution-test
+(deftest ^:parallel optional-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
@@ -356,7 +356,7 @@
       (select-keys [:query :params :template-tags])
       (update :params vec)))
 
-(deftest expand-variables-test
+(deftest ^:parallel expand-variables-test
   ;; unspecified optional param
   (is (= {:query  "SELECT * FROM orders ;"
           :params []}
@@ -408,7 +408,7 @@
 
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
-   (t/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
      (-> {:native     {:query
                        sql
                        :template-tags {"date" {:name         "date"
@@ -536,7 +536,7 @@
   (qp/process-query
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
-(deftest e2e-basic-test
+(deftest ^:paralllel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
@@ -552,7 +552,7 @@
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-04-01~2015-05-01"}])))))))
 
-(deftest e2e-no-parameter-test
+(deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
@@ -567,7 +567,7 @@
                                                                 :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters []))))))))
 
-(deftest e2e-relative-dates-test
+(deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
@@ -587,7 +587,7 @@
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
 
-(deftest e2e-combine-multiple-filters-test
+(deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
@@ -636,7 +636,7 @@
         "Native dates should be parsed with the report timezone")))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
-(deftest param-expansion-test
+(deftest ^:parallel param-expansion-test
   (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?",
           :params [#t "2017-03-01"
                    #t "2017-03-31"]}
@@ -696,7 +696,7 @@
 
 (deftest expand-field-filter-relative-dates-test
   (testing "Make sure relative date forms like `past5days` work correctly with Field Filters"
-    (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+    (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
       (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                            "FROM CHECKINS "
                            "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ? "
@@ -725,7 +725,7 @@
                          "GROUP BY \"DATE\"")
             :params [#t "2017-10-31"
                      #t "2017-11-04"]}
-           (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+           (mt/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
              (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                     "FROM CHECKINS "
                                                     "WHERE {{checkin_date}} "
@@ -753,7 +753,7 @@
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
-(deftest newlines-test
+(deftest ^:parallel newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
     (is (= [[1]]
            (mt/rows
@@ -768,7 +768,7 @@
                                                     :default      "Fred 62"}}}
                 :parameters []}))))))
 
-(deftest multiple-value-test
+(deftest ^:parallel multiple-value-test
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
            (-> (qp/process-query
@@ -807,7 +807,7 @@
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
-(deftest include-card-parameters-test
+(deftest ^:parallel include-card-parameters-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
     (binding [driver/*driver* :h2]
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"

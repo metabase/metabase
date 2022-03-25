@@ -4,6 +4,7 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -43,7 +44,7 @@ describe.skip("issue 17775", () => {
 
         cy.editDashboardCard(dashboardCard, updatedSize);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
 

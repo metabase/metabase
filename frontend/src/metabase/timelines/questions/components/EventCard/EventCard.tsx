@@ -4,22 +4,22 @@ import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
+  CardAside,
   CardBody,
   CardCreatorInfo,
   CardDateInfo,
   CardDescription,
-  CardRoot,
   CardIcon,
   CardIconContainer,
+  CardRoot,
   CardTitle,
-  CardAside,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
   event: TimelineEvent;
-  collection: Collection;
+  timeline: Timeline;
   isSelected?: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
@@ -27,12 +27,12 @@ export interface EventCardProps {
 
 const EventCard = ({
   event,
-  collection,
+  timeline,
   isSelected,
   onEdit,
   onArchive,
 }: EventCardProps): JSX.Element => {
-  const menuItems = getMenuItems(event, collection, onEdit, onArchive);
+  const menuItems = getMenuItems(event, timeline, onEdit, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
@@ -60,24 +60,24 @@ const EventCard = ({
 
 const getMenuItems = (
   event: TimelineEvent,
-  collection: Collection,
+  timeline: Timeline,
   onEdit?: (event: TimelineEvent) => void,
   onArchive?: (event: TimelineEvent) => void,
 ) => {
-  if (collection.can_write) {
-    return [
-      {
-        title: t`Edit event`,
-        action: () => onEdit?.(event),
-      },
-      {
-        title: t`Archive event`,
-        action: () => onArchive?.(event),
-      },
-    ];
-  } else {
+  if (!timeline.collection?.can_write) {
     return [];
   }
+
+  return [
+    {
+      title: t`Edit event`,
+      action: () => onEdit?.(event),
+    },
+    {
+      title: t`Archive event`,
+      action: () => onArchive?.(event),
+    },
+  ];
 };
 
 const getDateMessage = (event: TimelineEvent) => {

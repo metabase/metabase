@@ -1,4 +1,9 @@
-import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -54,7 +59,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   describe("embedded parameters", () => {
     it("should be disabled by default but able to be set to editable", () => {
-      cy.visit("/dashboard/2");
+      visitDashboard(2);
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
@@ -100,7 +105,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     });
 
     it("should let parameters be locked to a specific value (metabase#20357)", () => {
-      cy.visit("/dashboard/2");
+      visitDashboard(2);
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
@@ -201,7 +206,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
       // wait for question to load/run
       cy.contains("Test Dashboard");
       cy.contains("2,500");
