@@ -31,13 +31,17 @@ export function getClickHoverObject(
   const isBreakoutMultiseries = isMultiseries && card._breakoutColumn;
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
+  const isCardNamedDerivedFromColumn = cols.some(col => col.name === card.name);
 
   function getColumnDisplayName(col, colIndex, card) {
     // `visualization_settings.series_settings` use `card.name` and
     // not `column.name` for renamed series when the `seriesIndex > 0`;
     // check for `columnIndex === 1` because only the first metric column
     // should be renamed by this setting
-    const colKey = seriesIndex > 0 && colIndex === 1 ? card.name : col.name;
+    const colKey =
+      seriesIndex > 0 && colIndex === 1 && !isCardNamedDerivedFromColumn
+        ? card.name
+        : col.name;
     const colTitle = getIn(settings, ["series_settings", colKey, "title"]);
 
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
