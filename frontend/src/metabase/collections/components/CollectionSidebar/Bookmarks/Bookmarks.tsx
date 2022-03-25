@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import Tooltip from "metabase/components/Tooltip";
-import { getIcon } from "./getIcon";
+import BookmarkEntity from "metabase/entities/bookmarks";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkContainer,
@@ -31,7 +31,7 @@ interface CollectionSidebarBookmarksProps {
 }
 
 const Label = ({ bookmark }: LabelProps) => {
-  const icon = getIcon(bookmark);
+  const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
 
   return (
     <LabelContainer>
