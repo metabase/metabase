@@ -6,7 +6,7 @@ on:
 
 jobs:
   codenotify:
-    runs-on: ubutnu-20.04
+    runs-on: ubuntu-20.04
     name: Codenotify
     steps:
       - uses: actions/checkout@v3

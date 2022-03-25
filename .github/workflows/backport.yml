@@ -9,7 +9,7 @@ jobs:
   create_pull_request:
     name: Creates a pull request
     if: contains(github.event.comment.body, '@metabase-bot backport')
-    runs-on: ubutnu-20.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/github-script@v6
         id: branch_info
@@ -111,7 +111,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify_when_failed:
-    runs-on: ubutnu-20.04
+    runs-on: ubuntu-20.04
     name: Notify about failure
     needs: create_pull_request
     if: ${{ failure() }}
