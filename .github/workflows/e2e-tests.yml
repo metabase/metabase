@@ -57,6 +57,8 @@ jobs:
           - "downloads"
           - "joins"
           - "moderation"
+          - "native"
+          - "native-filters"
           - "permissions"
           - "question"
           - "visualizations"
