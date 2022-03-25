@@ -61,9 +61,7 @@ const CollectionSidebarBookmarks = ({
   };
 
   const toggleBookmarkListVisibility = () => {
-    const booleanForLocalStorage = new Boolean(
-      !shouldDisplayBookmarks,
-    ).toString();
+    const booleanForLocalStorage = (!shouldDisplayBookmarks).toString();
     localStorage.setItem("shouldDisplayBookmarks", booleanForLocalStorage);
 
     setShouldDisplayBookmarks(!shouldDisplayBookmarks);
