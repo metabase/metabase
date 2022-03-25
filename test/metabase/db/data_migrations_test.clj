@@ -392,12 +392,12 @@
   [setting-k]
   (json/parse-string (db/select-one-field :value Setting :key (name setting-k))))
 
-;; The `remove-admin-from-group-mapping-if-needed` migration is designed to run in OSS version
+;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
 ;; even though it might make changes to some enterprise-only settings.
-;; In order to write tests to make sure it checks the behavior in both OSS and EE,
-;; we can't use [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
+;; In order to write tests that runs in both OSS and EE, we can't use
+;; [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
 ;; because they require all settings are defined.
-;; That's why we use a set of helper functions to access raw setting to perform the tests
+;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (group/admin))
         sso-group-mapping     {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
