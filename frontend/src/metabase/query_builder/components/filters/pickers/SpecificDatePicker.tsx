@@ -11,20 +11,59 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import moment from "moment";
-import cx from "classnames";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { TimeContainer } from "./SpecificDatePicker.styled";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
-const TIME_SELECTOR_DEFAULT_HOUR = 12;
-const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+export const getTimeComponent = (value: string) => {
+  let hours: number | null = null;
+  let minutes: number | null = null;
+  let date: moment.Moment;
+  if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
+    date = moment(value, DATE_TIME_FORMAT, true);
+    hours = date.hours();
+    minutes = date.minutes();
+    date.startOf("day");
+  } else if (moment(value, DATE_FORMAT, true).isValid()) {
+    date = moment(value, DATE_FORMAT, true);
+  } else {
+    date = moment();
+  }
+  return { hours, minutes, date };
+};
+
+export const setTimeComponent = (
+  value?: string | moment.Moment,
+  hours?: number | null,
+  minutes?: number | null,
+) => {
+  const m = moment(value);
+  if (!m.isValid()) {
+    return null;
+  }
+
+  let hasTime = false;
+  if (typeof hours === "number" && typeof minutes === "number") {
+    m.hours(hours);
+    m.minutes(minutes);
+    hasTime = true;
+  }
+
+  if (hasTime) {
+    return m.format(DATE_TIME_FORMAT);
+  } else {
+    return m.format(DATE_FORMAT);
+  }
+};
 
 type BetweenPickerProps = {
   className?: string;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
-  hideTimeSelectors: () => void;
+
+  hideTimeSelectors?: boolean;
 };
 
 export const BetweenPicker = ({
@@ -34,22 +73,30 @@ export const BetweenPicker = ({
   hideTimeSelectors,
 }: BetweenPickerProps) => (
   <div className={className}>
-    <div className="Grid Grid--1of2 Grid--gutters">
-      <div className="Grid-cell">
+    <TimeContainer>
+      <div>
         <SpecificDatePicker
           value={startValue}
           hideTimeSelectors={hideTimeSelectors}
           onChange={value => onFilterChange([op, field, value, endValue])}
         />
       </div>
-      <div className="Grid-cell">
+      <div>
         <SpecificDatePicker
           value={endValue}
           hideTimeSelectors={hideTimeSelectors}
+          onClear={() =>
+            onFilterChange([
+              op,
+              field,
+              setTimeComponent(startValue),
+              setTimeComponent(endValue),
+            ])
+          }
           onChange={value => onFilterChange([op, field, startValue, value])}
         />
       </div>
-    </div>
+    </TimeContainer>
     <div className="Calendar--noContext">
       <Calendar
         initial={startValue ? moment(startValue) : moment()}
@@ -68,7 +115,8 @@ type SingleDatePickerProps = {
   filter: Filter;
   selectAll?: SelectAll;
   onFilterChange: (filter: any[]) => void;
-  hideTimeSelectors: () => void;
+
+  hideTimeSelectors?: boolean;
 };
 
 export const SingleDatePicker = ({
@@ -83,6 +131,7 @@ export const SingleDatePicker = ({
     value={value}
     selectAll={selectAll}
     onChange={value => onFilterChange([op, field, value])}
+    onClear={() => onFilterChange([op, field, setTimeComponent(value)])}
     hideTimeSelectors={hideTimeSelectors}
     calendar
   />
@@ -100,9 +149,11 @@ type Props = {
   className?: string;
   calendar?: boolean;
   selectAll?: SelectAll;
-  hideTimeSelectors: () => void;
+
+  hideTimeSelectors?: boolean;
   value: string;
   onChange: (startValue: string | null, endValue?: string) => void;
+  onClear?: () => void;
 };
 
 type State = {
@@ -128,26 +179,7 @@ export default class SpecificDatePicker extends Component<Props, State> {
     hours?: number | null,
     minutes?: number | null,
   ) => {
-    const m = moment(date);
-    if (!m.isValid()) {
-      this.props.onChange(null);
-    }
-
-    let hasTime = false;
-    if (hours != null) {
-      m.hours(hours);
-      hasTime = true;
-    }
-    if (minutes != null) {
-      m.minutes(minutes);
-      hasTime = true;
-    }
-
-    if (hasTime) {
-      this.props.onChange(m.format(DATE_TIME_FORMAT));
-    } else {
-      this.props.onChange(m.format(DATE_FORMAT));
-    }
+    this.props.onChange(setTimeComponent(date, hours, minutes));
   };
 
   render() {
@@ -155,58 +187,69 @@ export default class SpecificDatePicker extends Component<Props, State> {
       value,
       calendar,
       hideTimeSelectors,
+      onClear,
       className,
       selectAll,
     } = this.props;
     const { showCalendar } = this.state;
 
-    let date: moment.Moment,
-      hours: number | undefined,
-      minutes: number | undefined;
-    if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
-      date = moment(value, DATE_TIME_FORMAT, true);
-      hours = date.hours();
-      minutes = date.minutes();
-      date.startOf("day");
-    } else if (moment(value, DATE_FORMAT, true).isValid()) {
-      date = moment(value, DATE_FORMAT, true);
-    } else {
-      date = moment();
-    }
+    const { hours, minutes, date } = getTimeComponent(value);
 
+    const showTimeSelectors =
+      !hideTimeSelectors &&
+      typeof hours === "number" &&
+      typeof minutes === "number";
     const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
     return (
       <div className={className}>
-        <div className="mb2 full bordered rounded flex align-center">
-          <InputBlurChange
-            placeholder={moment().format(dateFormat)}
-            className="borderless full p1 h3"
-            style={{
-              outline: "none",
-            }}
-            value={date ? date.format(dateFormat) : ""}
-            onBlurChange={({ target: { value } }: any) => {
-              const date = moment(value, dateFormat);
-              if (date.isValid()) {
-                this.onChange(date, hours, minutes);
-              } else {
-                this.onChange();
-              }
-            }}
-          />
-
-          {calendar && (
-            <Icon
-              className="mr1 text-purple-hover cursor-pointer"
-              name="calendar"
-              onClick={() =>
-                this.setState({ showCalendar: !this.state.showCalendar })
-              }
-              tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
+        {!calendar ? (
+          <div className="mb2 full bordered rounded flex align-center">
+            <InputBlurChange
+              placeholder={moment().format(dateFormat)}
+              className="borderless full p1 h3"
+              style={{
+                outline: "none",
+              }}
+              value={date ? date.format(dateFormat) : ""}
+              onBlurChange={({ target: { value } }: any) => {
+                const date = moment(value, dateFormat);
+                if (date.isValid()) {
+                  this.onChange(date, hours, minutes);
+                } else {
+                  this.onChange();
+                }
+              }}
             />
-          )}
-        </div>
+
+            {calendar && (
+              <Icon
+                className="mr1 text-purple-hover cursor-pointer"
+                name="calendar"
+                onClick={() =>
+                  this.setState({ showCalendar: !this.state.showCalendar })
+                }
+                tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
+              />
+            )}
+          </div>
+        ) : null}
+
+        {showTimeSelectors && (
+          <div>
+            <HoursMinutesInput
+              onClear={onClear}
+              hours={hours}
+              minutes={minutes}
+              onChangeHours={(hours: number) =>
+                this.onChange(date, hours, minutes)
+              }
+              onChangeMinutes={(minutes: number) =>
+                this.onChange(date, hours, minutes)
+              }
+            />
+          </div>
+        )}
 
         {calendar && (
           <ExpandingContent isOpen={showCalendar}>
@@ -219,22 +262,6 @@ export default class SpecificDatePicker extends Component<Props, State> {
             />
           </ExpandingContent>
         )}
-
-        {/* {!hideTimeSelectors && (
-          <div>
-            <HoursMinutesInput
-              onClear={() => this.onChange(date, null, null)}
-              hours={hours}
-              minutes={minutes}
-              onChangeHours={(hours: number) =>
-                this.onChange(date, hours, minutes)
-              }
-              onChangeMinutes={(minutes: number) =>
-                this.onChange(date, hours, minutes)
-              }
-            />
-          </div>
-        )} */}
       </div>
     );
   }

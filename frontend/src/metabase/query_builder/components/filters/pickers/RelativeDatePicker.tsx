@@ -55,10 +55,8 @@ const periodPopoverText = (period: string) => {
 
 type CurrentPickerProps = {
   filter: Filter;
-  onFilterChange: (filter: any[]) => void;
   primaryColor?: string;
-  onCommit: () => void;
-  isNew?: boolean;
+  onCommit: (filter?: any[]) => void;
 };
 
 export function CurrentPicker(props: CurrentPickerProps) {
@@ -66,8 +64,6 @@ export function CurrentPicker(props: CurrentPickerProps) {
     primaryColor,
     onCommit,
     filter: [operator, field, intervals, unit],
-    onFilterChange,
-    isNew,
   } = props;
   return (
     <CurrentContainer>
@@ -80,10 +76,9 @@ export function CurrentPicker(props: CurrentPickerProps) {
           <CurrentButton
             key={period}
             primaryColor={primaryColor}
-            selected={!isNew && unit === period}
+            selected={operator && unit === period.toLowerCase()}
             onClick={() => {
-              onFilterChange([operator, field, intervals, period]);
-              onCommit();
+              onCommit([operator, field, intervals, period]);
             }}
           >
             {formatBucketing(period, 1)}

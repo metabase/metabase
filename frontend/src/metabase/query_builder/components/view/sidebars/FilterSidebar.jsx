@@ -43,6 +43,7 @@ export default class FilterSidebar extends React.Component {
           // fires when a segment or "add" button is clicked:
           onChangeFilter={filter => this.handleCommit(filter)}
           noCommitButton
+          primaryColor={color("filter")}
         />
       </SidebarContent>
     );

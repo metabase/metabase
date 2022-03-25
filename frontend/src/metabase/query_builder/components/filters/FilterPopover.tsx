@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
@@ -68,7 +67,7 @@ export default class FilterPopover extends Component<Props, State> {
       filter: filter,
       choosingField: !filter,
       editingFilter: filter ? filter.isCustom() : false,
-      showShortcuts: !!props.isNew,
+      showShortcuts: !props.filter?.[0],
     };
   }
 
@@ -82,8 +81,11 @@ export default class FilterPopover extends Component<Props, State> {
     }
   }
 
-  setFilter(filter: Filter) {
-    this.setState({ filter, showShortcuts: false });
+  setFilter(filter: Filter, hideShortcuts = true) {
+    this.setState({
+      filter,
+      showShortcuts: hideShortcuts ? false : this.state.showShortcuts,
+    });
     if (this.props.onChange) {
       this.props.onChange(filter);
     }
@@ -127,6 +129,7 @@ export default class FilterPopover extends Component<Props, State> {
     }
     this.setFilter(
       filter.setDimension(dimension.mbql(), { useDefaultOperator: true }),
+      false,
     );
     this.setState({ choosingField: false });
   };
@@ -260,7 +263,6 @@ export default class FilterPopover extends Component<Props, State> {
                 minWidth={isSidebar ? null : MIN_WIDTH}
                 maxWidth={isSidebar ? null : MAX_WIDTH}
                 primaryColor={primaryColor}
-                isNew={isNew}
               />
               <FilterPopoverFooter
                 className={isSidebar ? "p1" : "px1 pb1"}

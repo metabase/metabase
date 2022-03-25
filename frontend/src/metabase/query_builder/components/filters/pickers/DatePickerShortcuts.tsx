@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
 
@@ -35,7 +33,7 @@ const DAY_OPTIONS: Option[] = [
     init: filter => [
       "time-interval",
       getDateTimeField(filter[1]),
-      1,
+      "current",
       "day",
       { include_current: true },
     ],
@@ -126,7 +124,12 @@ const MISC_OPTIONS: Option[] = [
   },
   {
     displayName: t`Relative date...`,
-    init: filter => ["time-interval", getDateTimeField(filter[1]), "current"],
+    init: filter => [
+      "time-interval",
+      getDateTimeField(filter[1]),
+      "current",
+      "none",
+    ],
   },
   {
     displayName: t`Exclude...`,

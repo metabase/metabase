@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -24,7 +23,9 @@ type Props = {
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onCommit?: (() => void) | null;
-  // toggleTimeSelectors: () => void;
+
+  hideTimeSelectors?: boolean;
+
   isSidebar?: boolean;
   minWidth?: number;
   maxWidth?: number;
@@ -39,8 +40,8 @@ export default function FilterPopoverFooter({
   onCommit,
   className,
   primaryColor,
-}: // toggleTimeSelectors,
-Props) {
+  hideTimeSelectors,
+}: Props) {
   if (shouldHidePopoverFooter(filter)) {
     return null;
   }
@@ -65,19 +66,24 @@ Props) {
               filter.operator()
         }
       />
-      <DateOperatorFooter
-        filter={filter}
-        onFilterChange={onFilterChange}
-        primaryColor={primaryColor}
-      />
+      {!isSidebar ? (
+        <DateOperatorFooter
+          filter={filter}
+          primaryColor={primaryColor}
+          onFilterChange={onFilterChange}
+          hideTimeSelectors={hideTimeSelectors}
+        />
+      ) : null}
       {onCommit && (
         <Button
           data-ui-tag="add-filter"
           purple
           style={{ backgroundColor: primaryColor }}
           disabled={!filter.isValid()}
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           ml="auto"
-          onClick={onCommit}
+          onClick={() => onCommit()}
         >
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>

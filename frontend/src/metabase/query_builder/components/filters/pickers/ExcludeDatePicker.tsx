@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
 
@@ -142,6 +140,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
   className?: string;
   onCommit: (filter: any[]) => void;
+  hideEmptinessOperators?: boolean;
 };
 
 export default function ExcludeDatePicker({
@@ -150,6 +149,7 @@ export default function ExcludeDatePicker({
   filter,
   primaryColor = color("brand"),
   onCommit,
+  hideEmptinessOperators,
 }: Props) {
   const [operator, field, ...values] = filter;
   const temporalUnit = _.find(EXCLUDE, ({ test }) => test(filter));
@@ -167,26 +167,29 @@ export default function ExcludeDatePicker({
             {displayName}
           </OptionButton>
         ))}
-        <Separator />
-        <OptionButton
-          selected={operator === "is-null"}
-          primaryColor={primaryColor}
-          onClick={() => {
-            console.log(">>>>", ["is-null", getDateTimeField(filter[1])]);
-            onCommit(["is-null", getDateTimeField(filter[1])]);
-          }}
-        >
-          {t`Is empty`}
-        </OptionButton>
-        <OptionButton
-          selected={operator === "not-null"}
-          primaryColor={primaryColor}
-          onClick={() => {
-            onCommit(["not-null", getDateTimeField(filter[1])]);
-          }}
-        >
-          {t`Is not empty`}
-        </OptionButton>
+        {!hideEmptinessOperators && (
+          <>
+            <Separator />
+            <OptionButton
+              selected={operator === "is-null"}
+              primaryColor={primaryColor}
+              onClick={() => {
+                onCommit(["is-null", getDateTimeField(filter[1])]);
+              }}
+            >
+              {t`Is empty`}
+            </OptionButton>
+            <OptionButton
+              selected={operator === "not-null"}
+              primaryColor={primaryColor}
+              onClick={() => {
+                onCommit(["not-null", getDateTimeField(filter[1])]);
+              }}
+            >
+              {t`Is not empty`}
+            </OptionButton>
+          </>
+        )}
       </div>
     );
   }

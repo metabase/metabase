@@ -2,8 +2,10 @@
 import React from "react";
 import { t } from "ttag";
 
-import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
-import HoursMinutesInput from "./HoursMinutesInput";
+import DatePicker, {
+  getDateTimeFieldTarget,
+} from "./LegacyDatePicker/DatePicker";
+import HoursMinutesInput from "./LegacyDatePicker/HoursMinutesInput";
 
 import { parseTime } from "metabase/lib/time";
 

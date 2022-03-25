@@ -7,7 +7,7 @@ import Button from "metabase/core/components/Button";
 export const Container = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  pading-left: ${space(2)};
+  padding-left: ${space(1)};
 `;
 
 type TabButtonProps = {

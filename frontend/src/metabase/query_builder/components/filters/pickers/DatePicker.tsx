@@ -17,6 +17,7 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { shouldHidePopoverFooter } from "../FilterPopoverFooter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
+import { Container } from "./DatePicker.styled";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
@@ -28,6 +29,10 @@ const getOptions = ([op, _field, _value, _unit, options]: Filter) =>
 const getDate = (value: string): string => {
   if (typeof value !== "string" || !moment(value).isValid()) {
     value = moment().format("YYYY-MM-DD");
+  }
+  // Relative date shortcut sets unit to "none" to avoid preselecting
+  if (value === "none") {
+    return "day";
   }
   return value;
 };
@@ -102,12 +107,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      "current",
-      getUnit(filter),
-    ],
+    init: filter => ["time-interval", getDateTimeField(filter[1]), "current"],
     test: ([op, field, value]) => op === "time-interval" && value === "current",
     group: "relative",
     widget: CurrentPicker,
@@ -130,7 +130,13 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
+    init: filter => {
+      const values = ["between", ...getDateTimeFieldAndValues(filter, 2)];
+      if (!values[3]) {
+        values[3] = values[2];
+      }
+      return values;
+    },
     test: ([op]) => op === "between",
     group: "specific",
     widget: BetweenPicker,
@@ -177,11 +183,14 @@ type Props = {
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   className?: string;
-  hideEmptinessOperators?: boolean;
   isNew?: boolean;
   isSidebar?: boolean;
   operators?: DateOperator[];
   disableOperatorSelection?: boolean;
+
+  hideTimeSelectors?: boolean;
+  hideEmptinessOperators?: boolean;
+
   primaryColor?: string;
   minWidth?: number | null;
   maxWidth?: number | null;
@@ -215,8 +224,8 @@ export default class DatePicker extends Component<Props, State> {
       onFilterChange,
       isSidebar,
       minWidth,
-      maxWidth,
       primaryColor,
+      onCommit,
     } = this.props;
 
     const { operators } = this.state;
@@ -225,20 +234,20 @@ export default class DatePicker extends Component<Props, State> {
     const Widget = operator && operator.widget;
 
     return (
-      <div
+      <Container
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
-          "flex align-center": Widget && Widget.horizontalLayout,
           "PopoverBody--marginBottom":
             !isSidebar && !shouldHidePopoverFooter(filter),
         })}
-        style={{ minWidth: minWidth || 300, maxWidth: maxWidth || undefined }}
+        style={{ minWidth: minWidth || 300 }}
       >
         {Widget && (
           <Widget
             {...this.props}
             className="flex-full"
             filter={filter}
+            onCommit={onCommit}
             primaryColor={primaryColor}
             onFilterChange={(filter: Filter) => {
               if (operator && operator.init) {
@@ -249,7 +258,7 @@ export default class DatePicker extends Component<Props, State> {
             }}
           />
         )}
-      </div>
+      </Container>
     );
   }
 }

@@ -1,22 +1,21 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import moment, { Moment } from "moment";
 import _ from "underscore";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Icon from "metabase/components/Icon";
 
-import { ToggleButton } from "./DateOperatorFooter.styled";
+import { Interval, ToggleButton } from "./DateOperatorFooter.styled";
+import {
+  getTimeComponent,
+  setTimeComponent,
+} from "./pickers/SpecificDatePicker";
 
 type Props = {
-  className?: string;
-  isSidebar?: boolean;
   primaryColor?: string;
-
-  // toggleTimeSelectors: () => void;
+  hideTimeSelectors?: boolean;
 
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
@@ -24,71 +23,86 @@ type Props = {
 
 const HAS_TIME_TOGGLE = ["between", "=", "<", ">"];
 
+const TIME_SELECTOR_DEFAULT_HOUR = 12;
+const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+
 const getIntervalString = ([_op, _field, count, interval]: Filter) => {
-  const now: Moment = moment();
-  let start: Moment = now;
-  const formatString = "MMM d";
-  if (count === "current") {
-    let end: Moment | undefined;
-    switch (interval) {
-      case "week":
-        start = now.startOf("week");
-        end = now.endOf("week");
-        break;
-      case "month":
-        start = now.startOf("month");
-        end = now.endOf("month");
-        break;
-      case "quarter":
-        start = now.startOf("quarter");
-        end = now.endOf("quarter");
-        break;
-      case "year":
-        start = now.startOf("year");
-        end = now.endOf("year");
-    }
-    return end
-      ? start.format(formatString) + " - " + end.format(formatString)
-      : start.format(formatString);
-  } else if (typeof count === "number") {
-    let end: Moment = now;
-    switch (interval) {
-      case "day":
-        start = now.startOf("day");
-        end = now.endOf("day");
-        break;
-      case "week":
-        start = now.startOf("week");
-        end = now.endOf("week");
-        break;
-      case "month":
-        start = now.startOf("month");
-        end = now.endOf("month");
-        break;
-      case "quarter":
-        start = now.startOf("quarter");
-        end = now.endOf("quarter");
-        break;
-      case "year":
-        start = now.startOf("year");
-        end = now.endOf("year");
-    }
-    return start.format(formatString) + " - " + end.format(formatString);
+  if (typeof count !== "number") {
+    return null;
   }
-  return null;
+
+  let start: Moment = moment();
+  let end: Moment = moment();
+  const formatString = "MMM D";
+  let unit;
+  switch (interval) {
+    case "week":
+      unit = "week";
+      break;
+    case "month":
+      unit = "month";
+      break;
+    case "quarter":
+      unit = "quarter";
+      break;
+    case "year":
+      unit = "year";
+      break;
+    default:
+      unit = "day";
+  }
+  if (count >= 0) {
+    end = end.add(count, unit as moment.DurationInputArg2);
+  } else {
+    start = start.add(count, unit as moment.DurationInputArg2);
+  }
+  return start.format(formatString) + " - " + end.format(formatString);
 };
 
 export default function DateOperatorFooter({
   filter,
   primaryColor,
   onFilterChange,
-}: // toggleTimeSelectors,
-Props) {
-  const [operator] = filter;
-  if (HAS_TIME_TOGGLE.indexOf(operator) > -1) {
+  hideTimeSelectors,
+}: Props) {
+  const [operator, field, startValue, endValue] = filter;
+  const { hours, minutes } = getTimeComponent(startValue);
+
+  const enableTimeSelectors = () => {
+    const start = setTimeComponent(
+      startValue,
+      TIME_SELECTOR_DEFAULT_HOUR,
+      TIME_SELECTOR_DEFAULT_MINUTE,
+    );
+    let end;
+    if (endValue) {
+      end = setTimeComponent(
+        endValue,
+        TIME_SELECTOR_DEFAULT_HOUR,
+        TIME_SELECTOR_DEFAULT_MINUTE,
+      );
+    }
+    if (start) {
+      onFilterChange([
+        operator,
+        field,
+        start,
+        operator === "between" && !end ? start : end,
+      ]);
+    }
+  };
+
+  const showTimeSelectors =
+    !hideTimeSelectors &&
+    typeof hours !== "number" &&
+    typeof minutes !== "number";
+  if (HAS_TIME_TOGGLE.indexOf(operator) > -1 && showTimeSelectors) {
     return (
-      <ToggleButton primaryColor={primaryColor}>
-        <Icon className="mr1" name="clock" />
+      <ToggleButton
+        primaryColor={primaryColor}
+        onClick={enableTimeSelectors}
+        icon="clock"
+      >
         {t`Add a time`}
       </ToggleButton>
     );
@@ -97,10 +111,10 @@ Props) {
   if (operator === "time-interval") {
     const interval = getIntervalString(filter);
     return interval ? (
-      <div className="flex align-center text-medium">
+      <Interval>
         <Icon className="mr1" name="calendar" />
         <div>{interval}</div>
-      </div>
+      </Interval>
     ) : null;
   }
 

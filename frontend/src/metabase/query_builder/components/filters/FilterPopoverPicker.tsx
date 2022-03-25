@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import DatePicker from "../filters/pickers/DatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
@@ -12,11 +11,11 @@ type Props = {
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onCommit: (filter: any[]) => void;
+
   isSidebar?: boolean;
   minWidth?: number | null;
   maxWidth?: number | null;
   primaryColor?: string;
-  isNew?: boolean;
 };
 
 export default class FilterPopoverPicker extends React.Component<Props> {
@@ -43,7 +42,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       isSidebar,
       minWidth,
       maxWidth,
-      isNew,
       primaryColor,
     } = this.props;
 
@@ -69,7 +67,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       />
     ) : field?.isDate() ? (
       <DatePicker
-        className={className}
         filter={filter}
         primaryColor={primaryColor}
         onFilterChange={onFilterChange}
@@ -77,7 +74,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
         minWidth={minWidth}
         maxWidth={maxWidth}
         isSidebar={isSidebar}
-        isNew={isNew}
       />
     ) : field?.isBoolean() ? (
       <BooleanPicker
