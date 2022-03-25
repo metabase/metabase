@@ -87,11 +87,18 @@ const Fields = createEntity({
     }),
 
     updateField(field, opts) {
-      return Fields.actions.update(
-        { id: field.id },
-        field,
-        notify(opts, field.display_name, t`updated`),
-      );
+      return async dispatch => {
+        const result = await dispatch(
+          Fields.actions.update(
+            { id: field.id },
+            field,
+            notify(opts, field.display_name, t`updated`),
+          ),
+        );
+        // Field values needs to be fetched again once the field is updated metabase#16322
+        await dispatch(Fields.actions.fetchFieldValues(field));
+        return result;
+      };
     },
     // Docstring from m.api.field:
     // Update the human-readable values for a `Field` whose semantic type is
