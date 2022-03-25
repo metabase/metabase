@@ -17,7 +17,7 @@ Steps differ depending on whether you're running the JAR or a Docker image.
 
 If you're running the JVM Jar file directly:
 
-1. [Backup your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
 2. [Download the latest version](https://www.metabase.com/start/oss/jar.html).
 
@@ -37,7 +37,7 @@ On startup, Metabase will perform any tasks it needs to complete the upgrade. On
 
 If you're running Metabase in a Docker container:
 
-1. [Backup your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
 2. Stop the current Docker container.
 
