@@ -5,6 +5,16 @@ import {
 } from "__support__/e2e/cypress";
 
 import { questionDetails as nativeQuestionDetails } from "./embedding-native";
+
+import {
+  markdownCard,
+  dateFilter,
+  idFilter,
+  numericFilter,
+  textFilter,
+  addCardToDashboard,
+} from "./embedding-dashboards";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, ORDERS } = SAMPLE_DATABASE;
@@ -27,152 +37,57 @@ describe("scenarios > embedding > dashboards", () => {
     // Convert "Orders" question to a model
     cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
 
+    // Convert "Orders, Total" to the scalar
+    cy.request("PUT", "/api/card/2", {
+      display: "scalar",
+    });
+
     cy.createDashboard({ name: "E2E Embedding Dashboard" }).then(
       ({ body: { id: dashboard_id } }) => {
-        const url = `/api/dashboard/${dashboard_id}/cards`;
-
+        // Add filters to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
-            {
-              name: "Month and Year",
-              slug: "month_and_year",
-              id: "7a1716b7",
-              type: "date/month-year",
-              sectionId: "date",
-            },
-            {
-              name: "ID",
-              slug: "id",
-              id: "ae4a4351",
-              type: "id",
-              sectionId: "id",
-            },
-            {
-              name: "Greater than or equal to",
-              slug: "greater_than_or_equal_to",
-              id: "df770c16",
-              type: "number/>=",
-              sectionId: "number",
-            },
-            {
-              name: "Text",
-              slug: "text",
-              id: "d7e0814d",
-              type: "string/=",
-              sectionId: "string",
-            },
-          ],
+          parameters: [dateFilter, idFilter, numericFilter, textFilter],
         });
 
-        cy.request("POST", url, {
-          cardId: null,
-        }).then(({ body: { id, card_id } }) => {
-          cy.request("PUT", url, {
-            cards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                // Full width markdown title
-                sizeX: 18,
-                sizeY: 2,
-                visualization_settings: {
-                  virtual_card: {
-                    name: null,
-                    display: "text",
-                    visualization_settings: {},
-                    dataset_query: {},
-                    archived: false,
-                  },
-                  text: "# Our Awesome Analytics",
-                  "text.align_vertical": "middle",
-                  "text.align_horizontal": "center",
-                },
-                parameter_mappings: [],
-              },
-            ],
-          });
+        addCardToDashboard({
+          card_id: null,
+          dashboard_id,
+          card: {
+            row: 0,
+            col: 0,
+            // Full width markdown title
+            sizeX: 18,
+            sizeY: 2,
+            visualization_settings: markdownCard,
+          },
         });
 
         cy.createNativeQuestion(nativeQuestionDetails).then(
           ({ body: { id: card_id } }) => {
-            cy.request("POST", url, {
-              cardId: card_id,
-            }).then(({ body: { id } }) => {
-              cy.request("PUT", url, {
-                cards: [
-                  {
-                    id,
-                    card_id,
-                    row: 2,
-                    col: 0,
-                    sizeX: 9,
-                    sizeY: 8,
-                    visualization_settings: {},
-                  },
-                ],
-              });
+            addCardToDashboard({
+              card_id,
+              dashboard_id,
+              card: { row: 2, col: 0, sizeX: 9, sizeY: 8 },
             });
           },
         );
 
-        cy.request("POST", url, {
-          cardId: 1,
-        }).then(({ body: { id } }) => {
-          cy.request("PUT", url, {
-            cards: [
-              {
-                id,
-                card_id: 1,
-                row: 2,
-                col: 10,
-                sizeX: 9,
-                sizeY: 8,
-                visualization_settings: {},
-              },
-            ],
-          });
+        addCardToDashboard({
+          card_id: 1,
+          dashboard_id,
+          card: { row: 2, col: 10, sizeX: 9, sizeY: 8 },
         });
 
-        cy.request("POST", url, {
-          cardId: 3,
-        }).then(({ body: { id } }) => {
-          cy.request("PUT", url, {
-            cards: [
-              {
-                id,
-                card_id: 3,
-                row: 11,
-                col: 0,
-                sizeX: 12,
-                sizeY: 8,
-                visualization_settings: {},
-              },
-            ],
-          });
+        addCardToDashboard({
+          card_id: 3,
+          dashboard_id,
+          card: { row: 11, col: 0, sizeX: 12, sizeY: 8 },
         });
 
-        cy.request("PUT", "/api/card/2", {
-          display: "scalar",
-        });
-
-        cy.request("POST", url, {
-          cardId: 2,
-        }).then(({ body: { id } }) => {
-          cy.request("PUT", url, {
-            cards: [
-              {
-                id,
-                card_id: 2,
-                row: 11,
-                col: 13,
-                sizeX: 6,
-                sizeY: 8,
-                visualization_settings: {},
-              },
-            ],
-          });
+        addCardToDashboard({
+          card_id: 2,
+          dashboard_id,
+          card: { row: 11, col: 13, sizeX: 6, sizeY: 8 },
         });
 
         visitDashboard(dashboard_id);
@@ -225,6 +140,7 @@ function publishChanges(callback) {
     callback && callback(targetXhr);
   });
 }
+
 function getTitle(title) {
   cy.findByRole("heading", { name: title });
 }
