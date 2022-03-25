@@ -248,7 +248,7 @@ describe("parameters/utils/mapping-options", () => {
       ];
 
       const option = retrieveMappingOption(field, mappingOptions);
-      expect(option).toEqual([fieldType, mappingOption]);
+      expect(option).toEqual(mappingOption);
     });
 
     it("should return undefined as no option is found", () => {
