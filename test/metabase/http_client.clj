@@ -45,7 +45,7 @@
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
-  "Automatically recurse over `response` and look for values that are known to correspond to dates. Parse their values and
+  "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
   convert to java temporal types."
   [response]
   (cond (sequential? response)

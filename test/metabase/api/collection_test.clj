@@ -992,41 +992,41 @@
                    :authority_level nil
                    :can_write       true}]
                  (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
-                      (filter #(str/includes? (:name %) "Taco Bell")))))))
+                      (filter #(str/includes? (:name %) "Taco Bell"))))))))
 
-     (testing "For admins, only return our own Personal Collection (!)"
-       (is (= [{:name            "Crowberto Corv's Personal Collection"
-                :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
-                :description     nil
-                :model           "collection"
-                :authority_level nil
-                :can_write       true}]
-              (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
-                   (filter #(str/includes? (:name %) "Personal Collection")))))
+    (testing "For admins, only return our own Personal Collection (!)"
+      (is (= [{:name            "Crowberto Corv's Personal Collection"
+               :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
+               :description     nil
+               :model           "collection"
+               :authority_level nil
+               :can_write       true}]
+             (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+                  (filter #(str/includes? (:name %) "Personal Collection")))))
 
-       (testing "That includes sub-collections of Personal Collections! I shouldn't see them!"
-         (mt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
-                                      :location (collection/children-location
-                                                 (collection/user->personal-collection (mt/user->id :lucky)))}]
-           (is (= [{:name            "Crowberto Corv's Personal Collection"
-                    :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
-                    :description     nil
-                    :model           "collection"
-                    :authority_level nil
-                    :can_write       true}]
-                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
-                       (filter #(str/includes? (:name %) "Personal Collection"))))))))
+      (testing "That includes sub-collections of Personal Collections! I shouldn't see them!"
+        (mt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
+                                     :location (collection/children-location
+                                                (collection/user->personal-collection (mt/user->id :lucky)))}]
+          (is (= [{:name            "Crowberto Corv's Personal Collection"
+                   :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
+                   :description     nil
+                   :model           "collection"
+                   :authority_level nil
+                   :can_write       true}]
+                 (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+                      (filter #(str/includes? (:name %) "Personal Collection")))))))
 
-     (testing "Can we look for `archived` stuff with this endpoint?"
-       (mt/with-temp Card [card {:name "Business Card", :archived true}]
-         (is (= [{:name                "Business Card"
-                  :description         nil
-                  :collection_position nil
-                  :display             "table"
-                  :moderated_status    nil
-                  :model               "card"}]
-                (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
-                  (dissoc item :id)))))))))
+      (testing "Can we look for `archived` stuff with this endpoint?"
+        (mt/with-temp Card [card {:name "Business Card", :archived true}]
+          (is (= [{:name                "Business Card"
+                   :description         nil
+                   :collection_position nil
+                   :display             "table"
+                   :moderated_status    nil
+                   :model               "card"}]
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
+                   (dissoc item :id)))))))))
 
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
