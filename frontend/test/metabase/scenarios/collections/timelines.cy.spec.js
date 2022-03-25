@@ -235,6 +235,39 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC1");
       cy.findByText("RC2");
     });
+
+    it("should support markdown in timeline description", () => {
+      cy.createTimeline({
+        name: "Releases",
+        description: "[Release notes](https://metabase.test)",
+      });
+
+      cy.createTimeline({
+        name: "Holidays",
+        description: "[Holiday list](https://metabase.test)",
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+      cy.findByText("Holiday list").should("be.visible");
+    });
+
+    it("should support markdown in event description", () => {
+      cy.createTimelineWithEvents({
+        timeline: {
+          name: "Releases",
+        },
+        events: [
+          {
+            name: "RC1",
+            description: "[Release notes](https://metabase.test)",
+          },
+        ],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
