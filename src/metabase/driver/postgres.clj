@@ -344,21 +344,28 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [field nfc-path]
+(defn- json-query [identifier field nfc-path]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type       (:effective_type field)
-          cast-type        (cond
-                             (isa? field-type :type/Integer)
-                             :type/Integer
-                             (isa? field-type :type/Float)
-                             :type/Float
-                             (isa? field-type :type/Boolean)
-                             :type/Boolean
-                             :else
-                             :type/Text)]
+    (let [field-type           (:effective_type field)
+          unwrapped-identifier (:form identifier)
+          parent-components    (-> (:components unwrapped-identifier)
+                                    (vec)
+                                    (pop)
+                                    (conj (first nfc-path)))
+          parent-identifier    (apply hx/identifier (cons :field parent-components))
+          ;; Array and sub-JSON coerced to text
+          cast-type            (cond
+                                 (isa? field-type :type/Integer)
+                                 :type/Integer
+                                 (isa? field-type :type/Float)
+                                 :type/Float
+                                 (isa? field-type :type/Boolean)
+                                 :type/Boolean
+                                 :else
+                                 :type/Text)]
       (hx/cast cast-type
                (apply hsql/call [:json_extract_path_text
-                                 (hx/cast :json (keyword (first nfc-path)))
+                                 (hx/cast :json parent-identifier)
                                  (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
@@ -373,7 +380,7 @@
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
-      (json-query stored-field nfc-path)
+      (json-query identifier stored-field nfc-path)
 
       :else
       identifier)))
