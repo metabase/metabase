@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -9,9 +10,20 @@ const CollectionSidebarBookmarksRoot = styled.div`
   margin-bottom: ${space(2)};
 `;
 
-export const BookmarkTypeIcon = styled(Icon)`
+interface BookmarkTypeIconProps {
+  isOfficial?: boolean;
+}
+
+export const BookmarkTypeIcon = styled(Icon)<BookmarkTypeIconProps>`
   margin-right: 6px;
   opacity: 0.5;
+
+  ${({ isOfficial }) =>
+    isOfficial &&
+    css`
+      color: ${color("warning")};
+      opacity: 1;
+    `}
 `;
 
 export const BookmarkListRoot = styled.div`

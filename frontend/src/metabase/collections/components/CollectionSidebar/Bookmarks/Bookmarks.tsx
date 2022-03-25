@@ -22,9 +22,7 @@ import {
 import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
 interface LabelProps {
-  name: string;
-  display?: string;
-  type: BookmarkableEntities;
+  bookmark: Bookmark;
 }
 
 interface CollectionSidebarBookmarksProps {
@@ -32,12 +30,14 @@ interface CollectionSidebarBookmarksProps {
   deleteBookmark: (id: string, type: string) => void;
 }
 
-const Label = ({ display, name, type }: LabelProps) => {
-  const iconName = getIcon(display, type);
+const Label = ({ bookmark }: LabelProps) => {
+  const iconName = getIcon(bookmark);
+  const isOfficial = bookmark.authority_level === "official";
+
   return (
     <LabelContainer>
-      <BookmarkTypeIcon name={iconName} />
-      {name}
+      <BookmarkTypeIcon isOfficial={isOfficial} name={iconName} />
+      {bookmark.name}
     </LabelContainer>
   );
 };
@@ -87,7 +87,7 @@ const CollectionSidebarBookmarks = ({
             return (
               <BookmarkContainer key={`bookmark-${id}`}>
                 <Link to={url}>
-                  <Label name={name} type={type} />
+                  <Label bookmark={bookmark} />
                 </Link>
 
                 <button onClick={() => handleDeleteBookmark(bookmark)}>
