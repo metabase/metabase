@@ -28,6 +28,17 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getIsLoadingDashCards = state =>
+  state.dashboard.loadingDashCards.loadingIds.length > 0;
+export const getCardsLoaded = state =>
+  state.dashboard.loadingDashCards.dashcardIds.length -
+  state.dashboard.loadingDashCards.loadingIds.length;
+export const getTotalCards = state =>
+  state.dashboard.loadingDashCards.dashcardIds.length;
+export const getHasSeenLoadedDashboard = state =>
+  state.dashboard.hasSeenLoadedDashboard;
+export const getIsLoadingDashCardsComplete = state =>
+  state.dashboard.loadingDashCards.isLoadingComplete;
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>

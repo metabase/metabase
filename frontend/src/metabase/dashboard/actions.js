@@ -138,11 +138,15 @@ export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
+export const SET_DASHBOARD_SEEN = "metabase/dashboard/SET_SEEN";
+
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
 export const setSidebar = createAction(SET_SIDEBAR);
 export const closeSidebar = createAction(CLOSE_SIDEBAR);
+
+export const setHasSeenLoadedDashboard = createAction(SET_DASHBOARD_SEEN);
 
 export const setSharing = isSharing => dispatch => {
   if (isSharing) {

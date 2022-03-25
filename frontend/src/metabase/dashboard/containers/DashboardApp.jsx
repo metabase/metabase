@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
@@ -27,6 +29,11 @@ import {
   getIsAddParameterPopoverOpen,
   getSidebar,
   getShowAddQuestionSidebar,
+  getIsLoadingDashCards,
+  getTotalCards,
+  getCardsLoaded,
+  getHasSeenLoadedDashboard,
+  getIsLoadingDashCardsComplete,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -36,6 +43,8 @@ import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+
+import { flashFavicon, resetFavicon } from "../../lib/favicon";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -61,6 +70,11 @@ const mapStateToProps = (state, props) => {
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
     sidebar: getSidebar(state),
     showAddQuestionSidebar: getShowAddQuestionSidebar(state),
+    isLoadingDashCards: getIsLoadingDashCards(state),
+    isLoadingDashCardsComplete: getIsLoadingDashCardsComplete(state),
+    totalDashCards: getTotalCards(state),
+    cardsLoaded: getCardsLoaded(state),
+    hasSeenLoadedDashboard: getHasSeenLoadedDashboard(state),
   };
 };
 
@@ -73,7 +87,28 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ dashboard }) => dashboard && dashboard.name)
+@title(
+  ({
+    dashboard,
+    isLoadingDashCards,
+    totalDashCards,
+    cardsLoaded,
+    hasSeenLoadedDashboard,
+    isLoadingDashCardsComplete,
+  }) => {
+    if (isLoadingDashCards) {
+      return {
+        title: t`${cardsLoaded}/${totalDashCards} loaded`,
+        titleIndex: 1,
+      };
+    }
+    if (isLoadingDashCardsComplete && !hasSeenLoadedDashboard) {
+      return t`Your dashboard is ready`;
+    } else {
+      return dashboard?.name;
+    }
+  },
+)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
@@ -89,6 +124,25 @@ export default class DashboardApp extends Component {
         editingOnLoad: options.edit,
         addCardOnLoad: options.add && parseInt(options.add),
       });
+    }
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.isLoadingDashCards && !this.props.isLoadingDashCards) {
+      if (!document.hidden) {
+        this.props.setHasSeenLoadedDashboard();
+        flashFavicon("/app/assets/img/blue_check.png", 3000);
+      } else {
+        flashFavicon("/app/assets/img/blue_check.png");
+        document.addEventListener(
+          "visibilitychange",
+          () => {
+            this.props.setHasSeenLoadedDashboard();
+            resetFavicon(3000);
+          },
+          { once: true },
+        );
+      }
     }
   }
 

@@ -26,11 +26,13 @@ describe("dashboard reducers", () => {
         dashcardIds: [],
         loadingIds: [],
         startTime: null,
+        isLoadingComplete: false,
       },
       parameterValues: {},
       parameterValuesSearchCache: {},
       sidebar: { props: {} },
       slowCards: {},
+      hasSeenLoadedDashboard: false,
     });
   });
 
