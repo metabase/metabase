@@ -65,7 +65,7 @@ jobs:
       name: Run frontend timezones tests
 
   fe-chromatic:
-    runs-on: ubuntu-latest
+    runs-on: ubutnu-20.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
