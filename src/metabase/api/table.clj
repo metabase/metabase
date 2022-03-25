@@ -120,6 +120,7 @@
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private minute-str (deferred-tru "Minute"))
 (def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
 
@@ -132,7 +133,7 @@
                      :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(deferred-tru "Minute") "minute"]
+                  [[minute-str "minute"]
                    [hour-str "hour"]
                    [day-str "day"]
                    [(deferred-tru "Week") "week"]
@@ -151,7 +152,7 @@
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
                      :type "type/Time"})
-                  [[(deferred-tru "Minute") "minute"]
+                  [[minute-str "minute"]
                    [hour-str "hour"]
                    [(deferred-tru "Minute of Hour") "minute-of-hour"]])
              (conj
