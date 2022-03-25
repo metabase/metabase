@@ -493,7 +493,8 @@
                 :description        nil
                 :visibility_type    :normal
                 :semantic_type      :type/FK
-                :fk_target_field_id true}
+                :fk_target_field_id true
+                :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
       (testing "after change"
@@ -502,7 +503,8 @@
                 :description        nil
                 :visibility_type    :normal
                 :semantic_type      nil
-                :fk_target_field_id false}
+                :fk_target_field_id false
+                :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
 
 (deftest update-fk-target-field-id-test-2
@@ -519,7 +521,8 @@
                   :description        nil
                   :visibility_type    :normal
                   :semantic_type      :type/FK
-                  :fk_target_field_id true}
+                  :fk_target_field_id true
+                  :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
         (testing "after change"
@@ -529,7 +532,8 @@
                     :description        nil
                     :visibility_type    :normal
                     :semantic_type      :type/FK
-                    :fk_target_field_id true}
+                    :fk_target_field_id true
+                    :nfc_path           nil}
                    (mt/boolean-ids-and-timestamps after-change)))
             (is (not= (:fk_target_field_id before-change)
                       (:fk_target_field_id after-change)))))))))
@@ -545,7 +549,8 @@
                 :description        nil
                 :visibility_type    :normal
                 :semantic_type      nil
-                :fk_target_field_id false}
+                :fk_target_field_id false
+                :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
                                                                                 :fk_target_field_id field-id-1})
@@ -555,7 +560,8 @@
                 :description        nil
                 :visibility_type    :normal
                 :semantic_type      :type/FK
-                :fk_target_field_id true}
+                :fk_target_field_id true
+                :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
 
 (deftest fk-target-field-id-shouldnt-change-test
@@ -571,7 +577,8 @@
                   :description        nil
                   :visibility_type    :normal
                   :semantic_type      :type/FK
-                  :fk_target_field_id true}
+                  :fk_target_field_id true
+                  :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
         (testing "after change"
@@ -580,7 +587,8 @@
                   :description        "foo"
                   :visibility_type    :normal
                   :semantic_type      :type/FK
-                  :fk_target_field_id true}
+                  :fk_target_field_id true
+                  :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))))))
 
 (deftest update-field-type-dimension-test
