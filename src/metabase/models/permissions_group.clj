@@ -8,7 +8,7 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
-            [metabase.db.connection :as mdb.connection]
+            [metabase.db :as mdb]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -22,18 +22,15 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  ;; these are memoized by the application DB in case it gets swapped out/mocked
-  (let [f (memoize
-           (fn [_ _]
-             (u/prog1 (db/select-one PermissionsGroup :name group-name)
-               ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
-               ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
-               ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
-               (when-not <>
-                 (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
-                                 {:name group-name}))))))]
-    (fn []
-      (f (mdb.connection/db-type) (mdb.connection/data-source)))))
+  (mdb/memoize-for-app-db
+   (fn []
+     (u/prog1 (db/select-one PermissionsGroup :name group-name)
+       ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
+       ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
+       ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
+       (when-not <>
+         (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
+                         {:name group-name})))))))
 
 (def all-users-group-name
   "The name of the \"All Users\" magic group."

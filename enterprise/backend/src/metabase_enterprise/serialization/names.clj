@@ -2,6 +2,7 @@
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.db :as mdb]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
@@ -35,12 +36,13 @@
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (memoize (fn
-             ([entity] (fully-qualified-name* entity))
-             ([model id]
-              (if (string? id)
-                id
-                (fully-qualified-name* (db/select-one model :id id)))))))
+  (mdb/memoize-for-app-db
+   (fn
+     ([entity] (fully-qualified-name* entity))
+     ([model id]
+      (if (string? id)
+        id
+        (fully-qualified-name* (db/select-one model :id id)))))))
 
 (defmethod fully-qualified-name* (type Database)
   [db]

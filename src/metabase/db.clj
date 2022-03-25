@@ -43,25 +43,35 @@
   db-type
   quoting-style])
 
-(defonce ^:private db-setup-finished?
+(def ^:dynamic *db-setup-finished?*
+  "Whether DB setup is finished. Rebindable for swapping out the application DB in tests."
   (atom false))
 
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   ^Boolean []
-  @db-setup-finished?)
+  @*db-setup-finished?*)
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
-  (when-not @db-setup-finished?
-    (locking db-setup-finished?
-      (when-not @db-setup-finished?
+  (when-not @*db-setup-finished?*
+    (locking *db-setup-finished?*
+      (when-not @*db-setup-finished?*
         (let [db-type       (mdb.connection/db-type)
               data-source   (mdb.connection/data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate?)
           (mdb.connection-pool-setup/create-connection-pool! db-type data-source))
-        (reset! db-setup-finished? true))))
+        (reset! *db-setup-finished?* true))))
   :done)
+
+(defn memoize-for-app-db
+  "Like [[clojure.core/memoize]] but memoizes a function for the current application database -- if the application
+  database is swapped out by tests or mocks, values for other app DBs will not be returned."
+  [f]
+  (let [f* (memoize (fn [_db-type _data-source & args]
+                      (apply f args)))]
+    (fn [& args]
+      (apply f* (mdb.connection/db-type) (mdb.connection/data-source) args))))
