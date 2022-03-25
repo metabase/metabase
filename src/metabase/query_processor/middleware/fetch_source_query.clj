@@ -120,12 +120,11 @@
         card
 
         source-query
-        (or (when (and (:active card)
-                       ;; todo: handle the toggle in details being off here (or not, let that make its way to the
-                       ;; active flag?)
+        (or (when (and persisted-info/*allow-persisted-substitution*
+                       (:active card)
                        (:query_hash card)
                        (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
-                       (= (:state card) "active"))
+                       (= (:state card) "persisted"))
               {:native (format "select %s from %s.%s"
                                (str/join ", " (:columns card))
                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))

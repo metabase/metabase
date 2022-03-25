@@ -11,7 +11,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
-  (:import [org.quartz ObjectAlreadyExistsException]))
+  (:import [org.quartz ObjectAlreadyExistsException Trigger]))
 
 ;; copied from task/sync_databases.clj
 (defn ^:private job-context->database-id
@@ -81,13 +81,13 @@
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
-                     (u/the-id database) (.. ^org.quartz.Trigger tggr getKey getName)))
+                     (u/the-id database) (.. ^Trigger tggr getKey getName)))
     (try (task/add-trigger! tggr)
          (catch ObjectAlreadyExistsException _e
            (log/info
             (u/format-color 'green "Persistence already present for database %d: trigger: %s"
                             (u/the-id database)
-                            (.. ^org.quartz.Trigger tggr getKey getName)))))))
+                            (.. ^Trigger tggr getKey getName)))))))
 
 (defn unschedule-persistence-for-database
   "Stop refreshing tables for a given database. Should only be called when marking the database as not

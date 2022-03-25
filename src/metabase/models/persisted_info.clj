@@ -5,6 +5,8 @@
             [metabase.util :as u]
             [toucan.models :as models]))
 
+(def ^:dynamic *allow-persisted-substitution* true)
+
 (defn slug-name
   "A slug from a card suitable for a table name."
   [nom]

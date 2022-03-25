@@ -6,7 +6,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.util :as u]
@@ -77,9 +77,10 @@
         (jdbc/execute! conn [(create-table-sql database definition)])
         (jdbc/execute! conn [(populate-table-sql database
                                                  definition
-                                                 (-> (:dataset_query card)
-                                                     qp/compile
-                                                     :query))])
+                                                 (binding [persisted-info/*allow-persisted-substitution* false]
+                                                   (-> (:dataset_query card)
+                                                       qp/compile
+                                                       :query)))])
         (db/update! PersistedInfo (u/the-id persisted-info)
           ;; todo: we can lose a deletion request here. we need to check the state as we complete
           :active true, :state "persisted", :refresh_end :%now
