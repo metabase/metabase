@@ -9,6 +9,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
+import { retrieveMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/lib/Question";
 
@@ -37,36 +38,6 @@ function formatSelected({ name, sectionName }) {
     return name;
   }
   return `${sectionName}.${name}`;
-}
-
-function getSelectedMappingOption(target, mappingOptions) {
-  if (target) {
-    const [targetType, targetField] = target;
-    return _.find(mappingOptions, mappingOption => {
-      const mappingOptionTarget = mappingOption.target;
-      const [
-        mappingOptionTargetType,
-        mappingOptionTargetField,
-      ] = mappingOptionTarget;
-      if (targetField.length !== mappingOptionTargetField.length) {
-        const updatedMappingOptionTargetField = mappingOptionTargetField.slice(
-          0,
-          2,
-        );
-        const updatedMappingOptionTarget = [
-          mappingOptionTargetType,
-          updatedMappingOptionTargetField,
-        ];
-        const updatedTargetField = targetField.slice(0, 2);
-        const updatedTarget = [targetType, updatedTargetField];
-        return _.isEqual(updatedMappingOptionTarget, updatedTarget);
-      }
-
-      return _.isEqual(mappingOptionTarget, target);
-    });
-  }
-
-  return undefined;
 }
 
 const mapStateToProps = (state, props) => ({
@@ -108,10 +79,7 @@ function DashCardCardParameterMapper({
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
   const isDisabled = mappingOptions.length === 0;
-  const selectedMappingOption = getSelectedMappingOption(
-    target,
-    mappingOptions,
-  );
+  const selectedMappingOption = retrieveMappingOption(target, mappingOptions);
 
   const handleChangeTarget = useCallback(
     target => {
