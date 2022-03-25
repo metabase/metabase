@@ -22,11 +22,17 @@
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
                     :card_id))))
       (testing "check a card bookmark has `:display` key"
-        (is (= "area"
+        (is (contains?
                (->> (mt/user-http-request :rasta :get 200 "bookmark")
                     (filter #(= (:type % ) "card"))
-                    first
-                    :display))))
+                    first)
+               :display)))
+      (testing "check a card bookmark has `:dataset` key"
+        (is (contains?
+               (->> (mt/user-http-request :rasta :get 200 "bookmark")
+                    (filter #(= (:type % ) "card"))
+                    first)
+               :dataset)))
       (testing "check that we can bookmark a Dashboard"
         (is (= (u/the-id dashboard)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))

@@ -26,6 +26,7 @@
    :type                             (s/enum :card :collection :dashboard)
    :item_id                          su/IntGreaterThanZero
    :name                             su/NonBlankString
+   (s/optional-key :dataset)         (s/maybe s/Bool)
    (s/optional-key :display)         (s/maybe s/Str)
    (s/optional-key :authority_level) (s/maybe s/Str)
    (s/optional-key :description)     (s/maybe s/Str)})
@@ -49,7 +50,7 @@
     (merge
      {:id      (str (name ttype) "-" item-id-str)
       :type    ttype}
-     (select-keys normalized-result [:item_id :name :description :display :authority_level]))))
+     (select-keys normalized-result [:item_id :name :dataset :description :display :authority_level]))))
 
 (defn- bookmarks-union-query
   [id]
@@ -84,6 +85,7 @@
         {:select    [[:bookmark.created_at :created_at]
                      [:card.id (db/qualify 'Card :item_id)]
                      [:card.name (db/qualify 'Card :name)]
+                     [:card.dataset (db/qualify 'Card :dataset)]
                      [:card.display (db/qualify 'Card :display)]
                      [:card.description (db/qualify 'Card :description)]
                      [:card.archived (db/qualify 'Card :archived)]
