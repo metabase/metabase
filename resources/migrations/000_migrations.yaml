@@ -11239,6 +11239,21 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   - changeSet:
+      id: v43.00-043
+      author: howonlee
+      comment: Added 0.43.0 - Nested field columns in fields
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Nested field column paths, flattened
+                name: nfc_path
+                type: varchar(254)
+                constraints:
+                  nullable: true
+            tableName: metabase_field
+
+  - changeSet:
       id: v43.00-044
       author: noahmoss
       comment: Added 0.43.0 - Removes MetaBot permissions group
@@ -11302,15 +11317,15 @@ databaseChangeLog:
             sql: >-
               INSERT INTO permissions (group_id, object)
               SELECT
-                all_users_group.id AS group_id,
+                non_admin_groups.id AS group_id,
                 '/general/subscription/' AS object
               FROM (
                 SELECT id
                 FROM permissions_group
                 WHERE name <> 'Administrators'
-              ) all_users_group
+              ) non_admin_groups
               LEFT JOIN permissions p
-                ON all_users_group.id = p.group_id
+                ON non_admin_groups.id = p.group_id
                 AND p.object = '/general/subscription/'
               WHERE p.object IS NULL;
 

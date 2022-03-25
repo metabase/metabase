@@ -452,7 +452,7 @@
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
 
 (s/defn general-perms-path :- Path
-  "Get general permission's path by permission's type"
+  "Returns the permissions path for *full* access a general permission."
   [perm-type]
   (case perm-type
     :setting
@@ -498,14 +498,14 @@
 
 (s/defn set-has-full-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set :- #{Path} paths-set :- #{Path}]
+  [permissions-set paths-set]
   (every? (partial set-has-full-permissions? permissions-set)
           paths-set))
 
 (s/defn set-has-partial-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
    (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
-  [permissions-set :- #{Path}, paths-set :- #{Path}]
+  [permissions-set paths-set]
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
@@ -817,6 +817,11 @@
   "Grant full download permissions to the database."
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
+
+(defn grant-subscription-permissions!
+  "Grant permission to create/edit subscriptions and alerts by default"
+  [group-id]
+  (grant-permissions! group-id (general-perms-path :subscription)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   (classloader/require 'metabase.models.collection)

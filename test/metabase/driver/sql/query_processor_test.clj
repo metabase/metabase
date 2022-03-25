@@ -42,7 +42,7 @@
 (defn- mbql->native [query]
   (mt/with-everything-store
     (driver/with-driver :h2
-      (-> (sql.qp/mbql->native :h2 (qp/query->preprocessed query))
+      (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
           :query
           sql.qp-test-util/pretty-sql))))
 

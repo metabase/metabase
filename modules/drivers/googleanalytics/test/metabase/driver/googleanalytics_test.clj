@@ -301,6 +301,7 @@
                                                          :name              "ga:eventLabel"
                                                          :settings          nil
                                                          :source            :breakout
+                                                         :nfc_path          nil
                                                          :parent_id         nil
                                                          :visibility_type   :normal
                                                          :display_name      "ga:eventLabel"

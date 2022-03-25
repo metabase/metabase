@@ -35,7 +35,7 @@
 (defn- add-alias-info [query]
   (mt/with-everything-store
     (driver/with-driver (or driver/*driver* :h2)
-      (-> query qp/query->preprocessed add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+      (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
 (deftest join-in-source-query-test
   (is (query= (mt/mbql-query venues

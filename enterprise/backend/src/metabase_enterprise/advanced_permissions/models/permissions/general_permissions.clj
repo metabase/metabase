@@ -13,13 +13,8 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def ^:private GeneralPermissions (s/enum :yes :no))
-
 (def ^:private GroupPermissionsGraph
-  {:setting      GeneralPermissions
-   :monitoring   GeneralPermissions
-   :subscription GeneralPermissions
-   s/Keyword     GeneralPermissions})
+  {(s/enum :setting :monitoring :subscription) (s/enum :yes :no)})
 
 (def ^:private GeneralPermissionsGraph
   {:revision s/Int
@@ -43,7 +38,7 @@
     (into {} (for [group-id group-ids]
                {group-id (permissions-set-from-group-id group-id)}))))
 
-(defn- perrmission-for-type
+(defn- permission-for-type
   [permissions-set perm-type]
   (if (perms/set-has-full-permissions? permissions-set (perms/general-perms-path perm-type))
     :yes
@@ -52,9 +47,9 @@
 (s/defn permissions-set->general-perms :- GroupPermissionsGraph
   "Get a map of all general permissions for a group"
   [permission-set]
-  {:setting      (perrmission-for-type permission-set :setting)
-   :monitoring   (perrmission-for-type permission-set :monitoring)
-   :subscription (perrmission-for-type permission-set :subscription)})
+  {:setting      (permission-for-type permission-set :setting)
+   :monitoring   (permission-for-type permission-set :monitoring)
+   :subscription (permission-for-type permission-set :subscription)})
 
 (s/defn graph :- GeneralPermissionsGraph
   "Fetch a graph representing the general permissions status for every group. This works just like the function of
@@ -100,9 +95,9 @@
         new-perms          (:groups new-graph)
         ;; filter out any groups not in the old graph
         new-perms          (select-keys new-perms (keys old-perms))
-        ;; filter out any collections not in the old graph
-        new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                      [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+        ;; filter out any permission type that are not in the old graph
+        new-perms          (into {} (for [[group-id permissions] new-perms]
+                                      [group-id (select-keys permissions (keys (get old-perms group-id)))]))
         [diff-old changes] (data/diff old-perms new-perms)]
     (perms/log-permissions-changes diff-old changes)
     (perms/check-revision-numbers old-graph new-graph)

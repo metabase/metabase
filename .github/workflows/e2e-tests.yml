@@ -48,13 +48,18 @@ jobs:
       matrix:
         edition: [oss, ee]
         folder:
+          - "binning"
+          - "collections"
           - "custom-column"
+          - "dashboard"
           - "dashboard-filters"
           - "dashboard-filters-sql"
           - "downloads"
+          - "joins"
           - "moderation"
           - "permissions"
           - "question"
+          - "visualizations"
     services:
       maildev:
         image: maildev/maildev

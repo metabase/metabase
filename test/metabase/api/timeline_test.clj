@@ -34,7 +34,13 @@
                    (events-of (mt/user-http-request :rasta :get 200 "timeline")))))
           (testing "check that we only get archived timelines when `archived=true`"
             (is (= #{"Timeline C"}
-                   (events-of (mt/user-http-request :rasta :get 200 "timeline" :archived true))))))))))
+                   (events-of (mt/user-http-request :rasta :get 200 "timeline" :archived true)))))
+          (testing "check that `:collection` key is hydrated on each timeline"
+            (is (= #{id}
+                   (->> (mt/user-http-request :rasta :get 200 "timeline")
+                         (filter (comp #{id} :collection_id))
+                        (map #(get-in % [:collection :id]))
+                        set)))))))))
 
 (deftest get-timeline-test
   (testing "GET /api/timeline/:id"
