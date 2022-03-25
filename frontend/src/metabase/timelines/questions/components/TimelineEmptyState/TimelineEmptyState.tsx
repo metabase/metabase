@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import { Collection } from "metabase-types/api";
+import { Collection, Timeline } from "metabase-types/api";
 import {
   EmptyStateButton,
   EmptyStateIcon,
@@ -9,15 +9,19 @@ import {
 } from "./TimelineEmptyState.styled";
 
 export interface TimelineEmptyStateProps {
+  timelines: Timeline[];
   collection: Collection;
   onNewEvent?: () => void;
 }
 
 const TimelineEmptyState = ({
+  timelines,
   collection,
   onNewEvent,
 }: TimelineEmptyStateProps): JSX.Element => {
-  const canWrite = collection.can_write;
+  const canWrite =
+    timelines.some(timeline => timeline.collection?.can_write) ||
+    collection.can_write;
 
   return (
     <EmptyStateRoot>

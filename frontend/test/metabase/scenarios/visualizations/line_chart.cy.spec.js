@@ -1,4 +1,9 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -227,7 +232,7 @@ describe("scenarios > visualizations > line chart", () => {
               firstCardId: question1Id,
               secondCardId: question2Id,
             });
-            cy.visit(`/dashboard/${dashboardId}`);
+            visitDashboard(dashboardId);
 
             // Rename both series
             renameSeries([
@@ -277,7 +282,7 @@ describe("scenarios > visualizations > line chart", () => {
               secondCardId: question2Id,
             });
 
-            cy.visit(`/dashboard/${dashboardId}`);
+            visitDashboard(dashboardId);
 
             renameSeries([
               ["16249_Q3", RENAMED_FIRST_SERIES],

@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: Prepare JDK ${{ inputs.java-version }}
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v3
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
@@ -25,9 +25,11 @@ runs:
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
     - name: Get M2 cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.m2-cache-key }}-

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Markdown from "metabase/core/components/Markdown";
 
 export const CardRoot = styled.div`
   display: flex;
@@ -50,7 +51,7 @@ export const CardTitle = styled.div`
   word-wrap: break-word;
 `;
 
-export const CardDescription = styled.div`
+export const CardDescription = styled(Markdown)`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
   word-wrap: break-word;

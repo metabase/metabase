@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -36,7 +36,6 @@ describe("issue 15279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
   });
 
   it("a corrupted parameter filter should still appear in the UI (metabase #15279)", () => {
@@ -75,9 +74,11 @@ describe("issue 15279", () => {
           ],
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
+
+    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
 
     // Check that list filter works
     filterWidget()
