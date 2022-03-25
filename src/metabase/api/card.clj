@@ -759,6 +759,8 @@
                             :ignore_cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
+  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
+  query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
   (api/check-403 api/*is-superuser?*)
@@ -791,6 +793,8 @@
       api/generic-204-no-content)))
 
 (api/defendpoint DELETE "/:card-id/persist"
+  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
+  query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
   (api/check-403 api/*is-superuser?*)
