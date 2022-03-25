@@ -1,9 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import {
-  createMockCollection,
-  createMockTimeline,
-} from "metabase-types/api/mocks";
+import { createMockTimeline } from "metabase-types/api/mocks";
 import TimelineList, { TimelineListProps } from "./TimelineList";
 
 describe("TimelineList", () => {
@@ -24,7 +21,6 @@ describe("TimelineList", () => {
 
 const getProps = (opts?: Partial<TimelineListProps>): TimelineListProps => ({
   timelines: [],
-  collection: createMockCollection(),
   onToggleTimeline: jest.fn(),
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),

@@ -46,6 +46,7 @@ jobs:
       with:
         java-package: jre
         java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
     - run: java -version
     - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact
