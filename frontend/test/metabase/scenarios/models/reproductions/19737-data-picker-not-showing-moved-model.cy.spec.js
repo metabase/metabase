@@ -2,7 +2,7 @@ import { restore, modal, popover } from "__support__/e2e/cypress";
 
 const modelName = "Orders Model";
 
-describe.skip("issue 19737", () => {
+describe("issue 19737", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -13,15 +13,7 @@ describe.skip("issue 19737", () => {
   it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
     cy.visit("/collection/root");
 
-    openEllipsisMenuFor(modelName);
-    popover()
-      .contains("Move")
-      .click();
-
-    modal().within(() => {
-      cy.findByText("My personal collection").click();
-      cy.findByText("Move").click();
-    });
+    moveModel(modelName, "My personal collection");
 
     cy.findByText("Moved model");
 
@@ -35,7 +27,61 @@ describe.skip("issue 19737", () => {
     cy.findByText("Your personal collection").click();
     cy.findByText(modelName);
   });
+
+  it("should not show duplicate models in the data picker after it's moved from a custom collection without refreshing (metabase#19737)", () => {
+    // move "Orders Model" to "First collection"
+    cy.visit("/collection/root");
+
+    moveModel(modelName, "First collection");
+
+    cy.findByText("Moved model");
+    // Close the modal so the next time we move the model another model will always be shown
+    cy.icon("close:visible").click();
+
+    cy.findByText("New").click();
+    cy.findByText("Question")
+      .should("be.visible")
+      .click();
+
+    // Open question picker (this is crucial) so the collection list are loaded.
+    cy.findByText("Models").click();
+
+    cy.findByText("First collection").click();
+    cy.findByText(modelName);
+
+    // Use back button to so the state is kept
+    cy.go("back");
+
+    // move "Orders Model" from a custom collection ("First collection") to another collection
+    cy.findByText("First collection").click();
+
+    moveModel(modelName, "My personal collection");
+
+    cy.findByText("Moved model");
+
+    cy.findByText("New").click();
+    cy.findByText("Question")
+      .should("be.visible")
+      .click();
+
+    cy.findByText("Models").click();
+
+    cy.findByText("First collection").click();
+    cy.findByText("Nothing here");
+  });
 });
+
+function moveModel(modelName, collectionName) {
+  openEllipsisMenuFor(modelName);
+  popover()
+    .contains("Move")
+    .click();
+
+  modal().within(() => {
+    cy.findByText(collectionName).click();
+    cy.findByText("Move").click();
+  });
+}
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
