@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import { NAV_HEIGHT } from "metabase/nav/constants";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
@@ -12,8 +12,9 @@ export const AppContentContainer = styled.div<{
   position: relative;
   overflow: hidden;
   height: ${props =>
-    props.hasAppBar ? `calc(100vh - ${NAV_HEIGHT})` : "100vh"};
-  background-color: ${color("content")};
+    props.hasAppBar ? `calc(100vh - ${APP_BAR_HEIGHT})` : "100vh"};
+  background-color: ${props =>
+    color(props.isAdminApp ? "bg-white" : "content")};
 `;
 
 export const AppContent = styled.main`

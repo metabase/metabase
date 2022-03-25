@@ -5,11 +5,14 @@ import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
+import { APP_BAR_HEIGHT } from "../constants";
+
 export const AppBarRoot = styled.div`
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
+  height: ${APP_BAR_HEIGHT};
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
