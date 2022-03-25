@@ -240,7 +240,7 @@
 
 (defn- call-on-change
   "Cache watcher that applies `:on-change` callback for all settings that have changed."
-  [_key _ref old new]
+  [old new]
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
     (doseq [changed-setting (into (set (keys d1))
@@ -248,7 +248,9 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
-(add-watch @#'cache/cache* :call-on-change call-on-change)
+;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; swapped out depending on which app DB we have in play
+(reset! cache/call-on-change-fn #'call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
