@@ -1,15 +1,15 @@
 (ns metabase.task.persist-refresh
-  (:require [metabase.task :as task]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.task :as task]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [metabase.driver.ddl.interface :as ddl.i]
             [toucan.db :as db])
   (:import [org.quartz ObjectAlreadyExistsException]))
 
@@ -40,14 +40,16 @@
             (catch Exception e
               (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id d))))))))))
 
-(defn refresh-tables! [job-context]
+(defn- refresh-tables!
+  "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`."
+  [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (refresh-tables!' database-id)))
 
 (jobs/defjob PersistenceRefresh [job-context]
   (refresh-tables! job-context))
 
-(def persistence-job-key "metabase.task.PersistenceRefresh.job")
+(def ^:private persistence-job-key "metabase.task.PersistenceRefresh.job")
 
 (def ^:private persistence-job
   (jobs/build
@@ -73,6 +75,7 @@
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 (defn schedule-persistence-for-database
+  "Schedule a database for persistence refreshing."
   [database]
   (let [tggr (trigger database)]
     (log/info
@@ -83,9 +86,12 @@
          (catch ObjectAlreadyExistsException _e
            (log/info
             (u/format-color 'green "Persistence already present for database %d: trigger: %s"
-                            (u/the-id database) (.. ^org.quartz.Trigger tggr getKey getName)))))))
+                            (u/the-id database)
+                            (.. ^org.quartz.Trigger tggr getKey getName)))))))
 
 (defn unschedule-persistence-for-database
+  "Stop refreshing tables for a given database. Should only be called when marking the database as not
+  persisting. Tables will be left over and up to the caller to clean up."
   [database]
   (task/delete-trigger! (trigger-key database)))
 
