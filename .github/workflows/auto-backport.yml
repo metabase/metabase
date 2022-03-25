@@ -16,7 +16,7 @@ jobs:
       author: ${{ fromJson(steps.collect_pr_info.outputs.result).author }}
       should_backport: ${{ fromJson(steps.collect_pr_info.outputs.result).hasBackportLabel }}
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v4
         id: collect_pr_info
         with:
           script: |
@@ -62,7 +62,7 @@ jobs:
     outputs:
       branch_name: ${{ steps.get_branch_name.outputs.result }}
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v4
         id: get_branch_name
         with:
           result-encoding: string
@@ -122,7 +122,7 @@ jobs:
     needs: [pr_info, create_backport_pull_request]
     if: ${{ failure() }}
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v4
         with:
           script: |
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
