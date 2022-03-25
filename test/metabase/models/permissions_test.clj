@@ -193,6 +193,38 @@
           (is (= expected
                  (perms/valid-path? path))))))))
 
+(deftest valid-path-format-test
+  (testing "valid paths"
+    (doseq [path
+            ["/asdf/"
+             "/asdf/ghjk/"
+             "/asdf-ghjk/"
+             "/"
+             "/asdf/1/ghkl/"]]
+      (testing (pr-str path)
+        (is (= true
+               (perms/valid-path-format? path))))))
+
+  (testing "invalid paths"
+    (doseq [path
+            [""
+             "//"
+             "/asdf"
+             "asdf/"
+             "/asdf//"
+             "/asdf//asdf/"
+             "123"
+             nil
+             {}
+             []
+             true
+             false
+             (keyword "/asdf/")
+             1234]]
+      (testing (pr-str path)
+        (is (= false
+               (perms/valid-path-format? path)))))))
+
 
 ;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
 
