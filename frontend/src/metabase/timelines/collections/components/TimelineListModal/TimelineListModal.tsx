@@ -103,7 +103,7 @@ const getMenuItems = (
 const getSortedTimelines = (timelines: Timeline[]) => {
   return _.chain(timelines)
     .sortBy(timeline => timeline.name)
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null)
+    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
     .value();
 };
 
