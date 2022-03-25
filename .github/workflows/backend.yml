@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run clj-kondo
       run: docker run -v $PWD:/work --rm cljkondo/clj-kondo clj-kondo --config /work/lint-config.edn --lint /work/src /work/enterprise/backend/src /work/backend/mbql/src /work/shared/src
 
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
