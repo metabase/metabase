@@ -1,18 +1,21 @@
+import Collection from "metabase/entities/collections";
+import Dashboard from "metabase/entities/dashboards";
+import Question from "metabase/entities/questions";
 import { Bookmark } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
 
-export function getIcon({ authority_level, display, type }: Bookmark) {
-  if (display) {
-    return display;
-  }
+export function getIcon(bookmark: Bookmark) {
+  const { type } = bookmark;
 
-  if (type === "collection") {
-    return authority_level === "official" ? "badge" : "folder";
-  }
+  const { color: iconColor, name, tooltip } =
+    type === "card"
+      ? Question.objectSelectors.getIcon(bookmark)
+      : type === "collection"
+      ? Collection.objectSelectors.getIcon(bookmark)
+      : Dashboard.objectSelectors.getIcon(bookmark);
 
-  const icons = {
-    card: "grid",
-    dashboard: "dashboard",
-  };
+  const treatedColor = type === "card" ? color("brand") : iconColor;
+  const opacity = tooltip ? 1 : 0.5;
 
-  return icons[type];
+  return { name, color: treatedColor, opacity };
 }

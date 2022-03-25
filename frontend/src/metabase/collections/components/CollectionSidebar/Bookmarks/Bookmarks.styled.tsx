@@ -11,19 +11,12 @@ const CollectionSidebarBookmarksRoot = styled.div`
 `;
 
 interface BookmarkTypeIconProps {
-  isOfficial?: boolean;
+  opacity: number;
 }
 
 export const BookmarkTypeIcon = styled(Icon)<BookmarkTypeIconProps>`
   margin-right: 6px;
-  opacity: 0.5;
-
-  ${({ isOfficial }) =>
-    isOfficial &&
-    css`
-      color: ${color("warning")};
-      opacity: 1;
-    `}
+  opacity: ${({ opacity }) => opacity};
 `;
 
 export const BookmarkListRoot = styled.div`

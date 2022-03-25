@@ -31,12 +31,15 @@ interface CollectionSidebarBookmarksProps {
 }
 
 const Label = ({ bookmark }: LabelProps) => {
-  const iconName = getIcon(bookmark);
-  const isOfficial = bookmark.authority_level === "official";
+  const icon = getIcon(bookmark);
 
   return (
     <LabelContainer>
-      <BookmarkTypeIcon isOfficial={isOfficial} name={iconName} />
+      <BookmarkTypeIcon
+        color={icon.color}
+        name={icon.name}
+        opacity={icon.opacity}
+      />
       {bookmark.name}
     </LabelContainer>
   );
