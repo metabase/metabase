@@ -46,7 +46,7 @@ const EventCard = ({
   );
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
-  const canEdit = collection.can_write && !event.archived;
+  const canEdit = timeline.collection?.can_write && !event.archived;
   const editLink = Urls.editEventInCollection(event, timeline, collection);
 
   return (
