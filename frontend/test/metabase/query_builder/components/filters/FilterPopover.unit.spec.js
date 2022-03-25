@@ -41,7 +41,7 @@ describe("FilterPopover", () => {
       it("should render", () => {
         render(<FilterPopover query={QUERY} filter={QUERY.filters()[0]} />);
 
-        screen.getByText("Previous");
+        screen.getByText("Past");
         screen.getByDisplayValue("30");
         screen.getByText("Days");
       });
@@ -68,12 +68,6 @@ describe("FilterPopover", () => {
         expect(screen.queryByText("today")).toBeNull();
       });
 
-      it('should show "current-period" option to the user for "time-intervals" filters', () => {
-        render(<FilterPopover query={QUERY} filter={RELATIVE_DAY_FILTER} />);
-        screen.getByText("Include");
-        screen.getByText("today");
-      });
-
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
         render(
           <StaticEntitiesProvider>
@@ -87,6 +81,7 @@ describe("FilterPopover", () => {
       // Tried to click on checkbox, label, their parent - nothing seems to be working, while it works fine in UI
       xit("should let the user toggle an option", () => {
         render(<FilterPopover query={QUERY} filter={RELATIVE_DAY_FILTER} />);
+        screen.getByRole("img", { name: /check/i });
         const CHECKBOX = screen.getByRole("checkbox");
 
         fireEvent.click(CHECKBOX);
