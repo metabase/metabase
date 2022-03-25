@@ -28,7 +28,7 @@ Go with whichever database you're familiar with. If you're not familiar with any
 
 Metabase provides a custom migration command for migrating to a new application database. Here's what you'll do:
 
-- [2. Shut down your Metabase instance](#2-shutdown-your-metabase-instance)
+- [2. Shut down your Metabase instance](#2-shut-down-your-metabase-instance)
 - [3. Back up your H2 application database](#3-back-up-your-h2-application-database)
 - [4. Run the Metabase data migration command](#4-run-the-metabase-data-migration-command)
 
