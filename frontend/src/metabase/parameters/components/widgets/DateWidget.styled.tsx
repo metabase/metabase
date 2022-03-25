@@ -9,6 +9,8 @@ export const Container = styled.div`
   min-width: 300px;
 `;
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 export const PaddedSpecificDatePicker = styled(SpecificDatePicker)`
   padding: ${space(1)};
 `;

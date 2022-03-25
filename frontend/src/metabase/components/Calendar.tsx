@@ -21,7 +21,7 @@ type Props = {
     start: string,
     end: string | null,
     startMoment: Moment,
-    endMoment: Moment | null,
+    endMoment?: Moment | null,
   ) => void;
   isRangePicker?: boolean;
   primaryColor?: string;

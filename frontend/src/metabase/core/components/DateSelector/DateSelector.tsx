@@ -32,7 +32,7 @@ const DateSelector = forwardRef(function DateSelector(
   {
     className,
     style,
-    value,
+    value = moment(),
     hasTime,
     is24HourMode,
     onChange,
@@ -44,7 +44,7 @@ const DateSelector = forwardRef(function DateSelector(
   const today = useMemo(() => moment().startOf("date"), []);
 
   const handleDateChange = useCallback(
-    (unused1: string, unused2: string, date: Moment) => {
+    (unused1: string, unused2: string | null, date: Moment) => {
       const newDate = date.clone();
       newDate.hours(value?.hours() ?? 0);
       newDate.minutes(value?.minutes() ?? 0);
