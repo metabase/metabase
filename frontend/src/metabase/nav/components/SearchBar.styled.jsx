@@ -1,18 +1,22 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 export const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
   position: relative;
-  background-color: ${color("bg-medium")};
+  background-color: ${color("bg-light")};
+  border: 1px solid ${color("border")};
   border-radius: 6px;
   flex: 1 1 auto;
   max-width: 50em;
   align-items: center;
-  transition: background 300ms ease-in;
+  transition: background 150ms;
+
+  &:hover {
+    background-color: ${color("bg-medium")};
+  }
 `;
 
 export const SearchInput = styled.input`
@@ -20,7 +24,7 @@ export const SearchInput = styled.input`
   width: 100%;
   border: none;
   color: ${color("text-dark")};
-  padding: ${space(2)};
+  padding: 10px 12px;
   font-weight: 700;
   &:focus {
     outline: none;

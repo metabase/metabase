@@ -20,10 +20,7 @@ const CollectionLanding = ({ params: { slug }, children }) => {
 
   return (
     <PageWrapper>
-      <ContentBox
-        className="border-left"
-        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
-      >
+      <ContentBox shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}>
         <CollectionContent
           isRoot={isRoot}
           collectionId={collectionId}

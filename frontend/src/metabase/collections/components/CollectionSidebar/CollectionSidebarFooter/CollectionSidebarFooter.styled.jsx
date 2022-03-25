@@ -7,7 +7,6 @@ import GenericLink from "metabase/core/components/Link";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 export const Container = styled.div`
-  margin-top: auto;
   padding-bottom: ${space(2)};
   padding-left: ${SIDEBAR_SPACER * 2}px;
 `;
@@ -20,7 +19,7 @@ export const Link = styled(GenericLink)`
   align-items: center;
   display: flex;
   font-weight: 700;
-  margin-top: ${space(2)};
+  margin-top: ${space(1)};
 
   &:hover {
     text-decoration: underline;
