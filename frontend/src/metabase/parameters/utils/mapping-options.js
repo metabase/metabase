@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import Question from "metabase-lib/lib/Question";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
@@ -78,4 +80,29 @@ export function getParameterMappingOptions(metadata, parameter = null, card) {
   }
 
   return options;
+}
+
+export function retrieveMappingOption(field, mappingOptions) {
+  if (field) {
+    const [targetFieldType, targetFieldRef] = field;
+    return _.find(mappingOptions, mappingOption => {
+      const mappingField = mappingOption.target;
+      const [mappingFieldType, mappingFieldRef] = mappingField;
+
+      // field reference might be the same but not have the same Array.length, i.e.:
+      // ["dimension", "Custom column", null] OR ["dimension", "Custom column"]
+      if (targetFieldRef.length !== mappingFieldRef.length) {
+        const updatedMappingFieldRef = mappingFieldRef.slice(0, 2);
+        const updatedMappingField = [mappingFieldType, updatedMappingFieldRef];
+        const updatedFieldRef = targetFieldRef.slice(0, 2);
+        const updatedField = [targetFieldType, updatedFieldRef];
+        return _.isEqual(updatedMappingField, updatedField);
+      }
+
+      // fallback
+      return _.isEqual(mappingField, field);
+    });
+  }
+
+  return undefined;
 }

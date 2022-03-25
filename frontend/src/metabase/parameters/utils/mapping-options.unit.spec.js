@@ -6,7 +6,10 @@ import {
   PRODUCTS,
 } from "__support__/sample_database_fixture";
 
-import { getParameterMappingOptions } from "./mapping-options";
+import {
+  getParameterMappingOptions,
+  retrieveMappingOption,
+} from "./mapping-options";
 
 function structured(query) {
   return SAMPLE_DATABASE.question(query).card();
@@ -210,6 +213,67 @@ describe("parameters/utils/mapping-options", () => {
           isForeign: false,
         },
       ]);
+    });
+  });
+
+  describe("retrieveMappingOption", () => {
+    it("should return the found option from the options list", () => {
+      const fieldType = "dimension";
+      const fieldRefType = "expression";
+      const fieldRefName = "Custom column";
+      const field = [fieldType, [fieldRefType, fieldRefName], null];
+      const mappingOptions = [
+        {
+          icon: "string",
+          isForeign: false,
+          name: "Custom column",
+          sectionName: null,
+          target: [fieldType, [fieldRefType, fieldRefName, null]],
+        },
+        {
+          icon: "string",
+          isForeign: false,
+          name: "Custom column (1)",
+          sectionName: null,
+          target: ["dimension", ["expression", "Custom column (1)", null]],
+        },
+        {
+          icon: "string",
+          isForeign: false,
+          name: "Category",
+          sectionName: null,
+          target: ["dimension", ["expression", 4, null]],
+        },
+      ];
+
+      const option = retrieveMappingOption(field, mappingOptions);
+      expect(option).toEqual([fieldType, [fieldRefType, fieldRefName, null]]);
+    });
+
+    it("should return undefined as no option is found", () => {
+      const fieldType = "dimension";
+      const fieldRefType = "expression";
+      const fieldRefName = "Custom column";
+      const field = [fieldType, [fieldRefType, fieldRefName], null];
+      const mappingOptions = [
+        {
+          icon: "string",
+          isForeign: false,
+          name: "Custom column (1)",
+          sectionName: null,
+          target: ["dimension", ["expression", "Custom column (1)", null]],
+        },
+        {
+          icon: "string",
+          isForeign: false,
+          name: "Category",
+          sectionName: null,
+          target: ["dimension", ["expression", 4, null]],
+        },
+      ];
+
+      const option = retrieveMappingOption(field, mappingOptions);
+      expect(option).toEqual(undefined);
     });
   });
 });
