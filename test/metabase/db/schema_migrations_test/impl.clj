@@ -69,10 +69,7 @@
      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
      ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [db/*db-connection*     {:datasource data-source}
-                 db/*quoting-style*     (mdb/quoting-style driver)
-                 mdb.conn/*db-type*     driver
-                 mdb.conn/*data-source* data-source]
+       (binding [mdb.conn/*application-db* (mdb.conn/application-db driver data-source)]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db

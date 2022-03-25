@@ -99,18 +99,13 @@
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
       (letfn [(do-with-app-db [thunk]
-                (binding [db/*db-connection*       {:datasource data-source}
-                          db/*quoting-style*       :h2
-                          mdb.conn/*db-type*       :h2
-                          mdb.conn/*data-source*   data-source
-                          mdb/*db-setup-finished?* (atom false)]
+                (binding [mdb.conn/*application-db* (mdb.conn/application-db :h2 data-source)]
                   (println (u/format-color :yellow "USING %s" (pr-str connection-string))) ; NOCOMMIT
                   (testing (format "\nApp DB = %s" (pr-str connection-string))
                     (thunk))))]
         (do-with-app-db
          (fn []
-           (mdb.setup/migrate! :h2 data-source :up)
-           (reset! mdb/*db-setup-finished?* true)))
+           (mdb/setup-db!)))
         (f do-with-app-db)))))
 
 (defn- do-with-source-and-dest-dbs [f]

@@ -23,7 +23,8 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.db.connection :as mdb.connection]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  query->gtap                                                   |
@@ -166,6 +167,8 @@
 ;; cache the original metadata for a little bit so we don't have to preprocess a query every time we apply sandboxing
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id]]
+                         [(mdb.connection/uuid) table-id])}
    (fn [table-id]
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))

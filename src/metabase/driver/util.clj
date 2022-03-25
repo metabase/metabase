@@ -11,7 +11,8 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.db.connection :as mdb.connection])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
@@ -71,19 +72,24 @@
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- database->driver* [database-or-id]
-  (or
-   (when-let [engine (:engine database-or-id)]
-     ;; ensure we get the engine as a keyword (sometimes it's a String)
-     (keyword engine))
-   (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
+(def ^:private ^{:arglists '([db-id])} database->driver*
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[db-id]]
+                         [(mdb.connection/uuid) db-id])}
+   (fn [db-id]
+     (db/select-one-field :engine 'Database, :id db-id))
+   :ttl/threshold 1000))
 
-(def ^{:arglists '([database-or-id])} database->driver
+(defn database->driver
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  (memoize/ttl database->driver* :ttl/threshold 1000))
+  [database-or-id]
+  (if-let [driver (:engine database-or-id)]
+    ;; ensure we get the driver as a keyword (sometimes it's a String)
+    (keyword driver)
+    (database->driver* (u/the-id database-or-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

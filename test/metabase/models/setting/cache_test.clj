@@ -15,7 +15,7 @@
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
 
 (defn clear-cache! []
-  (reset! @#'metabase.models.setting.cache/cache* nil))
+  (reset! (#'metabase.models.setting.cache/cache*) nil))
 
 (defn- settings-last-updated-value-in-cache []
   (get (cache/cache) cache/settings-last-updated-key))
@@ -123,8 +123,7 @@
 ;; This process was causing the updated `:toucan-name` to never be read on Server 1 because Server 1 "thought" it had
 ;; the latest values and didn't restore the cache from the db
 (deftest sync-test-2
-  (let [internal-cache @#'metabase.models.setting.cache/cache*
-        external-cache (atom nil)]
+  (let [external-cache (constantly (atom nil))]
     (clear-cache!)
     (reset-last-update-check!)
     (setting-test/test-setting-1 "Starfish")

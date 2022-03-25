@@ -30,7 +30,6 @@
   * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
   (:require [metabase.config :as config]
             [metabase.db.connection :as mdb.connection]
-            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
             [metabase.db.setup :as mdb.setup]
             [potemkin :as p]))
 
@@ -43,26 +42,21 @@
   db-type
   quoting-style])
 
-(def ^:dynamic *db-setup-finished?*
-  "Whether DB setup is finished. Rebindable for swapping out the application DB in tests."
-  (atom false))
-
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
-  ^Boolean []
-  @*db-setup-finished?*)
+  []
+  (get @(mdb.connection/cache) ::setup-finished? false))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
-  (when-not @*db-setup-finished?*
-    (locking *db-setup-finished?*
-      (when-not @*db-setup-finished?*
+  (when-not (db-is-set-up?)
+    (locking (mdb.connection/cache)
+      (when-not (db-is-set-up?)
         (let [db-type       (mdb.connection/db-type)
               data-source   (mdb.connection/data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate?)
-          (mdb.connection-pool-setup/create-connection-pool! db-type data-source))
-        (reset! *db-setup-finished?* true))))
+          (mdb.setup/setup-db! db-type data-source auto-migrate?))
+        (swap! (mdb.connection/cache) assoc ::setup-finished? true))))
   :done)

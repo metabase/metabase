@@ -40,7 +40,7 @@
   `(do-with-model-type ~mtype ~type-fns (fn [] ~@body)))
 
 (defn- raw-value [keyy]
-  (:value (first (jdbc/query {:datasource mdb.connection/*data-source*}
+  (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
                              ["select value from setting where setting.key=?;" keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
@@ -64,26 +64,24 @@
       (mt/test-drivers #{:postgres :h2 :mysql}
         (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
           (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
-            (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
+            (binding [ ;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
+                      ;;
                       ;; at this point, all the state switching craziness that happens for
-                      ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
-                      ;; been bootstrapped to now return the site locale from the real, actual setting function
-                      ;; the trouble is, when we are swapping out the app DB, attempting to fetch the setting value WILL
-                      ;; FAIL, since there is no `SETTING `table yet created
-                      ;; the `load-from-h2!`, by way of invoking `copy!`, below, needs the site locale to internationalize
-                      ;; its loading progress messages (ex: "Set up h2 source database and run migrations...")
-                      ;; the reason this test has been flaky is that if we get "lucky" the *cached* value of the site
-                      ;; locale setting is returned, instead of the setting code having to query the app DB for it, and
-                      ;; hence no error occurs, but for a cache miss, then the error happens
-                      ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
-                      i18n/*site-locale-override*  "en"
+                      ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function
+                      ;; has been bootstrapped to now return the site locale from the real, actual setting function the
+                      ;; trouble is, when we are swapping out the app DB, attempting to fetch the setting value WILL
+                      ;; FAIL, since there is no `SETTING `table yet created the `load-from-h2!`, by way of invoking
+                      ;; `copy!`, below, needs the site locale to internationalize its loading progress messages (ex:
+                      ;; "Set up h2 source database and run migrations...") the reason this test has been flaky is that
+                      ;; if we get "lucky" the *cached* value of the site locale setting is returned, instead of the
+                      ;; setting code having to query the app DB for it, and hence no error occurs, but for a cache
+                      ;; miss, then the error happens this dynamic rebinding will bypass the call to `i18n/site-locale`
+                      ;; and hence avoid that whole mess
+                      i18n/*site-locale-override*     "en"
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues
-                      setting/*disable-cache*      true?
-                      mdb.connection/*db-type*     driver/*driver*
-                      mdb.connection/*data-source* data-source
-                      db/*db-connection*           {:datasource data-source}
-                      db/*quoting-style*           driver/*driver*]
+                      setting/*disable-cache*         true?
+                      mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
@@ -155,7 +153,7 @@
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
-                (eu/with-secret-key k2 ; with the last key that we rotated to in the test
+                (eu/with-secret-key k2  ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
                 ;; at this point, both the originally encrypted, and the originally unencrypted secret instances

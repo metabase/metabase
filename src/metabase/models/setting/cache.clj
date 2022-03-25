@@ -28,8 +28,9 @@
 
 ;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
 ;; cache.
-(def ^:private ^{:arglists '([])} cache*
-  (mdb.connection/memoize-for-app-db
+(defn- cache* []
+  (mdb.connection/cached-value
+   ::cache
    (fn []
      (doto (atom nil)
        (add-watch :call-on-change call-on-change)))))

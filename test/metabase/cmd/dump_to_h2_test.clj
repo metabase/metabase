@@ -69,11 +69,10 @@
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
           (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
-            (binding [setting/*disable-cache*      true
-                      mdb.connection/*db-type*     driver/*driver*
-                      mdb.connection/*data-source* (persistent-data-source driver/*driver* db-name)
-                      db/*db-connection*           {:datasource (persistent-data-source driver/*driver* db-name)}
-                      db/*quoting-style*           driver/*driver*]
+            (binding [setting/*disable-cache*         true
+                      mdb.connection/*application-db* (mdb.connection/application-db
+                                                       driver/*driver*
+                                                       (persistent-data-source driver/*driver* db-name))]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
