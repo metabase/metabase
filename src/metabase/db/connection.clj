@@ -35,3 +35,12 @@
     :postgres :ansi
     :h2       :h2
     :mysql    :mysql))
+
+(defn memoize-for-app-db
+  "Like [[clojure.core/memoize]] but memoizes a function for the current application database -- if the application
+  database is swapped out by tests or mocks, values for other app DBs will not be returned."
+  [f]
+  (let [f* (memoize (fn [_db-type _data-source & args]
+                      (apply f args)))]
+    (fn [& args]
+      (apply f* (db-type) (data-source) args))))

@@ -8,7 +8,7 @@
             [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
             [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
             [metabase.config :as config]
-            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
             [metabase.models.card :refer [Card]]
@@ -181,7 +181,7 @@
   (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
 
 (def ^:private ^{:arglists '([])} default-user-id
-  (mdb/memoize-for-app-db
+  (mdb.connection/memoize-for-app-db
    (fn []
      (let [user (db/select-one-id User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))

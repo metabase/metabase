@@ -8,7 +8,7 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
-            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -22,7 +22,7 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  (mdb/memoize-for-app-db
+  (mdb.connection/memoize-for-app-db
    (fn []
      (u/prog1 (db/select-one PermissionsGroup :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see

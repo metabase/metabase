@@ -66,12 +66,3 @@
           (mdb.connection-pool-setup/create-connection-pool! db-type data-source))
         (reset! *db-setup-finished?* true))))
   :done)
-
-(defn memoize-for-app-db
-  "Like [[clojure.core/memoize]] but memoizes a function for the current application database -- if the application
-  database is swapped out by tests or mocks, values for other app DBs will not be returned."
-  [f]
-  (let [f* (memoize (fn [_db-type _data-source & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (mdb.connection/db-type) (mdb.connection/data-source) args))))
