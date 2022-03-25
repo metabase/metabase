@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'e2e-moar-tests'
 
 jobs:
 
@@ -48,6 +48,7 @@ jobs:
       matrix:
         edition: [oss, ee]
         folder:
+          - "admin"
           - "binning"
           - "collections"
           - "custom-column"
