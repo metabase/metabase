@@ -24,6 +24,8 @@ const createForm = ({ timelines }) => {
       title: t`Description`,
       type: "text",
       validate: validate.maxLength(255),
+      info: t`Add links and formatting via markdown`,
+      infoLabel: t`Markdown supported`,
     },
     {
       name: "icon",

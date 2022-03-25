@@ -30,7 +30,12 @@ export const InfoIcon = styled(Icon)`
   }
 `;
 
-InfoIcon.defaultProps = { name: "info", size: 12 };
+export const InfoLabel = styled.span`
+  color: ${color("text-medium")};
+  font-size: 0.88em;
+  margin-left: auto;
+  cursor: default;
+`;
 
 export const FieldContainer = styled.div`
   margin-right: ${props => (props.horizontal ? "1rem" : "")};
