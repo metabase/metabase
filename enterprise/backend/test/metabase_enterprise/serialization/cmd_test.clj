@@ -1,22 +1,22 @@
 (ns metabase-enterprise.serialization.cmd-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase-enterprise.serialization.load :as load]
             [metabase.cmd :as cmd]
+            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.conn]
+            [metabase.db.data-source :as mdb.data-source]
             [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.models :refer [Card Database Dashboard User DashboardCard]]
+            [metabase.db.setup :as mdb.setup]
+            [metabase.models :refer [Card Dashboard DashboardCard Database User]]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as t.test]
-            [yaml.core :as yaml]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.connection :as mdb.conn]
-            [metabase.db.setup :as mdb.setup]
-            [clojure.java.io :as io]
-            [metabase.db :as mdb])
+            [yaml.core :as yaml])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
