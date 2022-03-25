@@ -632,7 +632,7 @@ export const getTransformedTimelines = createSelector(
         ),
       )
       .sortBy(timeline => timeline.name)
-      .sortBy(timeline => timeline.collection?.personal_owner_id != null)
+      .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
       .value();
   },
 );

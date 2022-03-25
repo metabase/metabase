@@ -99,6 +99,26 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@putTimelineEvent");
       cy.findByText("RC1");
     });
+
+    it("should support markdown in event description", () => {
+      cy.createTimelineWithEvents({
+        timeline: {
+          name: "Releases",
+        },
+        events: [
+          {
+            name: "RC1",
+            description: "[Release notes](https://metabase.test)",
+          },
+        ],
+      });
+
+      visitQuestion(3);
+      cy.findByLabelText("calendar icon").click();
+
+      cy.findByText("Releases").should("be.visible");
+      cy.findByText("Release notes").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {

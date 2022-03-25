@@ -14,7 +14,7 @@ describe("scenarios > question > bookmarks", () => {
     cy.visit("/collection/root");
 
     sidebar().within(() => {
-      getSectionTitle("Bookmarks");
+      getSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
     });
 
@@ -29,7 +29,7 @@ describe("scenarios > question > bookmarks", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    getSectionTitle("Bookmarks").should("not.exist");
+    getSectionTitle(/Bookmarks/).should("not.exist");
   });
 });
 
