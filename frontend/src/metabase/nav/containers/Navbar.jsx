@@ -66,7 +66,7 @@ export default class Navbar extends Component {
     return (
       <>
         <AdminNavbar {...this.props} />
-        {this.renderModal()}
+        {this.props.renderModal()}
       </>
     );
   }
@@ -87,7 +87,7 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
-        {this.renderModal()}
+        {this.props.renderModal()}
       </nav>
     );
   }

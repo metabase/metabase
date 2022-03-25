@@ -187,7 +187,7 @@ export default class App extends Component {
     }
   }
 
-  renderModal() {
+  renderModal = () => {
     const { modal } = this.state;
 
     if (modal) {
@@ -197,7 +197,7 @@ export default class App extends Component {
     } else {
       return null;
     }
-  }
+  };
 
   render() {
     const { children, location, errorPage } = this.props;
@@ -212,7 +212,7 @@ export default class App extends Component {
             {this.hasAppBar() && this.renderAppBar()}
             <AppContentContainer isAdminApp={this.isAdminApp()}>
               {this.hasNavbar() && sidebarOpen && (
-                <Navbar location={location} />
+                <Navbar location={location} renderModal={this.renderModal} />
               )}
               <AppContent>{children}</AppContent>
               {this.renderModal()}
