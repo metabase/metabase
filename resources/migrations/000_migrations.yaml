@@ -11278,6 +11278,16 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database associated to the persisted card'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_database_id
+                    deleteCascade: true
+              - column:
                   name: card_id
                   type: int
                   remarks: 'ID of the Card model persisted'

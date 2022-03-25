@@ -9,6 +9,7 @@
             [metabase.api.table :as table-api]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.concurrent :as ddl.concurrent]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
@@ -21,8 +22,10 @@
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
@@ -579,6 +582,8 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :details (assoc (:details database)
                                                       :persist-models true))
+              (classloader/require 'metabase.task.persist-refresh)
+              ((resolve 'metabase.task.persist-refresh/schedule-persistence-for-database) database)
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -594,7 +599,19 @@
     (if (-> database :details :persist-models)
       (do (db/update! Database id :details (assoc (:details database)
                                                   :persist-models false))
-          ;; todo: need to mark all as active = false
+          (db/update-where! PersistedInfo {:database_id id}
+                            :active false, :state "deleteable")
+          (ddl.concurrent/submit-task
+           (fn []
+             (let [to-unpersist (db/select PersistedInfo :database_id id)]
+               (doseq [unpersist to-unpersist]
+                 (try (ddl.i/unpersist! (:engine database) database unpersist)
+                      (catch Exception e
+                        (log/info e
+                                  "Error unpersisting model with card-id {0}"
+                                  (:card_id unpersist))))))))
+          (classloader/require 'metabase.task.persist-refresh)
+          ((resolve 'metabase.task.persist-refresh/unschedule-persistence-for-database) database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))

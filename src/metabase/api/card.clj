@@ -763,8 +763,8 @@
   {card-id su/IntGreaterThanZero}
   (api/check-403 api/*is-superuser?*)
   ;; if we change from superuser make sure to start on read/write checks
-  (api/let-404 [{:keys [dataset dataset_query result_metadata] :as card} (Card card-id)]
-    (let [database (Database (:database_id card))]
+  (api/let-404 [{:keys [dataset dataset_query result_metadata database_id] :as card} (Card card-id)]
+    (let [database (Database database_id)]
       (when-not (driver/database-supports? (:engine database) :persisted-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
@@ -776,6 +776,7 @@
       (let [slug           (-> card :name persisted-info/slug-name)
             ;; todo: figure out the balance of what goes in here initially and what is set in the ddl.i/persist!
             persisted-info (db/insert! PersistedInfo {:card_id       card-id
+                                                      :database_id   database_id
                                                       :question_slug slug
                                                       :query_hash    (persisted-info/query-hash dataset_query)
                                                       :table_name    (format "model_%s_%s" card-id slug)
@@ -797,7 +798,7 @@
   (api/let-404 [card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
       (let [database (Database (:database_id card))]
-        (db/update! PersistedInfo (:id persisted-info) :active false)
+        (db/update! PersistedInfo (:id persisted-info), :active false)
         (ddl.concurrent/submit-task
          #(ddl.i/unpersist! (:engine database) database persisted-info)))
       api/generic-204-no-content)))

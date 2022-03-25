@@ -5,6 +5,7 @@
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.models.card :refer [Card]]
             [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
@@ -80,10 +81,20 @@
                                                      qp/compile
                                                      :query))])
         (db/update! PersistedInfo (u/the-id persisted-info)
-          :active true, :state "persisted", :refresh_end :%now)
+          ;; todo: we can lose a deletion request here. we need to check the state as we complete
+          :active true, :state "persisted", :refresh_end :%now
+          :columns (mapv :name metadata))
         (catch Exception e
           (log/warn e)
           (throw e))))))
+
+(defmethod ddl.i/refresh! :postgres [driver database persisted-info]
+  (let [card (Card (:card_id persisted-info))]
+    (db/update! PersistedInfo (u/the-id persisted-info)
+      :active false, :state "refreshing")
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (jdbc/execute! conn [(drop-table-sql database (:table_name persisted-info))]))
+    (ddl.i/persist! driver database persisted-info card)))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]

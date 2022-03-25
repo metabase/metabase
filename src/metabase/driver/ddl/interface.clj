@@ -48,6 +48,14 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti refresh!
+  "Refresh a model in a datastore. A table is created and populated in the source datastore, not the application
+  database. Assumes that the destination schema is populated and permissions are correct. This should all be true
+  if `(driver/database-supports engine :persisted-models database)` returns true."
+  {:arglists '([driver database persisted-info])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti unpersist!
   "Unpersist a persisted model. Will delete the persisted info after removing the persisted table."
   {:arglists '([driver database persisted-info])}

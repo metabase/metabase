@@ -1,5 +1,8 @@
 (ns metabase.task.sync-databases
-  "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases."
+  "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases.
+
+  There always UpdateFieldValues and SyncAndAnalyzeDatabase jobs present. Databases add triggers to these jobs. And
+  those triggers include a database id."
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.jobs :as jobs]
