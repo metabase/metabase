@@ -310,7 +310,7 @@
   ^Boolean [^String path]
   (boolean (when (and (string? path)
                       (seq path))
-             (re-matches #"^/((\w|-)*/)*$" path))))
+             (re-matches (re-pattern (str "^/(" path-char "*/)*$")) path))))
 
 (def Path
   "Schema for a permissions path with a valid format."
