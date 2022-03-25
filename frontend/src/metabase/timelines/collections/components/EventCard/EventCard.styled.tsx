@@ -1,6 +1,6 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link/Link";
 import Icon from "metabase/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
 
@@ -44,22 +44,23 @@ export const CardBody = styled.div`
   min-width: 0;
 `;
 
-export const CardTitleText = styled.div`
+export interface CardTitleProps {
+  to?: string;
+}
+
+const cardTitleHoverStyles = css`
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const CardTitle = styled.div<CardTitleProps>`
   color: ${color("text-dark")};
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
   word-wrap: break-word;
-`;
-
-export interface CardTitleLinkProps {
-  to?: string;
-}
-
-export const CardTitleLink = styled(CardTitleText)<CardTitleLinkProps>`
-  &:hover {
-    color: ${color("brand")};
-  }
+  ${props => props.to && cardTitleHoverStyles};
 `;
 
 export const CardDescription = styled(Markdown)`

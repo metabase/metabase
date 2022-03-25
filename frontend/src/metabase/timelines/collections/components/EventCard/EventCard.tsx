@@ -18,8 +18,7 @@ import {
   CardThreadIcon,
   CardThreadIconContainer,
   CardThreadStroke,
-  CardTitleLink,
-  CardTitleText,
+  CardTitle,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -60,11 +59,11 @@ const EventCard = ({
       <CardBody>
         <CardDateInfo>{dateMessage}</CardDateInfo>
         {canEdit ? (
-          <CardTitleLink as={Link} to={editLink}>
+          <CardTitle as={Link} to={editLink}>
             {event.name}
-          </CardTitleLink>
+          </CardTitle>
         ) : (
-          <CardTitleText>{event.name}</CardTitleText>
+          <CardTitle>{event.name}</CardTitle>
         )}
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
