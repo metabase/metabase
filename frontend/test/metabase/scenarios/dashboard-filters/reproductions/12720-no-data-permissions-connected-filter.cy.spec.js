@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -103,7 +103,7 @@ describe.skip("issue 12720", () => {
 });
 
 function clickThrough(title) {
-  cy.visit("/dashboard/1");
+  visitDashboard(1);
   cy.wait("@cardQuery");
   cy.wait("@sqlQuery");
   cy.get(".LegendItem")

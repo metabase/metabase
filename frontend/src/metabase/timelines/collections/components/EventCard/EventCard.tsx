@@ -87,9 +87,11 @@ const getMenuItems = (
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!collection.can_write) {
+  if (!timeline.collection?.can_write) {
     return [];
-  } else if (!event.archived) {
+  }
+
+  if (!event.archived) {
     return [
       {
         title: t`Edit event`,

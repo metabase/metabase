@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -165,7 +166,7 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create public dashboards", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
 
       cy.icon("share").click();
       cy.contains("Sharing and embedding").click();
@@ -190,7 +191,7 @@ describe.skip("scenarios > public", () => {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
       });
 
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
 
       cy.icon("share").click();
       cy.contains("Sharing and embedding").click();
