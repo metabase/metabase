@@ -8,7 +8,6 @@ import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
-import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 import { NAV_HEIGHT } from "metabase/nav/constants";
 
 export const QueryBuilderViewRoot = styled.div`
