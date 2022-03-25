@@ -4,14 +4,12 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
-const ICON_SIZE = 16;
+const ICON_SIZE = 32;
 const ICON_SCALE = 0.45;
-const ICON_X = -ICON_SIZE;
+const ICON_X = -16;
 const ICON_Y = 10;
 const TEXT_X = 10;
 const TEXT_Y = 16;
-const TEXT_DISTANCE = ICON_SIZE * 2;
-const RECT_SIZE = ICON_SIZE * 2;
 
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
@@ -44,6 +42,25 @@ function getEventGroups(eventMapping) {
   return Object.values(eventMapping);
 }
 
+function getEventVisibility(eventDates, eventScale) {
+  let clipX = Number.NEGATIVE_INFINITY;
+  const eventVisibility = [];
+
+  eventDates.forEach(eventDate => {
+    const eventX = eventScale(eventDate);
+    const eventDistance = eventX - clipX;
+
+    if (eventDistance > ICON_SIZE) {
+      clipX = eventX;
+      eventVisibility.push(true);
+    } else {
+      eventVisibility.push(false);
+    }
+  });
+
+  return eventVisibility;
+}
+
 function isSelected(events, selectedEventIds) {
   return events.some(event => selectedEventIds.includes(event.id));
 }
@@ -69,24 +86,6 @@ function getIconTransform() {
 function getIconLabel(events) {
   const icon = getIcon(events);
   return `${icon} icon`;
-}
-
-function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
-  const thisDate = eventDates[eventIndex];
-  const prevDate = eventDates[eventIndex - 1];
-  const nextDate = eventDates[eventIndex + 1];
-  const prevDistance = prevDate && eventScale(thisDate) - eventScale(prevDate);
-  const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
-
-  return prevDistance < eventDistance || nextDistance < eventDistance;
-}
-
-function hasEventText(events, eventIndex, eventScale, eventDates) {
-  if (events.length > 1) {
-    return !isEventWithin(eventIndex, eventScale, eventDates, TEXT_DISTANCE);
-  } else {
-    return false;
-  }
 }
 
 function renderEventLines({
@@ -118,6 +117,7 @@ function renderEventTicks({
   eventScale,
   eventDates,
   eventGroups,
+  eventVisibility,
   selectedEventIds,
   onHoverChange,
   onOpenTimelines,
@@ -139,6 +139,7 @@ function renderEventTicks({
   eventTicks
     .enter()
     .append("g")
+    .filter((d, i) => eventVisibility[i])
     .attr("class", "event-tick")
     .classed("hover", d => isSelected(d, selectedEventIds))
     .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
@@ -154,12 +155,11 @@ function renderEventTicks({
   eventTicks
     .append("rect")
     .attr("fill", "none")
-    .attr("width", RECT_SIZE)
-    .attr("height", RECT_SIZE)
+    .attr("width", ICON_SIZE)
+    .attr("height", ICON_SIZE)
     .attr("transform", () => getIconTransform());
 
   eventTicks
-    .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
@@ -213,6 +213,7 @@ export function renderEvents(
   const eventMapping = getEventMapping(events, xInterval);
   const eventDates = getEventDates(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
+  const eventVisibility = getEventVisibility(eventDates, eventScale);
 
   if (brush) {
     renderEventLines({
@@ -232,6 +233,7 @@ export function renderEvents(
       eventScale,
       eventDates,
       eventGroups,
+      eventVisibility,
       selectedEventIds,
       onHoverChange,
       onOpenTimelines,
