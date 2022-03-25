@@ -235,11 +235,9 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
-        (if api/*is-superuser?*
-          (throw (Exception. (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))
-          ;; Throw a generic 403 if a non-superuser is trying to access a non-existant setting so that we don't reveal
-          ;; existing setting names
-          (api/throw-403)))))
+        (throw (ex-info (tru "Unknown setting: {0}" k)
+                        {:registered-settings
+                         (sort (keys @registered-settings))})))))
 
 (defn- call-on-change
   "Cache watcher that applies `:on-change` callback for all settings that have changed."
@@ -311,10 +309,13 @@
     (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (defn- current-user-can-access-setting?
+  "If the current user is a non-admin, this checks whether the user can read or write this setting. If the current user
+  is an admin or no user is bound, this always returns true."
   [setting]
   (or (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (allows-user-local-values? setting)))
+      (and (allows-user-local-values? setting)
+           (not= (:visibility setting) :admin))))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -662,7 +663,7 @@
   (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
     (when-not (current-user-can-access-setting? setting)
-      (api/throw-403))
+      (throw (ex-info (tru "You do not have access to the setting {0}" name) {})))
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
@@ -944,7 +945,7 @@
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
       (not (current-user-can-access-setting? setting))
-      (api/throw-403)
+      (throw (ex-info (tru "You do not have access to the setting {0}" k) {}))
 
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via

@@ -16,21 +16,36 @@
 (api/defendpoint PUT "/"
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [:as {settings :body}]
-  (setting/set-many! settings)
+  (try
+    (setting/set-many! settings)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Throw a generic 403 for non-admins, so as to not reveal details about settings
+      (api/check-superuser)
+      (throw e)))
   api/generic-204-no-content)
 
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
   {key su/NonBlankString}
-  (setting/user-facing-value key))
+  (try
+    (setting/user-facing-value key)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Throw a generic 403 for non-admins, so as to not reveal details about settings
+      (api/check-superuser)
+      (throw e))))
 
 (api/defendpoint PUT "/:key"
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
   {key su/NonBlankString}
-  (setting/set! key value)
+  (try
+    (setting/set! key value)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Throw a generic 403 for non-admins, so as to not reveal details about settings
+      (api/check-superuser)
+      (throw e)))
   api/generic-204-no-content)
 
 (api/define-routes)

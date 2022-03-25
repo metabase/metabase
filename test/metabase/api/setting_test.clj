@@ -153,9 +153,9 @@
 
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
+             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "GHI", :test-setting-2 "JKL"})))
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "ABC", :test-user-local-allowed-setting "DEF"}))))))
+             (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "GHI", :test-user-local-allowed-setting "JKL"}))))))
 
 (defn- fetch-user-local-test-settings [user]
   (for [setting (mt/user-http-request user :get 200 "setting")
@@ -232,17 +232,26 @@
   (testing "PUT /api/setting"
     (testing "can updated multiple user-local settings at once"
       (set-initial-user-local-values)
-      (mt/user-http-request :crowberto :put 204 "setting" {:test-user-local-only-setting "GHI"
+      (mt/user-http-request :crowberto :put 204 "setting" {:test-user-local-only-setting    "GHI"
                                                            :test-user-local-allowed-setting "JKL"})
       (is (= "GHI"
              (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
       (is (= "JKL"
              (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
 
-      (mt/user-http-request :rasta :put 204 "setting" {:test-user-local-only-setting "MNO"
+      (mt/user-http-request :rasta :put 204 "setting" {:test-user-local-only-setting    "MNO"
                                                        :test-user-local-allowed-setting "PQR"})
       (is (= "MNO"
              (mt/user-http-request :rasta :get 200 "setting/test-user-local-only-setting")))
       (is (= "PQR"
              (mt/user-http-request :rasta :get 200 "setting/test-user-local-allowed-setting")))
-      (clear-user-local-values))))
+      (clear-user-local-values))
+
+    (testing "if a non-admin tries to set multiple settings and any aren't user-local, none are updated"
+      (set-initial-user-local-values)
+      (test-setting-1 "ABC")
+      (mt/user-http-request :rasta :put 403 "setting" {:test-user-local-only-setting "MNO"
+                                                       :test-setting-1               "PQR"})
+      (is (= "DEF" (mt/with-current-user (mt/user->id :rasta)
+                     (test-user-local-only-setting))))
+      (is (= "ABC" (test-setting-1))))))
