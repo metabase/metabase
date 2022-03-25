@@ -3,6 +3,8 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
 import { NAV_HEIGHT } from "metabase/nav/constants";
+import { space } from "metabase/styled-components/theme";
+import Icon from "metabase/components/Icon";
 
 const adminCss = css`
   flex-direction: column;
@@ -32,16 +34,30 @@ export const AppBar = styled.div`
   z-index: 4;
 `;
 
-export const LogoIconWrapper = styled.div<{ sidebarOpen: boolean }>`
+export const LogoIconWrapper = styled.div`
   cursor: pointer;
-  height: 60px;
-  width: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: ${props =>
-    props.sidebarOpen ? color("bg-medium") : "transparent"};
+  border-radius: 6px;
+  padding: ${space(1)};
+  margin-left: ${space(1)};
+
   &:hover {
-    background-color: ${color("bg-medium")};
+    background-color: ${color("bg-light")};
+  }
+`;
+
+export const SidebarButton = styled(Icon)`
+  border: 1px solid ${color("border")};
+  padding: ${space(1)};
+  border-radius: 4px;
+  margin-left: ${space(1)};
+  color: ${color("text-medium")};
+
+  &:hover {
+    color: ${color("brand")};
+    border-color: ${color("brand")};
+    cursor: pointer;
   }
 `;

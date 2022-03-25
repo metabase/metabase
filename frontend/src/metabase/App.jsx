@@ -2,11 +2,14 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
 import SearchBar from "metabase/nav/components/SearchBar";
 import * as Urls from "metabase/lib/urls";
 import LogoIcon from "metabase/components/LogoIcon";
+import Link from "metabase/core/components/Link";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   SearchBarContainer,
@@ -36,6 +39,7 @@ import {
   AppContent,
   AppBar,
   LogoIconWrapper,
+  SidebarButton,
 } from "./App.styled";
 
 export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -131,12 +135,19 @@ export default class App extends Component {
     const { location, onChangeLocation } = this.props;
     return (
       <AppBar>
-        <LogoIconWrapper
-          onClick={this.toggleSidebar}
-          sidebarOpen={this.state.sidebarOpen}
-        >
-          <LogoIcon size={24} />
+        <LogoIconWrapper>
+          <Link to="/">
+            <LogoIcon size={24} />
+          </Link>
         </LogoIconWrapper>
+        <Tooltip
+          tooltip={this.state.sidebarOpen ? t`Close sidebar` : t`Open sidebar`}
+        >
+          <SidebarButton
+            name={this.state.sidebarOpen ? "chevronleft" : "chevronright"}
+            onClick={this.toggleSidebar}
+          />
+        </Tooltip>
         <SearchBarContainer>
           <SearchBarContent>
             <SearchBar
