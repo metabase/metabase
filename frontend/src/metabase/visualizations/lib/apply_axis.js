@@ -285,7 +285,8 @@ export function applyChartQuantitativeXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain = [xDomain[0] - xInterval * 0.75, xDomain[1] + xInterval * 0.75];
+  const pad = Math.round(xInterval * 0.75 * 10) / 10;
+  xDomain = [xDomain[0] - pad, xDomain[1] + pad];
 
   chart.x(scale.domain(xDomain)).xUnits(dc.units.fp.precision(xInterval));
 }
