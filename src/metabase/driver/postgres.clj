@@ -19,6 +19,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.secret :as secret]
+            [metabase.models.field :as field]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -344,15 +345,11 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [identifier field nfc-path]
+(defn- json-query [identifier nfc-field nfc-path]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type           (:effective_type field)
+    (let [field-type           (:effective_type nfc-field)
           unwrapped-identifier (:form identifier)
-          parent-components    (-> (:components unwrapped-identifier)
-                                    (vec)
-                                    (pop)
-                                    (conj (first nfc-path)))
-          parent-identifier    (apply hx/identifier (cons :field parent-components))
+          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           ;; Array and sub-JSON coerced to text
           cast-type            (cond
                                  (isa? field-type :type/Integer)
