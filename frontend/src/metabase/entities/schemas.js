@@ -65,12 +65,28 @@ export default createEntity({
 
     if (type === Questions.actionTypes.UPDATE) {
       const { question } = payload;
-      const schema = getCollectionVirtualSchemaId(question.collection);
-      if (!state[schema]) {
+      const schemaId = getCollectionVirtualSchemaId(question.collection);
+
+      const virtualQuestionId = getQuestionVirtualTableId(question);
+      const previousSchemaContainingTheQuestion = getPreviousSchemaContainingTheQuestion(
+        state,
+        schemaId,
+        virtualQuestionId,
+      );
+
+      if (previousSchemaContainingTheQuestion) {
+        state = removeVirtualQuestionFromSchema(
+          state,
+          previousSchemaContainingTheQuestion.id,
+          virtualQuestionId,
+        );
+      }
+
+      if (!state[schemaId]) {
         return state;
       }
-      const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(state, [schema, "tables"], tables => {
+
+      return updateIn(state, [schemaId, "tables"], tables => {
         if (question.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
@@ -81,6 +97,26 @@ export default createEntity({
     return state;
   },
 });
+
+function getPreviousSchemaContainingTheQuestion(
+  state,
+  schemaId,
+  virtualQuestionId,
+) {
+  return Object.values(state).find(schema => {
+    if (schema.id === schemaId) {
+      return false;
+    }
+
+    return (schema.tables || []).includes(virtualQuestionId);
+  });
+}
+
+function removeVirtualQuestionFromSchema(state, schemaId, virtualQuestionId) {
+  return updateIn(state, [schemaId, "tables"], tables =>
+    tables.filter(tableId => tableId !== virtualQuestionId),
+  );
+}
 
 function addTableAvoidingDuplicates(tables, tableId) {
   if (!Array.isArray(tables)) {
