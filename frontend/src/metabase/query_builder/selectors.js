@@ -631,8 +631,8 @@ export const getTransformedTimelines = createSelector(
             .value(),
         ),
       )
-      .sortBy(timeline => timeline.collection?.personal_owner_id != null)
       .sortBy(timeline => timeline.name)
+      .sortBy(timeline => timeline.collection?.personal_owner_id != null)
       .value();
   },
 );
