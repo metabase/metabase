@@ -44,7 +44,7 @@
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator
-                   :collection)
+                   [:collection :can_write])
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 

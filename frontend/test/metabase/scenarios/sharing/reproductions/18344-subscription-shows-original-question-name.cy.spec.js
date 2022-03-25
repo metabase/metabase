@@ -3,6 +3,7 @@ import {
   editDashboard,
   saveDashboard,
   setupSMTP,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -19,7 +20,7 @@ describe("issue 18344", () => {
     setupSMTP();
 
     // Rename the question
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
 
