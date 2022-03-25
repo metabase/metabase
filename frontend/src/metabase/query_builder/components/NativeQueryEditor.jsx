@@ -418,17 +418,19 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         {hasTopBar && (
-          <div className="flex align-center" style={{ minHeight: 55 }}>
-            <DataSourceSelectors
-              isNativeEditorOpen={isNativeEditorOpen}
-              query={query}
-              readOnly={readOnly}
-              setDatabaseId={this.setDatabaseId}
-              setTableId={this.setTableId}
-            />
+          <div className="flex align-center">
+            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+              />
+            </div>
             {hasParametersList && (
               <SyncedParametersList
-                className="mt1"
+                className="mt1 mx2"
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
@@ -438,6 +440,7 @@ export default class NativeQueryEditor extends Component {
             )}
             {query.hasWritePermission() && (
               <VisibilityToggler
+                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
                 readOnly={readOnly}
                 toggleEditor={this.toggleEditor}

@@ -25,8 +25,8 @@ export const HeaderActions = styled.div`
 export const HeaderBackButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("text-dark")};
-  margin: 0 0.5rem 0 0;
-  padding: 0.25rem 0;
+  padding: 0.25rem 0.5rem;
+  margin-left: -0.5rem;
 
   &:hover {
     color: ${color("brand")};

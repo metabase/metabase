@@ -11,7 +11,7 @@ import {
 } from "metabase-types/types/Card";
 
 export function isSupportedTemplateTagForModel(tag: TemplateTag) {
-  return tag.type === "card";
+  return ["card", "snippet"].includes(tag.type);
 }
 
 export function checkDatabaseSupportsModels(database?: Database | null) {

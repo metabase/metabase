@@ -10,6 +10,7 @@ import {
   AddEditSlackSidebar,
   AddEditEmailSidebar,
 } from "metabase/sharing/components/AddEditSidebar";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
@@ -106,6 +107,7 @@ const mapDispatchToProps = {
 
 @Pulses.loadList({
   query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
+  loadingAndErrorWrapper: false,
 })
 @User.loadList({ loadingAndErrorWrapper: false })
 @connect(mapStateToProps, mapDispatchToProps)
@@ -133,6 +135,10 @@ class SharingSidebar extends React.Component {
     params: PropTypes.object,
   };
 
+  componentDidMount() {
+    this.props.fetchPulseFormInput();
+  }
+
   setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
   };
@@ -153,10 +159,6 @@ class SharingSidebar extends React.Component {
       cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
-  };
-
-  componentDidMount = async () => {
-    await this.props.fetchPulseFormInput();
   };
 
   onChannelPropertyChange = (index, name, value) => {
@@ -264,9 +266,14 @@ class SharingSidebar extends React.Component {
       dashboard,
     } = this.props;
 
-    // protect from empty values that will mess this up
-    if (!formInput.channels || !pulse) {
-      return <Sidebar />;
+    const isLoading = !pulses || !users || !pulse || !formInput?.channels;
+
+    if (isLoading) {
+      return (
+        <Sidebar>
+          <LoadingAndErrorWrapper loading />
+        </Sidebar>
+      );
     }
 
     if (editingMode === "list-pulses" && pulses.length > 0) {

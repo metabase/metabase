@@ -6,6 +6,7 @@ import {
   sidebar,
   mockSlackConfigured,
   isOSS,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -18,7 +19,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   it.skip("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     });
     cy.findByText("This dashboard is looking empty.");
 
@@ -34,7 +35,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     });
     cy.icon("pencil").click();
     cy.icon("string").click();
@@ -230,7 +231,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should include text cards (metabase#15744)", () => {
       const TEXT_CARD = "FooBar";
 
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.icon("pencil").click();
       cy.icon("string").click();
       cy.findByPlaceholderText(
@@ -368,7 +369,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 // Helper functions
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
-  cy.visit(`/dashboard/${dashboard_id}`);
+  visitDashboard(dashboard_id);
   cy.icon("share").click();
   cy.findByText("Dashboard subscriptions").click();
 }

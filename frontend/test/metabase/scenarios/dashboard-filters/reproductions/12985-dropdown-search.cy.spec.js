@@ -1,4 +1,9 @@
-import { restore, filterWidget, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -77,7 +82,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               ],
             });
           });
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          visitDashboard(DASHBOARD_ID);
         });
       });
     });
@@ -155,7 +160,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
             ],
           });
         });
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
       });
     });
 

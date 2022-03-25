@@ -3,7 +3,7 @@
   (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
-            [metabase.models.timeline :refer [Timeline]]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -21,11 +21,16 @@
   [:as {{:keys [name description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
    description   (s/maybe s/Str)
-   icon          (s/maybe timeline-event/Icons)
+   icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (collection/check-write-perms-for-collection collection_id)
-  (db/insert! Timeline (assoc body :creator_id api/*current-user-id*)))
+  (let [tl (merge
+            body
+            {:creator_id api/*current-user-id*}
+            (when-not icon
+              {:icon timeline/DefaultIcon}))]
+    (db/insert! Timeline tl)))
 
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
@@ -33,8 +38,8 @@
   {include (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (db/select Timeline [:where [:= :archived archived?]])]
-    (cond->> (hydrate timelines :creator)
+        timelines (map timeline/hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
+    (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
@@ -48,7 +53,12 @@
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
-    (cond-> (hydrate timeline :creator)
+    (cond-> (hydrate timeline :creator [:collection :can_write])
+      ;; `collection_id` `nil` means we need to assoc 'root' collection
+      ;; because hydrate `:collection` needs a proper `:id` to work.
+      (nil? (:collection_id timeline))
+      timeline/hydrate-root-collection
+
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?
                                                :events/start (when start (u.date/parse start))
@@ -60,7 +70,7 @@
   [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    description   (s/maybe s/Str)
-   icon          (s/maybe timeline-event/Icons)
+   icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (let [existing (api/write-check Timeline id)

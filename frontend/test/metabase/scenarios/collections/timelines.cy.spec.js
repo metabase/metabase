@@ -1,4 +1,11 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  restore,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -228,6 +235,39 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC1");
       cy.findByText("RC2");
     });
+
+    it("should support markdown in timeline description", () => {
+      cy.createTimeline({
+        name: "Releases",
+        description: "[Release notes](https://metabase.test)",
+      });
+
+      cy.createTimeline({
+        name: "Holidays",
+        description: "[Holiday list](https://metabase.test)",
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+      cy.findByText("Holiday list").should("be.visible");
+    });
+
+    it("should support markdown in event description", () => {
+      cy.createTimelineWithEvents({
+        timeline: {
+          name: "Releases",
+        },
+        events: [
+          {
+            name: "RC1",
+            description: "[Release notes](https://metabase.test)",
+          },
+        ],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
@@ -254,6 +294,38 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Releases");
       cy.findByText("Add an event").should("not.exist");
     });
+  });
+});
+
+describeWithSnowplow("scenarios > collections > timelines", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events when creating a timeline event", () => {
+    // 1 - new_instance_created
+    // 2 - pageview
+    cy.visit("/collection/root");
+
+    // 3 - pageview
+    cy.findByLabelText("calendar icon").click();
+
+    cy.findByText("Add an event").click();
+    cy.findByLabelText("Event name").type("Event");
+    cy.findByLabelText("Date").type("10/20/2020");
+
+    // 4 - new_event_created
+    // 5 - pageview
+    cy.button("Create").click();
+
+    expectGoodSnowplowEvents(5);
   });
 });
 

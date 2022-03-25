@@ -28,7 +28,9 @@ const TimelineCard = ({
       <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>
-        <CardDescription>{timeline.description}</CardDescription>
+        {timeline.description && (
+          <CardDescription>{timeline.description}</CardDescription>
+        )}
       </CardBody>
       {eventsCount != null && (
         <CardAside isTopAligned={hasDescription}>

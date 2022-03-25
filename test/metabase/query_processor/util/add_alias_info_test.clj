@@ -12,7 +12,7 @@
 
 (comment h2/keep-me)
 
-(deftest normalize-clause-test
+(deftest ^:parallel normalize-clause-test
   (is (= [:expression "wow"]
          (#'add/normalize-clause [:expression "wow"])
          (#'add/normalize-clause [:expression "wow" nil])
@@ -35,7 +35,7 @@
 (defn- add-alias-info [query]
   (mt/with-everything-store
     (driver/with-driver (or driver/*driver* :h2)
-      (-> query qp/query->preprocessed add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+      (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
 (deftest join-in-source-query-test
   (is (query= (mt/mbql-query venues
@@ -394,12 +394,8 @@
                                               "double_price"
                                               {:base-type          :type/Integer
                                                ::add/source-table  ::add/source
-                                               ;; TODO -- these don't agree with the source query (maybe they should
-                                               ;; both be prefixed by another `COOL.` I think) although I'm not sure it
-                                               ;; makes sense to try to assume this stuff either. Arguably the field
-                                               ;; clause should be `[:field "COOL.double_price" ...]` or something
-                                               ::add/source-alias  "double_price"
-                                               ::add/desired-alias "COOL.double_price"
+                                               ::add/source-alias  "COOL.double_price"
+                                               ::add/desired-alias "COOL.COOL.double_price"
                                                ::add/position      0}]]
                             {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
                                                                            ::add/position      1
@@ -606,3 +602,38 @@
                                                                    :temporal-unit      :month}]]}
                                    :alias        "Q2"}]})
                 [:field (mt/id :products :created_at) {:join-alias "Q2"}])))))))
+
+(deftest ^:parallel expression-from-source-query-alias-test
+  (testing "Make sure we use the exported alias from the source query for expressions (#21131)"
+    (let [source-query {:source-table 3
+                        :expressions  {"PRICE" [:+
+                                                [:field 2 {::add/source-table  3
+                                                           ::add/source-alias  "price"
+                                                           ::add/desired-alias "price"
+                                                           ::add/position      1}]
+                                                2]}
+                        :fields       [[:field 2 {::add/source-table  3
+                                                  ::add/source-alias  "price"
+                                                  ::add/desired-alias "price"
+                                                  ::add/position      1}]
+                                       [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                                             ::add/position      2}]]}]
+      (testing `add/exports
+        (is (= #{[:field 2 {::add/source-table  3
+                            ::add/source-alias  "price"
+                            ::add/desired-alias "price"
+                            ::add/position      1}]
+                 [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                       ::add/position      2}]}
+               (#'add/exports source-query))))
+      (testing `add/matching-field-in-source-query
+        (is (= [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                     ::add/position      2}]
+               (#'add/matching-field-in-source-query
+                {:source-query source-query}
+                [:field "PRICE" {:base-type :type/Float}]))))
+      (testing `add/field-alias-in-source-query
+        (is (= "PRICE_2"
+               (#'add/field-alias-in-source-query
+                {:source-query source-query}
+                [:field "PRICE" {:base-type :type/Float}])))))))

@@ -6,6 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
@@ -28,7 +29,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
           ({ body: { card_id, dashboard_id } }) => {
             visitQuestion(card_id);
 
-            cy.visit(`/dashboard/${dashboard_id}`);
+            visitDashboard(dashboard_id);
           },
         );
 

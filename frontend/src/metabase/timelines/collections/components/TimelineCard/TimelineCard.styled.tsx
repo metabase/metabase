@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
+import Markdown from "metabase/core/components/Markdown";
 
 export const CardIcon = styled(Icon)`
   color: ${color("text-light")};
@@ -24,7 +25,7 @@ export const CardTitle = styled.span`
   word-wrap: break-word;
 `;
 
-export const CardDescription = styled.span`
+export const CardDescription = styled(Markdown)`
   display: block;
   color: ${color("text-dark")};
   word-wrap: break-word;
