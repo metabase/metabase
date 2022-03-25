@@ -7,12 +7,11 @@
             [clojurewerkz.quartzite.triggers :as triggers]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :refer [PersistedInfo]]
-            [metabase.util.cron :as cron-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.driver.ddl.interface :as ddl.i]
             [toucan.db :as db])
-  (:import [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
+  (:import [org.quartz ObjectAlreadyExistsException]))
 
 ;; copied from task/sync_databases.clj
 (defn ^:private job-context->database-id
@@ -80,15 +79,15 @@
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
                      (u/the-id database) (.. ^org.quartz.Trigger tggr getKey getName)))
-    (task/add-trigger! tggr)))
+    (try (task/add-trigger! tggr)
+         (catch ObjectAlreadyExistsException _e
+           (log/info
+            (u/format-color 'green "Persistence already present for database %d: trigger: %s"
+                            (u/the-id database) (.. ^org.quartz.Trigger tggr getKey getName)))))))
 
 (defn unschedule-persistence-for-database
   [database]
   (task/delete-trigger! (trigger-key database)))
-
-(comment
-  (unschedule-persistence-for-database 19)
-  )
 
 (defn- job-init
   []
@@ -96,4 +95,7 @@
 
 (defmethod task/init! ::PersistRefresh
   [_]
-  (job-init))
+  (job-init)
+  (let [dbs-with-persistence (filter (comp :persist-models :details) (Database))]
+    (doseq [db dbs-with-persistence]
+      (schedule-persistence-for-database db))))
