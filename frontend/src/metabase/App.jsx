@@ -136,7 +136,7 @@ export default class App extends Component {
     return (
       <AppBar>
         <LogoIconWrapper>
-          <Link to="/">
+          <Link to="/" data-metabase-event={"Navbar;Logo"}>
             <LogoIcon size={24} />
           </Link>
         </LogoIconWrapper>
