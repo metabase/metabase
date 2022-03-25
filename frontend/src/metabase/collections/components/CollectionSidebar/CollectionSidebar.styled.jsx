@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { space } from "metabase/styled-components/theme";
-import { darken, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -49,7 +49,7 @@ export const Sidebar = styled.aside`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${darken(color("white"), 0.075)};
+  color: ${color("text-medium")};
   font-weight: 700;
   font-size: 11px;
   margin-left: ${space(2)};

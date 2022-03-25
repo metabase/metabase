@@ -1,41 +1,47 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-const coreAppCss = css`
-  display: flex;
+import { NAV_HEIGHT } from "metabase/nav/constants";
+
+const adminCss = css`
+  flex-direction: column;
 `;
 
 export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
+  display: flex;
   position: relative;
-  height: 100vh;
-
-  ${props => !props.isAdminApp && coreAppCss}
+  height: calc(100vh - ${NAV_HEIGHT});
+  overflow: hidden;
+  ${props => props.isAdminApp && adminCss}
 `;
 
 export const AppContent = styled.div`
-  display: flex;
-  flex-direction: column;
   width: 100%;
-  height: 100%;
   overflow: auto;
+  background-color: ${color("bg-white")};
 `;
 
 export const AppBar = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  position: relative;
-  padding-left: 1rem;
-  padding-right: 1rem;
-
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
-
   z-index: 4;
 `;
 
-export const LogoIconWrapper = styled.div`
+export const LogoIconWrapper = styled.div<{ sidebarOpen: boolean }>`
   cursor: pointer;
+  height: 60px;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props =>
+    props.sidebarOpen ? color("bg-medium") : "transparent"};
+  &:hover {
+    background-color: ${color("bg-medium")};
+  }
 `;

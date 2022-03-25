@@ -32,12 +32,7 @@ const mapStateToProps = (state, props) => ({
   hasDataAccess: getHasDataAccess(state),
 });
 
-import { getDefaultSearchColor } from "metabase/nav/constants";
-import {
-  ProfileLinkContainer,
-  LogoLinkContainer,
-  NavRoot,
-} from "./Navbar.styled";
+import { ProfileLinkContainer, NavRoot } from "./Navbar.styled";
 import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
 import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter";
 
@@ -71,7 +66,7 @@ export default class Navbar extends Component {
     return (
       <>
         <AdminNavbar {...this.props} />
-        {this.renderModal()}
+        {this.props.renderModal()}
       </>
     );
   }
@@ -92,7 +87,7 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
-        {this.renderModal()}
+        {this.props.renderModal()}
       </nav>
     );
   }
@@ -108,24 +103,18 @@ export default class Navbar extends Component {
       <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3 flex-no-shrink overflow-auto relative pb4"
-        style={{ paddingBottom: 100 }}
+        className="Nav"
       >
-        <LogoLinkContainer>
-          <Link
-            to="/"
-            data-metabase-event={"Navbar;Logo"}
-            className="relative cursor-pointer z2 rounded flex justify-center transition-background"
-            p={1}
-            mx={1}
-            hover={{ backgroundColor: getDefaultSearchColor() }}
-          >
-            {t`Home`}
-          </Link>
-          <ProfileLinkContainer>
-            <ProfileLink {...this.props} user={user} />
-          </ProfileLinkContainer>
-        </LogoLinkContainer>
+        <Link
+          to="/"
+          data-metabase-event={"Navbar;Logo"}
+          className="relative cursor-pointer z2 rounded flex transition-background bg-brand-hover text-bold"
+          p={1}
+          mx={1}
+        >
+          <Icon name="home" />
+          {t`Home`}
+        </Link>
         <CollectionSidebar
           isRoot={isRoot}
           handleToggleMobileSidebar={() => {
@@ -153,6 +142,9 @@ export default class Navbar extends Component {
           </Link>
         )}
         <Footer isAdmin={user.is_superuser} />
+        <ProfileLinkContainer>
+          <ProfileLink {...this.props} user={user} />
+        </ProfileLinkContainer>
       </NavRoot>
     );
   }
