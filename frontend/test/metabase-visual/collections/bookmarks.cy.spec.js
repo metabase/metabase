@@ -17,7 +17,7 @@ describe("Bookmarks in a collection page", () => {
     cy.visit("/collection/1");
 
     sidebar().within(() => {
-      getSectionTitle("Bookmarks");
+      getSectionTitle(/Bookmarks/);
     });
 
     cy.percySnapshot();
