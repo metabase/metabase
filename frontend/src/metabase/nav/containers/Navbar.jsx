@@ -105,16 +105,6 @@ export default class Navbar extends Component {
         // TODO: hide nav using state in redux instead?
         className="Nav"
       >
-        <Link
-          to="/"
-          data-metabase-event={"Navbar;Logo"}
-          className="relative cursor-pointer z2 rounded flex transition-background bg-brand-hover text-bold"
-          p={1}
-          mx={1}
-        >
-          <Icon name="home" />
-          {t`Home`}
-        </Link>
         <CollectionSidebar
           isRoot={isRoot}
           handleToggleMobileSidebar={() => {
