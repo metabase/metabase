@@ -235,7 +235,7 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.findByText("Previous").click();
+    cy.findByText("Specific dates...").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
     cy.icon("calendar").click();
@@ -433,7 +433,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter by this column").click();
     cy.findByText("Is").click();
     cy.findByText("Is empty").click();
-    cy.findByText("Update filter").click();
+    cy.findByText("Add filter").click();
 
     // filter out everything
     cy.contains("Showing 0 rows");
@@ -456,7 +456,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter by this column").click();
     cy.findByText("Equal to").click();
     cy.findByText("Is empty").click();
-    cy.findByText("Update filter").click();
+    cy.findByText("Add filter").click();
 
     // filter out everything
     cy.contains("Showing 0 rows");
@@ -528,6 +528,9 @@ describe("scenarios > question > filter", () => {
     // Via the GUI, create a filter with "include-current" option
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
+    cy.contains("Relative dates...").click();
+    cy.contains("Past").click();
+    cy.icon("ellipsis").click();
     cy.contains("Include today").click();
     cy.button("Add filter").click();
 
@@ -542,7 +545,9 @@ describe("scenarios > question > filter", () => {
 
     // Back to GUI and "Include today" should be still checked
     cy.findByText("Created At Previous 30 Days").click();
-    cy.findByLabelText("Include today").should("be.checked");
+    cy.icon("ellipsis").click();
+    cy.findByText("Include today").should("exist");
+    cy.icon("check").should("exist");
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
@@ -949,7 +954,7 @@ describe("scenarios > question > filter", () => {
           cy.findByLabelText(regexCondition)
             .check({ force: true }) // the radio input is hidden
             .should("be.checked");
-          cy.button("Update filter").click();
+          cy.button("Add filter").click();
           cy.wait("@dataset");
         });
 

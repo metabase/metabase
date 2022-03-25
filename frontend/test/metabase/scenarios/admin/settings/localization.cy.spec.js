@@ -159,7 +159,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("€10.00");
   });
 
-  it("should use date and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+  it("should use fix up clj unit testsdate and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
@@ -183,7 +183,7 @@ describe("scenarios > admin > localization", () => {
     // create a date filter and set it to the 'On' view to see a specific date
     cy.findByTextEnsureVisible("Created At").click();
     cy.findByText("Filter by this column").click();
-    cy.findByText("Previous").click();
+    cy.findByText("Specific dates...").click();
     cy.findByText("On").click();
 
     // ensure the date picker is ready
@@ -211,7 +211,7 @@ describe("scenarios > admin > localization", () => {
       .type("56");
 
     // apply the date filter
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
     cy.wait("@dataset");
 
     cy.findByTestId("loading-spinner").should("not.exist");
@@ -227,3 +227,4 @@ function setFirstWeekDayTo(day) {
     value: day.toLowerCase(),
   });
 }
+fix up clj unit tests

@@ -552,6 +552,8 @@ describe("scenarios > question > custom column", () => {
     popover()
       .contains("MiscDate")
       .click();
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     // The popover shows up with the default value selected - previous 30 days.
     // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
     cy.findByText("Days").click();

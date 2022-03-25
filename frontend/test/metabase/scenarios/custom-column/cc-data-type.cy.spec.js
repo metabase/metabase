@@ -49,7 +49,8 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     cy.findByText("Days");
   });
 
@@ -69,7 +70,8 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     cy.findByText("Days");
   });
 
@@ -89,7 +91,8 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     cy.findByText("Days");
   });
 });

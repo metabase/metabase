@@ -115,7 +115,7 @@ const MONTH_OPTIONS: Option[] = [
 
 const MISC_OPTIONS: Option[] = [
   {
-    displayName: t`Specific date...`,
+    displayName: t`Specific dates...`,
     init: filter => [
       "=",
       getDateTimeField(filter[1]),
@@ -123,7 +123,7 @@ const MISC_OPTIONS: Option[] = [
     ],
   },
   {
-    displayName: t`Relative date...`,
+    displayName: t`Relative dates...`,
     init: filter => [
       "time-interval",
       getDateTimeField(filter[1]),

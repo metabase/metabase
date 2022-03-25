@@ -203,37 +203,35 @@ export default class SpecificDatePicker extends Component<Props, State> {
 
     return (
       <div className={className}>
-        {!calendar ? (
-          <div className="mb2 full bordered rounded flex align-center">
-            <InputBlurChange
-              placeholder={moment().format(dateFormat)}
-              className="borderless full p1 h3"
-              style={{
-                outline: "none",
-              }}
-              value={date ? date.format(dateFormat) : ""}
-              onBlurChange={({ target: { value } }: any) => {
-                const date = moment(value, dateFormat);
-                if (date.isValid()) {
-                  this.onChange(date, hours, minutes);
-                } else {
-                  this.onChange();
-                }
-              }}
-            />
+        <div className="mb2 full bordered rounded flex align-center">
+          <InputBlurChange
+            placeholder={moment().format(dateFormat)}
+            className="borderless full p1 h3"
+            style={{
+              outline: "none",
+            }}
+            value={date ? date.format(dateFormat) : ""}
+            onBlurChange={({ target: { value } }: any) => {
+              const date = moment(value, dateFormat);
+              if (date.isValid()) {
+                this.onChange(date, hours, minutes);
+              } else {
+                this.onChange();
+              }
+            }}
+          />
 
-            {calendar && (
-              <Icon
-                className="mr1 text-purple-hover cursor-pointer"
-                name="calendar"
-                onClick={() =>
-                  this.setState({ showCalendar: !this.state.showCalendar })
-                }
-                tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
-              />
-            )}
-          </div>
-        ) : null}
+          {calendar && (
+            <Icon
+              className="mr1 text-purple-hover cursor-pointer"
+              name="calendar"
+              onClick={() =>
+                this.setState({ showCalendar: !this.state.showCalendar })
+              }
+              tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
+            />
+          )}
+        </div>
 
         {showTimeSelectors && (
           <div>
