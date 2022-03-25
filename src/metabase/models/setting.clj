@@ -314,14 +314,15 @@
   false)
 
 (defn- current-user-can-access-setting?
-  "This checks whether the current user shoudl have the ability to read or write the provided setting. By default
-  this check returns true in all cases, but it can be enabled using the dynamic var `*enforce-setting-access-checks*`.
-  This is because this enforcement is only necessary when settings are being accessed directly via the API, but not in
-  most other places on the backend."
+  "This checks whether the current user should have the ability to read or write the provided setting.
+
+  By default this function always returns `true`, but setting access control can be turned on the dynamic var
+  `*enforce-setting-access-checks*`. This is because this enforcement is only necessary when settings are being
+  accessed directly via the API, but not in most other places on the backend."
   [setting]
-  (or (nil? api/*current-user-id*)
+  (or (not *enforce-setting-access-checks*)
+      (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (not *enforce-setting-access-checks*)
       (and
        (allows-user-local-values? setting)
        (not= (:visibility setting) :admin))))
