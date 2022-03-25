@@ -442,7 +442,7 @@
                                               (-> dashboard
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
-                                                         :creator_id    @default-user))))
+                                                         :creator_id    (default-user-id)))))
         ;; MEGA HACK -- if `load` is ran with `--mode update` we should delete any Cards that were removed from a
         ;; Dashboard (according to #20786). However there are literally zero facilities for doing this sort of thing in
         ;; the current dump/load codebase. So for now we'll just delete ALL DashboardCards for the dumped Dashboard when
