@@ -9,12 +9,13 @@ import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queri
 
 import { ViewTitleHeader } from "./ViewHeader";
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
+import { NAV_HEIGHT } from "metabase/nav/constants";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${color("bg-white")};
-  height: calc(100vh - 61px);
+  height: calc(100vh - ${NAV_HEIGHT});
   position: relative;
 `;
 
