@@ -37,7 +37,9 @@ On startup, Metabase will perform any tasks it needs to complete the upgrade. On
 
 If you're running Metabase in a Docker container:
 
-1. [Back up your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](backing-up-metabase-application-data.md). 
+
+> WARNING: If you're not using a [production-ready database](migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade. 
 
 2. Stop the current Docker container.
 
@@ -47,7 +49,13 @@ If you're running Metabase in a Docker container:
 docker pull metabase/metabase:latest
 ```
 
-4. Start the new Docker container. On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
+4. Start the new Docker container.  Depending on the ports and what you want to name the container, the command will look something like: Something like:
+
+```
+docker run -d -p 3000:3000 --name metabase metabase/metabase
+```
+
+On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
 
 ## Upgrading Metabase Cloud
 

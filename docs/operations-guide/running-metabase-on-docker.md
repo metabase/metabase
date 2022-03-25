@@ -127,7 +127,6 @@ Some older versions of Metabase stored their db in a different default location:
 
 ```
 docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
-
 ```
 
 ### Mounting a mapped file storage volume

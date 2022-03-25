@@ -10,19 +10,22 @@ To run Metabase via a JAR file, you will need to have a Java Runtime Environment
 
 > The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-If you have Java installed, just
+If you have Java installed:
 
 1. [Download Metabase](https://metabase.com/start/jar.html).
-2. Create a new directory and move the JAR you downloaded into that new directory.
-3. Change into that directory and run:
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
    ```
    java --jar metabase.jar
    ```
-4. Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
+
+Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
 
 ## Local installation
 
 If you just want to try Metabase out, play around with Metabase, or just use Metabase on your local machine, Metabase ships with a default application database that you can use. **This setup is not meant for production**. If you intend to run Metabase for real at your organization, see [Production installation](#production-installation).
+
+The below instructions are the same as the quick start above, just with a little more context around each step.
 
 ### 1. Install Java JRE
 
@@ -38,7 +41,7 @@ If Java isn't installed, you'll need to install it before you can run Metabase. 
 
 [Download the Metabase JAR](https://www.metabase.com/start/oss/jar.html).
 
-### 3. Create a new directory and move the JAR into it
+### 3. Create a new directory and move the Metabase JAR into it
 
 When you run Metabase, Metabase will create some new files, so it's important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
 
@@ -56,7 +59,7 @@ then
 mv /Users/person/Downloads/metabase.jar ~/metabase
 ```
 
-### 3. Change into your new Metabase directory and run the jar
+### 4. Change into your new Metabase directory and run the jar
 
 Change into the directory you created in step 2:
 
@@ -93,13 +96,13 @@ Note that in the default configuration Metabase will use a local H2 database for
 
 The steps are the same as above with one important difference: if you want to run Metabase in production, you'll want to use a production-ready database to store your Metabase application data. Here are some [databases we recommend](migrating-from-h2.md#databases-we-recommend-for-storing-your-metabase-application-data).
 
-For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create a database:
+For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create an empty database:
 
 ```
 createdb metabaseappdb
 ```
 
-You can all your app DB whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables so Metabase knows how to connect to your database. 
+You can call your app DB whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables for Metabase to use on startup so Metabase knows how to connect to this database. 
 
 You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
 
@@ -117,7 +120,7 @@ The above command would connect Metabase to your Postgres database, `metabaseapp
 
 ## Migrating to a production installation
 
-If you've already created questions, dashboards, collections and so on, and you want to migrate them to the production-ready database, see [Migrating from MetabasePreparing Metabase for running in production](migrating-from-h2).
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, that's no problem. You can migrate to a production database at any time (though the sooner you do, the better). See [Migrating from the default H2 database to a production database](migrating-from-h2).
 
 ## Troubleshooting
 
