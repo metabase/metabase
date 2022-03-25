@@ -5,8 +5,21 @@ import DatePicker from "../filters/pickers/DatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
 import BooleanPicker from "../filters/pickers/BooleanPicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-export default class FilterPopoverPicker extends React.Component {
+type Props = {
+  className?: string;
+  filter: Filter;
+  onFilterChange: (filter: any[]) => void;
+  onCommit: (filter: any[]) => void;
+  isSidebar?: boolean;
+  minWidth?: number | null;
+  maxWidth?: number | null;
+  primaryColor?: string;
+  isNew?: boolean;
+};
+
+export default class FilterPopoverPicker extends React.Component<Props> {
   UNSAFE_componentWillMount() {
     window.addEventListener("keydown", this.handleKeyDown);
   }
@@ -15,9 +28,9 @@ export default class FilterPopoverPicker extends React.Component {
     window.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  handleKeyDown = event => {
+  handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.props.onCommit();
+      this.props.onCommit(this.props.filter);
     }
   };
 
@@ -30,20 +43,22 @@ export default class FilterPopoverPicker extends React.Component {
       isSidebar,
       minWidth,
       maxWidth,
+      isNew,
+      primaryColor,
     } = this.props;
 
-    const setValue = (index, value) => {
+    const setValue = (index: number, value: any) => {
       onFilterChange(filter.setArgument(index, value));
     };
 
-    const setValues = values => {
+    const setValues = (values: any[]) => {
       onFilterChange(filter.setArguments(values));
     };
 
     const dimension = filter.dimension();
-    const field = dimension.field();
+    const field = dimension?.field();
 
-    return field.isTime() ? (
+    return field?.isTime() ? (
       <TimePicker
         className={className}
         filter={filter}
@@ -52,16 +67,19 @@ export default class FilterPopoverPicker extends React.Component {
         maxWidth={maxWidth}
         isSidebar={isSidebar}
       />
-    ) : field.isDate() ? (
+    ) : field?.isDate() ? (
       <DatePicker
         className={className}
         filter={filter}
+        primaryColor={primaryColor}
         onFilterChange={onFilterChange}
+        onCommit={onCommit}
         minWidth={minWidth}
         maxWidth={maxWidth}
         isSidebar={isSidebar}
+        isNew={isNew}
       />
-    ) : field.isBoolean() ? (
+    ) : field?.isBoolean() ? (
       <BooleanPicker
         className={className}
         filter={filter}
@@ -81,13 +99,3 @@ export default class FilterPopoverPicker extends React.Component {
     );
   }
 }
-
-FilterPopoverPicker.propTypes = {
-  className: PropTypes.string,
-  filter: PropTypes.object,
-  onFilterChange: PropTypes.func,
-  onCommit: PropTypes.func,
-  isSidebar: PropTypes.bool,
-  minWidth: PropTypes.number,
-  maxWidth: PropTypes.number,
-};

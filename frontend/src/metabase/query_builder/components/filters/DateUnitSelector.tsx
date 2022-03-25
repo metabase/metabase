@@ -1,23 +1,30 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { ChangeEvent } from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
 import { formatBucketing } from "metabase/lib/query_time";
 
+type Props = {
+  className?: string;
+  value: number | string;
+  onChange: (value: number | string) => void;
+  intervals: number | string;
+  formatter: (value: any) => any;
+  periods: string[];
+};
+
 const DateUnitSelector = ({
   className,
-  open,
   value,
   onChange,
-  togglePicker,
   intervals,
   formatter,
   periods,
-}) => (
+}: Props) => (
   <Select
     className={className}
     value={value}
-    onChange={e => onChange(e.target.value)}
+    onChange={(e: any) => onChange(e.target.value)}
     width={150}
     compact
   >

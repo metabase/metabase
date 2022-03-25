@@ -4,7 +4,7 @@ import { t } from "ttag";
 import DatePicker, {
   DATE_OPERATORS,
   getOperator,
-} from "metabase/query_builder/components/filters/pickers/DatePicker";
+} from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 import FilterOptions from "metabase/query_builder/components/filters/FilterOptions";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";

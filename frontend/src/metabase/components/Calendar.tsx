@@ -5,30 +5,47 @@ import PropTypes from "prop-types";
 import "./Calendar.css";
 
 import cx from "classnames";
-import moment from "moment";
+import moment, { Moment } from "moment";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
+import { alpha, color } from "metabase/lib/colors";
 
-export default class Calendar extends Component {
-  constructor(props) {
+export type SelectAll = "after" | "before";
+
+type Props = {
+  initial?: Moment;
+  selected: Moment;
+  selectedEnd?: Moment;
+  selectAll?: SelectAll | null;
+  onChange: (
+    start: string,
+    end: string | null,
+    startMoment: Moment,
+    endMoment: Moment | null,
+  ) => void;
+  isRangePicker?: boolean;
+  primaryColor?: string;
+};
+
+type State = {
+  current: Moment;
+};
+
+export default class Calendar extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = {
       current: moment(props.initial || undefined),
     };
   }
 
-  static propTypes = {
-    selected: PropTypes.object,
-    selectedEnd: PropTypes.object,
-    onChange: PropTypes.func.isRequired,
-    isRangePicker: PropTypes.bool,
-  };
+  static propTypes = {};
 
   static defaultProps = {
     isRangePicker: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||
@@ -59,7 +76,7 @@ export default class Calendar extends Component {
     }
   }
 
-  onClickDay = date => {
+  onClickDay = (date: Moment) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
       this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
@@ -90,7 +107,7 @@ export default class Calendar extends Component {
     this.setState({ current: moment(this.state.current).add(1, "M") });
   };
 
-  renderMonthHeader(current, side) {
+  renderMonthHeader(current: Moment, side?: "left" | "right") {
     return (
       <div className="Calendar-header flex align-center border-bottom">
         {side !== "right" && (
@@ -126,7 +143,7 @@ export default class Calendar extends Component {
     );
   }
 
-  renderWeeks(current) {
+  renderWeeks(current: Moment) {
     const weeks = [];
     const date = moment(current)
       .startOf("month")
@@ -142,8 +159,10 @@ export default class Calendar extends Component {
           date={moment(date)}
           month={current}
           onClickDay={this.onClickDay}
+          isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
           selectedEnd={this.props.selectedEnd}
+          selectAll={this.props.selectAll}
         />,
       );
       date.add(1, "w");
@@ -154,18 +173,19 @@ export default class Calendar extends Component {
     return <div className="Calendar-weeks relative">{weeks}</div>;
   }
 
-  renderCalender(current, side) {
+  renderCalender(current: Moment, side?: "left" | "right") {
     return (
       <div
         className={cx("Calendar", {
           "Calendar--range":
-            this.props.isRangePicker &&
-            this.props.selected &&
-            this.props.selectedEnd,
+            (this.props.isRangePicker &&
+              this.props.selected &&
+              this.props.selectedEnd) ||
+            this.props.selectAll,
         })}
       >
         {this.renderMonthHeader(current, side)}
-        {this.renderDayNames(current)}
+        {this.renderDayNames()}
         {this.renderWeeks(current)}
       </div>
     );
@@ -177,39 +197,76 @@ export default class Calendar extends Component {
   }
 }
 
-class Week extends Component {
-  static propTypes = {
-    selected: PropTypes.object,
-    selectedEnd: PropTypes.object,
-    onClickDay: PropTypes.func.isRequired,
-  };
+type WeekProps = {
+  date: Moment;
+  month: Moment;
+  selected: Moment;
+  selectedEnd?: Moment;
+  selectAll?: SelectAll | null;
+  isRangePicker?: boolean;
+  primaryColor?: string;
+  onClickDay: (date: Moment) => void;
+};
 
+class Week extends Component<WeekProps> {
   render() {
     const days = [];
-    let { date, month, selected, selectedEnd } = this.props;
+    let {
+      date,
+      month,
+      selected,
+      selectedEnd,
+      primaryColor = color("brand"),
+      selectAll,
+      isRangePicker,
+    } = this.props;
 
     for (let i = 0; i < 7; i++) {
+      const isSelected =
+        date.isSame(selected, "day") ||
+        (isRangePicker && date.isSame(selectedEnd, "day"));
+      let inRange = false;
+      if (
+        selected &&
+        date.isAfter(selected, "day") &&
+        selectedEnd &&
+        selectedEnd.isAfter(date, "day")
+      ) {
+        inRange = true;
+      } else if (selectAll === "after") {
+        inRange = !!(selected && date.isAfter(selected, "day"));
+      } else if (selectAll === "before") {
+        inRange = !!(selected && selected.isAfter(date, "day"));
+      }
+      const bgColor = isSelected ? primaryColor : alpha(primaryColor, 0.1);
+      const isEnd = selectAll === "before" && date.isSame(selected, "day");
       const classes = cx("Calendar-day cursor-pointer text-centered", {
         "Calendar-day--today": date.isSame(new Date(), "day"),
         "Calendar-day--this-month": date.month() === month.month(),
-        "Calendar-day--selected": selected && date.isSame(selected, "day"),
+        "Calendar-day--selected":
+          !isEnd && selected && date.isSame(selected, "day"),
         "Calendar-day--selected-end":
-          selectedEnd && date.isSame(selectedEnd, "day"),
+          isEnd || (selectedEnd && date.isSame(selectedEnd, "day")),
         "Calendar-day--week-start": i === 0,
         "Calendar-day--week-end": i === 6,
         "Calendar-day--in-range":
-          !(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
-          (date.isSame(selected, "day") ||
-            date.isSame(selectedEnd, "day") ||
-            (selectedEnd &&
-              selectedEnd.isAfter(date, "day") &&
-              date.isAfter(selected, "day"))),
+          (selectAll && inRange) ||
+          (!(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
+            (date.isSame(selected, "day") ||
+              date.isSame(selectedEnd, "day") ||
+              (selectedEnd &&
+                selectedEnd.isAfter(date, "day") &&
+                date.isAfter(selected, "day")))),
       });
       days.push(
         <span
           key={date.toString()}
           className={classes}
           onClick={this.props.onClickDay.bind(null, date)}
+          style={{
+            backgroundColor: isSelected || inRange ? bgColor : undefined,
+            color: !isSelected && inRange ? primaryColor : undefined,
+          }}
         >
           {date.date()}
         </span>,

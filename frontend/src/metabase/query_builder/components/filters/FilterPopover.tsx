@@ -17,32 +17,62 @@ import ExpressionPopover from "metabase/query_builder/components/ExpressionPopov
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
+import DatePickerShortcuts from "./pickers/DatePickerShortcuts";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
 
 const CUSTOM_SECTION_NAME = t`Custom Expression`;
 
+type Props = {
+  className?: string;
+  style?: React.CSSProperties;
+  fieldPickerTitle?: string;
+  filter: Filter;
+  query: StructuredQuery;
+  onChange?: (filter: Filter) => void;
+  onChangeFilter: (filter: Filter) => void;
+
+  onClose?: () => void;
+
+  noCommitButton?: boolean;
+  showFieldPicker?: boolean;
+  showCustom?: boolean;
+  isNew?: boolean;
+  isSidebar?: boolean;
+  isTopLevel?: boolean;
+};
+
+type State = {
+  filter: Filter | null;
+  choosingField: boolean;
+  editingFilter: boolean;
+  showShortcuts: boolean;
+};
+
 // NOTE: this is duplicated from FilterPopover but allows you to add filters on
 // the last two "stages" of a nested query, e.x. post aggregation filtering
-export default class ViewFilterPopover extends Component {
+export default class FilterPopover extends Component<Props, State> {
   static defaultProps = {
     style: {},
     showFieldPicker: true,
     showCustom: true,
   };
 
-  constructor(props) {
+  constructor(props: Props) {
     super(props);
     const filter = props.filter instanceof Filter ? props.filter : null;
     this.state = {
       filter: filter,
       choosingField: !filter,
       editingFilter: filter ? filter.isCustom() : false,
+      showShortcuts: !!props.isNew,
     };
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
     if (filter && this.props.query !== nextProps.query) {
@@ -52,14 +82,14 @@ export default class ViewFilterPopover extends Component {
     }
   }
 
-  setFilter(filter) {
-    this.setState({ filter });
+  setFilter(filter: Filter) {
+    this.setState({ filter, showShortcuts: false });
     if (this.props.onChange) {
       this.props.onChange(filter);
     }
   }
 
-  handleUpdateAndCommit = newFilter => {
+  handleUpdateAndCommit = (newFilter: any[]) => {
     const base = this.state.filter || new Filter([], null, this.props.query);
     const filter = base.set(newFilter);
     this.setState({ filter }, () => {
@@ -67,11 +97,14 @@ export default class ViewFilterPopover extends Component {
     });
   };
 
-  handleCommit = () => {
-    this.handleCommitFilter(this.state.filter, this.props.query);
+  handleCommit = (filter?: any[]) => {
+    this.handleCommitFilter(
+      filter ? this.state.filter?.set(filter) : this.state.filter,
+      this.props.query,
+    );
   };
 
-  handleCommitFilter = (filter, query) => {
+  handleCommitFilter = (filter: Filter | null, query: StructuredQuery) => {
     if (filter && !(filter instanceof Filter)) {
       filter = new Filter(filter, null, query);
     }
@@ -83,7 +116,7 @@ export default class ViewFilterPopover extends Component {
     }
   };
 
-  handleDimensionChange = dimension => {
+  handleDimensionChange = (dimension: FieldDimension) => {
     let filter = this.state.filter;
     if (!filter || filter.query() !== dimension.query()) {
       filter = new Filter(
@@ -98,7 +131,7 @@ export default class ViewFilterPopover extends Component {
     this.setState({ choosingField: false });
   };
 
-  handleFilterChange = newFilter => {
+  handleFilterChange = (newFilter: any[]) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
     this.setFilter(filter.set(newFilter));
   };
@@ -114,7 +147,7 @@ export default class ViewFilterPopover extends Component {
       isTopLevel,
       showCustom,
     } = this.props;
-    const { filter, editingFilter, choosingField } = this.state;
+    const { filter, editingFilter, choosingField, showShortcuts } = this.state;
 
     if (editingFilter) {
       return (
@@ -155,10 +188,13 @@ export default class ViewFilterPopover extends Component {
                     includeSegments: showCustom,
                   })
             }
-            onChangeDimension={dimension =>
+            onChangeDimension={(dimension: FieldDimension) =>
               this.handleDimensionChange(dimension)
             }
-            onChangeOther={item => {
+            onChangeOther={(item: {
+              filter: Filter;
+              query: StructuredQuery;
+            }) => {
               // special case for segments
               this.handleCommitFilter(item.filter, item.query);
             }}
@@ -184,39 +220,61 @@ export default class ViewFilterPopover extends Component {
         </div>
       );
     } else {
+      const field = dimension.field();
+      const isNew = this.props.isNew || !this.props.filter?.operator();
+      const primaryColor = isSidebar ? color("filter") : color("brand");
+      const isTemporal = field.isDate() || field.isTime();
+      const showDateShortcuts = showShortcuts && isTemporal;
+      const onBack = () => {
+        if (isTemporal) {
+          this.setState({ showShortcuts: true });
+        } else {
+          this.setState({ choosingField: true });
+        }
+      };
       return (
         <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
-          <FilterPopoverHeader
-            className={isSidebar ? "px1 pt1" : "p1 mb1 border-bottom"}
-            isSidebar={isSidebar}
-            filter={filter}
-            onFilterChange={this.handleFilterChange}
-            onBack={() => this.setState({ choosingField: true })}
-            showFieldPicker={showFieldPicker}
-          />
-          <FilterPopoverPicker
-            className={isSidebar ? "p1" : "px1 pt1 pb1"}
-            isSidebar={isSidebar}
-            filter={filter}
-            onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
-            minWidth={isSidebar ? null : MIN_WIDTH}
-            maxWidth={isSidebar ? null : MAX_WIDTH}
-          />
-          <FilterPopoverFooter
-            className={isSidebar ? "p1" : "px1 pb1"}
-            isSidebar={isSidebar}
-            filter={filter}
-            onFilterChange={this.handleFilterChange}
-            onCommit={!this.props.noCommitButton ? this.handleCommit : null}
-            isNew={!this.props.filter}
-          />
+          {showDateShortcuts ? (
+            <DatePickerShortcuts
+              className="p2"
+              primaryColor={primaryColor}
+              onFilterChange={this.handleFilterChange}
+              onCommit={this.handleUpdateAndCommit}
+              filter={filter}
+            />
+          ) : (
+            <>
+              <FilterPopoverHeader
+                isSidebar={isSidebar}
+                filter={filter}
+                onFilterChange={this.handleFilterChange}
+                onBack={onBack}
+                showFieldPicker={showFieldPicker}
+              />
+              <FilterPopoverPicker
+                className={isSidebar ? "p1" : "px1 pt1 pb1"}
+                isSidebar={isSidebar}
+                filter={filter}
+                onFilterChange={this.handleFilterChange}
+                onCommit={this.handleCommit}
+                minWidth={isSidebar ? null : MIN_WIDTH}
+                maxWidth={isSidebar ? null : MAX_WIDTH}
+                primaryColor={primaryColor}
+                isNew={isNew}
+              />
+              <FilterPopoverFooter
+                className={isSidebar ? "p1" : "px1 pb1"}
+                isSidebar={isSidebar}
+                primaryColor={primaryColor}
+                filter={filter}
+                onFilterChange={this.handleFilterChange}
+                onCommit={!this.props.noCommitButton ? this.handleCommit : null}
+                isNew={isNew}
+              />
+            </>
+          )}
         </div>
       );
     }
   }
 }
-
-ViewFilterPopover.propTypes = {
-  noCommitButton: PropTypes.bool,
-};

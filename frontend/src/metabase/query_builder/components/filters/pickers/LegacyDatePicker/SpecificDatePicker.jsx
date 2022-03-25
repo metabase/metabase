@@ -8,7 +8,7 @@ import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
-import HoursMinutesInput from "./HoursMinutesInput";
+import HoursMinutesInput from "../HoursMinutesInput";
 
 import moment from "moment";
 import cx from "classnames";
