@@ -407,7 +407,7 @@ function DatasetEditor(props) {
   });
 
   return (
-    <React.Fragment>
+    <>
       <DatasetEditBar
         title={dataset.displayName()}
         center={
@@ -474,7 +474,7 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
-    </React.Fragment>
+    </>
   );
 }
 

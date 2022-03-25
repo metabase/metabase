@@ -108,8 +108,14 @@ class App extends Component {
   };
 
   hasAppBar = () => {
-    const { currentUser } = this.props;
-    return currentUser && !this.isAdminApp();
+    const {
+      currentUser,
+      location: { pathname },
+    } = this.props;
+    if (!currentUser || IFRAMED || this.isAdminApp()) {
+      return false;
+    }
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
   toggleSidebar = () => {
@@ -168,14 +174,14 @@ class App extends Component {
   render() {
     const { children, location, errorPage, onChangeLocation } = this.props;
     const { errorInfo, sidebarOpen } = this.state;
-
+    const hasAppBar = this.hasAppBar();
     return (
       <ScrollToTop>
         {errorPage ? (
           getErrorComponent(errorPage)
         ) : (
           <>
-            {this.hasAppBar() && (
+            {hasAppBar && (
               <AppBar
                 isSidebarOpen={sidebarOpen}
                 location={location}
@@ -184,7 +190,10 @@ class App extends Component {
                 onChangeLocation={onChangeLocation}
               />
             )}
-            <AppContentContainer isAdminApp={this.isAdminApp()}>
+            <AppContentContainer
+              hasAppBar={hasAppBar}
+              isAdminApp={this.isAdminApp()}
+            >
               {this.hasNavbar() && sidebarOpen && (
                 <Navbar location={location} />
               )}

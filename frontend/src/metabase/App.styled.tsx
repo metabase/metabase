@@ -1,23 +1,23 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
 import { NAV_HEIGHT } from "metabase/nav/constants";
 
-const adminCss = css`
-  flex-direction: column;
-`;
-
-export const AppContentContainer = styled.div<{ isAdminApp: boolean }>`
+export const AppContentContainer = styled.div<{
+  isAdminApp: boolean;
+  hasAppBar: boolean;
+}>`
   display: flex;
+  flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
   position: relative;
-  height: calc(100vh - ${NAV_HEIGHT});
   overflow: hidden;
-  ${props => props.isAdminApp && adminCss}
+  height: ${props =>
+    props.hasAppBar ? `calc(100vh - ${NAV_HEIGHT})` : "100vh"};
+  background-color: ${color("content")};
 `;
 
 export const AppContent = styled.main`
   width: 100%;
+  height: 100%;
   overflow: auto;
-  background-color: ${color("content")};
 `;
