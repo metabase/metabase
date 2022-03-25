@@ -304,13 +304,13 @@
 
 (defn valid-path-format?
   "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
-  just checks that the path components contain alphanumeric characters or dashes, and slashes are in the right place.
+  just checks that the path components contain alphanumeric characters or dashes, separated by slashes
   This should be used for schema validation in most places, to preserve downgradability when new permissions paths are
   added."
   ^Boolean [^String path]
   (boolean (when (and (string? path)
                       (seq path))
-             (re-matches #"^/((\w|-)+/)*$" path))))
+             (re-matches #"^/((\w|-)*/)*$" path))))
 
 (def Path
   "Schema for a permissions path with a valid format."

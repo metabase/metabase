@@ -199,6 +199,7 @@
             ["/asdf/"
              "/asdf/ghjk/"
              "/asdf-ghjk/"
+             "/adsf//"
              "/"
              "/asdf/1/ghkl/"]]
       (testing (pr-str path)
@@ -208,11 +209,8 @@
   (testing "invalid paths"
     (doseq [path
             [""
-             "//"
              "/asdf"
              "asdf/"
-             "/asdf//"
-             "/asdf//asdf/"
              "123"
              nil
              {}
