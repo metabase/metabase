@@ -19,7 +19,7 @@ export const TabHintToastContainer = styled.div`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("nav")};
+  background-color: ${color("brand")};
 `;
 
 export const TableHeaderColumnName = styled.div`
