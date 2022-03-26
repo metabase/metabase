@@ -2,8 +2,7 @@
   "Code for generating and updating the General Permission graph. See [[metabase.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
-            [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models :refer [GeneralPermissionsRevision Permissions PermissionsGroup]]
+            [metabase.models :refer [Permissions PermissionsGroup GeneralPermissionsRevision]]
             [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.permissions :as perms]
             [metabase.util.honeysql-extensions :as hx]
@@ -74,19 +73,6 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(defn- save-perms-revision!
-  "Save changes made to the general permissions graph for logging/auditing purposes.
-  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old changes]
-  (when *current-user-id*
-    (db/insert! GeneralPermissionsRevision
-                ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-                ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-                :id      (inc current-revision)
-                :before  old
-                :changes changes
-                :user_id *current-user-id*)))
-
 (defn update-general-permissions!
   "Perform update general permissions for a group-id"
   [group-id changes]
@@ -118,4 +104,4 @@
       (db/transaction
        (doseq [[group-id changes] changes]
          (update-general-permissions! group-id changes))
-       (save-perms-revision! (:revision old-graph) old-graph changes)))))
+       (perms/save-perms-revision! GeneralPermissionsRevision (:revision old-graph) old-graph changes)))))

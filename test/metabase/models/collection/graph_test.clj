@@ -337,7 +337,7 @@
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
-                                :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
+                                :changes    (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
@@ -356,7 +356,7 @@
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
-                                :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
+                                :changes    (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
@@ -377,7 +377,7 @@
                                                                                s/Keyword s/Any}
                                                      s/Keyword                s/Any}
                                          s/Keyword  s/Any}
-                              :after    {(keyword (str group-id)) {:root (s/eq "read")}}
+                              :changes  {(keyword (str group-id)) {:root (s/eq "read")}}
                               s/Keyword s/Any}
                              (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
@@ -396,7 +396,7 @@
                                                                                s/Keyword s/Any}
                                                      s/Keyword                s/Any}
                                          s/Keyword  s/Any}
-                              :after    {(keyword (str group-id)) {:root (s/eq "write")}}
+                              :changes  {(keyword (str group-id)) {:root (s/eq "write")}}
                               s/Keyword s/Any}
                              (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 

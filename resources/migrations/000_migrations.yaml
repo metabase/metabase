@@ -11309,6 +11309,28 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
+  - changeSet:
+      id: v43.00-048
+      author: qnkhuat
+      comment: Added 0.43.0 - rename after->changes in permissions_revision
+      changes:
+        - renameColumn:
+            tableName: permissions_revision
+            oldColumnName: after
+            newColumnName: changes
+            columnDataType: text
+
+  - changeSet:
+      id: v43.00-049
+      author: qnkhuat
+      comment: Added 0.43.0 - rename after->changes in collection_permission_graph_revision
+      changes:
+        - renameColumn:
+            tableName: collection_permission_graph_revision
+            oldColumnName: after
+            newColumnName: changes
+            columnDataType: text
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

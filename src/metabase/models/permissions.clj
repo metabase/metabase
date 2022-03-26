@@ -1029,26 +1029,30 @@
                          (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
-(defn- save-perms-revision!
-  "Save changes made to the permissions graph for logging/auditing purposes.
-   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old new]
+(defn save-perms-revision!
+  "Save changes made to permission graph for logging/auditing purposes.
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
+  *  `model`   -- revision model, should be one of
+                  [PermissionsRevision, CollectionPermissionGraphRevision, GeneralPermissionsRevision]
+  *  `before`  -- the graph before the changes
+  *  `changes` -- set of changes applied in this revision."
+  [model current-revision before changes]
   (when *current-user-id*
-    (db/insert! PermissionsRevision
+    (db/insert! model
       ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
       ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id     (inc current-revision)
-      :before  old
-      :after   new
+      :id      (inc current-revision)
+      :before  before
+      :changes changes
       :user_id *current-user-id*)))
 
 (defn log-permissions-changes
   "Log changes to the permissions graph."
-  [old new]
+  [old changes]
   (log/debug
    (trs "Changing permissions")
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
-   "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
+   "\n" (trs "CHANGES:")   (u/pprint-to-str 'blue    changes)))
 
 (s/defn update-data-perms-graph!
   "Update the *data* permissions graph, making any changes necessary to make it match NEW-GRAPH.
@@ -1059,17 +1063,17 @@
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
   ([new-graph :- StrictPermissionsGraph]
-   (let [old-graph (data-perms-graph)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
-     (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
+   (let [old-graph     (data-perms-graph)
+         [old changes] (data/diff (:groups old-graph) (:groups new-graph))
+         old           (or old {})]
+     (when (or (seq old) (seq changes))
+       (log-permissions-changes old changes)
        (check-revision-numbers old-graph new-graph)
        (db/transaction
-         (doseq [[group-id changes] new]
+         (doseq [[group-id changes] changes]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)
-         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
+         (save-perms-revision! PermissionsRevision (:revision old-graph) (:groups old-graph) changes)
+         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! changes)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
