@@ -112,7 +112,7 @@ describeEE("formatting > whitelabel > color theme", () => {
       console.log(xhr.response.body["application-colors"]);
     });
 
-    cy.scrollTo("top");
+    cy.get("main").scrollTo("top");
 
     cy.log("Admin panel should be yellow");
     cy.get(".Nav").should(
