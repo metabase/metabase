@@ -9,6 +9,7 @@ import { space } from "metabase/styled-components/theme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
 // Class names are added here because we still use traditional css,
@@ -113,6 +114,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     css`
       width: calc(100% - ${SIDEBAR_WIDTH});
       left: ${SIDEBAR_WIDTH};
+      top: ${APP_BAR_HEIGHT};
     `}
 `;
 
