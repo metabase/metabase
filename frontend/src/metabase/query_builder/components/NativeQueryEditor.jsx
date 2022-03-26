@@ -418,7 +418,11 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         {hasTopBar && (
-          <div className="flex align-center" style={{ minHeight: 55 }}>
+          <div
+            className="flex align-center"
+            style={{ minHeight: 55 }}
+            data-testid="native-query-top-bar"
+          >
             <DataSourceSelectors
               isNativeEditorOpen={isNativeEditorOpen}
               query={query}
