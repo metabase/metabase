@@ -121,7 +121,11 @@ export function ViewTitleHeader(props) {
 
   return (
     <>
-      <ViewHeaderContainer className={className} style={style}>
+      <ViewHeaderContainer
+        className={className}
+        style={style}
+        data-testid="qb-header"
+      >
         {isDataset ? (
           <DatasetLeftSide {...props} />
         ) : isSaved ? (
