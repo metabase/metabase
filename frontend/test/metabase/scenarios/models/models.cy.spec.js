@@ -63,7 +63,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
@@ -111,7 +112,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
