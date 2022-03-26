@@ -23,15 +23,15 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  appBar()
-    .findByTestId("main-logo")
-    .click();
+  appBar().within(() => {
+    cy.icon("chevronright").click();
+  });
 }
 
 export function closeNavigationSidebar() {
-  appBar()
-    .findByTestId("main-logo")
-    .click();
+  appBar().within(() => {
+    cy.icon("chevronleft").click();
+  });
 }
 
 export function browse() {
