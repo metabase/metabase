@@ -1052,7 +1052,7 @@
   (log/debug
    (trs "Changing permissions")
    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
-   "\n" (trs "CHANGES:")   (u/pprint-to-str 'blue    changes)))
+   "\n" (trs "CHANGES:") (u/pprint-to-str 'blue changes)))
 
 (s/defn update-data-perms-graph!
   "Update the *data* permissions graph, making any changes necessary to make it match NEW-GRAPH.

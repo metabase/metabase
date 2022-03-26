@@ -39,6 +39,7 @@
 (defn- json-out [s keywordize-keys?]
   (if (string? s)
     (try
+      ;; TODO: parse integer as-is. Similar to what Noah did in the json parse response
       (json/parse-string s keywordize-keys?)
       (catch Throwable e
         (log/error e (str (trs "Error parsing JSON")))

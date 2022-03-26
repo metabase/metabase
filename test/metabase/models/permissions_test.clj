@@ -1,10 +1,10 @@
 (ns metabase.models.permissions-test
   (:require [clojure.test :refer :all]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
+            [metabase.api.common :refer [*current-user-id*]]
+            [metabase.models :refer [Collection Database Permissions PermissionsGroup Table PermissionsRevision]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -619,34 +619,44 @@
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
       (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
-        (letfn [(perms []
-                  (get-in (perms/data-perms-graph) ks))
-                (set-perms! [new-perms]
-                  (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) ks new-perms))
-                  (perms))]
-          (testing "Should initially have no perms"
-            (is (= nil
-                   (perms))))
-          (testing "grant schema perms"
-            (is (= {:schemas :all}
-                   (set-perms! {:schemas :all}))))
-          (testing "grant native perms"
-            (is (= {:schemas :all, :native :write}
-                   (set-perms! {:schemas :all, :native :write}))))
-          (testing "revoke native perms"
-            (is (= {:schemas :all}
-                   (set-perms! {:schemas :all, :native :none}))))
-          (testing "revoke schema perms"
-            (is (= nil
-                   (set-perms! {:schemas :none}))))
-          (testing "disallow schemas :none + :native :write"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"DB permissions with a valid combination of values for :native and :schemas"
-                 (set-perms! {:schemas :none, :native :write})))
-            (is (= nil
-                   (perms)))))))))
+      (binding [*current-user-id* (mt/user->id :crowberto)]
+        (let [ks         [:groups (u/the-id (group/all-users)) db-id :data]
+              changes-ks [:changes (keyword (u/the-id (group/all-users))) (keyword db-id) :data]]
+          (letfn [(perms []
+                    (get-in (perms/data-perms-graph) ks))
+                  (set-perms! [new-perms]
+                    (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) ks new-perms))
+                    (perms))
+                  (revision []
+                    (let [r (db/select-one [PermissionsRevision :before :changes] {:order-by [[:id :desc]]})]
+                      {:before             (:before r)
+                       :permission-changes (get-in #p r #p changes-ks)}))]
+
+            (testing "Should initially have no perms"
+              (is (= nil
+                     (perms))))
+            (testing "grant schema perms"
+              (is (= {:schemas :all}
+                     (set-perms! {:schemas :all})))
+              (is (= {:before             (:groups (perms/data-perms-graph))
+                      :permission-changes {:schemas :all}}
+                     (revision))))
+            (testing "grant native perms"
+              (is (= {:schemas :all, :native :write}
+                     (set-perms! {:schemas :all, :native :write}))))
+            (testing "revoke native perms"
+              (is (= {:schemas :all}
+                     (set-perms! {:schemas :all, :native :none}))))
+            (testing "revoke schema perms"
+              (is (= nil
+                     (set-perms! {:schemas :none}))))
+            (testing "disallow schemas :none + :native :write"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"DB permissions with a valid combination of values for :native and :schemas"
+                   (set-perms! {:schemas :none, :native :write})))
+              (is (= nil
+                     (perms))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
