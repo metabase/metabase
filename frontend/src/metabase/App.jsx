@@ -106,13 +106,10 @@ class App extends Component {
       location: { pathname },
       isEditingDashboard,
     } = this.props;
-    if (!currentUser || IFRAMED || this.isAdminApp()) {
+    if (!currentUser || IFRAMED || this.isAdminApp() || isEditingDashboard) {
       return false;
     }
-    return (
-      !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname)) &&
-      !isEditingDashboard
-    );
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
   closeModal = () => {
