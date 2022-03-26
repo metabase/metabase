@@ -2,6 +2,7 @@ import {
   restore,
   openOrdersTable,
   popover,
+  sidebar,
   summarize,
   visitDashboard,
 } from "__support__/e2e/cypress";
@@ -191,9 +192,12 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
 
       summarize();
-      // remove pre-selected "Count"
-      cy.icon("close").click();
-      cy.findByText("Add a metric").click();
+      sidebar().within(() => {
+        // remove pre-selected "Count"
+        cy.icon("close").click();
+        cy.findByText("Add a metric").click();
+      });
+      // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();
         cy.findByText("Discount").click();
