@@ -418,7 +418,7 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         {hasTopBar && (
-          <div className="flex align-center">
+          <div className="flex align-center" data-testid="native-query-top-bar">
             <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
               <DataSourceSelectors
                 isNativeEditorOpen={isNativeEditorOpen}
