@@ -53,7 +53,7 @@ const isEditing = handleActions(
       next: (state, { payload }) => (payload ? payload : null),
     },
   },
-  {},
+  null,
 );
 
 function newDashboard(before, after, isDirty) {
