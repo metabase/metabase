@@ -204,7 +204,9 @@ function testOfficialBadgePresence(expectBadge = true) {
   assertHasCollectionBadge(expectBadge);
 
   // Question Page
-  cy.findByText(COLLECTION_NAME).click();
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
+    .click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadge(expectBadge);
 
@@ -347,7 +349,8 @@ function assertSearchResultBadge(itemName, opts) {
 }
 
 function assertHasCollectionBadge(expectBadge = true) {
-  cy.findByText(COLLECTION_NAME)
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");

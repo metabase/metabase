@@ -419,10 +419,12 @@ describe("scenarios > collection_defaults", () => {
 
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      // Note: collection name's first letter is capitalized
-      cy.findByText(/foo:bar/i).click();
-      cy.findByText("Orders");
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        // Note: collection name's first letter is capitalized
+        cy.findByText(/foo:bar/i).click();
+        cy.findByText("Orders");
+      });
     });
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
@@ -474,9 +476,11 @@ describe("scenarios > collection_defaults", () => {
         .should("be.visible")
         .click();
 
-      cy.findByText("Saved Questions").click();
-      cy.findByText("First collection");
-      cy.findByText("Second collection").should("not.exist");
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("First collection");
+        cy.findByText("Second collection").should("not.exist");
+      });
     });
 
     describe("bulk actions", () => {
