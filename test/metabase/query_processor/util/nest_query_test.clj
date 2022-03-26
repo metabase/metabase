@@ -553,18 +553,22 @@
                                                                                        ::add/source-alias  "QUANTITY"
                                                                                        ::add/desired-alias "QUANTITY"
                                                                                        ::add/position      8}]
+                                                  canceled          [:field %canceled {::add/source-table  $$orders
+                                                                                       ::add/source-alias  "CANCELED"
+                                                                                       ::add/desired-alias "CANCELED"
+                                                                                       ::add/position      9}]
                                                   pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
-                                                                                                   ::add/position      9}]
+                                                                                                   ::add/position      10}]
                                                   products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-alias  "CATEGORY"
                                                                                                 ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                                ::add/position      10}]
+                                                                                                ::add/position      11}]
                                                   products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                           ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                           ::add/source-alias  "ID"
                                                                                           ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
-                                                                                          ::add/position      11}]]
+                                                                                          ::add/position      12}]]
                                               {:source-table $$orders
                                                :joins        [{:source-table $$products
                                                                :alias        "PRODUCTS__via__PRODUCT_ID"
@@ -581,6 +585,7 @@
                                                               discount
                                                               created-at
                                                               quantity
+                                                              canceled
                                                               pivot-grouping
                                                               products-category
                                                               products-id]})}
@@ -628,7 +633,7 @@
     (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (partial= (mt/$ids products
-                        {:source-query       {:source-table $$products
+                                                           {:source-query {:source-table $$products
                                               :expressions  {"CATEGORY" [:concat
                                                                          [:field %category {::add/source-table  $$products
                                                                                             ::add/source-alias  "CATEGORY"
@@ -670,25 +675,25 @@
                                                                                   ::add/position      7}]
                                                              [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
                                                                                       ::add/position      8}]]}
-                         :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
+                                                            :breakout     [[:field "CATEGORY_2" {:base-type          :type/Text
                                                                     ::add/source-table  ::add/source
                                                                     ::add/source-alias  "CATEGORY_2"
                                                                     ::add/desired-alias "CATEGORY_2"
                                                                     ::add/position      0}]]
-                         :aggregation        [[:aggregation-options [:count] {:name               "count"
+                                                            :aggregation  [[:aggregation-options [:count] {:name               "count"
                                                                               ::add/desired-alias "count"
                                                                               ::add/position      1}]]
-                         :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                                                            :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                                           ::add/source-table  ::add/source
                                                                           ::add/source-alias  "CATEGORY_2"
                                                                           ::add/desired-alias "CATEGORY_2"
                                                                           ::add/position      0}]]]
-                         :limit              1})
+                                                            :limit        1})
                       (-> (mt/mbql-query products
                             {:expressions {"CATEGORY" [:concat $category "2"]}
-                             :breakout    [:expression"CATEGORY"]
+                                                                      :breakout    [:expression "CATEGORY"]
                              :aggregation [[:count]]
-                             :order-by    [[:asc [:expression"CATEGORY"]]]
+                                                                      :order-by    [[:asc [:expression "CATEGORY"]]]
                              :limit       1})
                           qp/preprocess
                           add/add-alias-info

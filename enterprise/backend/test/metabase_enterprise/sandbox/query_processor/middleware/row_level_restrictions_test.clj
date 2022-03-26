@@ -933,7 +933,7 @@
                            (format-results (mt/run-mbql-query orders))))))
 
                 (testing "Should be able to run a query against Orders"
-                  (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
+                  (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes"]]
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test

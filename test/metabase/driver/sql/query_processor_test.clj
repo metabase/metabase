@@ -370,6 +370,7 @@
                                        ORDERS.DISCOUNT                    AS DISCOUNT
                                        ORDERS.CREATED_AT                  AS CREATED_AT
                                        ORDERS.QUANTITY                    AS QUANTITY
+                                       ORDERS.CANCELED                    AS CANCELED
                                        abs (0)                            AS pivot-grouping
                                        ;; TODO -- I'm not sure if the order here is deterministic
                                        PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY

@@ -235,37 +235,38 @@
   (mt/dataset sample-dataset
     (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (mt/mbql-query orders
-               {:source-query {:source-table $$orders
-                               :fields       [$id
-                                              $user_id
-                                              $product_id
-                                              $subtotal
-                                              $tax
-                                              $total
-                                              $discount
-                                              !default.created_at
-                                              $quantity
-                                              [:field %products.category {:source-field %product_id
-                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
-                               :filter       [:and
-                                              [:= $user_id 1]
-                                              [:=
-                                               [:field %products.category {:source-field %product_id
-                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
-                                               "Doohickey"]]
-                               :joins        [{:source-table $$products
-                                               :alias        "PRODUCTS__via__PRODUCT_ID"
-                                               :fields       :none
-                                               :strategy     :left-join
-                                               :fk-field-id  %product_id
-                                               :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
-                :filter       [:=
-                               [:field %products.category {:source-field %product_id
-                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
-                               "Doohickey"]
-                :order-by     [[:asc [:field %products.category {:source-field %product_id
-                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
-                :limit        5})
+                            {:source-query {:source-table $$orders
+                                            :fields       [$id
+                                                           $user_id
+                                                           $product_id
+                                                           $subtotal
+                                                           $tax
+                                                           $total
+                                                           $discount
+                                                           !default.created_at
+                                                           $quantity
+                                                           $canceled
+                                                           [:field %products.category {:source-field %product_id
+                                                                                       :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
+                                            :filter       [:and
+                                                           [:= $user_id 1]
+                                                           [:=
+                                                            [:field %products.category {:source-field %product_id
+                                                                                        :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                                                            "Doohickey"]]
+                                            :joins        [{:source-table $$products
+                                                            :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                            :fields       :none
+                                                            :strategy     :left-join
+                                                            :fk-field-id  %product_id
+                                                            :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
+                             :filter       [:=
+                                            [:field %products.category {:source-field %product_id
+                                                                        :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                                            "Doohickey"]
+                             :order-by     [[:asc [:field %products.category {:source-field %product_id
+                                                                              :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
+                             :limit        5})
              (add-implicit-joins
               (mt/mbql-query orders
                 {:source-query {:source-table $$orders
