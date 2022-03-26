@@ -1,8 +1,15 @@
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
+function mockMainElementScroll(scrollTop) {
+  const fakeMainElement = { scrollTop };
+  document.getElementsByTagName = () => [fakeMainElement];
+}
+
 it("initializes parametersWidgetOffsetTop", () => {
   const offsetTop = 100;
   const setState = jest.fn();
+
+  mockMainElementScroll(0);
 
   const dashboard = {
     parametersWidgetRef: { offsetTop },
@@ -22,7 +29,7 @@ it("makes filters sticky with enough scrolling down", () => {
   const offsetTop = 100;
   const setState = jest.fn();
 
-  global.window.scrollY = offsetTop + 1;
+  mockMainElementScroll(offsetTop + 1);
 
   const dashboard = {
     parametersWidgetRef: { offsetTop },
@@ -42,7 +49,7 @@ it("makes filters unsticky with enough scrolling up", () => {
   const offsetTop = 100;
   const setState = jest.fn();
 
-  global.window.scrollY = offsetTop - 1;
+  mockMainElementScroll(offsetTop - 1);
 
   const dashboard = {
     parametersWidgetRef: { offsetTop },
@@ -62,7 +69,7 @@ it("keeps filters sticky with enough scrolling down and already sticky", () => {
   const offsetTop = 100;
   const setState = jest.fn();
 
-  global.window.scrollY = offsetTop + 1;
+  mockMainElementScroll(offsetTop + 1);
 
   const dashboard = {
     parametersWidgetRef: { offsetTop },
@@ -80,7 +87,7 @@ it("keeps filters not sticky with enough scrolling up and already not sticky", (
   const offsetTop = 100;
   const setState = jest.fn();
 
-  global.window.scrollY = offsetTop - 1;
+  mockMainElementScroll(offsetTop - 1);
 
   const dashboard = {
     parametersWidgetRef: { offsetTop },
