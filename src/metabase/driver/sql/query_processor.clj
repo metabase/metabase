@@ -43,19 +43,19 @@
 (p/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
+          (dorun (map hformat/add-anon-param params))
     ;; strip off any trailing semicolons
-    (str "(" (str/replace sql #";+\s*$" "") ")"))
+          (str "(" (str/replace sql #";+\s*$" "") ")"))
 
   PrettyPrintable
   (pretty [_]
-    (list 'SQLSourceQuery. sql params))
+          (list 'SQLSourceQuery. sql params))
 
   Object
   (equals [_ other]
-    (and (instance? SQLSourceQuery other)
-         (= sql    (.sql ^SQLSourceQuery other))
-         (= params (.params ^SQLSourceQuery other)))))
+          (and (instance? SQLSourceQuery other)
+               (= sql    (.sql ^SQLSourceQuery other))
+               (= params (.params ^SQLSourceQuery other)))))
 
 (alter-meta! #'->SQLSourceQuery assoc :private true)
 
@@ -150,8 +150,8 @@
     mod-fn :- (s/pred fn?)]
    (if (not= offset 0)
      (hsql/call :case
-       (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
-       :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
+                (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
+                :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
      day-of-week)))
 
 (defmulti quote-style
@@ -258,20 +258,20 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field honeysql-form]
   (u/prog1 (match [(:base_type field) (:coercion_strategy field)]
-            [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
-            (unix-timestamp->honeysql driver
-                                      (semantic-type->unix-timestamp-unit (:coercion_strategy field))
-                                      honeysql-form)
+             [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+             (unix-timestamp->honeysql driver
+                                       (semantic-type->unix-timestamp-unit (:coercion_strategy field))
+                                       honeysql-form)
 
-            [:type/Text (:isa? :Coercion/String->Temporal)]
-            (cast-temporal-string driver (:coercion_strategy field) honeysql-form)
+             [:type/Text (:isa? :Coercion/String->Temporal)]
+             (cast-temporal-string driver (:coercion_strategy field) honeysql-form)
 
-            [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
-            (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
+             [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+             (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
 
-            :else honeysql-form)
-    (when-not (= <> honeysql-form)
-      (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
+             :else honeysql-form)
+           (when-not (= <> honeysql-form)
+             (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
 
 (defmethod ->honeysql [:sql TypedHoneySQLForm]
   [driver typed-form]
@@ -432,14 +432,14 @@
            (->float driver numerator)
            (for [denominator denominators]
              (hsql/call :case
-               (hsql/call := denominator 0) nil
-               :else                        denominator)))))
+                        (hsql/call := denominator 0) nil
+                        :else                        denominator)))))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
   (hsql/call :sum (hsql/call :case
-                    (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                             (->honeysql driver pred) (->honeysql driver arg)
+                             :else                    0.0)))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -509,27 +509,27 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (nth (:aggregation *inner-query*) index)
-    [:aggregation-options ag (options :guard :name)]
-    (->honeysql driver (hx/identifier :field-alias (:name options)))
+                    [:aggregation-options ag (options :guard :name)]
+                    (->honeysql driver (hx/identifier :field-alias (:name options)))
 
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
+                    [:aggregation-options ag _]
+                    #_:clj-kondo/ignore
+                    (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-    :distinct
-    (->honeysql driver (hx/identifier :field-alias :count))
+                    :distinct
+                    (->honeysql driver (hx/identifier :field-alias :count))
 
-    #{:+ :- :* :/}
-    (->honeysql driver &match)
+                    #{:+ :- :* :/}
+                    (->honeysql driver &match)
 
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
-    [ag-type & _]
-    (->honeysql driver (hx/identifier :field-alias ag-type))))
+                    [ag-type & _]
+                    (->honeysql driver (hx/identifier :field-alias ag-type))))
 
 (defmethod ->honeysql [:sql :absolute-datetime]
   [driver [_ timestamp unit]]
@@ -659,31 +659,31 @@
   [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
 
 (defmethod ->honeysql [:sql :>]
-  [driver [_ & args]]
-  (apply hsql/call :> (map (partial ->honeysql driver) args)))
+  [driver [_ field value]]
+  [:> (->honeysql driver field) (->honeysql driver value)])
 
 (defmethod ->honeysql [:sql :<]
-    [driver [_ & args]]
-  (apply hsql/call :< (map (partial ->honeysql driver) args)))
-  
+  [driver [_ field value]]
+  [:< (->honeysql driver field) (->honeysql driver value)])
+
 (defmethod ->honeysql [:sql :>=]
-    [driver [_ & args]]
-  (apply hsql/call :>= (map (partial ->honeysql driver) args)))
-  
+  [driver [_ field value]]
+  [:>= (->honeysql driver field) (->honeysql driver value)])
+
 (defmethod ->honeysql [:sql :<=]
-    [driver [_ & args]]
-  (apply hsql/call :<= (map (partial ->honeysql driver) args)))
-  
+  [driver [_ field value]]
+  [:<= (->honeysql driver field) (->honeysql driver value)])
+
 (defmethod ->honeysql [:sql :=]
-    [driver [_ & args]]
-  (apply hsql/call := (map (partial ->honeysql driver) args)))
-  
+  [driver [_ field value]]
+  (assert field)
+  [:= (->honeysql driver field) (->honeysql driver value)])
 
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    FieldInstance &match
-                    :field        &match)]
+                                    FieldInstance &match
+                                    :field        &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or
@@ -843,14 +843,14 @@
   (try
     (binding [hformat/*subquery?* false]
       (hsql/format honeysql-form
-        :quoting             (quote-style driver)
-        :allow-dashed-names? true))
+                   :quoting             (quote-style driver)
+                   :allow-dashed-names? true))
     (catch Throwable e
       (try
         (log/error (u/format-color 'red
-                       (str (deferred-tru "Invalid HoneySQL form:")
-                            "\n"
-                            (u/pprint-to-str honeysql-form))))
+                                   (str (deferred-tru "Invalid HoneySQL form:")
+                                        "\n"
+                                        (u/pprint-to-str honeysql-form))))
         (finally
           (throw (ex-info (tru "Error compiling HoneySQL form")
                           {:driver driver
@@ -926,7 +926,7 @@
   (let [inner-query (preprocess driver inner-query)]
     (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
     (u/prog1 (apply-clauses driver {} inner-query)
-      (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+             (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
 ;;;; MBQL -> Native
 
