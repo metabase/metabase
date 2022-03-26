@@ -213,6 +213,7 @@ describe("scenarios > question > settings", () => {
         .click();
       cy.contains("Yes please!").click();
       cy.contains("Orders in a dashboard").click();
+      cy.findByText("Cancel").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
