@@ -439,3 +439,8 @@ export function isReducedMotionPreferred() {
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   return mediaQuery && mediaQuery.matches;
 }
+
+export function getMainElement() {
+  const [main] = document.getElementsByTagName("main");
+  return main;
+}

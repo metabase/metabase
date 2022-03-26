@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { getMainElement } from "metabase/lib/dom";
+
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
@@ -105,7 +107,7 @@ export default class Dashboard extends Component {
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
 
-    const [main] = document.getElementsByTagName("main");
+    const main = getMainElement();
     main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
@@ -127,7 +129,7 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
-    const [main] = document.getElementsByTagName("main");
+    const main = getMainElement();
     main.removeEventListener("scroll", this.throttleParameterWidgetStickiness);
     main.removeEventListener("resize", this.throttleParameterWidgetStickiness);
   }
