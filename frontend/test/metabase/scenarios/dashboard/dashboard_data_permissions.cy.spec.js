@@ -2,10 +2,11 @@ import {
   restore,
   popover,
   selectDashboardFilter,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 function filterDashboard(suggests = true) {
-  cy.visit("/dashboard/1");
+  visitDashboard(1);
   cy.contains("Orders");
 
   // We should get a suggested response and be able to click it if we're an admin
@@ -29,7 +30,7 @@ describe("support > permissions (metabase#8472)", () => {
     cy.signInAsAdmin();
 
     // Setup a dashboard with a text filter
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // click pencil icon to edit
     cy.icon("pencil").click();
 

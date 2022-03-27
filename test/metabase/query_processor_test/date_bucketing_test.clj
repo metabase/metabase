@@ -1034,7 +1034,8 @@
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
-        (is (= ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+        (is (=
+             ;; Mongo returns empty row for count = 0. We should fix that (#5419)
              (case driver/*driver*
                :mongo []
                [[0]])
@@ -1160,3 +1161,18 @@
                        {:aggregation [[:count]]
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+
+(deftest filter-by-current-quarter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Should be able to filter by current quarter (#20683)"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter [:= !quarter.date [:relative-datetime :now]]})]
+        (mt/with-native-query-testing-context query
+          ;; this isn't expected to return anything; for now it's enough just to make sure that the query doesn't fail.
+          (is (=
+               ;; Mongo returns empty row for count = 0. We should fix that (#5419)
+               (case driver/*driver*
+                 :mongo []
+                 [[0]])
+               (mt/formatted-rows [int] (qp/process-query query)))))))))

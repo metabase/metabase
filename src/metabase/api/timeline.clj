@@ -32,26 +32,14 @@
               {:icon timeline/DefaultIcon}))]
     (db/insert! Timeline tl)))
 
-;; todo: should this fn move into `metabase.model.collection`?
-;; a nearly identical fn exists in `metabase.api.collection`
-(defn- root-collection
-  []
-  (-> (collection/root-collection-with-ui-details nil)
-      collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
-
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
   {include (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        hydrate-root-collection (fn [tl]
-                                  (if (nil? (:collection_id tl))
-                                    (assoc tl :collection (root-collection))
-                                    tl))
-        timelines (map hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
-    (cond->> (hydrate timelines :creator :collection)
+        timelines (map timeline/hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
+    (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
 
@@ -65,11 +53,11 @@
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (Timeline id))]
-    (cond-> (hydrate timeline :creator :collection)
+    (cond-> (hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
-      (assoc :collection (root-collection))
+      timeline/hydrate-root-collection
 
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?

@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
@@ -19,18 +20,29 @@ const TimelineListModal = ({
   collection,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
-  const canWrite = collection.can_write;
   const hasTimelines = timelines.length > 0;
   const title = hasTimelines ? t`Events` : t`${collection.name} events`;
+  const menuItems = getMenuItems(timelines, collection);
+  const sortedTimelines = getSortedTimelines(timelines);
 
   return (
     <ModalRoot>
       <ModalHeader title={title} onClose={onClose}>
-        {canWrite && hasTimelines && <TimelineMenu collection={collection} />}
+        {menuItems.length > 0 && (
+          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+        )}
       </ModalHeader>
       <ModalBody>
         {hasTimelines ? (
-          <TimelineList timelines={timelines} collection={collection} />
+          <ListRoot>
+            {sortedTimelines.map(timeline => (
+              <TimelineCard
+                key={timeline.id}
+                timeline={timeline}
+                collection={collection}
+              />
+            ))}
+          </ListRoot>
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
@@ -39,44 +51,24 @@ const TimelineListModal = ({
   );
 };
 
-interface TimelineListProps {
-  timelines: Timeline[];
-  collection: Collection;
-}
+const getMenuItems = (timelines: Timeline[], collection: Collection) => {
+  if (!collection.can_write || !timelines.length) {
+    return [];
+  }
 
-const TimelineList = ({
-  timelines,
-  collection,
-}: TimelineListProps): JSX.Element => {
-  return (
-    <ListRoot>
-      {timelines.map(timeline => (
-        <TimelineCard
-          key={timeline.id}
-          timeline={timeline}
-          collection={collection}
-        />
-      ))}
-    </ListRoot>
-  );
+  return [
+    {
+      title: t`New timeline`,
+      link: Urls.newTimelineInCollection(collection),
+    },
+  ];
 };
 
-export interface TimelineMenuProps {
-  collection: Collection;
-}
-
-const TimelineMenu = ({ collection }: TimelineMenuProps): JSX.Element => {
-  const items = useMemo(
-    () => [
-      {
-        title: t`New timeline`,
-        link: Urls.newTimelineInCollection(collection),
-      },
-    ],
-    [collection],
-  );
-
-  return <EntityMenu items={items} triggerIcon="ellipsis" />;
+const getSortedTimelines = (timelines: Timeline[]) => {
+  return _.chain(timelines)
+    .sortBy(timeline => timeline.name)
+    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
+    .value();
 };
 
 export default TimelineListModal;
