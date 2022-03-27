@@ -120,7 +120,8 @@
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))
                                    (assoc limited-downloads-id :limited))}}]
-          (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph)
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph))
           (is (= :limited (all-users-native-download-perms)))
           (replace-tables ["Table 1" "Table 2" "Table 3" "Table 4"])
           (sync-tables/sync-tables-and-database! database)
