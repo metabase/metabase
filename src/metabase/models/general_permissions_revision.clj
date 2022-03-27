@@ -12,8 +12,8 @@
 (u/strict-extend (class GeneralPermissionsRevision)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:before  :json
-                                   :changes :json})
+         {:types      (constantly {:before :json
+                                   :after  :json})
           :pre-insert pre-insert
           :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a GeneralPermissionsRevision!"))))}))
 
