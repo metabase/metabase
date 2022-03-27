@@ -19,22 +19,13 @@ export interface TreeNodeProps {
   hasChildren: boolean;
   isExpanded: boolean;
   isSelected: boolean;
-  colorScheme: "default" | "admin";
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
 }
 
 // eslint-disable-next-line react/display-name
 export const TreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
-    {
-      isExpanded,
-      isSelected,
-      hasChildren,
-      onToggleExpand,
-      depth,
-      item,
-      colorScheme,
-    },
+    { isExpanded, isSelected, hasChildren, onToggleExpand, depth, item },
     ref,
   ) {
     const { name, icon, id } = item;
@@ -61,7 +52,6 @@ export const TreeNode = React.memo(
         ref={ref}
         role="menuitem"
         tabIndex={0}
-        colorScheme={colorScheme}
         depth={depth}
         onClick={handleSelect}
         isSelected={isSelected}
