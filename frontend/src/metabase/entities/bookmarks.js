@@ -26,15 +26,24 @@ const Bookmarks = createEntity({
   },
 });
 
+function defineIconGetter(type) {
+  const getters = {
+    card: Question,
+    collection: Collection,
+    dashboard: Dashboard,
+  };
+
+  return getters[type];
+}
+
 export function getIcon(bookmark) {
   const { type } = bookmark;
 
-  const { color: iconColor, name, tooltip } =
-    type === "card"
-      ? Question.objectSelectors.getIcon(bookmark)
-      : type === "collection"
-      ? Collection.objectSelectors.getIcon(bookmark)
-      : Dashboard.objectSelectors.getIcon(bookmark);
+  const getter = defineIconGetter(type);
+
+  const { color: iconColor, name, tooltip } = getter.objectSelectors.getIcon(
+    bookmark,
+  );
 
   const treatedColor = type === "card" ? color("brand") : iconColor;
   const opacity = tooltip ? 1 : 0.5;
