@@ -63,6 +63,7 @@ jobs:
           - "native-filters"
           - "permissions"
           - "question"
+          - "sharing"
           - "visualizations"
     services:
       maildev:
