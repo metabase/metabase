@@ -1,7 +1,6 @@
 import React from "react";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import { ITreeNodeItem } from "./types";
-import { TreeNode } from "./TreeNode";
+import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps {
   items: ITreeNodeItem[];
@@ -9,6 +8,7 @@ interface TreeNodeListProps {
   selectedId?: ITreeNodeItem["id"];
   depth: number;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+  TreeNode: TreeNodeComponent;
 }
 
 export function TreeNodeList({
@@ -17,6 +17,7 @@ export function TreeNodeList({
   expandedIds,
   selectedId,
   depth,
+  TreeNode,
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
@@ -44,6 +45,7 @@ export function TreeNodeList({
               <TreeNodeList
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
+                TreeNode={TreeNode}
                 onToggleExpand={onToggleExpand}
                 expandedIds={expandedIds}
                 selectedId={selectedId}
