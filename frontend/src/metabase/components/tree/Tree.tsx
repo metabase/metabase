@@ -5,7 +5,6 @@ import { ColorScheme, ITreeNodeItem } from "./types";
 
 interface TreeProps {
   data: ITreeNodeItem[];
-  onSelect: (item: ITreeNodeItem) => void;
   selectedId?: ITreeNodeItem["id"];
   colorScheme?: ColorScheme;
   emptyState?: React.ReactNode;
@@ -13,7 +12,6 @@ interface TreeProps {
 
 export function Tree({
   data,
-  onSelect,
   selectedId,
   colorScheme = "default",
   emptyState = null,
@@ -41,7 +39,6 @@ export function Tree({
     <TreeNodeList
       colorScheme={colorScheme}
       items={data}
-      onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
       expandedIds={expandedIds}
       selectedId={selectedId}
