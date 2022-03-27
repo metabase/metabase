@@ -19,7 +19,7 @@ export interface TreeNodeProps {
   hasChildren: boolean;
   isExpanded: boolean;
   isSelected: boolean;
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+  onToggleExpand: () => void;
 }
 
 // eslint-disable-next-line react/display-name
@@ -28,21 +28,17 @@ export const TreeNode = React.memo(
     { isExpanded, isSelected, hasChildren, onToggleExpand, depth, item },
     ref,
   ) {
-    const { name, icon, id } = item;
+    const { name, icon } = item;
 
     const iconProps = _.isObject(icon) ? icon : { name: icon };
-
-    const handleSelect = () => {
-      onToggleExpand(id);
-    };
 
     const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
         case "ArrowRight":
-          !isExpanded && onToggleExpand(id);
+          !isExpanded && onToggleExpand();
           break;
         case "ArrowLeft":
-          isExpanded && onToggleExpand(id);
+          isExpanded && onToggleExpand();
           break;
       }
     };
@@ -53,7 +49,7 @@ export const TreeNode = React.memo(
         role="menuitem"
         tabIndex={0}
         depth={depth}
-        onClick={handleSelect}
+        onClick={onToggleExpand}
         isSelected={isSelected}
         onKeyDown={handleKeyDown}
       >
