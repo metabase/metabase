@@ -1,6 +1,6 @@
 import React from "react";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import { ColorScheme, ITreeNodeItem } from "./types";
+import { ITreeNodeItem } from "./types";
 import { TreeNode } from "./TreeNode";
 
 interface TreeNodeListProps {
@@ -8,7 +8,6 @@ interface TreeNodeListProps {
   expandedIds: Set<ITreeNodeItem["id"]>;
   selectedId?: ITreeNodeItem["id"];
   depth: number;
-  colorScheme: ColorScheme;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
 }
 
@@ -18,7 +17,6 @@ export function TreeNodeList({
   expandedIds,
   selectedId,
   depth,
-  colorScheme,
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
@@ -34,7 +32,6 @@ export function TreeNodeList({
           <React.Fragment key={item.id}>
             <TreeNode
               ref={isSelected ? selectedRef : null}
-              colorScheme={colorScheme}
               item={item}
               onToggleExpand={onToggleExpand}
               isSelected={isSelected}
@@ -44,7 +41,6 @@ export function TreeNodeList({
             />
             {isExpanded && (
               <TreeNodeList
-                colorScheme={colorScheme}
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
                 onToggleExpand={onToggleExpand}

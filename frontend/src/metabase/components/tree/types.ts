@@ -6,5 +6,3 @@ export interface ITreeNodeItem {
   icon: string | IconProps;
   children?: ITreeNodeItem[];
 }
-
-export type ColorScheme = "admin" | "default";
