@@ -11,16 +11,7 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { ITreeNodeItem } from "./types";
-
-export interface TreeNodeProps {
-  item: ITreeNodeItem;
-  depth: number;
-  hasChildren: boolean;
-  isExpanded: boolean;
-  isSelected: boolean;
-  onToggleExpand: () => void;
-}
+import { TreeNodeProps } from "./types";
 
 // eslint-disable-next-line react/display-name
 export const TreeNode = React.memo(

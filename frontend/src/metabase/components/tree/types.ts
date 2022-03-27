@@ -6,3 +6,12 @@ export interface ITreeNodeItem {
   icon: string | IconProps;
   children?: ITreeNodeItem[];
 }
+
+export interface TreeNodeProps {
+  item: ITreeNodeItem;
+  depth: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  isSelected: boolean;
+  onToggleExpand: () => void;
+}
