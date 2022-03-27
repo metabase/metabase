@@ -57,6 +57,7 @@ jobs:
           - "dashboard-filters-sql"
           - "downloads"
           - "joins"
+          - "models"
           - "moderation"
           - "native"
           - "native-filters"
