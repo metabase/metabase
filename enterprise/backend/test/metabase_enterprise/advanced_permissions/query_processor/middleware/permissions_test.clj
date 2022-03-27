@@ -208,3 +208,75 @@
          {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))
+
+(deftest no-download-perms-test
+  (testing "Users with no download perms cannot run download queries"
+    (with-download-perms-for-db (mt/id) :none
+      (streaming-test/do-test
+       "A user with no download perms for a DB receives an error response"
+       {:query      {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id 'venues)
+                                :limit        10}}
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results]
+                            (is (partial=
+                                 {:error "You do not have permissions to download the results of this query."}
+                                 results)))}})
+
+      (streaming-test/do-test
+       "An admin can always run download queries, even if the All Users group has no download permissions "
+       {:query      {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id 'venues)
+                                :limit        10}}
+        :user       :crowberto
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
+
+    (with-download-perms (mt/id) {:schemas {"PUBLIC" :none}}
+      (streaming-test/do-test
+       "A user with no download perms for a schema receives an error response for download queries on that schema"
+       {:query      {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id 'venues)
+                                :limit        10}}
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results]
+                            (is (partial=
+                                 {:error "You do not have permissions to download the results of this query."}
+                                 results)))}}))
+
+    (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :none
+                                                      (mt/id 'checkins)   :full
+                                                      (mt/id 'users)      :full
+                                                      (mt/id 'categories) :full}}}
+      (streaming-test/do-test
+       "A user with no download perms for a table receives an error response for download queries on that table"
+       {:query      {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id 'venues)
+                                :limit        10}}
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results]
+                            (is (partial=
+                                 {:error "You do not have permissions to download the results of this query."}
+                                 results)))}})
+
+      (streaming-test/do-test
+       "A user with no download perms for a table still has full download perms for MBQL queries on other tables"
+       {:query      {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id 'users)
+                                :limit        10}}
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
+
+      (streaming-test/do-test
+       "A user with no download perms for a table has no download perms for native queries on all tables"
+       {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results]
+                            (is (partial=
+                                 {:error "You do not have permissions to download the results of this query."}
+                                 results)))}}))))
