@@ -1,3 +1,4 @@
+import React from "react";
 import { IconProps } from "../Icon";
 
 export interface ITreeNodeItem {
@@ -15,3 +16,9 @@ export interface TreeNodeProps {
   isSelected: boolean;
   onToggleExpand: () => void;
 }
+
+export type TreeNodeComponent = React.ComponentType<
+  TreeNodeProps & {
+    ref: any;
+  }
+>;

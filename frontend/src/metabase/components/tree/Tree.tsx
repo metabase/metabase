@@ -1,15 +1,22 @@
 import React, { useState, useCallback } from "react";
 import { TreeNodeList } from "./TreeNodeList";
+import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
-import { ITreeNodeItem } from "./types";
+import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeProps {
   data: ITreeNodeItem[];
   selectedId?: ITreeNodeItem["id"];
   emptyState?: React.ReactNode;
+  TreeNode?: TreeNodeComponent;
 }
 
-export function Tree({ data, selectedId, emptyState = null }: TreeProps) {
+export function Tree({
+  data,
+  selectedId,
+  emptyState = null,
+  TreeNode = DefaultTreeNode,
+}: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
@@ -32,6 +39,7 @@ export function Tree({ data, selectedId, emptyState = null }: TreeProps) {
   return (
     <TreeNodeList
       items={data}
+      TreeNode={TreeNode}
       onToggleExpand={handleToggleExpand}
       expandedIds={expandedIds}
       selectedId={selectedId}
