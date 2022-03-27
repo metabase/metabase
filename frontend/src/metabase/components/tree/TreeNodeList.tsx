@@ -27,13 +27,14 @@ export function TreeNodeList({
         const hasChildren =
           Array.isArray(item.children) && item.children.length > 0;
         const isExpanded = hasChildren && expandedIds.has(item.id);
+        const onToggle = () => onToggleExpand(item.id);
 
         return (
           <React.Fragment key={item.id}>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
-              onToggleExpand={onToggleExpand}
+              onToggleExpand={onToggle}
               isSelected={isSelected}
               isExpanded={isExpanded}
               hasChildren={hasChildren}
