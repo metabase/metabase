@@ -2,8 +2,7 @@
   "Code for generating and updating the General Permission graph. See [[metabase.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
-            [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models :refer [GeneralPermissionsRevision Permissions PermissionsGroup]]
+            [metabase.models :refer [GeneralPermissionsRevision Permissions]]
             [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.permissions :as perms]
             [metabase.util.honeysql-extensions :as hx]
@@ -23,20 +22,15 @@
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set
-  "Get a map of general permissions for all existing group-ids"
+  "Returns a map of group-id -> general permissions paths.
+  Only groups that has at least one general permission enabled will be included."
   []
-  (let [group-ids           (db/select-field :id PermissionsGroup)
-        general-permissions (db/select Permissions
+  (let [general-permissions (db/select Permissions
                                        {:where [:or
                                                 [:= :object "/"]
-                                                [:like :object (hx/literal "/general/%")]]})
-        permissions-set-from-group-id (fn [group-id]
-                                        (->> general-permissions
-                                             (filter #(= (:group_id %) group-id))
-                                             (map :object)
-                                             set))]
-    (into {} (for [group-id group-ids]
-               {group-id (permissions-set-from-group-id group-id)}))))
+                                                [:like :object (hx/literal "/general/%")]]})]
+    (into {} (for [[group-id perms] (group-by :group_id general-permissions)]
+               {group-id (set (map :object perms))}))))
 
 (defn- permission-for-type
   [permissions-set perm-type]
@@ -61,29 +55,16 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(defn- save-perms-revision!
-  "Save changes made to the general permissions graph for logging/auditing purposes.
-  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old changes]
-  (when *current-user-id*
-    (db/insert! GeneralPermissionsRevision
-                ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-                ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-                :id      (inc current-revision)
-                :before  old
-                :changes changes
-                :user_id *current-user-id*)))
-
 (defn update-general-permissions!
   "Perform update general permissions for a group-id"
   [group-id changes]
-  (doseq [[permission-type permission-value] changes]
-    (case permission-value
+  (doseq [[perm-type perm-value] changes]
+    (case perm-value
       :yes
-      (perms/grant-permissions! group-id (perms/general-perms-path permission-type))
+      (perms/grant-general-permissions! group-id perm-type)
 
       :no
-      (perms/delete-related-permissions! group-id (perms/general-perms-path permission-type)))))
+      (perms/revoke-general-permissions! group-id perm-type))))
 
 (s/defn update-graph!
   "Update the General Permissions graph.
@@ -93,11 +74,6 @@
   (let [old-graph          (graph)
         old-perms          (:groups old-graph)
         new-perms          (:groups new-graph)
-        ;; filter out any groups not in the old graph
-        new-perms          (select-keys new-perms (keys old-perms))
-        ;; filter out any permission type that are not in the old graph
-        new-perms          (into {} (for [[group-id permissions] new-perms]
-                                      [group-id (select-keys permissions (keys (get old-perms group-id)))]))
         [diff-old changes] (data/diff old-perms new-perms)]
     (perms/log-permissions-changes diff-old changes)
     (perms/check-revision-numbers old-graph new-graph)
@@ -105,4 +81,4 @@
       (db/transaction
        (doseq [[group-id changes] changes]
          (update-general-permissions! group-id changes))
-       (save-perms-revision! (:revision old-graph) old-graph changes)))))
+       (perms/save-perms-revision! GeneralPermissionsRevision (:revision old-graph) (:groups old-graph) changes)))))

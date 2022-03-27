@@ -1,10 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.api.general-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [PermissionsGroup]]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+            [metabase.test :as mt]))
 
 (deftest general-permissions-test
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
@@ -19,12 +19,10 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/general/graph"))))
 
-        (testing "return general permissions for all groups"
+        (testing "return general permissions for groups that has general permisions"
           (let [graph  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/general/graph")
                 groups (:groups graph)]
             (is (int? (:revision graph)))
-            (is (= (set (map mt/int->kw (db/select-field :id PermissionsGroup)))
-                   (set (keys groups))))
             (is (partial= {(mt/int->kw (:id (group/admin)))
                            {:monitoring   "yes"
                             :setting      "yes"
@@ -33,8 +31,10 @@
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
-                          groups))))))
 
+                          groups)))))))
+
+  (mt/with-temp* [PermissionsGroup [{group-id :id}]]
     (testing "PUT /api/ee/advanced-permissions/general/graph"
       (let [current-graph (premium-features-test/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/general/graph"))

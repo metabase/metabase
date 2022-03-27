@@ -3,22 +3,21 @@
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (deftest general-permissions-graph-test
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
-    (testing "Should return general permission graph for all group-ids"
-      ;; clear the graph revisions
-      (db/delete! GeneralPermissionsRevision)
-      (let [graph  (g-perms/graph)
-            groups (:groups graph)]
+    ;; clear the graph revisions
+    (db/delete! GeneralPermissionsRevision)
+    (testing "group should be in graph if one of general permission is enabled"
+      (perms/grant-general-permissions! group-id :subscription)
+      (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
-        (is (= (db/select-field :id PermissionsGroup) (set (keys groups))))
         (is (partial= {(:id (group/admin))
                        {:monitoring   :yes
                         :setting      :yes
@@ -27,12 +26,17 @@
                        {:monitoring   :no
                         :setting      :no
                         :subscription :yes}}
-                      groups))))))
+                      (:groups graph)))))
+
+    (testing "group has no permissions will not be included in the graph"
+      (perms/revoke-general-permissions! group-id :subscription)
+      (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
+                          group-id))))))
 
 ;;; ------------------------------------------------- Update Graph --------------------------------------------------
 
 (defmacro with-new-group-and-current-graph
-  "Create a new group-id and bind it with current-graph"
+  "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
      ;; need to bind *current-user-id* or the Revision won't get updated
@@ -53,7 +57,7 @@
       (let [new-graph     (assoc-in current-graph [:groups group-id :subscription] :no)
             _             (g-perms/update-graph! new-graph)
             updated-graph (g-perms/graph)]
-        (is (= (:groups new-graph) (:groups updated-graph)))
+        (is (= (dissoc (:groups new-graph) group-id) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
 
   (testing "We can do a no-op and revision won't changes"
@@ -79,24 +83,18 @@
              #"Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
              (g-perms/update-graph! new-graph))))))
 
-  (testing "Ignore permissions that are not in current graph and revision won't changes"
-    (s/without-fn-validation
-      (with-new-group-and-current-graph group-id current-graph
-        (let [new-graph     (assoc-in current-graph [:groups group-id :random-permission] :yes)
-              _             (g-perms/update-graph! new-graph)
-              updated-graph (g-perms/graph)]
-          (is (= (:groups current-graph) (:groups updated-graph)))
-          (is (= (:revision current-graph) (:revision updated-graph)))))))
-
-  (testing "Ignore group-ids that are not in current graph but still updates if other permissions changes"
+  (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id current-graph
-      (let [non-existing-group-id       (inc group-id)
-            new-graph                   (assoc-in current-graph [:groups group-id :setting] :yes)
-            new-graph-with-random-group (update new-graph :groups
-                                                assoc non-existing-group-id {:setting      :yes
-                                                                             :monitoring   :no
-                                                                             :subscription :yes})
-            _                     (g-perms/update-graph! new-graph-with-random-group)
+      ;; subscription is granted for new gorup by default, so revoke it
+      (perms/revoke-general-permissions! group-id :subscription)
+      ;; making sure the `group-id` is not in the current-graph
+      (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
+                          group-id)))
+      (let [current-graph         (g-perms/graph)
+            new-graph             (assoc-in current-graph [:groups group-id] {:setting      :yes
+                                                                              :subscription :yes
+                                                                              :monitoring   :no})
+            _                     (g-perms/update-graph! new-graph)
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph)))))))
