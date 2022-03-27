@@ -5,7 +5,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database]]
+            [metabase.models :refer [Database Permissions]]
             [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
@@ -35,7 +35,12 @@
                                               (perms/data-perms-path db))))
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/feature-perms-path :download :full db)))))))
+                                              (perms/feature-perms-path :download :full db))))))
+
+  (testing "After deleting a Database, no permissions for the DB should still exist"
+    (mt/with-temp Database [{db-id :id}]
+      (db/delete! Database :id db-id)
+      (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"

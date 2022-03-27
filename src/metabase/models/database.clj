@@ -86,9 +86,7 @@
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
-                :where       [:or
-                              [:like :object (str (perms/data-perms-path id) "%")]
-                              [:= :object (perms/database-block-perms-path id)]]})
+                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
