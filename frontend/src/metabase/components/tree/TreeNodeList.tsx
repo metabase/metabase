@@ -5,18 +5,16 @@ import { TreeNode } from "./TreeNode";
 
 interface TreeNodeListProps {
   items: ITreeNodeItem[];
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
-  onSelect: (item: ITreeNodeItem) => void;
   expandedIds: Set<ITreeNodeItem["id"]>;
   selectedId?: ITreeNodeItem["id"];
   depth: number;
   colorScheme: ColorScheme;
+  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
 }
 
 export function TreeNodeList({
   items,
   onToggleExpand,
-  onSelect,
   expandedIds,
   selectedId,
   depth,
@@ -39,7 +37,6 @@ export function TreeNodeList({
               colorScheme={colorScheme}
               item={item}
               onToggleExpand={onToggleExpand}
-              onSelect={onSelect}
               isSelected={isSelected}
               isExpanded={isExpanded}
               hasChildren={hasChildren}
@@ -51,7 +48,6 @@ export function TreeNodeList({
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
                 onToggleExpand={onToggleExpand}
-                onSelect={onSelect}
                 expandedIds={expandedIds}
                 selectedId={selectedId}
                 depth={depth + 1}

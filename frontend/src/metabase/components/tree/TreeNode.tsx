@@ -20,7 +20,6 @@ export interface TreeNodeProps {
   isExpanded: boolean;
   isSelected: boolean;
   colorScheme: "default" | "admin";
-  onSelect: (item: ITreeNodeItem) => void;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
 }
 
@@ -32,7 +31,6 @@ export const TreeNode = React.memo(
       isSelected,
       hasChildren,
       onToggleExpand,
-      onSelect,
       depth,
       item,
       colorScheme,
@@ -44,15 +42,11 @@ export const TreeNode = React.memo(
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
     const handleSelect = () => {
-      onSelect(item);
       onToggleExpand(id);
     };
 
     const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
-        case "Enter":
-          onSelect(item);
-          break;
         case "ArrowRight":
           !isExpanded && onToggleExpand(id);
           break;
