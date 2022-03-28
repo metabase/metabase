@@ -13,8 +13,8 @@ import { SelectedItem } from "../types";
 import { BookmarkListRoot, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
-  onDeleteBookmark: ({ id, type }: Bookmark) =>
-    Bookmarks.actions.delete({ id: id.toString(), type }),
+  onDeleteBookmark: ({ item_id, type }: Bookmark) =>
+    Bookmarks.actions.delete({ id: item_id, type }),
 };
 
 function getIconForEntityType(type: BookmarkableEntities) {
