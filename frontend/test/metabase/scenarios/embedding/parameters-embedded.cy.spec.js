@@ -1,16 +1,13 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  visitEmbeddedPage,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
-
-const METABASE_SECRET_KEY =
-  "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";
-
-// Calling jwt.sign was failing in cypress (in browser issue maybe?). These
-// tokens just hard code dashboardId=2 and questionId=3
-const DASHBOARD_JWT_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE1Nzk1NjAxMTF9.LjOiTp4p2lV3b2VpSjcg0GuSaE2O0xhHwc59JDYcBJI";
 
 const questionDetails = {
   native: {
@@ -89,10 +86,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.wrap(dashboard_id).as("dashboardId");
 
       mapParameters({ id, card_id, dashboard_id });
-    });
-
-    cy.request("PUT", `/api/setting/embedding-secret-key`, {
-      value: METABASE_SECRET_KEY,
     });
   });
 
@@ -203,60 +196,55 @@ describe("scenarios > dashboard > parameters-embedded", () => {
           },
           enable_embedding: true,
         });
-      });
 
-      cy.signOut();
+        const payload = {
+          resource: { dashboard: dashboardId },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload);
+
+        // wait for the results to load
+        cy.contains("Test Dashboard");
+        cy.contains("2,500");
+      });
     });
 
-    sharedParametersTests(() => {
-      cy.visit(`/embed/dashboard/${DASHBOARD_JWT_TOKEN}`);
-      // wait for question to load/run
-      cy.contains("Test Dashboard");
-      cy.contains("2,500");
+    it("should allow searching PEOPLE.ID by PEOPLE.NAME", () => {
+      cy.contains("Id").click();
+      popover()
+        .find('[placeholder="Search by Name or enter an ID"]')
+        .type("Aly");
+      popover().contains("Alycia McCullough - 2016");
+    });
+
+    it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
+      cy.contains("Name").click();
+      popover()
+        .find('[placeholder="Search by Name"]')
+        .type("Aly");
+      popover().contains("Alycia McCullough");
+    });
+
+    it("should show values for PEOPLE.SOURCE", () => {
+      cy.contains("Source").click();
+      popover().contains("Affiliate");
+    });
+
+    it("should allow searching ORDER.USER_ID by PEOPLE.NAME", () => {
+      cy.contains("User").click();
+      popover()
+        .find('[placeholder="Search by Name or enter an ID"]')
+        .type("Aly");
+      popover().contains("Alycia McCullough - 2016");
+    });
+
+    it("should accept url parameters", () => {
+      cy.url().then(url => cy.visit(url + "?id=1&id=3"));
+      cy.contains(".ScalarValue", "2");
     });
   });
 });
-
-function sharedParametersTests(visitUrl) {
-  it("should allow searching PEOPLE.ID by PEOPLE.NAME", () => {
-    visitUrl();
-    cy.contains("Id").click();
-    popover()
-      .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
-    popover().contains("Alycia McCullough - 2016");
-  });
-
-  it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
-    visitUrl();
-    cy.contains("Name").click();
-    popover()
-      .find('[placeholder="Search by Name"]')
-      .type("Aly");
-    popover().contains("Alycia McCullough");
-  });
-
-  it("should show values for PEOPLE.SOURCE", () => {
-    visitUrl();
-    cy.contains("Source").click();
-    popover().contains("Affiliate");
-  });
-
-  it("should allow searching ORDER.USER_ID by PEOPLE.NAME", () => {
-    visitUrl();
-    cy.contains("User").click();
-    popover()
-      .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
-    popover().contains("Alycia McCullough - 2016");
-  });
-
-  it("should accept url parameters", () => {
-    visitUrl();
-    cy.url().then(url => cy.visit(url + "?id=1&id=3"));
-    cy.contains(".ScalarValue", "2");
-  });
-}
 
 function mapParameters({ id, card_id, dashboard_id } = {}) {
   return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
