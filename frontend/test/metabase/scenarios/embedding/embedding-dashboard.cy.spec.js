@@ -7,64 +7,15 @@ import {
   visitIframe,
 } from "__support__/e2e/cypress";
 
+import {
+  questionDetails,
+  dashboardDetails,
+  mapParameters,
+} from "./embedding-dashboard";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
-
-const questionDetails = {
-  native: {
-    query:
-      "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */",
-    "template-tags": {
-      id: {
-        id: "3fce42dd-fac7-c87d-e738-d8b3fc9d6d56",
-        name: "id",
-        display_name: "Id",
-        type: "dimension",
-        dimension: ["field", PEOPLE.ID, null],
-        "widget-type": "id",
-        default: null,
-      },
-      name: {
-        id: "1fe12d96-8cf7-49e4-05a3-6ed1aea24490",
-        name: "name",
-        display_name: "Name",
-        type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
-        "widget-type": "category",
-        default: null,
-      },
-      source: {
-        id: "aed3c67a-820a-966b-d07b-ddf54a7f2e5e",
-        name: "source",
-        display_name: "Source",
-        type: "dimension",
-        dimension: ["field", PEOPLE.SOURCE, null],
-        "widget-type": "category",
-        default: null,
-      },
-      user_id: {
-        id: "cd4bb37d-8404-488e-f66a-6545a261bbe0",
-        name: "user_id",
-        display_name: "User",
-        type: "dimension",
-        dimension: ["field", ORDERS.USER_ID, null],
-        "widget-type": "id",
-        default: null,
-      },
-    },
-  },
-  display: "scalar",
-};
-
-const dashboardDetails = {
-  parameters: [
-    { name: "Id", slug: "id", id: "1", type: "id" },
-    { name: "Name", slug: "name", id: "2", type: "category" },
-    { name: "Source", slug: "source", id: "3", type: "category" },
-    { name: "User", slug: "user_id", id: "4", type: "id" },
-  ],
-};
 
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
@@ -249,45 +200,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 });
-
-function mapParameters({ id, card_id, dashboard_id } = {}) {
-  return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-    cards: [
-      {
-        id,
-        card_id,
-        row: 0,
-        col: 0,
-        sizeX: 18,
-        sizeY: 6,
-        series: [],
-        visualization_settings: {},
-        parameter_mappings: [
-          {
-            parameter_id: "1",
-            card_id,
-            target: ["dimension", ["template-tag", "id"]],
-          },
-          {
-            parameter_id: "2",
-            card_id,
-            target: ["dimension", ["template-tag", "name"]],
-          },
-          {
-            parameter_id: "3",
-            card_id,
-            target: ["dimension", ["template-tag", "source"]],
-          },
-          {
-            parameter_id: "4",
-            card_id,
-            target: ["dimension", ["template-tag", "user_id"]],
-          },
-        ],
-      },
-    ],
-  });
-}
 
 function openFilterOptions(name) {
   filterWidget()
