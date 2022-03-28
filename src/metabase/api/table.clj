@@ -120,6 +120,8 @@
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private minute-str (deferred-tru "Minute"))
+(def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
 
 (def ^:private dimension-options
@@ -131,8 +133,8 @@
                      :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(deferred-tru "Minute") "minute"]
-                   [(deferred-tru "Hour") "hour"]
+                  [[minute-str "minute"]
+                   [hour-str "hour"]
                    [day-str "day"]
                    [(deferred-tru "Week") "week"]
                    [(deferred-tru "Month") "month"]
@@ -146,6 +148,13 @@
                    [(deferred-tru "Week of Year") "week-of-year"]
                    [(deferred-tru "Month of Year") "month-of-year"]
                    [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql [:field nil {:temporal-unit param}]
+                     :type "type/Time"})
+                  [[minute-str "minute"]
+                   [hour-str "hour"]
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
@@ -189,6 +198,9 @@
 (def ^:private datetime-dimension-indexes
   (create-dim-index-seq "type/DateTime"))
 
+(def ^:private time-dimension-indexes
+  (create-dim-index-seq "type/Time"))
+
 (def ^:private numeric-dimension-indexes
   (create-dim-index-seq "type/Number"))
 
@@ -203,6 +215,9 @@
 (def ^:private date-default-index
   (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
 
+(def ^:private time-default-index
+  (dimension-index-for-type "type/Time" #(= (str hour-str) (str (:name %)))))
+
 (def ^:private numeric-default-index
   (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
@@ -212,16 +227,13 @@
 (defn- supports-numeric-binning? [driver]
   (and driver (driver/supports? driver :binning)))
 
-(defn- supports-date-binning?
-  "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type], :as field}]
-  (and (types/temporal-field? field)
-       (not (isa? base_type :type/Time))))
-
 (defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-                                       (supports-date-binning? field)
+                                       (types/field-is-type? :type/Time field)
+                                       [time-default-index time-dimension-indexes]
+
+                                       (types/temporal-field? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value

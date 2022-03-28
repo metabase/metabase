@@ -9,7 +9,7 @@ on:
 jobs:
   pr_info:
     name: Check if the commit should be backported
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       title: ${{ fromJson(steps.collect_pr_info.outputs.result).title }}
       number: ${{ fromJson(steps.collect_pr_info.outputs.result).pullRequestNumber }}
@@ -58,7 +58,7 @@ jobs:
 
   get_latest_release_branch:
     name: Get latest release branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       branch_name: ${{ steps.get_branch_name.outputs.result }}
     steps:
@@ -87,7 +87,7 @@ jobs:
             return latestReleaseBranchName;
 
   create_backport_pull_request:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Create a backport PR with the commit
     needs: [pr_info, get_latest_release_branch]
     if: ${{ needs.pr_info.outputs.should_backport == 'true' }}
@@ -97,7 +97,7 @@ jobs:
       ORIGINAL_TITLE: ${{ needs.pr_info.outputs.title }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         name: Checkout
         with:
           fetch-depth: 0
@@ -117,7 +117,7 @@ jobs:
           #${ORIGINAL_PULL_REQUEST_NUMBER}"
 
   notify_when_failed:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Notify about failure
     needs: [pr_info, create_backport_pull_request]
     if: ${{ failure() }}

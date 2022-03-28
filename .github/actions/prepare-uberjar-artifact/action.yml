@@ -9,7 +9,7 @@ runs:
       run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: |
