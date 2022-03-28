@@ -30,7 +30,7 @@ function getEventScale(chart, xDomain, xInterval) {
 
 function getEventGroups(events, eventScale) {
   return _.chain(events)
-    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_GROUP) * ICON_GROUP)
+    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_GROUP))
     .values()
     .value();
 }
@@ -74,10 +74,10 @@ function getIconLabel(events) {
 
 function isEventWithin(eventIndex, eventPoints, eventDistance) {
   const thisPoint = eventPoints[eventIndex];
-  const prevPoint = eventPoints[eventIndex - 1];
-  const nextPoint = eventPoints[eventIndex + 1];
-  const prevDistance = prevPoint != null && thisPoint - prevPoint;
-  const nextDistance = nextPoint != null && nextPoint - thisPoint;
+  const prevPoint = eventPoints[eventIndex - 1] ?? Number.NEGATIVE_INFINITY;
+  const nextPoint = eventPoints[eventIndex + 1] ?? Number.POSITIVE_INFINITY;
+  const prevDistance = thisPoint - prevPoint;
+  const nextDistance = nextPoint - thisPoint;
 
   return prevDistance < eventDistance || nextDistance < eventDistance;
 }
