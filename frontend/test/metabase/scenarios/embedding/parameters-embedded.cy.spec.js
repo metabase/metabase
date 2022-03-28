@@ -3,6 +3,7 @@ import {
   popover,
   visitDashboard,
   visitEmbeddedPage,
+  filterWidget,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -210,36 +211,41 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       });
     });
 
-    it("should allow searching PEOPLE.ID by PEOPLE.NAME", () => {
-      cy.contains("Id").click();
-      popover()
-        .find('[placeholder="Search by Name or enter an ID"]')
-        .type("Aly");
-      popover().contains("Alycia McCullough - 2016");
-    });
+    it("should work for all filters", () => {
+      cy.log("should allow searching PEOPLE.ID by PEOPLE.NAME");
 
-    it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
-      cy.contains("Name").click();
-      popover()
-        .find('[placeholder="Search by Name"]')
-        .type("Aly");
-      popover().contains("Alycia McCullough");
-    });
+      openFilterOptions("Id");
+      popover().within(() => {
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
 
-    it("should show values for PEOPLE.SOURCE", () => {
-      cy.contains("Source").click();
+        cy.contains("Alycia McCullough - 2016");
+      });
+
+      cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
+
+      openFilterOptions("Name");
+      popover().within(() => {
+        cy.findByPlaceholderText("Search by Name").type("Aly");
+
+        cy.contains("Alycia McCullough");
+      });
+
+      cy.log("should show values for PEOPLE.SOURCE");
+
+      openFilterOptions("Source");
       popover().contains("Affiliate");
-    });
 
-    it("should allow searching ORDER.USER_ID by PEOPLE.NAME", () => {
-      cy.contains("User").click();
-      popover()
-        .find('[placeholder="Search by Name or enter an ID"]')
-        .type("Aly");
-      popover().contains("Alycia McCullough - 2016");
-    });
+      cy.log("should allow searching ORDER.USER_ID by PEOPLE.NAME");
 
-    it("should accept url parameters", () => {
+      openFilterOptions("User");
+      popover().within(() => {
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
+
+        cy.contains("Alycia McCullough - 2016");
+      });
+
+      cy.log("should accept url parameters");
+
       cy.url().then(url => cy.visit(url + "?id=1&id=3"));
       cy.contains(".ScalarValue", "2");
     });
@@ -283,4 +289,10 @@ function mapParameters({ id, card_id, dashboard_id } = {}) {
       },
     ],
   });
+}
+
+function openFilterOptions(name) {
+  filterWidget()
+    .contains(name)
+    .click();
 }
