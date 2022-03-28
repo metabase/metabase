@@ -7,7 +7,6 @@ const ICON_X = -16;
 const ICON_Y = 10;
 const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_DISTANCE = 24;
 const RECT_SIZE = ICON_SIZE * 2;
 const TEXT_X = 10;
 const TEXT_Y = 16;
@@ -36,7 +35,7 @@ function getEventMapping(events, eventScale) {
     const eventPoint = eventScale(event.timestamp);
     const groupDistance = eventPoint - groupPoint;
 
-    if (!group.length || groupDistance < ICON_DISTANCE) {
+    if (!group.length || groupDistance < ICON_SIZE) {
       group.push(event);
       groupPoint += (eventPoint - groupPoint) / group.length;
     } else {
