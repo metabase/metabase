@@ -57,7 +57,10 @@ function MainNavbarContainer({
     const { pathname } = location;
     const { slug } = params;
     if (pathname.startsWith("/collection")) {
-      return { type: "collection", id: Urls.extractEntityId(slug) };
+      const id = pathname.startsWith("/collection/users")
+        ? "users"
+        : Urls.extractCollectionId(slug);
+      return { type: "collection", id };
     }
     if (pathname.startsWith("/dashboard")) {
       return { type: "dashboard", id: Urls.extractEntityId(slug) };
