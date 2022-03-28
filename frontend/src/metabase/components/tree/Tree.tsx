@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
@@ -22,6 +22,14 @@ function BaseTree({
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
+
+  useEffect(() => {
+    if (selectedId && !expandedIds.has(selectedId)) {
+      setExpandedIds(
+        prev => new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
+      );
+    }
+  }, [data, selectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
     itemId => {
