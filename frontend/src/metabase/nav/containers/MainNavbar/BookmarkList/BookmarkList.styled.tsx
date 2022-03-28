@@ -18,6 +18,7 @@ export const BookmarkListRoot = styled.div`
     opacity: 0;
     color: ${color("brand")};
     cursor: pointer;
+    margin-right: ${space(0)};
   }
 `;
 
