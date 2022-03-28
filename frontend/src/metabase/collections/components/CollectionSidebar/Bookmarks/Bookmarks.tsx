@@ -70,12 +70,15 @@ const ListOfBookmarks = ({ children }: { children: JSX.Element }) => (
   <BookmarkListRoot>{children}</BookmarkListRoot>
 );
 
-type ColumnItemProps = {
+type BookmarkItemProps = {
   bookmark: Bookmark;
   handleDeleteBookmark: (arg0: Bookmark) => void;
 };
 
-const ColumnItem = ({ bookmark, handleDeleteBookmark }: ColumnItemProps) => {
+const BookmarkItem = ({
+  bookmark,
+  handleDeleteBookmark,
+}: BookmarkItemProps) => {
   const { id, name, type } = bookmark;
   const url = Urls.bookmark({ id, name, type });
 
@@ -94,7 +97,7 @@ const ColumnItem = ({ bookmark, handleDeleteBookmark }: ColumnItemProps) => {
   );
 };
 
-const SortableColumnItem = SortableElement(ColumnItem);
+const SortableBookmarkItem = SortableElement(BookmarkItem);
 const SortableListOfBookmark = SortableContainer(ListOfBookmarks);
 
 const CollectionSidebarBookmarks = ({
@@ -159,7 +162,7 @@ const CollectionSidebarBookmarks = ({
         >
           {orderedBookmarks.map((bookmark, index) => {
             return (
-              <SortableColumnItem
+              <SortableBookmarkItem
                 index={index}
                 key={bookmark.id}
                 bookmark={bookmark}
