@@ -205,6 +205,7 @@ describe("Field", () => {
       expect(field.targetObjectName()).toBe("field");
     });
   });
+
   describe("dimension", () => {
     it("should return the field's dimension when the id is an mbql field", () => {
       const field = new Field({
@@ -214,6 +215,14 @@ describe("Field", () => {
       expect(dimension).toBeInstanceOf(Dimension);
       expect(dimension.fieldIdOrName()).toBe(123);
     });
+    it("should return the field's dimension when the id is an mbql field (custom column)", () => {
+      const field = new Field({
+        id: ["field", "custom column", null],
+      });
+      const dimension = field.dimension();
+      expect(dimension).toBeInstanceOf(Dimension);
+      expect(dimension.fieldIdOrName()).toBe("custom column");
+    });
     it("should return the field's dimension when the id is not an mbql field", () => {
       const field = new Field({
         id: 123,
@@ -222,7 +231,16 @@ describe("Field", () => {
       expect(dimension).toBeInstanceOf(Dimension);
       expect(dimension.fieldIdOrName()).toBe(123);
     });
+    it("should return the field's dimension when the id is not an mbql field (custom column)", () => {
+      const field = new Field({
+        name: "custom column",
+      });
+      const dimension = field.dimension();
+      expect(dimension).toBeInstanceOf(Dimension);
+      expect(dimension.fieldIdOrName()).toBe("custom column");
+    });
   });
+
   describe("getDefaultDateTimeUnit", () => {
     describe("when the field is of type `type/DateTime`", () => {
       it("should return 'day'", () => {
