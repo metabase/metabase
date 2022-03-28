@@ -40,7 +40,8 @@
     (= query-type :query)  (tables->download-perms-set database (query->source-table-ids query) download-level)))
 
 (defn- current-user-download-perms-level
-  "Returns the download permissions level which the current user has for the given query."
+  "Returns the download permissions level which the current user has for the given query. If no user is bound, defaults
+  to full download permissions."
   [query]
   (cond
     (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (download-perms-set query :full))
@@ -86,10 +87,10 @@
   the query metadata so that the frontend can determine whether to show the download option on the UI."
   [qp]
   (fn [query rff context]
-    (when (premium-features/has-feature? :advanced-permissions)
-      (let [download-perms-level (if api/*current-user-id*
+    (if (premium-features/has-feature? :advanced-permissions)
+      (let [download-perms-level (if api/*current-user-permissions-set*
                                    (current-user-download-perms-level query)
-                                   ;; If no user is bound, assume full download permissions (e.g. for public questions))
+                                   ;; If no user is bound, assume full download permissions (e.g. for public questions)
                                    :full)]
         (when (and (is-download? query)
                    (= download-perms-level :none))
@@ -98,5 +99,5 @@
                                                       (download-perms-set query :limited)))))
         (qp query
             (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
-            context)))
-    (qp query rff context)))
+            context))
+      (qp query rff context))))
