@@ -15,6 +15,10 @@ export const CardRoot = styled.div<CardRootProps>`
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.03) : "transparent"};
   cursor: pointer;
+
+  &:hover {
+    background-color: ${alpha("brand", 0.03)};
+  }
 `;
 
 export const CardIcon = styled(Icon)`
