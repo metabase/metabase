@@ -71,7 +71,7 @@ const TimelineSidebar = ({
 
 const formatTitle = (xDomain?: [Moment, Moment]) => {
   return xDomain
-    ? t`Events from ${formatDate(xDomain[0])} to ${formatDate(xDomain[1])}`
+    ? t`Events ${formatDate(xDomain[0])} — ${formatDate(xDomain[1])}`
     : t`Events`;
 };
 
