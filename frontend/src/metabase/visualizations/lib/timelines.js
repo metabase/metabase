@@ -4,14 +4,15 @@ import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
 
+const ICON_X = -16;
+const ICON_Y = 10;
 const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_X = -ICON_SIZE;
-const ICON_Y = 10;
+const ICON_GROUP = 24;
+const RECT_SIZE = ICON_SIZE * 2;
 const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 2;
-const RECT_SIZE = ICON_SIZE * 2;
 
 function getXAxis(chart) {
   return chart.svg().select(".axis.x");
@@ -29,7 +30,7 @@ function getEventScale(chart, xDomain, xInterval) {
 
 function getEventGroups(events, eventScale) {
   return _.chain(events)
-    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_SIZE) * ICON_SIZE)
+    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_GROUP) * ICON_GROUP)
     .values()
     .value();
 }
