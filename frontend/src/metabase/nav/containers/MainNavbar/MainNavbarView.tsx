@@ -79,8 +79,8 @@ function MainNavbarView({
               icon="table_spaced"
               url={OTHER_USERS_COLLECTIONS_URL}
               isSelected={
-                isMiscLinkSelected &&
-                selectedItem.url.startsWith(OTHER_USERS_COLLECTIONS_URL)
+                selectedItem.type === "collection" &&
+                selectedItem.id === "users"
               }
             >
               {t`Other users' personal collections`}
