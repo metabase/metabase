@@ -6,6 +6,7 @@ import {
   openOrdersTable,
   navigationSidebar,
   closeNavigationSidebar,
+  openNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -347,23 +348,19 @@ describe("scenarios > collection_defaults", () => {
       });
       // Make sure the correct value is selected
       cy.findAllByTestId("select-button-content").contains(NEW_COLLECTION);
-      cy.findByText("Update")
-        .closest(".Button")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Update").click();
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
       // Make sure sidebar updated (waiting for a specific XHR didn't help)
-      // Before update, "First collection" was expanded, thus showing "Second collection"
-      cy.findByText("Second collection").should("not.exist");
+      closeNavigationSidebar();
+      openNavigationSidebar();
 
       cy.log(
         "**New collection should immediately be open, showing nested children**",
       );
 
       getSidebarCollectionChildrenFor(NEW_COLLECTION).within(() => {
-        cy.icon("chevrondown").should("have.length", 2); // both target collection and "First collection" are open
         cy.findByText("First collection");
         cy.findByText("Second collection");
       });
@@ -581,5 +578,6 @@ function getSidebarCollectionChildrenFor(item) {
   return navigationSidebar()
     .findByText(item)
     .parentsUntil("[data-testid=sidebar-collection-link-root]")
+    .parent()
     .next("ul");
 }
