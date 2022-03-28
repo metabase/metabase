@@ -24,18 +24,21 @@ function BaseTree({
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
   const previousSelectedId = usePrevious(selectedId);
+  const prevData = usePrevious(data);
 
   useEffect(() => {
-    if (
-      selectedId &&
-      previousSelectedId !== selectedId &&
-      !expandedIds.has(selectedId)
-    ) {
+    if (!selectedId) {
+      return;
+    }
+    const selectedItemChanged =
+      previousSelectedId !== selectedId && !expandedIds.has(selectedId);
+    const itemsChanged = prevData !== data;
+    if (selectedItemChanged || itemsChanged) {
       setExpandedIds(
         prev => new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [data, selectedId, previousSelectedId, expandedIds]);
+  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
     itemId => {
