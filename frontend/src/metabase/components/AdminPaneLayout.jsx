@@ -4,6 +4,8 @@ import React from "react";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
+import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
+
 const AdminPaneTitle = ({
   title,
   description,
@@ -12,28 +14,33 @@ const AdminPaneTitle = ({
   buttonDisabled,
   buttonLink,
   headingContent,
-}) => (
-  <section className="clearfix px2">
-    {buttonText && buttonLink && (
-      <Link to={buttonLink} className="inline-block float-right">
-        <Button primary>{buttonText}</Button>
-      </Link>
-    )}
-    {buttonText && buttonAction && (
-      <Button
-        className="float-right"
-        primary={!buttonDisabled}
-        disabled={buttonDisabled}
-        onClick={buttonAction}
-      >
-        {buttonText}
-      </Button>
-    )}
-    {headingContent && <React.Fragment>{headingContent}</React.Fragment>}
-    {title && <h2 className="PageTitle">{title}</h2>}
-    {description && <p className="text-measure">{description}</p>}
-  </section>
-);
+}) => {
+  const buttonClassName = "ml-auto flex-no-shrink";
+  return (
+    <Container>
+      <HeadingContainer>
+        {headingContent && <React.Fragment>{headingContent}</React.Fragment>}
+        {title && <h2 className="PageTitle">{title}</h2>}
+        {buttonText && buttonLink && (
+          <Link to={buttonLink} className={buttonClassName}>
+            <Button primary>{buttonText}</Button>
+          </Link>
+        )}
+        {buttonText && buttonAction && (
+          <Button
+            className={buttonClassName}
+            primary={!buttonDisabled}
+            disabled={buttonDisabled}
+            onClick={buttonAction}
+          >
+            {buttonText}
+          </Button>
+        )}
+      </HeadingContainer>
+      {description && <p className="text-measure">{description}</p>}
+    </Container>
+  );
+};
 
 const AdminPaneLayout = ({
   title,
