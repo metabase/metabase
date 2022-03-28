@@ -90,7 +90,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     });
   });
 
-  describe("embedded parameters", () => {
+  context("UI", () => {
     it("should be disabled by default but able to be set to editable (metabase#20357)", () => {
       visitDashboard(2);
       cy.icon("share").click();
@@ -185,7 +185,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     });
   });
 
-  describe("embedded dashboard", () => {
+  context("API", () => {
     beforeEach(() => {
       cy.get("@dashboardId").then(dashboardId => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
