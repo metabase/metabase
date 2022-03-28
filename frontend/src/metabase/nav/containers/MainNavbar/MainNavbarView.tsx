@@ -35,6 +35,8 @@ function MainNavbarView({
   selectedItem,
 }: Props) {
   const isMiscLinkSelected = selectedItem.type === "unknown";
+  const isCollectionSelected =
+    selectedItem.type === "collection" && selectedItem.id !== "users";
 
   const CollectionLink = useMemo(() => {
     return React.forwardRef<HTMLLIElement, TreeNodeProps>(
@@ -57,9 +59,7 @@ function MainNavbarView({
       )}
       <Tree
         data={collections}
-        selectedId={
-          selectedItem.type === "collection" ? selectedItem.id : undefined
-        }
+        selectedId={isCollectionSelected ? selectedItem.id : undefined}
         TreeNode={CollectionLink}
       />
       <ul>
