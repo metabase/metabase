@@ -119,11 +119,13 @@ describe("buildCollectionTree", () => {
           name: collection.name,
           schemaName: collection.name,
           icon: { name: "folder" },
+          below: ["dataset", "card"],
           children: [
             {
               id: child.id,
               name: child.name,
               schemaName: child.name,
+              below: ["dataset", "card"],
               icon: { name: "folder" },
               children: [
                 {
@@ -132,6 +134,7 @@ describe("buildCollectionTree", () => {
                   schemaName: grandchild1.name,
                   icon: { name: "folder" },
                   children: [],
+                  here: ["dataset"],
                 },
               ],
             },
@@ -166,6 +169,7 @@ describe("buildCollectionTree", () => {
           name: collectionWithDatasets.name,
           schemaName: collectionWithDatasets.name,
           icon: { name: "folder" },
+          here: ["dataset"],
           children: [],
         },
       ]);
@@ -196,12 +200,14 @@ describe("buildCollectionTree", () => {
           name: collection.name,
           schemaName: collection.name,
           icon: { name: "folder" },
+          below: ["dataset"],
           children: [
             {
               id: child.id,
               name: child.name,
               schemaName: child.name,
               icon: { name: "folder" },
+              here: ["dataset"],
               children: [],
             },
           ],
@@ -212,6 +218,7 @@ describe("buildCollectionTree", () => {
           schemaName: collectionWithCards.name,
           icon: { name: "folder" },
           children: [],
+          below: ["card"],
         },
       ]);
     });
