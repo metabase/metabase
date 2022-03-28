@@ -11,6 +11,7 @@ import Collection, {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import {
+  buildCollectionTree,
   isPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -23,7 +24,7 @@ import {
   BackButton,
   TreeContainer,
 } from "./SavedQuestionPicker.styled";
-import { buildCollectionTree, findCollectionByName } from "./utils";
+import { findCollectionByName } from "./utils";
 
 const propTypes = {
   isDatasets: PropTypes.bool,

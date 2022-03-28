@@ -1,4 +1,15 @@
 import { t } from "ttag";
+import _ from "underscore";
+
+import {
+  Collection,
+  CollectionId,
+  CollectionContentModel,
+} from "metabase-types/api";
+
+import { IconProps } from "metabase/components/Icon";
+
+import { getCollectionIcon } from "metabase/entities/collections";
 
 export type Item = {
   name: string;
@@ -12,20 +23,6 @@ export type Item = {
   copy?: boolean;
   setCollection?: boolean;
   model: string;
-};
-
-type CollectionId = "root" | number;
-
-export type Collection = {
-  id: CollectionId;
-  can_write: boolean;
-  name: string;
-  archived: boolean;
-  personal_owner_id?: number | unknown;
-  children?: Collection[];
-  originalName?: string;
-  effective_ancestors?: Collection[];
-  location?: string;
 };
 
 export function nonPersonalOrArchivedCollection(
@@ -125,4 +122,49 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+function hasIntersection(list1: unknown[], list2?: unknown[]) {
+  if (!list2) {
+    return false;
+  }
+  return _.intersection(list1, list2).length > 0;
+}
+
+type CollectionTreeBuilderOpts = {
+  targetModels?: CollectionContentModel[];
+};
+
+export interface CollectionTreeItem extends Omit<Collection, "children"> {
+  icon: string | IconProps;
+  children?: CollectionTreeItem[];
+}
+
+export function buildCollectionTree(
+  collections: Collection[],
+  { targetModels }: CollectionTreeBuilderOpts = {},
+): CollectionTreeItem[] {
+  if (collections == null) {
+    return [];
+  }
+
+  const shouldFilterCollections = Array.isArray(targetModels);
+
+  return collections.flatMap(collection => {
+    const hasTargetModels =
+      !shouldFilterCollections ||
+      hasIntersection(targetModels, collection.below) ||
+      hasIntersection(targetModels, collection.here);
+
+    return hasTargetModels
+      ? {
+          ...collection,
+          schemaName: collection.originalName || collection.name,
+          icon: getCollectionIcon(collection),
+          children: buildCollectionTree(collection.children || [], {
+            targetModels,
+          }),
+        }
+      : [];
+  });
 }
