@@ -10,8 +10,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "../types";
-import { SidebarLink } from "../SidebarItems";
-import { BookmarkListRoot } from "./BookmarkList.styled";
+import { BookmarkListRoot, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
   onDeleteBookmark: ({ id, type }: Bookmark) =>
@@ -49,7 +48,7 @@ const BookmarkList = ({
         const url = Urls.bookmark(bookmark);
         const onRemove = () => onDeleteBookmark(bookmark);
         return (
-          <SidebarLink
+          <SidebarBookmarkItem
             key={`bookmark-${id}`}
             url={url}
             icon={getIconForEntityType(type)}
@@ -63,7 +62,7 @@ const BookmarkList = ({
             }
           >
             {name}
-          </SidebarLink>
+          </SidebarBookmarkItem>
         );
       })}
     </BookmarkListRoot>
