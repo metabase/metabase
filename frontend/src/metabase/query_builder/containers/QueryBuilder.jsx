@@ -68,6 +68,7 @@ import {
   getVisibleTimelineEvents,
   getSelectedTimelineEventIds,
   getFilteredTimelines,
+  getTimeseriesXDomain,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -120,6 +121,7 @@ const mapStateToProps = (state, props) => {
     timelineEvents: getVisibleTimelineEvents(state),
     visibleTimelineIds: getVisibleTimelineIds(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
