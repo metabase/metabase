@@ -12,15 +12,16 @@ import ProfileLink from "metabase/nav/components/ProfileLink";
 import * as Urls from "metabase/lib/urls";
 import { CollectionTreeItem } from "metabase/collections/utils";
 
+import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
 
 type Props = {
   currentUser: User;
-  currentPathname: string;
   bookmarks: Bookmark[];
   collections: CollectionTreeItem[];
+  selectedItem: SelectedItem;
 };
 
 const BROWSE_URL = "/browse";
@@ -29,46 +30,45 @@ const ARCHIVE_URL = "/archive";
 
 function MainNavbarView({
   currentUser,
-  currentPathname,
   bookmarks,
   collections,
+  selectedItem,
 }: Props) {
+  const isMiscLinkSelected = selectedItem.type === "unknown";
+
   const CollectionLink = useMemo(() => {
     return React.forwardRef<HTMLLIElement, TreeNodeProps>(
       function CollectionLink(props: TreeNodeProps, ref) {
         const { item } = props;
         const url = Urls.collection(item);
-        const isSelected = currentPathname.startsWith(url);
-        return (
-          <SidebarCollectionLink
-            {...props}
-            url={url}
-            isSelected={isSelected}
-            ref={ref}
-          />
-        );
+        return <SidebarCollectionLink {...props} url={url} ref={ref} />;
       },
     );
-  }, [currentPathname]);
+  }, []);
 
   return (
     <>
       {bookmarks.length > 0 && (
         <>
           <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
-          <BookmarkList
-            bookmarks={bookmarks}
-            currentPathname={currentPathname}
-          />
+          <BookmarkList bookmarks={bookmarks} selectedItem={selectedItem} />
           <SidebarHeading>{t`Collections`}</SidebarHeading>
         </>
       )}
-      <Tree data={collections} TreeNode={CollectionLink} />
+      <Tree
+        data={collections}
+        selectedId={
+          selectedItem.type === "collection" ? selectedItem.id : undefined
+        }
+        TreeNode={CollectionLink}
+      />
       <ul>
         <SidebarLink
           icon="table_spaced"
           url={BROWSE_URL}
-          isSelected={currentPathname.startsWith(BROWSE_URL)}
+          isSelected={
+            isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+          }
           data-metabase-event="NavBar;Data Browse"
         >
           {t`Browse data`}
@@ -78,16 +78,19 @@ function MainNavbarView({
             <SidebarLink
               icon="table_spaced"
               url={OTHER_USERS_COLLECTIONS_URL}
-              isSelected={currentPathname.startsWith(
-                OTHER_USERS_COLLECTIONS_URL,
-              )}
+              isSelected={
+                isMiscLinkSelected &&
+                selectedItem.url.startsWith(OTHER_USERS_COLLECTIONS_URL)
+              }
             >
               {t`Other users' personal collections`}
             </SidebarLink>
             <SidebarLink
               icon="view_archive"
               url={ARCHIVE_URL}
-              isSelected={currentPathname.startsWith(ARCHIVE_URL)}
+              isSelected={
+                isMiscLinkSelected && selectedItem.url.startsWith(ARCHIVE_URL)
+              }
             >
               {t`View archive`}
             </SidebarLink>
