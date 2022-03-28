@@ -249,7 +249,7 @@ export default class View extends React.Component {
               })}
             >
               {isNative ? (
-                <div className="z2 hide sm-show border-bottom mb2">
+                <div className="z2 border-bottom mb2">
                   <NativeQueryEditor
                     {...this.props}
                     viewHeight={height}
