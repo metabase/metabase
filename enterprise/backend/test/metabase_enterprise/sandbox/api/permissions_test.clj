@@ -9,16 +9,13 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- id->keyword [id]
-  (keyword (str (u/the-id id))))
-
 (defn- db-graph-keypath [group]
-  [:groups (id->keyword group) (id->keyword (mt/id)) :data])
+  [:groups (u/the-id group) (mt/id) :data])
 
 (defn- venues-perms-graph-keypath [group]
   (concat
    (db-graph-keypath group)
-   [:schemas :PUBLIC (id->keyword (mt/id :venues))]))
+   [:schemas :PUBLIC (mt/id :venues)]))
 
 (deftest revoke-perms-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
@@ -34,16 +31,16 @@
 
                "when revoking all permissions for Table"
                {:updated-db-perms (fn []
-                                    {:native :none, :schemas {:PUBLIC {(id->keyword (mt/id :venues)) :none
-                                                                       (id->keyword (mt/id :users))  :all}}})
+                                    {:native :none, :schemas {:PUBLIC {(mt/id :venues) :none
+                                                                       (mt/id :users)  :all}}})
                 :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(id->keyword (mt/id :users)) "all"}}})}
+                                    {:schemas {:PUBLIC {(mt/id :users) "all"}}})}
 
                "when revoking segmented query permissions for Table"
                {:updated-db-perms (fn []
-                                    {:native :none, :schemas {:PUBLIC {(id->keyword (mt/id :venues)) {:read :all}}}})
+                                    {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:read :all}}}})
                 :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(id->keyword (mt/id :venues)) {:read "all"}}}})}
+                                    {:schemas {:PUBLIC {(mt/id :venues) {:read "all"}}}})}
 
                "when changing permissions for DB to unrestricted access"
                {:updated-db-perms (constantly {:native :none, :schemas :all})
@@ -55,9 +52,9 @@
 
                "when changing permissions for Table to :query [grant full query perms]"
                {:updated-db-perms (fn []
-                                    {:native :none, :schemas {:PUBLIC {(id->keyword (mt/id :venues)) {:query :all}}}})
+                                    {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(id->keyword (mt/id :venues)) {:query "all"}}}})}}]
+                                    {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
         (mt/with-gtaps {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
@@ -125,7 +122,7 @@
           (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                 graph'   (assoc-in graph (db-graph-keypath (group/all-users)) {:schemas
                                                                                {"PUBLIC"
-                                                                                {(id->keyword (mt/id :venues))
+                                                                                {(mt/id :venues)
                                                                                  {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
