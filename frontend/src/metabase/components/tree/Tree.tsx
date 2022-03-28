@@ -8,6 +8,7 @@ interface TreeProps {
   data: ITreeNodeItem[];
   selectedId?: ITreeNodeItem["id"];
   emptyState?: React.ReactNode;
+  onSelect?: (item: ITreeNodeItem) => void;
   TreeNode?: TreeNodeComponent;
 }
 
@@ -15,6 +16,7 @@ export function Tree({
   data,
   selectedId,
   emptyState = null,
+  onSelect,
   TreeNode = DefaultTreeNode,
 }: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(
@@ -40,10 +42,11 @@ export function Tree({
     <TreeNodeList
       items={data}
       TreeNode={TreeNode}
-      onToggleExpand={handleToggleExpand}
       expandedIds={expandedIds}
       selectedId={selectedId}
       depth={0}
+      onSelect={onSelect}
+      onToggleExpand={handleToggleExpand}
     />
   );
 }

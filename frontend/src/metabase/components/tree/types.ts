@@ -14,6 +14,7 @@ export interface TreeNodeProps {
   hasChildren: boolean;
   isExpanded: boolean;
   isSelected: boolean;
+  onSelect?: () => void;
   onToggleExpand: () => void;
 }
 
