@@ -60,6 +60,7 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)
    parameters          [su/Map]}
+  (api/check-has-general-permission :subscription)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -101,6 +102,7 @@
    archived      (s/maybe s/Bool)
    parameters    [su/Map]}
   ;; do various perms checks
+  (api/check-has-general-permission :subscription)
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
@@ -119,6 +121,7 @@
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
+  (api/check-has-general-permission :subscription)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
