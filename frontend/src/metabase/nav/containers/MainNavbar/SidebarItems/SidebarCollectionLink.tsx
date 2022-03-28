@@ -12,7 +12,7 @@ import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
-import { FullWidthLink, NodeRoot } from "./SidebarItems.styled";
+import { FullWidthLink, NameContainer, NodeRoot } from "./SidebarItems.styled";
 
 interface SidebarItemLinkProps extends TreeNodeProps {
   url: string;
@@ -82,7 +82,7 @@ const SidebarCollectionLink = React.forwardRef<
               <TreeNode.IconContainer transparent={isRegular}>
                 <CollectionIcon collection={collection} />
               </TreeNode.IconContainer>
-              <TreeNode.NameContainer>{name}</TreeNode.NameContainer>
+              <NameContainer>{name}</NameContainer>
             </FullWidthLink>
           </NodeRoot>
         )}

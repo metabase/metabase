@@ -4,7 +4,7 @@ import _ from "underscore";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Icon from "metabase/components/Icon";
 
-import { FullWidthLink } from "./SidebarItems.styled";
+import { FullWidthLink, NameContainer } from "./SidebarItems.styled";
 
 interface Props {
   children: string;
@@ -30,7 +30,7 @@ function SidebarLink({
             <Icon name={icon} />
           </TreeNode.IconContainer>
         )}
-        <TreeNode.NameContainer>{children}</TreeNode.NameContainer>
+        <NameContainer>{children}</NameContainer>
       </FullWidthLink>
       {React.isValidElement(right) && right}
     </TreeNode.Root>
