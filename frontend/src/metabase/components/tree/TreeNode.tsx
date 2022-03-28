@@ -22,6 +22,7 @@ const BaseTreeNode = React.memo(
       isExpanded,
       isSelected,
       hasChildren,
+      onSelect,
       onToggleExpand,
       ...props
     },
@@ -31,8 +32,20 @@ const BaseTreeNode = React.memo(
 
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
+    function onClick() {
+      if (typeof onSelect === "function") {
+        onSelect();
+      }
+      onToggleExpand();
+    }
+
     const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
+        case "Enter":
+          if (typeof onSelect === "function") {
+            onSelect();
+          }
+          break;
         case "ArrowRight":
           !isExpanded && onToggleExpand();
           break;
@@ -46,7 +59,7 @@ const BaseTreeNode = React.memo(
       <TreeNodeRoot
         role="menuitem"
         tabIndex={0}
-        onClick={onToggleExpand}
+        onClick={onClick}
         {...props}
         depth={depth}
         isSelected={isSelected}

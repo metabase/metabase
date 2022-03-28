@@ -8,15 +8,17 @@ interface TreeNodeListProps {
   selectedId?: ITreeNodeItem["id"];
   depth: number;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+  onSelect?: (item: ITreeNodeItem) => void;
   TreeNode: TreeNodeComponent;
 }
 
 export function TreeNodeList({
   items,
-  onToggleExpand,
   expandedIds,
   selectedId,
   depth,
+  onSelect,
+  onToggleExpand,
   TreeNode,
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
@@ -28,14 +30,17 @@ export function TreeNodeList({
         const hasChildren =
           Array.isArray(item.children) && item.children.length > 0;
         const isExpanded = hasChildren && expandedIds.has(item.id);
-        const onToggle = () => onToggleExpand(item.id);
+        const onItemSelect =
+          typeof onSelect === "function" ? () => onSelect(item) : undefined;
+        const onItemToggle = () => onToggleExpand(item.id);
 
         return (
           <React.Fragment key={item.id}>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
-              onToggleExpand={onToggle}
+              onSelect={onItemSelect}
+              onToggleExpand={onItemToggle}
               isSelected={isSelected}
               isExpanded={isExpanded}
               hasChildren={hasChildren}
@@ -45,11 +50,12 @@ export function TreeNodeList({
               <TreeNodeList
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
-                TreeNode={TreeNode}
-                onToggleExpand={onToggleExpand}
                 expandedIds={expandedIds}
                 selectedId={selectedId}
                 depth={depth + 1}
+                onSelect={onSelect}
+                onToggleExpand={onToggleExpand}
+                TreeNode={TreeNode}
               />
             )}
           </React.Fragment>
