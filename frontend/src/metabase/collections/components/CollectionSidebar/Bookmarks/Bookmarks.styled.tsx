@@ -41,7 +41,7 @@ export const BookmarkContainer = styled.div`
     color: ${color("brand")};
     cursor: pointer;
     padding: ${space(1)};
-    margin-top: 1px;
+    margin-top: 2px;
     position: absolute;
     right: 0;
     top: 50%;
