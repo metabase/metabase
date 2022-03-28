@@ -33,3 +33,8 @@ export const LoadingTitle = styled.h2`
   font-weight: 400;
   margin-top: ${space(1)};
 `;
+
+export const ProfileLinkContainer = styled.div`
+  margin-left: auto;
+  margin-right: ${space(2)};
+`;
