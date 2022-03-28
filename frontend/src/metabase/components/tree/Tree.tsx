@@ -12,7 +12,7 @@ interface TreeProps {
   TreeNode?: TreeNodeComponent;
 }
 
-export function Tree({
+function BaseTree({
   data,
   selectedId,
   emptyState = null,
@@ -50,3 +50,7 @@ export function Tree({
     />
   );
 }
+
+export const Tree = Object.assign(BaseTree, {
+  Node: DefaultTreeNode,
+});
