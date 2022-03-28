@@ -11,6 +11,7 @@ import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
   buildCollectionTree,
@@ -27,6 +28,7 @@ import { Sidebar, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
 function mapStateToProps(state: unknown) {
   return {
     currentUser: getUser(state),
+    hasDataAccess: getHasDataAccess(state),
   };
 }
 
@@ -35,6 +37,7 @@ type Props = {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
+  hasDataAccess: boolean;
   allFetched: boolean;
   location: {
     pathname: string;
@@ -48,6 +51,7 @@ function MainNavbarContainer({
   currentUser,
   collections = [],
   rootCollection,
+  hasDataAccess,
   allFetched,
   location,
   params,
@@ -105,6 +109,7 @@ function MainNavbarContainer({
           currentUser={currentUser}
           collections={collectionTree}
           selectedItem={selectedItem}
+          hasDataAccess={hasDataAccess}
         />
       ) : (
         <LoadingContainer>
