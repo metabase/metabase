@@ -1,16 +1,20 @@
 import React from "react";
 import { t } from "ttag";
+import { Moment } from "moment";
+import Settings from "metabase/lib/settings";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineList from "../TimelineList";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
+import { PanelCaption, PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 
 export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
   visibleTimelineIds?: number[];
   selectedEventIds?: number[];
+  xDomain?: [Moment, Moment];
   onNewEvent?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
@@ -22,6 +26,7 @@ const TimelinePanel = ({
   collection,
   visibleTimelineIds,
   selectedEventIds,
+  xDomain,
   onNewEvent,
   onEditEvent,
   onArchiveEvent,
@@ -32,6 +37,9 @@ const TimelinePanel = ({
 
   return (
     <PanelRoot>
+      {!isEmpty && xDomain && (
+        <PanelCaption>{formatCaption(xDomain)}</PanelCaption>
+      )}
       {!isEmpty && canWrite && (
         <PanelToolbar>
           <Button onClick={onNewEvent}>{t`Add an event`}</Button>
@@ -55,6 +63,14 @@ const TimelinePanel = ({
       )}
     </PanelRoot>
   );
+};
+
+const formatCaption = (xDomain: [Moment, Moment]) => {
+  return t`${formatDate(xDomain[0])} — ${formatDate(xDomain[1])}`;
+};
+
+const formatDate = (date: Moment) => {
+  return formatDateTimeWithUnit(date, "day", Settings.formattingOptions());
 };
 
 export default TimelinePanel;

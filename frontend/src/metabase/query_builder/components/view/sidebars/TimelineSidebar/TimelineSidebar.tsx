@@ -2,8 +2,6 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { Moment } from "moment";
 import Question from "metabase-lib/lib/Question";
-import Settings from "metabase/lib/settings";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
@@ -55,28 +53,19 @@ const TimelineSidebar = ({
   );
 
   return (
-    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
+    <SidebarContent title={t`Events`} onClose={onClose}>
       <TimelinePanel
         timelines={timelines}
         collectionId={question.collectionId()}
         visibleTimelineIds={visibleTimelineIds}
         selectedEventIds={selectedTimelineEventIds}
+        xDomain={xDomain}
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
         onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>
   );
-};
-
-const formatTitle = (xDomain?: [Moment, Moment]) => {
-  return xDomain
-    ? t`Events ${formatDate(xDomain[0])} — ${formatDate(xDomain[1])}`
-    : t`Events`;
-};
-
-const formatDate = (date: Moment) => {
-  return formatDateTimeWithUnit(date, "day", Settings.formattingOptions());
 };
 
 export default TimelineSidebar;
