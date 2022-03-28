@@ -2,11 +2,15 @@
 import React, { useCallback, KeyboardEvent } from "react";
 import _ from "underscore";
 
+import { Collection } from "metabase-types/api";
+
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
+
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { FullWidthLink, NodeRoot } from "./SidebarItems.styled";
 
@@ -31,6 +35,9 @@ const SidebarCollectionLink = React.forwardRef<
   ref,
 ) {
   const { name } = collection;
+  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(
+    (collection as unknown) as Collection,
+  );
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -72,7 +79,7 @@ const SidebarCollectionLink = React.forwardRef<
               />
             </TreeNode.ExpandToggleButton>
             <FullWidthLink to={url} onKeyDown={onKeyDown}>
-              <TreeNode.IconContainer>
+              <TreeNode.IconContainer transparent={isRegular}>
                 <CollectionIcon collection={collection} />
               </TreeNode.IconContainer>
               <TreeNode.NameContainer>{name}</TreeNode.NameContainer>

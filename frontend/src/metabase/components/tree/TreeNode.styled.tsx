@@ -58,9 +58,13 @@ export const NameContainer = styled.div`
   flex: 1;
 `;
 
-export const IconContainer = styled.div`
+export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: 0.5;
+  opacity: ${props => (props.transparent ? 0.5 : 1)};
 `;
+
+IconContainer.defaultProps = {
+  transparent: true,
+};
