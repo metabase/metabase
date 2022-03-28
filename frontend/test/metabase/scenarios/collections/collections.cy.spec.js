@@ -432,7 +432,7 @@ describe("scenarios > collection_defaults", () => {
 
       navigationSidebar()
         .findByText("Your personal collection")
-        .parent()
+        .parentsUntil("[data-testid=sidebar-collection-link-root]")
         .find(".Icon-chevronright")
         .should("not.exist");
 
@@ -580,7 +580,6 @@ function selectItemUsingCheckbox(item, icon = "table") {
 function getSidebarCollectionChildrenFor(item) {
   return navigationSidebar()
     .findByText(item)
-    .closest("a")
-    .parent()
-    .parent();
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
+    .next("ul");
 }
