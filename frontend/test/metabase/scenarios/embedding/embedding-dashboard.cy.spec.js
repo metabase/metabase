@@ -92,7 +92,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   context("UI", () => {
-    beforeEach(() => {
+    it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
       cy.get("@dashboardId").then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -100,9 +100,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
-    });
 
-    it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
         .as("allParameters")
