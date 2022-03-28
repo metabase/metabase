@@ -9,6 +9,7 @@ import { Bookmark, BookmarkableEntities } from "metabase-types/api";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
+import { SelectedItem } from "../types";
 import { SidebarLink } from "../SidebarItems";
 import { BookmarkListRoot } from "./BookmarkList.styled";
 
@@ -28,19 +29,23 @@ function getIconForEntityType(type: BookmarkableEntities) {
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
-  currentPathname: string;
+  selectedItem: SelectedItem;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
 const BookmarkList = ({
   bookmarks,
-  currentPathname,
+  selectedItem,
   onDeleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
   return (
     <BookmarkListRoot>
       {bookmarks.map(bookmark => {
-        const { id, name, type } = bookmark;
+        const { id, item_id, name, type } = bookmark;
+        const isSelected =
+          selectedItem.type !== "collection" &&
+          selectedItem.type === type &&
+          selectedItem.id === item_id;
         const url = Urls.bookmark(bookmark);
         const onRemove = () => onDeleteBookmark(bookmark);
         return (
@@ -48,7 +53,7 @@ const BookmarkList = ({
             key={`bookmark-${id}`}
             url={url}
             icon={getIconForEntityType(type)}
-            isSelected={currentPathname.startsWith(url)}
+            isSelected={isSelected}
             right={
               <button onClick={onRemove}>
                 <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
