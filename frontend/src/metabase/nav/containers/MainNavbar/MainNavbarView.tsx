@@ -61,6 +61,7 @@ function MainNavbarView({
         data={collections}
         selectedId={isCollectionSelected ? selectedItem.id : undefined}
         TreeNode={CollectionLink}
+        role="tree"
       />
       <ul>
         <SidebarLink

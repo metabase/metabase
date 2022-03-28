@@ -8,6 +8,7 @@ import { ITreeNodeItem, TreeNodeComponent } from "./types";
 interface TreeProps {
   data: ITreeNodeItem[];
   selectedId?: ITreeNodeItem["id"];
+  role?: string;
   emptyState?: React.ReactNode;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode?: TreeNodeComponent;
@@ -16,6 +17,7 @@ interface TreeProps {
 function BaseTree({
   data,
   selectedId,
+  role = "menu",
   emptyState = null,
   onSelect,
   TreeNode = DefaultTreeNode,
@@ -58,6 +60,7 @@ function BaseTree({
   return (
     <TreeNodeList
       items={data}
+      role={role}
       TreeNode={TreeNode}
       expandedIds={expandedIds}
       selectedId={selectedId}
