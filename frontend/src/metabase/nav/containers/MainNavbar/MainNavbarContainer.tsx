@@ -6,6 +6,7 @@ import _ from "underscore";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { Bookmark, Collection, User } from "metabase-types/api";
+import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
@@ -92,6 +93,9 @@ function MainNavbarContainer({
 }
 
 export default _.compose(
+  Bookmarks.loadList({
+    loadingAndErrorWrapper: false,
+  }),
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",

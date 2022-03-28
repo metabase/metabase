@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { User } from "metabase-types/api";
+import { Bookmark, User } from "metabase-types/api";
 
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
@@ -12,12 +12,14 @@ import ProfileLink from "metabase/nav/components/ProfileLink";
 import * as Urls from "metabase/lib/urls";
 import { CollectionTreeItem } from "metabase/collections/utils";
 
+import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
 
 type Props = {
   currentUser: User;
   currentPathname: string;
+  bookmarks: Bookmark[];
   collections: CollectionTreeItem[];
 };
 
@@ -25,7 +27,12 @@ const BROWSE_URL = "/browse";
 const OTHER_USERS_COLLECTIONS_URL = Urls.collection({ id: "users" });
 const ARCHIVE_URL = "/archive";
 
-function MainNavbarView({ currentUser, currentPathname, collections }: Props) {
+function MainNavbarView({
+  currentUser,
+  currentPathname,
+  bookmarks,
+  collections,
+}: Props) {
   const CollectionLink = useMemo(() => {
     return React.forwardRef<HTMLLIElement, TreeNodeProps>(
       function CollectionLink(props: TreeNodeProps, ref) {
@@ -46,6 +53,16 @@ function MainNavbarView({ currentUser, currentPathname, collections }: Props) {
 
   return (
     <>
+      {bookmarks.length > 0 && (
+        <>
+          <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
+          <BookmarkList
+            bookmarks={bookmarks}
+            currentPathname={currentPathname}
+          />
+          <SidebarHeading>{t`Collections`}</SidebarHeading>
+        </>
+      )}
       <Tree data={collections} TreeNode={CollectionLink} />
       <ul>
         <SidebarLink

@@ -23,6 +23,14 @@ export const Sidebar = styled.aside`
   }
 `;
 
+export const SidebarHeading = styled.h4`
+  color: ${color("text-medium")};
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+`;
+
 export const LoadingContainer = styled.div`
   color: ${color("brand")};
   text-align: center;
