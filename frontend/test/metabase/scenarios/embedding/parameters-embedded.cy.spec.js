@@ -91,23 +91,30 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   context("UI", () => {
-    it("should be disabled by default but able to be set to editable (metabase#20357)", () => {
-      visitDashboard(2);
+    beforeEach(() => {
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
+    });
 
-      cy.get(".Modal--full").within(() => {
-        // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should("have.length", 4);
+    it("should be disabled by default but able to be set to editable (metabase#20357)", () => {
+      cy.findByRole("heading", { name: "Parameters" })
+        .parent()
+        .within(() => {
+          // verify that all the parameters on the dashboard are defaulted to disabled
+          cy.findAllByText("Disabled").should("have.length", 4);
 
-        // select the dropdown next to the Id parameter so that we can set it to editable
-        cy.findByText("Id")
-          .parent()
-          .within(() => {
-            cy.findByText("Disabled").click();
-          });
-      });
+          // select the dropdown next to the Id parameter so that we can set it to editable
+          cy.findByText("Id")
+            .parent()
+            .within(() => {
+              cy.findByText("Disabled").click();
+            });
+        });
 
       cy.findByText("Editable").click();
 
@@ -138,11 +145,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     });
 
     it("should let parameters be locked to a specific value (metabase#20357)", () => {
-      visitDashboard(2);
-      cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
-      cy.findByText("Embed this dashboard in an application").click();
-
       cy.findByText("Parameters");
       cy.get(".Modal--full").within(() => {
         cy.findAllByText("Disabled").should("have.length", 4);
