@@ -46,7 +46,7 @@ export const SearchBarContainer = styled.div`
 
 export const SearchBarContent = styled.div`
   width: 100%;
-  max-width: 500px;
+  max-width: 440px;
   margin-left: auto;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;

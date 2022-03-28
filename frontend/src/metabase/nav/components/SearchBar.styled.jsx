@@ -10,7 +10,7 @@ export const SearchWrapper = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 6px;
   flex: 1 1 auto;
-  max-width: 50em;
+  max-width: 40em;
   align-items: center;
   transition: background 150ms;
 
@@ -24,7 +24,7 @@ export const SearchInput = styled.input`
   width: 100%;
   border: none;
   color: ${color("text-dark")};
-  padding: 10px 12px;
+  padding: 8px 12px;
   font-weight: 700;
   &:focus {
     outline: none;
