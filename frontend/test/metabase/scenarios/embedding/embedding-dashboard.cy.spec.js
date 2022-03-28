@@ -131,6 +131,45 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get(".ScalarValue")
         .invoke("text")
         .should("eq", "1");
+
+      cy.log(
+        "Sanity check: lets make sure we can disable all previously set parameters",
+      );
+      cy.signInAsAdmin();
+
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      cy.icon("share").click();
+      cy.findByText("Sharing and embedding").click();
+      cy.findByText("Embed this dashboard in an application").click();
+
+      cy.findByText("Locked").click();
+      popover()
+        .contains("Disabled")
+        .click();
+
+      cy.findByText("Editable").click();
+      popover()
+        .contains("Disabled")
+        .click();
+
+      publishChanges(({ request }) => {
+        const actual = request.body.embedding_params;
+
+        const expected = { name: "disabled", id: "disabled" };
+
+        assert.deepEqual(actual, expected);
+      });
+
+      visitIframe();
+
+      filterWidget().should("not.exist");
+
+      cy.get(".ScalarValue")
+        .invoke("text")
+        .should("eq", "2,500");
     });
   });
 
