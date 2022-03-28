@@ -24,6 +24,7 @@ const Link = ({
     <LinkRoot
       {...props}
       to={to}
+      disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
     >
