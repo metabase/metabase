@@ -104,7 +104,7 @@
   (u/prog1 group
     ;; Grant permission to create/edit subscriptions and alerts by default
     (classloader/require 'metabase.models.permissions)
-    ((resolve 'metabase.models.permissions/grant-subscription-permissions!) (:id group))))
+    ((resolve 'metabase.models.permissions/grant-general-permissions!) (:id group) :subscription)))
 
 (u/strict-extend (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults

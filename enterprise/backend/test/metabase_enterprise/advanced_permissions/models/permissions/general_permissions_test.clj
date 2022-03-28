@@ -15,7 +15,6 @@
     ;; clear the graph revisions
     (db/delete! GeneralPermissionsRevision)
     (testing "group should be in graph if one of general permission is enabled"
-      (perms/grant-general-permissions! group-id :subscription)
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
         (is (partial= {(:id (group/admin))

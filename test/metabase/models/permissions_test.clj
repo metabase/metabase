@@ -731,6 +731,8 @@
               (db/select-field :object Permissions
                                {:where [:and [:= :group_id group-id]
                                              [:like :object "/general/%"]]}))]
+      ;; subscription is granted by when creating a new group, remove it to make it easier to test
+      (perms/revoke-general-permissions! group-id :subscription)
       (is (= nil (perms)))
       (doseq [[perm-type perm-path] [[:subscription "/general/subscription/"]
                                      [:monitoring "/general/monitoring/"]

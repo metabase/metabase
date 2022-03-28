@@ -821,11 +821,6 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
 
-(defn grant-subscription-permissions!
-  "Grant permission to create/edit subscriptions and alerts by default"
-  [group-id]
-  (grant-permissions! group-id (general-perms-path :subscription)))
-
 (defn grant-general-permissions!
   "Grant full permissions for a group to access a General feature."
   [group-or-id perm-type]

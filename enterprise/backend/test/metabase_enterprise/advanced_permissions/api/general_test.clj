@@ -31,7 +31,6 @@
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
-
                           groups)))))))
 
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
