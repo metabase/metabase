@@ -291,9 +291,19 @@
                       (seq path))
              (re-matches path-regex path))))
 
+(defn valid-path-format?
+  "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
+  just checks that the path components contain alphanumeric characters or dashes, separated by slashes
+  This should be used for schema validation in most places, to preserve downgradability when new permissions paths are
+  added."
+  ^Boolean [^String path]
+  (boolean (when (and (string? path)
+                      (seq path))
+             (re-matches (re-pattern (str "^/(" path-char "*/)*$")) path))))
+
 (def Path
-  "Schema for a valid permissions path."
-  (s/pred valid-path? "Valid permissions path"))
+  "Schema for a permissions path with a valid format."
+  (s/pred valid-path-format? "Valid permissions path"))
 
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
