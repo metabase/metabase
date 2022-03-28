@@ -11284,7 +11284,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: changes
+                  name: after
                   type: ${text.type}
                   remarks: 'Serialized JSON of the changes in permission graph.'
                   constraints:
@@ -11297,7 +11297,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: core_user
                     referencedColumnNames: id
-                    foreignKeyName: fk_general_permission_revision_user_id
+                    foreignKeyName: fk_general_permissions_revision_user_id
               - column:
                   name: created_at
                   type: datetime
