@@ -4,7 +4,6 @@ import Dashboard from "metabase/entities/dashboards";
 import Question from "metabase/entities/questions";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
-import { color } from "metabase/lib/colors";
 
 const Bookmarks = createEntity({
   name: "bookmarks",
@@ -41,14 +40,9 @@ export function getIcon(bookmark) {
 
   const getter = defineIconGetter(type);
 
-  const { color: iconColor, name, tooltip } = getter.objectSelectors.getIcon(
-    bookmark,
-  );
+  const { name, tooltip } = getter.objectSelectors.getIcon(bookmark);
 
-  const treatedColor = type === "card" ? color("brand") : iconColor;
-  const opacity = tooltip ? 1 : 0.5;
-
-  return { name, color: treatedColor, opacity };
+  return { name, tooltip };
 }
 
 export default Bookmarks;

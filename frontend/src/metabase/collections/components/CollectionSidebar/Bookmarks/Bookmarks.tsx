@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
@@ -36,9 +37,9 @@ const Label = ({ bookmark }: LabelProps) => {
   return (
     <LabelContainer>
       <BookmarkTypeIcon
-        color={icon.color}
+        color={icon.tooltip ? color("warning") : color("brand")}
         name={icon.name}
-        opacity={icon.opacity}
+        opacity={icon.tooltip ? 1 : 0.5}
       />
       {bookmark.name}
     </LabelContainer>
