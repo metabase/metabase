@@ -18,10 +18,10 @@ const collectionProps = {
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
-    const action = Timelines.actions.createWithEvent(values, collection);
-    const response = await dispatch(action);
-    const timeline = Timelines.HACK_getObjectFromAction(response);
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    const query = { collectionId: collection.id, include: "events" };
+    await dispatch(Timelines.actions.createWithEvent(values, collection));
+    await dispatch(Timelines.actions.fetchList(query));
+    dispatch(push(Urls.timelinesInCollection(collection)));
   },
   onCancel: () => {
     dispatch(goBack());
