@@ -1,7 +1,8 @@
 import React, { useCallback } from "react";
 
+import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import { Item, Collection, isItemPinned } from "metabase/collections/utils";
+import { Item, isItemPinned } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
