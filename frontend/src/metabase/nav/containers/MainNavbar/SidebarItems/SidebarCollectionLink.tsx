@@ -65,13 +65,10 @@ const SidebarCollectionLink = React.forwardRef<
             depth={depth}
             isSelected={isSelected}
             hovered={hovered}
-            onClick={!isExpanded && hasChildren ? onToggleExpand : undefined}
+            onClick={onToggleExpand}
             ref={ref}
           >
-            <TreeNode.ExpandToggleButton
-              onClick={onToggleExpand}
-              hidden={!hasChildren}
-            >
+            <TreeNode.ExpandToggleButton hidden={!hasChildren}>
               <TreeNode.ExpandToggleIcon
                 isExpanded={isExpanded}
                 name="chevronright"
