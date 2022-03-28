@@ -4,6 +4,7 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   filterWidget,
+  visitIframe,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -101,15 +102,16 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.findByText("Embed this dashboard in an application").click();
     });
 
-    it("should be disabled by default but able to be set to editable (metabase#20357)", () => {
+    it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
+        .as("allParameters")
         .within(() => {
           // verify that all the parameters on the dashboard are defaulted to disabled
           cy.findAllByText("Disabled").should("have.length", 4);
 
-          // select the dropdown next to the Id parameter so that we can set it to editable
-          cy.findByText("Id")
+          // select the dropdown next to the Name parameter so that we can set it to editable
+          cy.findByText("Name")
             .parent()
             .within(() => {
               cy.findByText("Disabled").click();
@@ -118,38 +120,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
       cy.findByText("Editable").click();
 
-      // publish the embedded dashboard so that we can directly navigate to its url
-      cy.findByText("Publish").click();
-
-      // directly navigate to the embedded dashboard
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
-        cy.visit(iframe.src);
-      });
-
-      // verify that only the Id parameter shows up and is editable
-      cy.findByText("Name").should("not.exist");
-      cy.findByText("Source").should("not.exist");
-      cy.findByText("User").should("not.exist");
-      cy.findByText("Id").click();
-
-      popover().within(() => {
-        cy.get("input").type("1{enter}3{enter}");
-        cy.findByText("Add filter").click();
-      });
-
-      // verify that the dashcard shows the correct, filtered value
-      cy.get(".Card").within(() => {
-        cy.contains("2");
-      });
-    });
-
-    it("should let parameters be locked to a specific value (metabase#20357)", () => {
-      cy.findByText("Parameters");
-      cy.get(".Modal--full").within(() => {
-        cy.findAllByText("Disabled").should("have.length", 4);
-
-        // select the dropdown next to the Id parameter so that we can set it to locked
+      cy.get("@allParameters").within(() => {
         cy.findByText("Id")
           .parent()
           .within(() => {
@@ -165,25 +136,52 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         .within(() => {
           cy.findByText("Id").click();
         });
-      popover().within(() => {
-        cy.get("input").type("1{enter}3{enter}");
-      });
-      cy.findByText("Add filter").click();
+
+      cy.findByPlaceholderText("Search by Name or enter an ID").type(
+        "1{enter}3{enter}",
+      );
+
+      cy.button("Add filter").click();
 
       // publish the embedded dashboard so that we can directly navigate to its url
-      cy.findByText("Publish").click();
+      publishChanges(({ request }) => {
+        const actual = request.body.embedding_params;
+
+        const expected = {
+          id: "locked",
+          name: "enabled",
+        };
+
+        assert.deepEqual(actual, expected);
+      });
 
       // directly navigate to the embedded dashboard
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
-        cy.visit(iframe.src);
-      });
+      visitIframe();
 
       // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
-      cy.findByText("Id").should("not.exist");
-      cy.get(".Card").within(() => {
-        cy.contains("2");
-      });
+      filterWidget()
+        .contains("Id")
+        .should("not.exist");
+
+      cy.get(".ScalarValue")
+        .invoke("text")
+        .should("eq", "2");
+
+      // verify that disabled filters don't show up
+      cy.findByText("Source").should("not.exist");
+      cy.findByText("User").should("not.exist");
+
+      // only Name parameter should be visible
+      openFilterOptions("Name");
+
+      cy.findByPlaceholderText("Search by Name").type("L");
+      cy.findByText("Lina Heaney").click();
+
+      cy.button("Add filter").click();
+
+      cy.get(".ScalarValue")
+        .invoke("text")
+        .should("eq", "1");
     });
   });
 
@@ -297,4 +295,19 @@ function openFilterOptions(name) {
   filterWidget()
     .contains(name)
     .click();
+}
+
+function publishChanges(callback) {
+  cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
+
+  cy.button("Publish").click();
+
+  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
+    // Unfortunately, the order of requests is not always the same.
+    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
+    const targetXhr = xhrs.find(({ request }) =>
+      Object.keys(request.body).includes("embedding_params"),
+    );
+    callback && callback(targetXhr);
+  });
 }
