@@ -430,8 +430,9 @@ describe("scenarios > collection_defaults", () => {
       navigationSidebar()
         .findByText("Your personal collection")
         .parentsUntil("[data-testid=sidebar-collection-link-root]")
-        .find(".Icon-chevronright")
-        .should("not.exist");
+        .within(() => {
+          cy.icon("chevronright").should("not.be.visible");
+        });
 
       // Ensure if sub-collection is archived, the chevron is not displayed
       displaySidebarChildOf("First collection");
