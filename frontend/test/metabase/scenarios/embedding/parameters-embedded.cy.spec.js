@@ -58,6 +58,14 @@ const questionDetails = {
   },
 };
 
+const dashboardDetails = {
+  parameters: [
+    { name: "Id", slug: "id", id: "1", type: "id" },
+    { name: "Name", slug: "name", id: "2", type: "category" },
+    { name: "Source", slug: "source", id: "3", type: "category" },
+    { name: "User", slug: "user_id", id: "4", type: "id" },
+  ],
+};
 describe("scenarios > dashboard > parameters-embedded", () => {
   let dashboardId, questionId, dashcardId;
 
@@ -77,7 +85,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
     cy.createNativeQuestion(questionDetails).then(res => {
       questionId = res.body.id;
-      createDashboard().then(res => {
+      cy.createDashboard(dashboardDetails).then(res => {
         dashboardId = res.body.id;
         addCardToDashboard({ dashboardId, questionId }).then(res => {
           dashcardId = res.body.id;
@@ -249,18 +257,6 @@ function sharedParametersTests(visitUrl) {
     cy.contains(".ScalarValue", "2");
   });
 }
-
-const createDashboard = () =>
-  cy.request("POST", "/api/dashboard", {
-    name: "Test Dashboard",
-    collection_id: null,
-    parameters: [
-      { name: "Id", slug: "id", id: "1", type: "id" },
-      { name: "Name", slug: "name", id: "2", type: "category" },
-      { name: "Source", slug: "source", id: "3", type: "category" },
-      { name: "User", slug: "user_id", id: "4", type: "id" },
-    ],
-  });
 
 const addCardToDashboard = ({ dashboardId, questionId }) =>
   cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
