@@ -54,8 +54,8 @@ const questionDetails = {
         default: null,
       },
     },
-    display: "scalar",
   },
+  display: "scalar",
 };
 
 const dashboardDetails = {
