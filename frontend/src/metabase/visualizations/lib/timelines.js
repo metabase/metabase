@@ -1,5 +1,4 @@
 import d3 from "d3";
-import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
 import { stretchTimeseriesDomain } from "./apply_axis";
 import timeseriesScale from "./timeseriesScale";
@@ -8,7 +7,7 @@ const ICON_X = -16;
 const ICON_Y = 10;
 const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_GROUP = 24;
+const ICON_DISTANCE = 24;
 const RECT_SIZE = ICON_SIZE * 2;
 const TEXT_X = 10;
 const TEXT_Y = 16;
@@ -28,21 +27,38 @@ function getEventScale(chart, xDomain, xInterval) {
     .range([0, chart.effectiveWidth()]);
 }
 
-function getEventGroups(events, eventScale) {
-  return _.chain(events)
-    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_GROUP))
-    .values()
-    .value();
+function getEventMapping(events, eventScale) {
+  const mapping = new Map();
+  let group = [];
+  let groupPoint = 0;
+
+  events.forEach(event => {
+    const eventPoint = eventScale(event.timestamp);
+    const groupDistance = eventPoint - groupPoint;
+
+    if (!group.length || groupDistance < ICON_DISTANCE) {
+      group.push(event);
+      groupPoint += (eventPoint - groupPoint) / group.length;
+    } else {
+      mapping.set(groupPoint, group);
+      group = [event];
+      groupPoint = eventPoint;
+    }
+  });
+
+  if (group.length) {
+    mapping.set(groupPoint, group);
+  }
+
+  return mapping;
 }
 
-function getEventPoints(eventGroups, eventScale) {
-  return eventGroups.map(
-    events =>
-      _.chain(events)
-        .map(event => eventScale(event.timestamp))
-        .reduce((a, b) => a + b, 0)
-        .value() / events.length,
-  );
+function getEventPoints(eventMapping) {
+  return Array.from(eventMapping.keys());
+}
+
+function getEventGroups(eventMapping) {
+  return Array.from(eventMapping.values());
 }
 
 function isSelected(events, selectedEventIds) {
@@ -93,8 +109,8 @@ function hasEventText(events, eventIndex, eventPoints) {
 function renderEventLines({
   chart,
   brush,
-  eventGroups,
   eventPoints,
+  eventGroups,
   selectedEventIds,
 }) {
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
@@ -115,8 +131,8 @@ function renderEventLines({
 function renderEventTicks({
   axis,
   brush,
-  eventGroups,
   eventPoints,
+  eventGroups,
   selectedEventIds,
   onHoverChange,
   onOpenTimelines,
@@ -209,15 +225,16 @@ export function renderEvents(
   const axis = getXAxis(chart);
   const brush = getBrush(chart);
   const eventScale = getEventScale(chart, xDomain, xInterval);
-  const eventGroups = getEventGroups(events, eventScale);
-  const eventPoints = getEventPoints(eventGroups, eventScale);
+  const eventMapping = getEventMapping(events, eventScale);
+  const eventPoints = getEventPoints(eventMapping);
+  const eventGroups = getEventGroups(eventMapping);
 
   if (brush) {
     renderEventLines({
       chart,
       brush,
-      eventGroups,
       eventPoints,
+      eventGroups,
       selectedEventIds,
     });
   }
