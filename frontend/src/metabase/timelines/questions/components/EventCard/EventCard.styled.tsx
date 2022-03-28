@@ -14,6 +14,7 @@ export const CardRoot = styled.div<CardRootProps>`
     ${props => (props.isSelected ? color("brand") : "transparent")};
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.03) : "transparent"};
+  cursor: pointer;
 `;
 
 export const CardIcon = styled(Icon)`
@@ -68,4 +69,5 @@ export const CardCreatorInfo = styled.div`
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
+  align-self: start;
 `;
