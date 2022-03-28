@@ -1,9 +1,4 @@
-import {
-  restore,
-  popover,
-  visitQuestion,
-  visitDashboard,
-} from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -150,34 +145,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     });
   });
 
-  describe("private question", () => {
-    beforeEach(cy.signInAsAdmin);
-
-    sharedParametersTests(() => {
-      visitQuestion(questionId);
-      // wait for question to load/run
-      cy.contains("Test Question");
-      cy.contains("2,500");
-    });
-  });
-
-  describe("public question", () => {
-    let uuid;
-    beforeEach(() => {
-      cy.request("POST", `/api/card/${questionId}/public_link`).then(
-        res => (uuid = res.body.uuid),
-      );
-      cy.signOut();
-    });
-
-    sharedParametersTests(() => {
-      cy.visit(`/public/question/${uuid}`);
-      // wait for question to load/run
-      cy.contains("Test Question");
-      cy.contains("2,500");
-    });
-  });
-
   describe("embedded question", () => {
     beforeEach(() => {
       cy.request("PUT", `/api/card/${questionId}`, {
@@ -196,34 +163,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.visit(`/embed/question/${QUESTION_JWT_TOKEN}`);
       // wait for question to load/run
       cy.contains("Test Question");
-      cy.contains("2,500");
-    });
-  });
-
-  describe("private dashboard", () => {
-    beforeEach(cy.signInAsAdmin);
-
-    sharedParametersTests(() => {
-      visitDashboard(dashboardId);
-      // wait for question to load/run
-      cy.contains("Test Dashboard");
-      cy.contains("2,500");
-    });
-  });
-
-  describe("public dashboard", () => {
-    let uuid;
-    beforeEach(() => {
-      cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
-        res => (uuid = res.body.uuid),
-      );
-      cy.signOut();
-    });
-
-    sharedParametersTests(() => {
-      cy.visit(`/public/dashboard/${uuid}`);
-      // wait for question to load/run
-      cy.contains("Test Dashboard");
       cy.contains("2,500");
     });
   });
