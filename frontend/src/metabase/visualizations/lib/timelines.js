@@ -27,21 +27,21 @@ function getEventScale(chart, xDomain, xInterval) {
     .range([0, chart.effectiveWidth()]);
 }
 
-function getEventMapping(events, xInterval) {
-  return _.groupBy(events, event =>
-    event.timestamp
-      .clone()
-      .startOf(xInterval.interval)
-      .valueOf(),
+function getEventGroups(events, eventScale) {
+  return _.chain(events)
+    .groupBy(e => Math.round(eventScale(e.timestamp) / ICON_SIZE) * ICON_SIZE)
+    .values()
+    .value();
+}
+
+function getEventPoints(eventGroups, eventScale) {
+  return eventGroups.map(
+    events =>
+      _.chain(events)
+        .map(event => eventScale(event.timestamp))
+        .reduce((a, b) => a + b, 0)
+        .value() / events.length,
   );
-}
-
-function getEventDates(eventMapping) {
-  return Object.keys(eventMapping).map(value => new Date(parseInt(value)));
-}
-
-function getEventGroups(eventMapping) {
-  return Object.values(eventMapping);
 }
 
 function isSelected(events, selectedEventIds) {
@@ -71,19 +71,19 @@ function getIconLabel(events) {
   return `${icon} icon`;
 }
 
-function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
-  const thisDate = eventDates[eventIndex];
-  const prevDate = eventDates[eventIndex - 1];
-  const nextDate = eventDates[eventIndex + 1];
-  const prevDistance = prevDate && eventScale(thisDate) - eventScale(prevDate);
-  const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
+function isEventWithin(eventIndex, eventPoints, eventDistance) {
+  const thisPoint = eventPoints[eventIndex];
+  const prevPoint = eventPoints[eventIndex - 1];
+  const nextPoint = eventPoints[eventIndex + 1];
+  const prevDistance = prevPoint != null && thisPoint - prevPoint;
+  const nextDistance = nextPoint != null && nextPoint - thisPoint;
 
   return prevDistance < eventDistance || nextDistance < eventDistance;
 }
 
-function hasEventText(events, eventIndex, eventScale, eventDates) {
+function hasEventText(events, eventIndex, eventPoints) {
   if (events.length > 1) {
-    return !isEventWithin(eventIndex, eventScale, eventDates, TEXT_DISTANCE);
+    return !isEventWithin(eventIndex, eventPoints, TEXT_DISTANCE);
   } else {
     return false;
   }
@@ -92,9 +92,8 @@ function hasEventText(events, eventIndex, eventScale, eventDates) {
 function renderEventLines({
   chart,
   brush,
-  eventScale,
-  eventDates,
   eventGroups,
+  eventPoints,
   selectedEventIds,
 }) {
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
@@ -106,8 +105,8 @@ function renderEventLines({
     .append("line")
     .attr("class", "event-line")
     .classed("hover", d => isSelected(d, selectedEventIds))
-    .attr("x1", (d, i) => eventScale(eventDates[i]))
-    .attr("x2", (d, i) => eventScale(eventDates[i]))
+    .attr("x1", (d, i) => eventPoints[i])
+    .attr("x2", (d, i) => eventPoints[i])
     .attr("y1", "0")
     .attr("y2", brushHeight);
 }
@@ -115,9 +114,8 @@ function renderEventLines({
 function renderEventTicks({
   axis,
   brush,
-  eventScale,
-  eventDates,
   eventGroups,
+  eventPoints,
   selectedEventIds,
   onHoverChange,
   onOpenTimelines,
@@ -141,7 +139,7 @@ function renderEventTicks({
     .append("g")
     .attr("class", "event-tick")
     .classed("hover", d => isSelected(d, selectedEventIds))
-    .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
+    .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
 
   eventTicks
     .append("path")
@@ -159,7 +157,7 @@ function renderEventTicks({
     .attr("transform", () => getIconTransform());
 
   eventTicks
-    .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
+    .filter((d, i) => hasEventText(d, i, eventPoints))
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
@@ -210,17 +208,15 @@ export function renderEvents(
   const axis = getXAxis(chart);
   const brush = getBrush(chart);
   const eventScale = getEventScale(chart, xDomain, xInterval);
-  const eventMapping = getEventMapping(events, xInterval);
-  const eventDates = getEventDates(eventMapping);
-  const eventGroups = getEventGroups(eventMapping);
+  const eventGroups = getEventGroups(events, eventScale);
+  const eventPoints = getEventPoints(eventGroups, eventScale);
 
   if (brush) {
     renderEventLines({
       chart,
       brush,
-      eventScale,
-      eventDates,
       eventGroups,
+      eventPoints,
       selectedEventIds,
     });
   }
@@ -229,9 +225,8 @@ export function renderEvents(
     renderEventTicks({
       axis,
       brush,
-      eventScale,
-      eventDates,
       eventGroups,
+      eventPoints,
       selectedEventIds,
       onHoverChange,
       onOpenTimelines,
