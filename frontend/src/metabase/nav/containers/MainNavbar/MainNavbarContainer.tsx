@@ -18,7 +18,9 @@ import {
   currentUserPersonalCollections,
   CollectionTreeItem,
 } from "metabase/collections/utils";
+import * as Urls from "metabase/lib/urls";
 
+import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
 import { Sidebar, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
 
@@ -37,6 +39,9 @@ type Props = {
   location: {
     pathname: string;
   };
+  params: {
+    slug?: string;
+  };
 };
 
 function MainNavbarContainer({
@@ -45,8 +50,24 @@ function MainNavbarContainer({
   rootCollection,
   allFetched,
   location,
+  params,
   ...props
 }: Props) {
+  const selectedItem = useMemo<SelectedItem>(() => {
+    const { pathname } = location;
+    const { slug } = params;
+    if (pathname.startsWith("/collection")) {
+      return { type: "collection", id: Urls.extractEntityId(slug) };
+    }
+    if (pathname.startsWith("/dashboard")) {
+      return { type: "dashboard", id: Urls.extractEntityId(slug) };
+    }
+    if (pathname.startsWith("/question") || pathname.startsWith("/model")) {
+      return { type: "card", id: Urls.extractEntityId(slug) };
+    }
+    return { type: "unknown", url: pathname };
+  }, [location, params]);
+
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     if (!rootCollection) {
       return [];
@@ -80,7 +101,7 @@ function MainNavbarContainer({
           {...props}
           currentUser={currentUser}
           collections={collectionTree}
-          currentPathname={location.pathname}
+          selectedItem={selectedItem}
         />
       ) : (
         <LoadingContainer>

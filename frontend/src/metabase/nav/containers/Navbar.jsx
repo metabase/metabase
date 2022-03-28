@@ -76,11 +76,11 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { isOpen, location } = this.props;
+    const { isOpen, location, params } = this.props;
     // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
       <NavRoot className="Nav" isOpen={isOpen}>
-        <MainNavbar location={location} />
+        <MainNavbar location={location} params={params} />
       </NavRoot>
     );
   }
