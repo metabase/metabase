@@ -102,7 +102,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getIcon(question, isSidebar) {
+function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
     return { name: "model" };
   }
@@ -111,7 +111,7 @@ function getIcon(question, isSidebar) {
   );
   return {
     name: visualization?.iconName ?? "beaker",
-    color: isSidebar ? color("brand") : color("bg-dark"),
+    color: color("bg-dark"),
   };
 }
 
