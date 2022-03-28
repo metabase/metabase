@@ -10,12 +10,8 @@ const METABASE_SECRET_KEY =
 
 // Calling jwt.sign was failing in cypress (in browser issue maybe?). These
 // tokens just hard code dashboardId=2 and questionId=3
-const QUESTION_JWT_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6M30sInBhcmFtcyI6e30sImlhdCI6MTU3OTU1OTg3NH0.alV205oYgfyWuwLNQSLVgfHop1tpevX4C26Xal-bia8";
 const DASHBOARD_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE1Nzk1NjAxMTF9.LjOiTp4p2lV3b2VpSjcg0GuSaE2O0xhHwc59JDYcBJI";
-
-// NOTE: some overlap with parameters.cy.spec.js
 
 describe("scenarios > dashboard > parameters-embedded", () => {
   let dashboardId, questionId, dashcardId;
@@ -51,7 +47,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("embedded parameters", () => {
-    it("should be disabled by default but able to be set to editable", () => {
+    it("should be disabled by default but able to be set to editable (metabase#20357)", () => {
       visitDashboard(2);
       cy.icon("share").click();
       cy.findByText("Sharing and embedding").click();
@@ -142,28 +138,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.get(".Card").within(() => {
         cy.contains("2");
       });
-    });
-  });
-
-  describe("embedded question", () => {
-    beforeEach(() => {
-      cy.request("PUT", `/api/card/${questionId}`, {
-        embedding_params: {
-          id: "enabled",
-          name: "enabled",
-          source: "enabled",
-          user_id: "enabled",
-        },
-        enable_embedding: true,
-      });
-      cy.signOut();
-    });
-
-    sharedParametersTests(() => {
-      cy.visit(`/embed/question/${QUESTION_JWT_TOKEN}`);
-      // wait for question to load/run
-      cy.contains("Test Question");
-      cy.contains("2,500");
     });
   });
 
