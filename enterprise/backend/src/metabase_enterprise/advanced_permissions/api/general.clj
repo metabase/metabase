@@ -7,7 +7,7 @@
             [metabase.api.common :as api]))
 
 (api/defendpoint GET "/graph"
-  "Fetch a graph of General Permissions"
+  "Fetch a graph of General Permissions."
   []
   (api/check-superuser)
   (g-perms/graph))
@@ -25,7 +25,7 @@
 
 (defn- dejsonify-graph
   "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"yes\"` to `:yes` and
-  parsing object keys keyword "
+  parsing object keys keyword."
   [graph]
   (update graph :groups dejsonify-groups))
 

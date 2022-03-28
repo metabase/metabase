@@ -39,15 +39,16 @@
     :no))
 
 (s/defn permissions-set->general-perms :- GroupPermissionsGraph
-  "Get a map of all general permissions for a group"
+  "Get a map of all general permissions for a group."
   [permission-set]
   {:setting      (permission-for-type permission-set :setting)
    :monitoring   (permission-for-type permission-set :monitoring)
    :subscription (permission-for-type permission-set :subscription)})
 
 (s/defn graph :- GeneralPermissionsGraph
-  "Fetch a graph representing the general permissions status for every group. This works just like the function of
-  the same name in `metabase.models.permissions`; see also the documentation for that function."
+  "Fetch a graph representing the general permissions status for groups that has at least one general permission enabled.
+  This works just like the function of the same name in `metabase.models.permissions`;
+  see also the documentation for that function."
   []
   {:revision (g-perm-revision/latest-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]
@@ -56,7 +57,7 @@
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (defn update-general-permissions!
-  "Perform update general permissions for a group-id"
+  "Perform update general permissions for a group-id."
   [group-id changes]
   (doseq [[perm-type perm-value] changes]
     (case perm-value
