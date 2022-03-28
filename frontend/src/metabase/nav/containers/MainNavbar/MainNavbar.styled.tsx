@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { SIDEBAR_WIDTH } from "metabase/collections/constants";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -19,7 +19,7 @@ export const Sidebar = styled.aside`
   background-color: transparent;
 
   ${breakpointMinSmall} {
-    width: ${SIDEBAR_WIDTH};
+    width: ${NAV_SIDEBAR_WIDTH};
   }
 `;
 
