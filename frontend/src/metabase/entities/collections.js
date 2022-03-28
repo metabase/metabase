@@ -351,9 +351,12 @@ export function buildCollectionTree(collections, { targetModels } = {}) {
           ...collection,
           schemaName: collection.originalName || collection.name,
           icon: getCollectionIcon(collection),
-          children: buildCollectionTree(collection.children || [], {
-            targetModels,
-          }),
+          children: buildCollectionTree(
+            collection.children?.filter(child => !child.archived) || [],
+            {
+              targetModels,
+            },
+          ),
         }
       : [];
   });
