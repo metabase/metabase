@@ -1,0 +1,34 @@
+name: Notify Pull Request
+inputs:
+  message:
+    required: true
+  include-log:
+    required: false
+    default: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v4
+      id: get-latest-release-branch
+      with:
+        result-encoding: string
+        script: |
+          const message = "${{ inputs.message }}"
+          const shouldIncludeLog = ${{ inputs.include-log }}.toString() === "true";
+          const author = context.payload.sender.login;
+
+          let body = `@${author} ${message}`;
+
+          if (shouldIncludeLog) {
+            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+            body += ` [[Logs]](${runUrl})`;
+          }
+
+          github.issues.createComment({
+            issue_number: context.payload.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body,
+          });
