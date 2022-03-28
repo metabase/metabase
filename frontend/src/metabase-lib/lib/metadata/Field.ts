@@ -218,7 +218,7 @@ export default class Field extends Base {
       // if ID is an array, it's a MBQL field reference, typically "field"
       return this.id;
     } else {
-      return ["field", this.id, null];
+      return ["field", this.id || this.name, null];
     }
   }
 
