@@ -44,7 +44,11 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { flashFavicon, resetFavicon } from "../../lib/favicon";
+import {
+  flashFavicon,
+  resetFavicon,
+  LOAD_COMPLETE_FAVICON,
+} from "../../lib/favicon";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -131,9 +135,9 @@ export default class DashboardApp extends Component {
     if (previousProps.isLoadingDashCards && !this.props.isLoadingDashCards) {
       if (!document.hidden) {
         this.props.setHasSeenLoadedDashboard();
-        flashFavicon("/app/assets/img/blue_check.png", 3000);
+        flashFavicon(LOAD_COMPLETE_FAVICON, 3000);
       } else {
-        flashFavicon("/app/assets/img/blue_check.png");
+        flashFavicon(LOAD_COMPLETE_FAVICON);
         document.addEventListener(
           "visibilitychange",
           () => {
