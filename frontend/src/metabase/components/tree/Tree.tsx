@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { usePrevious } from "metabase/hooks/use-previous";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
@@ -22,14 +23,19 @@ function BaseTree({
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
   );
+  const previousSelectedId = usePrevious(selectedId);
 
   useEffect(() => {
-    if (selectedId && !expandedIds.has(selectedId)) {
+    if (
+      selectedId &&
+      previousSelectedId !== selectedId &&
+      !expandedIds.has(selectedId)
+    ) {
       setExpandedIds(
         prev => new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [data, selectedId, expandedIds]);
+  }, [data, selectedId, previousSelectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
     itemId => {
