@@ -66,7 +66,7 @@ const dashboardDetails = {
   ],
 };
 
-describe("scenarios > dashboard > parameters-embedded", () => {
+describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
