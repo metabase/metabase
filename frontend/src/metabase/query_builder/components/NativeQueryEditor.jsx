@@ -442,7 +442,7 @@ export default class NativeQueryEditor extends Component {
               <VisibilityToggler
                 className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
-                readOnly={readOnly}
+                readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
               />
             )}
