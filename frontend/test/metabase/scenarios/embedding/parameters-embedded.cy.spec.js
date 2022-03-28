@@ -66,9 +66,8 @@ const dashboardDetails = {
     { name: "User", slug: "user_id", id: "4", type: "id" },
   ],
 };
-describe("scenarios > dashboard > parameters-embedded", () => {
-  let dashboardId, questionId, dashcardId;
 
+describe("scenarios > dashboard > parameters-embedded", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -83,15 +82,13 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
     );
 
-    cy.createNativeQuestion(questionDetails).then(res => {
-      questionId = res.body.id;
-      cy.createDashboard(dashboardDetails).then(res => {
-        dashboardId = res.body.id;
-        addCardToDashboard({ dashboardId, questionId }).then(res => {
-          dashcardId = res.body.id;
-          mapParameters({ dashboardId, questionId, dashcardId });
-        });
-      });
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      mapParameters({ id, card_id, dashboard_id });
     });
 
     cy.request("PUT", `/api/setting/embedding-secret-key`, {
@@ -196,15 +193,18 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   describe("embedded dashboard", () => {
     beforeEach(() => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        embedding_params: {
-          id: "enabled",
-          name: "enabled",
-          source: "enabled",
-          user_id: "enabled",
-        },
-        enable_embedding: true,
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          embedding_params: {
+            id: "enabled",
+            name: "enabled",
+            source: "enabled",
+            user_id: "enabled",
+          },
+          enable_embedding: true,
+        });
       });
+
       cy.signOut();
     });
 
@@ -258,17 +258,12 @@ function sharedParametersTests(visitUrl) {
   });
 }
 
-const addCardToDashboard = ({ dashboardId, questionId }) =>
-  cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-    cardId: questionId,
-  });
-
-const mapParameters = ({ dashboardId, dashcardId, questionId }) =>
-  cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+function mapParameters({ id, card_id, dashboard_id } = {}) {
+  return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
     cards: [
       {
-        id: dashcardId,
-        card_id: questionId,
+        id,
+        card_id,
         row: 0,
         col: 0,
         sizeX: 18,
@@ -278,25 +273,26 @@ const mapParameters = ({ dashboardId, dashcardId, questionId }) =>
         parameter_mappings: [
           {
             parameter_id: "1",
-            card_id: questionId,
+            card_id,
             target: ["dimension", ["template-tag", "id"]],
           },
           {
             parameter_id: "2",
-            card_id: questionId,
+            card_id,
             target: ["dimension", ["template-tag", "name"]],
           },
           {
             parameter_id: "3",
-            card_id: questionId,
+            card_id,
             target: ["dimension", ["template-tag", "source"]],
           },
           {
             parameter_id: "4",
-            card_id: questionId,
+            card_id,
             target: ["dimension", ["template-tag", "user_id"]],
           },
         ],
       },
     ],
   });
+}
