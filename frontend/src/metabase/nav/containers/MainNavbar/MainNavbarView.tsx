@@ -22,6 +22,7 @@ type Props = {
   bookmarks: Bookmark[];
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
+  hasDataAccess: boolean;
 };
 
 const BROWSE_URL = "/browse";
@@ -33,6 +34,7 @@ function MainNavbarView({
   bookmarks,
   collections,
   selectedItem,
+  hasDataAccess,
 }: Props) {
   const isMiscLinkSelected = selectedItem.type === "unknown";
   const isCollectionSelected =
@@ -64,39 +66,38 @@ function MainNavbarView({
         role="tree"
       />
       <ul>
-        <SidebarLink
-          icon="table_spaced"
-          url={BROWSE_URL}
-          isSelected={
-            isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
-          }
-          data-metabase-event="NavBar;Data Browse"
-        >
-          {t`Browse data`}
-        </SidebarLink>
-        {currentUser.is_superuser && (
-          <>
-            <SidebarLink
-              icon="table_spaced"
-              url={OTHER_USERS_COLLECTIONS_URL}
-              isSelected={
-                selectedItem.type === "collection" &&
-                selectedItem.id === "users"
-              }
-            >
-              {t`Other users' personal collections`}
-            </SidebarLink>
-            <SidebarLink
-              icon="view_archive"
-              url={ARCHIVE_URL}
-              isSelected={
-                isMiscLinkSelected && selectedItem.url.startsWith(ARCHIVE_URL)
-              }
-            >
-              {t`View archive`}
-            </SidebarLink>
-          </>
+        {hasDataAccess && (
+          <SidebarLink
+            icon="table_spaced"
+            url={BROWSE_URL}
+            isSelected={
+              isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+            }
+            data-metabase-event="NavBar;Data Browse"
+          >
+            {t`Browse data`}
+          </SidebarLink>
         )}
+        {currentUser.is_superuser && (
+          <SidebarLink
+            icon="table_spaced"
+            url={OTHER_USERS_COLLECTIONS_URL}
+            isSelected={
+              selectedItem.type === "collection" && selectedItem.id === "users"
+            }
+          >
+            {t`Other users' personal collections`}
+          </SidebarLink>
+        )}
+        <SidebarLink
+          icon="view_archive"
+          url={ARCHIVE_URL}
+          isSelected={
+            isMiscLinkSelected && selectedItem.url.startsWith(ARCHIVE_URL)
+          }
+        >
+          {t`View archive`}
+        </SidebarLink>
       </ul>
       <ProfileLinkContainer>
         <ProfileLink user={currentUser} />
