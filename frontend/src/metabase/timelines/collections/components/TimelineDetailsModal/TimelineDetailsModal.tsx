@@ -29,7 +29,7 @@ export interface TimelineDetailsModalProps {
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
-  onGoBack?: (collection: Collection) => void;
+  onGoBack?: (timeline: Timeline, collection: Collection) => void;
 }
 
 const TimelineDetailsModal = ({
@@ -59,8 +59,8 @@ const TimelineDetailsModal = ({
   }, [timeline, collection, isArchive, isDefault]);
 
   const handleGoBack = useCallback(() => {
-    onGoBack?.(collection);
-  }, [collection, onGoBack]);
+    onGoBack?.(timeline, collection);
+  }, [timeline, collection, onGoBack]);
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;

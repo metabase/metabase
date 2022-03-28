@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
-import { Collection, TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -31,8 +31,8 @@ const mapDispatchToProps = (dispatch: any) => ({
   onUnarchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, false));
   },
-  onGoBack: (collection: Collection) => {
-    dispatch(push(Urls.timelinesInCollection(collection)));
+  onGoBack: (timeline: Timeline, collection: Collection) => {
+    dispatch(push(Urls.timelineInCollection(timeline, collection)));
   },
 });
 
