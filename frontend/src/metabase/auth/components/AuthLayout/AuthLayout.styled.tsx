@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100vh;
+  background-color: ${color("white")};
 `;
 
 export const LayoutBody = styled.div`
