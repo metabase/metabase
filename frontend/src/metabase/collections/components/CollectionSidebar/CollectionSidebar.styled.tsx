@@ -18,7 +18,11 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const Sidebar = styled.aside`
+interface SidebarProps {
+  shouldDisplayMobileSidebar: boolean;
+}
+
+export const Sidebar = styled.aside<SidebarProps>`
   bottom: 0;
   display: flex;
   box-sizing: border-box;
@@ -32,8 +36,8 @@ export const Sidebar = styled.aside`
   width: 0;
   background-color: ${color("white")};
 
-  ${props =>
-    props.shouldDisplayMobileSidebar &&
+  ${({ shouldDisplayMobileSidebar }) =>
+    shouldDisplayMobileSidebar &&
     css`
       box-shadow: 5px 0px 8px rgba(0, 0, 0, 0.35),
         40px 0px rgba(5, 14, 31, 0.32);
@@ -52,9 +56,39 @@ export const Sidebar = styled.aside`
 
 export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   margin-left: ${space(3)};
   text-transform: uppercase;
+  user-select: none;
+
+  ${({ onClick }) =>
+    onClick &&
+    css`
+      cursor: pointer;
+
+      &:hover {
+        color: ${color("text-dark")};
+      }
+    `};
+`;
+
+interface ToggleListDisplayButtonProps {
+  shouldDisplayBookmarks: boolean;
+}
+
+export const ToggleListDisplayButton = styled(Icon)<
+  ToggleListDisplayButtonProps
+>`
+  margin-left: 4px;
+  transform: translate(0px, -1px);
+
+  ${({ shouldDisplayBookmarks }) =>
+    shouldDisplayBookmarks &&
+    css`
+      transform: rotate(90deg) translate(-1px, -1px);
+    `}
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon)`

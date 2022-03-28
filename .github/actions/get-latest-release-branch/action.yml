@@ -1,0 +1,41 @@
+name: Get latest release branch
+
+outputs:
+  branch-name:
+    value: ${{ steps.get-latest-release-branch.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v4
+      id: get-latest-release-branch
+      with:
+        result-encoding: string
+        script: |
+          const releaseBranches = await github.git.listMatchingRefs({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: "heads/release-x.",
+          });
+
+          const getVersionFromBranch = branch => {
+            const match = branch.match(/release-x\.(.*?)\.x/);
+            return match && parseInt(match[1]);
+          };
+          const latestReleaseBranch = releaseBranches.data
+            .filter(branch => getVersionFromBranch(branch.ref) !== null)
+            .reduce(
+              (prev, current) =>
+                getVersionFromBranch(prev.ref) > getVersionFromBranch(current.ref)
+                  ? prev
+                  : current,
+              { ref: "" },
+            );
+          const latestReleaseBranchName = latestReleaseBranch.ref.replace(
+            /^refs\/heads\//,
+            "",
+          );
+
+          console.log(`Latest release branch: ${latestReleaseBranchName}`);
+
+          return latestReleaseBranchName;

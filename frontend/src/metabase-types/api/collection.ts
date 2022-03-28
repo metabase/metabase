@@ -4,4 +4,5 @@ export interface Collection {
   id: CollectionId;
   name: string;
   can_write: boolean;
+  personal_owner_id?: number;
 }
