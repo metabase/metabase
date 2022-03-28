@@ -242,8 +242,8 @@ export function renderEvents(
     renderEventTicks({
       axis,
       brush,
-      eventGroups,
       eventPoints,
+      eventGroups,
       selectedEventIds,
       onHoverChange,
       onOpenTimelines,
