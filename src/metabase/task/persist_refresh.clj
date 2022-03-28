@@ -30,8 +30,9 @@
           (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p))))))
     ;; look for any stragglers that we can try to delete
     (let [deleteable (db/select PersistedInfo :state "deleteable")
-          db-id->db  (into {} (map (juxt :id identity))
-                           (db/select Database :id [:in (into #{} (map :database_id) deleteable)]))]
+          db-id->db  (when (seq deleteable)
+                       (into {} (map (juxt :id identity))
+                             (db/select Database :id [:in (into #{} (map :database_id) deleteable)])))]
       (doseq [d deleteable]
         (let [database (-> d :database_id db-id->db)]
           (log/info (trs "Unpersisting model with card-id {0}" (:card_id d)))
