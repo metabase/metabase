@@ -97,7 +97,9 @@ const Fields = createEntity({
           ),
         );
         // Field values needs to be fetched again once the field is updated metabase#16322
-        await dispatch(Fields.actions.fetchFieldValues(field));
+        await dispatch(
+          Fields.actions.fetchFieldValues(field, { reload: true }),
+        );
         return result;
       };
     },
