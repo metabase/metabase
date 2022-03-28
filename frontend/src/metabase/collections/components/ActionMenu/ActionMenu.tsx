@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { Item, Collection, isItemPinned } from "metabase/collections/utils";
