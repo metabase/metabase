@@ -31,16 +31,31 @@ interface CollectionSidebarBookmarksProps {
   deleteBookmark: (id: string, type: string) => void;
 }
 
+interface IconProps {
+  name: string;
+  tooltip?: string;
+}
+
+const BookmarkIcon = ({ icon }: { icon: IconProps }) => (
+  <BookmarkTypeIcon
+    color={icon.tooltip ? color("warning") : color("brand")}
+    name={icon.name}
+    opacity={icon.tooltip ? 1 : 0.5}
+  />
+);
+
 const Label = ({ bookmark }: LabelProps) => {
   const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
 
   return (
     <LabelContainer>
-      <BookmarkTypeIcon
-        color={icon.tooltip ? color("warning") : color("brand")}
-        name={icon.name}
-        opacity={icon.tooltip ? 1 : 0.5}
-      />
+      {icon.tooltip ? (
+        <Tooltip tooltip={icon.tooltip}>
+          <BookmarkIcon icon={icon} />
+        </Tooltip>
+      ) : (
+        <BookmarkIcon icon={icon} />
+      )}
       {bookmark.name}
     </LabelContainer>
   );
