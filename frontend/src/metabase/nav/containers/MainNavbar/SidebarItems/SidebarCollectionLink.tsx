@@ -57,7 +57,7 @@ const SidebarCollectionLink = React.forwardRef<
   );
 
   return (
-    <div>
+    <div data-testid="sidebar-collection-link-root">
       <CollectionDropTarget collection={collection}>
         {({ hovered }: { hovered: boolean }) => (
           <NodeRoot
