@@ -7,10 +7,13 @@ import { User } from "metabase-types/api";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
+import ProfileLink from "metabase/nav/components/ProfileLink";
+
 import * as Urls from "metabase/lib/urls";
 import { CollectionTreeItem } from "metabase/collections/utils";
 
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
+import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
 
 type Props = {
   currentUser: User;
@@ -74,6 +77,9 @@ function MainNavbarView({ currentUser, currentPathname, collections }: Props) {
           </>
         )}
       </ul>
+      <ProfileLinkContainer>
+        <ProfileLink user={currentUser} />
+      </ProfileLinkContainer>
     </>
   );
 }
