@@ -14,9 +14,17 @@ import {
 import { TreeNodeProps } from "./types";
 
 // eslint-disable-next-line react/display-name
-export const TreeNode = React.memo(
+const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
-    { isExpanded, isSelected, hasChildren, onToggleExpand, depth, item },
+    {
+      item,
+      depth,
+      isExpanded,
+      isSelected,
+      hasChildren,
+      onToggleExpand,
+      ...props
+    },
     ref,
   ) {
     const { name, icon } = item;
@@ -36,13 +44,14 @@ export const TreeNode = React.memo(
 
     return (
       <TreeNodeRoot
-        ref={ref}
         role="menuitem"
         tabIndex={0}
-        depth={depth}
         onClick={onToggleExpand}
+        {...props}
+        depth={depth}
         isSelected={isSelected}
         onKeyDown={handleKeyDown}
+        ref={ref}
       >
         <ExpandToggleButton hidden={!hasChildren}>
           <ExpandToggleIcon
@@ -62,3 +71,11 @@ export const TreeNode = React.memo(
     );
   }),
 );
+
+export const TreeNode = Object.assign(BaseTreeNode, {
+  Root: TreeNodeRoot,
+  ExpandToggleButton,
+  ExpandToggleIcon,
+  NameContainer,
+  IconContainer,
+});
