@@ -1,6 +1,5 @@
 import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -12,6 +11,52 @@ const METABASE_SECRET_KEY =
 // tokens just hard code dashboardId=2 and questionId=3
 const DASHBOARD_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE1Nzk1NjAxMTF9.LjOiTp4p2lV3b2VpSjcg0GuSaE2O0xhHwc59JDYcBJI";
+
+const questionDetails = {
+  native: {
+    query:
+      "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */",
+    "template-tags": {
+      id: {
+        id: "3fce42dd-fac7-c87d-e738-d8b3fc9d6d56",
+        name: "id",
+        display_name: "Id",
+        type: "dimension",
+        dimension: ["field", PEOPLE.ID, null],
+        "widget-type": "id",
+        default: null,
+      },
+      name: {
+        id: "1fe12d96-8cf7-49e4-05a3-6ed1aea24490",
+        name: "name",
+        display_name: "Name",
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "category",
+        default: null,
+      },
+      source: {
+        id: "aed3c67a-820a-966b-d07b-ddf54a7f2e5e",
+        name: "source",
+        display_name: "Source",
+        type: "dimension",
+        dimension: ["field", PEOPLE.SOURCE, null],
+        "widget-type": "category",
+        default: null,
+      },
+      user_id: {
+        id: "cd4bb37d-8404-488e-f66a-6545a261bbe0",
+        name: "user_id",
+        display_name: "User",
+        type: "dimension",
+        dimension: ["field", ORDERS.USER_ID, null],
+        "widget-type": "id",
+        default: null,
+      },
+    },
+    display: "scalar",
+  },
+};
 
 describe("scenarios > dashboard > parameters-embedded", () => {
   let dashboardId, questionId, dashcardId;
@@ -30,7 +75,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
     );
 
-    createQuestion().then(res => {
+    cy.createNativeQuestion(questionDetails).then(res => {
       questionId = res.body.id;
       createDashboard().then(res => {
         dashboardId = res.body.id;
@@ -204,62 +249,6 @@ function sharedParametersTests(visitUrl) {
     cy.contains(".ScalarValue", "2");
   });
 }
-
-const createQuestion = () =>
-  cy.request("PUT", "/api/card/3", {
-    name: "Test Question",
-    dataset_query: {
-      type: "native",
-      native: {
-        query:
-          "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */",
-        "template-tags": {
-          id: {
-            id: "3fce42dd-fac7-c87d-e738-d8b3fc9d6d56",
-            name: "id",
-            display_name: "Id",
-            type: "dimension",
-            dimension: ["field", PEOPLE.ID, null],
-            "widget-type": "id",
-            default: null,
-          },
-          name: {
-            id: "1fe12d96-8cf7-49e4-05a3-6ed1aea24490",
-            name: "name",
-            display_name: "Name",
-            type: "dimension",
-            dimension: ["field", PEOPLE.NAME, null],
-            "widget-type": "category",
-            default: null,
-          },
-          source: {
-            id: "aed3c67a-820a-966b-d07b-ddf54a7f2e5e",
-            name: "source",
-            display_name: "Source",
-            type: "dimension",
-            dimension: ["field", PEOPLE.SOURCE, null],
-            "widget-type": "category",
-            default: null,
-          },
-          user_id: {
-            id: "cd4bb37d-8404-488e-f66a-6545a261bbe0",
-            name: "user_id",
-            display_name: "User",
-            type: "dimension",
-            dimension: ["field", ORDERS.USER_ID, null],
-            "widget-type": "id",
-            default: null,
-          },
-        },
-      },
-      database: SAMPLE_DB_ID,
-    },
-    display: "scalar",
-    description: null,
-    visualization_settings: {},
-    collection_id: null,
-    result_metadata: null,
-  });
 
 const createDashboard = () =>
   cy.request("POST", "/api/dashboard", {
