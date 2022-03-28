@@ -1,6 +1,7 @@
 import React, { Fragment } from "react";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import DeleteEventModal from "./containers/DeleteEventModal";
+import DeleteTimelineModal from "./containers/DeleteTimelineModal";
 import EditEventModal from "./containers/EditEventModal";
 import EditTimelineModal from "./containers/EditTimelineModal";
 import NewEventModal from "./containers/NewEventModal";
@@ -9,6 +10,7 @@ import NewTimelineModal from "./containers/NewTimelineModal";
 import TimelineArchiveModal from "./containers/TimelineArchiveModal";
 import TimelineDetailsModal from "./containers/TimelineDetailsModal";
 import TimelineIndexModal from "./containers/TimelineIndexModal";
+import TimelineListArchiveModal from "./containers/TimelineListArchiveModal";
 
 const getRoutes = () => {
   return (
@@ -24,6 +26,13 @@ const getRoutes = () => {
         {...{
           path: "timelines/new",
           modal: NewTimelineModal,
+          modalProps: { enableTransition: false },
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/archive",
+          modal: TimelineListArchiveModal,
           modalProps: { enableTransition: false },
         }}
       />
@@ -45,6 +54,13 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/archive",
           modal: TimelineArchiveModal,
+          modalProps: { enableTransition: false },
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/delete",
+          modal: DeleteTimelineModal,
           modalProps: { enableTransition: false },
         }}
       />

@@ -1,12 +1,12 @@
 import React, { ReactNode } from "react";
 import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/components/Ellipsified";
 import {
-  HeaderActions,
-  HeaderBackButton,
+  HeaderBackIcon,
   HeaderCloseButton,
+  HeaderMenu,
   HeaderRoot,
   HeaderTitle,
+  HeaderLink,
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {
@@ -24,15 +24,11 @@ const ModalHeader = ({
 }: ModalHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
-      {onGoBack && (
-        <HeaderBackButton onClick={onGoBack}>
-          <Icon name="chevronleft" />
-        </HeaderBackButton>
-      )}
-      <HeaderTitle>
-        <Ellipsified tooltipMaxWidth="100%">{title}</Ellipsified>
-      </HeaderTitle>
-      {children && <HeaderActions>{children}</HeaderActions>}
+      <HeaderLink onClick={onGoBack}>
+        {onGoBack && <HeaderBackIcon name="chevronleft" />}
+        <HeaderTitle tooltipMaxWidth="100%">{title}</HeaderTitle>
+      </HeaderLink>
+      {children && <HeaderMenu>{children}</HeaderMenu>}
       {onClose && (
         <HeaderCloseButton onClick={onClose}>
           <Icon name="close" />

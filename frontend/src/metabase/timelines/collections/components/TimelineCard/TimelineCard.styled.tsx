@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
@@ -31,24 +32,23 @@ export const CardDescription = styled(Markdown)`
   word-wrap: break-word;
 `;
 
-export interface CardAsideProps {
+export interface CardCountProps {
   isTopAligned?: boolean;
 }
 
-export const CardAside = styled.span<CardAsideProps>`
+export const CardCount = styled.span<CardCountProps>`
   display: block;
   flex: 0 0 auto;
   color: ${color("text-dark")};
   align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
 `;
 
-export const CardRoot = styled(Link)`
-  display: flex;
-  padding: 1.75rem;
-  align-items: center;
-  border: 1px solid ${color("border")};
-  border-radius: 6px;
+export const CardMenu = styled.span`
+  display: block;
+  flex: 0 0 auto;
+`;
 
+const cardRootHoverStyles = css`
   &:hover {
     border-color: ${color("brand")};
 
@@ -60,4 +60,15 @@ export const CardRoot = styled(Link)`
       color: ${color("brand")};
     }
   }
+`;
+
+export const CardRoot = styled(Link)`
+  display: flex;
+  padding: 1.75rem;
+  align-items: center;
+  border: 1px solid ${color("border")};
+  border-radius: 6px;
+  cursor: ${props => (props.to ? "pointer" : "default")};
+
+  ${props => props.to && cardRootHoverStyles}
 `;

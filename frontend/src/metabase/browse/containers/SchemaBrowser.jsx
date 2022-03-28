@@ -8,9 +8,7 @@ import Database from "metabase/entities/databases";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
-import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/components/Tooltip";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import * as Urls from "metabase/lib/urls";
@@ -18,11 +16,7 @@ import { color } from "metabase/lib/colors";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-import {
-  SchemaCardActions,
-  SchemaCardContent,
-  SchemaGridItem,
-} from "./SchemaBrowser.styled";
+import { SchemaGridItem } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {
   const { schemas, params } = props;
@@ -60,20 +54,12 @@ function SchemaBrowser(props) {
                     className="overflow-hidden"
                   >
                     <Card hoverable px={1}>
-                      <SchemaCardContent>
-                        <EntityItem
-                          name={schema.name}
-                          iconName="folder"
-                          iconColor={color("accent2")}
-                          item={schema}
-                        />
-                        <SchemaCardActions>
-                          <Icon name="reference" />
-                          <Tooltip tooltip={t`X-ray this schema`}>
-                            <Icon name="bolt" mx={1} />
-                          </Tooltip>
-                        </SchemaCardActions>
-                      </SchemaCardContent>
+                      <EntityItem
+                        name={schema.name}
+                        iconName="folder"
+                        iconColor={color("accent2")}
+                        item={schema}
+                      />
                     </Card>
                   </Link>
                 </SchemaGridItem>
