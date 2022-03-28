@@ -9,6 +9,10 @@ import { TreeNodeProps } from "metabase/components/tree/types";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
+import {
+  getCollectionIcon,
+  PERSONAL_COLLECTIONS,
+} from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 import { CollectionTreeItem } from "metabase/collections/utils";
 
@@ -80,7 +84,7 @@ function MainNavbarView({
         )}
         {currentUser.is_superuser && (
           <SidebarLink
-            icon="table_spaced"
+            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
             url={OTHER_USERS_COLLECTIONS_URL}
             isSelected={
               selectedItem.type === "collection" && selectedItem.id === "users"
