@@ -2,10 +2,11 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { NAV_SIDEBAR_WIDTH } from "../constants";
 
 const openNavbarCSS = css`
-  width: 324px;
   position: relative;
+  width: ${NAV_SIDEBAR_WIDTH};
 `;
 
 const closedNavbarCSS = css`
