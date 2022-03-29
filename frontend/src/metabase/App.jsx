@@ -4,21 +4,14 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
+import Modal from "metabase/components/Modal";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import * as Urls from "metabase/lib/urls";
-
-import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
-import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
-
-import UndoListing from "metabase/containers/UndoListing";
-import StatusListing from "metabase/status/containers/StatusListing";
-import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
-import Modal from "metabase/components/Modal";
-
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import {
   Archived,
@@ -26,6 +19,14 @@ import {
   GenericError,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
+import UndoListing from "metabase/containers/UndoListing";
+import StatusListing from "metabase/status/containers/StatusListing";
+
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+
+import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import { AppContentContainer, AppContent } from "./App.styled";
 
@@ -33,9 +34,10 @@ export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 const mapStateToProps = state => ({
+  currentUser: state.currentUser,
   errorPage: state.app.errorPage,
   isSidebarOpen: getIsNavbarOpen(state),
-  currentUser: state.currentUser,
+  isEditingDashboard: getIsEditingDashboard(state),
 });
 
 const mapDispatchToProps = {
@@ -89,9 +91,10 @@ class App extends Component {
   hasNavbar = () => {
     const {
       currentUser,
+      isEditingDashboard,
       location: { pathname },
     } = this.props;
-    if (!currentUser || IFRAMED) {
+    if (!currentUser || IFRAMED || isEditingDashboard) {
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
@@ -101,8 +104,9 @@ class App extends Component {
     const {
       currentUser,
       location: { pathname },
+      isEditingDashboard,
     } = this.props;
-    if (!currentUser || IFRAMED || this.isAdminApp()) {
+    if (!currentUser || IFRAMED || this.isAdminApp() || isEditingDashboard) {
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
