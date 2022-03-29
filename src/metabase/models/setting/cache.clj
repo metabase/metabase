@@ -15,7 +15,7 @@
 (defmulti call-on-change
   "Whenever something changes in the Settings cache it will invoke
 
-    (@call-on-change-fn old-cache new-cache
+    (call-on-change old-cache new-cache
 
   Actual implementation is provided in [[metabase.models.setting]] rather than here (to prevent
   circular references)."

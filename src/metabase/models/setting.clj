@@ -239,8 +239,11 @@
                         {:registered-settings
                          (sort (keys @registered-settings))})))))
 
+;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; swapped out depending on which app DB we have in play
+;;
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
-;; [[mteabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
+;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
 ;; references for now
 (defmethod cache/call-on-change :default
   [old new]
@@ -251,9 +254,6 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
-;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
-;; swapped out depending on which app DB we have in play
-(reset! cache/call-on-change-fn #'call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
