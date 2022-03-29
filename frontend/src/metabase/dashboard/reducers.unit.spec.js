@@ -33,6 +33,7 @@ describe("dashboard reducers", () => {
       sidebar: { props: {} },
       slowCards: {},
       hasSeenLoadedDashboard: false,
+      showLoadingCompleteFavicon: false,
     });
   });
 

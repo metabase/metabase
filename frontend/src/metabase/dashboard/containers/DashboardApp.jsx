@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
-import favicon, { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -35,7 +35,7 @@ import {
   getCardsLoaded,
   getHasSeenLoadedDashboard,
   getIsLoadingDashCardsComplete,
-  getShowLoadingCompleteFavicon,
+  getFavicon,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -75,7 +75,7 @@ const mapStateToProps = (state, props) => {
     totalDashCards: getTotalCards(state),
     cardsLoaded: getCardsLoaded(state),
     hasSeenLoadedDashboard: getHasSeenLoadedDashboard(state),
-    showLoadingCompleteFavicon: getShowLoadingCompleteFavicon(state),
+    pageFavicon: getFavicon(state),
   };
 };
 
@@ -88,9 +88,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@favicon(({ showLoadingCompleteFavicon }) =>
-  showLoadingCompleteFavicon ? LOAD_COMPLETE_FAVICON : null,
-)
+@favicon(({ pageFavicon }) => pageFavicon)
 @title(
   ({
     dashboard,

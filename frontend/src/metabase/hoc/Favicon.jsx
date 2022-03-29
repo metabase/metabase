@@ -1,49 +1,37 @@
-import React from "react";
+import React, { useEffect } from "react";
 import _ from "underscore";
 import MetabaseSettings from "../lib/settings";
 
-const DEFAULT_FAVICON = MetabaseSettings.get("application-favicon-url");
+const DEFAULT_FAVICON = () => MetabaseSettings.get("application-favicon-url");
 export const LOAD_COMPLETE_FAVICON = "app/assets/img/blue_check.png";
 
-let currentFavicon = DEFAULT_FAVICON;
-
-const updateFavicon = _.debounce(() => {
-  document
-    .querySelector('link[rel="icon"]')
-    .setAttribute("href", currentFavicon);
-});
-
-const favicon = faviconSetterOrGetter => ComposedComponent =>
-  class extends React.Component {
-    static displayName = "Favicon-HoC";
-
-    UNSAFE_componentWillMount() {
-      this._updateFavicon();
+const resolveFavicon = (setterOrGetter, props) => {
+  if (typeof setterOrGetter === "string") {
+    return setterOrGetter;
+  } else if (typeof setterOrGetter === "function") {
+    const result = setterOrGetter(props);
+    if (result == null) {
+      return DEFAULT_FAVICON();
+    } else if (result instanceof String || typeof result === "string") {
+      return result;
     }
-    componentDidUpdate() {
-      this._updateFavicon();
-    }
-    componentWillUnmount() {
-      this._updateFavicon();
-    }
+  }
+};
 
-    _updateFavicon() {
-      if (typeof faviconSetterOrGetter === "string") {
-        currentFavicon = faviconSetterOrGetter;
-      } else if (typeof faviconSetterOrGetter === "function") {
-        const result = faviconSetterOrGetter(this.props);
-        if (result == null) {
-          currentFavicon = DEFAULT_FAVICON;
-        } else if (result instanceof String || typeof result === "string") {
-          currentFavicon = result;
-        }
-      }
-      updateFavicon();
-    }
+const withFavicon = faviconSetterOrGetter => ComposedComponent => props => {
+  const favicon = resolveFavicon(faviconSetterOrGetter, props);
 
-    render() {
-      return <ComposedComponent {...this.props} />;
-    }
-  };
+  useEffect(() => {
+    document.querySelector('link[rel="icon"]').setAttribute("href", favicon);
+  }, [favicon]);
 
-export default favicon;
+  function WithFavicon(props) {
+    return <ComposedComponent {...props} />;
+  }
+
+  WithFavicon.displayName = "test";
+
+  return WithFavicon;
+};
+
+export default withFavicon;
