@@ -45,9 +45,8 @@ const BookmarkIcon = ({ bookmark }: BookmarkProps) => {
   const isOfficial = isCollection && !isRegularCollection;
 
   const iconColor = isOfficial ? color("warning") : color("brand");
-  const iconOpacity = isOfficial ? 1 : 0.5;
 
-  return <BookmarkTypeIcon {...icon} color={iconColor} opacity={iconOpacity} />;
+  return <BookmarkTypeIcon {...icon} color={iconColor} />;
 };
 
 const Label = ({ bookmark }: BookmarkProps) => {
