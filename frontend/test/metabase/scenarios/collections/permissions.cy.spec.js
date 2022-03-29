@@ -16,6 +16,7 @@ import {
   popover,
   appBar,
   navigationSidebar,
+  modal,
   openNativeEditor,
   visitQuestion,
   visitDashboard,
@@ -451,8 +452,10 @@ describe("collection permissions", () => {
                       cy.findByText("Move").click();
                     });
                     cy.location("pathname").should("eq", "/dashboard/1/move");
-                    cy.findByText("First collection").click();
-                    clickButton("Move");
+                    modal().within(() => {
+                      cy.findByText("First collection").click();
+                      clickButton("Move");
+                    });
                   });
 
                   it("should be able to move/undo move a dashboard", () => {

@@ -286,7 +286,9 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Unarchive timeline").click();
       cy.findByText("No timelines found");
-      cy.findByLabelText("chevronleft icon").click();
+      cy.get(".Modal").within(() => {
+        cy.icon("chevronleft").click();
+      });
       cy.findByText("Releases");
     });
 
@@ -308,7 +310,9 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Delete timeline").click();
       cy.findByText("Delete").click();
       cy.findByText("No timelines found");
-      cy.findByLabelText("chevronleft icon").click();
+      cy.get(".Modal").within(() => {
+        cy.icon("chevronleft").click();
+      });
       cy.findByText("Our analytics events");
     });
   });
