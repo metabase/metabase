@@ -58,7 +58,6 @@ function MainNavbarView({
     <>
       {bookmarks.length > 0 && (
         <>
-          <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
           <BookmarkList bookmarks={bookmarks} selectedItem={selectedItem} />
           <SidebarHeading>{t`Collections`}</SidebarHeading>
         </>
