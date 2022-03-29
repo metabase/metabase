@@ -263,9 +263,9 @@
                (and "data-model/"
                     (and #"db/\d+/"
                          (opt (and
-                                "schema/"
-                                (opt (and path-char "*/"
-                                          (opt #"table/\d+/")))))))
+                               "schema/"
+                               (opt (and path-char "*/"
+                                         (opt #"table/\d+/")))))))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
