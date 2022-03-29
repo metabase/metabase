@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
-            [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
