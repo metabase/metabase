@@ -763,7 +763,7 @@
   query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-403 api/*is-superuser?*)
+  (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [{:keys [dataset dataset_query result_metadata database_id] :as card} (Card card-id)]
     (let [database (Database database_id)]
@@ -792,12 +792,22 @@
       ;; todo: persist it
       api/generic-204-no-content)))
 
+(api/defendpoint POST "/:card-id/refresh"
+  "Refresh the persisted model caching `card-id`."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (let [database (Database (:database_id persisted-info))]
+      (ddl.concurrent/submit-task
+       #(ddl.i/refresh! (:engine database) database persisted-info)))))
+
 (api/defendpoint DELETE "/:card-id/persist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-403 api/*is-superuser?*)
+  (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
