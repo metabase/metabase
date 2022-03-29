@@ -6,6 +6,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
+import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -406,6 +407,7 @@ export default class View extends React.Component {
       card,
       databases,
       isShowingNewbModal,
+      isShowingTimelineSidebar,
       queryBuilderMode,
       fitClassNames,
       closeQbNewbModal,
@@ -434,6 +436,9 @@ export default class View extends React.Component {
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
+    const rightSidebarWidth = isShowingTimelineSidebar
+      ? SIDEBAR_SIZES.TIMELINE
+      : SIDEBAR_SIZES.NORMAL;
 
     return (
       <div className={fitClassNames}>
@@ -450,7 +455,11 @@ export default class View extends React.Component {
               {leftSidebar}
             </ViewSidebar>
             {this.renderMain({ leftSidebar, rightSidebar })}
-            <ViewSidebar side="right" isOpen={!!rightSidebar}>
+            <ViewSidebar
+              side="right"
+              isOpen={!!rightSidebar}
+              width={rightSidebarWidth}
+            >
               {rightSidebar}
             </ViewSidebar>
           </QueryBuilderContentContainer>
