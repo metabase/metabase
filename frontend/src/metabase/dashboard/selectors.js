@@ -39,6 +39,8 @@ export const getHasSeenLoadedDashboard = state =>
   state.dashboard.hasSeenLoadedDashboard;
 export const getIsLoadingDashCardsComplete = state =>
   state.dashboard.loadingDashCards.isLoadingComplete;
+export const getShowLoadingCompleteFavicon = state =>
+  state.dashboard.showLoadingCompleteFavicon;
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>

@@ -33,6 +33,7 @@ import {
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
   SAVE_DASHBOARD_AND_CARDS,
   SET_DASHBOARD_SEEN,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -63,6 +64,17 @@ const hasSeenLoadedDashboard = handleActions(
     [FETCH_DASHBOARD]: { next: state => false },
     [SET_DASHBOARD_SEEN]: {
       next: state => true,
+    },
+  },
+  false,
+);
+
+const showLoadingCompleteFavicon = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [FETCH_DASHBOARD]: { next: state => false },
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: {
+      next: (state, { payload }) => payload,
     },
   },
   false,
@@ -373,6 +385,7 @@ export default combineReducers({
   dashboardId,
   isEditing,
   hasSeenLoadedDashboard,
+  showLoadingCompleteFavicon,
   dashboards,
   dashcards,
   dashcardData,

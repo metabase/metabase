@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
+import favicon, { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -34,6 +35,7 @@ import {
   getCardsLoaded,
   getHasSeenLoadedDashboard,
   getIsLoadingDashCardsComplete,
+  getShowLoadingCompleteFavicon,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -43,12 +45,6 @@ import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
-
-import {
-  flashFavicon,
-  resetFavicon,
-  LOAD_COMPLETE_FAVICON,
-} from "../../lib/favicon";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -79,6 +75,7 @@ const mapStateToProps = (state, props) => {
     totalDashCards: getTotalCards(state),
     cardsLoaded: getCardsLoaded(state),
     hasSeenLoadedDashboard: getHasSeenLoadedDashboard(state),
+    showLoadingCompleteFavicon: getShowLoadingCompleteFavicon(state),
   };
 };
 
@@ -91,6 +88,9 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@favicon(({ showLoadingCompleteFavicon }) =>
+  showLoadingCompleteFavicon ? LOAD_COMPLETE_FAVICON : null,
+)
 @title(
   ({
     dashboard,
@@ -128,25 +128,6 @@ export default class DashboardApp extends Component {
         editingOnLoad: options.edit,
         addCardOnLoad: options.add && parseInt(options.add),
       });
-    }
-  }
-
-  componentDidUpdate(previousProps) {
-    if (previousProps.isLoadingDashCards && !this.props.isLoadingDashCards) {
-      if (!document.hidden) {
-        this.props.setHasSeenLoadedDashboard();
-        flashFavicon(LOAD_COMPLETE_FAVICON, 3000);
-      } else {
-        flashFavicon(LOAD_COMPLETE_FAVICON);
-        document.addEventListener(
-          "visibilitychange",
-          () => {
-            this.props.setHasSeenLoadedDashboard();
-            resetFavicon(3000);
-          },
-          { once: true },
-        );
-      }
     }
   }
 
