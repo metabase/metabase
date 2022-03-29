@@ -30,7 +30,7 @@ export const NavRoot = styled.div<{ isOpen: boolean }>`
 
   overflow: auto;
   overflow-x: hidden;
-  z-index: 3;
+  z-index: 4;
 
   border-right: 1px solid ${color("border")};
 
