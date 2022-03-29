@@ -5,18 +5,16 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { NAV_SIDEBAR_WIDTH } from "../constants";
 
 const openNavbarCSS = css`
-  position: relative;
+  visibility: visible;
   width: ${NAV_SIDEBAR_WIDTH};
 `;
 
-const closedNavbarCSS = css`
+export const NavRoot = styled.div<{ isOpen: boolean }>`
   width: 0;
   height: 100%;
   visibility: hidden;
-`;
 
-export const NavRoot = styled.div<{ isOpen: boolean }>`
-  position: fixed;
+  position: relative;
   flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
@@ -28,8 +26,7 @@ export const NavRoot = styled.div<{ isOpen: boolean }>`
 
   border-right: 1px solid ${color("border")};
 
-  ${breakpointMinSmall} {
-    ${props => (props.isOpen ? openNavbarCSS : closedNavbarCSS)};
+  ${props => props.isOpen && openNavbarCSS};
   }
 `;
 
