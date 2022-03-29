@@ -39,7 +39,6 @@ export function processSource(options) {
   let compileError;
   try {
     const parsed = parse(source);
-    console.log("parsed: ", parsed);
     expression = resolve(parsed, startRule, resolveMBQLField);
   } catch (e) {
     console.warn("compile error", e);

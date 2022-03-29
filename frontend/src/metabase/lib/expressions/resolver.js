@@ -39,7 +39,6 @@ function findMBQL(op) {
 }
 
 const isCompatible = (a, b) => {
-  console.log(">>> iscompat", a, b);
   if (a === b) {
     return true;
   }
@@ -56,7 +55,6 @@ const isCompatible = (a, b) => {
 };
 
 export function resolve(expression, type = "expression", fn = undefined) {
-  console.log(">>>>>>>=", expression, type);
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 

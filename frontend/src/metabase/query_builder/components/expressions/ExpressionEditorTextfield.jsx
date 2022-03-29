@@ -237,7 +237,6 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.props.onError(errorMessage);
     } else {
       const expression = this.compileExpression();
-      console.log(expression);
       if (expression) {
         if (!isExpression(expression)) {
           console.warn("isExpression=false", expression);
