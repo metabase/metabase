@@ -9,7 +9,6 @@ import {
 } from "metabase/styled-components/theme";
 
 const openNavbarCSS = css`
-  visibility: visible;
   width: ${NAV_SIDEBAR_WIDTH};
 
   ${breakpointMaxSmall} {
@@ -20,7 +19,6 @@ const openNavbarCSS = css`
 export const NavRoot = styled.div<{ isOpen: boolean }>`
   width: 0;
   height: 100%;
-  visibility: hidden;
 
   position: relative;
   flex-shrink: 0;
