@@ -19,7 +19,5 @@ export interface TreeNodeProps {
 }
 
 export type TreeNodeComponent = React.ComponentType<
-  TreeNodeProps & {
-    ref: any;
-  }
+  TreeNodeProps & React.RefAttributes<HTMLLIElement>
 >;
