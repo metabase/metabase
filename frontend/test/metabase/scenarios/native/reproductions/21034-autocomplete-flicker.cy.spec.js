@@ -18,6 +18,7 @@ describe.skip("issue 21034", () => {
       .type("p");
 
     // Wait until another explicit autocomplete is triggered
+    // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
     // See https://github.com/metabase/metabase/pull/20970
     cy.wait(1000);
 
