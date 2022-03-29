@@ -22,17 +22,15 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  (fn []
-    (mdb.connection/cached-value
-     [::magic-group group-name]
-     (fn []
-       (u/prog1 (db/select-one PermissionsGroup :name group-name)
-         ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
-         ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
-         ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
-         (when-not <>
-           (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
-                           {:name group-name}))))))))
+  (mdb.connection/memoize-for-application-db
+   (fn []
+     (u/prog1 (db/select-one PermissionsGroup :name group-name)
+       ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
+       ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
+       ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
+       (when-not <>
+         (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
+                         {:name group-name})))))))
 
 (def all-users-group-name
   "The name of the \"All Users\" magic group."

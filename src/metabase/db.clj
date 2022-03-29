@@ -3,10 +3,9 @@
   sub-namespaces:
 
   * [[metabase.db.connection]] - functions for getting the application database type (e.g. `:h2`) and a
-    [[clojure.java.jdbc]] spec for it
+    [[clojure.java.jdbc]] spec for it; dynamic variable for rebinding it
 
-  * [[metabase.db.connection-pool-setup]] - functions for creating a connection pool for the application database and
-    setting it as the default Toucan connection
+  * [[metabase.db.connection-pool-setup]] - functions for creating a connection pool for the application database
 
   * [[metabase.db.data-migrations]] - Clojure-land data migration definitions and functions for running them
 
@@ -22,7 +21,7 @@
   * [[metabase.db.liquibase]] - high-level Clojure wrapper around relevant parts of the Liquibase API
 
   * [[metabase.db.setup]] - code related to setting up the application DB -- verifying the connection and running
-    migrations
+    migrations -- and for setting it up as the default Toucan connection
 
   * [[metabase.db.spec]] - util functions for creating JDBC specs for supported application DB types from connection
     details maps
@@ -42,21 +41,23 @@
   db-type
   quoting-style])
 
+;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
+;; [[mdb.connection/*application-db*]] (or its data source)
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
-  (get @(mdb.connection/cache) ::setup-finished? false))
+  (= @(:status mdb.connection/*application-db*) ::setup-finished))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
   (when-not (db-is-set-up?)
-    (locking (mdb.connection/cache)
+    (locking (:status mdb.connection/*application-db*)
       (when-not (db-is-set-up?)
         (let [db-type       (mdb.connection/db-type)
               data-source   (mdb.connection/data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate?))
-        (swap! (mdb.connection/cache) assoc ::setup-finished? true))))
+        (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)

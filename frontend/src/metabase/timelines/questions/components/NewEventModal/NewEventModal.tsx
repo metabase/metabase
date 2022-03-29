@@ -23,21 +23,26 @@ const NewEventModal = ({
   onSubmit,
   onClose,
 }: NewEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details({ timelines }), [timelines]);
-  const hasTimelines = timelines.length > 0;
-  const hasOneTimeline = timelines.length === 1;
-  const defaultTimeline = timelines[0];
+  const availableTimelines = useMemo(() => {
+    return timelines.filter(t => t.collection?.can_write);
+  }, [timelines]);
 
-  const initialValues = useMemo(
-    () => ({
-      timeline_id: hasTimelines ? defaultTimeline.id : null,
+  const form = useMemo(() => {
+    return forms.details({ timelines: availableTimelines });
+  }, [availableTimelines]);
+
+  const initialValues = useMemo(() => {
+    const defaultTimeline = availableTimelines[0];
+    const hasOneTimeline = availableTimelines.length === 1;
+
+    return {
+      timeline_id: defaultTimeline ? defaultTimeline.id : null,
       icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
       source: "question",
       question_id: cardId,
-    }),
-    [defaultTimeline, hasTimelines, hasOneTimeline, cardId],
-  );
+    };
+  }, [cardId, availableTimelines]);
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {

@@ -19,7 +19,6 @@ describe("scenarios > collections > timelines", () => {
 
     it("should create the first event and timeline", () => {
       cy.visit("/collection/root");
-
       cy.findByLabelText("calendar icon").click();
 
       cy.findByText("Add an event").click();
@@ -27,9 +26,9 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Date").type("10/20/2020");
       cy.button("Create").click();
 
-      cy.findByText("RC1");
-      cy.findByText("October 20, 2020");
-      cy.findByLabelText("star icon");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText("October 20, 2020").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
 
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC2");
@@ -38,9 +37,22 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Balloons").click();
       cy.button("Create").click();
 
-      cy.findByText("RC2");
-      cy.findByText("May 12, 2021");
-      cy.findByLabelText("balloons icon");
+      cy.findByText("RC2").should("be.visible");
+      cy.findByText("May 12, 2021").should("be.visible");
+      cy.findByLabelText("balloons icon").should("be.visible");
+    });
+
+    it("should create an event in a personal collection", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Your personal collection").click();
+      cy.findByLabelText("calendar icon").click();
+
+      cy.findByText("Add an event").click();
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByLabelText("Date").type("10/20/2020");
+      cy.button("Create").click();
+
+      cy.findByText("RC1").should("be.visible");
     });
 
     it("should search for events", () => {
@@ -56,8 +68,8 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root/timelines");
 
       cy.findByPlaceholderText("Search for an event").type("V1");
-      cy.findByText("v1.0");
-      cy.findByText("v1.1");
+      cy.findByText("v1.0").should("be.visible");
+      cy.findByText("v1.1").should("be.visible");
       cy.findByText("RC1").should("not.exist");
       cy.findByText("RC2").should("not.exist");
     });
@@ -74,9 +86,26 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Done").click();
       cy.findByText("Create").click();
 
-      cy.findByText("Our analytics events");
-      cy.findByText("RC1");
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
       cy.findByText("AM").should("not.exist");
+    });
+
+    it("should create an event with description", () => {
+      cy.visit("/collection/root");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByLabelText("Date").type("5/12/2021");
+      cy.findByText("Markdown supported").should("be.visible");
+      cy.findByLabelText("Description").type("*1.0-rc1* release");
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText("1.0-rc1").should("be.visible");
     });
 
     it("should create an event with date and time", () => {
@@ -98,9 +127,9 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Done").click();
       cy.findByText("Create").click();
 
-      cy.findByText("Our analytics events");
-      cy.findByText("RC1");
-      cy.findByText(/10:20 AM/);
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText(/10:20 AM/).should("be.visible");
     });
 
     it("should edit an event", () => {
@@ -114,7 +143,7 @@ describe("scenarios > collections > timelines", () => {
         .type("RC2");
       cy.button("Update").click();
 
-      cy.findByText("RC2");
+      cy.findByText("RC2").should("be.visible");
     });
 
     it("should archive an event when editing this event", () => {
@@ -129,7 +158,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Edit event").click();
       cy.findByText("Archive event").click();
 
-      cy.findByText("Releases");
+      cy.findByText("Releases").should("be.visible");
       cy.findByText("RC1").should("not.exist");
     });
 
@@ -144,8 +173,9 @@ describe("scenarios > collections > timelines", () => {
       openMenu("RC1");
       cy.findByText("Archive event").click();
       cy.findByText("RC1").should("not.exist");
+
       cy.findByText("Undo").click();
-      cy.findByText("RC1");
+      cy.findByText("RC1").should("be.visible");
     });
 
     it("should unarchive an event from the archive and undo", () => {
@@ -158,13 +188,14 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("View archived events").click();
 
-      cy.findByText("Archived events");
+      cy.findByText("Archived events").should("be.visible");
       openMenu("RC1");
+
       cy.findByText("Unarchive event").click();
-      cy.findByText("No events found");
+      cy.findByText("No events found").should("be.visible");
 
       cy.findByText("Undo").click();
-      cy.findByText("RC1");
+      cy.findByText("RC1").should("be.visible");
     });
 
     it("should delete an event", () => {
@@ -177,11 +208,11 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("View archived events").click();
 
-      cy.findByText("Archived events");
+      cy.findByText("Archived events").should("be.visible");
       openMenu("RC1");
       cy.findByText("Delete event").click();
       cy.findByText("Delete").click();
-      cy.findByText("No events found");
+      cy.findByText("No events found").should("be.visible");
     });
 
     it("should create an additional timeline", () => {
@@ -196,8 +227,8 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Timeline name").type("Launches");
       cy.findByText("Create").click();
 
-      cy.findByText("Launches");
-      cy.findByText("Add an event");
+      cy.findByText("Launches").should("be.visible");
+      cy.findByText("Add an event").should("be.visible");
     });
 
     it("should edit a timeline", () => {
@@ -214,7 +245,59 @@ describe("scenarios > collections > timelines", () => {
         .type("Launches");
       cy.findByText("Update").click();
 
-      cy.findByText("Launches");
+      cy.findByText("Launches").should("be.visible");
+    });
+
+    it("should archive a timeline and undo", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }, { name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByText("Archive timeline and all events").click();
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("Add an event").should("be.visible");
+
+      cy.findByText("Undo").click();
+      cy.findByText("Releases").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText("RC2").should("be.visible");
+    });
+
+    it("should support markdown in timeline description", () => {
+      cy.createTimeline({
+        name: "Releases",
+        description: "[Release notes](https://metabase.test)",
+      });
+
+      cy.createTimeline({
+        name: "Holidays",
+        description: "[Holiday list](https://metabase.test)",
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+      cy.findByText("Holiday list").should("be.visible");
+    });
+
+    it("should support markdown in event description", () => {
+      cy.createTimelineWithEvents({
+        timeline: {
+          name: "Releases",
+        },
+        events: [
+          {
+            name: "RC1",
+            description: "[Release notes](https://metabase.test)",
+          },
+        ],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
     });
 
     it("should archive and unarchive a timeline", () => {
@@ -227,13 +310,37 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByText("Archive timeline and all events").click();
-      cy.findByText("Our analytics events");
-      cy.findByText("Add an event");
 
-      cy.findByText("Undo").click();
+      openMenu("Our analytics events");
+      cy.findByText("View archived timelines").click();
+
+      openMenu("Releases");
+      cy.findByText("Unarchive timeline").click();
+      cy.findByText("No timelines found");
+      cy.findByLabelText("chevronleft icon").click();
       cy.findByText("Releases");
-      cy.findByText("RC1");
-      cy.findByText("RC2");
+    });
+
+    it("should archive and delete a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }, { name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByText("Archive timeline and all events").click();
+
+      openMenu("Our analytics events");
+      cy.findByText("View archived timelines").click();
+
+      openMenu("Releases");
+      cy.findByText("Delete timeline").click();
+      cy.findByText("Delete").click();
+      cy.findByText("No timelines found");
+      cy.findByLabelText("chevronleft icon").click();
+      cy.findByText("Our analytics events");
     });
   });
 
@@ -243,7 +350,7 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root");
 
       cy.findByLabelText("calendar icon").click();
-      cy.findByText("Our analytics events");
+      cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
     });
 
@@ -258,7 +365,7 @@ describe("scenarios > collections > timelines", () => {
       cy.signIn("readonly");
       cy.visit("/collection/root");
       cy.findByLabelText("calendar icon").click();
-      cy.findByText("Releases");
+      cy.findByText("Releases").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
     });
   });

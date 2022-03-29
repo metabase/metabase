@@ -21,7 +21,7 @@ jobs:
       INTERACTIVE: false
     steps:
     - name: Check out the code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -42,12 +42,13 @@ jobs:
         java-version: [8, 11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v3
       with:
         java-package: jre
         java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -73,19 +74,19 @@ jobs:
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
       id: extract_branch
     - name: Check out the code (Dockerfile needed)
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
-          name: metabase-${{ matrix.edition }}-uberjar
-          path: bin/docker/
+        name: metabase-${{ matrix.edition }}-uberjar
+        path: bin/docker/
     - name: Move the ${{ matrix.edition }} uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
       with:
-          driver-opts: network=host
+        driver-opts: network=host
     - name: Build ${{ matrix.edition }} container
       uses: docker/build-push-action@v2
       with:

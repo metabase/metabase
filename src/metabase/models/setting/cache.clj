@@ -12,28 +12,24 @@
             [toucan.db :as db])
   (:import java.util.concurrent.locks.ReentrantLock))
 
-(def call-on-change-fn
+(defmulti call-on-change
   "Whenever something changes in the Settings cache it will invoke
 
-    (@call-on-change-fn old-cache new-cache
+    (call-on-change old-cache new-cache
 
-  Actual implementation is provided in [[metabase.models.setting/call-on-change]] rather than here (to prevent
+  Actual implementation is provided in [[metabase.models.setting]] rather than here (to prevent
   circular references)."
-  (atom nil))
-
-(defn- call-on-change
-  [_key _ref old new]
-  (when-let [f @call-on-change-fn]
-    (f old new)))
+  {:arglists '([old new])}
+  (constantly :default))
 
 ;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
 ;; cache.
-(defn- cache* []
-  (mdb.connection/cached-value
-   ::cache
+(def ^:private ^{:arglists '([])} cache*
+  (mdb.connection/memoize-for-application-db
    (fn []
      (doto (atom nil)
-       (add-watch :call-on-change call-on-change)))))
+       (add-watch :call-on-change (fn [_key _ref old new]
+                                    (call-on-change old new)))))))
 
 (defn cache
   "Fetch the current contents of the Settings cache, a map of key (string) -> value (string)."

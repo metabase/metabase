@@ -20,15 +20,14 @@
 (deftest list-timelines-test
   (testing "GET /api/timeline"
     (mt/with-temp Collection [collection {:name "Important Data"}]
-      (let [id          (u/the-id collection)
-            events-of   (fn [tls]
-                          (into #{} (comp (filter (comp #{id} :collection_id))
-                                          (map :name))
-                                tls))]
+      (let [id        (u/the-id collection)
+            events-of (fn [tls]
+                        (into #{} (comp (filter (comp #{id} :collection_id))
+                                        (map :name))
+                              tls))]
         (mt/with-temp* [Timeline [tl-a {:name "Timeline A", :collection_id id}]
                         Timeline [tl-b {:name "Timeline B", :collection_id id}]
-                        Timeline [tl-c {:name "Timeline C", :collection_id id
-                                        :archived true}]]
+                        Timeline [tl-c {:name "Timeline C", :collection_id id :archived true}]]
           (testing "check that we only get un-archived timelines"
             (is (= #{"Timeline A" "Timeline B"}
                    (events-of (mt/user-http-request :rasta :get 200 "timeline")))))
@@ -40,7 +39,13 @@
                    (->> (mt/user-http-request :rasta :get 200 "timeline")
                          (filter (comp #{id} :collection_id))
                         (map #(get-in % [:collection :id]))
-                        set)))))))))
+                        set))))
+          (testing "check that `:can_write` key is hydrated"
+            (is (every?
+                 #(contains? % :can_write)
+                 (->> (mt/user-http-request :rasta :get 200 "timeline")
+                      (filter (comp #{id} :collection_id))
+                      :collection)))))))))
 
 (deftest get-timeline-test
   (testing "GET /api/timeline/:id"
@@ -54,6 +59,11 @@
         (is (= "root"
                (-> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
                    (get-in [:collection :id])))))
+      (testing "check that `:can_write` key is hydrated"
+        (is (contains?
+             (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
+                  :collection)
+             :can_write)))
       (testing "check that we get the timeline with the id specified, even if the timeline is archived"
         (is (= "Timeline B"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-b)))

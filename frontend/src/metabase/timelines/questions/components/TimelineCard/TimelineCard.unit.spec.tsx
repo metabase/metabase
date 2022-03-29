@@ -2,7 +2,6 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
@@ -44,7 +43,6 @@ describe("TimelineCard", () => {
 
 const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   onEditEvent: jest.fn(),
   onArchiveEvent: jest.fn(),
   onToggleTimeline: jest.fn(),

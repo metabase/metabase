@@ -5,14 +5,14 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [metabase.db.connection :as mdb.connection])
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
@@ -75,7 +75,7 @@
 (def ^:private ^{:arglists '([db-id])} database->driver*
   (memoize/ttl
    ^{::memoize/args-fn (fn [[db-id]]
-                         [(mdb.connection/uuid) db-id])}
+                         [(mdb.connection/unique-identifier) db-id])}
    (fn [db-id]
      (db/select-one-field :engine 'Database, :id db-id))
    :ttl/threshold 1000))

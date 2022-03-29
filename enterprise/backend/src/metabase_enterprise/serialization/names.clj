@@ -34,19 +34,15 @@
 
 (defmulti ^:private fully-qualified-name* type)
 
-(defn fully-qualified-name
+(def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  ([entity]
-   (mdb.connection/cached-value
-    [::entity entity]
-    (fn [] (fully-qualified-name* entity))))
-
-  ([model id]
-   (if (string? id)
-     id
-     (mdb.connection/cached-value
-      [::entity model id]
-      (fn [] (fully-qualified-name* (db/select-one model :id id)))))))
+  (mdb.connection/memoize-for-application-db
+   (fn
+     ([entity] (fully-qualified-name* entity))
+     ([model id]
+      (if (string? id)
+        id
+        (fully-qualified-name* (db/select-one model :id id)))))))
 
 (defmethod fully-qualified-name* (type Database)
   [db]

@@ -9,8 +9,20 @@ jobs:
   create_pull_request:
     name: Creates a pull request
     if: contains(github.event.comment.body, '@metabase-bot backport')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
+      - id: is_organization_member
+        uses: JamesSingleton/is-organization-member@1.0.0
+        with:
+          organization: metabase
+          username: ${{ github.event.issue.user.login }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          result=${{ steps.is_organization_member.outputs.result }}
+          if [ $result == false ]; then
+              echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
+              exit 1
+          fi
       - uses: actions/github-script@v4
         id: branch_info
         with:
@@ -63,7 +75,7 @@ jobs:
               startSha: commits[0].sha,
               endSha: commits[commits.length - 1].sha
             }
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         name: Cherry-pick commits and create PR
         with:
           fetch-depth: 0
@@ -111,21 +123,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify_when_failed:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Notify about failure
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/github-script@v4
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/notify-pull-request
         with:
-          script: |
-            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
-            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
-            const author = context.payload.comment.user.login;
-
-            github.issues.createComment({
-              issue_number: context.payload.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `@${author} could not automatically a backport PR 😩 [[Logs]](${runUrl})`
-            })
+          include-log: true
+          message: something went wrong while creating a backport

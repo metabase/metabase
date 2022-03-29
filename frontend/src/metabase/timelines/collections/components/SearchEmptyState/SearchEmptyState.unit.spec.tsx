@@ -1,10 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import EventEmptyState from "./EventEmptyState";
+import SearchEmptyState from "./SearchEmptyState";
 
-describe("EventEmptyState", () => {
+describe("SearchEmptyState", () => {
   it("should render correctly", () => {
-    render(<EventEmptyState />);
+    render(<SearchEmptyState />);
 
     expect(screen.getByLabelText("star icon")).toBeInTheDocument();
   });
