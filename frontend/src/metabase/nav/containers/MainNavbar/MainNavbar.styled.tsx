@@ -1,26 +1,19 @@
 import styled from "@emotion/styled";
 
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
 export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-top: ${space(1)};
-  width: 0;
+  width: 100%;
 
   overflow-x: hidden;
   overflow-y: auto;
 
   background-color: transparent;
-
-  ${breakpointMinSmall} {
-    width: ${NAV_SIDEBAR_WIDTH};
-  }
 `;
 
 export const SidebarHeading = styled.h4`
