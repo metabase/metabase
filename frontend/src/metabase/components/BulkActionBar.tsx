@@ -1,21 +1,19 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import styled from "@emotion/styled";
 import { Motion, spring } from "react-motion";
-import { color } from "metabase/lib/colors";
+import { FixedBottomBar } from "metabase/collections/components/BulkActions.styled";
 
-import { SIDEBAR_WIDTH } from "metabase/collections/constants";
+interface BulkActionBarProps {
+  children: React.ReactNode;
+  showing: boolean;
+  isNavbarOpen: boolean;
+}
 
-const FixedBottomBar = styled.div`
-  position: fixed;
-  bottom: 0;
-  left: ${props => (props.isNavbarOpen ? SIDEBAR_WIDTH : 0)};
-  right: 0;
-  border-top: 1px solid ${color("border")};
-  background-color: ${color("white")};
-`;
-
-const BulkActionBar = ({ children, showing, isNavbarOpen }) => (
+const BulkActionBar = ({
+  children,
+  showing,
+  isNavbarOpen,
+}: BulkActionBarProps) => (
   <Motion
     defaultStyle={{
       opacity: 0,
@@ -26,7 +24,7 @@ const BulkActionBar = ({ children, showing, isNavbarOpen }) => (
       translateY: showing ? spring(0) : spring(100),
     }}
   >
-    {({ opacity, translateY }) => (
+    {({ translateY }) => (
       <FixedBottomBar
         style={{
           transform: `translateY(${translateY}px)`,
