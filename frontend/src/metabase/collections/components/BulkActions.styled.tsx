@@ -4,6 +4,9 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 export const ActionBarContent = styled.div`
   padding: 0.5rem 1rem;
   display: flex;
+  align-items: center;
+  width: 90%;
+  margin: 0 auto;
 
   ${breakpointMinSmall} {
     padding-left: 2rem;

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import styled from "@emotion/styled";
-import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
+import { color } from "metabase/lib/colors";
 
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
@@ -11,6 +11,8 @@ const FixedBottomBar = styled.div`
   bottom: 0;
   left: ${props => (props.isNavbarOpen ? SIDEBAR_WIDTH : 0)};
   right: 0;
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
 `;
 
 const BulkActionBar = ({ children, showing, isNavbarOpen }) => (
@@ -27,14 +29,12 @@ const BulkActionBar = ({ children, showing, isNavbarOpen }) => (
     {({ opacity, translateY }) => (
       <FixedBottomBar
         style={{
-          borderRadius: 0,
-          opacity,
           transform: `translateY(${translateY}px)`,
         }}
         data-testid="bulk-action-bar"
         isNavbarOpen={isNavbarOpen}
       >
-        <Card>{children}</Card>
+        {children}
       </FixedBottomBar>
     )}
   </Motion>
