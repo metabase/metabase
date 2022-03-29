@@ -24,11 +24,15 @@
 
 (defmulti field-base-type->sql-type
   "A suitable db type for a base-type per database."
-  (fn [driver base-type] [driver base-type]))
+  {:arglists '([driver base-type])}
+  (fn [driver base-type] [driver base-type])
+  :hierarchy #'driver/hierarchy)
 
 (defmulti check-can-persist
   "Verify that the source database is acceptable to persist. Returns a tuple"
-  (fn [database] (:engine database)))
+  {:arglists '([database])}
+  (fn [database] (:engine database))
+  :hierarchy #'driver/hierarchy)
 
 (defn error->message
   "Human readable messages for different connection errors."
