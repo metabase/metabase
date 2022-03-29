@@ -46,9 +46,10 @@
            (testing "user's group has no subscription permissions"
              (perms/revoke-general-permissions! group :subscription)
              (testing "should success if `advanced-permissions` is disabled"
-               (create-pulse 200)
-               (update-pulse 200)
-               (get-form 200))
+               (premium-features-test/with-premium-features #{}
+                 (create-pulse 200)
+                 (update-pulse 200)
+                 (get-form 200)))
              (testing "should failed if `advanced-permissions` is enabled"
                (premium-features-test/with-premium-features #{:advanced-permissions}
                  (create-pulse 403)
@@ -95,8 +96,9 @@
            (testing "user's group has no subscription permissions"
              (perms/revoke-general-permissions! group :subscription)
              (testing "should success if `advanced-permissions` is disabled"
-               (create-alert 200)
-               (update-alert 200))
+               (premium-features-test/with-premium-features #{}
+                 (create-alert 200)
+                 (update-alert 200)))
 
              (testing "should failed if `advanced-permissions` is enabled"
                (premium-features-test/with-premium-features #{:advanced-permissions}
