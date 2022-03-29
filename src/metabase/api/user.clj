@@ -10,9 +10,11 @@
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
@@ -151,11 +153,24 @@
      :offset offset-paging/*offset*}))
 
 
+(defn- with-general-permissions
+  "Adds to `user` a set of boolean flag indiciate whether or not current user has access to a general permissions.
+  These flags will only be added if `advanced-permissions` is enabled."
+  [user]
+  (if-not (premium-features/enable-advanced-permissions?)
+    user
+    (let [permissions-set @api/*current-user-permissions-set*]
+      (assoc user :permissions
+             {:can_access_setting      (perms/set-has-general-permission-of-type permissions-set :setting)
+              :can_access_subscription (perms/set-has-general-permission-of-type permissions-set :subscription)
+              :can_access_monitoring   (perms/set-has-general-permission-of-type permissions-set :monitoring)}))))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
+      (hydrate :personal_collection_id :group_ids :has_invited_second_user)
+      with-general-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
