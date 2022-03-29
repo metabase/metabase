@@ -201,3 +201,28 @@
                clojure.lang.ExceptionInfo
                #"Can't set data model permissions without having the advanced-permissions premium feature"
                (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all}))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DB details permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- details-perms-by-group-id [group-id]
+  (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :details]))
+
+(deftest update-db-details-permissions-test
+  (mt/with-model-cleanup [Permissions]
+    (mt/with-temp PermissionsGroup [{group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "Detail perms for a DB can be set and revoked"
+              (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
+              (is (= :yes (details-perms-by-group-id group-id)))
+
+              (ee-perms/update-db-details-permissions! group-id (mt/id) :no)
+              (is (nil? (details-perms-by-group-id group-id)))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Detail permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't set details permissions without having the advanced-permissions premium feature"
+               (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))

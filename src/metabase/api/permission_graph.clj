@@ -75,7 +75,9 @@
 
 (s/def ::data-model (s/keys :opt-un [::native ::schemas]))
 
-(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model]))
+(s/def ::details (s/or :str->kw #{"yes" "no"}))
+
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))

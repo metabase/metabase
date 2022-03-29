@@ -266,6 +266,9 @@
                                "schema/"
                                (opt (and path-char "*/"
                                          (opt #"table/\d+/")))))))
+               ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
+               ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
+               (and "details/" #"db/\d+/")
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -461,7 +464,10 @@
     (str "/download/limited" base-path)
 
     [:data-model :all]
-    (str "/data-model" base-path)))
+    (str "/data-model" base-path)
+
+    [:details :yes]
+    (str "/details" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -699,10 +705,17 @@
                 {s/Str DataModelSchemaPermissionsGraph})}
    "Valid data model perms graph for a database"))
 
+(def DetailsPermissions
+  "Schema for a database details permissions, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
+  (s/named
+   (s/enum :yes :no)
+   "Valid details perms graph for a database"))
+
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
                           (s/optional-key :download) DownloadPermissionsGraph
-                          (s/optional-key :data-model) DataModelPermissionsGraph}})
+                          (s/optional-key :data-model) DataModelPermissionsGraph
+                          (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -1090,6 +1103,12 @@
         (do
           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
           ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-data-model-permissions!)
+           group-id db-id new-perms))
+
+        :details
+        (do
+          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-details-permissions!)
            group-id db-id new-perms))))))
 
 (defn check-revision-numbers

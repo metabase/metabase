@@ -12,7 +12,7 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | download | data-model | collection | block )
+  "permission = ( all | db | block | download | data-model | details | collection )
   all         = <'/'>
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
@@ -21,7 +21,9 @@
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
-  download    = <'/download'> ( dl-limited | dl-db )
+  block       = <'/block/db/'> #'\\d+' <'/'>
+
+  download    = <'/download'> ( dl-limited | dl-db)
   dl-limited  = <'/limited'>  dl-db
   dl-db       = <'/db/'> #'\\d+' <'/'> ( dl-native | dl-schemas )?
   dl-native   = <'native/'>
@@ -34,9 +36,9 @@
   dm-schema   = <'schema/'> #'[^/]*' <'/'> dm-table?
   dm-table    = <'table/'> #'\\d+' <'/'>
 
-  collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?
+  details  = <'/details'> <'/db/'> #'\\d+' <'/'>
 
-  block       = <'/block/db/'> #'\\d+' <'/'>")
+  collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
 
 (def ^:private ^{:arglists '([s])} parser
   "Function that parses permission strings"
@@ -74,6 +76,8 @@
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
     [:native]                      [:data :native :write]
+    ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
+    [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
     ;; download perms
     [:download
      [:dl-limited db-node]]        (append-to-all (path1 db-node) :limited)
@@ -92,8 +96,6 @@
     ;; collection perms
     [:collection id]               [:collection (collection-id id) :write]
     [:collection id "read"]        [:collection (collection-id id) :read]
-    ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
-    [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
     ;; return nil if the tree could not be parsed, so that we can try calling `path2` instead
     :else                          nil))
 
@@ -110,7 +112,10 @@
                                      (into [:db db-id :data-model :schemas] (path2 db-node)))
     [:dm-schema schema-name]       [schema-name :all]
     [:dm-schema schema-name table] (into [schema-name] (path2 table))
-    [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]))
+    [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
+    ;; DB details perms
+    [:details db-id]            (let [db-id (Long/parseUnsignedLong db-id)]
+                                  [:db db-id :details :yes])))
 
 (defn- path
   "Recursively build permission path from parse tree. Implementation must be split between two pattern matching
@@ -151,7 +156,7 @@
        (walk/prewalk (fn [x]
                        (or (when (map? x)
                              (some #(and (= (% x) '()) %)
-                                   [:block :all :some :write :read :segmented :full :limited]))
+                                   [:block :all :some :write :read :segmented :full :limited :yes]))
                            x)))))
 
 (defn permissions->graph
