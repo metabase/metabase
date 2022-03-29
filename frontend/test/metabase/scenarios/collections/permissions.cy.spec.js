@@ -14,7 +14,8 @@ import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   popover,
-  sidebar,
+  appBar,
+  navigationSidebar,
   openNativeEditor,
   visitQuestion,
 } from "__support__/e2e/cypress";
@@ -46,11 +47,11 @@ describe("collection permissions", () => {
               describe("create dashboard", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
-                  sidebar().within(() => {
+                  navigationSidebar().within(() => {
                     displaySidebarChildOf("First collection");
                     cy.findByText("Second collection").click();
                   });
-                  cy.get(".Nav").within(() => {
+                  appBar().within(() => {
                     cy.icon("add").click();
                   });
                   cy.findByText("Dashboard").click();
@@ -224,7 +225,7 @@ describe("collection permissions", () => {
                     cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Second collection");
-                    sidebar().within(() => {
+                    navigationSidebar().within(() => {
                       cy.findByText("First collection");
                       cy.findByText("Second collection");
                       cy.findByText("Third collection").should("not.exist");
@@ -238,7 +239,7 @@ describe("collection permissions", () => {
                     // We're still in the parent collection
                     cy.get("@title").contains("Second collection");
                     // But unarchived collection is now visible in the sidebar
-                    sidebar().within(() => {
+                    navigationSidebar().within(() => {
                       cy.findByText("Third collection");
                     });
                   });

@@ -2,26 +2,18 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
-import ScrollToTop from "metabase/hoc/ScrollToTop";
-import Navbar from "metabase/nav/containers/Navbar";
-import SearchBar from "metabase/nav/components/SearchBar";
-import * as Urls from "metabase/lib/urls";
-import LogoIcon from "metabase/components/LogoIcon";
-import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/components/Tooltip";
+import _ from "underscore";
 
-import {
-  SearchBarContainer,
-  SearchBarContent,
-} from "metabase/nav/containers/Navbar.styled";
+import ScrollToTop from "metabase/hoc/ScrollToTop";
+import AppBar from "metabase/nav/containers/AppBar";
+import Navbar from "metabase/nav/containers/Navbar";
+import * as Urls from "metabase/lib/urls";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
 import StatusListing from "metabase/status/containers/StatusListing";
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
-import NewButton from "metabase/nav/containers/NewButton";
 import Modal from "metabase/components/Modal";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
@@ -34,13 +26,7 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import {
-  AppContentContainer,
-  AppContent,
-  AppBar,
-  LogoIconWrapper,
-  SidebarButton,
-} from "./App.styled";
+import { AppContentContainer, AppContent } from "./App.styled";
 
 export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
@@ -90,8 +76,7 @@ function checkIsSidebarInitiallyOpen(locationPathName) {
   );
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class App extends Component {
+class App extends Component {
   state = {
     errorInfo: undefined,
     sidebarOpen: checkIsSidebarInitiallyOpen(this.props.location.pathname),
@@ -123,42 +108,18 @@ export default class App extends Component {
   };
 
   hasAppBar = () => {
-    const { currentUser } = this.props;
-    return currentUser && !this.isAdminApp();
+    const {
+      currentUser,
+      location: { pathname },
+    } = this.props;
+    if (!currentUser || IFRAMED || this.isAdminApp()) {
+      return false;
+    }
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
   toggleSidebar = () => {
     this.setState({ sidebarOpen: !this.state.sidebarOpen });
-  };
-
-  renderAppBar = () => {
-    const { location, onChangeLocation } = this.props;
-    return (
-      <AppBar>
-        <LogoIconWrapper>
-          <Link to="/" data-metabase-event={"Navbar;Logo"}>
-            <LogoIcon size={24} />
-          </Link>
-        </LogoIconWrapper>
-        <Tooltip
-          tooltip={this.state.sidebarOpen ? t`Close sidebar` : t`Open sidebar`}
-        >
-          <SidebarButton
-            name={this.state.sidebarOpen ? "chevronleft" : "chevronright"}
-            onClick={this.toggleSidebar}
-          />
-        </Tooltip>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              location={location}
-              onChangeLocation={onChangeLocation}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <NewButton setModal={this.setModal} />
-      </AppBar>
-    );
   };
 
   closeModal = () => {
@@ -211,19 +172,30 @@ export default class App extends Component {
   };
 
   render() {
-    const { children, location, errorPage } = this.props;
+    const { children, location, errorPage, onChangeLocation } = this.props;
     const { errorInfo, sidebarOpen } = this.state;
-
+    const hasAppBar = this.hasAppBar();
     return (
       <ScrollToTop>
         {errorPage ? (
           getErrorComponent(errorPage)
         ) : (
           <>
-            {this.hasAppBar() && this.renderAppBar()}
-            <AppContentContainer isAdminApp={this.isAdminApp()}>
+            {hasAppBar && (
+              <AppBar
+                isSidebarOpen={sidebarOpen}
+                location={location}
+                onToggleSidebarClick={this.toggleSidebar}
+                onNewClick={this.setModal}
+                onChangeLocation={onChangeLocation}
+              />
+            )}
+            <AppContentContainer
+              hasAppBar={hasAppBar}
+              isAdminApp={this.isAdminApp()}
+            >
               {this.hasNavbar() && sidebarOpen && (
-                <Navbar location={location} renderModal={this.renderModal} />
+                <Navbar location={location} />
               )}
               <AppContent>{children}</AppContent>
               {this.renderModal()}
@@ -237,3 +209,5 @@ export default class App extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(App);

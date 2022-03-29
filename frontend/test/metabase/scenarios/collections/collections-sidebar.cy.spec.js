@@ -1,6 +1,6 @@
 import { restore, sidebar } from "__support__/e2e/cypress";
 
-describe("collections sidebar (metabase#15006)", () => {
+describe.skip("collections sidebar (metabase#15006)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
