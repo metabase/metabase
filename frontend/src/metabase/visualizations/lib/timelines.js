@@ -1,7 +1,5 @@
 import d3 from "d3";
 import { ICON_PATHS } from "metabase/icon_paths";
-import { stretchTimeseriesDomain } from "./apply_axis";
-import timeseriesScale from "./timeseriesScale";
 
 const ICON_X = -16;
 const ICON_Y = 10;
@@ -12,7 +10,7 @@ const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 2;
 
-function getXAxis(chart) {
+function getAxis(chart) {
   return chart.svg().select(".axis.x");
 }
 
@@ -20,19 +18,17 @@ function getBrush(chart) {
   return chart.svg().select(".brush");
 }
 
-function getEventScale(chart, xDomain, xInterval) {
-  return timeseriesScale(xInterval)
-    .domain(stretchTimeseriesDomain(xDomain, xInterval))
-    .range([0, chart.effectiveWidth()]);
+function getScale(chart) {
+  return chart.x();
 }
 
-function getEventMapping(events, eventScale) {
+function getEventMapping(events, scale) {
   const mapping = new Map();
   let group = [];
   let groupPoint = 0;
 
   events.forEach(event => {
-    const eventPoint = eventScale(event.timestamp);
+    const eventPoint = scale(event.timestamp);
     const groupDistance = eventPoint - groupPoint;
 
     if (!group.length || groupDistance < ICON_SIZE) {
@@ -213,18 +209,16 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
-    xDomain = [],
-    xInterval = {},
     onHoverChange,
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
   },
 ) {
-  const axis = getXAxis(chart);
+  const axis = getAxis(chart);
   const brush = getBrush(chart);
-  const eventScale = getEventScale(chart, xDomain, xInterval);
-  const eventMapping = getEventMapping(events, eventScale);
+  const scale = getScale(chart);
+  const eventMapping = getEventMapping(events, scale);
   const eventPoints = getEventPoints(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 
