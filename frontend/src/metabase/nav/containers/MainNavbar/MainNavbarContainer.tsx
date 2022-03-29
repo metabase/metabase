@@ -50,6 +50,7 @@ type Props = {
   params: {
     slug?: string;
   };
+  closeNavbar: () => void;
 };
 
 function MainNavbarContainer({
@@ -60,6 +61,7 @@ function MainNavbarContainer({
   allFetched,
   location,
   params,
+  closeNavbar,
   ...props
 }: Props) {
   const selectedItem = useMemo<SelectedItem>(() => {
@@ -115,6 +117,7 @@ function MainNavbarContainer({
           collections={collectionTree}
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
+          handleCloseNavbar={closeNavbar}
         />
       ) : (
         <LoadingContainer>

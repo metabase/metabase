@@ -25,6 +25,7 @@ const mapDispatchToProps = {
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
   selectedItem?: SelectedEntityItem;
+  onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
@@ -50,6 +51,7 @@ function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
 const BookmarkList = ({
   bookmarks,
   selectedItem,
+  onSelect,
   onDeleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
   const onToggleBookmarks = useCallback(isVisible => {
@@ -72,6 +74,7 @@ const BookmarkList = ({
           url={url}
           icon={<BookmarkIcon bookmark={bookmark} />}
           isSelected={isSelected}
+          onClick={onSelect}
           right={
             <button onClick={onRemove}>
               <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
@@ -84,7 +87,7 @@ const BookmarkList = ({
         </SidebarBookmarkItem>
       );
     },
-    [selectedItem, onDeleteBookmark],
+    [selectedItem, onSelect, onDeleteBookmark],
   );
 
   return (
