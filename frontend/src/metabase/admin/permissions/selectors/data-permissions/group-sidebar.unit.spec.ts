@@ -37,7 +37,7 @@ describe("getGroupsDataPermissionEditor", () => {
     ]);
 
     const [accessPermission, nativeQueryPermission] =
-      entities?.[0].permissions ?? [];
+      entities?.[1].permissions ?? [];
     expect(accessPermission.value).toEqual("all");
     expect(accessPermission.options).toEqual([
       {
