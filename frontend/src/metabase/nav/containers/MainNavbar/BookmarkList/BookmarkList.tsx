@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -10,6 +11,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "../types";
+import { SidebarHeading } from "../MainNavbar.styled";
 import { BookmarkListRoot, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
@@ -32,13 +34,26 @@ interface CollectionSidebarBookmarksProps {
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
+const BOOKMARKS_INITIALLY_VISIBLE =
+  localStorage.getItem("shouldDisplayBookmarks") !== "false";
+
 const BookmarkList = ({
   bookmarks,
   selectedItem,
   onDeleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
+  const onToggleBookmarks = useCallback(isVisible => {
+    localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
+  }, []);
+
   return (
-    <BookmarkListRoot>
+    <CollapseSection
+      header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
+      initialState={BOOKMARKS_INITIALLY_VISIBLE ? "expanded" : "collapsed"}
+      iconPosition="right"
+      iconSize={8}
+      onToggle={onToggleBookmarks}
+    >
       {bookmarks.map(bookmark => {
         const { id, item_id, name, type } = bookmark;
         const isSelected =
@@ -65,7 +80,7 @@ const BookmarkList = ({
           </SidebarBookmarkItem>
         );
       })}
-    </BookmarkListRoot>
+    </CollapseSection>
   );
 };
 
