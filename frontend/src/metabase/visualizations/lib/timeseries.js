@@ -66,7 +66,7 @@ const TIMESERIES_INTERVALS = [
 
 // mapping from Metabase "unit" to d3 intervals above
 const INTERVAL_INDEX_BY_UNIT = {
-  minute: 1,
+  minute: 5,
   hour: 9,
   day: 13,
   week: 14,
