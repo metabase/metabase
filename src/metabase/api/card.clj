@@ -773,7 +773,7 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when (pos? (db/count PersistedInfo :card_id card-id))
+      (when (db/exists? PersistedInfo :card_id card-id)
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
       (let [slug           (-> card :name persisted-info/slug-name)
             ;; todo: figure out the balance of what goes in here initially and what is set in the ddl.i/persist!
