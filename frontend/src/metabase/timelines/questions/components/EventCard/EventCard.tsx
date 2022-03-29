@@ -4,6 +4,7 @@ import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
+import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
@@ -16,7 +17,6 @@ import {
   CardRoot,
   CardTitle,
 } from "./EventCard.styled";
-import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 export interface EventCardProps {
   event: TimelineEvent;
