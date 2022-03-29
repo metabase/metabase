@@ -1,8 +1,12 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+
 import { NAV_SIDEBAR_WIDTH } from "../constants";
+import {
+  breakpointMaxSmall,
+  breakpointMinSmall,
+} from "metabase/styled-components/theme";
 
 const openNavbarCSS = css`
   visibility: visible;
@@ -27,6 +31,11 @@ export const NavRoot = styled.div<{ isOpen: boolean }>`
   border-right: 1px solid ${color("border")};
 
   ${props => props.isOpen && openNavbarCSS};
+
+  ${breakpointMaxSmall} {
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 `;
 
