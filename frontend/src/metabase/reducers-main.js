@@ -1,7 +1,9 @@
 // Reducers needed for main application
 
 import { combineReducers } from "redux";
+import _ from "underscore";
 
+import { PLUGIN_REDUCERS } from "metabase/plugins";
 import commonReducers from "./reducers-common";
 
 /* admin */
@@ -29,6 +31,9 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+const plugins = (state, action) =>
+  _.mapObject(PLUGIN_REDUCERS, reducer => reducer(state, action));
+
 export default {
   ...commonReducers,
 
@@ -42,4 +47,5 @@ export default {
   revisions,
   setup: combineReducers(setup),
   admin,
+  plugins,
 };

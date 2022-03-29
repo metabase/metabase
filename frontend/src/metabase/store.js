@@ -33,15 +33,11 @@ const devToolsExtension = window.__REDUX_DEVTOOLS_EXTENSION__
   : f => f;
 
 export function getStore(reducers, history, intialState, enhancer = a => a) {
-  const createReducer = (asyncReducers = {}) =>
-    combineReducers({
-      ...reducers,
-      form,
-      routing,
-      ...asyncReducers,
-    });
-
-  const reducer = createReducer();
+  const reducer = combineReducers({
+    ...reducers,
+    form,
+    routing,
+  });
 
   const middleware = [
     thunkWithDispatchAction,
@@ -50,18 +46,9 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
     ...(history ? [routerMiddleware(history)] : []),
   ];
 
-  const store = createStore(
+  return createStore(
     reducer,
     intialState,
     compose(applyMiddleware(...middleware), devToolsExtension, enhancer),
   );
-
-  store.asyncReducers = {};
-
-  store.injectReducer = (key, reducer) => {
-    store.asyncReducers[key] = reducer;
-    store.replaceReducer(createReducer(store.asyncReducers));
-  };
-
-  return store;
 }

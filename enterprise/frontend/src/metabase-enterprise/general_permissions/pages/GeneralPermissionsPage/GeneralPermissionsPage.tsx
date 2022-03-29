@@ -2,7 +2,6 @@ import _ from "underscore";
 import { Route } from "react-router";
 import React, { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
-import { withReducer } from "metabase/hoc/withReducer";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 
@@ -13,7 +12,7 @@ import {
 } from "metabase-enterprise/general_permissions/selectors";
 
 import PermissionsPageLayout from "metabase/admin/permissions/components/PermissionsPageLayout";
-import generalPermissionsReducer, {
+import {
   initializeGeneralPermissions,
   saveGeneralPermissions,
   updateGeneralPermission,
@@ -83,7 +82,7 @@ const GeneralPermissionsPage = ({
 };
 
 export default _.compose(
-  withReducer("generalPermissionsPlugin", generalPermissionsReducer),
+  // withReducer("generalPermissionsPlugin", generalPermissionsReducer),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(GeneralPermissionsPage);

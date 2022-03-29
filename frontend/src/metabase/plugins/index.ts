@@ -106,6 +106,8 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: () => null,
 };
 
+export const PLUGIN_REDUCERS = {} as any;
+
 export const PLUGIN_ADVANCED_PERMISSIONS = {
   addDatabasePermissionOptions: (permissions: any[]) => permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>

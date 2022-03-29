@@ -51,7 +51,7 @@ export const saveGeneralPermissions = createThunkAction(
     const {
       generalPermissions,
       generalPermissionsRevision,
-    } = getState().generalPermissionsPlugin;
+    } = getState().plugins.generalPermissionsPlugin;
 
     const result = await GeneralPermissionsApi.updateGraph({
       groups: generalPermissions,
