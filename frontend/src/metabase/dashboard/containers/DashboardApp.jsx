@@ -118,8 +118,6 @@ export default class DashboardApp extends Component {
     addCardOnLoad: null,
   };
 
-  static displayName = "DashboardApp";
-
   UNSAFE_componentWillMount() {
     const options = parseHashOptions(window.location.hash);
 
