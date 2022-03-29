@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import EventEmptyState from "../EventEmptyState";
+import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
 import {
@@ -29,7 +29,7 @@ export interface TimelineDetailsModalProps {
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
-  onGoBack?: (collection: Collection) => void;
+  onGoBack?: (timeline: Timeline, collection: Collection) => void;
 }
 
 const TimelineDetailsModal = ({
@@ -55,12 +55,12 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection, isArchive);
-  }, [timeline, collection, isArchive]);
+    return getMenuItems(timeline, collection, isArchive, isDefault);
+  }, [timeline, collection, isArchive, isDefault]);
 
   const handleGoBack = useCallback(() => {
-    onGoBack?.(collection);
-  }, [collection, onGoBack]);
+    onGoBack?.(timeline, collection);
+  }, [timeline, collection, onGoBack]);
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
@@ -93,7 +93,7 @@ const TimelineDetailsModal = ({
           )}
         </ModalToolbar>
       )}
-      <ModalBody>
+      <ModalBody isTopAligned={isNotEmpty}>
         {isNotEmpty ? (
           <EventList
             events={events}
@@ -103,7 +103,7 @@ const TimelineDetailsModal = ({
             onUnarchive={onUnarchive}
           />
         ) : isArchive || isSearching ? (
-          <EventEmptyState />
+          <SearchEmptyState />
         ) : (
           <TimelineEmptyState timeline={timeline} collection={collection} />
         )}
@@ -139,6 +139,7 @@ const getMenuItems = (
   timeline: Timeline,
   collection: Collection,
   isArchive: boolean,
+  isDefault: boolean,
 ) => {
   const items: MenuItem[] = [];
 
@@ -159,6 +160,13 @@ const getMenuItems = (
     items.push({
       title: t`View archived events`,
       link: Urls.timelineArchiveInCollection(timeline, collection),
+    });
+  }
+
+  if (isDefault) {
+    items.push({
+      title: t`View archived timelines`,
+      link: Urls.timelinesArchiveInCollection(collection),
     });
   }
 
