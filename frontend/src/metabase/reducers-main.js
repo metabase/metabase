@@ -31,9 +31,6 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
-const plugins = (state, action) =>
-  _.mapObject(PLUGIN_REDUCERS, reducer => reducer(state, action));
-
 export default {
   ...commonReducers,
 
@@ -47,5 +44,5 @@ export default {
   revisions,
   setup: combineReducers(setup),
   admin,
-  plugins,
+  plugins: combineReducers(PLUGIN_REDUCERS),
 };

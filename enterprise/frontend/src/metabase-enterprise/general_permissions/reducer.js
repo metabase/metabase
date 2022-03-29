@@ -14,7 +14,7 @@ const INITIALIZE_GENERAL_PERMISSIONS =
 export const initializeGeneralPermissions = createThunkAction(
   INITIALIZE_GENERAL_PERMISSIONS,
   () => async dispatch => {
-    await Promise.all([dispatch(loadGeneralPermissions())]);
+    await dispatch(loadGeneralPermissions());
   },
 );
 
