@@ -136,6 +136,6 @@ export const PLUGIN_GENERAL_PERMISSIONS = {
   getRoutes: (): React.ReactNode => null,
   tabs: [] as any,
   selectors: {
-    canManageSubscriptions: (_state: any) => false,
+    canManageSubscriptions: (_state: any) => true,
   },
 };
