@@ -272,7 +272,6 @@
 (s/defmethod search-query-for-model "collection"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
-      ;; TODO: get this working
       (h/left-join [CollectionBookmark :bookmark]
                    [:and
                     [:= :bookmark.collection_id :collection.id]
