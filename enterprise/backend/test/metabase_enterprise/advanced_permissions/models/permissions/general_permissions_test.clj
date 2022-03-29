@@ -41,10 +41,9 @@
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
      ;; currently all general permissions are disabled by default
      ;; so we manually enable subscriptions for now so we could test revoke
-     ;; TODO: remove this once subscription are enabled by default
+     ;; TODO: remove this once subscription are enabled for All Useres by default
      (perms/grant-general-permissions! group-id# :subscription)
-     ;; need to bind *current-user-id* or the Revision won't get updated
-     (binding [*current-user-id* (mt/user->id :crowberto)]
+     (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
 (deftest general-permissions-update-graph!-test
@@ -89,7 +88,7 @@
 
   (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id current-graph
-      ;; subscription is granted for new gorup by default, so revoke it
+      ;; subscription is granted for new group by default, so revoke it
       (perms/revoke-general-permissions! group-id :subscription)
       ;; making sure the `group-id` is not in the current-graph
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)

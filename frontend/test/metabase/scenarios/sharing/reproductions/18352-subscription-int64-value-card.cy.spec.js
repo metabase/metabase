@@ -1,4 +1,9 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const {
@@ -23,7 +28,7 @@ describe("issue 18352", () => {
       ({ body: { card_id, dashboard_id } }) => {
         visitQuestion(card_id);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });

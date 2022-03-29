@@ -88,6 +88,18 @@
         (is (= nil
                (get id->member :trashbird)))))))
 
+(deftest fetch-perms-graph-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (mt/with-temp Database [{db-id :id}]
+        (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
+          (is (partial= {:groups {(u/the-id (group/admin))
+                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                        graph)))))
+
+    (testing "make sure a non-admin cannot fetch the perms graph from the API"
+      (mt/user-http-request :rasta :get 403 "permissions/graph"))))
+
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"

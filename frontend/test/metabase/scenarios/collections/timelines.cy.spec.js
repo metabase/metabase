@@ -217,7 +217,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Launches");
     });
 
-    it("should archive and unarchive a timeline", () => {
+    it("should archive a timeline and undo", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
@@ -234,6 +234,82 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Releases");
       cy.findByText("RC1");
       cy.findByText("RC2");
+    });
+
+    it("should support markdown in timeline description", () => {
+      cy.createTimeline({
+        name: "Releases",
+        description: "[Release notes](https://metabase.test)",
+      });
+
+      cy.createTimeline({
+        name: "Holidays",
+        description: "[Holiday list](https://metabase.test)",
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+      cy.findByText("Holiday list").should("be.visible");
+    });
+
+    it("should support markdown in event description", () => {
+      cy.createTimelineWithEvents({
+        timeline: {
+          name: "Releases",
+        },
+        events: [
+          {
+            name: "RC1",
+            description: "[Release notes](https://metabase.test)",
+          },
+        ],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Release notes").should("be.visible");
+    });
+
+    it("should archive and unarchive a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }, { name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByText("Archive timeline and all events").click();
+
+      openMenu("Our analytics events");
+      cy.findByText("View archived timelines").click();
+
+      openMenu("Releases");
+      cy.findByText("Unarchive timeline").click();
+      cy.findByText("No timelines found");
+      cy.findByLabelText("chevronleft icon").click();
+      cy.findByText("Releases");
+    });
+
+    it("should archive and delete a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }, { name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Releases");
+      cy.findByText("Edit timeline details").click();
+      cy.findByText("Archive timeline and all events").click();
+
+      openMenu("Our analytics events");
+      cy.findByText("View archived timelines").click();
+
+      openMenu("Releases");
+      cy.findByText("Delete timeline").click();
+      cy.findByText("Delete").click();
+      cy.findByText("No timelines found");
+      cy.findByLabelText("chevronleft icon").click();
+      cy.findByText("Our analytics events");
     });
   });
 

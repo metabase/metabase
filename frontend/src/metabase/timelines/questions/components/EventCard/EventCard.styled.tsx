@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Markdown from "metabase/core/components/Markdown";
 
 export interface CardRootProps {
   isSelected?: boolean;
@@ -13,6 +14,11 @@ export const CardRoot = styled.div<CardRootProps>`
     ${props => (props.isSelected ? color("brand") : "transparent")};
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.03) : "transparent"};
+  cursor: pointer;
+
+  &:hover {
+    background-color: ${alpha("brand", 0.03)};
+  }
 `;
 
 export const CardIcon = styled(Icon)`
@@ -46,7 +52,7 @@ export const CardTitle = styled.div`
   word-wrap: break-word;
 `;
 
-export const CardDescription = styled.div`
+export const CardDescription = styled(Markdown)`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
   word-wrap: break-word;
@@ -61,10 +67,11 @@ export const CardDateInfo = styled.div`
 
 export const CardCreatorInfo = styled.div`
   color: ${color("text-medium")};
-  margin-top: 0.75rem;
+  margin-top: 0.25rem;
   font-size: 0.75rem;
 `;
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
+  align-self: start;
 `;

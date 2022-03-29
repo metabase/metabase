@@ -11,6 +11,7 @@ import {
   summarize,
   filter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -535,15 +536,18 @@ describe("scenarios > models", () => {
 
     it("should allow adding models to dashboards", () => {
       cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-        cy.visit(`/dashboard/${dashboardId}`);
+        visitDashboard(dashboardId);
         cy.icon("pencil").click();
         cy.get(".QueryBuilder-section .Icon-add").click();
         sidebar()
           .findByText("Orders Model")
           .click();
         cy.button("Save").click();
-        cy.wait("@fetchDashboard");
+        // The first fetch happened when visiting dashboard, and the second one upon saving it.
+        // We need to wait for both.
+        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
         cy.findByText("Orders Model");
       });
     });
