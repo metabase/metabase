@@ -19,14 +19,14 @@
 (api/defendpoint GET "/logs"
   "Logs."
   []
-  (api/check-superuser)
+  (api/check-has-general-permission :monitoring)
   (logger/messages))
 
 (api/defendpoint GET "/stats"
   "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
   what is being phoned home."
   []
-  (api/check-superuser)
+  (api/check-has-general-permission :monitoring)
   (stats/anonymous-usage-stats))
 
 (api/defendpoint GET "/random_token"
@@ -38,14 +38,14 @@
 (api/defendpoint GET "/bug_report_details"
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
-  (api/check-superuser)
+  (api/check-has-general-permission :monitoring)
   {:system-info   (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
 
 (api/defendpoint GET "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."
   []
-  (api/check-superuser)
+  (api/check-has-general-permission :monitoring)
   (let [pool-info (troubleshooting/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (ring.response/response pool-info) :headers headers, :status 200)))

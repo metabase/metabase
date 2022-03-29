@@ -5,7 +5,8 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (defmacro ^:private temporarily-disable-subscription-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
@@ -87,10 +88,13 @@
                create-alert (fn [status]
                               (mt/user-http-request user :post status "alert"
                                                     alert-default))
-               alert        (create-alert 200)
+               user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
+                              (perms/grant-general-permissions! group :subscription)
+                              (u/prog1 (create-alert 200)
+                                       (perms/revoke-general-permissions! group :subscription)))
                update-alert (fn [status]
-                              (mt/user-http-request user :put status (format "alert/%d" (:id alert))
-                                                    (dissoc (merge alert-default {:alert_condition  "goal"})
+                              (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
+                                                    (dissoc (merge alert-default {:alert_condition "goal"})
                                                             :channels)))]
 
            (testing "user's group has no subscription permissions"
