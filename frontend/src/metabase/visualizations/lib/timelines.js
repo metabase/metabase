@@ -184,13 +184,13 @@ function renderEventTicks({
       eventLine.classed("hover", isSelected(d, selectedEventIds));
     })
     .on("click", function(d) {
-      onOpenTimelines();
-
       if (isSelected(d, selectedEventIds)) {
         onDeselectTimelineEvents();
       } else {
         onSelectTimelineEvents(d);
       }
+
+      onOpenTimelines();
     });
 }
 

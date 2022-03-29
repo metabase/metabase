@@ -16,6 +16,7 @@ import {
   CardRoot,
   CardTitle,
 } from "./EventCard.styled";
+import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 export interface EventCardProps {
   event: TimelineEvent;
@@ -34,6 +35,7 @@ const EventCard = ({
   onArchive,
   onToggle,
 }: EventCardProps): JSX.Element => {
+  const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
@@ -47,7 +49,11 @@ const EventCard = ({
   }, []);
 
   return (
-    <CardRoot isSelected={isSelected} onClick={handleEventClick}>
+    <CardRoot
+      ref={isSelected ? selectedRef : null}
+      isSelected={isSelected}
+      onClick={handleEventClick}
+    >
       <CardIconContainer>
         <CardIcon name={event.icon} />
       </CardIconContainer>
