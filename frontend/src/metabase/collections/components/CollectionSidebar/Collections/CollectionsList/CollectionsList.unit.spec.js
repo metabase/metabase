@@ -11,7 +11,6 @@ describe("CollectionsList", () => {
         collections={collections}
         openCollections={openCollections}
         filter={() => true}
-        handleToggleMobileSidebar={() => false}
         {...props}
       />,
       { withRouter: true, withDND: true },

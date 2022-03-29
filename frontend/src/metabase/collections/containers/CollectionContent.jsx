@@ -60,7 +60,6 @@ function CollectionContent({
   deleteBookmark,
   isAdmin,
   isRoot,
-  handleToggleMobileSidebar,
   metadata,
   isNavbarOpen,
 }) {
@@ -184,7 +183,6 @@ function CollectionContent({
                   collection,
                   collectionList,
                 )}
-                handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
               <PinnedItemOverview
                 items={pinnedItems}

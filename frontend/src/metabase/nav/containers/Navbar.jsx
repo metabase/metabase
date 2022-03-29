@@ -40,11 +40,6 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
-  state = {
-    modal: null,
-    shouldDisplayMobileSidebar: false,
-  };
-
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
