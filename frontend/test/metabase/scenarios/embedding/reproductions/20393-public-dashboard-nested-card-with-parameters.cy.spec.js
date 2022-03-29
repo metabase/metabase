@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 describe("issue 20393", () => {
   beforeEach(() => {
@@ -64,7 +64,7 @@ function createDashboardWithNestedCard() {
           .createDashboard("Q2 in a dashboard")
           .then(({ body: { id: dashId } }) => {
             cy.request("POST", `/api/dashboard/${dashId}/cards`, { cardId });
-            cy.visit(`/dashboard/${dashId}`);
+            visitDashboard(dashId);
           }),
       ),
   );

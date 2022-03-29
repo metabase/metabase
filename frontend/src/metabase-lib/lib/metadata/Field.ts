@@ -309,6 +309,10 @@ export default class Field extends Base {
         "day",
       );
 
+      if (Number.isNaN(days) || this.isTime()) {
+        return "hour";
+      }
+
       if (days < 1) {
         return "minute";
       } else if (days < 31) {

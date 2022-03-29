@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import _ from "underscore";
 import Ellipsified from "metabase/components/Ellipsified";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   CardHeader,
@@ -21,24 +21,24 @@ import {
 
 export interface TimelineCardProps {
   timeline: Timeline;
-  collection: Collection;
   isDefault?: boolean;
   isVisible?: boolean;
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelineCard = ({
   timeline,
-  collection,
   isDefault,
   isVisible,
   selectedEventIds = [],
-  onToggleTimeline,
   onEditEvent,
   onArchiveEvent,
+  onToggleEvent,
+  onToggleTimeline,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
@@ -48,16 +48,16 @@ const TimelineCard = ({
     setIsExpanded(isExpanded => !isExpanded);
   }, []);
 
+  const handleCheckboxClick = useCallback((event: MouseEvent) => {
+    event.stopPropagation();
+  }, []);
+
   const handleCheckboxChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onToggleTimeline?.(timeline, event.target.checked);
     },
     [timeline, onToggleTimeline],
   );
-
-  const handleCheckboxClick = useCallback((event: MouseEvent) => {
-    event.stopPropagation();
-  }, []);
 
   useEffect(() => {
     if (isEventSelected) {
@@ -70,8 +70,8 @@ const TimelineCard = ({
       <CardHeader onClick={handleHeaderClick}>
         <CardCheckbox
           checked={isVisible}
-          onChange={handleCheckboxChange}
           onClick={handleCheckboxClick}
+          onChange={handleCheckboxChange}
         />
         <CardLabel>
           <Ellipsified tooltipMaxWidth="100%">{timeline.name}</Ellipsified>
@@ -84,10 +84,11 @@ const TimelineCard = ({
             <EventCard
               key={event.id}
               event={event}
-              collection={collection}
+              timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onArchive={onArchiveEvent}
+              onToggle={onToggleEvent}
             />
           ))}
         </CardContent>

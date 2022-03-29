@@ -553,13 +553,11 @@
                         :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                         :where     [:= :pg.name group/all-users-group-name]}))))))
 
-(deftest enable-subscription-permission-tests
-  (testing "Migration v43.00-047: Grant permissions to create/edit subscription to all existing groups except Admin"
+(deftest grant-subscription-permission-tests
+  (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
     (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
-        (db/execute! {:insert-into PermissionsGroup
-                      :values      [{:name "New Group"}]})
         (migrate!)
-        (is (= #{"All Users" "New Group"}
+        (is (= #{"All Users"}
                (set (map :name (db/query {:select    [:pg.name]
                                           :from      [[Permissions :p]]
                                           :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]

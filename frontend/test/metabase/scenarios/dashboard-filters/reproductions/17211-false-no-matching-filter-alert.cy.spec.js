@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -58,7 +58,7 @@ describe("issue 17211", () => {
           ],
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });

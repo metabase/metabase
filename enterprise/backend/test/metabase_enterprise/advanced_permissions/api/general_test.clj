@@ -22,11 +22,11 @@
           (let [graph  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/general/graph")
                 groups (:groups graph)]
             (is (int? (:revision graph)))
-            (is (partial= {(mt/int->kw (:id (group/admin)))
+            (is (partial= {(:id (group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
                             :subscription "yes"}
-                           (mt/int->kw group-id)
+                           (:id (group/all-users))
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
@@ -36,7 +36,7 @@
     (testing "PUT /api/ee/advanced-permissions/general/graph"
       (let [current-graph (premium-features-test/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/general/graph"))
-            new-graph     (assoc-in current-graph [:groups (mt/int->kw group-id) :setting] "yes")]
+            new-graph     (assoc-in current-graph [:groups group-id :setting] "yes")]
 
         (premium-features-test/with-premium-features #{}
           (testing "Should require a token with `:advanced-permissions`"
@@ -54,12 +54,12 @@
                                          (assoc new-graph :revision (inc (:revision new-graph)))))))
 
           (testing "successfully update general permissions"
-            (is (partial= {(mt/int->kw (:id (group/admin)))
+            (is (partial= {(:id (group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
                             :subscription "yes"}
-                           (mt/int->kw group-id)
+                           group-id
                            {:monitoring   "no"
                             :setting      "yes"
-                            :subscription "yes"}}
+                            :subscription "no"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/general/graph" new-graph))))))))))

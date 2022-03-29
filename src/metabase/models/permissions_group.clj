@@ -100,18 +100,11 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
-(defn- post-insert [group]
-  (u/prog1 group
-    ;; Grant permission to create/edit subscriptions and alerts by default
-    (classloader/require 'metabase.models.permissions)
-    ((resolve 'metabase.models.permissions/grant-general-permissions!) (:id group) :subscription)))
-
 (u/strict-extend (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
                    {:pre-delete  pre-delete
                     :pre-insert  pre-insert
-                    :pre-update  pre-update
-                    :post-insert post-insert}))
+                    :pre-update  pre-update}))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

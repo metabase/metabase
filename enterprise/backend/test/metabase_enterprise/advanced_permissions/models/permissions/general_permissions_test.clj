@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
-            [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -21,14 +20,13 @@
                        {:monitoring   :yes
                         :setting      :yes
                         :subscription :yes}
-                       group-id
+                       (:id (group/all-users))
                        {:monitoring   :no
                         :setting      :no
                         :subscription :yes}}
                       (:groups graph)))))
 
     (testing "group has no permissions will not be included in the graph"
-      (perms/revoke-general-permissions! group-id :subscription)
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
                           group-id))))))
 
@@ -38,17 +36,18 @@
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
-     ;; need to bind *current-user-id* or the Revision won't get updated
-     (binding [*current-user-id* (mt/user->id :crowberto)]
+     (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
 (deftest general-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id :setting] :yes)
+      (let [new-graph     (assoc-in current-graph [:groups group-id] {:setting      :yes
+                                                                      :monitoring   :no
+                                                                      :subscription :no})
             _             (g-perms/update-graph! new-graph)
             updated-graph (g-perms/graph)]
-        (is (= (:groups new-graph) (:groups updated-graph)))
+        (is (partial= (:groups new-graph) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
 
   (testing "Revoke successfully and increase revision"
@@ -84,7 +83,7 @@
 
   (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id current-graph
-      ;; subscription is granted for new gorup by default, so revoke it
+      ;; subscription is granted for new group by default, so revoke it
       (perms/revoke-general-permissions! group-id :subscription)
       ;; making sure the `group-id` is not in the current-graph
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)

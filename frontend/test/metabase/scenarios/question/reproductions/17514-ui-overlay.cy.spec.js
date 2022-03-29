@@ -5,6 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   visualize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -55,11 +56,6 @@ describe("issue 17514", () => {
         ({ body: card }) => {
           const { card_id, dashboard_id } = card;
 
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
-
           const mapFilterToCard = {
             parameter_mappings: [
               {
@@ -72,9 +68,12 @@ describe("issue 17514", () => {
 
           cy.editDashboardCard(card, mapFilterToCard);
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
 
-          cy.wait("@cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("cardQuery");
         },
       );
     });
@@ -119,6 +118,7 @@ describe("issue 17514", () => {
       removeJoinedTable();
 
       visualize();
+      cy.findByTextEnsureVisible("Subtotal");
 
       cy.findByText("Save").click();
 
@@ -134,6 +134,7 @@ describe("issue 17514", () => {
       cy.findByText("Products").click();
 
       visualize();
+      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();

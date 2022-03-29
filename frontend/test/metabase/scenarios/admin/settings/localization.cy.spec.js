@@ -177,12 +177,17 @@ describe("scenarios > admin > localization", () => {
 
     visitQuestion(1);
     cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTextEnsureVisible("Product ID");
 
     // create a date filter and set it to the 'On' view to see a specific date
     cy.findByText("Created At").click();
     cy.findByText("Filter by this column").click();
     cy.findByText("Previous").click();
     cy.findByText("On").click();
+
+    // ensure the date picker is ready
+    cy.findByTextEnsureVisible("Add a time");
+    cy.findByTextEnsureVisible("Update filter");
 
     // update the date input in the widget
     const date = new Date();

@@ -264,12 +264,6 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
-(defn int->kw
-  "Convert an integer to a keyword. I.e : 3 -> :3.
-  TODO: remove this once #21216 merged"
-  [x]
-  (keyword (str x)))
-
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
       (str/replace #"_" "-")
