@@ -54,6 +54,7 @@ const ViewFooter = ({
   questionAlerts,
   visualizationSettings,
   isAdmin,
+  canManageSubscriptions,
   isPreviewing,
   isResultDirty,
   isVisualized,
@@ -178,6 +179,7 @@ const ViewFooter = ({
             <QuestionAlertWidget
               key="alerts"
               className="mx1 hide sm-show"
+              canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
               onCreateAlert={() =>

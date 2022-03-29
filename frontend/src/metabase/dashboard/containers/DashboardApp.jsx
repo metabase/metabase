@@ -30,7 +30,10 @@ import {
   getShowAddQuestionSidebar,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -42,6 +45,7 @@ const mapStateToProps = (state, props) => {
   return {
     dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
 
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     isEditing: getIsEditing(state, props),
     isSharing: getIsSharing(state, props),

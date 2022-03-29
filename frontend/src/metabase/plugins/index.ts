@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import React from "react";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import {
   DatabaseEntityId,
@@ -129,4 +130,12 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     return [] as any;
   },
   dataColumns: [] as any,
+};
+
+export const PLUGIN_GENERAL_PERMISSIONS = {
+  getRoutes: (): React.ReactNode => null,
+  tabs: [] as any,
+  selectors: {
+    canManageSubscriptions: (_state: any) => false,
+  },
 };

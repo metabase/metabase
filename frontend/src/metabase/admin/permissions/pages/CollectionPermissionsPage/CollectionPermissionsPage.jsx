@@ -13,7 +13,7 @@ import {
   PermissionsEditorEmptyState,
   permissionEditorPropTypes,
 } from "../../components/PermissionsEditor";
-import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import PermissionsPageLayout from "../../components/PermissionsPageLayout";
 import {
   initializeCollectionPermissions,
   updateCollectionPermission,
