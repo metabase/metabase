@@ -122,7 +122,7 @@
 (defn- update-table-data-model-permissions!
   [group-id db-id schema table-id new-table-perms]
   (condp = new-table-perms
-    :full
+    :all
     (do
       (revoke-permissions! :data-model :all group-id db-id schema table-id)
       (grant-permissions! :data-model :all group-id db-id schema table-id))
@@ -133,7 +133,7 @@
 (defn- update-schema-data-model-permissions!
   [group-id db-id schema new-schema-perms]
   (condp = new-schema-perms
-    :full
+    :all
     (do
       (revoke-permissions! :data-model :all group-id db-id schema)
       (grant-permissions! :data-model :all group-id db-id schema))
@@ -148,16 +148,15 @@
 (s/defn update-db-data-model-permissions!
   "Update the data model permissions graph for a database."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
-  (when-let [schemas (:schemas new-data-model-perms)]
-    (condp = schemas
-      :all
-      (do
-        (revoke-permissions! :data-model :all group-id db-id)
-        (grant-permissions! :data-model :all group-id db-id))
-
-      :none
+  (condp = new-data-model-perms
+    :all
+    (do
       (revoke-permissions! :data-model :all group-id db-id)
+      (grant-permissions! :data-model :all group-id db-id))
 
-      (when (map? schemas)
-        (doseq [[schema new-schema-perms] (seq schemas)]
-          (update-schema-data-model-permissions! group-id db-id schema new-schema-perms))))))
+    :none
+    (revoke-permissions! :data-model :all group-id db-id)
+
+    (when (map? new-data-model-perms)
+      (doseq [[schema new-schema-perms] (seq new-data-model-perms)]
+        (update-schema-data-model-permissions! group-id db-id schema new-schema-perms)))))

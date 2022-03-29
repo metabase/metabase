@@ -107,7 +107,7 @@
     [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      [:db db-id :data-model :all])
     [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
-                                     (into [:db db-id :data-model :schemas] (path2 db-node)))
+                                     (into [:db db-id :data-model] (path2 db-node)))
     [:dm-schema schema-name]       [schema-name :all]
     [:dm-schema schema-name table] (into [schema-name] (path2 table))
     [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]))

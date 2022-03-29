@@ -671,7 +671,7 @@
   "Schema for a data model permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
   (s/named
    (s/cond-pre (s/enum :all :none)
-               {:schemas {s/Str DataModelSchemaPermissionsGraph}})
+               {s/Str DataModelSchemaPermissionsGraph})
    "Valid data model perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
