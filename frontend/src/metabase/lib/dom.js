@@ -444,3 +444,8 @@ export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
   return main;
 }
+
+export function isSmallScreen() {
+  const mediaQuery = window.matchMedia("(max-width: 40em)");
+  return mediaQuery && mediaQuery.matches;
+}
