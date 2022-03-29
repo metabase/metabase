@@ -1,5 +1,7 @@
 import { restore } from "__support__/e2e/cypress";
 
+const PG_DB_ID = 2;
+
 const questionDetails = {
   native: {
     query: `select mytz as "ts", mytz::text as "tsAStext", state, mytz::time as "time - LOOK AT THIS COLUMN", mytz::time::text as "timeAStext", mytz::time(0) as "time(0) - ALL INCORRECT", mytz::time(3) as "time(3) - MOSTLY WORKING" from (
@@ -14,7 +16,7 @@ const questionDetails = {
       select '2016-05-12 11:01:23-04:00'::timestamptz, 'ALWAYS incorrect'
   )x`,
   },
-  database: 2,
+  database: PG_DB_ID,
 };
 
 // time, time(0), time(3)
