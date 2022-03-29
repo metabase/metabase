@@ -18,18 +18,16 @@ const resolveFavicon = (setterOrGetter, props) => {
   }
 };
 
-const withFavicon = faviconSetterOrGetter => ComposedComponent => props => {
-  const favicon = resolveFavicon(faviconSetterOrGetter, props);
+const withFavicon = faviconSetterOrGetter => ComposedComponent => {
+  const WithFavicon = props => {
+    const favicon = resolveFavicon(faviconSetterOrGetter, props);
 
-  useEffect(() => {
-    document.querySelector('link[rel="icon"]').setAttribute("href", favicon);
-  }, [favicon]);
-
-  function WithFavicon(props) {
+    useEffect(() => {
+      document.querySelector('link[rel="icon"]').setAttribute("href", favicon);
+    }, [favicon]);
     return <ComposedComponent {...props} />;
-  }
-
-  WithFavicon.displayName = "test";
+  };
+  WithFavicon.displayName = "Favicon";
 
   return WithFavicon;
 };
