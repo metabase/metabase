@@ -18,8 +18,8 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.secret :as secret]
             [metabase.models.field :as field]
+            [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -386,7 +386,7 @@
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
-      (json-query identifier stored-field nfc-path)
+      (json-query identifier stored-field)
 
       :else
       identifier)))
