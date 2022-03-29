@@ -4,14 +4,16 @@ import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
+import { SIDEBAR_WIDTH } from "metabase/collections/constants";
+
 const FixedBottomBar = styled.div`
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: ${props => (props.isNavbarOpen ? SIDEBAR_WIDTH : 0)};
   right: 0;
 `;
 
-const BulkActionBar = ({ children, showing }) => (
+const BulkActionBar = ({ children, showing, isNavbarOpen }) => (
   <Motion
     defaultStyle={{
       opacity: 0,
@@ -30,6 +32,7 @@ const BulkActionBar = ({ children, showing }) => (
           transform: `translateY(${translateY}px)`,
         }}
         data-testid="bulk-action-bar"
+        isNavbarOpen={isNavbarOpen}
       >
         <Card>{children}</Card>
       </FixedBottomBar>
