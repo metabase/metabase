@@ -16,13 +16,15 @@ const closedNavbarCSS = css`
 
 export const NavRoot = styled.div<{ isOpen: boolean }>`
   position: fixed;
+  flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
   background-color: ${color("nav")};
+
   overflow: auto;
   overflow-x: hidden;
   z-index: 3;
-  flex-shrink: 0;
+
   border-right: 1px solid ${color("border")};
 
   ${breakpointMinSmall} {
