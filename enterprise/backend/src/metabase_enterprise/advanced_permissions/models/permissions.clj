@@ -83,7 +83,7 @@
     - Native query download permissions are fully inferred from the non-native download permissions. For more details,
       see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
-  (when-not (premium-features/has-feature? :advanced-permissions)
+  (when-not (premium-features/enable-advanced-permissions?)
     (throw (ex-info
             (tru "Can''t set download permissions without having the advanced-permissions premium feature")
             {:status-code 402})))
