@@ -168,6 +168,8 @@ export default class View extends React.Component {
       selectedTimelineEventIds,
       showTimelines,
       hideTimelines,
+      selectTimelineEvents,
+      deselectTimelineEvents,
       onOpenModal,
       onCloseSummary,
       onCloseFilter,
@@ -198,6 +200,8 @@ export default class View extends React.Component {
           selectedTimelineEventIds={selectedTimelineEventIds}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
+          onSelectTimelineEvents={selectTimelineEvents}
+          onDeselectTimelineEvents={deselectTimelineEvents}
           onOpenModal={onOpenModal}
           onClose={onCloseTimelines}
         />
