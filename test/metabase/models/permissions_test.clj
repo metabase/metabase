@@ -54,13 +54,13 @@
     (doseq [path valid-paths]
       (testing (pr-str path)
         (is (= true
-               (perms/valid-path? path))))))
+               (perms/valid-path? path)))))
 
-  (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-    (doseq [path valid-paths-with-slashes]
-      (testing (pr-str path)
-        (is (= true
-               (perms/valid-path? path))))))
+    (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
+      (doseq [path valid-paths-with-slashes]
+        (testing (pr-str path)
+          (is (= true
+                 (perms/valid-path? path)))))))
 
   (testing "invalid paths"
     (doseq [[reason paths]
