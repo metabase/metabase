@@ -11,6 +11,10 @@ import {
 const openNavbarCSS = css`
   visibility: visible;
   width: ${NAV_SIDEBAR_WIDTH};
+
+  ${breakpointMaxSmall} {
+    width: 90vw;
+  }
 `;
 
 export const NavRoot = styled.div<{ isOpen: boolean }>`
