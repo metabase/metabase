@@ -33,18 +33,14 @@ const BaseTreeNode = React.memo(
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
     function onClick() {
-      if (typeof onSelect === "function") {
-        onSelect();
-      }
+      onSelect?.();
       onToggleExpand();
     }
 
     const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
         case "Enter":
-          if (typeof onSelect === "function") {
-            onSelect();
-          }
+          onSelect?.();
           break;
         case "ArrowRight":
           !isExpanded && onToggleExpand();
