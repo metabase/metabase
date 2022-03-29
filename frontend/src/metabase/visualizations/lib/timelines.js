@@ -187,7 +187,7 @@ function renderEventTicks({
       onOpenTimelines();
 
       if (isSelected(d, selectedEventIds)) {
-        onDeselectTimelineEvents(d);
+        onDeselectTimelineEvents();
       } else {
         onSelectTimelineEvents(d);
       }

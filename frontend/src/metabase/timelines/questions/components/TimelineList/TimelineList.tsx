@@ -8,6 +8,7 @@ export interface TimelineListProps {
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
@@ -17,6 +18,7 @@ const TimelineList = ({
   selectedEventIds = [],
   onEditEvent,
   onArchiveEvent,
+  onToggleEvent,
   onToggleTimeline,
 }: TimelineListProps): JSX.Element => {
   return (
@@ -30,6 +32,7 @@ const TimelineList = ({
           selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
+          onToggleEvent={onToggleEvent}
           onArchiveEvent={onArchiveEvent}
         />
       ))}
