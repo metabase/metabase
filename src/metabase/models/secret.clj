@@ -1,6 +1,7 @@
 (ns metabase.models.secret
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.api.common :as api]
@@ -99,6 +100,8 @@
           (.write out v)))
       tmp-file)))
 
+(def ^:private uploaded-base-64-prefix "data:application/x-x509-ca-cert;base64,")
+
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
   name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
@@ -121,27 +124,37 @@
         value-kw   (sub-prop "-value")
         options-kw (sub-prop "-options")
         id-kw      (sub-prop "-id")
-        value      (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
-                     v
-                     (if-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
-                       (do
-                         (when (premium-features/is-hosted?)
-                           (throw (ex-info
-                                    (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
-                                    {:invalid-db-details-entry (select-keys details [path-kw])})))
-                         path)
-                       (when-let [id (id-kw details)]
-                         (:value (Secret id)))))
-        source     (cond
-                     ;; set the :source due to the -path suffix (see above))
-                     (and (not= "uploaded" (options-kw details)) (path-kw details))
-                     :file-path
+        value      (cond
+                     ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
+                     (and (value-kw details) (= "ssl-root-cert" conn-prop-nm)
+                          (str/starts-with? (value-kw details) uploaded-base-64-prefix))
+                     (-> (value-kw details) (str/replace-first uploaded-base-64-prefix "") u/decode-base64)
+
+                     ;; the -value suffix was specified; use that
+                     (value-kw details)
+                     (value-kw details)
+
+                     ;; the -path suffix was specified; this is actually a :file-path
+                     (path-kw details)
+                     (u/prog1 (path-kw details)
+                       (when (premium-features/is-hosted?)
+                         (throw (ex-info
+                                 (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                                 {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
                      (id-kw details)
-                     (:source (Secret (id-kw details))))]
+                     (:value (Secret (id-kw details))))
+        source (cond
+                 ;; set the :source due to the -path suffix (see above))
+                 (and (not= "uploaded" (options-kw details)) (path-kw details))
+                 :file-path
+
+                 (id-kw details)
+                 (:source (Secret (id-kw details))))]
     (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
       value
-      (assoc :value value, :source source))))
+      (assoc :value value
+             :source source))))
 
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
