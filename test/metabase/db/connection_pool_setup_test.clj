@@ -10,16 +10,15 @@
 (deftest connection-pool-spec-test
   (testing "Should be able to create a connection pool"
     (letfn [(test* [db-type data-source]
-              (let [conn-pool-spec (#'mdb.connection-pool-setup/connection-pool-spec db-type data-source)
-                    {:keys [^PoolBackedDataSource datasource], :as spec} conn-pool-spec]
+              (let [^PoolBackedDataSource data-source (mdb.connection-pool-setup/connection-pool-data-source db-type data-source)]
                 (try
-                  (is (instance? javax.sql.DataSource datasource))
+                  (is (instance? javax.sql.DataSource data-source))
                   (is (= (format "metabase-%s-app-db" (name db-type))
-                         (.getDataSourceName datasource)))
+                         (.getDataSourceName data-source)))
                   (is (= [{:one 1}]
-                         (jdbc/query spec ["SELECT 1 AS one;"])))
+                         (jdbc/query {:datasource data-source} ["SELECT 1 AS one;"])))
                   (finally
-                    (connection-pool/destroy-connection-pool! datasource)))))]
+                    (connection-pool/destroy-connection-pool! data-source)))))]
       (testing "from a jdbc-spec map"
         (test* :h2 (mdb.data-source/broken-out-details->DataSource
                     :h2

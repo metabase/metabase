@@ -38,8 +38,5 @@
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy! (mdb.conn/db-type) (mdb.conn/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (binding [mdb.conn/*db-type*     :h2
-                 mdb.conn/*data-source* h2-data-source
-                 db/*db-connection*     {:datasource h2-data-source}
-                 db/*quoting-style*     :h2]
+       (binding [mdb.conn/*application-db* (mdb.conn/application-db :h2 h2-data-source)]
          (rotate-encryption/rotate-encryption-key! nil))))))

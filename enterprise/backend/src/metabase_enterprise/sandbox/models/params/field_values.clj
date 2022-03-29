@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require [clojure.core.memoize :as memoize]
+            [metabase.db.connection :as mdb.connection]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as sandbox.api.table]
             [metabase.api.common :as api]
@@ -20,7 +21,8 @@
    ;; set, so we cache per-User (and so changes to that User's permissions will result in a cache miss), and Field ID
    ;; instead of an entire Field object (so maps with slightly different keys are still considered equal)
    ^{::memoize/args-fn (fn [[updated-at field]]
-                         [api/*current-user-id*
+                         [(mdb.connection/unique-identifier)
+                          api/*current-user-id*
                           (hash @api/*current-user-permissions-set*)
                           updated-at
                           (u/the-id field)])}

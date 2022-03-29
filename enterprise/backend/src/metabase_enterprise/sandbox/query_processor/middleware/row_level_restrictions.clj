@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -166,6 +167,8 @@
 ;; cache the original metadata for a little bit so we don't have to preprocess a query every time we apply sandboxing
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id]]
+                         [(mdb.connection/unique-identifier) table-id])}
    (fn [table-id]
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))
