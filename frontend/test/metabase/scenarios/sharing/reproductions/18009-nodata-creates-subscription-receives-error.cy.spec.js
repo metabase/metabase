@@ -1,4 +1,9 @@
-import { restore, popover, setupSMTP } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  setupSMTP,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 describe.skip("issue 18009", () => {
   beforeEach(() => {
@@ -11,7 +16,7 @@ describe.skip("issue 18009", () => {
   });
 
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     cy.icon("share").click();
     cy.findByText("Dashboard subscriptions").click();

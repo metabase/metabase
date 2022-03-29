@@ -479,8 +479,8 @@
             (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
-                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))
-            ))))
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
+
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -798,8 +798,8 @@
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta
-                                        :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
-                                        additional-get-params))))
+                                         :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
+                                         additional-get-params))))
 
 (deftest effective-ancestors-and-children-test
   ;; Create hierarchy like
@@ -924,7 +924,7 @@
       (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
-              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"}) ]
+              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
              (with-some-children-of-collection nil
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
@@ -971,7 +971,7 @@
                      (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                          (remove-non-test-items &ids)
                          remove-non-personal-collections
-                         mt/boolean-ids-and-timestamps ))))))))
+                         mt/boolean-ids-and-timestamps))))))))
 
     (testing "So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it..."
       (is (= [{:name            "Rasta Toucan's Personal Collection"
@@ -992,7 +992,7 @@
                    :authority_level nil
                    :can_write       true}]
                  (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
-                      (filter #(str/includes? (:name %) "Taco Bell")))))))
+                      (filter #(str/includes? (:name %) "Taco Bell"))))))))
 
     (testing "For admins, only return our own Personal Collection (!)"
       (is (= [{:name            "Crowberto Corv's Personal Collection"
@@ -1015,18 +1015,18 @@
                    :authority_level nil
                    :can_write       true}]
                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
-                      (filter #(str/includes? (:name %) "Personal Collection"))))))))
+                      (filter #(str/includes? (:name %) "Personal Collection")))))))
 
-    (testing "Can we look for `archived` stuff with this endpoint?"
-      (mt/with-temp Card [card {:name "Business Card", :archived true}]
-        (is (= [{:name                "Business Card"
-                 :description         nil
-                 :collection_position nil
-                 :display             "table"
-                 :moderated_status    nil
-                 :model               "card"}]
-               (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
-                 (dissoc item :id)))))))))
+      (testing "Can we look for `archived` stuff with this endpoint?"
+        (mt/with-temp Card [card {:name "Business Card", :archived true}]
+          (is (= [{:name                "Business Card"
+                   :description         nil
+                   :collection_position nil
+                   :display             "table"
+                   :moderated_status    nil
+                   :model               "card"}]
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
+                   (dissoc item :id)))))))))
 
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
@@ -1481,6 +1481,15 @@
       (testing "Timelines in the collection of the card are returned"
         (is (= #{"Timeline A"}
                (timeline-names (timelines-request coll-a false)))))
+      (testing "Timelines in the collection have a hydrated `:collection` key"
+        (is (= #{(u/the-id coll-a)}
+               (->> (timelines-request coll-a false)
+                    (map #(get-in % [:collection :id]))
+                    set))))
+      (testing "check that `:can_write` key is hydrated"
+        (is (every?
+             #(contains? % :can_write)
+             (map :collection (timelines-request coll-a false)))))
       (testing "Only un-archived timelines in the collection of the card are returned"
         (is (= #{"Timeline B"}
                (timeline-names (timelines-request coll-b false)))))
@@ -1513,7 +1522,7 @@
                  identity
                  (fn
                    ([graph]
-                    (-> (get-in graph [:groups (keyword (str group-id))])
+                    (-> (get-in graph [:groups group-id])
                         (select-keys (vals id->alias))))
                    ([graph [collection-id k]]
                     (graph.test/replace-collection-ids collection-id graph k)))

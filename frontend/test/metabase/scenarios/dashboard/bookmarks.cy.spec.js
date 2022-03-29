@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, sidebar, visitDashboard } from "__support__/e2e/cypress";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
@@ -7,7 +7,7 @@ describe("scenarios > dashboard > bookmarks", () => {
   });
 
   it("should add and then remove bookmark", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     cy.icon("ellipsis").click();
 

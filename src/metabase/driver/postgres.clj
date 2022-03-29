@@ -44,9 +44,13 @@
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
-  [_ hsql-form amount unit]
-  (hx/+ (->timestamp hsql-form)
-        (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
+  [driver hsql-form amount unit]
+  ;; Postgres doesn't support quarter in intervals (#20683)
+  (if (= unit :quarter)
+    (recur driver hsql-form (* 3 amount) :month)
+    (let [hsql-form (->timestamp hsql-form)]
+      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+          (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -262,6 +266,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/current-datetime-honeysql-form :postgres
+  [_driver]
+  (hx/with-database-type-info :%now "timestamptz"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]

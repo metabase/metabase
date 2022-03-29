@@ -5,7 +5,7 @@
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
-(deftest date-string->filter-test
+(deftest ^:parallel date-string->filter-test
   (testing "year and month"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
@@ -58,7 +58,10 @@
             3
             :day
             {:include-current true}]
-           (dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}])))))
+           (dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "quarters (#21083)"
+    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}] -30 :quarter {:include-current false}]
+           (dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}])))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")

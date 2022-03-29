@@ -47,7 +47,7 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(deftest connection-details->spec-test
+(deftest ^:parallel connection-details->spec-test
   (testing (str "Check that SSL params get added the connection details in the way we'd like # no SSL -- this should "
                 "*not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL "
                 "anyway")
@@ -285,7 +285,7 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
-(deftest json-query-test
+(deftest ^:parallel json-query-test
   (testing "Transforming MBQL query with JSON in it to postgres query works"
     (is (= ["json_extract_path_text(CAST(bleh AS json), (CAST(? AS text)))" "meh"]
            (hsql/format (#'postgres/json-query 'mlep [:bleh :meh])))))
@@ -313,28 +313,28 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
-                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
-                             "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= '#{{:name              "incoherent_json_val → b",
-                      :database-type     nil,
-                      :base-type         :type/Integer,
-                      :database-position 0,
-                      :nfc-path          [:incoherent_json_val "b"]}
-                     {:name              "coherent_json_val → a",
-                      :database-type     nil,
-                      :base-type         :type/Integer,
-                      :database-position 0,
-                      :nfc-path          [:coherent_json_val "a"]}
-                     {:name              "coherent_json_val → b",
-                      :database-type     nil,
-                      :base-type         :type/Integer,
-                      :database-position 0,
-                      :nfc-path          [:coherent_json_val "b"]}}
+                     :database-type     nil,
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :nfc-path          [:incoherent_json_val "b"]}
+                    {:name              "coherent_json_val → a",
+                     :database-type     nil,
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :nfc-path          [:coherent_json_val "a"]}
+                    {:name              "coherent_json_val → b",
+                     :database-type     nil,
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :nfc-path          [:coherent_json_val "b"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
-                   :postgres
-                   database
-                   {:name "describe_json_table"}))))))))
+                  :postgres
+                  database
+                  {:name "describe_json_table"}))))))))
 
 (mt/defdataset with-uuid
   [["users"

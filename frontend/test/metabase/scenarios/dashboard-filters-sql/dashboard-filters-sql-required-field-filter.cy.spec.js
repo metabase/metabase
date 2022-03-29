@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -58,7 +58,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
       cy.editDashboardCard(dashboardCard, mapFilterToCard);
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      visitDashboard(dashboard_id);
     });
   });
 

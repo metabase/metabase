@@ -1,4 +1,8 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 describe(`search > recently viewed`, () => {
   beforeEach(() => {
@@ -19,7 +23,7 @@ describe(`search > recently viewed`, () => {
     visitQuestion(1);
 
     // "Orders in a dashboard" dashboard
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,

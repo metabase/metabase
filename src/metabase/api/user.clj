@@ -159,11 +159,11 @@
   [user]
   (if-not (premium-features/enable-advanced-permissions?)
     user
-    (let [perrmisions-set @api/*current-user-permissions-set*]
-      (assoc user
-             :can_access_setting (perms/set-has-general-permission-of-type perrmisions-set :setting)
-             :can_access_subscription (perms/set-has-general-permission-of-type perrmisions-set :subscription)
-             :can_access_monitoring (perms/set-has-general-permission-of-type perrmisions-set :monitoring)))))
+    (let [permissions-set @api/*current-user-permissions-set*]
+      (assoc user :permissions
+             {:can_access_setting      (perms/set-has-general-permission-of-type permissions-set :setting)
+              :can_access_subscription (perms/set-has-general-permission-of-type permissions-set :subscription)
+              :can_access_monitoring   (perms/set-has-general-permission-of-type permissions-set :monitoring)}))))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."

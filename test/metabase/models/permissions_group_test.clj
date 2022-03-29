@@ -104,8 +104,3 @@
         (db/update! User user-id, :is_superuser false)
         (is (= false
                (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perm-group/admin)))))))))
-
-(deftest post-insert-test
-  (testing "Should grant subscription permission for newly created Group"
-    (mt/with-temp PermissionsGroup [{group-id :id}]
-      (is (db/exists? Permissions :group_id group-id :object (perms/general-perms-path :subscription))))))
