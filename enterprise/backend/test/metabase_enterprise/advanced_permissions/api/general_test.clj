@@ -69,7 +69,7 @@
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (letfn [(user-general-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
-                    (select-keys [:can_access_setting :can_access_subscription :can_access_monitoring])))]
+                    :permissions))]
         (testing "admins should have full general permisions"
           (is (= {:can_access_setting true
                   :can_access_subscription true
