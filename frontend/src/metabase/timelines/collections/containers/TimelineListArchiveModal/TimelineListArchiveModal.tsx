@@ -4,18 +4,17 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import TimelineEvents from "metabase/entities/timeline-events";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import TimelineDetailsModal from "../../components/TimelineDetailsModal";
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import TimelineListModal from "../../components/TimelineListModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events", archived: true },
-  LoadingAndErrorWrapper,
+  query: (state: State, props: ModalProps) => ({
+    collectionId: Urls.extractCollectionId(props.params.slug),
+    archived: true,
+    include: "events",
+  }),
 };
 
 const collectionProps = {
@@ -29,15 +28,15 @@ const mapStateToProps = () => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onUnarchive: async (event: TimelineEvent) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, false));
+    await dispatch(Timelines.actions.setArchived(event, false));
   },
-  onGoBack: (timeline: Timeline, collection: Collection) => {
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+  onGoBack: (collection: Collection) => {
+    dispatch(push(Urls.timelinesInCollection(collection)));
   },
 });
 
 export default _.compose(
-  Timelines.load(timelineProps),
+  Timelines.loadList(timelineProps),
   Collections.load(collectionProps),
   connect(mapStateToProps, mapDispatchToProps),
-)(TimelineDetailsModal);
+)(TimelineListModal);

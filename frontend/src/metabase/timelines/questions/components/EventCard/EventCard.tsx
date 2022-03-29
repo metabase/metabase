@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
@@ -23,6 +23,7 @@ export interface EventCardProps {
   isSelected?: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
+  onToggle?: (event: TimelineEvent, isSelected: boolean) => void;
 }
 
 const EventCard = ({
@@ -31,13 +32,22 @@ const EventCard = ({
   isSelected,
   onEdit,
   onArchive,
+  onToggle,
 }: EventCardProps): JSX.Element => {
   const menuItems = getMenuItems(event, timeline, onEdit, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
+  const handleEventClick = useCallback(() => {
+    onToggle?.(event, !isSelected);
+  }, [event, isSelected, onToggle]);
+
+  const handleAsideClick = useCallback((event: SyntheticEvent) => {
+    event.stopPropagation();
+  }, []);
+
   return (
-    <CardRoot isSelected={isSelected}>
+    <CardRoot isSelected={isSelected} onClick={handleEventClick}>
       <CardIconContainer>
         <CardIcon name={event.icon} />
       </CardIconContainer>
@@ -50,7 +60,7 @@ const EventCard = ({
         <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
       {menuItems.length > 0 && (
-        <CardAside>
+        <CardAside onClick={handleAsideClick}>
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         </CardAside>
       )}
