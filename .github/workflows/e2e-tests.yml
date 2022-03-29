@@ -112,14 +112,13 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
     - name: Run Cypress tests on ${{ matrix.folder }}
-      run: |
-        if [[ ${{ github.ref }} == 'refs/heads/master' ]]; then
-            echo "Running E2E on Master Branch, so sending the results to Currents.dev"
-            yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{matrix.folder}} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
-        else
-            echo "Not running E2E on Master Branch, so, no need to send the results to Currents.dev"
-            yarn run test-cypress-no-build --folder ${{ matrix.folder }}
-        fi
+      if: github.ref == 'refs/heads/master' || ${{ github.ref }} == 'refs/heads/release-.+$''
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{matrix.folder}} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+      env:
+        TERM: xterm
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      if: github.ref != 'refs/heads/master' || ${{ github.ref }} != 'refs/heads/release-.+$'' 
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       env:
         TERM: xterm
     - name: Upload Cypress recording upon failure
