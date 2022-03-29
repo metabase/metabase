@@ -56,7 +56,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     it("should be disabled by default but able to be set to editable", () => {
       cy.visit("/dashboard/2");
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.get(".Modal--full").within(() => {
@@ -102,7 +101,6 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     it("should let parameters be locked to a specific value (metabase#20357)", () => {
       cy.visit("/dashboard/2");
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.findByText("Parameters");

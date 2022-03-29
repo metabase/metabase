@@ -9,7 +9,6 @@ describe("scenarios > embedding > code snippets", () => {
   it("dashboard should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.contains(/Embed this .* in an application/).click();
     cy.contains("Code").click();
 

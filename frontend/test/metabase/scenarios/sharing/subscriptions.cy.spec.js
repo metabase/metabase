@@ -27,8 +27,8 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.attr", "aria-disabled", "true")
       .click();
 
-    cy.findByText("Dashboard subscriptions").should("not.exist");
-    cy.findByText("Sharing and embedding").should("not.exist");
+    cy.icon("subscription").should("not.exist");
+    cy.icon("share").should("not.exist");
     cy.findByText(/Share this dashboard with people *./i).should("not.exist");
   });
 
@@ -51,8 +51,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    cy.findByText("Dashboard subscriptions").should("not.exist");
-    cy.findByText("Sharing and embedding").should("not.exist");
+    cy.icon("subscription").should("not.exist");
+    cy.icon("share").should("not.exist");
     cy.findByText(/Share this dashboard with people *./i);
   });
 
@@ -370,7 +370,7 @@ function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
   cy.visit(`/dashboard/${dashboard_id}`);
   cy.icon("share").click();
-  cy.findByText("Dashboard subscriptions").click();
+  cy.icon("subscription").click();
 }
 
 function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {

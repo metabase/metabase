@@ -59,8 +59,7 @@ export const openEmailPage = emailSubject => {
 };
 
 export const sendSubscriptionsEmail = recipient => {
-  cy.icon("share").click();
-  cy.findByText("Dashboard subscriptions").click();
+  cy.icon("subscription").click();
 
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")

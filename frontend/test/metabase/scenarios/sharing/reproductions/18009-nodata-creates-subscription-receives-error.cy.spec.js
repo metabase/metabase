@@ -14,7 +14,7 @@ describe.skip("issue 18009", () => {
     cy.visit("/dashboard/1");
 
     cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
 
     cy.findByText("Email it").click();
 
