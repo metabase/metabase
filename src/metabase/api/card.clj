@@ -800,7 +800,8 @@
   (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
     (let [database (Database (:database_id persisted-info))]
       (ddl.concurrent/submit-task
-       #(ddl.i/refresh! (:engine database) database persisted-info)))))
+       #(ddl.i/refresh! (:engine database) database persisted-info))
+      api/generic-204-no-content)))
 
 (api/defendpoint DELETE "/:card-id/persist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
