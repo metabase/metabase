@@ -3,12 +3,29 @@
 import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 
 import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
+
+function isDashboardAddedSeries(card, dashboard) {
+  if (!dashboard) {
+    return false;
+  }
+
+  for (const dashCard of dashboard.ordered_cards) {
+    for (const addedCard of dashCard.series || []) {
+      if (addedCard.id === card.id) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 export function getClickHoverObject(
   d,
@@ -22,6 +39,7 @@ export function getClickHoverObject(
     event,
     element,
     settings,
+    dashboard,
   },
 ) {
   let { cols } = series[seriesIndex].data;
@@ -32,6 +50,7 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
   const isCardNamedDerivedFromColumn = cols.some(col => col.name === card.name);
+  const isAddedSeriesOnDashcard = isDashboardAddedSeries(card, dashboard);
 
   function getColumnDisplayName(col, colIndex, card) {
     // `visualization_settings.series_settings` use `card.name` and
@@ -39,7 +58,7 @@ export function getClickHoverObject(
     // check for `columnIndex === 1` because only the first metric column
     // should be renamed by this setting
     const colKey =
-      seriesIndex > 0 && colIndex === 1 && !isCardNamedDerivedFromColumn
+      isAddedSeriesOnDashcard && !isCardNamedDerivedFromColumn && colIndex === 1
         ? card.name
         : col.name;
     const colTitle = getIn(settings, ["series_settings", colKey, "title"]);
@@ -232,7 +251,14 @@ function aggregateRows(rows) {
 }
 
 export function setupTooltips(
-  { settings, series, isScalarSeries, onHoverChange, onVisualizationClick },
+  {
+    settings,
+    series,
+    isScalarSeries,
+    onHoverChange,
+    onVisualizationClick,
+    dashboard,
+  },
   datas,
   chart,
   { isBrushing },
@@ -267,6 +293,7 @@ export function setupTooltips(
       event: d3.event,
       element: target,
       settings,
+      dashboard,
     });
   };
 
