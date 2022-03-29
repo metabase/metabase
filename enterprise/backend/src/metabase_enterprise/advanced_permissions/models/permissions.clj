@@ -154,6 +154,10 @@
 (s/defn update-db-data-model-permissions!
   "Update the data model permissions graph for a database."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (ex-info
+            (tru "Can''t set data model permissions without having the advanced-permissions premium feature")
+            {:status-code 402})))
   (condp = new-data-model-perms
     :all
     (do
