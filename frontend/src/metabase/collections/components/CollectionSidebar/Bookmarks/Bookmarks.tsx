@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
+import "./sortable.css";
+
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
+import Tooltip from "metabase/components/Tooltip";
 import {
   SortableContainer,
   SortableElement,
@@ -16,6 +19,7 @@ import BookmarkEntity from "metabase/entities/bookmarks";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkContainer,
+  BookmarkDragIcon,
   BookmarkListRoot,
   BookmarkTypeIcon,
 } from "./Bookmarks.styled";
@@ -72,19 +76,22 @@ const ListOfBookmarks = ({ children }: { children: JSX.Element }) => (
 type BookmarkItemProps = {
   bookmark: Bookmark;
   handleDeleteBookmark: (arg0: Bookmark) => void;
+  isSorting: boolean;
 };
 
 const BookmarkItem = ({
   bookmark,
   handleDeleteBookmark,
+  isSorting,
 }: BookmarkItemProps) => {
   const { id, name, type } = bookmark;
   const url = Urls.bookmark({ id, name, type });
 
   return (
-    <BookmarkContainer>
+    <BookmarkContainer isSorting={isSorting}>
+      <BookmarkDragIcon name="grabber2" size={12} />
       <Link to={url}>
-        <Label name={name} type={type} />
+        <Label bookmark={bookmark} />
       </Link>
 
       <button onClick={() => handleDeleteBookmark(bookmark)}>
@@ -110,6 +117,7 @@ const CollectionSidebarBookmarks = ({
   );
 
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
+  const [isSorting, setIsSorting] = useState(false);
 
   if (bookmarks.length === 0) {
     return null;
@@ -126,6 +134,10 @@ const CollectionSidebarBookmarks = ({
     setShouldDisplayBookmarks(!shouldDisplayBookmarks);
   };
 
+  const handleSortStart = () => {
+    setIsSorting(true);
+  };
+
   const handleSortEnd = ({
     newIndex,
     oldIndex,
@@ -133,6 +145,8 @@ const CollectionSidebarBookmarks = ({
     newIndex: number;
     oldIndex: number;
   }) => {
+    setIsSorting(false);
+
     const bookmarksToBeReordered = [...orderedBookmarks];
     const element = orderedBookmarks[oldIndex];
 
@@ -155,9 +169,10 @@ const CollectionSidebarBookmarks = ({
 
       {shouldDisplayBookmarks && (
         <SortableListOfBookmark
+          onSortStart={handleSortStart}
           onSortEnd={handleSortEnd}
           lockAxis="y"
-          helperClass=""
+          helperClass="sorting"
         >
           {orderedBookmarks.map((bookmark, index) => {
             return (
@@ -166,6 +181,7 @@ const CollectionSidebarBookmarks = ({
                 key={bookmark.id}
                 bookmark={bookmark}
                 handleDeleteBookmark={handleDeleteBookmark}
+                isSorting={isSorting}
               />
             );
           })}
