@@ -11,6 +11,7 @@ const openNavbarCSS = css`
 
 const closedNavbarCSS = css`
   width: 0;
+  height: 100%;
   visibility: hidden;
 `;
 
