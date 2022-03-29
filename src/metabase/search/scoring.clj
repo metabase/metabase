@@ -184,9 +184,9 @@
       0)))
 
 (defn- bookmarked-score
-  [{:keys [model collection_position]}]
+  [{:keys [model bookmark]}]
   (when (#{"card" "collection" "dashboard"} model)
-    (if ((fnil pos? 0) collection_position)
+    (if bookmark
       1
       0)))
 
