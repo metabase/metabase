@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Draggable from "react-draggable";
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
