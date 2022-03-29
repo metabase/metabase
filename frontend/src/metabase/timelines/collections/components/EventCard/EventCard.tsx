@@ -4,6 +4,7 @@ import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import {
@@ -44,6 +45,8 @@ const EventCard = ({
   );
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
+  const canEdit = timeline.collection?.can_write && !event.archived;
+  const editLink = Urls.editEventInCollection(event, timeline, collection);
 
   return (
     <CardRoot>
@@ -55,7 +58,13 @@ const EventCard = ({
       </CardThread>
       <CardBody>
         <CardDateInfo>{dateMessage}</CardDateInfo>
-        <CardTitle>{event.name}</CardTitle>
+        {canEdit ? (
+          <CardTitle as={Link} to={editLink}>
+            {event.name}
+          </CardTitle>
+        ) : (
+          <CardTitle>{event.name}</CardTitle>
+        )}
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
         )}
@@ -77,9 +86,11 @@ const getMenuItems = (
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
-  if (!collection.can_write) {
+  if (!timeline.collection?.can_write) {
     return [];
-  } else if (!event.archived) {
+  }
+
+  if (!event.archived) {
     return [
       {
         title: t`Edit event`,

@@ -5,6 +5,7 @@ const MONGO_DB_NAME = "QA Mongo4";
 describe("scenarios > question > native > mongo", () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore("mongo-4");
     cy.signInAsNormalUser();
@@ -24,13 +25,19 @@ describe("scenarios > question > native > mongo", () => {
       parseSpecialCharSequences: false,
     });
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.findByText("18,760");
+
+    cy.wait("@dataset");
+
+    cy.findByTextEnsureVisible("18,760");
 
     cy.findByText("Save").click();
 
+    cy.findByTextEnsureVisible("Save question");
+
     modal().within(() => {
       cy.findByLabelText("Name")
-        .focus()
+        .clear()
+        .should("be.empty")
         .type("mongo count");
 
       cy.button("Save")

@@ -21,7 +21,7 @@
   (mt/with-everything-store
     (driver/with-driver :h2
       (-> query
-          qp/query->preprocessed
+          qp/preprocess
           :query
           nest-query/nest-expressions
           remove-source-metadata))))
@@ -690,7 +690,7 @@
                              :aggregation [[:count]]
                              :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
-                          qp/query->preprocessed
+                          qp/preprocess
                           add/add-alias-info
                           :query
                           nest-query/nest-expressions)))))))

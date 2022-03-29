@@ -799,7 +799,7 @@
                                                                            :id (mt/id :products :category))
                                                           :database_type "VARCHAR"
                                                           :name          "CATEGORY"}]]
-                                       (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
+                                       (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)

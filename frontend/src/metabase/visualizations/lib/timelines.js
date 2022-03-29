@@ -6,7 +6,6 @@ import timeseriesScale from "./timeseriesScale";
 
 const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_LARGE_SCALE = 0.35;
 const ICON_X = -ICON_SIZE;
 const ICON_Y = 10;
 const TEXT_X = 10;
@@ -63,10 +62,8 @@ function getIconFillRule(events) {
   return ICON_PATHS[icon].attrs?.fillRule;
 }
 
-function getIconTransform(events) {
-  const icon = getIcon(events);
-  const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
-  return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
+function getIconTransform() {
+  return `scale(${ICON_SCALE}) translate(${ICON_X}, ${ICON_Y})`;
 }
 
 function getIconLabel(events) {
@@ -151,7 +148,7 @@ function renderEventTicks({
     .attr("class", "event-icon")
     .attr("d", d => getIconPath(d))
     .attr("fill-rule", d => getIconFillRule(d))
-    .attr("transform", d => getIconTransform(d))
+    .attr("transform", () => getIconTransform())
     .attr("aria-label", d => getIconLabel(d));
 
   eventTicks
@@ -159,7 +156,7 @@ function renderEventTicks({
     .attr("fill", "none")
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
-    .attr("transform", d => getIconTransform(d));
+    .attr("transform", () => getIconTransform());
 
   eventTicks
     .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
@@ -190,7 +187,7 @@ function renderEventTicks({
       onOpenTimelines();
 
       if (isSelected(d, selectedEventIds)) {
-        onDeselectTimelineEvents(d);
+        onDeselectTimelineEvents();
       } else {
         onSelectTimelineEvents(d);
       }

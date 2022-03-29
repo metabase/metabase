@@ -31,7 +31,7 @@ describe("Bookmarks in a collection page", () => {
     cy.icon("bookmark").click();
 
     navigationSidebar().within(() => {
-      getSectionTitle("Bookmarks");
+      getSectionTitle(/Bookmarks/);
       cy.findByText(adminPersonalCollectionName);
 
       // Once there is a list of bookmarks,
@@ -47,7 +47,7 @@ describe("Bookmarks in a collection page", () => {
     navigationSidebar().within(() => {
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
-      getSectionTitle("Bookmarks").should("not.exist");
+      getSectionTitle(/Bookmarks/).should("not.exist");
 
       // Once there is no list of bookmarks,
       // we remove the heading for the list of collections
@@ -73,7 +73,24 @@ describe("Bookmarks in a collection page", () => {
       cy.icon("bookmark").click({ force: true });
     });
 
-    getSectionTitle("Bookmarks").should("not.exist");
+    getSectionTitle(/Bookmarks/).should("not.exist");
+  });
+
+  it("can toggle bookmark list visibility", () => {
+    cy.visit("/collection/1");
+
+    // Add bookmark
+    cy.icon("bookmark").click();
+
+    navigationSidebar().within(() => {
+      getSectionTitle(/Bookmarks/).click();
+
+      cy.findByText(adminPersonalCollectionName).should("not.exist");
+
+      getSectionTitle(/Bookmarks/).click();
+
+      cy.findByText(adminPersonalCollectionName);
+    });
   });
 });
 
@@ -84,7 +101,7 @@ function addThenRemoveBookmarkTo(itemName) {
   cy.findByText("Bookmark").click();
 
   navigationSidebar().within(() => {
-    getSectionTitle("Bookmarks");
+    getSectionTitle(/Bookmarks/);
     cy.findByText(itemName);
   });
 
@@ -93,7 +110,7 @@ function addThenRemoveBookmarkTo(itemName) {
   cy.findByText("Remove bookmark").click();
 
   navigationSidebar().within(() => {
-    getSectionTitle("Bookmarks").should("not.exist");
+    getSectionTitle(/Bookmarks/).should("not.exist");
     cy.findByText(itemName).should("not.exist");
   });
 }

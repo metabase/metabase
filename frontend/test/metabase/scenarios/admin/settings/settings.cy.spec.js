@@ -181,6 +181,7 @@ describe("scenarios > admin > settings", () => {
 
     openOrdersTable({ limit: 2 });
 
+    cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData")
       .should("contain", "Created At")
       .and("contain", "2019/2/11, 21:40");
@@ -193,6 +194,7 @@ describe("scenarios > admin > settings", () => {
 
     openOrdersTable({ limit: 2 });
 
+    cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
   });
 

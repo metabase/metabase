@@ -1,15 +1,36 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTimeline,
+} from "metabase-types/api/mocks";
 import TimelineEmptyState, {
   TimelineEmptyStateProps,
 } from "./TimelineEmptyState";
 
 describe("TimelineEmptyState", () => {
-  it("should allow event creation for users with write access", () => {
+  it("should allow event creation for users with write access to the collection", () => {
     const props = getProps({
       collection: createMockCollection({
         can_write: true,
+      }),
+    });
+
+    render(<TimelineEmptyState {...props} />);
+
+    const button = screen.getByRole("button", { name: "Add an event" });
+    expect(button).toBeInTheDocument();
+  });
+
+  it("should allow event creation for users with write access to a timeline", () => {
+    const props = getProps({
+      timelines: [
+        createMockTimeline({
+          collection: createMockCollection({ can_write: true }),
+        }),
+      ],
+      collection: createMockCollection({
+        can_write: false,
       }),
     });
 
@@ -36,6 +57,7 @@ describe("TimelineEmptyState", () => {
 const getProps = (
   opts?: Partial<TimelineEmptyStateProps>,
 ): TimelineEmptyStateProps => ({
+  timelines: [],
   collection: createMockCollection(),
   onNewEvent: jest.fn(),
   ...opts,

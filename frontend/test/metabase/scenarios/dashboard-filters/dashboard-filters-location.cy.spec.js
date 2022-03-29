@@ -5,6 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   setFilter,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
@@ -17,7 +18,7 @@ Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
         restore();
         cy.signInAsAdmin();
 
-        cy.visit("/dashboard/1");
+        visitDashboard(1);
 
         editDashboard();
         setFilter("Location", filter);

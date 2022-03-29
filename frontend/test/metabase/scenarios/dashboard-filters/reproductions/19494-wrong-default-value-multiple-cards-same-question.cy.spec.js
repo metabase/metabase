@@ -3,6 +3,7 @@ import {
   popover,
   editDashboard,
   saveDashboard,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 const filter1 = {
@@ -47,7 +48,7 @@ describe("issue 19494", () => {
   it("should correctly apply different filters with default values to all cards of the same question (metabase#19494)", () => {
     // Instead of using the API to connect filters to the cards,
     // let's use UI to replicate user experience as closely as possible
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
 

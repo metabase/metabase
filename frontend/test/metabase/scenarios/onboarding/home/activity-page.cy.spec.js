@@ -6,6 +6,7 @@ import {
   sidebar,
   editDashboard,
   saveDashboard,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
@@ -58,7 +59,7 @@ describe("metabase > scenarios > home > activity-page", () => {
   it("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {
     cy.intercept("GET", `/api/dashboard/1`).as("dashboard");
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.wait("@dashboard");
 
     editDashboard();

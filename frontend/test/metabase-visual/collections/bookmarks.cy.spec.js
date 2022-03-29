@@ -8,12 +8,16 @@ describe("Bookmarks in a collection page", () => {
   });
 
   it("updates sidebar and bookmark icon color when bookmarking a collection in its page", () => {
+    cy.request("POST", "/api/bookmark/card/1");
+    cy.request("POST", "/api/bookmark/card/2");
+    cy.request("POST", "/api/bookmark/card/3");
     cy.request("POST", "/api/bookmark/collection/1");
+    cy.request("POST", "/api/bookmark/dashboard/1");
 
     cy.visit("/collection/1");
 
     navigationSidebar().within(() => {
-      getSectionTitle("Bookmarks");
+      getSectionTitle(/Bookmarks/);
     });
 
     cy.percySnapshot();

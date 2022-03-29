@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -52,7 +56,7 @@ describe("scenarios > visualizations > scalar", () => {
               ],
             });
           });
-          cy.visit(`/dashboard/${dashboardId}`);
+          visitDashboard(dashboardId);
           cy.findByText("1.5T");
         });
       });

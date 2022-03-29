@@ -4,6 +4,7 @@ import {
   popover,
   sidebar,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -544,7 +545,7 @@ describe("scenarios > visualizations > pivot tables", () => {
                 ],
               });
               cy.log("Open the dashboard");
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+              visitDashboard(DASHBOARD_ID);
             });
           },
         );

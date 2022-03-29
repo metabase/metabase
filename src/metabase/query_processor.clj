@@ -250,11 +250,6 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
-(defn ^:deprecated query->preprocessed
-  "DEPRECATED: Use [[preprocess]] instead."
-  [query]
-  (preprocess query))
-
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL

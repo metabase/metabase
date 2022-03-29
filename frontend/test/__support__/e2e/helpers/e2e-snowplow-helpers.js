@@ -5,6 +5,10 @@ const SNOWPLOW_TIMEOUT = 1000;
 
 export const describeWithSnowplow = HAS_SNOWPLOW ? describe : describe.skip;
 
+export const enableTracking = () => {
+  cy.request("PUT", "/api/setting/anon-tracking-enabled", { value: true });
+};
+
 export const resetSnowplow = () => {
   sendSnowplowRequest("micro/reset");
 };
