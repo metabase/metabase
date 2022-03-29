@@ -7,7 +7,6 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
-import Tooltip from "metabase/components/Tooltip";
 import BookmarkEntity from "metabase/entities/bookmarks";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
@@ -56,13 +55,7 @@ const Label = ({ bookmark }: BookmarkProps) => {
 
   return (
     <LabelContainer>
-      {icon.tooltip ? (
-        <Tooltip tooltip={icon.tooltip}>
-          <BookmarkIcon bookmark={bookmark} />
-        </Tooltip>
-      ) : (
-        <BookmarkIcon bookmark={bookmark} />
-      )}
+      <BookmarkIcon bookmark={bookmark} />
       {bookmark.name}
     </LabelContainer>
   );
@@ -117,9 +110,7 @@ const CollectionSidebarBookmarks = ({
                 </Link>
 
                 <button onClick={() => handleDeleteBookmark(bookmark)}>
-                  <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                    <Icon name="bookmark" />
-                  </Tooltip>
+                  <Icon name="bookmark" />
                 </button>
               </BookmarkContainer>
             );
