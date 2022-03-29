@@ -26,13 +26,13 @@ const Bookmarks = createEntity({
 });
 
 function getEntityFor(type) {
-  const getters = {
+  const entities = {
     card: Question,
     collection: Collection,
     dashboard: Dashboard,
   };
 
-  return getters[type];
+  return entities[type];
 }
 
 export function getIcon(bookmark) {

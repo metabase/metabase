@@ -23,7 +23,7 @@ import {
 
 import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
-interface LabelProps {
+interface BookmarkProps {
   bookmark: Bookmark;
 }
 
@@ -38,7 +38,7 @@ interface IconProps {
   isOfficial?: boolean;
 }
 
-const BookmarkIcon = ({ bookmark }: { bookmark: Bookmark }) => {
+const BookmarkIcon = ({ bookmark }: BookmarkProps) => {
   const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
   const isCollection = bookmark.type === "collection";
   const isRegularCollection =
@@ -51,7 +51,7 @@ const BookmarkIcon = ({ bookmark }: { bookmark: Bookmark }) => {
   return <BookmarkTypeIcon {...icon} color={iconColor} opacity={iconOpacity} />;
 };
 
-const Label = ({ bookmark }: LabelProps) => {
+const Label = ({ bookmark }: BookmarkProps) => {
   const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
 
   return (
