@@ -17,6 +17,7 @@ import {
   sidebar,
   openNativeEditor,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -407,7 +408,7 @@ describe("collection permissions", () => {
               describe("managing dashboard from the dashboard's edit menu", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
-                  cy.visit("/dashboard/1");
+                  visitDashboard(1);
                   cy.icon("ellipsis").click();
                 });
 
@@ -592,7 +593,7 @@ describe("collection permissions", () => {
             describe("managing dashboard from the dashboard's edit menu", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
-                cy.visit("/dashboard/1");
+                visitDashboard(1);
                 cy.icon("ellipsis")
                   .should("be.visible")
                   .click();
@@ -603,7 +604,7 @@ describe("collection permissions", () => {
 
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
-                cy.visit("/dashboard/1");
+                visitDashboard(1);
                 cy.icon("ellipsis")
                   .should("be.visible")
                   .click();
@@ -615,7 +616,7 @@ describe("collection permissions", () => {
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
                 const { first_name, last_name } = USERS[user];
-                cy.visit("/dashboard/1");
+                visitDashboard(1);
                 cy.wait("@collections");
                 cy.icon("ellipsis")
                   .should("be.visible")
@@ -710,7 +711,7 @@ describe("collection permissions", () => {
               });
 
               it("should be able to revert the dashboard (metabase#15237)", () => {
-                cy.visit("/dashboard/1");
+                visitDashboard(1);
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
                 clickRevert("created this");
@@ -777,7 +778,7 @@ describe("collection permissions", () => {
             describe(`${user} user`, () => {
               it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
-                cy.visit("/dashboard/1");
+                visitDashboard(1);
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
                 cy.findAllByRole("button", { name: "Revert" }).should(
@@ -861,7 +862,7 @@ function assertOnRequest(xhr_alias) {
 }
 
 function visitAndEditDashboard(id) {
-  cy.visit(`/dashboard/${id}`);
+  visitDashboard(id);
   cy.icon("pencil").click();
 }
 

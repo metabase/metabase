@@ -306,7 +306,7 @@ export default class View extends React.Component {
     return (
       <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
         {isNative ? (
-          <NativeQueryEditorContainer className="hide sm-show">
+          <NativeQueryEditorContainer>
             <NativeQueryEditor
               {...this.props}
               viewHeight={height}

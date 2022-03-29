@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
 import Tooltip from "metabase/components/Tooltip";
+import { getIcon } from "./getIcon";
 import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkContainer,
@@ -13,12 +14,16 @@ import BookmarksRoot, {
   BookmarkTypeIcon,
 } from "./Bookmarks.styled";
 
-import { SidebarHeading } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
+import {
+  SidebarHeading,
+  ToggleListDisplayButton,
+} from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
 import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
 
 interface LabelProps {
   name: string;
+  display?: string;
   type: BookmarkableEntities;
 }
 
@@ -27,18 +32,8 @@ interface CollectionSidebarBookmarksProps {
   deleteBookmark: (id: string, type: string) => void;
 }
 
-function getIconForEntityType(type: BookmarkableEntities) {
-  const icons = {
-    card: "grid",
-    collection: "folder",
-    dashboard: "dashboard",
-  };
-
-  return icons[type];
-}
-
-const Label = ({ name, type }: LabelProps) => {
-  const iconName = getIconForEntityType(type);
+const Label = ({ display, name, type }: LabelProps) => {
+  const iconName = getIcon(display, type);
   return (
     <LabelContainer>
       <BookmarkTypeIcon name={iconName} />
@@ -51,6 +46,12 @@ const CollectionSidebarBookmarks = ({
   bookmarks,
   deleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
+  const storedShouldDisplayBookmarks =
+    localStorage.getItem("shouldDisplayBookmarks") !== "false";
+  const [shouldDisplayBookmarks, setShouldDisplayBookmarks] = useState(
+    storedShouldDisplayBookmarks,
+  );
+
   if (bookmarks.length === 0) {
     return null;
   }
@@ -59,28 +60,46 @@ const CollectionSidebarBookmarks = ({
     deleteBookmark(id.toString(), type);
   };
 
+  const toggleBookmarkListVisibility = () => {
+    const booleanForLocalStorage = (!shouldDisplayBookmarks).toString();
+    localStorage.setItem("shouldDisplayBookmarks", booleanForLocalStorage);
+
+    setShouldDisplayBookmarks(!shouldDisplayBookmarks);
+  };
+
   return (
     <BookmarksRoot>
-      <SidebarHeading>{t`Bookmarks`}</SidebarHeading>
+      <SidebarHeading onClick={toggleBookmarkListVisibility}>
+        {t`Bookmarks`}{" "}
+        <ToggleListDisplayButton
+          name="play"
+          shouldDisplayBookmarks={shouldDisplayBookmarks}
+          size="8"
+        />
+      </SidebarHeading>
 
-      <BookmarkListRoot>
-        {bookmarks.map((bookmark, index) => {
-          const { id, name, type } = bookmark;
-          const url = Urls.bookmark({ id, name, type });
-          return (
-            <BookmarkContainer key={`bookmark-${id}`}>
-              <Link to={url}>
-                <Label name={name} type={type} />
-              </Link>
-              <button onClick={() => handleDeleteBookmark(bookmark)}>
-                <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                  <Icon name="bookmark" />
-                </Tooltip>
-              </button>
-            </BookmarkContainer>
-          );
-        })}
-      </BookmarkListRoot>
+      {shouldDisplayBookmarks && (
+        <BookmarkListRoot>
+          {bookmarks.map((bookmark, index) => {
+            const { id, name, type } = bookmark;
+            const url = Urls.bookmark({ id, name, type });
+
+            return (
+              <BookmarkContainer key={`bookmark-${id}`}>
+                <Link to={url}>
+                  <Label name={name} type={type} />
+                </Link>
+
+                <button onClick={() => handleDeleteBookmark(bookmark)}>
+                  <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
+                    <Icon name="bookmark" />
+                  </Tooltip>
+                </button>
+              </BookmarkContainer>
+            );
+          })}
+        </BookmarkListRoot>
+      )}
     </BookmarksRoot>
   );
 };

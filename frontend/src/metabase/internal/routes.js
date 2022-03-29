@@ -1,6 +1,8 @@
 import React, { Fragment } from "react";
 import { Route, IndexRedirect } from "react-router";
 
+import { isProduction } from "metabase/env";
+
 import {
   Archived,
   GenericError,
@@ -35,32 +37,36 @@ import { InternalLayout } from "metabase/internal/components/Layout";
 const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
 export default (
-  <Route component={InternalLayout}>
-    <IndexRedirect to="welcome" />
-    <Route path="welcome" component={WelcomePage} />
-    <Route path="type" component={TypePage} />
-    <Route path="icons" component={IconsPage} />
-    <Route path="colors" component={ColorsPage} />
-    <Route path="components/:componentName" component={ComponentsPage} />
-    <Route path="modals" component={ModalsPage} />
-    <Route path="static-viz" component={StaticVizPage} />
-    {/* Legacy App pages - not really style guide related, but keep for now */}
-    {Object.entries(APPS).map(
-      ([name, Component], routeIndex) =>
-        Component && (
-          <Fragment key={routeIndex}>
-            {Component.routes || (
-              <Route path={name.toLowerCase()} component={Component} />
-            )}
-          </Fragment>
-        ),
+  <>
+    {!isProduction && (
+      <Route component={InternalLayout}>
+        <IndexRedirect to="welcome" />
+        <Route path="welcome" component={WelcomePage} />
+        <Route path="type" component={TypePage} />
+        <Route path="icons" component={IconsPage} />
+        <Route path="colors" component={ColorsPage} />
+        <Route path="components/:componentName" component={ComponentsPage} />
+        <Route path="modals" component={ModalsPage} />
+        <Route path="static-viz" component={StaticVizPage} />
+        {/* Legacy App pages - not really style guide related, but keep for now */}
+        {Object.entries(APPS).map(
+          ([name, Component], routeIndex) =>
+            Component && (
+              <Fragment key={routeIndex}>
+                {Component.routes || (
+                  <Route path={name.toLowerCase()} component={Component} />
+                )}
+              </Fragment>
+            ),
+        )}
+        <Route path="errors">
+          <Route path="404" component={NotFound} />
+          <Route path="archived" component={Archived} />
+          <Route path="unauthorized" component={Unauthorized} />
+          <Route path="generic" component={GenericError} />
+          <Route path="details" component={ErrorWithDetails} />
+        </Route>
+      </Route>
     )}
-    <Route path="errors">
-      <Route path="404" component={NotFound} />
-      <Route path="archived" component={Archived} />
-      <Route path="unauthorized" component={Unauthorized} />
-      <Route path="generic" component={GenericError} />
-      <Route path="details" component={ErrorWithDetails} />
-    </Route>
-  </Route>
+  </>
 );

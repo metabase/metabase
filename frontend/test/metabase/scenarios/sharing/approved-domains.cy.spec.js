@@ -5,6 +5,7 @@ import {
   setupSMTP,
   sidebar,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 const allowedDomain = "metabase.test";
@@ -55,7 +56,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("share").click();
     cy.findByText("Dashboard subscriptions").click();
     cy.findByText("Email it").click();
@@ -71,7 +72,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a dashboard subscription in the audit app", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("share").click();
     cy.findByText("Dashboard subscriptions").click();
     cy.findByText("Email it").click();

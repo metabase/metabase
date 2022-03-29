@@ -40,7 +40,6 @@ const TimelinePanel = ({
       {!isEmpty ? (
         <TimelineList
           timelines={timelines}
-          collection={collection}
           visibleTimelineIds={visibleTimelineIds}
           selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
@@ -48,7 +47,11 @@ const TimelinePanel = ({
           onArchiveEvent={onArchiveEvent}
         />
       ) : (
-        <TimelineEmptyState collection={collection} onNewEvent={onNewEvent} />
+        <TimelineEmptyState
+          timelines={timelines}
+          collection={collection}
+          onNewEvent={onNewEvent}
+        />
       )}
     </PanelRoot>
   );

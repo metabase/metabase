@@ -34,9 +34,6 @@ describe("issue 18729", () => {
 
   ["csv", "xlsx"].forEach(fileType => {
     it(`should properly format the 'X of Y'dates in ${fileType} exports (metabase#18729)`, () => {
-      // TODO: Remove this line once the issue gets resolved
-      cy.skipOn(fileType === "xlsx");
-
       visitQuestionAdhoc(questionDetails);
 
       downloadAndAssert({ fileType }, assertion);

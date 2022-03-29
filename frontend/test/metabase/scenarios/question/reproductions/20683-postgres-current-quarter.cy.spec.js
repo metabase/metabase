@@ -1,6 +1,6 @@
 import { restore, visualize } from "__support__/e2e/cypress";
 
-describe.skip("issue 20683", () => {
+describe("issue 20683", () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

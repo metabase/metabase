@@ -2,7 +2,6 @@
   "Tests for /api/table endpoints."
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
@@ -127,7 +126,7 @@
 (defn- default-dimension-options []
   (as-> @#'table-api/dimension-options-for-response options
        (m/map-vals #(update % :name str) options)
-       (walk/keywordize-keys options)
+       (m/map-keys #(Long/parseLong %) options)
        ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
        (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
@@ -643,7 +642,7 @@
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)
-         :let [{clause :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+         :let [{clause :mbql} (get-in response [:dimension_options (Long/parseLong dim-index)])]]
      clause)))
 
 (deftest numeric-binning-options-test
@@ -713,7 +712,7 @@
         (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
           (mt/dataset test-data-with-time
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
-              (is (= []
+              (is (= @#'table-api/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))
 
 (deftest nested-queries-binning-options-test
