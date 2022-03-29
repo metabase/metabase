@@ -53,19 +53,28 @@ const TimelineSidebar = ({
   );
 
   return (
-    <SidebarContent title={t`Events`} onClose={onClose}>
+    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
       <TimelinePanel
         timelines={timelines}
         collectionId={question.collectionId()}
         visibleTimelineIds={visibleTimelineIds}
         selectedEventIds={selectedTimelineEventIds}
-        xDomain={xDomain}
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
         onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>
   );
+};
+
+const formatTitle = (xDomain?: [Moment, Moment]) => {
+  return xDomain
+    ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
+    : t`Events`;
+};
+
+const formatDate = (date: Moment) => {
+  return date.format("ll");
 };
 
 export default TimelineSidebar;
