@@ -20,9 +20,9 @@
   (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :download]))
 
 (deftest update-db-download-permissions-test
-  (premium-features-test/with-premium-features #{:advanced-permissions}
-    (mt/with-model-cleanup [Permissions]
-      (mt/with-temp PermissionsGroup [{group-id :id}]
+  (mt/with-model-cleanup [Permissions]
+    (mt/with-temp PermissionsGroup [{group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Download perms for all schemas can be set and revoked"
           (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full})
           (is (= {:schemas :full, :native :full}
@@ -83,7 +83,16 @@
                                                                                             id-4 :full}}})
             (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
                     :native :full}
-                   (download-perms-by-group-id group-id)))))))))
+                   (download-perms-by-group-id group-id))))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't set download permissions without having the advanced-permissions premium feature"
+               (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full}))))))))
+
+
 
 ;; The following tests are for the specific edge case of updating native download perms during sync if new tables are
 ;; discovered, or if tables are removed, since both events can potentially change the expected native download perms
@@ -124,7 +133,8 @@
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))
                                    (assoc limited-downloads-id :limited))}}]
-          (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph)
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph))
           (is (= :limited (all-users-native-download-perms)))
           (replace-tables ["Table 1" "Table 2" "Table 3" "Table 4"])
           (sync-tables/sync-tables-and-database! database)

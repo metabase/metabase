@@ -99,7 +99,6 @@
         (when-not (str/blank? body)
           body)))))
 
-
 ;;; authentication
 
 (declare client)

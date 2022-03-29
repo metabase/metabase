@@ -528,8 +528,7 @@ export const selectedTimelineEventIds = handleActions(
       next: (state, { payload: events = [] }) => events.map(e => e.id),
     },
     [DESELECT_TIMELINE_EVENTS]: {
-      next: (state, { payload: events = [] }) =>
-        _.without(state, ...events.map(e => e.id)),
+      next: () => [],
     },
     [HIDE_TIMELINES]: {
       next: (state, { payload: timelines }) =>
