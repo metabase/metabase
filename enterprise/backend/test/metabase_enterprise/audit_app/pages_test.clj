@@ -6,7 +6,8 @@
             [clojure.tools.namespace.find :as ns-find]
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
+            [metabase.models :refer [Card Dashboard DashboardCard Database Table PermissionsGroup PermissionsGroupMembership]]
+            [metabase.models.permissions :as perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
@@ -15,7 +16,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [ring.util.codec :as codec]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -38,7 +40,27 @@
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
                                         :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error])))))))
+                 (select-keys [:status :error]))))))
+
+  (testing "non-admin users with monitoring permissions"
+    (mt/with-temp PermissionsGroup [group]
+      (db/insert! PermissionsGroupMembership {:user_id (mt/user->id :lucky), :group_id (:id group)})
+      (perms/grant-general-permissions! group :monitoring)
+      (testing "still fail if advanced-permissions is disabled"
+        (premium-features-test/with-premium-features #{:audit-app}
+          (is (= {:status "failed", :error "You don't have permissions to do that."}
+                 (-> (mt/user-http-request :lucky :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status :error]))))))
+
+      (testing "run successfully if advanced-permissions enabled)"
+        (premium-features-test/with-premium-features #{:audit-app :advanced-permissions}
+          (is (= {:status "completed"}
+                 (-> (mt/user-http-request :lucky :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status])))))))))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."
