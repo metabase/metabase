@@ -25,7 +25,7 @@ const Bookmarks = createEntity({
   },
 });
 
-function defineIconGetter(type) {
+function getEntityFor(type) {
   const getters = {
     card: Question,
     collection: Collection,
@@ -36,13 +36,8 @@ function defineIconGetter(type) {
 }
 
 export function getIcon(bookmark) {
-  const { type } = bookmark;
-
-  const getter = defineIconGetter(type);
-
-  const { name, tooltip } = getter.objectSelectors.getIcon(bookmark);
-
-  return { name, tooltip };
+  const bookmarkEntity = getEntityFor(bookmark.type);
+  return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }
 
 export default Bookmarks;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
@@ -34,15 +35,21 @@ interface CollectionSidebarBookmarksProps {
 interface IconProps {
   name: string;
   tooltip?: string;
+  isOfficial?: boolean;
 }
 
-const BookmarkIcon = ({ icon }: { icon: IconProps }) => (
-  <BookmarkTypeIcon
-    color={icon.tooltip ? color("warning") : color("brand")}
-    name={icon.name}
-    opacity={icon.tooltip ? 1 : 0.5}
-  />
-);
+const BookmarkIcon = ({ bookmark }: { bookmark: Bookmark }) => {
+  const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
+  const isCollection = bookmark.type === "collection";
+  const isRegularCollection =
+    isCollection && PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+  const isOfficial = isCollection && !isRegularCollection;
+
+  const iconColor = isOfficial ? color("warning") : color("brand");
+  const iconOpacity = isOfficial ? 1 : 0.5;
+
+  return <BookmarkTypeIcon {...icon} color={iconColor} opacity={iconOpacity} />;
+};
 
 const Label = ({ bookmark }: LabelProps) => {
   const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
@@ -51,10 +58,10 @@ const Label = ({ bookmark }: LabelProps) => {
     <LabelContainer>
       {icon.tooltip ? (
         <Tooltip tooltip={icon.tooltip}>
-          <BookmarkIcon icon={icon} />
+          <BookmarkIcon bookmark={bookmark} />
         </Tooltip>
       ) : (
-        <BookmarkIcon icon={icon} />
+        <BookmarkIcon bookmark={bookmark} />
       )}
       {bookmark.name}
     </LabelContainer>
