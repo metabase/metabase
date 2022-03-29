@@ -20,5 +20,5 @@ export const MODAL_TYPES = {
 
 export const SIDEBAR_SIZES = {
   NORMAL: 355,
-  TIMELINE: 416,
+  TIMELINE: 300,
 };
