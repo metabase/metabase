@@ -73,7 +73,6 @@ export const EntityMenuContainer = styled.div`
   display: flex;
   position: relative;
   align-items: center;
-  margin-left: auto;
   padding-left: 0.5rem;
   z-index: 2;
 
