@@ -162,6 +162,7 @@
                         :can_write
                         :average_query_time
                         :last_query_start
+                        :persisted
                         :collection [:moderation_reviews :moderator_details])
                api/read-check
                (last-edit/with-last-edit-info :card))
@@ -772,7 +773,8 @@
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (:persist-models (:details database))
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models-enabled database)
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
@@ -808,7 +810,7 @@
        #(ddl.i/refresh! (:engine database) database persisted-info))
       api/generic-204-no-content)))
 
-(api/defendpoint DELETE "/:card-id/persist"
+(api/defendpoint POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]

@@ -47,6 +47,8 @@
 
 (defmethod driver/database-supports? [:postgres :persist-models] [_driver _feat _db]
   true)
+(defmethod driver/database-supports? [:postgres :persist-models-enabled] [_driver _feat db]
+  (-> db :details :persist-models))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))

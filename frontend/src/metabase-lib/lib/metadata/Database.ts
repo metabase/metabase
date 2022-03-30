@@ -101,7 +101,7 @@ export default class Database extends Base {
   }
 
   isPersisted() {
-    return this.details["persist-models"];
+    return this.hasFeature("persist-models-enabled");
   }
 
   supportsPersistence() {

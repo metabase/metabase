@@ -573,7 +573,7 @@
   {:id su/IntGreaterThanZero}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
-    (if (-> database :details :persist-models)
+    (if (-> database :details :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
       (let [[success? error] (ddl.i/check-can-persist database)
@@ -581,7 +581,7 @@
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :details (assoc (:details database)
-                                                      :persist-models true))
+                                                      :persist-models-enabled true))
               (classloader/require 'metabase.task.persist-refresh)
               ((resolve 'metabase.task.persist-refresh/schedule-persistence-for-database) database)
               api/generic-204-no-content)
@@ -596,9 +596,8 @@
   {:id su/IntGreaterThanZero}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
-    (if (-> database :details :persist-models)
-      (do (db/update! Database id :details (assoc (:details database)
-                                                  :persist-models false))
+    (if (-> database :details :persist-models-enabled)
+      (do (db/update! Database id :details (dissoc (:details database) :persist-models-enabled))
           (db/update-where! PersistedInfo {:database_id id}
                             :active false, :state "deleteable")
           (ddl.concurrent/submit-task

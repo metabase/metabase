@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
+            [toucan.db :as db]
             [toucan.models :as models]))
 
 (def ^:dynamic *allow-persisted-substitution*
@@ -28,3 +29,9 @@
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:columns :json})}))
+
+(defn persisted?
+  "Hydrate a card :is_persisted for the frontend."
+  {:hydrate :persisted}
+  [card]
+  (db/exists? PersistedInfo :card_id (:id card)))

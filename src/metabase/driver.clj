@@ -397,6 +397,8 @@
 
     ;; Does the driver support persisting models
     :persist-models
+    ;; Is persisting enabled?
+    :persist-models-enabled
 
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
