@@ -6,6 +6,10 @@ export const LayoutRoot = styled.div`
   background-color: ${color("bg-light")};
 `;
 
+export const LayoutBody = styled.div`
+  padding: 4rem 7rem;
+`;
+
 export const LayoutScene = styled.div`
   position: absolute;
   left: 0;

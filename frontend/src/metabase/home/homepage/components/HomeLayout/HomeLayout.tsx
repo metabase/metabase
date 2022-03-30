@@ -1,11 +1,17 @@
-import React from "react";
-import { LayoutRoot, LayoutScene, LayoutSceneImage } from "./HomeLayout.styled";
+import React, { ReactNode } from "react";
+import {
+  LayoutBody,
+  LayoutRoot,
+  LayoutScene,
+  LayoutSceneImage,
+} from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
   showScene?: boolean;
+  children?: ReactNode;
 }
 
-const HomeLayout = ({ showScene }: HomeLayoutProps): JSX.Element => {
+const HomeLayout = ({ showScene, children }: HomeLayoutProps): JSX.Element => {
   return (
     <LayoutRoot>
       {showScene && (
@@ -16,6 +22,7 @@ const HomeLayout = ({ showScene }: HomeLayoutProps): JSX.Element => {
           />
         </LayoutScene>
       )}
+      <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
 };
