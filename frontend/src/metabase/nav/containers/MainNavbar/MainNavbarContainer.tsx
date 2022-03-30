@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { IconProps } from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { Bookmark, Collection, User } from "metabase-types/api";
@@ -10,14 +11,13 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
+  buildCollectionTree,
 } from "metabase/entities/collections";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
-  buildCollectionTree,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
-  CollectionTreeItem,
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -30,6 +30,11 @@ function mapStateToProps(state: unknown) {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
   };
+}
+
+interface CollectionTreeItem extends Collection {
+  icon: string | IconProps;
+  children: CollectionTreeItem[];
 }
 
 type Props = {
