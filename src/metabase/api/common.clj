@@ -95,22 +95,6 @@
   []
   (check-403 *is-superuser?*))
 
-(defn check-has-general-permission
-  "If `advanced-permissions` is enabled, check `*current-user*` has general permission of type `perm-type`.
-  Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."
-  ([perm-type]
-   (check-has-general-permission perm-type true))
-
-  ([perm-type require-superuser?]
-   (classloader/require 'metabase.public-settings.premium-features
-                        'metabase.models.permissions)
-   (if ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
-     (check-403 (or *is-superuser?*
-                    ((resolve 'metabase.models.permissions/set-has-general-permission-of-type)
-                     @*current-user-permissions-set* perm-type)))
-     (when require-superuser?
-       (check-superuser)))))
-
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.
 

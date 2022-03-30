@@ -2,6 +2,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util.i18n :as ui18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common
@@ -17,3 +19,17 @@
   []
   (api/check (public-settings/enable-embedding)
     [400 (tru "Embedding is not enabled.")]))
+
+(defn check-has-general-permission?
+  "If `advanced-permissions` is enabled, check `*current-user*` has general permission of type `perm-type`.
+  Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."
+  ([perm-type]
+   (check-has-general-permission? perm-type true))
+
+  ([perm-type require-superuser?]
+   (classloader/require 'metabase-enterprise.advanced-permissions.common)
+   (if (and (premium-features/enable-advanced-config?)
+            (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
+     (api/check-403 ((resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?) perm-type))
+     (when #p require-superuser?
+       (api/check-superuser)))))

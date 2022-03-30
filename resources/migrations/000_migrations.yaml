@@ -1,4 +1,4 @@
-  databaseChangeLog:
+databaseChangeLog:
   - property:
       name: timestamp_type
       value: timestamp with time zone

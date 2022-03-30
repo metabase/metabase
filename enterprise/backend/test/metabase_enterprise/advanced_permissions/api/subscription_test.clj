@@ -7,7 +7,7 @@
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]))
 
-(defmacro ^:private temporarily-disable-subscription-for-all-users
+(defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
   Use it when we need to isolate a user's permissions during tests."
   [& body]
@@ -19,7 +19,7 @@
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
-    (temporarily-disable-subscription-for-all-users
+    (with-subscription-disabled-for-all-users
      (mt/with-user-in-groups
        [group {:name "New Group"}
         user  [group]]
@@ -36,21 +36,25 @@
                                           :schedule_hour 12
                                           :recipients    []}]}
                create-pulse (fn [status]
-                              (mt/user-http-request user :post status "pulse"
-                                                    pulse-default))
+                              (testing "create pulse"
+                                (mt/user-http-request user :post status "pulse"
+                                                      pulse-default)))
                update-pulse (fn [status]
-                              (mt/user-http-request user :put status (format "pulse/%d" (:id pulse))
-                                                    (merge pulse-default {:name "New Name"})))
+                              (testing "update pulse"
+                                (mt/user-http-request user :put status (format "pulse/%d" (:id pulse))
+                                                      (merge pulse-default {:name "New Name"}))))
                get-form     (fn [status]
-                              (mt/user-http-request user :get status "pulse/form_input"))]
+                              (testing "get form input"
+                                (mt/user-http-request user :get status "pulse/form_input")))]
            (testing "user's group has no subscription permissions"
              (perms/revoke-general-permissions! group :subscription)
-             (testing "should success if `advanced-permissions` is disabled"
+             (testing "should succeed if `advanced-permissions` is disabled"
                (premium-features-test/with-premium-features #{}
                  (create-pulse 200)
                  (update-pulse 200)
                  (get-form 200)))
-             (testing "should failed if `advanced-permissions` is enabled"
+
+             (testing "should fail if `advanced-permissions` is enabled"
                (premium-features-test/with-premium-features #{:advanced-permissions}
                  (create-pulse 403)
                  (update-pulse 403)
@@ -59,14 +63,14 @@
            (testing "User's group with subscription permission"
              (perms/grant-general-permissions! group :subscription)
              (premium-features-test/with-premium-features #{:advanced-permissions}
-               (testing "should success if `advanced-permissions` is enabled"
+               (testing "should succeed if `advanced-permissions` is enabled"
                  (create-pulse 200)
                  (update-pulse 200)
                  (get-form 200))))))))))
 
 (deftest alert-permissions-test
   (testing "/api/alert/*"
-    (temporarily-disable-subscription-for-all-users
+    (with-subscription-disabled-for-all-users
      (mt/with-user-in-groups
        [group {:name "New Group"}
         user  [group]]
@@ -95,12 +99,12 @@
 
            (testing "user's group has no subscription permissions"
              (perms/revoke-general-permissions! group :subscription)
-             (testing "should success if `advanced-permissions` is disabled"
+             (testing "should succeed if `advanced-permissions` is disabled"
                (premium-features-test/with-premium-features #{}
                  (create-alert 200)
                  (update-alert 200)))
 
-             (testing "should failed if `advanced-permissions` is enabled"
+             (testing "should fail if `advanced-permissions` is enabled"
                (premium-features-test/with-premium-features #{:advanced-permissions}
                  (create-alert 403)
                  (update-alert 403))))
@@ -108,6 +112,6 @@
            (testing "User's group with subscription permission"
              (perms/grant-general-permissions! group :subscription)
              (premium-features-test/with-premium-features #{:advanced-permissions}
-               (testing "should success if `advanced-permissions` is enabled"
+               (testing "should succeed if `advanced-permissions` is enabled"
                  (create-alert 200)
                  (update-alert 200))))))))))
