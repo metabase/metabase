@@ -253,11 +253,12 @@
                    :common_name             "Rasta Toucan"
                    :group_ids               [(u/the-id (group/all-users))]
                    :personal_collection_id  true
+                   :is_installer (= 1 (mt/user->id :rasta))
                    :has_invited_second_user (= 1 (mt/user->id :rasta))})
-                 (dissoc :is_qbnewb :last_login))
+                 (dissoc :is_qbnewb :last_login :has_question_and_dashboard))
              (-> (mt/user-http-request :rasta :get 200 "user/current")
                  mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :last_login)))))))
+                 (dissoc :is_qbnewb :last_login :has_question_and_dashboard)))))))
 
 (deftest get-user-test
   (testing "GET /api/user/:id"
