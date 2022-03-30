@@ -16,6 +16,7 @@ export const LayoutScene = styled.div`
 
 export const LayoutSceneImage = styled.img`
   position: relative;
+  left: -64px;
   bottom: -3px;
   mix-blend-mode: multiply;
 `;
