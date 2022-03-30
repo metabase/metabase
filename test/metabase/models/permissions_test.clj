@@ -655,7 +655,9 @@
                         :schemas :all}
                        :download
                        {:native  :full
-                        :schemas :full}}}
+                        :schemas :full}
+                       :data-model
+                       {:schemas :all}}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))
