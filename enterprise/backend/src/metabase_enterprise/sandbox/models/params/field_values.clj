@@ -14,6 +14,7 @@
             [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 (def ^:private ^{:arglist '([last-updated field])} fetch-sandboxed-field-values*
   (memoize/ttl
