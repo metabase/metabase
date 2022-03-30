@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { createEntity, undo } from "metabase/lib/entities";
 
 import { color } from "metabase/lib/colors";
@@ -323,4 +324,37 @@ function byCollectionUrlId(state, { params, location }) {
  */
 function byCollectionQueryParameter(state, { location }) {
   return location && location.query && location.query.collectionId;
+}
+
+function hasIntersection(list1, list2) {
+  if (!list2) {
+    return false;
+  }
+  return _.intersection(list1, list2).length > 0;
+}
+
+export function buildCollectionTree(collections, { targetModels } = {}) {
+  if (collections == null) {
+    return [];
+  }
+
+  const shouldFilterCollections = Array.isArray(targetModels);
+
+  return collections.flatMap(collection => {
+    const hasTargetModels =
+      !shouldFilterCollections ||
+      hasIntersection(targetModels, collection.below) ||
+      hasIntersection(targetModels, collection.here);
+
+    return hasTargetModels
+      ? {
+          ...collection,
+          schemaName: collection.originalName || collection.name,
+          icon: getCollectionIcon(collection),
+          children: buildCollectionTree(collection.children || [], {
+            targetModels,
+          }),
+        }
+      : [];
+  });
 }
