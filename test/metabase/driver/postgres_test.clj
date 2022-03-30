@@ -275,16 +275,6 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
-(deftest json-columns-test
-  (mt/test-driver :postgres
-    (testing "Verify that we identify JSON columns and mark metadata properly during sync"
-      (mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
-                    ["venues"
-                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
-                     [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
-        (is (= :type/SerializedJSON
-               (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
-
 (deftest ^:parallel json-query-test
   (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
@@ -326,6 +316,12 @@
                                   "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
                                   "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= :type/SerializedJSON
+                 (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
+                     (:fields)
+                     (:take 1)
+                     (first)
+                     (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
                      :database-type     nil,
                      :base-type         :type/Integer,
