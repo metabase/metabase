@@ -6,6 +6,7 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
+import Database from "metabase-lib/lib/metadata/Database";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -106,7 +107,8 @@ export const initializeDatabase = function(databaseId) {
         const action = await dispatch(
           Databases.actions.fetch({ id: databaseId }, { reload: true }),
         );
-        const database = Databases.HACK_getObjectFromAction(action);
+        const payload = Databases.HACK_getObjectFromAction(action);
+        const database = new Database(payload);
         dispatch.action(INITIALIZE_DATABASE, database);
 
         // If the new scheduling toggle isn't set, run the migration

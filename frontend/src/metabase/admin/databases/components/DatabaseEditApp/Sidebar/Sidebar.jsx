@@ -87,9 +87,9 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            {database.features["persist-models"] && (
+            {database.supportsPersistence() && (
               <li className="mt2">
-                {database.details["persist-models"] ? (
+                {database.isPersisted() ? (
                   <ActionButton
                     actionFn={() => unpersistDatabase(database.id)}
                     className="Button Button--danger"
