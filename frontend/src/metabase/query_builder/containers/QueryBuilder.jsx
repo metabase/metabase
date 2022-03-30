@@ -184,6 +184,7 @@ function QueryBuilder(props) {
     params,
     fromUrl,
     uiControls,
+    isNativeEditorOpen,
     isAnySidebarOpen,
     closeNavbar,
     initializeQB,
@@ -211,6 +212,7 @@ function QueryBuilder(props) {
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
   const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
+  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
 
@@ -293,10 +295,19 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
-    if (isAnySidebarOpen && !wasShowingAnySidebar) {
+    if (
+      (isAnySidebarOpen && !wasShowingAnySidebar) ||
+      (isNativeEditorOpen && !wasNativeEditorOpen)
+    ) {
       closeNavbar();
     }
-  }, [isAnySidebarOpen, wasShowingAnySidebar, closeNavbar]);
+  }, [
+    isAnySidebarOpen,
+    wasShowingAnySidebar,
+    isNativeEditorOpen,
+    wasNativeEditorOpen,
+    closeNavbar,
+  ]);
 
   useEffect(() => {
     if (allLoaded && hasQuestion) {
