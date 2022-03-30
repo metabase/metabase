@@ -323,6 +323,7 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
+    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -334,6 +335,23 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
+    }
+
+    // sort query.joins[int].fields
+    if (query.query.joins) {
+      query = updateIn(query, ["query", "joins"], joins =>
+        joins.map(joinedTable => {
+          if (!joinedTable.fields || joinedTable.fields === "all") {
+            return joinedTable;
+          }
+
+          const joinedTableFields = [...joinedTable.fields];
+          joinedTableFields.sort((a, b) =>
+            JSON.stringify(b).localeCompare(JSON.stringify(a)),
+          );
+          return { ...joinedTable, fields: joinedTableFields };
+        }),
+      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
