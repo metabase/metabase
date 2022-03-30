@@ -1,10 +1,9 @@
 (ns metabase.api.common.validation
-  (:require
-   [metabase.api.common :as api]
-   [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util.i18n :as ui18n :refer [tru]]))
+  (:require [metabase.api.common :as api]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.util.i18n :as ui18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common
 
@@ -31,5 +30,5 @@
    (if (and (premium-features/enable-advanced-permissions?)
             (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
      (api/check-403 ((resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?) perm-type))
-     (when #p require-superuser?
+     (when require-superuser?
        (api/check-superuser)))))

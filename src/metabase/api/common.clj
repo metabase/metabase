@@ -9,7 +9,6 @@
              :refer
              [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
-            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
