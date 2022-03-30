@@ -155,18 +155,18 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (u/prog1 (-> (Card id)
-               (hydrate :creator
-                        :bookmarked
-                        :dashboard_count
-                        :can_write
-                        :average_query_time
-                        :last_query_start
-                        :persisted
-                        :collection [:moderation_reviews :moderator_details])
-               api/read-check
-               (last-edit/with-last-edit-info :card))
-    (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+  (let [card (-> (Card id)
+                 (hydrate :creator
+                          :bookmarked
+                          :dashboard_count
+                          :can_write
+                          :average_query_time
+                          :last_query_start
+                          :collection [:moderation_reviews :moderator_details])
+                 api/read-check
+                 (last-edit/with-last-edit-info :card))]
+    (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
+      (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*)))))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
