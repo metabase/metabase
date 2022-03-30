@@ -36,9 +36,17 @@ export default class SearchBar extends React.Component {
     }
     // deactivate search on navigation
     if (this.props.location !== nextProps.location) {
-      this.setState({ active: false });
+      this.setInactive();
     }
   }
+
+  setActive = () => {
+    this.setState({ active: true });
+  };
+
+  setInactive = () => {
+    this.setState({ active: false });
+  };
 
   _updateSearchTextFromUrl(props) {
     const components = props.location.pathname.split("/");
@@ -56,27 +64,22 @@ export default class SearchBar extends React.Component {
       ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
     ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
-      this.setState({ active: true });
+      this.setActive();
     }
   };
 
   render() {
     const { active, searchText } = this.state;
     return (
-      <OnClickOutsideWrapper
-        handleDismissal={() => this.setState({ active: false })}
-      >
-        <SearchWrapper
-          onClick={() => this.setState({ active: true })}
-          active={active}
-        >
+      <OnClickOutsideWrapper handleDismissal={this.setInactive}>
+        <SearchWrapper onClick={this.setActive} active={active}>
           <Icon name="search" ml={["10px", 2]} />
           <SearchInput
             ref={ref => (this.searchInput = ref)}
             value={searchText}
             maxLength={200}
             placeholder={t`Search` + "…"}
-            onClick={() => this.setState({ active: true })}
+            onClick={this.setActive}
             onChange={e => this.setState({ searchText: e.target.value })}
             onKeyPress={e => {
               if (e.key === "Enter" && (searchText || "").trim().length > 0) {
