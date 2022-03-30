@@ -77,7 +77,7 @@ export default class Navbar extends Component {
     const { isOpen, location, params, closeNavbar } = this.props;
     // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
-      <NavRoot className="Nav" isOpen={isOpen}>
+      <NavRoot className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <MainNavbar
           isOpen={isOpen}
           location={location}
