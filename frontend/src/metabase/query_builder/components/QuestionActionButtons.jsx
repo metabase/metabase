@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   checkDatabaseSupportsModels,
@@ -77,7 +77,7 @@ function QuestionActionButtons({
     isDataset &&
     checkDatabaseCanPersistDatasets(question.query().database());
 
-  const bookmarkButtonColor = isBookmarked ? colors["brand"] : "";
+  const bookmarkButtonColor = isBookmarked ? color("brand") : "";
 
   return (
     <Container data-testid="question-action-buttons">

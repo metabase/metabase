@@ -1,4 +1,4 @@
-name: Uberjar
+name: Build + Percy Test
 
 on:
   push:
@@ -8,9 +8,11 @@ on:
     - 'enterprise/frontend/test/**'
     - ".**"
     - "test*"
+    - "!frontend/test/metabase-visual/**"
 
 jobs:
   build:
+    name: Build MB ${{ matrix.edition }}
     runs-on: ubuntu-20.04
     timeout-minutes: 40
     strategy:
@@ -33,7 +35,7 @@ jobs:
 
   check_jar_health:
     runs-on: ubuntu-20.04
-    name: check ${{ matrix.edition }} (java ${{ matrix.java-version }})
+    name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: build
     timeout-minutes: 10
     strategy:
@@ -59,6 +61,7 @@ jobs:
 
   containerize_test_and_push_container:
     runs-on: ubuntu-20.04
+    name: Containerize ${{ matrix.edition }}
     needs: check_jar_health
     strategy:
       matrix:
@@ -118,3 +121,34 @@ jobs:
     - name: Retag and push images if branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+
+  percy:
+    name: Percy visual test
+    if: github.ref_name == 'master' || github.ref_name == 'main' || startsWith(github.ref_name,'release-')
+    runs-on: buildjet-8vcpu-ubuntu-2004
+    timeout-minutes: 30
+    needs: check_jar_health
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Prepare cypress environment
+        uses: ./.github/actions/prepare-cypress
+
+      - uses: actions/download-artifact@v3
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-oss-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+      - name: Percy Test
+        run: yarn run test-visual-no-build
+        env:
+          PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+        if: env.PERCY_TOKEN != null
