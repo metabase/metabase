@@ -8,6 +8,7 @@ import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
+import DashboardToaster from "metabase/dashboard/components/DashboardToaster";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
@@ -31,6 +32,8 @@ import {
   getShowAddQuestionSidebar,
   getFavicon,
   getDocumentTitle,
+  getRenderWebNotificationToast,
+  getShowWebNotificationToast,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -71,6 +74,8 @@ const mapStateToProps = (state, props) => {
     showAddQuestionSidebar: getShowAddQuestionSidebar(state),
     pageFavicon: getFavicon(state),
     documentTitle: getDocumentTitle(state),
+    renderToast: getRenderWebNotificationToast(state),
+    showToast: getShowWebNotificationToast(state),
   };
 };
 
@@ -112,6 +117,15 @@ export default class DashboardApp extends Component {
 
   render() {
     const { editingOnLoad, addCardOnLoad } = this.state;
+    const {
+      renderToast,
+      showToast,
+      dismissWebNotificationToast,
+      showWebNotificationToast,
+      confirmWebNotification,
+    } = this.props;
+
+    window.showWebNotificationToast = showWebNotificationToast;
 
     return (
       <div className="shrink-below-content-size full-height">
@@ -122,6 +136,14 @@ export default class DashboardApp extends Component {
         />
         {/* For rendering modal urls */}
         {this.props.children}
+        {renderToast && (
+          <DashboardToaster
+            message="Would you like to be notified when this dashboard is done loading?"
+            show={showToast}
+            onDismiss={dismissWebNotificationToast}
+            onConfirm={() => confirmWebNotification()}
+          />
+        )}
       </div>
     );
   }

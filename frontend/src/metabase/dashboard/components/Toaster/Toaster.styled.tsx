@@ -1,0 +1,52 @@
+import React from "react";
+import cx from "classnames";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+
+import { alpha, color, lighten } from "metabase/lib/colors";
+
+interface ToasterContainerProps {
+  show: boolean;
+}
+
+export const ToasterContainer = styled.div<ToasterContainerProps>`
+  display: flex;
+  flex-direction: row;
+  overflow-x: hidden;
+  max-width: 388px;
+  background-color: ${color("text-dark")};
+  padding: 16px;
+  border-radius: 6px;
+  position: relative;
+  top: ${props => (props.show ? "0px" : "10px")};
+  opacity: ${props => (props.show ? "1.0" : "0")};
+  transition: all 200ms ease-out;
+  column-gap: 16px;
+  align-items: center;
+`;
+
+export const ToasterMessage = styled.p`
+  color: ${color("white")};
+  width: 250px;
+  line-height: 24px;
+  font-size: 14px;
+  margin: 0px;
+`;
+
+export const ToasterButton = styled.button`
+  display: flex;
+  padding: 7px 18px;
+  background-color: ${alpha(color("bg-white"), 0.1)};
+  border-radius: 6px;
+  color: ${color("white")};
+  width: 90px;
+  height: fit-content;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background 200ms ease;
+
+  &:hover {
+    cursor: pointer;
+    background-color: ${alpha(color("bg-white"), 0.3)};
+  }
+`;
