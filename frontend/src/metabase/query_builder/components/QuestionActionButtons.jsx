@@ -8,7 +8,7 @@ import colors from "metabase/lib/colors";
 import {
   checkDatabaseSupportsModels,
   checkCanBeModel,
-  checkDatabaseSupportsPersistence,
+  checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -75,7 +75,7 @@ function QuestionActionButtons({
     canWrite &&
     isSaved &&
     isDataset &&
-    checkDatabaseSupportsPersistence(question.query().database());
+    checkDatabaseCanPersistDatasets(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? colors["brand"] : "";
 
