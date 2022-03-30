@@ -11262,7 +11262,7 @@ databaseChangeLog:
             sql: DELETE FROM permissions_group WHERE name = 'MetaBot'
 
   - changeSet:
-      id: v43.00-046
+      id: v43.00-048
       author: dpsutton
       comment: Added 0.43.0 - Persisted Info for models
       changes:
