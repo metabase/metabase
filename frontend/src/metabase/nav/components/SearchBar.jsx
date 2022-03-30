@@ -25,9 +25,11 @@ export default class SearchBar extends React.Component {
     this._updateSearchTextFromUrl(this.props);
     window.addEventListener("keyup", this.handleKeyUp);
   }
+
   componentWillUnmount() {
     window.removeEventListener("keyup", this.handleKeyUp);
   }
+
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
@@ -37,6 +39,7 @@ export default class SearchBar extends React.Component {
       this.setState({ active: false });
     }
   }
+
   _updateSearchTextFromUrl(props) {
     const components = props.location.pathname.split("/");
     if (components[components.length - 1] === "search") {
@@ -45,6 +48,7 @@ export default class SearchBar extends React.Component {
       this.setState({ searchText: "" });
     }
   }
+
   handleKeyUp = e => {
     const FORWARD_SLASH_KEY = 191;
     if (
