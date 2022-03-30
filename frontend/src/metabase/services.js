@@ -117,7 +117,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:id"),
   persist: POST("/api/card/:id/persist"),
-  unpersist: POST("/api/card/:cardId/unpersist"),
+  unpersist: POST("/api/card/:id/unpersist"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
