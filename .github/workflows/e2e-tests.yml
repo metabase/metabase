@@ -109,7 +109,7 @@ jobs:
     - name: Run Snowlow micro
       uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -124,7 +124,7 @@ jobs:
         TERM: xterm
 
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}

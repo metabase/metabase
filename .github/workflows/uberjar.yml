@@ -50,7 +50,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -79,7 +79,7 @@ jobs:
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v2
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: bin/docker/
@@ -137,7 +137,7 @@ jobs:
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar
