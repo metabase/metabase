@@ -45,9 +45,8 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :persisted-models] [_driver _feat db]
-  ;; todo: i absolutely hate the tense mismatch in persisted vs persist.
-  (-> db :details :persist-models))
+(defmethod driver/database-supports? [:postgres :persist-models] [_driver _feat _db]
+  true)
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))

@@ -767,8 +767,13 @@
   ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [{:keys [dataset dataset_query result_metadata database_id] :as card} (Card card-id)]
     (let [database (Database database_id)]
-      (when-not (driver/database-supports? (:engine database) :persisted-models database)
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not (:persist-models (:details database))
+        (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
       (when-not dataset

@@ -396,7 +396,7 @@
     :nested-queries
 
     ;; Does the driver support persisting models
-    :persisted-models
+    :persist-models
 
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
