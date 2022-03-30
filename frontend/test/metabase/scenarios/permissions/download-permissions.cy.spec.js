@@ -29,8 +29,6 @@ describeEE("scenarios > admin > permissions", () => {
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
 
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
-
     cy.button("Save changes").click();
 
     modal().within(() => {
@@ -67,8 +65,6 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Change").click();
     });
 
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
-
     cy.button("Save changes").click();
 
     modal().within(() => {
@@ -80,18 +76,6 @@ describeEE("scenarios > admin > permissions", () => {
     assertPermissionTable([
       ["Administrators", "Unrestricted", "Yes", "1 million rows"],
       ["All Users", "Unrestricted", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
-
-    // Shows granular download permission on the database level
-    cy.visit("/admin/permissions/data/database/1");
-
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Granular", "No", "Granular"],
       ["collection", "No self-service", "No", "No"],
       ["data", "Unrestricted", "Yes", "No"],
       ["nosql", "Unrestricted", "No", "No"],

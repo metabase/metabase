@@ -301,6 +301,10 @@ export function timelinesInCollection(collections) {
   return `${collectionUrl}/timelines`;
 }
 
+export function timelinesArchiveInCollection(collection) {
+  return `${timelinesInCollection(collection)}/archive`;
+}
+
 export function timelineInCollection(timeline, collection) {
   return `${timelinesInCollection(collection)}/${timeline.id}`;
 }
@@ -315,6 +319,10 @@ export function editTimelineInCollection(timeline, collection) {
 
 export function timelineArchiveInCollection(timeline, collection) {
   return `${timelineInCollection(timeline, collection)}/archive`;
+}
+
+export function deleteTimelineInCollection(timeline, collection) {
+  return `${timelineInCollection(timeline, collection)}/delete`;
 }
 
 export function newEventInCollection(timeline, collection) {

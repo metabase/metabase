@@ -14,6 +14,18 @@ jobs:
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
       commit_sha: ${{ fromJson(steps.fetch_pr.outputs.data).head.sha }}
     steps:
+      - id: is_organization_member
+        uses: JamesSingleton/is-organization-member@1.0.0
+        with:
+          organization: metabase
+          username: ${{ github.event.issue.user.login }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          result=${{ steps.is_organization_member.outputs.result }}
+          if [ $result == false ]; then
+              echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
+              exit 1
+          fi
       - name: Fetch issue
         uses: octokit/request-action@v2.x
         id: fetch_issue
@@ -40,7 +52,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +75,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -74,7 +86,7 @@ jobs:
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar
@@ -83,7 +95,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

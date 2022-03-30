@@ -16,12 +16,3 @@ export const SchemaGridItem = styled(GridItem)`
     width: 33.33%;
   }
 `;
-
-export const SchemaCardContent = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-export const SchemaCardActions = styled.div`
-  margin-left: auto;
-`;

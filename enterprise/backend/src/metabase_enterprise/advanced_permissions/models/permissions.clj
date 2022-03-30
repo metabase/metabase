@@ -1,5 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions
   (:require [metabase.models.permissions :as perms]
+            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -81,6 +83,10 @@
     - Native query download permissions are fully inferred from the non-native download permissions. For more details,
       see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (ex-info
+            (tru "Can''t set download permissions without having the advanced-permissions premium feature")
+            {:status-code 402})))
   (when-let [schemas (:schemas new-download-perms)]
     (condp = schemas
       :full
@@ -98,8 +104,8 @@
 
       (when (map? schemas)
         (doseq [[schema new-schema-perms] (seq schemas)]
-          (update-schema-download-permissions! group-id db-id schema new-schema-perms)))))
-  ;; We need to call update-native-download-permissions! whenever any download permissions are changed, but after we've
-  ;; updated non-native donwload permissions. This is because native download permissions are fully computed from the
-  ;; non-native download permissions.
-  (perms/update-native-download-permissions! group-id db-id))
+          (update-schema-download-permissions! group-id db-id schema new-schema-perms))))
+    ;; We need to call update-native-download-permissions! whenever any download permissions are changed, but after we've
+    ;; updated non-native donwload permissions. This is because native download permissions are fully computed from the
+    ;; non-native download permissions.
+    (perms/update-native-download-permissions! group-id db-id)))
