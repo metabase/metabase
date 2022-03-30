@@ -235,8 +235,9 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
-        (throw (Exception.
-                (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))
+        (throw (ex-info (tru "Unknown setting: {0}" k)
+                        {:registered-settings
+                         (sort (keys @registered-settings))})))))
 
 (defn- call-on-change
   "Cache watcher that applies `:on-change` callback for all settings that have changed."
@@ -306,6 +307,25 @@
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
     (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+
+(def ^:dynamic *enforce-setting-access-checks*
+  "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
+  set to true when settings are being written directly via /api/setting endpoints."
+  false)
+
+(defn- current-user-can-access-setting?
+  "This checks whether the current user should have the ability to read or write the provided setting.
+
+  By default this function always returns `true`, but setting access control can be turned on the dynamic var
+  `*enforce-setting-access-checks*`. This is because this enforcement is only necessary when settings are being
+  accessed directly via the API, but not in most other places on the backend."
+  [setting]
+  (or (not *enforce-setting-access-checks*)
+      (nil? api/*current-user-id*)
+      api/*is-superuser?*
+      (and
+       (allows-user-local-values? setting)
+       (not= (:visibility setting) :admin))))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -652,6 +672,8 @@
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
+    (when-not (current-user-can-access-setting? setting)
+      (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
@@ -932,6 +954,9 @@
         value-is-default?                                             (= parsed-value default)
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
+      (not (current-user-can-access-setting? setting))
+      (throw (ex-info (tru "You do not have access to the setting {0}" k) setting))
+
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
       ;; the UI.
@@ -972,7 +997,7 @@
   page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
   are not allowed to modify them."
   [& {:as options}]
-  ;; ignore User-local and Database-local values
+  ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      []
@@ -991,6 +1016,7 @@
 
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
   [& {:as options}]
+  ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
     (into

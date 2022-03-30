@@ -938,7 +938,10 @@
                                   :full
                                   (seq table-ids-and-schemas))]
     (doseq [perm-value [:full :limited]]
-      (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
+      ;; We don't want to call `delete-related-permissions!` here because that would also delete prefixes of the native
+      ;; downloads path, including `/download/db/:id/`, thus removing download permissions for the entire DB. Instead
+      ;; we just delete the native downloads path directly, so that we can replace it with a new value.
+      (db/delete! Permissions :group_id group-id, :object (native-feature-perms-path :download perm-value db-id)))
     (when (not= native-perm-level :none)
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 

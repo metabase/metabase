@@ -737,49 +737,41 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 (format "database/%d/discard_values" (mt/id)))))))
 
-
-;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
-;; guessing it's done that way so we can save invalid DBs for some silly tests. Instead of doing it the right way
-;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
-;; here to simulate its *normal* behavior. :unamused:
-(defn- test-database-connection [engine details]
-  (if (driver.u/can-connect-with-details? (keyword engine) details)
-    nil
-    {:valid false, :message "Error!"}))
-
 (deftest validate-database-test
   (testing "POST /api/database/validate"
-    (with-redefs [database-api/test-database-connection test-database-connection]
-      (testing "Should require superuser permissions"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "database/validate"
-                                     {:details {:engine :h2, :details (:details (mt/db))}}))))
+    (testing "Should require superuser permissions"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "database/validate"
+                                   {:details {:engine :h2, :details (:details (mt/db))}}))))
 
-      (testing "Underlying `test-connection-details` function should work"
-        (is (= (:details (mt/db))
-               (#'database-api/test-connection-details "h2" (:details (mt/db))))))
+    (testing "Underlying `test-connection-details` function should work"
+      (is (= (:details (mt/db))
+             (#'database-api/test-connection-details "h2" (:details (mt/db))))))
 
-      (testing "Valid database connection details"
-        (is (= {:valid true}
+    (testing "Valid database connection details"
+      (is (= {:valid true}
+             (mt/user-http-request :crowberto :post 200 "database/validate"
+                                   {:details {:engine :h2, :details (:details (mt/db))}}))))
+
+    (testing "invalid database connection details"
+      (testing "calling test-connection-details directly"
+        (is (= {:dbname  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+                :message "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+                :valid   false}
+               (#'database-api/test-connection-details "h2" {:db "ABC"}))))
+
+      (testing "via the API endpoint"
+        (is (= {:valid false}
                (mt/user-http-request :crowberto :post 200 "database/validate"
-                                     {:details {:engine :h2, :details (:details (mt/db))}}))))
-
-      (testing "invalid database connection details"
-        (testing "calling test-connection-details directly"
-          (is (= {:valid false, :message "Error!"}
-                 (#'database-api/test-connection-details "h2" {:db "ABC"}))))
-
-        (testing "via the API endpoint"
-          (is (= {:valid false}
-                 (mt/user-http-request :crowberto :post 200 "database/validate"
-                                       {:details {:engine :h2, :details {:db "ABC"}}}))))))
+                                     {:details {:engine :h2, :details {:db "ABC"}}})))))
 
     (let [call-count (atom 0)
-          ssl-values (atom [])]
-      (with-redefs [database-api/test-database-connection (fn [_ details]
+          ssl-values (atom [])
+          valid?     (atom false)]
+      (with-redefs [database-api/test-database-connection (fn [_ details & _]
                                                             (swap! call-count inc)
                                                             (swap! ssl-values conj (:ssl details))
-                                                            {:valid true})]
+                                                            (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'database-api/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
@@ -799,7 +791,17 @@
         (testing "with SSL unspecified, try twice (once with, once without SSL)"
           (#'database-api/test-connection-details "postgres" {})
           (is (= 2 @call-count))
-          (is (= [true false] @ssl-values)))))))
+          (is (= [true nil] @ssl-values)))
+
+        (reset! call-count 0)
+        (reset! ssl-values [])
+        (reset! valid? true)
+
+        (testing "with SSL disabled, but working try once (since SSL work we don't try without SSL)"
+          (is (= {:ssl true}
+                 (#'database-api/test-connection-details "postgres" {:ssl false})))
+          (is (= 1 @call-count))
+          (is (= [true] @ssl-values)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
