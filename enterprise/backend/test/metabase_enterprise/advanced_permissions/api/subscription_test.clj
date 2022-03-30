@@ -89,13 +89,15 @@
                                                   :schedule_hour 12
                                                   :recipients    []}]}
                create-alert (fn [status]
-                              (mt/user-http-request user :post status "alert"
-                                                    alert-default))
+                              (testing "create alert"
+                                (mt/user-http-request user :post status "alert"
+                                                      alert-default)))
                alert        (create-alert 200)
                update-alert (fn [status]
-                              (mt/user-http-request user :put status (format "alert/%d" (:id alert))
-                                                    (dissoc (merge alert-default {:alert_condition  "goal"})
-                                                            :channels)))]
+                              (testing "update alert"
+                                (mt/user-http-request user :put status (format "alert/%d" (:id alert))
+                                                      (dissoc (merge alert-default {:alert_condition  "goal"})
+                                                              :channels))))]
 
            (testing "user's group has no subscription permissions"
              (perms/revoke-general-permissions! group :subscription)

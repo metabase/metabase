@@ -16,4 +16,4 @@
   "Check if `*current-user*` has permissions for a general permissions of type `perm-type`."
   [perm-type]
   (or api/*is-superuser?*
-      (perms/set-has-general-permission-of-type? @api/*current-user-permissions-set* (perms/general-perms-path perm-type))))
+      (perms/set-has-general-permission-of-type? @api/*current-user-permissions-set* perm-type)))

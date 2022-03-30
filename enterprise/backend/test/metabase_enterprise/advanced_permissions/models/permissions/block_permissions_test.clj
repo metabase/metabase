@@ -106,7 +106,11 @@
               (is (= {:schemas :block}
                      (test-db-perms group-id)))
               (is (= #{(perms/database-block-perms-path (mt/id))}
-                     (db/select-field :object Permissions :group_id group-id))))))))))
+                     (db/select-field :object Permissions {:where [:and
+                                                                   [:or
+                                                                    [:like :object "/block/%"]
+                                                                    [:like :object "/db/%"]]
+                                                                   [:= :group_id group-id]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
