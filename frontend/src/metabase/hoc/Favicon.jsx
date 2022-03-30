@@ -24,6 +24,11 @@ const withFavicon = faviconSetterOrGetter => ComposedComponent => {
 
     useEffect(() => {
       document.querySelector('link[rel="icon"]').setAttribute("href", favicon);
+      return () => {
+        document
+          .querySelector('link[rel="icon"]')
+          .setAttribute("href", DEFAULT_FAVICON());
+      };
     }, [favicon]);
     return <ComposedComponent {...props} />;
   };
