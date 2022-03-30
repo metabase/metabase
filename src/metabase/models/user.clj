@@ -175,6 +175,23 @@
     (for [user users]
       (assoc user :is_installer (= (:id user) 1)))))
 
+(defn add-has-question-and-dashboard
+  "Adds the `has-question-and-dashboard` flag to a collection of `users`. This should be true for the user
+  if they have access to at least one question and one dashboard."
+  {:batched-hydrate :has_question_and_dashboard}
+  [users]
+  (let [perms-query (fn [user]
+                      {:where
+                       [:and
+                        [:= :archived false]
+                        (collection/visible-collection-ids->honeysql-filter-clause
+                         :collection_id
+                         (collection/permissions-set->visible-collection-ids (permissions-set user)))]})]
+    (when (seq users)
+      (for [user users]
+        (assoc user :has_question_and_dashboard (and (> (db/count 'Card (perms-query user)) 0)
+                                                     (> (db/count 'Dashboard (perms-query user)) 0)))))))
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (declare form-password-reset-url set-password-reset-token!)
