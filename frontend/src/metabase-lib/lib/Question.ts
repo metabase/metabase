@@ -323,6 +323,10 @@ export default class Question {
     return this._card && this._card.dataset;
   }
 
+  isPersisted() {
+    return this._card && this._card.persisted;
+  }
+
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }

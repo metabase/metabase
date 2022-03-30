@@ -100,6 +100,14 @@ export default class Database extends Base {
     return this.native_permissions === "write";
   }
 
+  isPersisted() {
+    return this.details["persist-models"];
+  }
+
+  supportsPersistence() {
+    return this.hasFeature("persist-models");
+  }
+
   // QUESTIONS
   newQuestion() {
     return this.question()

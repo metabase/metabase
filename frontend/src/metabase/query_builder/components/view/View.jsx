@@ -129,6 +129,8 @@ export default class View extends React.Component {
       onCloseChartType,
       isBookmarked,
       toggleBookmark,
+      persistDataset,
+      unpersistDataset,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -148,6 +150,8 @@ export default class View extends React.Component {
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
+          persistDataset={persistDataset}
+          unpersistDataset={unpersistDataset}
         />
       );
     }

@@ -16,6 +16,8 @@ const propTypes = {
   syncDatabaseSchema: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
+  persistDatabase: PropTypes.func.isRequired,
+  unpersistDatabase: PropTypes.func.isRequired,
 };
 
 const DatabaseEditAppSidebar = ({
@@ -24,6 +26,8 @@ const DatabaseEditAppSidebar = ({
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
 }) => {
   const discardSavedFieldValuesModal = useRef();
   const deleteDatabaseModal = useRef();
@@ -80,6 +84,30 @@ const DatabaseEditAppSidebar = ({
                     onAction={() => discardSavedFieldValues(database.id)}
                   />
                 </ModalWithTrigger>
+              </li>
+            )}
+
+            {database.supportsPersistence() && (
+              <li className="mt2">
+                {database.isPersisted() ? (
+                  <ActionButton
+                    actionFn={() => unpersistDatabase(database.id)}
+                    className="Button Button--danger"
+                    normalText={t`Disable model persistence`}
+                    activeText={t`Disabling…`}
+                    failedText={t`Disabling failed`}
+                    successText={t`Disabled`}
+                  />
+                ) : (
+                  <ActionButton
+                    actionFn={() => persistDatabase(database.id)}
+                    className="Button Button--danger"
+                    normalText={t`Enable model persistence`}
+                    activeText={t`Enabling…`}
+                    failedText={t`Enabling failed`}
+                    successText={t`Enabled`}
+                  />
+                )}
               </li>
             )}
 

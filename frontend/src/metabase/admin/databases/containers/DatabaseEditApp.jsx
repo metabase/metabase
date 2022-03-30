@@ -15,6 +15,7 @@ import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar
 import DriverWarning from "metabase/containers/DriverWarning";
 
 import Databases from "metabase/entities/databases";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   getEditingDatabase,
@@ -31,6 +32,8 @@ import {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  persistDatabase,
+  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -46,8 +49,11 @@ const DATABASE_FORM_NAME = "database";
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+  const metadata = getMetadata(state);
+
   return {
     database,
+    metadata,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
@@ -61,6 +67,8 @@ const mapDispatchToProps = {
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
@@ -74,6 +82,7 @@ export default class DatabaseEditApp extends Component {
 
   static propTypes = {
     database: PropTypes.object,
+    metadata: PropTypes.object,
     databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
@@ -81,6 +90,8 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
+    persistDatabase: PropTypes.func.isRequired,
+    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
@@ -95,12 +106,15 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
+      metadata,
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
+      persistDatabase,
+      unpersistDatabase,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -183,11 +197,13 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              database={database}
+              database={metadata.database(database.id)}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
+              persistDatabase={persistDatabase}
+              unpersistDatabase={unpersistDatabase}
             />
           )}
         </DatabaseEditMain>
