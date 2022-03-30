@@ -10,6 +10,7 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
+import { getIsNavbarOpen } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -41,6 +42,7 @@ function mapStateToProps(state, props) {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
+    isNavbarOpen: getIsNavbarOpen(state),
   };
 }
 
@@ -60,6 +62,7 @@ function CollectionContent({
   isRoot,
   handleToggleMobileSidebar,
   metadata,
+  isNavbarOpen,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -269,6 +272,7 @@ function CollectionContent({
                         hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
+                        isNavbarOpen={isNavbarOpen}
                       />
                     </CollectionTable>
                   );

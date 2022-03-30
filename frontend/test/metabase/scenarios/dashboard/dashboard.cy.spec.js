@@ -440,8 +440,9 @@ describe("scenarios > dashboard", () => {
     assertScrollBarExists();
     cy.icon("share").click();
     cy.findByText("Sharing and embedding").click();
-    // Fullscreen modal opens - close it now
-    cy.icon("close").click();
+    cy.get(".Modal--full").within(() => {
+      cy.icon("close").click();
+    });
     cy.get(".Modal--full").should("not.exist");
     assertScrollBarExists();
   });

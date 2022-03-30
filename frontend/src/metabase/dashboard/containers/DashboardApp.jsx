@@ -2,14 +2,13 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import {
   getIsEditing,
@@ -43,6 +42,7 @@ const mapStateToProps = (state, props) => {
     dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
 
     isAdmin: getUserIsAdmin(state, props),
+    isNavbarOpen: getIsNavbarOpen(state),
     isEditing: getIsEditing(state, props),
     isSharing: getIsSharing(state, props),
     dashboardBeforeEditing: getDashboardBeforeEditing(state, props),
@@ -73,7 +73,6 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@fitViewport
 @title(({ dashboard }) => dashboard && dashboard.name)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?

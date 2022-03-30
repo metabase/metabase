@@ -1,6 +1,7 @@
 import {
   restore,
   openNativeEditor,
+  closeNavigationSidebar,
   filterWidget,
   popover,
 } from "__support__/e2e/cypress";
@@ -56,6 +57,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
+      closeNavigationSidebar();
     });
 
     it("when set through the filter widget", () => {

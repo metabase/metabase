@@ -20,7 +20,7 @@ import {
   ToggleListDisplayButton,
 } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
+import { Bookmark, Bookmarks } from "metabase-types/api";
 
 interface BookmarkProps {
   bookmark: Bookmark;
