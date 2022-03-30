@@ -30,7 +30,7 @@ export const ADD_SAMPLE_DATABASE_FAILED =
 export const ADDING_SAMPLE_DATABASE =
   "metabase/admin/databases/ADDING_SAMPLE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
-export const PERSIST_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+export const PERSIST_DATABASE = "metabase/admin/databases/PERSIST_DATABASE";
 export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -294,7 +294,7 @@ export const persistDatabase = createThunkAction(
 );
 
 export const unpersistDatabase = createThunkAction(
-  PERSIST_DATABASE,
+  UNPERSIST_DATABASE,
   databaseId => async () => {
     await MetabaseApi.db_persist({ dbId: databaseId });
   },
@@ -320,10 +320,10 @@ const editingDatabase = handleActions(
     [UPDATE_DATABASE]: (state, { payload }) => payload.database || state,
     [DELETE_DATABASE]: (state, { payload }) => null,
     [SELECT_ENGINE]: (state, { payload }) => ({ ...state, engine: payload }),
-    [PERSIST_DATABASE]: state =>
-      assocIn(state, ["details", "persist-models"], true),
-    [UNPERSIST_DATABASE]: state =>
-      assocIn(state, ["details", "persist-models"], false),
+    [PERSIST_DATABASE]: (state, { error }) =>
+      assocIn(state, ["details", "persist-models"], !error),
+    [UNPERSIST_DATABASE]: (state, { error }) =>
+      assocIn(state, ["details", "persist-models"], !!error),
     [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) =>
       database,
   },
