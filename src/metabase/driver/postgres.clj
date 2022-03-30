@@ -243,15 +243,17 @@
                                                   (for [[k v] %]
                                                     [k (f v)])) xs))
           table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
-          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
-          json-field-names (mapv (comp keyword :name) json-fields)
-          sql-args         (hsql/format {:select json-field-names
-                                         :from   [(keyword (:name table))]
-                                         :limit  nested-field-sample-limit} {:quoting :ansi})
-          query            (jdbc/reducible-query spec sql-args)
-          field-types      (transduce describe-json-xform describe-json-rf query)
-          fields           (field-types->fields field-types)]
-      fields)))
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+      (if (nil? (seq json-fields))
+        #{}
+        (let [json-field-names (mapv (comp keyword :name) json-fields)
+              sql-args         (hsql/format {:select json-field-names
+                                             :from   [(keyword (:name table))]
+                                             :limit  nested-field-sample-limit} {:quoting :ansi})
+              query            (jdbc/reducible-query spec sql-args)
+              field-types      (transduce describe-json-xform describe-json-rf query)
+              fields           (field-types->fields field-types)]
+          fields)))))
 
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
