@@ -4,14 +4,16 @@ import { color } from "metabase/lib/colors";
 
 export const SearchWrapper = styled.div`
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
+  max-width: 50em;
+
   position: relative;
+
   background-color: ${color("bg-light")};
   border: 1px solid ${color("border")};
   border-radius: 6px;
-  flex: 1 1 auto;
-  max-width: 50em;
-  align-items: center;
+
   transition: background 150ms;
 
   &:hover {
@@ -20,12 +22,14 @@ export const SearchWrapper = styled.div`
 `;
 
 export const SearchInput = styled.input`
-  background-color: transparent;
   width: 100%;
-  border: none;
-  color: ${color("text-dark")};
   padding: 10px 12px;
   font-weight: 700;
+
+  color: ${color("text-dark")};
+  background-color: transparent;
+  border: none;
+
   &:focus {
     outline: none;
   }
