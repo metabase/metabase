@@ -53,8 +53,8 @@ export function getClickHoverObject(
   const isAddedSeriesOnDashcard = isDashboardAddedSeries(card, dashboard);
 
   function getColumnDisplayName(col, colIndex, card) {
-    // `visualization_settings.series_settings` use `card.name` and
-    // not `column.name` for renamed series when the `seriesIndex > 0`;
+    // when the series we are looking at is an added series on a dashcard,
+    // the `visualization_settings.series_settings` will be keyed by `card.name`
     // check for `columnIndex === 1` because only the first metric column
     // should be renamed by this setting
     const colKey =
