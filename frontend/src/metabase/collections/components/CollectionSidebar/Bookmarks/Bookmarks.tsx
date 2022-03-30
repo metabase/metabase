@@ -1,16 +1,14 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 import Link from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
-import {
-  LabelContainer,
-  LabelText,
-} from "../Collections/CollectionsList/CollectionsList.styled";
-import { getIcon } from "./getIcon";
+import BookmarkEntity from "metabase/entities/bookmarks";
+import { LabelContainer } from "../Collections/CollectionsList/CollectionsList.styled";
 import BookmarksRoot, {
   BookmarkContainer,
   BookmarkListRoot,
@@ -22,12 +20,10 @@ import {
   ToggleListDisplayButton,
 } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
-import { Bookmark, BookmarkableEntities, Bookmarks } from "metabase-types/api";
+import { Bookmark, Bookmarks } from "metabase-types/api";
 
-interface LabelProps {
-  name: string;
-  display?: string;
-  type: BookmarkableEntities;
+interface BookmarkProps {
+  bookmark: Bookmark;
 }
 
 interface CollectionSidebarBookmarksProps {
@@ -35,12 +31,31 @@ interface CollectionSidebarBookmarksProps {
   deleteBookmark: (id: string, type: string) => void;
 }
 
-const Label = ({ display, name, type }: LabelProps) => {
-  const iconName = getIcon(display, type);
+interface IconProps {
+  name: string;
+  tooltip?: string;
+  isOfficial?: boolean;
+}
+
+const BookmarkIcon = ({ bookmark }: BookmarkProps) => {
+  const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
+  const isCollection = bookmark.type === "collection";
+  const isRegularCollection =
+    isCollection && PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+  const isOfficial = isCollection && !isRegularCollection;
+
+  const iconColor = isOfficial ? color("warning") : color("brand");
+
+  return <BookmarkTypeIcon {...icon} color={iconColor} />;
+};
+
+const Label = ({ bookmark }: BookmarkProps) => {
+  const icon = BookmarkEntity.objectSelectors.getIcon(bookmark);
+
   return (
     <LabelContainer>
-      <BookmarkTypeIcon name={iconName} />
-      <LabelText>{name}</LabelText>
+      <BookmarkIcon bookmark={bookmark} />
+      {bookmark.name}
     </LabelContainer>
   );
 };
@@ -90,13 +105,11 @@ const CollectionSidebarBookmarks = ({
             return (
               <BookmarkContainer key={`bookmark-${id}`}>
                 <Link to={url}>
-                  <Label name={name} type={type} />
+                  <Label bookmark={bookmark} />
                 </Link>
 
                 <button onClick={() => handleDeleteBookmark(bookmark)}>
-                  <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                    <Icon name="bookmark" />
-                  </Tooltip>
+                  <Icon name="bookmark" />
                 </button>
               </BookmarkContainer>
             );

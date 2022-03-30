@@ -763,3 +763,20 @@
         (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/"}
                (perms)))))))
+
+(deftest grant-revoke-general-permissions-test
+  (mt/with-temp PermissionsGroup [{group-id :id}]
+    (letfn [(perms []
+              (db/select-field :object Permissions
+                               {:where [:and [:= :group_id group-id]
+                                             [:like :object "/general/%"]]}))]
+      (is (= nil (perms)))
+      (doseq [[perm-type perm-path] [[:subscription "/general/subscription/"]
+                                     [:monitoring "/general/monitoring/"]
+                                     [:setting "/general/setting/"]]]
+        (testing (format "Able to grant `%s` permission" (name perm-type))
+          (perms/grant-general-permissions! group-id perm-type)
+          (is (= (perms)  #{perm-path})))
+        (testing (format "Able to revoke `%s` permission" (name perm-type))
+          (perms/revoke-general-permissions! group-id perm-type)
+          (is (not (= (perms) #{perm-path}))))))))

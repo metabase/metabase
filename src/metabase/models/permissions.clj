@@ -44,7 +44,7 @@
 
   ### Enterprise-only permissions and \"anti-permissions\"
 
-  In addition to data permissions and Collection permissions, a User can also be granted three additional types of
+  In addition to data permissions and Collection permissions, a User can also be granted four additional types of
   permissions.
 
   * _root permissions_ -- permissions for `/`, i.e. full access for everything. Automatically granted to
@@ -88,6 +88,9 @@
     referred to as \"anti-permissions\" because they are subtractive grants that take away permissions from what the
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
+
+  * _General permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+    change instance's Settings; access Audit, Tools, Troubleshooting ...
 
   ### Determining CRUD permissions in the REST API
 
@@ -272,6 +275,15 @@
                           ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
                           ;; non-default namespace
                           (opt "read/"))))
+               ;; any path starting with /general is a permissions that is not scoped by database or collection
+               ;; /general/setting/      -> permissions to access /admin/settings page
+               ;; /general/monitoring/   -> permissions to access tools, audit and troubleshooting
+               ;; /general/subscription/ -> permisisons to create/edit subscriptions and alerts
+               (and "general/"
+                    (or
+                     "setting/"
+                     "monitoring/"
+                     "subscription/"))
                ;; any path starting with /block/ is for BLOCK anti-permissions.
                ;; currently only supported at the DB level, e.g. /block/db/1/ => block collection-based access to
                ;; Database 1
@@ -452,6 +464,18 @@
   [perm-type perm-value db-id]
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
 
+(s/defn general-perms-path :- Path
+  "Returns the permissions path for *full* access a general permission."
+  [perm-type]
+  (case perm-type
+    :setting
+    "/general/setting/"
+
+    :monitoring
+    "/general/monitoring/"
+
+    :subscription
+    "/general/subscription/"))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -786,6 +810,11 @@
   (delete-related-permissions! group-or-id (data-perms-path database-or-id)
     [:not= :object (adhoc-native-query-path database-or-id)]))
 
+(defn revoke-general-permissions!
+  "Remove all permissions entries for a Group to access a General feature."
+  [group-or-id perm-type]
+  (delete-related-permissions! group-or-id (general-perms-path perm-type)))
+
 (defn grant-permissions-for-all-schemas!
   "Grant full permissions for all schemas belonging to this database.
    This does *not* grant native permissions; use `grant-native-readwrite-permissions!` to do that."
@@ -801,6 +830,11 @@
   "Grant full download permissions to the database."
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
+
+(defn grant-general-permissions!
+  "Grant full permissions for a group to access a General feature."
+  [group-or-id perm-type]
+  (grant-permissions! group-or-id (general-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   (classloader/require 'metabase.models.collection)
@@ -839,7 +873,6 @@
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
-
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
@@ -900,7 +933,10 @@
                                   :full
                                   (seq table-ids-and-schemas))]
     (doseq [perm-value [:full :limited]]
-      (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
+      ;; We don't want to call `delete-related-permissions!` here because that would also delete prefixes of the native
+      ;; downloads path, including `/download/db/:id/`, thus removing download permissions for the entire DB. Instead
+      ;; we just delete the native downloads path directly, so that we can replace it with a new value.
+      (db/delete! Permissions :group_id group-id, :object (native-feature-perms-path :download perm-value db-id)))
     (when (not= native-perm-level :none)
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
@@ -1030,17 +1066,21 @@
                          (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
-(defn- save-perms-revision!
-  "Save changes made to the permissions graph for logging/auditing purposes.
-   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old new]
+(defn save-perms-revision!
+  "Save changes made to permission graph for logging/auditing purposes.
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
+  *  `model`   -- revision model, should be one of
+                  [PermissionsRevision, CollectionPermissionGraphRevision, GeneralPermissionsRevision]
+  *  `before`  -- the graph before the changes
+  *  `changes` -- set of changes applied in this revision."
+  [model current-revision before changes]
   (when *current-user-id*
-    (db/insert! PermissionsRevision
+    (db/insert! model
       ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
       ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id     (inc current-revision)
-      :before  old
-      :after   new
+      :id      (inc current-revision)
+      :before  before
+      :after   changes
       :user_id *current-user-id*)))
 
 (defn log-permissions-changes
@@ -1069,7 +1109,7 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)
+         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
          (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage

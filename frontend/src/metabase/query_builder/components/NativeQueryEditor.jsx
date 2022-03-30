@@ -41,6 +41,7 @@ import {
 import "./NativeQueryEditor.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
+const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
@@ -269,11 +270,21 @@ export default class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
+    this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
+
     aceLanguageTools.addCompleter({
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
-          // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-          const results = await this.props.autocompleteResultsFn(prefix);
+          let { results, timestamp } = this._lastAutoComplete;
+          const cacheHit =
+            Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
+            this._lastAutoComplete.prefix === prefix;
+          if (!cacheHit) {
+            // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
+            results = await this.props.autocompleteResultsFn(prefix);
+            this._lastAutoComplete = { timestamp: Date.now(), prefix, results };
+          }
+
           // transform results of the API call into what ACE expects
           const js_results = results.map(function(result) {
             return {
