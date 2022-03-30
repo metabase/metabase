@@ -89,7 +89,7 @@ const BookmarkItem = ({
 
   return (
     <BookmarkContainer isSorting={isSorting}>
-      <BookmarkDragIcon name="grabber2" size={12} />
+      <BookmarkDragIcon color={color("text-light")} name="grabber2" size={12} />
       <Link to={url}>
         <Label bookmark={bookmark} />
       </Link>
