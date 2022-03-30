@@ -69,6 +69,8 @@ const getErrorComponent = ({ status, data, context }) => {
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
+const EMBEDDED_ROUTES_WITH_NAVBAR = ["/collection", "/archive"];
+
 class App extends Component {
   state = {
     errorInfo: undefined,
@@ -94,8 +96,13 @@ class App extends Component {
       isEditingDashboard,
       location: { pathname },
     } = this.props;
-    if (!currentUser || IFRAMED || isEditingDashboard) {
+    if (!currentUser || isEditingDashboard) {
       return false;
+    }
+    if (IFRAMED) {
+      return EMBEDDED_ROUTES_WITH_NAVBAR.some(path =>
+        pathname.startsWith(path),
+      );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
