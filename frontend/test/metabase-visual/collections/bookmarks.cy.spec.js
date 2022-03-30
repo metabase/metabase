@@ -8,11 +8,8 @@ describe("Bookmarks in a collection page", () => {
   });
 
   it("updates sidebar and bookmark icon color when bookmarking a collection in its page", () => {
-    cy.request("POST", "/api/bookmark/card/1");
-    cy.request("POST", "/api/bookmark/card/2");
-    cy.request("POST", "/api/bookmark/card/3");
-    cy.request("POST", "/api/bookmark/collection/1");
-    cy.request("POST", "/api/bookmark/dashboard/1");
+    createAndBookmarkAnOfficialCollection();
+    bookmarkExistingItems();
 
     cy.visit("/collection/1");
 
@@ -23,3 +20,21 @@ describe("Bookmarks in a collection page", () => {
     cy.percySnapshot();
   });
 });
+
+function createAndBookmarkAnOfficialCollection() {
+  cy.createCollection({
+    name: "An official collection",
+    authority_level: "official",
+  }).then(response => {
+    const { id } = response.body;
+    cy.request("POST", `/api/bookmark/collection/${id}`);
+  });
+}
+
+function bookmarkExistingItems() {
+  cy.request("POST", "/api/bookmark/card/1");
+  cy.request("POST", "/api/bookmark/card/2");
+  cy.request("POST", "/api/bookmark/card/3");
+  cy.request("POST", "/api/bookmark/collection/1");
+  cy.request("POST", "/api/bookmark/dashboard/1");
+}

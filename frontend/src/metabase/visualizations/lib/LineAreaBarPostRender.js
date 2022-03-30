@@ -393,8 +393,6 @@ function onRenderAddTimelineEvents(
   {
     timelineEvents,
     selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -405,8 +403,6 @@ function onRenderAddTimelineEvents(
   renderEvents(chart, {
     events: timelineEvents,
     selectedEventIds: selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -423,7 +419,6 @@ function onRender(
     timelineEvents,
     selectedTimelineEventIds,
     isSplitAxis,
-    xDomain,
     xInterval,
     yAxisSplit,
     isStacked,
@@ -457,8 +452,6 @@ function onRender(
   onRenderAddTimelineEvents(chart, {
     timelineEvents,
     selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,

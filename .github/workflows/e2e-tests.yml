@@ -43,6 +43,8 @@ jobs:
       DISPLAY: ""
       QA_DB_ENABLED: true
       ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +58,7 @@ jobs:
           - "dashboard-filters"
           - "dashboard-filters-sql"
           - "downloads"
+          - "embedding"
           - "joins"
           - "models"
           - "moderation"
@@ -67,7 +70,7 @@ jobs:
           - "visualizations"
     services:
       maildev:
-        image: maildev/maildev
+        image: maildev/maildev:1.1.0
         ports:
           - "80:80"
           - "25:25"
@@ -103,6 +106,8 @@ jobs:
       uses: ./.github/actions/prepare-backend
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
+    - name: Run Snowlow micro
+      uses: ./.github/actions/run-snowplow-micro
 
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
