@@ -296,7 +296,7 @@ export const persistDatabase = createThunkAction(
 export const unpersistDatabase = createThunkAction(
   UNPERSIST_DATABASE,
   databaseId => async () => {
-    await MetabaseApi.db_persist({ dbId: databaseId });
+    await MetabaseApi.db_unpersist({ dbId: databaseId });
   },
 );
 
