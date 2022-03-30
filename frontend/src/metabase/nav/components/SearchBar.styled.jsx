@@ -1,5 +1,8 @@
 import styled from "@emotion/styled";
 
+import Card from "metabase/components/Card";
+import Icon from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
 
 export const SearchWrapper = styled.div`
@@ -36,4 +39,27 @@ export const SearchInput = styled.input`
   &::placeholder {
     color: ${color("text-dark")};
   }
+`;
+
+export const SearchIcon = styled(Icon)`
+  margin-left: 10px;
+`;
+
+SearchIcon.defaultProps = {
+  name: "search",
+};
+
+export const SearchResultsFloatingContainer = styled.div`
+  position: absolute;
+  top: 60px;
+  left: 0;
+  right: 0;
+  color: ${color("text-dark")};
+`;
+
+export const SearchResultsContainer = styled(Card)`
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow-y: auto;
+  max-height: 400px;
 `;

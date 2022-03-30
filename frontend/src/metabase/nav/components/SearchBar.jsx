@@ -3,15 +3,19 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
-import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import { SearchInput, SearchWrapper } from "./SearchBar.styled";
 import { SearchResults } from "./SearchResults";
 import RecentsList from "./RecentsList";
+import {
+  SearchWrapper,
+  SearchIcon,
+  SearchInput,
+  SearchResultsFloatingContainer,
+  SearchResultsContainer,
+} from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -73,7 +77,7 @@ export default class SearchBar extends React.Component {
     return (
       <OnClickOutsideWrapper handleDismissal={this.setInactive}>
         <SearchWrapper onClick={this.setActive} active={active}>
-          <Icon name="search" ml={["10px", 2]} />
+          <SearchIcon />
           <SearchInput
             ref={ref => (this.searchInput = ref)}
             value={searchText}
@@ -91,19 +95,15 @@ export default class SearchBar extends React.Component {
             }}
           />
           {active && MetabaseSettings.searchTypeaheadEnabled() && (
-            <div className="absolute left right text-dark" style={{ top: 60 }}>
+            <SearchResultsFloatingContainer>
               {searchText.trim().length > 0 ? (
-                <Card
-                  className="overflow-y-auto"
-                  style={{ maxHeight: 400 }}
-                  py={1}
-                >
+                <SearchResultsContainer>
                   <SearchResults searchText={searchText.trim()} />
-                </Card>
+                </SearchResultsContainer>
               ) : (
                 <RecentsList />
               )}
-            </div>
+            </SearchResultsFloatingContainer>
           )}
         </SearchWrapper>
       </OnClickOutsideWrapper>
