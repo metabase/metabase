@@ -1,7 +1,6 @@
-/* eslint-disable react/prop-types */
 import React, { useEffect, useCallback, useRef, useState } from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
+import { Location, LocationDescriptorObject } from "history";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
@@ -21,14 +20,28 @@ import {
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
-function isSearchPageLocation(location) {
+type SearchAwareLocation = Location<{ q?: string }>;
+
+type Props = {
+  location: SearchAwareLocation;
+  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+};
+
+function isSearchPageLocation(location: Location) {
   const components = location.pathname.split("/");
   return components[components.length - 1];
 }
 
-function SearchBar({ location, onChangeLocation }) {
-  const [searchText, setSearchText] = useState(() =>
-    isSearchPageLocation(location) ? location.query.q : "",
+function getSearchTextFromLocation(location: SearchAwareLocation) {
+  if (isSearchPageLocation(location)) {
+    return location.query.q || "";
+  }
+  return "";
+}
+
+function SearchBar({ location, onChangeLocation }: Props) {
+  const [searchText, setSearchText] = useState<string>(() =>
+    getSearchTextFromLocation(location),
   );
 
   const [isActive, { turnOn: setActive, turnOff: setInactive }] = useToggle(
@@ -36,21 +49,20 @@ function SearchBar({ location, onChangeLocation }) {
   );
 
   const previousLocation = usePrevious(location);
-  const searchInput = useRef(null);
+  const searchInput = useRef<HTMLInputElement>(null);
 
   const onTextChange = useCallback(e => {
     setSearchText(e.target.value);
   }, []);
 
   useEffect(() => {
-    const FORWARD_SLASH_KEY = 191;
-
-    function focusOnForwardSlashPress(e) {
+    function focusOnForwardSlashPress(e: KeyboardEvent) {
       if (
-        e.keyCode === FORWARD_SLASH_KEY &&
+        e.key === "/" &&
+        document.activeElement?.tagName &&
         ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
       ) {
-        ReactDOM.findDOMNode(searchInput.current).focus();
+        searchInput.current?.focus();
         setActive();
       }
     }
@@ -61,7 +73,7 @@ function SearchBar({ location, onChangeLocation }) {
 
   useEffect(() => {
     if (previousLocation?.pathname !== location.pathname) {
-      setSearchText(isSearchPageLocation(location) ? location.query.q : "");
+      setSearchText(getSearchTextFromLocation(location));
     }
   }, [previousLocation, location]);
 
@@ -89,8 +101,8 @@ function SearchBar({ location, onChangeLocation }) {
 
   return (
     <OnClickOutsideWrapper handleDismissal={setInactive}>
-      <SearchWrapper onClick={setActive} active={isActive}>
-        <SearchIcon />
+      <SearchWrapper onClick={setActive}>
+        <SearchIcon name="search" />
         <SearchInput
           value={searchText}
           placeholder={t`Search` + "…"}

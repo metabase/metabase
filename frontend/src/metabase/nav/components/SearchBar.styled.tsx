@@ -45,10 +45,6 @@ export const SearchIcon = styled(Icon)`
   margin-left: 10px;
 `;
 
-SearchIcon.defaultProps = {
-  name: "search",
-};
-
 export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
   top: 60px;
