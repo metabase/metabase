@@ -522,7 +522,7 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
-(s/defn set-has-general-permission-of-type
+(s/defn set-has-general-permission-of-type? :- s/Bool
   "Does `permissions-set` grant *full* access to a general permission of type `perm-type`?"
   [permissions-set perm-type]
   (set-has-full-permissions? permissions-set (general-perms-path perm-type)))

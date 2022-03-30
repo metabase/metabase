@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.api.subscription-test
+(ns metabase-enterprise.advanced-permissions.api.monitoring-test
   "Permisisons tests for API that needs to be enforced by General Permissions of type `:monitoring`."
   (:require [clojure.test :refer :all]
             [metabase.models.permissions :as perms]
@@ -7,17 +7,17 @@
 
 (defn- user->name
   [user]
-  (if (map? user) (:common_name user) (name user)))
+  (if (map? user) "non-admin" (name user)))
 
 (deftest task-test
   (testing "/api/task/*"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
       (letfn [(get-task [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get task with %s user" (user->name user))
                   (mt/user-http-request user :get status "task")))
               (get-task-info [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get task info with %s user" (user->name user))
                   (mt/user-http-request user :get status "task/info")))]
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}
@@ -38,20 +38,20 @@
               (get-task-info user 200))))))))
 
 (deftest util-tset
-  (testing "/api/util/*"
+  (testing "/api/util/"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
       (letfn [(get-logs [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get logs with %s user" (user->name user))
                   (mt/user-http-request user :get status "util/logs")))
               (get-stats [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get stats with %s user" (user->name user))
                   (mt/user-http-request user :get status "util/stats")))
               (get-bug-report-detail [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get bug report details with %s user" (user->name user))
                   (mt/user-http-request user :get status "util/bug_report_details")))
               (get-db-connection-info [user status]
-                (testing (format "with user %s" (user->name user))
+                (testing (format "get db connection info with %s user" (user->name user))
                   (mt/user-http-request user :get status "util/diagnostic_info/connection_pool_info")))]
 
         (testing "if `advanced-permissions` is disabled, require admins"

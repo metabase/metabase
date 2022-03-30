@@ -107,7 +107,9 @@
                      (test-db-perms group-id)))
               (is (= #{(perms/database-block-perms-path (mt/id))}
                      (db/select-field :object Permissions {:where [:and
-                                                                   [:like :object "/block/%"]
+                                                                   [:or
+                                                                    [:like :object "/block/%"]
+                                                                    [:like :object "/db/%"]]
                                                                    [:= :group_id group-id]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
