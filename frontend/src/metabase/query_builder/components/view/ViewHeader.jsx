@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ButtonBar from "metabase/components/ButtonBar";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -41,6 +40,8 @@ import {
   ViewHeaderContainer,
   ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
+  StyledCollectionBadge,
+  StyledQuestionDataSource,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -206,13 +207,9 @@ function SavedQuestionLeftSide(props) {
         )}
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
-        <CollectionBadge
-          collectionId={question.collectionId()}
-          className="mb1"
-        />
+        <StyledCollectionBadge collectionId={question.collectionId()} />
         {QuestionDataSource.shouldRender(props) && (
-          <QuestionDataSource
-            className="ml3 mb1 pr2"
+          <StyledQuestionDataSource
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
