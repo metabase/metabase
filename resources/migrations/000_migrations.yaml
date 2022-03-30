@@ -11347,6 +11347,13 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
+              - column:
+                  remarks: The timestamp of when the model was first persisted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

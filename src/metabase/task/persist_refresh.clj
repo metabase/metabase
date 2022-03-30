@@ -58,6 +58,7 @@
                                      (log/info (trs "Unpersisting model with card-id {0}" (:card_id d)))
                                      (try
                                        (ddl.i/unpersist! (:engine database) database d)
+                                       (db/delete! PersistedInfo :id (u/the-id d))
                                        (update stats :success inc)
                                        (catch Exception e
                                          (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id d)))

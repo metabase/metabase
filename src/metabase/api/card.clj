@@ -763,7 +763,7 @@
   query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-403 api/*is-superuser?*)
+  (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [{:keys [dataset dataset_query result_metadata database_id] :as card} (Card card-id)]
     (let [database (Database database_id)]
@@ -773,7 +773,7 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when (pos? (db/count PersistedInfo :card_id card-id))
+      (when (db/exists? PersistedInfo :card_id card-id)
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
       (let [slug           (-> card :name persisted-info/slug-name)
             ;; todo: figure out the balance of what goes in here initially and what is set in the ddl.i/persist!
@@ -792,12 +792,23 @@
       ;; todo: persist it
       api/generic-204-no-content)))
 
+(api/defendpoint POST "/:card-id/refresh"
+  "Refresh the persisted model caching `card-id`."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (let [database (Database (:database_id persisted-info))]
+      (ddl.concurrent/submit-task
+       #(ddl.i/refresh! (:engine database) database persisted-info))
+      api/generic-204-no-content)))
+
 (api/defendpoint DELETE "/:card-id/persist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-403 api/*is-superuser?*)
+  (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
