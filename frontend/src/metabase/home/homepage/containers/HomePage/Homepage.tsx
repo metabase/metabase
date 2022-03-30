@@ -1,3 +1,4 @@
+import fitViewport from "metabase/hoc/FitViewPort";
 import HomePage from "../../components/HomePage";
 
-export default HomePage;
+export default fitViewport(HomePage);
