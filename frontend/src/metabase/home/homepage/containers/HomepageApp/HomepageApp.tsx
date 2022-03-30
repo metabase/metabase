@@ -4,6 +4,7 @@ import Databases from "metabase/entities/databases";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
+import { openNavbar } from "metabase/redux/app";
 import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
 import Homepage from "../../components/Homepage";
@@ -69,6 +70,7 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = {
+  openNavbar,
   onHideData: hideData,
   onHideXrays: hideXrays,
   onHidePinMessage: hidePinMessage,
