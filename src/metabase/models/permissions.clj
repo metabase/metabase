@@ -730,14 +730,12 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g db-id {:data
-                            {:native  :write
-                             :schemas :all}
-                            :download
-                            {:native  :full
-                             :schemas :full}
-                            :data-model
-                            {:schemas :all}}))
+            (assoc g db-id {:data       {:native  :write
+                                         :schemas :all}
+                            :download   {:native  :full
+                                         :schemas :full}
+                            :data-model {:schemas :all}
+                            :details    :yes}))
           {}
           db-ids))
 
