@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, navigationSidebar } from "__support__/e2e/cypress";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("Bookmarks in a collection page", () => {
@@ -13,7 +13,7 @@ describe("Bookmarks in a collection page", () => {
 
     cy.visit("/collection/1");
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
     });
 

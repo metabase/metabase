@@ -17,7 +17,6 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
@@ -343,5 +342,4 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),
-  fitViewport,
 )(QueryBuilder);

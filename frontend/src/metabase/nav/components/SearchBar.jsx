@@ -68,9 +68,6 @@ export default class SearchBar extends React.Component {
         >
           <Icon name="search" ml={["10px", 2]} />
           <SearchInput
-            py={2}
-            pr={[0, 2]}
-            pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
             maxLength={200}
