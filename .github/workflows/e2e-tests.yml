@@ -68,7 +68,7 @@ jobs:
           - "visualizations"
     services:
       maildev:
-        image: maildev/maildev
+        image: maildev/maildev:1.1.0
         ports:
           - "80:80"
           - "25:25"
