@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
+import { Moment } from "moment";
 import Question from "metabase-lib/lib/Question";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -11,8 +12,11 @@ export interface TimelineSidebarProps {
   timelines: Timeline[];
   visibleTimelineIds: number[];
   selectedTimelineEventIds: number[];
+  xDomain?: [Moment, Moment];
   onShowTimelines?: (timelines: Timeline[]) => void;
   onHideTimelines?: (timelines: Timeline[]) => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
   onClose?: () => void;
 }
@@ -22,9 +26,12 @@ const TimelineSidebar = ({
   timelines,
   visibleTimelineIds,
   selectedTimelineEventIds,
+  xDomain,
   onOpenModal,
   onShowTimelines,
   onHideTimelines,
+  onSelectTimelineEvents,
+  onDeselectTimelineEvents,
   onClose,
 }: TimelineSidebarProps) => {
   const handleNewEvent = useCallback(() => {
@@ -36,6 +43,17 @@ const TimelineSidebar = ({
       onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
     },
     [onOpenModal],
+  );
+
+  const handleToggleEvent = useCallback(
+    (event: TimelineEvent, isSelected: boolean) => {
+      if (isSelected) {
+        onSelectTimelineEvents?.([event]);
+      } else {
+        onDeselectTimelineEvents?.();
+      }
+    },
+    [onSelectTimelineEvents, onDeselectTimelineEvents],
   );
 
   const handleToggleTimeline = useCallback(
@@ -50,7 +68,7 @@ const TimelineSidebar = ({
   );
 
   return (
-    <SidebarContent title={t`Events`} onClose={onClose}>
+    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
       <TimelinePanel
         timelines={timelines}
         collectionId={question.collectionId()}
@@ -58,10 +76,21 @@ const TimelineSidebar = ({
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
+        onToggleEvent={handleToggleEvent}
         onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>
   );
+};
+
+const formatTitle = (xDomain?: [Moment, Moment]) => {
+  return xDomain
+    ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
+    : t`Events`;
+};
+
+const formatDate = (date: Moment) => {
+  return date.format("ll");
 };
 
 export default TimelineSidebar;

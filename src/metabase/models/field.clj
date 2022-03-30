@@ -9,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
@@ -208,6 +209,25 @@
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
                           (db/select model :field_id [:in field-ids])))))
+
+(defn nfc-field->parent-identifier
+  "Take a nested field column field corresponding to something like an inner key within a JSON column,
+  and then get the parent column's identifier from its own identifier and the nfc path stored in the field.
+
+  Suppose you have the child with corresponding identifier
+
+  (metabase.util.honeysql-extensions/identifier :field \"blah -> boop\")
+
+  Ultimately, this is just a way to get the parent identifier
+
+  (metabase.util.honeysql-extensions/identifier :field \"blah\")"
+  [field-identifier field]
+  (let [nfc-path          (:nfc_path field)
+        parent-components (-> (:components field-identifier)
+                              (vec)
+                              (pop)
+                              (conj (first nfc-path)))]
+    (apply hx/identifier (cons :field parent-components))))
 
 (defn with-values
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."

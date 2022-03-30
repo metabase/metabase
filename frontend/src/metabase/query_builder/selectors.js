@@ -603,13 +603,13 @@ const getIsTimeseries = createSelector(
   settings => settings && isTimeseries(settings),
 );
 
-const getTimeseriesXValues = createSelector(
+export const getTimeseriesXValues = createSelector(
   [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
   (isTimeseries, series, settings) =>
     isTimeseries && series && settings && getXValues({ series, settings }),
 );
 
-const getTimeseriesXDomain = createSelector(
+export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
 );
