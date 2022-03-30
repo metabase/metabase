@@ -17,7 +17,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
-      - image: maildev/maildev
+      - image: maildev/maildev:1.1.0
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/
