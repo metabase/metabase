@@ -246,6 +246,7 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       cy.wait("@schema");
+      cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
