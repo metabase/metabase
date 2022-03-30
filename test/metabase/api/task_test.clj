@@ -112,6 +112,6 @@
            (mt/user-http-request :rasta :get 403 "task/info"))))
 
   (testing "Superusers could get task info"
-    (is (schema= {:scheduler (su/non-empty [s/Str])
+    (is (schema= {:scheduler s/Any
                   :jobs      [{s/Any s/Any}]}
                  (mt/user-http-request :crowberto :get 200 "task/info")))))
