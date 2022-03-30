@@ -61,6 +61,10 @@ export default class SearchBar extends React.Component {
     }
   }
 
+  onChange = e => {
+    this.setState({ searchText: e.target.value });
+  };
+
   handleKeyUp = e => {
     const FORWARD_SLASH_KEY = 191;
     if (
@@ -72,6 +76,19 @@ export default class SearchBar extends React.Component {
     }
   };
 
+  handleKeyPress = e => {
+    const { searchText } = this.state;
+    const hasSearchQuery =
+      typeof searchText === "string" && searchText.trim().length > 0;
+
+    if (e.key === "Enter" && hasSearchQuery) {
+      this.props.onChangeLocation({
+        pathname: "search",
+        query: { q: searchText.trim() },
+      });
+    }
+  };
+
   render() {
     const { active, searchText } = this.state;
     return (
@@ -79,19 +96,14 @@ export default class SearchBar extends React.Component {
         <SearchWrapper onClick={this.setActive} active={active}>
           <SearchIcon />
           <SearchInput
-            ref={ref => (this.searchInput = ref)}
             value={searchText}
-            maxLength={200}
             placeholder={t`Search` + "…"}
+            maxLength={200}
             onClick={this.setActive}
-            onChange={e => this.setState({ searchText: e.target.value })}
-            onKeyPress={e => {
-              if (e.key === "Enter" && (searchText || "").trim().length > 0) {
-                this.props.onChangeLocation({
-                  pathname: "search",
-                  query: { q: searchText.trim() },
-                });
-              }
+            onChange={this.onChange}
+            onKeyPress={this.handleKeyPress}
+            ref={ref => {
+              this.searchInput = ref;
             }}
           />
           {active && MetabaseSettings.searchTypeaheadEnabled() && (
