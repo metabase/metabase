@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import _ from "underscore";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
@@ -34,8 +35,7 @@ function BaseTree({
     }
     const selectedItemChanged =
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-    const itemsChanged = prevData !== data;
-    if (selectedItemChanged || itemsChanged) {
+    if (selectedItemChanged || !_.isEqual(data, prevData)) {
       setExpandedIds(
         prev => new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
