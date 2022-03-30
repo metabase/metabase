@@ -17,3 +17,8 @@ export const MODAL_TYPES = {
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
 };
+
+export const SIDEBAR_SIZES = {
+  NORMAL: 355,
+  TIMELINE: 300,
+};
