@@ -722,7 +722,9 @@
                              :schemas :all}
                             :download
                             {:native  :full
-                             :schemas :full}}))
+                             :schemas :full}
+                            :data-model
+                            {:schemas :all}}))
           {}
           db-ids))
 
