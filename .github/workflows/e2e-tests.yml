@@ -122,10 +122,13 @@ jobs:
       run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
+
     - name: Upload Cypress recording upon failure
       uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
-        path: ./cypress
+        path: |
+          ./cypress
+          ./logs/test.log
         if-no-files-found: ignore
