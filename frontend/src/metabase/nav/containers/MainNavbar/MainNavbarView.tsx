@@ -2,8 +2,9 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, User } from "metabase-types/api";
+import { Bookmark, Collection, User } from "metabase-types/api";
 
+import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
@@ -14,12 +15,16 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-import { CollectionTreeItem } from "metabase/collections/utils";
 
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
+
+interface CollectionTreeItem extends Collection {
+  icon: string | IconProps;
+  children: CollectionTreeItem[];
+}
 
 type Props = {
   currentUser: User;
