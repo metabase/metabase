@@ -158,15 +158,16 @@
     (throw (ex-info
             (tru "Can''t set data model permissions without having the advanced-permissions premium feature")
             {:status-code 402})))
-  (condp = new-data-model-perms
-    :all
-    (do
+  (when-let [schemas (:schemas new-data-model-perms)]
+    (condp = schemas
+      :all
+      (do
+        (revoke-permissions! :data-model :all group-id db-id)
+        (grant-permissions! :data-model :all group-id db-id))
+
+      :none
       (revoke-permissions! :data-model :all group-id db-id)
-      (grant-permissions! :data-model :all group-id db-id))
 
-    :none
-    (revoke-permissions! :data-model :all group-id db-id)
-
-    (when (map? new-data-model-perms)
-      (doseq [[schema new-schema-perms] (seq new-data-model-perms)]
-        (update-schema-data-model-permissions! group-id db-id schema new-schema-perms)))))
+      (when (map? schemas)
+        (doseq [[schema new-schema-perms] (seq schemas)]
+          (update-schema-data-model-permissions! group-id db-id schema new-schema-perms))))))

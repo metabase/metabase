@@ -159,37 +159,40 @@
     (mt/with-temp PermissionsGroup [{group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Data model perms for an entire DB can be set and revoked"
-          (ee-perms/update-db-data-model-permissions! group-id (mt/id) :all)
+          (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
           (is (= :all
                  (data-model-perms-by-group-id group-id)))
 
-          (ee-perms/update-db-data-model-permissions! group-id (mt/id) :none)
+          (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :none})
           (is (nil? (data-model-perms-by-group-id group-id)))
 
           (testing "Data model perms for individual schemas can be set and revoked"
-            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {"PUBLIC" :all})
-            (is (= {"PUBLIC" :all}
+            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas {"PUBLIC" :all}})
+            (is (= {:schemas {"PUBLIC" :all}}
                    (data-model-perms-by-group-id group-id)))
 
-            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {"PUBLIC" :none})
+            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas {"PUBLIC" :none}})
             (is (nil? (data-model-perms-by-group-id group-id))))
 
           (testing "Data model perms for individual tables can be set and revoked"
             (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {"PUBLIC" {id-1 :all
-                                                                                      id-2 :all
-                                                                                      id-3 :all
-                                                                                      id-4 :all}})
-              (is (= {"PUBLIC" {id-1 :all id-2 :all id-3 :all id-4 :all}}
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-1 :all
+                                                                                       id-2 :all
+                                                                                       id-3 :all
+                                                                                       id-4 :all}}})
+              (is (= {:schemas {"PUBLIC" {id-1 :all id-2 :all id-3 :all id-4 :all}}}
                      (data-model-perms-by-group-id group-id)))
 
-              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {"PUBLIC" {id-2 :none}})
-              (is (= {"PUBLIC" {id-1 :all id-3 :all id-4 :all}}
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-2 :none}}})
+              (is (= {:schemas {"PUBLIC" {id-1 :all id-3 :all id-4 :all}}}
                      (data-model-perms-by-group-id group-id)))
 
-              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {"PUBLIC" {id-1 :none
-                                                                                      id-3 :none
-                                                                                      id-4 :none}})
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-1 :none
+                                                                                       id-3 :none
+                                                                                       id-4 :none}}})
               (is (nil? (data-model-perms-by-group-id group-id)))))))
 
       (premium-features-test/with-premium-features #{}
@@ -197,4 +200,4 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Can't set data model permissions without having the advanced-permissions premium feature"
-               (ee-perms/update-db-data-model-permissions! group-id (mt/id) :all))))))))
+               (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all}))))))))
