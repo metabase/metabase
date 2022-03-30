@@ -14,6 +14,7 @@ const CollectionSidebarBookmarksRoot = styled.div`
 export const BookmarkDragIcon = styled(Icon)`
   left: 14px;
   opacity: 0;
+  pointer-events: none;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -38,9 +39,12 @@ export const BookmarkContainer = styled.div<BookmarkContainerProps>`
   width: 100%;
 
   &:hover {
+    background: ${color("bg-medium")};
+
     svg {
       opacity: 1;
     }
+
     button {
       opacity: 0.5;
     }
