@@ -8,6 +8,7 @@ import colors from "metabase/lib/colors";
 import {
   checkDatabaseSupportsModels,
   checkCanBeModel,
+  checkDatabaseSupportsPersistence,
 } from "metabase/lib/data-modeling/utils";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -22,6 +23,8 @@ export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
 export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
+export const PERSIST_DATASET_TESTID = "persist-dataset";
+export const UNPERSIST_DATASET_TESTID = "unpersist-dataset";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
 
@@ -34,6 +37,8 @@ QuestionActionButtons.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
+  persistModel: PropTypes.func.isRequired,
+  unpersistModel: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -49,8 +54,11 @@ function QuestionActionButtons({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
+  persistModel,
+  unpersistModel,
 }) {
   const isDataset = question.isDataset();
+  const isPersisted = question.isPersisted();
 
   const duplicateTooltip = isDataset
     ? t`Duplicate this model`
@@ -61,6 +69,11 @@ function QuestionActionButtons({
     !isDataset &&
     areNestedQueriesEnabled &&
     checkDatabaseSupportsModels(question.query().database());
+
+  const canPersistModel =
+    canWrite &&
+    isDataset &&
+    checkDatabaseSupportsPersistence(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? colors["brand"] : "";
 
@@ -113,6 +126,26 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
+      {canPersistModel &&
+        (isPersisted ? (
+          <Tooltip tooltip={t`Unpersist model`}>
+            <Button
+              onlyIcon
+              icon="database"
+              iconSize={ICON_SIZE}
+              onClick={() => unpersistModel(question.id())}
+            />
+          </Tooltip>
+        ) : (
+          <Tooltip tooltip={t`Persist model`}>
+            <Button
+              onlyIcon
+              icon="database"
+              iconSize={ICON_SIZE}
+              onClick={() => persistModel(question.id())}
+            />
+          </Tooltip>
+        ))}
       {canWrite && (
         <Tooltip tooltip={duplicateTooltip}>
           <Button

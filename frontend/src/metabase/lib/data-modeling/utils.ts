@@ -18,6 +18,10 @@ export function checkDatabaseSupportsModels(database?: Database | null) {
   return database && database.hasFeature("nested-queries");
 }
 
+export function checkDatabaseSupportsPersistence(database?: Database | null) {
+  return database && database.supportsPersistence();
+}
+
 export function checkCanBeModel(question: Question) {
   const query = question.query();
 
