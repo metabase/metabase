@@ -63,6 +63,10 @@ export const SearchBarContent = styled.div`
   margin-left: auto;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
+
+  ${breakpointMaxSmall} {
+    max-width: 60vw;
+  }
 `;
 
 export const EntityMenuContainer = styled.div`
