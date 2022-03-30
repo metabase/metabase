@@ -15,6 +15,7 @@ import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar
 import DriverWarning from "metabase/containers/DriverWarning";
 
 import Databases from "metabase/entities/databases";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   getEditingDatabase,
@@ -48,8 +49,11 @@ const DATABASE_FORM_NAME = "database";
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+  const metadata = getMetadata(state);
+
   return {
     database,
+    metadata,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
@@ -78,6 +82,7 @@ export default class DatabaseEditApp extends Component {
 
   static propTypes = {
     database: PropTypes.object,
+    metadata: PropTypes.object,
     databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
@@ -101,6 +106,7 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
+      metadata,
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
@@ -191,7 +197,7 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              database={database}
+              database={metadata.database(database.id)}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
