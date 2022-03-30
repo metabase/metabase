@@ -8,7 +8,7 @@ on:
 jobs:
 
   build:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-8vcpu-ubuntu-2004
     timeout-minutes: 25
     strategy:
       matrix:
