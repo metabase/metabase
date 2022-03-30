@@ -123,7 +123,7 @@ jobs:
       env:
         TERM: xterm
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
