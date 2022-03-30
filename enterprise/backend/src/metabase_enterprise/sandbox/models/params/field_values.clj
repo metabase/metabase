@@ -1,9 +1,9 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require [clojure.core.memoize :as memoize]
-            [metabase.db.connection :as mdb.connection]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as sandbox.api.table]
             [metabase.api.common :as api]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
