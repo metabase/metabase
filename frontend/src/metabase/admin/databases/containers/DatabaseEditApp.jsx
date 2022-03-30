@@ -31,6 +31,8 @@ import {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  persistDatabase,
+  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -61,6 +63,8 @@ const mapDispatchToProps = {
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
@@ -81,6 +85,8 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
+    persistDatabase: PropTypes.func.isRequired,
+    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
@@ -101,6 +107,8 @@ export default class DatabaseEditApp extends Component {
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
+      persistDatabase,
+      unpersistDatabase,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -188,6 +196,8 @@ export default class DatabaseEditApp extends Component {
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
+              persistDatabase={persistDatabase}
+              unpersistDatabase={unpersistDatabase}
             />
           )}
         </DatabaseEditMain>

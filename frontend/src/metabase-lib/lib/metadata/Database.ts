@@ -96,6 +96,14 @@ export default class Database extends Base {
     return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
+  isPersisted() {
+    return this.details["persist-models"];
+  }
+
+  supportsModelPersistence() {
+    return this.hasFeature("persist-models");
+  }
+
   canWrite() {
     return this.native_permissions === "write";
   }

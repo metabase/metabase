@@ -253,6 +253,8 @@ export const MetabaseApi = {
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_persist: POST("/api/database/:dbId/persist"),
+  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
