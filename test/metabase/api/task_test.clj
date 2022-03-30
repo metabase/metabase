@@ -103,3 +103,8 @@
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))
+
+(deftest fetch-info-test
+  (testing "Regular user can't get task info"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "task/info")))))
