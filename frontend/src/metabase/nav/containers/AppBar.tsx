@@ -35,7 +35,7 @@ function AppBar({
   handleCloseSidebar,
   onChangeLocation,
 }: Props) {
-  const onLogoClick = useCallback(() => {
+  const closeSidebarForSmallScreens = useCallback(() => {
     if (isSmallScreen()) {
       handleCloseSidebar();
     }
@@ -44,7 +44,11 @@ function AppBar({
   return (
     <AppBarRoot id="mainAppBar">
       <LogoIconWrapper>
-        <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
+        <Link
+          to="/"
+          onClick={closeSidebarForSmallScreens}
+          data-metabase-event="Navbar;Logo"
+        >
           <LogoIcon size={24} />
         </Link>
       </LogoIconWrapper>
@@ -56,7 +60,11 @@ function AppBar({
       </Tooltip>
       <SearchBarContainer>
         <SearchBarContent>
-          <SearchBar location={location} onChangeLocation={onChangeLocation} />
+          <SearchBar
+            location={location}
+            onChangeLocation={onChangeLocation}
+            onFocus={closeSidebarForSmallScreens}
+          />
         </SearchBarContent>
       </SearchBarContainer>
       <NewButton setModal={onNewClick} />
