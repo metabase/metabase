@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'test-8vcpu'
+      - 'master'
 
 jobs:
 
@@ -33,99 +33,99 @@ jobs:
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
-  # e2e-tests:
-  #   runs-on: buildjet-8vcpu-ubuntu-2004
-  #   timeout-minutes: 30
-  #   needs: build
-  #   name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
-  #   env:
-  #     MB_EDITION: ${{ matrix.edition }}
-  #     DISPLAY: ""
-  #     QA_DB_ENABLED: true
-  #     ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-  #     MB_SNOWPLOW_AVAILABLE: true
-  #     MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       edition: [oss, ee]
-  #       folder:
-  #         - "admin"
-  #         - "binning"
-  #         - "collections"
-  #         - "custom-column"
-  #         - "dashboard"
-  #         - "dashboard-filters"
-  #         - "dashboard-filters-sql"
-  #         - "downloads"
-  #         - "embedding"
-  #         - "joins"
-  #         - "models"
-  #         - "moderation"
-  #         - "native"
-  #         - "native-filters"
-  #         - "permissions"
-  #         - "question"
-  #         - "sharing"
-  #         - "visualizations"
-  #   services:
-  #     maildev:
-  #       image: maildev/maildev:1.1.0
-  #       ports:
-  #         - "80:80"
-  #         - "25:25"
-  #       credentials:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #     postgres-sample:
-  #       image: metabase/qa-databases:postgres-sample-12
-  #       ports:
-  #         - "5432:5432"
-  #       credentials:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #     mongo-sample:
-  #       image: metabase/qa-databases:mongo-sample-4.0
-  #       ports:
-  #         - 27017:27017
-  #       credentials:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #     mysql-sample:
-  #       image: metabase/qa-databases:mysql-sample-8
-  #       ports:
-  #         - 3306:3306
-  #       credentials:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Prepare front-end environment
-  #     uses: ./.github/actions/prepare-frontend
-  #   - name: Prepare back-end environment
-  #     uses: ./.github/actions/prepare-backend
-  #   - name: Prepare cypress environment
-  #     uses: ./.github/actions/prepare-cypress
-  #   - name: Run Snowlow micro
-  #     uses: ./.github/actions/run-snowplow-micro
+  e2e-tests:
+    runs-on: buildjet-8vcpu-ubuntu-2004
+    timeout-minutes: 30
+    needs: build
+    name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      QA_DB_ENABLED: true
+      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [oss, ee]
+        folder:
+          - "admin"
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
+          - "downloads"
+          - "embedding"
+          - "joins"
+          - "models"
+          - "moderation"
+          - "native"
+          - "native-filters"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
+    services:
+      maildev:
+        image: maildev/maildev:1.1.0
+        ports:
+          - "80:80"
+          - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      postgres-sample:
+        image: metabase/qa-databases:postgres-sample-12
+        ports:
+          - "5432:5432"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      mongo-sample:
+        image: metabase/qa-databases:mongo-sample-4.0
+        ports:
+          - 27017:27017
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      mysql-sample:
+        image: metabase/qa-databases:mysql-sample-8
+        ports:
+          - 3306:3306
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
+    - name: Run Snowlow micro
+      uses: ./.github/actions/run-snowplow-micro
 
-  #   - uses: actions/download-artifact@v3
-  #     name: Retrieve uberjar artifact for ${{ matrix.edition }}
-  #     with:
-  #       name: metabase-${{ matrix.edition }}-uberjar
-  #   - name: Get the version info
-  #     run: |
-  #       jar xf target/uberjar/metabase.jar version.properties
-  #       mv version.properties resources/
+    - uses: actions/download-artifact@v3
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
 
-  #   - name: Run Cypress tests on ${{ matrix.folder }}
-  #     run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
-  #     env:
-  #       TERM: xterm
-  #   - name: Upload Cypress recording upon failure
-  #     uses: actions/upload-artifact@v3
-  #     if: failure()
-  #     with:
-  #       name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
-  #       path: ./cypress
-  #       if-no-files-found: ignore
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+      env:
+        TERM: xterm
+    - name: Upload Cypress recording upon failure
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        path: ./cypress
+        if-no-files-found: ignore
