@@ -78,3 +78,16 @@ function getHiddenFilters(filters) {
 function getEmbeddableObject(payload) {
   return Object.keys(payload.resource)[0];
 }
+
+/**
+ * Grab iframe `src` via UI and open it,
+ * but make sure user is signed out.
+ */
+export function visitIframe() {
+  cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    cy.signOut();
+    cy.visit(iframe.src);
+  });
+}

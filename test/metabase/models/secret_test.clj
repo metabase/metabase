@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [metabase.util.encryption-test :as encryption-test])
   (:import [java.io DataInputStream File]
            java.nio.charset.StandardCharsets))
@@ -73,3 +74,22 @@
                                     (with-open [in (DataInputStream. (io/input-stream val-file))]
                                       (.readFully in result))
                                     result))))))))))
+
+(deftest ssl-root-cert-base
+  (testing "db-details-prop->secret-map"
+    (testing "decodes root cert value properly (#20319)"
+      (is (= "<Certificate text goes here>"
+             (:value (secret/db-details-prop->secret-map
+                      {:ssl true
+                       :ssl-mode "verify-ca"
+                       :ssl-root-cert-value (str "data:application/x-x509-ca-cert;base64,"
+                                                 (u/encode-base64 "<Certificate text goes here>"))
+                       :ssl-root-cert-options "uploaded"
+                       :port 5432,
+                       :advanced-options false
+                       :dbname "the-bean-base"
+                       :host "localhost"
+                       :tunnel-enabled false
+                       :engine :postgres
+                       :user "human-bean"}
+                      "ssl-root-cert")))))))

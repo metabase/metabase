@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -9,9 +10,13 @@ const CollectionSidebarBookmarksRoot = styled.div`
   margin-bottom: ${space(2)};
 `;
 
-export const BookmarkTypeIcon = styled(Icon)`
+interface BookmarkTypeIconProps {
+  opacity: number;
+}
+
+export const BookmarkTypeIcon = styled(Icon)<BookmarkTypeIconProps>`
   margin-right: 6px;
-  opacity: 0.5;
+  opacity: ${({ opacity }) => opacity};
 `;
 
 export const BookmarkListRoot = styled.div`
@@ -36,9 +41,11 @@ export const BookmarkContainer = styled.div`
     color: ${color("brand")};
     cursor: pointer;
     padding: ${space(1)};
+    margin-top: 2px;
     position: absolute;
     right: 0;
-    top: 0;
+    top: 50%;
+    transform: translateY(-50%);
   }
 `;
 

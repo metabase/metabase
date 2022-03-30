@@ -152,6 +152,7 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
   }
   const authorityLevel =
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+
   return authorityLevel
     ? {
         name: authorityLevel.icon,

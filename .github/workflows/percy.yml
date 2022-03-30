@@ -57,7 +57,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:
