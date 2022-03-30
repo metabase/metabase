@@ -1687,11 +1687,11 @@ export const showTimelinesForCollection = collectionId => (
 };
 
 export const PERSIST_DATASET = "metabase/qb/PERSIST_DATASET";
-export const persistDataset = createAction(PERSIST_DATASET, ({ id }) =>
+export const persistDataset = createAction(PERSIST_DATASET, id =>
   CardApi.persist({ id }),
 );
 
 export const UNPERSIST_DATASET = "metabase/qb/UNPERSIST_DATASET";
-export const unpersistDataset = createAction(UNPERSIST_DATASET, ({ id }) =>
+export const unpersistDataset = createAction(UNPERSIST_DATASET, id =>
   CardApi.unpersist({ id }),
 );

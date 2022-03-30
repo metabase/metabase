@@ -37,8 +37,8 @@ QuestionActionButtons.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
-  persistModel: PropTypes.func.isRequired,
-  unpersistModel: PropTypes.func.isRequired,
+  persistDataset: PropTypes.func.isRequired,
+  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -54,9 +54,10 @@ function QuestionActionButtons({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
-  persistModel,
-  unpersistModel,
+  persistDataset,
+  unpersistDataset,
 }) {
+  const isSaved = question.isSaved();
   const isDataset = question.isDataset();
   const isPersisted = question.isPersisted();
 
@@ -70,8 +71,9 @@ function QuestionActionButtons({
     areNestedQueriesEnabled &&
     checkDatabaseSupportsModels(question.query().database());
 
-  const canPersistModel =
+  const canPersistDataset =
     canWrite &&
+    isSaved &&
     isDataset &&
     checkDatabaseSupportsPersistence(question.query().database());
 
@@ -126,14 +128,14 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
-      {canPersistModel &&
+      {canPersistDataset &&
         (isPersisted ? (
           <Tooltip tooltip={t`Unpersist model`}>
             <Button
               onlyIcon
               icon="database"
               iconSize={ICON_SIZE}
-              onClick={() => unpersistModel(question.id())}
+              onClick={() => unpersistDataset(question.id())}
             />
           </Tooltip>
         ) : (
@@ -142,7 +144,7 @@ function QuestionActionButtons({
               onlyIcon
               icon="database"
               iconSize={ICON_SIZE}
-              onClick={() => persistModel(question.id())}
+              onClick={() => persistDataset(question.id())}
             />
           </Tooltip>
         ))}

@@ -20,6 +20,8 @@ QuestionDetailsSidebarPanel.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
+  persistDataset: PropTypes.func.isRequired,
+  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebarPanel({
@@ -27,6 +29,8 @@ function QuestionDetailsSidebarPanel({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
+  persistDataset,
+  unpersistDataset,
 }) {
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
@@ -47,6 +51,8 @@ function QuestionDetailsSidebarPanel({
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
+          persistDataset={persistDataset}
+          unpersistDataset={unpersistDataset}
         />
         <ClampedDescription
           visibleLines={8}
