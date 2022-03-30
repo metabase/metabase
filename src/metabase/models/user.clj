@@ -165,6 +165,15 @@
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
 
+(defn add-is-installer
+  "Adds the `is_installer` flag to a collection of `users`. This should be `true` for only the user who
+  underwent the initial app setup flow (with an ID of 1). This is used to modify the experience of the
+  starting page for users."
+  {:batched-hydrate :is_installer}
+  [users]
+  (when (seq users)
+    (for [user users]
+      (assoc user :is_installer (= (:id user) 1)))))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
