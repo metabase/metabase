@@ -1,19 +1,27 @@
 import styled from "@emotion/styled";
 
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-export const Sidebar = styled.aside`
+export const Sidebar = styled.aside<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-top: ${space(1)};
-  width: 100%;
+  width: ${NAV_SIDEBAR_WIDTH};
+  background-color: transparent;
 
   overflow-x: hidden;
   overflow-y: auto;
 
-  background-color: transparent;
+  opacity: ${props => (props.isOpen ? 1 : 0)};
+  transition: opacity 0.2s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 export const SidebarHeading = styled.h4`

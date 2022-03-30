@@ -32,6 +32,12 @@ export const NavRoot = styled.div<{ isOpen: boolean }>`
 
   border-right: 1px solid ${color("border")};
 
+  transition: width 0.2s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
   ${props => props.isOpen && openNavbarCSS};
 
   ${breakpointMaxSmall} {
@@ -63,6 +69,12 @@ export const SearchBarContent = styled.div`
   margin-left: auto;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
+
+  transition: max-width 0.2s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 
   ${breakpointMaxSmall} {
     max-width: 60vw;

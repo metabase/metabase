@@ -79,6 +79,7 @@ export default class Navbar extends Component {
     return (
       <NavRoot className="Nav" isOpen={isOpen}>
         <MainNavbar
+          isOpen={isOpen}
           location={location}
           params={params}
           closeNavbar={closeNavbar}
