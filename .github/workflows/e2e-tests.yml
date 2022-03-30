@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'test-8vcpu'
 
 jobs:
 
@@ -34,7 +34,7 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-8vcpu-ubuntu-2004
     timeout-minutes: 30
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
