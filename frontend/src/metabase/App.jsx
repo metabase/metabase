@@ -25,7 +25,7 @@ import StatusListing from "metabase/status/containers/StatusListing";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
 
-import { toggleNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import { toggleNavbar, closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import { AppContentContainer, AppContent } from "./App.styled";
@@ -43,6 +43,7 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = {
   onChangeLocation: push,
   toggleNavbar,
+  closeNavbar,
 };
 
 const getErrorComponent = ({ status, data, context }) => {
@@ -169,6 +170,7 @@ class App extends Component {
       errorPage,
       onChangeLocation,
       toggleNavbar,
+      closeNavbar,
     } = this.props;
     const { errorInfo } = this.state;
     const hasAppBar = this.hasAppBar();
@@ -182,8 +184,9 @@ class App extends Component {
               <AppBar
                 isSidebarOpen={isSidebarOpen}
                 location={location}
-                onToggleSidebarClick={toggleNavbar}
                 onNewClick={this.setModal}
+                onToggleSidebarClick={toggleNavbar}
+                handleCloseSidebar={closeNavbar}
                 onChangeLocation={onChangeLocation}
               />
             )}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -14,28 +14,37 @@ import {
 } from "metabase/nav/containers/Navbar.styled";
 
 import Database from "metabase/entities/databases";
+import { isSmallScreen } from "metabase/lib/dom";
 
 import { AppBarRoot, LogoIconWrapper, SidebarButton } from "./AppBar.styled";
 
 type Props = {
   isSidebarOpen: boolean;
   location: Location;
-  onToggleSidebarClick: () => void;
   onNewClick: () => void;
+  onToggleSidebarClick: () => void;
+  handleCloseSidebar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
 function AppBar({
   isSidebarOpen,
   location,
-  onToggleSidebarClick,
   onNewClick,
+  onToggleSidebarClick,
+  handleCloseSidebar,
   onChangeLocation,
 }: Props) {
+  const onLogoClick = useCallback(() => {
+    if (isSmallScreen()) {
+      handleCloseSidebar();
+    }
+  }, [handleCloseSidebar]);
+
   return (
     <AppBarRoot id="mainAppBar">
       <LogoIconWrapper>
-        <Link to="/" data-metabase-event="Navbar;Logo">
+        <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
           <LogoIcon size={24} />
         </Link>
       </LogoIconWrapper>
