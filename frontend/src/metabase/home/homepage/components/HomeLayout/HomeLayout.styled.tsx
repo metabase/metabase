@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import { alpha, color } from "metabase/lib/colors";
 import { css } from "@emotion/react";
+import { alpha, color } from "metabase/lib/colors";
 
 export interface LayoutProps {
   showScene?: boolean;
