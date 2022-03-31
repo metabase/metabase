@@ -161,7 +161,7 @@ function addSimpleNumberFilter(value) {
  * @param {string} value
  */
 function enterDefaultValue(value) {
-  cy.findByPlaceholderText("Enter a default value...").type(value);
+  cy.findByPlaceholderText("Enter a default value...").type(`${value}{enter}`);
   cy.button("Add filter").click();
 }
 
@@ -171,7 +171,9 @@ function enterDefaultValue(value) {
  */
 export function pickDefaultValue(searchTerm, result) {
   cy.findByPlaceholderText("Enter a default value...").type(searchTerm);
-  cy.findByText(result).click();
+  popover()
+    .findByText(result)
+    .click();
 
   cy.button("Add filter").click();
 }
