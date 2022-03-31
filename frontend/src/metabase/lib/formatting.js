@@ -44,6 +44,7 @@ import {
   renderLinkURLForClick,
 } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
+import { currency } from "cljs/metabase.shared.util.currency";
 
 // a one or two character string specifying the decimal and grouping separator characters
 
@@ -106,6 +107,15 @@ export function numberFormatterForOptions(options) {
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
   });
+}
+
+let currencyMapCache;
+export function getCurrencySymbol(currencyCode) {
+  if (!currencyMapCache) {
+    // only turn the array into a map if we call this function
+    currencyMapCache = Object.fromEntries(currency);
+  }
+  return currencyMapCache[currencyCode]?.symbol || currencyCode;
 }
 
 export function formatNumber(number, options = {}) {

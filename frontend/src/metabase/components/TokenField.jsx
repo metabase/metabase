@@ -454,6 +454,7 @@ export default class TokenField extends Component {
       valueStyle,
       optionsStyle,
       optionsClassName,
+      prefix,
     } = this.props;
     let {
       inputValue,
@@ -500,11 +501,12 @@ export default class TokenField extends Component {
       <ul
         className={cx(
           className,
-          "pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y",
+          "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
         )}
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
+        {!!prefix && <span className="text-medium mb1 py1 pr1">{prefix}</span>}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
