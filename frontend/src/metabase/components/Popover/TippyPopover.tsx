@@ -110,7 +110,7 @@ function TippyPopover({
 
   const handleShow = useCallback(
     (instance: TippyInstance) => {
-      setupCloseHandler(instance.popper, () =>
+      setupCloseHandler(instance, () =>
         isControlled ? onClose?.() : instance.hide(),
       );
 

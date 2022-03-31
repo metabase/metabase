@@ -1,7 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
+import * as tippy from "tippy.js";
+
+type TippyInstance = tippy.Instance;
 
 type PopoverData = {
+  triggerEl: Element;
   contentEl: Element;
   backdropEl?: Element;
   close: (e: MouseEvent | KeyboardEvent) => void;
@@ -54,14 +58,38 @@ export function shouldClosePopover(
 
 export default function useSequencedContentCloseHandler() {
   const popoverDataRef = useRef<PopoverData>();
+  // A cheap hack to prevent popovers from being closed more than 1 time
+  // in a single sequence e.g. After users click there will be 2 events; mousedown -> click.
+  const closedPopoverDuringMouseSequenceRef = useRef<PopoverData>();
 
   const handleEvent = useCallback((e: MouseEvent | KeyboardEvent) => {
-    if (
-      popoverDataRef.current &&
-      shouldClosePopover(e, popoverDataRef.current)
-    ) {
-      popoverDataRef.current.close(e);
+    if (e instanceof MouseEvent) {
+      if (
+        popoverDataRef.current &&
+        shouldClosePopover(e, popoverDataRef.current) &&
+        !closedPopoverDuringMouseSequenceRef.current
+      ) {
+        closedPopoverDuringMouseSequenceRef.current = popoverDataRef.current;
+        popoverDataRef.current.close(e);
+      }
+    } else {
+      // keyboard event
+      if (
+        popoverDataRef.current &&
+        shouldClosePopover(e, popoverDataRef.current)
+      ) {
+        popoverDataRef.current.close(e);
+      }
     }
+  }, []);
+
+  // Prevent toggling the popover after closing it with `mousedown`
+  const handleClickEvent = useCallback((e: MouseEvent) => {
+    if (closedPopoverDuringMouseSequenceRef.current?.triggerEl === e.target) {
+      e.stopPropagation();
+    }
+
+    closedPopoverDuringMouseSequenceRef.current = undefined;
   }, []);
 
   const removeCloseHandler = useCallback(() => {
@@ -75,11 +103,15 @@ export default function useSequencedContentCloseHandler() {
   }, [handleEvent]);
 
   const setupCloseHandler = useCallback(
-    (contentEl: Element | null, close: () => void) => {
+    (instance: TippyInstance, close: () => void) => {
       removeCloseHandler();
 
-      if (isElement(contentEl)) {
-        const popover = { contentEl, close };
+      if (isElement(instance.popper)) {
+        const popover = {
+          triggerEl: instance.reference,
+          contentEl: instance.popper,
+          close,
+        };
         RENDERED_POPOVERS.push(popover);
         popoverDataRef.current = popover;
 
@@ -89,6 +121,13 @@ export default function useSequencedContentCloseHandler() {
     },
     [handleEvent, removeCloseHandler],
   );
+
+  useEffect(() => {
+    window.addEventListener("click", handleClickEvent, true);
+    return () => {
+      window.removeEventListener("click", handleClickEvent, true);
+    };
+  }, [handleClickEvent]);
 
   return { setupCloseHandler, removeCloseHandler };
 }
