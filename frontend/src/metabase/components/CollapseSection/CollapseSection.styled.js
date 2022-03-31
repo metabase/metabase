@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { space } from "metabase/styled-components/theme";
 
 import Icon from "metabase/components/Icon";
 
@@ -8,6 +9,7 @@ export const HeaderContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
+  margin-bottom: ${space(1)};
 `;
 
 HeaderContainer.defaultProps = {

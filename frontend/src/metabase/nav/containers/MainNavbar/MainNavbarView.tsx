@@ -24,6 +24,7 @@ import {
   SidebarHeading,
   ProfileLinkContainer,
   SidebarSection,
+  SidebarHeadingWrapper,
 } from "./MainNavbar.styled";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
@@ -87,7 +88,9 @@ function MainNavbarView({
       <ul>
         {hasDataAccess && !IFRAMED && (
           <SidebarSection>
-            <SidebarHeading>{t`Data`}</SidebarHeading>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Data`}</SidebarHeading>
+            </SidebarHeadingWrapper>
             <SidebarLink
               icon="table_spaced"
               url={BROWSE_URL}
@@ -122,9 +125,9 @@ function CollectionSectionHeading({
   isMiscLinkSelected = false,
 }: CollectionSectionHeadingProps) {
   return (
-    <div className="flex align-center hover-parent hover--visibilityll">
+    <SidebarHeadingWrapper>
       <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <span className="ml-auto">
+      <span className="ml-auto mr1">
         <PopoverWithTrigger
           triggerElement={
             <Icon name="ellipsis" className="hover-child" size={12} />
@@ -153,7 +156,7 @@ function CollectionSectionHeading({
           </SidebarLink>
         </PopoverWithTrigger>
       </span>
-    </div>
+    </SidebarHeadingWrapper>
   );
 }
 

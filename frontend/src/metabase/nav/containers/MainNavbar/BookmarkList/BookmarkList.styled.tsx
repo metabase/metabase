@@ -12,12 +12,12 @@ export const BookmarkListRoot = styled.div`
 `;
 
 export const BookmarkTypeIcon = styled(Icon)`
-  margin-right: 6px;
+  padding-right: 6px;
   opacity: 0.5;
 `;
 
 export const SidebarBookmarkItem = styled(SidebarLink)`
-  padding-left: ${space(1)};
+  padding-left: 12px;
 
   &:hover {
     button {
