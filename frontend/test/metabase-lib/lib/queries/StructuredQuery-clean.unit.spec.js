@@ -294,7 +294,7 @@ describe("StructuredQuery", () => {
       ).toEqual({
         type: "query",
         database: SAMPLE_DATABASE.id,
-        query: { "source-table": null },
+        query: {},
       });
     });
     it("should remove outer empty queries", () => {

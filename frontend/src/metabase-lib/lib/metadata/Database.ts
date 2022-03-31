@@ -113,13 +113,13 @@ export default class Database extends Base {
       .setDefaultDisplay();
   }
 
-  question(query: StructuredQuery): Question {
+  question(query: StructuredQuery = {}): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
         database: this.id,
         type: "query",
-        query: query,
+        query,
       },
     });
   }
