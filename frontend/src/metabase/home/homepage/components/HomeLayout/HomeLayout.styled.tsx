@@ -20,13 +20,10 @@ const gradientStyles = css`
 
 export const LayoutRoot = styled.div<LayoutProps>`
   flex: 1;
+  padding: 4rem 7rem;
   ${props => (props.showScene ? sceneStyles : gradientStyles)};
 `;
 
-export const LayoutMain = styled.div`
-  padding: 4rem 7rem;
-`;
-
-export const LayoutContent = styled.div`
+export const LayoutBody = styled.div`
   margin-top: 6rem;
 `;

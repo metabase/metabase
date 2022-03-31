@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import GreetingSection from "../../containers/HomeGreeting";
-import { LayoutContent, LayoutMain, LayoutRoot } from "./HomeLayout.styled";
+import { LayoutBody, LayoutRoot } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
   showScene?: boolean;
@@ -10,10 +10,8 @@ export interface HomeLayoutProps {
 const HomeLayout = ({ showScene, children }: HomeLayoutProps): JSX.Element => {
   return (
     <LayoutRoot showScene={showScene}>
-      <LayoutMain>
-        <GreetingSection />
-        <LayoutContent>{children}</LayoutContent>
-      </LayoutMain>
+      <GreetingSection />
+      <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
 };
