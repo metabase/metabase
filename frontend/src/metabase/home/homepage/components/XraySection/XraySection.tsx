@@ -66,12 +66,16 @@ const XraySection = ({
 const getMessages = (count: number) => {
   const options = [
     t`A look at`,
-    t`A summary of `,
+    t`A summary of`,
     t`A glance at`,
     t`Some insights about`,
   ];
 
-  return _.sample(options, count);
+  return _.chain(count)
+    .range()
+    .map(index => options[index % options.length])
+    .sample(count)
+    .value();
 };
 
 export default XraySection;
