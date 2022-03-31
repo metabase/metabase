@@ -77,7 +77,7 @@
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
               result        (premium-features-test/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
-          (is (= "Can't use block permissions without having the advanced-permissions premium feature"
+          (is (= "The block permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                  result)))))))
 
 (deftest update-graph-test
