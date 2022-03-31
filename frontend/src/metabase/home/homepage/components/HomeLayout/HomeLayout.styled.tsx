@@ -15,7 +15,11 @@ const sceneStyles = css`
 `;
 
 const gradientStyles = css`
-  background: linear-gradient(90deg, ${color("white")}, ${alpha("brand", 0.2)});
+  background: linear-gradient(
+    to bottom,
+    ${color("white")},
+    ${alpha("brand", 0.2)}
+  );
 `;
 
 export const LayoutRoot = styled.div<LayoutProps>`
