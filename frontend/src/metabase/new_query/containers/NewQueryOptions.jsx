@@ -6,8 +6,6 @@ import { push } from "react-router-redux";
 
 import { t } from "ttag";
 
-import fitViewport from "metabase/hoc/FitViewPort";
-
 import { Grid } from "metabase/components/Grid";
 
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
@@ -36,7 +34,6 @@ const mapDispatchToProps = {
   push,
 };
 
-@fitViewport
 @connect(mapStateToProps, mapDispatchToProps)
 export default class NewQueryOptions extends Component {
   componentDidMount() {

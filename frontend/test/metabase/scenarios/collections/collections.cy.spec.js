@@ -4,7 +4,8 @@ import {
   modal,
   popover,
   openOrdersTable,
-  sidebar,
+  navigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -133,7 +134,7 @@ describe("scenarios > collection_defaults", () => {
       it.skip("should expand/collapse collection tree by clicking on parent collection name (metabse#17339)", () => {
         cy.visit("/collection/root");
 
-        sidebar().within(() => {
+        navigationSidebar().within(() => {
           cy.findByText("First collection").click();
           cy.findByText("Second collection");
           cy.findByText("Third collection");
@@ -263,7 +264,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
 
-        sidebar().within(() => {
+        navigationSidebar().within(() => {
           cy.findByText("Our analytics");
           cy.findByText("Child");
           cy.findByText("Parent").should("not.exist");
@@ -418,16 +419,18 @@ describe("scenarios > collection_defaults", () => {
 
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      // Note: collection name's first letter is capitalized
-      cy.findByText(/foo:bar/i).click();
-      cy.findByText("Orders");
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        // Note: collection name's first letter is capitalized
+        cy.findByText(/foo:bar/i).click();
+        cy.findByText("Orders");
+      });
     });
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
 
-      sidebar()
+      navigationSidebar()
         .findByText("Your personal collection")
         .parent()
         .find(".Icon-chevronright")
@@ -435,7 +438,7 @@ describe("scenarios > collection_defaults", () => {
 
       // Ensure if sub-collection is archived, the chevron is not displayed
       displaySidebarChildOf("First collection");
-      sidebar()
+      navigationSidebar()
         .findByText("Second collection")
         .click();
       cy.icon("pencil").click();
@@ -445,7 +448,7 @@ describe("scenarios > collection_defaults", () => {
       cy.get(".Modal")
         .findByRole("button", { name: "Archive" })
         .click();
-      sidebar()
+      navigationSidebar()
         .findByText("First collection")
         .parent()
         .find(".Icon-chevrondown")
@@ -467,14 +470,17 @@ describe("scenarios > collection_defaults", () => {
       });
 
       cy.visit("/");
+      closeNavigationSidebar();
       cy.findByText("New").click();
       cy.findByText("Question")
         .should("be.visible")
         .click();
 
-      cy.findByText("Saved Questions").click();
-      cy.findByText("First collection");
-      cy.findByText("Second collection").should("not.exist");
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("First collection");
+        cy.findByText("Second collection").should("not.exist");
+      });
     });
 
     describe("bulk actions", () => {
@@ -535,7 +541,7 @@ describe("scenarios > collection_defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
 
           // Check that items were actually moved
-          sidebar()
+          navigationSidebar()
             .findByText("First collection")
             .click();
           cy.findByText("Orders");
@@ -572,7 +578,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
 }
 
 function getSidebarCollectionChildrenFor(item) {
-  return sidebar()
+  return navigationSidebar()
     .findByText(item)
     .closest("a")
     .parent()

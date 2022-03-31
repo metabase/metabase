@@ -5,7 +5,6 @@ import { extractCollectionId } from "metabase/lib/urls";
 
 import { PageWrapper } from "metabase/collections/components/Layout";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
-import CollectionSidebar from "metabase/collections/containers/CollectionSidebar";
 import { ContentBox } from "./CollectionLanding.styled";
 
 const CollectionLanding = ({ params: { slug }, children }) => {
@@ -21,19 +20,7 @@ const CollectionLanding = ({ params: { slug }, children }) => {
 
   return (
     <PageWrapper>
-      <CollectionSidebar
-        isRoot={isRoot}
-        handleToggleMobileSidebar={handleToggleMobileSidebar}
-        collectionId={collectionId}
-        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
-      />
-      {/* For now I'm wrapping this here so that we could potentially reuse CollectionContent without
-        having the specific page margin and layout concerns, TBD whether that's a good idea or needed
-        */}
-      <ContentBox
-        className="border-left"
-        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
-      >
+      <ContentBox shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}>
         <CollectionContent
           isRoot={isRoot}
           collectionId={collectionId}
