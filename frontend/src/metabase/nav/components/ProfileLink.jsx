@@ -23,7 +23,6 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
-    context: PropTypes.string.isRequired,
   };
 
   openModal = modalName => {

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall, space } from "metabase/styled-components/theme";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 const openNavbarCSS = css`
   width: 324px;
@@ -19,6 +19,7 @@ export const NavRoot = styled.div<{ isOpen: boolean }>`
   padding: 0.5rem 0;
   background-color: ${color("nav")};
   overflow: auto;
+  overflow-x: hidden;
   z-index: 3;
   flex-shrink: 0;
   border-right: 1px solid ${color("border")};
@@ -63,11 +64,4 @@ export const EntityMenuContainer = styled.div`
   ${breakpointMinSmall} {
     padding-left: 1rem;
   }
-`;
-
-export const ProfileLinkContainer = styled.div`
-  margin-left: auto;
-  position: absolute;
-  bottom: 0;
-  right: ${space(2)};
 `;
