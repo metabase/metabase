@@ -6,7 +6,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Bookmark, BookmarkableEntities } from "metabase-types/api";
+import { Bookmark } from "metabase-types/api";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
@@ -18,15 +18,6 @@ const mapDispatchToProps = {
   onDeleteBookmark: ({ item_id, type }: Bookmark) =>
     Bookmarks.actions.delete({ id: item_id, type }),
 };
-
-function getIconForEntityType(type: BookmarkableEntities) {
-  const icons = {
-    card: "grid",
-    collection: "folder",
-    dashboard: "dashboard",
-  };
-  return icons[type];
-}
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
@@ -60,13 +51,14 @@ const BookmarkList = ({
           selectedItem.type !== "collection" &&
           selectedItem.type === type &&
           selectedItem.id === item_id;
+        const icon = Bookmarks.objectSelectors.getIcon(bookmark);
         const url = Urls.bookmark(bookmark);
         const onRemove = () => onDeleteBookmark(bookmark);
         return (
           <SidebarBookmarkItem
             key={`bookmark-${id}`}
             url={url}
-            icon={getIconForEntityType(type)}
+            icon={icon}
             isSelected={isSelected}
             right={
               <button onClick={onRemove}>
