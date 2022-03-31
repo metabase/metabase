@@ -1,9 +1,14 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+
 import { color, alpha } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
+import QuestionDataSource from "./QuestionDataSource";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
@@ -100,4 +105,34 @@ export const FilterHeaderContainer = styled.div`
 
 export const ViewSubHeaderRoot = styled(ViewSection)`
   padding-top: 0.5rem;
+`;
+
+export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
+  color: ${color("text-light")};
+  margin-left: 4px;
+
+  ${breakpointMaxSmall} {
+    margin-left: 0;
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+`;
+
+export const StyledCollectionBadge = styled(CollectionBadge)`
+  margin-bottom: 0.5rem;
+
+  ${breakpointMaxSmall} {
+    padding-right: 1rem;
+  }
+`;
+
+export const StyledQuestionDataSource = styled(QuestionDataSource)`
+  margin-bottom: 0.5rem;
+  margin-left: 1.5rem;
+  padding-right: 1rem;
+
+  ${breakpointMaxSmall} {
+    margin-left: 0;
+    padding-right: 0;
+  }
 `;
