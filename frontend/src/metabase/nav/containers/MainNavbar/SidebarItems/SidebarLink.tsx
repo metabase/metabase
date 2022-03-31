@@ -28,7 +28,7 @@ function SidebarLink({
       <FullWidthLink to={url}>
         {iconProps && (
           <TreeNode.IconContainer>
-            <Icon {...iconProps} />
+            <Icon {...iconProps} size={14} />
           </TreeNode.IconContainer>
         )}
         <NameContainer>{children}</NameContainer>

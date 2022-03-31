@@ -97,6 +97,7 @@ export default class ProfileLink extends Component {
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
           triggerProps={{
+            color: color("text-medium"),
             hover: {
               backgroundColor: darken(color("brand")),
               color: "white",

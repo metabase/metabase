@@ -9,11 +9,14 @@ interface TreeNodeRootProps {
   depth: number;
 }
 
+const ItemColor = lighten(colors["brand"], 0.6);
+
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isSelected ? colors["white"] : colors["brand"])};
-  background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
+  color: ${props =>
+    props.isSelected ? colors["brand"] : colors["text-medium"]};
+  background-color: ${props => (props.isSelected ? ItemColor : "unset")};
   padding-left: ${props => props.depth}rem;
   padding-right: 0.5rem;
   border-radius: 4px;
@@ -21,8 +24,17 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   font-weight: 700;
 
   &:hover {
-    background-color: ${props =>
-      props.isSelected ? colors["brand"] : lighten(colors["brand"], 0.6)};
+    background-color: ${ItemColor};
+    color: ${colors["brand"]};
+
+    .Icon {
+      color: ${colors["brand"]};
+    }
+  }
+
+  .Icon {
+    color: ${props =>
+      props.isSelected ? colors["brand"] : colors["brand-light"]};
   }
 `;
 
@@ -64,7 +76,6 @@ export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: ${props => (props.transparent ? 0.5 : 1)};
 `;
 
 IconContainer.defaultProps = {
