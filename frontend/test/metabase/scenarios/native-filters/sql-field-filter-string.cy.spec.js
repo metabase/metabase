@@ -54,7 +54,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         // When we run the first iteration, there will be no default filter value set
         if (index !== 0) {
-          clearDefaultFilterValue();
+          FieldFilter.clearDefaultFilterValue();
         }
 
         FieldFilter.openEntryForm({ isFilterRequired: true });
@@ -72,10 +72,3 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     );
   });
 });
-
-function clearDefaultFilterValue() {
-  cy.findByText("Default filter widget value")
-    .parent()
-    .find(".Icon-close")
-    .click();
-}

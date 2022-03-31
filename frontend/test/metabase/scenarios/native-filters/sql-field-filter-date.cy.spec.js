@@ -52,7 +52,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       // When we run the first iteration, there will be no default filter value set
       if (index !== 0) {
-        clearDefaultFilterValue();
+        FieldFilter.clearDefaultFilterValue();
       }
 
       dateFilterSelector({
@@ -115,11 +115,4 @@ function dateFilterSelector({
     default:
       throw new Error("Wrong filter type!");
   }
-}
-
-function clearDefaultFilterValue() {
-  cy.findByText("Default filter widget value")
-    .parent()
-    .find(".Icon-close")
-    .click();
 }

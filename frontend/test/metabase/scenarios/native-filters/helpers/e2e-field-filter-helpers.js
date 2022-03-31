@@ -186,3 +186,10 @@ export function pickDefaultValue(searchTerm, result) {
 function isBetweenFilter(value) {
   return Array.isArray(value) && value.length === 2;
 }
+
+export function clearDefaultFilterValue() {
+  cy.findByText("Default filter widget value")
+    .parent()
+    .find(".Icon-close")
+    .click();
+}
