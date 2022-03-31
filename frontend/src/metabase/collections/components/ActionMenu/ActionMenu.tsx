@@ -19,9 +19,18 @@ type Props = {
 };
 
 function getIsBookmarked(item: Item, bookmarks: Bookmarks) {
+  const normalizedItemModel = normalizeItemModel(item);
+
   return bookmarks.some(
-    bookmark => bookmark.type === item.model && bookmark.item_id === item.id,
+    bookmark =>
+      bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
   );
+}
+
+// If item.model is `dataset`, that is, this is a Model in a product sense,
+// let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
+function normalizeItemModel(item: Item) {
+  return item.model === "dataset" ? "card" : item.model;
 }
 
 function ActionMenu({
@@ -55,7 +64,9 @@ function ActionMenu({
   const handleToggleBookmark = useCallback(() => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark?.(item.id.toString(), item.model);
+    const normalizedItemModel = normalizeItemModel(item);
+
+    toggleBookmark?.(item.id.toString(), normalizedItemModel);
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   return (

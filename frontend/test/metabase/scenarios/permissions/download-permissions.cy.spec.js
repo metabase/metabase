@@ -85,7 +85,7 @@ describeEE("scenarios > admin > permissions", () => {
     ]);
   });
 
-  it("sets the download permission to `No` when the data access permission is revoked", () => {
+  it.skip("sets the download permission to `No` when the data access permission is revoked", () => {
     cy.visit("/admin/permissions/data/database/1");
     const groupName = "data";
 
