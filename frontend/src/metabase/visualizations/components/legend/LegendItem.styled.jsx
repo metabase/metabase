@@ -8,7 +8,7 @@ export const LegendItemRoot = styled.div`
   min-width: 0;
   overflow: hidden;
 
-  &:not(:first-child) {
+  &:not(:first-of-type) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
     margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
   }
