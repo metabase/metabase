@@ -130,7 +130,7 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay because ofth references to the orphaned fields (metabase#17514-1)", () => {
+    it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
       cy.findByText("Join data").click();
