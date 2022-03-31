@@ -35,7 +35,7 @@ function getEntityFor(type) {
   return entities[type];
 }
 
-export function getIcon(bookmark) {
+function getIcon(bookmark) {
   const bookmarkEntity = getEntityFor(bookmark.type);
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }

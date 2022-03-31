@@ -1,4 +1,5 @@
 import { createEntity, undo } from "metabase/lib/entities";
+import Bookmarks from "metabase/entities/bookmarks.js";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
@@ -8,8 +9,6 @@ import Collections, {
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import { POST, DELETE } from "metabase/lib/api";
-
 import forms from "./questions/forms";
 
 const Questions = createEntity({
@@ -17,22 +16,26 @@ const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  api: {
-    favorite: POST("/api/card/:id/favorite"),
-    unfavorite: DELETE("/api/card/:id/favorite"),
-  },
-
   objectActions: {
-    setArchived: ({ id, model }, archived, opts) =>
-      Questions.actions.update(
-        { id },
-        { archived },
-        undo(
-          opts,
-          model === "dataset" ? "model" : "question",
-          archived ? "archived" : "unarchived",
-        ),
-      ),
+    setArchived: ({ id, model }, archived, opts) => {
+      return async dispatch => {
+        const result = await dispatch(
+          Questions.actions.update(
+            { id },
+            { archived },
+            undo(
+              opts,
+              model === "dataset" ? "model" : "question",
+              archived ? "archived" : "unarchived",
+            ),
+          ),
+        );
+
+        dispatch(Bookmarks.actions.fetchList({ reload: true }));
+
+        return result;
+      };
+    },
 
     setCollection: ({ id, model }, collection, opts) => {
       return async dispatch => {
