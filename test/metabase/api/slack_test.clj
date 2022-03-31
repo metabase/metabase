@@ -24,7 +24,8 @@
                       ;; Token validation is skipped by default in test environments; overriding `is-test?` ensures
                       ;; that validation occurs
                       config/is-test?    false
-                      slack/refresh-channels-and-usernames! (constantly nil)]
+                      slack/refresh-channels-and-usernames! (constantly nil)
+                      slack/refresh-channels-and-usernames-when-needed! (fn ([]) ([_]))]
           (let [response (mt/user-http-request :crowberto :put 400 "slack/settings" {:slack-app-token "fake-token"})]
             (is (= {:slack-app-token "invalid token"} (:errors response)))
             (is (= nil (slack/slack-app-token)))

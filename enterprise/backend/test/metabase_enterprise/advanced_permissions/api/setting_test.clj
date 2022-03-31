@@ -125,7 +125,6 @@
                 (testing (format "set slack setting with %s user" (user->name user))
                   (with-redefs [slack/valid-token? (constantly true)
                                 slack/channel-exists? (constantly true)
-                                slack/slack-token-valid? (constantly true)
                                 slack/refresh-channels-and-usernames! (fn ([]) ([_]))
                                 slack/refresh-channels-and-usernames-when-needed! (fn ([]) ([_]))]
                     (mt/with-temporary-setting-values [slack-app-token nil
