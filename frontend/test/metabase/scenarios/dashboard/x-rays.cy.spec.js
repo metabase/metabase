@@ -148,11 +148,11 @@ describe("scenarios > x-rays", () => {
   });
 
   it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
-    cy.visit("/");
-    cy.contains("A look at your Orders table").click();
+    cy.intercept("GET", "/app/assets/geojson/**").as("geojson");
 
-    // There are a lot of spinners in this dashboard. Give them some time to disappear.
-    cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    cy.wait("@geojson", { timeout: 10000 });
 
     cy.button("Save this").click();
 
