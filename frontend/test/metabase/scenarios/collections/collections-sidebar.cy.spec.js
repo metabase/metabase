@@ -10,10 +10,12 @@ describe("collections sidebar (metabase#15006)", () => {
     restore();
     cy.signInAsAdmin();
     cy.viewport(480, 800);
+    cy.intercept("GET", "/api/collection/*").as("fetchCollections");
     cy.visit("/collection/root");
   });
 
   it("should be able to toggle collections sidebar when switched to mobile screen size", () => {
+    cy.wait("@fetchCollections");
     navigationSidebar().should("have.attr", "aria-hidden", "true");
     openNavigationSidebar();
 
@@ -26,13 +28,18 @@ describe("collections sidebar (metabase#15006)", () => {
   });
 
   it("should close collections sidebar when collection is clicked in mobile screen size", () => {
+    cy.wait("@fetchCollections");
     openNavigationSidebar();
 
     navigationSidebar().within(() => {
       cy.findByText("First collection").click();
     });
+    cy.wait("@fetchCollections");
 
     navigationSidebar().should("have.attr", "aria-hidden", "true");
-    cy.findByText("First collection");
+    cy.findByTestId("collection-name-heading").should(
+      "have.text",
+      "First collection",
+    );
   });
 });
