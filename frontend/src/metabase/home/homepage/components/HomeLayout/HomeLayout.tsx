@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import GreetingSection from "../../containers/GreetingSection";
+import GreetingSection from "../../containers/HomeGreeting";
 import { LayoutContent, LayoutMain, LayoutRoot } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {

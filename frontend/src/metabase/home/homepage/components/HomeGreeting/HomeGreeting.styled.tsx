@@ -1,16 +1,21 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import MetabotLogo from "metabase/components/MetabotLogo";
 
-export const SectionRoot = styled.div`
+export const GreetingRoot = styled.div`
   display: flex;
   align-items: center;
 `;
 
-export interface SectionMessageProps {
+export const GreetingLogo = styled(MetabotLogo)`
+  height: 2rem;
+`;
+
+export interface GreetingMessageProps {
   showLogo?: boolean;
 }
 
-export const SectionMessage = styled.div<SectionMessageProps>`
+export const GreetingMessage = styled.span<GreetingMessageProps>`
   color: ${color("text-dark")};
   font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
