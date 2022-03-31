@@ -96,10 +96,19 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
+(defn sub-cached-field-refs
+  "Change field refs by id into field refs by name."
+  [metadata]
+  (map (fn [m]
+         ;; is it ok to clobber expressions like this? I think so.
+         (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
+       metadata))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
-  "Return the source query info for Card with `card-id`."
-  [card-id :- su/IntGreaterThanZero]
+  "Return the source query info for Card with `card-id`. Pass `log?` to suppress logging in the circularity check."
+  [card-id :- su/IntGreaterThanZero log? :- s/Bool]
   (let [card
+        ;; todo: we need to cache this. We are running this in preprocess, compile, and then again
         (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
                                         :persisted.table_name :persisted.columns
                                         :persisted.query_hash :persisted.state :persisted.active]
@@ -119,24 +128,31 @@
          dataset?                               :dataset}
         card
 
-        source-query
+        [persisted? source-query]
         (or (when (and persisted-info/*allow-persisted-substitution*
                        (:active card)
                        (:query_hash card)
                        (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
                        (= (:state card) "persisted"))
-              {:native (format "select %s from %s.%s"
-                               (str/join ", " (:columns card))
+              (when log?
+                (log/info (trs "Substituting cached query for card {0} from {1}.{2}"
+                               card-id
                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                               (:table_name card))})
-            mbql-query
+                               (:table_name card))))
+              [true
+               {:native (format "select %s from %s.%s"
+                                (str/join ", " (:columns card))
+                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                                (:table_name card))}])
+            [false mbql-query]
             (when native-query
               ;; rename `:query` to `:native` because source queries have a slightly different shape
               (let [native-query (set/rename-keys native-query {:query :native})]
-                (cond-> native-query
-                  ;; trim trailing comments from SQL, but not other types of native queries
-                  (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                  (empty? template-tags)           (dissoc :template-tags))))
+                [false
+                 (cond-> native-query
+                   ;; trim trailing comments from SQL, but not other types of native queries
+                   (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                   (empty? template-tags)           (dissoc :template-tags))]))
             (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                             {:card card})))]
     ;; log the query at this point, it's useful for some purposes
@@ -145,7 +161,8 @@
                (u/pprint-to-str 'yellow source-query))
     (cond-> {:source-query    source-query
              :database        database-id
-             :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}
+             :source-metadata (cond-> (seq (map normalize/normalize-source-metadata result-metadata))
+                                persisted? sub-cached-field-refs)}
       dataset? (assoc :source-query/dataset? dataset?))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
@@ -168,7 +185,7 @@
 (s/defn ^:private resolve-one :- MapWithResolvedSourceQuery
   [{:keys [source-table], :as m} :- {:source-table mbql.s/source-table-card-id-regex, s/Keyword s/Any}]
   (let [card-id                   (-> source-table source-table-str->card-id)
-        source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
+        source-query-and-metadata (-> card-id (card-id->source-query-and-metadata true))]
     (merge
      (dissoc m :source-table)
      ;; record the `card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
@@ -203,7 +220,7 @@
    m)
   ([g m]
    (transduce (comp (filter map-with-card-id-source-table?)
-                    (map (comp card-id->source-query-and-metadata
+                    (map (comp #(card-id->source-query-and-metadata % false)
                                source-table-str->card-id
                                :source-table)))
               (fn
