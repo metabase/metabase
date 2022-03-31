@@ -37,7 +37,11 @@ export default class Database extends Base {
   /**
    * @param {SchemaName} [schemaName]
    */
-  schema(schemaName: string) {
+  schema(schemaName: string | undefined | null): Schema | undefined {
+    if (!schemaName) {
+      return undefined;
+    }
+
     return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
 
@@ -59,7 +63,7 @@ export default class Database extends Base {
 
   // TABLES
   @memoize
-  tablesLookup() {
+  tablesLookup(): Record<Table["id"], Table> {
     return createLookupByProperty(this.tables, "id");
   }
 
@@ -103,13 +107,13 @@ export default class Database extends Base {
   }
 
   // QUESTIONS
-  newQuestion() {
+  newQuestion(): Question {
     return this.question({})
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(query: StructuredQuery) {
+  question(query: StructuredQuery): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -120,7 +124,7 @@ export default class Database extends Base {
     });
   }
 
-  nativeQuestion(native: NativeQuery) {
+  nativeQuestion(native: NativeQuery): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -134,7 +138,7 @@ export default class Database extends Base {
   }
 
   /** Returns a database containing only the saved questions from the same database, if any */
-  savedQuestionsDatabase() {
+  savedQuestionsDatabase(): Database | undefined {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
   }
 }

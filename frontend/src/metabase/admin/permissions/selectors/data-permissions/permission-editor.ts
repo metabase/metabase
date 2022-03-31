@@ -160,29 +160,31 @@ export const getDatabasesPermissionEditor = createSelector(
     let entities: any = [];
 
     if (schemaName != null || hasSingleSchema) {
-      const schema: Schema = hasSingleSchema
+      const schema = hasSingleSchema
         ? metadata?.database(databaseId)?.getSchemas()[0]
         : metadata?.database(databaseId)?.schema(schemaName);
 
-      entities = schema
-        .getTables()
-        .sort((a, b) => a.display_name.localeCompare(b.display_name))
-        .map(table => {
-          const entityId = getTableEntityId(table);
-          return {
-            id: table.id,
-            name: table.display_name,
-            entityId,
-            permissions: buildFieldsPermissions(
+      if (schema) {
+        entities = schema
+          .getTables()
+          .sort((a, b) => a.display_name.localeCompare(b.display_name))
+          .map(table => {
+            const entityId = getTableEntityId(table);
+            return {
+              id: table.id,
+              name: table.display_name,
               entityId,
-              groupId,
-              isAdmin,
-              permissions,
-              defaultGroup,
-              metadata.database(databaseId),
-            ),
-          };
-        });
+              permissions: buildFieldsPermissions(
+                entityId,
+                groupId,
+                isAdmin,
+                permissions,
+                defaultGroup,
+                metadata.database(databaseId),
+              ),
+            };
+          });
+      }
     } else if (databaseId != null) {
       entities = metadata
         ?.database(databaseId)
