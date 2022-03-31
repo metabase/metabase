@@ -1,3 +1,4 @@
+import React from "react";
 import styled from "@emotion/styled";
 
 import Icon from "metabase/components/Icon";
@@ -32,16 +33,31 @@ export const LogoIconWrapper = styled.div`
   }
 `;
 
-export const SidebarButton = styled(Icon)`
-  border: 1px solid ${color("border")};
-  padding: ${space(1)};
-  border-radius: 4px;
-  margin-left: ${space(1)};
-  color: ${color("text-medium")};
-
+const SidebarIcon = styled(Icon)`
   &:hover {
-    color: ${color("brand")};
-    border-color: ${color("brand")};
     cursor: pointer;
+    color: ${color("brand")};
   }
 `;
+
+const SidebarButtonRoot = styled.div`
+  margin-left: ${space(1)};
+  margin-top: ${space(1)};
+`;
+
+interface SidebarButtonProps {
+  isSidebarOpen: boolean;
+  onClick: func;
+}
+
+export function SidebarButton({ isSidebarOpen, onClick }: SidebarButtonProps) {
+  return (
+    <SidebarButtonRoot>
+      <SidebarIcon
+        size={28}
+        name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
+        onClick={onClick}
+      />
+    </SidebarButtonRoot>
+  );
+}
