@@ -6,13 +6,14 @@ export const SectionRoot = styled.div`
   align-items: center;
 `;
 
-export const SectionMessage = styled.div`
+export interface SectionMessageProps {
+  showLogo?: boolean;
+}
+
+export const SectionMessage = styled.div<SectionMessageProps>`
   color: ${color("text-dark")};
-  font-size: 1.125rem;
+  font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;
-
-  &:not(:first-child) {
-    margin-left: 0.5rem;
-  }
+  margin-left: ${props => props.showLogo && "0.5rem"};
 `;
