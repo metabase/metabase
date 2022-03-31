@@ -20,7 +20,11 @@ import * as Urls from "metabase/lib/urls";
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
-import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
+import {
+  SidebarHeading,
+  ProfileLinkContainer,
+  SidebarSection,
+} from "./MainNavbar.styled";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 interface CollectionTreeItem extends Collection {
@@ -72,7 +76,7 @@ function MainNavbarView({
   return (
     <>
       {bookmarks.length > 0 && (
-        <>
+        <SidebarSection>
           <BookmarkList
             bookmarks={bookmarks}
             selectedItem={
@@ -80,53 +84,20 @@ function MainNavbarView({
             }
             onSelect={onItemSelect}
           />
-          <div className="flex align-center hover-parent hover--visibility full mt3">
-            <SidebarHeading>{t`Collections`}</SidebarHeading>
-            <span className="ml-auto">
-              <PopoverWithTrigger
-                triggerElement={
-                  <Icon name="ellipsis" className="hover-child" size={12} />
-                }
-              >
-                {currentUser.is_superuser && (
-                  <SidebarLink
-                    icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
-                    url={OTHER_USERS_COLLECTIONS_URL}
-                    isSelected={
-                      selectedItem.type === "collection" &&
-                      selectedItem.id === "users"
-                    }
-                    onClick={onItemSelect}
-                  >
-                    {t`Other users' personal collections`}
-                  </SidebarLink>
-                )}
-                <SidebarLink
-                  icon="view_archive"
-                  url={ARCHIVE_URL}
-                  isSelected={
-                    isMiscLinkSelected &&
-                    selectedItem.url.startsWith(ARCHIVE_URL)
-                  }
-                  onClick={onItemSelect}
-                >
-                  {t`View archive`}
-                </SidebarLink>
-              </PopoverWithTrigger>
-            </span>
-          </div>
-        </>
+        </SidebarSection>
       )}
-      <Tree
-        data={collections}
-        selectedId={isCollectionSelected ? selectedItem.id : undefined}
-        onSelect={onItemSelect}
-        TreeNode={CollectionLink}
-        role="tree"
-      />
+      <SidebarSection>
+        <CollectionSectionHeading currentUser={currentUser} />
+        <Tree
+          data={collections}
+          selectedId={isCollectionSelected ? selectedItem.id : undefined}
+          TreeNode={CollectionLink}
+          role="tree"
+        />
+      </SidebarSection>
       <ul>
         {hasDataAccess && !IFRAMED && (
-          <>
+          <SidebarSection>
             <SidebarHeading>{t`Data`}</SidebarHeading>
             <SidebarLink
               icon="table_spaced"
@@ -139,7 +110,7 @@ function MainNavbarView({
             >
               {t`Browse data`}
             </SidebarLink>
-          </>
+          </SidebarSection>
         )}
       </ul>
       {!IFRAMED && (
@@ -148,6 +119,39 @@ function MainNavbarView({
         </ProfileLinkContainer>
       )}
     </>
+  );
+}
+
+interface CollectionSectionHeadingProps {
+  currentUser: User;
+}
+
+function CollectionSectionHeading({
+  currentUser,
+}: CollectionSectionHeadingProps) {
+  return (
+    <div className="flex align-center hover-parent hover--visibilityll">
+      <SidebarHeading>{t`Collections`}</SidebarHeading>
+      <span className="ml-auto">
+        <PopoverWithTrigger
+          triggerElement={
+            <Icon name="ellipsis" className="hover-child" size={12} />
+          }
+        >
+          {currentUser.is_superuser && (
+            <SidebarLink
+              icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
+              url={OTHER_USERS_COLLECTIONS_URL}
+            >
+              {t`Other users' personal collections`}
+            </SidebarLink>
+          )}
+          <SidebarLink icon="view_archive" url={ARCHIVE_URL}>
+            {t`View archive`}
+          </SidebarLink>
+        </PopoverWithTrigger>
+      </span>
+    </div>
   );
 }
 

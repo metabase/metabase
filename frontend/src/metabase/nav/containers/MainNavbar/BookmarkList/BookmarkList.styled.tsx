@@ -6,6 +6,8 @@ import { space } from "metabase/styled-components/theme";
 import { SidebarLink } from "../SidebarItems";
 
 export const SidebarBookmarkItem = styled(SidebarLink)`
+  padding-left: ${space(1)};
+
   &:hover {
     button {
       opacity: 0.5;

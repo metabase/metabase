@@ -24,14 +24,25 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   }
 `;
 
+export const SidebarSection = styled.li`
+  margin-top: ${space(1)};
+  margin-bottom: ${space(2)};
+  padding-left: ${space(2)};
+  padding-right: ${space(2)};
+`;
+
+export const SidebarHeadingWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: ${space(1)};
+`;
 export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
-  padding-left: ${space(2)};
-  margin-bottom: ${space(1)};
+  padding-left: ${space(1)};
 `;
 
 export const LoadingContainer = styled.div`
