@@ -56,6 +56,7 @@ export default class TextPicker extends Component {
       onCommit,
       isSingleLine,
       autoFocus,
+      prefix,
     } = this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
@@ -67,7 +68,15 @@ export default class TextPicker extends Component {
 
     return (
       <div>
-        <div className="FilterInput px1 pt1 relative">
+        <div className="FilterInput px1 pt1 relative flex align-center">
+          {!!prefix && (
+            <span
+              className="text-medium px1"
+              style={{ marginRight: -30, width: 30, zIndex: 2 }}
+            >
+              {prefix}
+            </span>
+          )}
           {!isSingleLine && (
             <AutosizeTextarea
               className={cx("input block full border-purple", {
@@ -89,6 +98,11 @@ export default class TextPicker extends Component {
               className={cx("input block full border-purple", {
                 "border-error": hasInvalidValues,
               })}
+              style={{
+                paddingLeft: this.props.prefix
+                  ? `${this.props.prefix.length}.2rem`
+                  : "",
+              }}
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}

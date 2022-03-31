@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import TextPicker from "./TextPicker";
+import { isCurrency } from "metabase/lib/schema_metadata";
+import { getCurrencySymbol } from "metabase/lib/formatting";
 
 export default class NumberPicker extends Component {
   constructor(props) {
@@ -43,12 +45,26 @@ export default class NumberPicker extends Component {
     });
   }
 
+  extractFieldSettings = field => {
+    const fieldId = field?.id;
+    const fieldMetadata = field?.metadata?.fields[fieldId];
+    return fieldMetadata?.settings;
+  };
+
   render() {
     const values = this.state.stringValues.slice(0, this.props.values.length);
+
+    const fieldSettings = this.extractFieldSettings(this.props.field);
+    const currencyPrefix =
+      isCurrency(this.props.field) && fieldSettings?.currency
+        ? getCurrencySymbol(fieldSettings.currency)
+        : null;
+
     return (
       <TextPicker
         {...this.props}
         isSingleLine
+        prefix={currencyPrefix}
         values={values}
         validations={this.state.validations}
         onValuesChange={values => this.onValuesChange(values)}
