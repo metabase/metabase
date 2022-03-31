@@ -8,8 +8,6 @@ on:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
-      - ".github/**"
-      - ".**"
 
 jobs:
 
