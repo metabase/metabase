@@ -25,6 +25,7 @@ import {
   ProfileLinkContainer,
   SidebarSection,
   SidebarHeadingWrapper,
+  BrowseLink,
 } from "./MainNavbar.styled";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
@@ -91,8 +92,8 @@ function MainNavbarView({
             <SidebarHeadingWrapper>
               <SidebarHeading>{t`Data`}</SidebarHeading>
             </SidebarHeadingWrapper>
-            <SidebarLink
-              icon="table_spaced"
+            <BrowseLink
+              icon="database"
               url={BROWSE_URL}
               isSelected={
                 isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
@@ -100,7 +101,7 @@ function MainNavbarView({
               data-metabase-event="NavBar;Data Browse"
             >
               {t`Browse data`}
-            </SidebarLink>
+            </BrowseLink>
           </SidebarSection>
         )}
       </ul>
