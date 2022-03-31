@@ -4,7 +4,6 @@
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
