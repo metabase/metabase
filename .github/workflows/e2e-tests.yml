@@ -9,6 +9,7 @@ on:
       - "**.md"
       - ".circleci/**"
       - ".github/**"
+      - ".**"
 
 jobs:
 
