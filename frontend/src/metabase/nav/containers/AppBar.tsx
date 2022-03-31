@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { Location, LocationDescriptorObject } from "history";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
@@ -16,17 +17,12 @@ import Database from "metabase/entities/databases";
 
 import { AppBarRoot, LogoIconWrapper, SidebarButton } from "./AppBar.styled";
 
-type Location = {
-  pathname: string;
-  query: Record<string, string>;
-};
-
 type Props = {
   isSidebarOpen: boolean;
   location: Location;
   onToggleSidebarClick: () => void;
   onNewClick: () => void;
-  onChangeLocation: (nextLocation: Location) => void;
+  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
 function AppBar({
