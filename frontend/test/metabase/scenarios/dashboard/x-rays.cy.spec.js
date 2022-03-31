@@ -91,8 +91,11 @@ describe("scenarios > x-rays", () => {
 
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+      // TODO: Remove this when #15655 gets fixed
       cy.skipOn(action === "Compare to the rest");
+
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+
       cy.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
@@ -109,11 +112,13 @@ describe("scenarios > x-rays", () => {
         .first()
         .click({ force: true });
       cy.findByText(action).click();
+
       cy.wait("@xray").then(xhr => {
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
-      cy.findByText(/A closer look at the number of/);
+
+      cy.findByRole("heading", { name: /^A closer look at the number of/ });
       cy.get(".DashCard");
     });
 
