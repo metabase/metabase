@@ -39,16 +39,6 @@ export default function Collections({
 
   return (
     <Container>
-      <CollectionsList
-        handleToggleMobileSidebar={handleToggleMobileSidebar}
-        openCollections={openCollections}
-        onClose={onClose}
-        onOpen={onOpen}
-        collections={list}
-        filter={nonPersonalOrArchivedCollection}
-        currentCollection={collectionId}
-      />
-
       <div>
         <CollectionsList
           handleToggleMobileSidebar={handleToggleMobileSidebar}
@@ -60,6 +50,15 @@ export default function Collections({
           currentCollection={collectionId}
         />
       </div>
+      <CollectionsList
+        handleToggleMobileSidebar={handleToggleMobileSidebar}
+        openCollections={openCollections}
+        onClose={onClose}
+        onOpen={onOpen}
+        collections={list}
+        filter={nonPersonalOrArchivedCollection}
+        currentCollection={collectionId}
+      />
     </Container>
   );
 }

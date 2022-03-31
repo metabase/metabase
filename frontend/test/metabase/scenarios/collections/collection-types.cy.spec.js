@@ -1,10 +1,12 @@
 import {
   restore,
   modal,
-  sidebar,
   describeEE,
   describeOSS,
   openNewCollectionItemFlowFor,
+  appBar,
+  navigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -198,10 +200,13 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
+  closeNavigationSidebar();
   assertHasCollectionBadge(expectBadge);
 
   // Question Page
-  cy.findByText(COLLECTION_NAME).click();
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
+    .click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadge(expectBadge);
 
@@ -224,7 +229,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  cy.get(".Nav")
+  appBar()
     .findByPlaceholderText("Search…")
     .as("searchBar")
     .type(searchQuery);
@@ -264,7 +269,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .click();
 }
@@ -283,7 +288,7 @@ function expandCollectionChildren(collectionName) {
 }
 
 function getSidebarCollectionChildrenFor(collectionName) {
-  return sidebar()
+  return navigationSidebar()
     .findByText(collectionName)
     .closest("a")
     .parent()
@@ -326,7 +331,7 @@ function assertNoCollectionTypeInput() {
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .parent()
     .within(() => {
@@ -344,7 +349,8 @@ function assertSearchResultBadge(itemName, opts) {
 }
 
 function assertHasCollectionBadge(expectBadge = true) {
-  cy.findByText(COLLECTION_NAME)
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");

@@ -59,6 +59,7 @@
    (apply array-map kvs)))
 
 (def ^:private test-collection (make-result "collection test collection"
+                                            :bookmark false
                                             :model "collection"
                                             :collection {:id true, :name true :authority_level nil}
                                             :updated_at false))
