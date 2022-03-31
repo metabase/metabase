@@ -2,12 +2,13 @@ import React, { ReactNode } from "react";
 import { LayoutBody, LayoutRoot } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
+  showScene?: boolean;
   children?: ReactNode;
 }
 
-const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {
+const HomeLayout = ({ showScene, children }: HomeLayoutProps): JSX.Element => {
   return (
-    <LayoutRoot>
+    <LayoutRoot showScene={showScene}>
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
