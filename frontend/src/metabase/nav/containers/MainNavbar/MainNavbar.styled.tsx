@@ -4,6 +4,7 @@ import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { SidebarLink } from "./SidebarItems";
 
 export const Sidebar = styled.aside<{ isOpen: boolean }>`
   display: flex;
@@ -73,4 +74,8 @@ export const ProfileLinkContainer = styled.div`
   bottom: ${space(1)};
   right: 0;
   color: ${color("text-light")};
+`;
+
+export const BrowseLink = styled(SidebarLink)`
+  padding-left: 14px;
 `;
