@@ -1,5 +1,5 @@
 import React from "react";
-import HomeLayout from "../../containers/HomeLayout";
+import HomeLayout from "../../components/HomeLayout";
 
 const HomePage = (): JSX.Element => {
   return <HomeLayout />;
