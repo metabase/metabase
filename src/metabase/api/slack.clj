@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.util.i18n :refer [tru]]
@@ -18,7 +19,7 @@
   [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel} :body}]
   {slack-app-token     (s/maybe su/NonBlankString)
    slack-files-channel (s/maybe su/NonBlankString)}
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (try
     (when (and slack-app-token
                (not config/is-test?)
@@ -50,7 +51,7 @@
 (api/defendpoint GET "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   @slack-manifest)
 
 (api/define-routes)

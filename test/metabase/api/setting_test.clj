@@ -10,12 +10,15 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; ## Helper Fns
-(defn- fetch-test-settings  []
+(defn- fetch-test-settings
+  "Feting all settings"
+  []
   (for [setting (mt/user-http-request :crowberto :get 200 "setting")
         :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
     setting))
 
-(defn- fetch-setting
+(defn fetch-setting
+  "Fetch a single setting."
   ([setting-name status]
    (fetch-setting :crowberto setting-name status))
 
