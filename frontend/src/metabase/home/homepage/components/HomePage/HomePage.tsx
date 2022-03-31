@@ -1,11 +1,11 @@
 import React from "react";
 import HomeLayout from "../../containers/HomeLayout";
-import XraySection from "../../containers/XraySection";
+import HomeContent from "../../containers/HomeContent";
 
 const HomePage = (): JSX.Element => {
   return (
     <HomeLayout>
-      <XraySection />
+      <HomeContent />
     </HomeLayout>
   );
 };
