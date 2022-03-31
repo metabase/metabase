@@ -30,6 +30,8 @@ export const SidebarHeading = styled.h4`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
+  padding-left: ${space(2)};
+  margin-bottom: ${space(1)};
 `;
 
 export const LoadingContainer = styled.div`

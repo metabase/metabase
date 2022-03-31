@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { Bookmark, Collection, User } from "metabase-types/api";
 
-import { IconProps } from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
@@ -21,6 +21,7 @@ import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
@@ -79,7 +80,41 @@ function MainNavbarView({
             }
             onSelect={onItemSelect}
           />
-          <SidebarHeading>{t`Collections`}</SidebarHeading>
+          <div className="flex align-center hover-parent hover--visibility full mt3">
+            <SidebarHeading>{t`Collections`}</SidebarHeading>
+            <span className="ml-auto">
+              <PopoverWithTrigger
+                triggerElement={
+                  <Icon name="ellipsis" className="hover-child" size={12} />
+                }
+              >
+                {currentUser.is_superuser && (
+                  <SidebarLink
+                    icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
+                    url={OTHER_USERS_COLLECTIONS_URL}
+                    isSelected={
+                      selectedItem.type === "collection" &&
+                      selectedItem.id === "users"
+                    }
+                    onClick={onItemSelect}
+                  >
+                    {t`Other users' personal collections`}
+                  </SidebarLink>
+                )}
+                <SidebarLink
+                  icon="view_archive"
+                  url={ARCHIVE_URL}
+                  isSelected={
+                    isMiscLinkSelected &&
+                    selectedItem.url.startsWith(ARCHIVE_URL)
+                  }
+                  onClick={onItemSelect}
+                >
+                  {t`View archive`}
+                </SidebarLink>
+              </PopoverWithTrigger>
+            </span>
+          </div>
         </>
       )}
       <Tree
@@ -91,40 +126,21 @@ function MainNavbarView({
       />
       <ul>
         {hasDataAccess && !IFRAMED && (
-          <SidebarLink
-            icon="table_spaced"
-            url={BROWSE_URL}
-            isSelected={
-              isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
-            }
-            onClick={onItemSelect}
-            data-metabase-event="NavBar;Data Browse"
-          >
-            {t`Browse data`}
-          </SidebarLink>
+          <>
+            <SidebarHeading>{t`Data`}</SidebarHeading>
+            <SidebarLink
+              icon="table_spaced"
+              url={BROWSE_URL}
+              isSelected={
+                isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+              }
+              onClick={onItemSelect}
+              data-metabase-event="NavBar;Data Browse"
+            >
+              {t`Browse data`}
+            </SidebarLink>
+          </>
         )}
-        {currentUser.is_superuser && (
-          <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
-            url={OTHER_USERS_COLLECTIONS_URL}
-            isSelected={
-              selectedItem.type === "collection" && selectedItem.id === "users"
-            }
-            onClick={onItemSelect}
-          >
-            {t`Other users' personal collections`}
-          </SidebarLink>
-        )}
-        <SidebarLink
-          icon="view_archive"
-          url={ARCHIVE_URL}
-          isSelected={
-            isMiscLinkSelected && selectedItem.url.startsWith(ARCHIVE_URL)
-          }
-          onClick={onItemSelect}
-        >
-          {t`View archive`}
-        </SidebarLink>
       </ul>
       {!IFRAMED && (
         <ProfileLinkContainer>
