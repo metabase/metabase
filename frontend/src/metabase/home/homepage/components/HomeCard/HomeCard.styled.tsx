@@ -7,4 +7,5 @@ export const CardRoot = styled(Link)`
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
+  box-shadow: 0 12px 12px ${color("shadow")};
 `;
