@@ -64,7 +64,7 @@
            (= (current-user-download-perms-level query) :limited))
     (assoc-in query
               [:query :limit]
-              (reduce min (filter some? [original-limit max-rows-in-limited-downloads])))
+              (apply min (filter some? [original-limit max-rows-in-limited-downloads])))
     query))
 
 (defn limit-download-result-rows
