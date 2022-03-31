@@ -126,7 +126,7 @@
    alert_above_goal (s/maybe s/Bool)
    card             pulse/CardRef
    channels         (su/non-empty [su/Map])}
-  (validation/check-has-general-permission? :subscription false)
+  (validation/check-has-general-permission :subscription false)
   ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
   ;; perms for its Card
   (api/write-check Card (u/the-id card))
@@ -157,7 +157,7 @@
    card             (s/maybe pulse/CardRef)
    channels         (s/maybe (su/non-empty [su/Map]))
    archived         (s/maybe s/Bool)}
-  (validation/check-has-general-permission? :subscription false)
+  (validation/check-has-general-permission :subscription false)
   ;; fetch the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
     (assert (:card alert-before-update)
@@ -204,7 +204,7 @@
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
-  (validation/check-has-general-permission? :subscription false)
+  (validation/check-has-general-permission :subscription false)
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
