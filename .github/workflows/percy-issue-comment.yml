@@ -68,7 +68,7 @@ jobs:
 
   percy:
     timeout-minutes: 30
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     needs: [build, pr_info]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
