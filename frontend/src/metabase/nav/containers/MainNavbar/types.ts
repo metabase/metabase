@@ -1,4 +1,4 @@
-type SelectedEntityItem = {
+export type SelectedEntityItem = {
   type: "card" | "collection" | "dashboard";
   id?: number | string;
 };

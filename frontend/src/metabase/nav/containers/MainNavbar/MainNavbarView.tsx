@@ -63,7 +63,12 @@ function MainNavbarView({
     <>
       {bookmarks.length > 0 && (
         <>
-          <BookmarkList bookmarks={bookmarks} selectedItem={selectedItem} />
+          <BookmarkList
+            bookmarks={bookmarks}
+            selectedItem={
+              selectedItem.type !== "unknown" ? selectedItem : undefined
+            }
+          />
           <SidebarHeading>{t`Collections`}</SidebarHeading>
         </>
       )}
