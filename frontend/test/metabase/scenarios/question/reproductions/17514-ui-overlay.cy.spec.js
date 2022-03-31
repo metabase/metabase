@@ -88,9 +88,12 @@ describe("issue 17514", () => {
       closeModal();
 
       saveDashboard();
+      cy.wait("@getDashboard");
 
       filterWidget().click();
       setAdHocFilter({ timeBucket: "Years" });
+
+      cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
