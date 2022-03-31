@@ -23,11 +23,11 @@
   (api/check (public-settings/enable-embedding)
     [400 (tru "Embedding is not enabled.")]))
 
-(defn check-has-general-permission?
+(defn check-has-general-permission
   "If `advanced-permissions` is enabled, check `*current-user*` has general permission of type `perm-type`.
   Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."
   ([perm-type]
-   (check-has-general-permission? perm-type true))
+   (check-has-general-permission perm-type true))
 
   ([perm-type require-superuser?]
    (if (and (premium-features/enable-advanced-permissions?)
