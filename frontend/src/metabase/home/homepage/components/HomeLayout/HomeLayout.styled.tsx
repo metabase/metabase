@@ -17,10 +17,18 @@ export const LayoutRoot = styled.div<LayoutProps>`
     ${alpha("brand", 0.2)}`};
 `;
 
-export const LayoutBody = styled.div`
+export const LayoutMain = styled.div`
   padding: 1.5rem;
 
   ${breakpointMinMedium} {
     padding: 4rem 7rem;
+  }
+`;
+
+export const LayoutContent = styled.div`
+  margin-top: 2.5rem;
+
+  ${breakpointMinMedium} {
+    margin-top: 6rem;
   }
 `;

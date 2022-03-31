@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { LayoutBody, LayoutRoot } from "./HomeLayout.styled";
+import { LayoutContent, LayoutMain, LayoutRoot } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
   showScene?: boolean;
@@ -9,7 +9,9 @@ export interface HomeLayoutProps {
 const HomeLayout = ({ showScene, children }: HomeLayoutProps): JSX.Element => {
   return (
     <LayoutRoot showScene={showScene}>
-      <LayoutBody>{children}</LayoutBody>
+      <LayoutMain>
+        <LayoutContent>{children}</LayoutContent>
+      </LayoutMain>
     </LayoutRoot>
   );
 };
