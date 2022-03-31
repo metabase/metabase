@@ -1163,7 +1163,8 @@
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
 (deftest filter-by-current-quarter-test
-  (mt/test-drivers (mt/normal-drivers)
+  ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
+  (mt/test-drivers (disj (mt/normal-drivers) :oracle)
     (testing "Should be able to filter by current quarter (#20683)"
       (let [query (mt/mbql-query checkins
                     {:aggregation [[:count]]
