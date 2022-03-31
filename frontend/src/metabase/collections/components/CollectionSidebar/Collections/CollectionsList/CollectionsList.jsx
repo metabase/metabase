@@ -69,7 +69,6 @@ function Collection({
   depth,
   currentCollection,
   filter,
-  handleToggleMobileSidebar,
   initialIcon,
   onClose,
   onOpen,
@@ -91,7 +90,6 @@ function Collection({
           // expand to show sub collections
           function handleClick() {
             action(collection.id);
-            handleToggleMobileSidebar();
           }
 
           return (
@@ -121,7 +119,6 @@ function Collection({
       {children && isOpen && (
         <ChildrenContainer>
           <CollectionsList
-            handleToggleMobileSidebar={handleToggleMobileSidebar}
             openCollections={openCollections}
             onOpen={onOpen}
             onClose={onClose}
@@ -139,7 +136,6 @@ function Collection({
 function CollectionsList({
   collections,
   filter,
-  handleToggleMobileSidebar,
   initialIcon,
   depth = 1,
   ...otherProps
@@ -153,7 +149,6 @@ function CollectionsList({
           collection={collection}
           depth={depth}
           filter={filter}
-          handleToggleMobileSidebar={handleToggleMobileSidebar}
           initialIcon={initialIcon}
           key={collection.id}
           {...otherProps}

@@ -11,6 +11,7 @@ import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 import { FullWidthLink, NameContainer, NodeRoot } from "./SidebarItems.styled";
 
@@ -27,6 +28,7 @@ const SidebarCollectionLink = React.forwardRef<
     item: collection,
     url,
     depth,
+    onSelect,
     isExpanded,
     isSelected,
     hasChildren,
@@ -75,7 +77,7 @@ const SidebarCollectionLink = React.forwardRef<
                 size={12}
               />
             </TreeNode.ExpandToggleButton>
-            <FullWidthLink to={url} onKeyDown={onKeyDown}>
+            <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
               <TreeNode.IconContainer transparent={isRegular}>
                 <CollectionIcon collection={collection} />
               </TreeNode.IconContainer>

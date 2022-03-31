@@ -10,6 +10,8 @@ import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import { AdminNavbar } from "../components/AdminNavbar";
 
+import { closeNavbar } from "metabase/redux/app";
+
 import { getPath, getContext, getUser } from "../selectors";
 import {
   getHasDataAccess,
@@ -31,6 +33,7 @@ import MainNavbar from "./MainNavbar";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
+  closeNavbar,
 };
 
 @Database.loadList({
@@ -40,11 +43,6 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
-  state = {
-    modal: null,
-    shouldDisplayMobileSidebar: false,
-  };
-
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -76,11 +74,16 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { isOpen, location, params } = this.props;
+    const { isOpen, location, params, closeNavbar } = this.props;
     // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
-      <NavRoot className="Nav" isOpen={isOpen}>
-        <MainNavbar location={location} params={params} />
+      <NavRoot className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+        <MainNavbar
+          isOpen={isOpen}
+          location={location}
+          params={params}
+          closeNavbar={closeNavbar}
+        />
       </NavRoot>
     );
   }

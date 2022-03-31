@@ -12,7 +12,6 @@ import { Container } from "./Collections.styled";
 const propTypes = {
   collectionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   currentUserId: PropTypes.number,
-  handleToggleMobileSidebar: PropTypes.func.isRequired,
   list: PropTypes.array,
   onClose: PropTypes.func.isRequired,
   onOpen: PropTypes.func.isRequired,
@@ -22,7 +21,6 @@ const propTypes = {
 export default function Collections({
   collectionId,
   currentUserId,
-  handleToggleMobileSidebar,
   list,
   onClose,
   onOpen,
@@ -41,7 +39,6 @@ export default function Collections({
     <Container>
       <div>
         <CollectionsList
-          handleToggleMobileSidebar={handleToggleMobileSidebar}
           openCollections={openCollections}
           onClose={onClose}
           onOpen={onOpen}
@@ -51,7 +48,6 @@ export default function Collections({
         />
       </div>
       <CollectionsList
-        handleToggleMobileSidebar={handleToggleMobileSidebar}
         openCollections={openCollections}
         onClose={onClose}
         onOpen={onOpen}

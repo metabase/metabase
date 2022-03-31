@@ -13,7 +13,6 @@ import {
   LoadingTitle,
   Sidebar,
   SidebarHeading,
-  ToggleMobileSidebarIcon,
 } from "metabase/collections/components/CollectionSidebar/CollectionSidebar.styled";
 
 import RootCollectionLink from "metabase/collections/components/CollectionSidebar/RootCollectionLink";
@@ -54,8 +53,6 @@ CollectionSidebar.propTypes = {
   allFetched: PropTypes.bool,
   loading: PropTypes.bool,
   list: PropTypes.arrayOf(PropTypes.object),
-  shouldDisplayMobileSidebar: PropTypes.bool,
-  handleToggleMobileSidebar: PropTypes.func,
 };
 
 function CollectionSidebar({
@@ -68,8 +65,6 @@ function CollectionSidebar({
   allFetched,
   loading,
   list,
-  shouldDisplayMobileSidebar,
-  handleToggleMobileSidebar,
 }) {
   const [openCollections, setOpenCollections] = useState([]);
 
@@ -103,10 +98,7 @@ function CollectionSidebar({
   }, [collectionId, loading]);
 
   return (
-    <Sidebar
-      role="tree"
-      shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
-    >
+    <Sidebar role="tree">
       {allFetched ? (
         <React.Fragment>
           <Bookmarks bookmarks={bookmarks} deleteBookmark={deleteBookmark} />
@@ -115,17 +107,12 @@ function CollectionSidebar({
             <SidebarHeading>{t`Collections`}</SidebarHeading>
           )}
 
-          <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-          <RootCollectionLink
-            isRoot={isRoot}
-            handleToggleMobileSidebar={handleToggleMobileSidebar}
-          />
+          <RootCollectionLink isRoot={isRoot} />
           <Collections
             list={list}
             openCollections={openCollections}
             collectionId={collectionId}
             currentUserId={currentUser.id}
-            handleToggleMobileSidebar={handleToggleMobileSidebar}
             onOpen={onOpen}
             onClose={onClose}
           />

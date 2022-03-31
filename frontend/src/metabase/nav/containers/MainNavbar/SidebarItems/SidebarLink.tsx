@@ -12,6 +12,7 @@ interface Props {
   icon: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   right?: React.ReactNode;
+  onClick?: () => void;
 }
 
 function isIconPropsObject(

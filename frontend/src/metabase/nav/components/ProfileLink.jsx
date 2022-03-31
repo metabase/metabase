@@ -23,6 +23,7 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
+    handleCloseNavbar: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -35,7 +36,7 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const { user } = this.props;
+    const { user, handleCloseNavbar } = this.props;
     const isAdmin = user.is_superuser;
     const canAccessSettings =
       isAdmin || PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
@@ -46,6 +47,7 @@ export default class ProfileLink extends Component {
         icon: null,
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
+        onClose: handleCloseNavbar,
       },
       canAccessSettings && {
         title: t`Admin settings`,
@@ -58,6 +60,7 @@ export default class ProfileLink extends Component {
         icon: null,
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
+        onClose: handleCloseNavbar,
       },
       {
         title: t`Help`,

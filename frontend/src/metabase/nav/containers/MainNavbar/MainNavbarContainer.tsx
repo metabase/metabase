@@ -38,6 +38,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
+  isOpen: boolean;
   currentUser: User;
   bookmarks: Bookmark[];
   collections: Collection[];
@@ -50,9 +51,11 @@ type Props = {
   params: {
     slug?: string;
   };
+  closeNavbar: () => void;
 };
 
 function MainNavbarContainer({
+  isOpen,
   currentUser,
   collections = [],
   rootCollection,
@@ -60,6 +63,7 @@ function MainNavbarContainer({
   allFetched,
   location,
   params,
+  closeNavbar,
   ...props
 }: Props) {
   const selectedItem = useMemo<SelectedItem>(() => {
@@ -107,7 +111,7 @@ function MainNavbarContainer({
   }, [rootCollection, collections, currentUser]);
 
   return (
-    <Sidebar>
+    <Sidebar isOpen={isOpen}>
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
@@ -115,6 +119,7 @@ function MainNavbarContainer({
           collections={collectionTree}
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
+          handleCloseNavbar={closeNavbar}
         />
       ) : (
         <LoadingContainer>
