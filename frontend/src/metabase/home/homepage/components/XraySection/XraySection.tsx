@@ -1,7 +1,11 @@
 import React from "react";
 import { t } from "ttag";
+import * as Urls from "metabase/lib/urls";
 import { Database, DatabaseCandidate } from "metabase-types/api";
 import {
+  DatabaseIcon,
+  DatabaseLink,
+  DatabaseTitle,
   SectionTitle,
   XrayCard,
   XrayIcon,
@@ -17,16 +21,30 @@ export interface XraySectionProps {
   databaseCandidates: DatabaseCandidate[];
 }
 
-const XraySection = ({ databaseCandidates }: XraySectionProps): JSX.Element => {
-  const tables = databaseCandidates.flatMap(d => d.tables);
+const XraySection = ({
+  database,
+  databaseCandidates,
+}: XraySectionProps): JSX.Element => {
+  const isSample = !database || database.is_sample;
+  const tableCandidates = databaseCandidates.flatMap(d => d.tables);
 
   return (
     <div>
-      <SectionTitle>
-        {t`Try out these sample x-rays to see what Metabase can do.`}
-      </SectionTitle>
+      {isSample ? (
+        <SectionTitle>
+          {t`Try out these sample x-rays to see what Metabase can do.`}
+        </SectionTitle>
+      ) : (
+        <SectionTitle>
+          {t`Here are some explorations of`}
+          <DatabaseLink to={Urls.browseDatabase(database)}>
+            <DatabaseIcon name="database" />
+            <DatabaseTitle>{database.name}</DatabaseTitle>
+          </DatabaseLink>
+        </SectionTitle>
+      )}
       <XrayList>
-        {tables.map(table => (
+        {tableCandidates.map(table => (
           <XrayCard key={table.url} url={table.url}>
             <XrayIconContainer>
               <XrayIcon name="bolt" />
