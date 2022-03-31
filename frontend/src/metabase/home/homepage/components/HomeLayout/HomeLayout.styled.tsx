@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
-import { breakpointMinMedium } from "metabase/styled-components/theme";
 
 export interface LayoutProps {
   showScene?: boolean;
@@ -18,17 +17,9 @@ export const LayoutRoot = styled.div<LayoutProps>`
 `;
 
 export const LayoutMain = styled.div`
-  padding: 1.5rem;
-
-  ${breakpointMinMedium} {
-    padding: 4rem 7rem;
-  }
+  padding: 4rem 7rem;
 `;
 
 export const LayoutContent = styled.div`
-  margin-top: 2.5rem;
-
-  ${breakpointMinMedium} {
-    margin-top: 6rem;
-  }
+  margin-top: 6rem;
 `;
