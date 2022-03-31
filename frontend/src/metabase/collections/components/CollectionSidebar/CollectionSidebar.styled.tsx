@@ -30,11 +30,9 @@ export const Sidebar = styled.aside<SidebarProps>`
   left: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-top: ${space(3)};
-  position: fixed;
-  top: 65px;
+  padding-top: ${space(1)};
   width: 0;
-  background-color: ${color("white")};
+  background-color: transparent;
 
   ${({ shouldDisplayMobileSidebar }) =>
     shouldDisplayMobileSidebar &&
@@ -58,6 +56,10 @@ export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
   font-size: 12px;
   font-weight: 700;
+  font-size: 11px;
+  margin-left: ${space(2)};
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
   letter-spacing: 0.5px;
   margin-left: ${space(3)};
   text-transform: uppercase;

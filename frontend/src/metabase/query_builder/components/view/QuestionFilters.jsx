@@ -117,7 +117,7 @@ export function FilterHeader({ className, question, expanded }) {
     return null;
   }
   return (
-    <FilterHeaderContainer className={className}>
+    <FilterHeaderContainer className={className} data-testid="qb-filters-panel">
       <div className="flex flex-wrap align-center">
         {filters.map((filter, index) => (
           <PopoverWithTrigger

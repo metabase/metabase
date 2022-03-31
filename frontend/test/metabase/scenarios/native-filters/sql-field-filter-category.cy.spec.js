@@ -36,8 +36,10 @@ describe("scenarios > filters > sql filters > field filter > Category", () => {
   it("should work despite it not showing up in the widget type list", () => {
     cy.findByText("Showing 42 rows");
 
-    cy.icon("close").click();
-    cy.findByText("Field Filter").click();
+    cy.findByTestId("native-query-top-bar").within(() => {
+      cy.icon("close").click();
+      cy.findByText("Field Filter").click();
+    });
 
     popover().within(() => {
       cy.findByText("Gizmo").click();

@@ -8,6 +8,7 @@ import {
   ChildrenContainer,
   ExpandCollectionButton,
   LabelContainer,
+  LabelText,
 } from "./CollectionsList.styled";
 
 import CollectionLink from "metabase/collections/components/CollectionSidebar/CollectionSidebarLink";
@@ -58,7 +59,7 @@ function Label({ action, depth, collection, isOpen }) {
         collection={collection}
         targetOffsetX={targetOffsetX}
       />
-      {name}
+      <LabelText>{name}</LabelText>
     </LabelContainer>
   );
 }

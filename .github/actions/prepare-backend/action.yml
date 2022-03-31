@@ -25,7 +25,7 @@ runs:
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
     - name: Get M2 cache
-      uses: actions/cache@v3
+      uses: actions/cache@v2
       with:
         path: |
           ~/.m2

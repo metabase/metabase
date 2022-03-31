@@ -7,7 +7,7 @@
             [honeysql.helpers :as h]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
+            [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
             [metabase.models.collection :as coll :refer [Collection]]
             [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
@@ -272,6 +272,10 @@
 (s/defmethod search-query-for-model "collection"
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
+      (h/left-join [CollectionBookmark :bookmark]
+                   [:and
+                    [:= :bookmark.collection_id :collection.id]
+                    [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
 (s/defmethod search-query-for-model "database"
@@ -283,7 +287,7 @@
   (-> (base-query-for-model model search-ctx)
       (h/left-join [DashboardBookmark :bookmark]
                    [:and
-                    [:= :dashboard.id :bookmark.dashboard_id]
+                    [:= :bookmark.dashboard_id :dashboard.id ]
                     [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
