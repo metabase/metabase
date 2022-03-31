@@ -907,6 +907,15 @@
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
+(defn ee-permissions-exception
+  "Exception to throw when a permissions operation fails due to missing Enterprise Edition code, or missing a valid
+   token with the advanced-permissions feature."
+  [perm-type]
+  (ex-info
+    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+         (str/replace (name perm-type) "-" " "))
+    {:status-code 402}))
+
 (defn- download-permissions-set
   [group-id]
   (db/select-field :object
@@ -1061,16 +1070,21 @@
         ;; TODO -- should this code be enterprise only?
         :block (do
                  (when-not (premium-features/has-feature? :advanced-permissions)
-                   (throw
-                    (ex-info
-                     (tru "Can''t use block permissions without having the advanced-permissions premium feature")
-                     {:status-code 402})))
+                   (throw (ee-permissions-exception :block)))
                  (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
           (doseq [schema (keys schemas)]
             (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+
+(defn- update-feature-level-permission!
+  [group-id db-id new-perms perm-type]
+  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+  (if-let [update-fn (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
+                                      (str "update-db-" (name perm-type) "-permissions!")))]
+    (update-fn group-id db-id new-perms)
+    (throw (ee-permissions-exception perm-type))))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
@@ -1081,16 +1095,10 @@
         (update-db-data-access-permissions! group-id db-id new-perms)
 
         :download
-        (do
-          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
-           group-id db-id new-perms))
+        (update-feature-level-permission! group-id db-id new-perms :download)
 
         :data-model
-        (do
-          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-data-model-permissions!)
-           group-id db-id new-perms))))))
+        (update-feature-level-permission! group-id db-id new-perms :data-model)))))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can

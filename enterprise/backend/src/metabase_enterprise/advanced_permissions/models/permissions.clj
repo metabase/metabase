@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions
   (:require [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -94,9 +93,7 @@
       see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
-    (throw (ex-info
-            (tru "Can''t set download permissions without having the advanced-permissions premium feature")
-            {:status-code 402})))
+    (throw (perms/ee-permissions-exception :download)))
   (when-let [schemas (:schemas new-download-perms)]
     (condp = schemas
       :full
@@ -155,9 +152,7 @@
   "Update the data model permissions graph for a database."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
-    (throw (ex-info
-            (tru "Can''t set data model permissions without having the advanced-permissions premium feature")
-            {:status-code 402})))
+    (throw (perms/ee-permissions-exception :data-model)))
   (when-let [schemas (:schemas new-data-model-perms)]
     (condp = schemas
       :all
