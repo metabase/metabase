@@ -109,10 +109,10 @@
                        :order-by    [[:asc $id]]
                        :limit       2})]
           (mt/with-native-query-testing-context query
-            (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+            (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false
                      "Widget"
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0 "2017-12-31T14:41:56.87Z"]
-                    [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
+                    [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 false
                      "Gizmo"
                      123 "3621077291879" "Mediocre Wooden Bench" "Gizmo" "Flatley-Kunde" 73.95 2.0 "2017-11-16T13:53:14.232Z"]]
                    (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int

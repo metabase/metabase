@@ -58,10 +58,6 @@ export function resolve(expression, type = "expression", fn = undefined) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
-    if (typeof op === "boolean") {
-      return expression;
-    }
-
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
