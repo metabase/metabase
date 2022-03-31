@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon, { IconProps } from "metabase/components/Icon";
+import { space } from "metabase/styled-components/theme";
 
 interface TreeNodeRootProps {
   isSelected: boolean;
@@ -13,8 +14,11 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   align-items: center;
   color: ${props => (props.isSelected ? colors["white"] : colors["brand"])};
   background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
-  padding-left: ${props => props.depth + 0.5}rem;
+  padding-left: ${props => props.depth}rem;
   padding-right: 0.5rem;
+  margin-left: 14px;
+  margin-right: 14px;
+  border-radius: 4px;
   cursor: pointer;
   font-weight: 700;
 
@@ -24,10 +28,12 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   }
 `;
 
+const ITEM_PADDING = `8px`;
+
 export const ExpandToggleButton = styled.button`
   display: flex;
   cursor: pointer;
-  padding: 0.5rem 0.25rem 0.5rem 0.25rem;
+  padding: 4px;
   display: block;
   color: inherit;
   visibility: ${props => (props.hidden ? "hidden" : "visible")};
@@ -54,7 +60,7 @@ ExpandToggleIcon.defaultProps = {
 
 export const NameContainer = styled.div`
   word-break: break-word;
-  padding: 0.5rem 0.5rem 0.5rem 0.25rem;
+  padding: 6px 3px;
   flex: 1;
 `;
 
