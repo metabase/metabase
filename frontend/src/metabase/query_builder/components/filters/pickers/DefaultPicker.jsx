@@ -143,7 +143,6 @@ export default function DefaultPicker({
         return (
           <NumberPicker
             key={index}
-            field={field}
             autoFocus={index === 0}
             values={values}
             onValuesChange={onValuesChange}

@@ -43,12 +43,6 @@ export default class NumberPicker extends Component {
     });
   }
 
-  extractFieldSettings = field => {
-    const fieldId = field?.id;
-    const fieldMetadata = field?.metadata?.fields[fieldId];
-    return fieldMetadata?.settings;
-  };
-
   render() {
     const values = this.state.stringValues.slice(0, this.props.values.length);
     return (
