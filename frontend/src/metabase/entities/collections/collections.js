@@ -18,7 +18,7 @@ import {
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getFormSelector } from "./collections/forms";
+import { getFormSelector } from "./forms";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
