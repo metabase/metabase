@@ -589,7 +589,6 @@
                           {:error error
                            :database (:name database)})))))))
 
-;; todo: do we want these routes unified with some true/false payload?
 (api/defendpoint POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
