@@ -7,10 +7,6 @@ import { space } from "metabase/styled-components/theme";
 
 import { SidebarLink } from "../SidebarItems";
 
-export const BookmarkListRoot = styled.div`
-  margin: ${space(1)} 0;
-`;
-
 export const BookmarkTypeIcon = styled(Icon)`
   margin-right: 6px;
   opacity: 0.5;

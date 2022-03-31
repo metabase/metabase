@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -12,7 +12,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "../types";
 import { SidebarHeading } from "../MainNavbar.styled";
-import { BookmarkListRoot, SidebarBookmarkItem } from "./BookmarkList.styled";
+import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
   onDeleteBookmark: ({ item_id, type }: Bookmark) =>
