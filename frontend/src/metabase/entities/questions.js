@@ -8,19 +8,12 @@ import Collections, {
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import { POST, DELETE } from "metabase/lib/api";
-
 import forms from "./questions/forms";
 
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-
-  api: {
-    favorite: POST("/api/card/:id/favorite"),
-    unfavorite: DELETE("/api/card/:id/favorite"),
-  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>
