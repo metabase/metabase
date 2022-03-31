@@ -15,8 +15,7 @@ import AutoExpanding from "metabase/hoc/AutoExpanding";
 import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
-import { stripId, getCurrencySymbol } from "metabase/lib/formatting";
-import { isCurrency } from "metabase/lib/schema_metadata";
+import { stripId } from "metabase/lib/formatting";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 import { getDashboardParameterValuesCache } from "metabase/dashboard/selectors";
 
@@ -375,12 +374,6 @@ export class FieldValuesWidget extends Component {
     );
   };
 
-  extractFieldSettings = field => {
-    const fieldId = field?.id;
-    const fieldMetadata = field?.metadata?.fields[fieldId];
-    return fieldMetadata?.settings;
-  };
-
   render() {
     const {
       value,
@@ -392,6 +385,7 @@ export class FieldValuesWidget extends Component {
       className,
       style,
       parameter,
+      prefix,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -412,12 +406,6 @@ export class FieldValuesWidget extends Component {
     const isLoading = loadingState === "LOADING";
     const isFetchingList = this.shouldList() && isLoading;
     const hasListData = this.hasList();
-
-    const fieldSettings = this.extractFieldSettings(fields[0]);
-    const currencyPrefix =
-      isCurrency(fields[0]) && fieldSettings?.currency
-        ? getCurrencySymbol(fieldSettings.currency)
-        : null;
 
     return (
       <div
@@ -442,7 +430,7 @@ export class FieldValuesWidget extends Component {
         )}
         {!hasListData && !isFetchingList && (
           <TokenField
-            prefix={currencyPrefix}
+            prefix={prefix}
             value={value.filter(v => v != null)}
             onChange={onChange}
             placeholder={placeholder}
