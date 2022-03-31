@@ -1,16 +1,9 @@
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import { SidebarLink } from "../SidebarItems";
-
-export const BookmarkTypeIcon = styled(Icon)`
-  margin-right: 6px;
-  opacity: 0.5;
-`;
 
 export const SidebarBookmarkItem = styled(SidebarLink)`
   &:hover {

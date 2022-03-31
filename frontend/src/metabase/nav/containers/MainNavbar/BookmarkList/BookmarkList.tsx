@@ -1,12 +1,15 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
+import { TreeNode } from "metabase/components/tree/TreeNode";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
@@ -28,6 +31,22 @@ interface CollectionSidebarBookmarksProps {
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
+function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
+  const icon = Bookmarks.objectSelectors.getIcon(bookmark);
+  const isOfficialCollection =
+    bookmark.type === "collection" &&
+    !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+
+  // Make sure bookmarks have unified icon color except for official collections
+  const iconProps = isOfficialCollection ? icon : _.omit(icon, "color");
+
+  return (
+    <TreeNode.IconContainer transparent={!isOfficialCollection}>
+      <Icon {...iconProps} />
+    </TreeNode.IconContainer>
+  );
+}
+
 const BookmarkList = ({
   bookmarks,
   selectedItem,
@@ -45,14 +64,13 @@ const BookmarkList = ({
         selectedItem.type !== "collection" &&
         selectedItem.type === type &&
         selectedItem.id === item_id;
-      const icon = Bookmarks.objectSelectors.getIcon(bookmark);
       const url = Urls.bookmark(bookmark);
       const onRemove = () => onDeleteBookmark(bookmark);
       return (
         <SidebarBookmarkItem
           key={`bookmark-${id}`}
           url={url}
-          icon={icon}
+          icon={<BookmarkIcon bookmark={bookmark} />}
           isSelected={isSelected}
           right={
             <button onClick={onRemove}>
