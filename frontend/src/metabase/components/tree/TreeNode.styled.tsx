@@ -16,8 +16,6 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
   padding-left: ${props => props.depth}rem;
   padding-right: 0.5rem;
-  margin-left: 14px;
-  margin-right: 14px;
   border-radius: 4px;
   cursor: pointer;
   font-weight: 700;
@@ -28,12 +26,10 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   }
 `;
 
-const ITEM_PADDING = `8px`;
-
 export const ExpandToggleButton = styled.button`
   display: flex;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 0 4px 2px;
   display: block;
   color: inherit;
   visibility: ${props => (props.hidden ? "hidden" : "visible")};

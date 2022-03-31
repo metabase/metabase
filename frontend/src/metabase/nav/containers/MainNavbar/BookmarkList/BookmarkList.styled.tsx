@@ -17,6 +17,8 @@ export const BookmarkTypeIcon = styled(Icon)`
 `;
 
 export const SidebarBookmarkItem = styled(SidebarLink)`
+  padding-left: ${space(1)};
+
   &:hover {
     button {
       opacity: 0.5;
