@@ -1,9 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Question from "../Question";
 import Base from "./Base";
 import { generateSchemaId } from "metabase/lib/schema";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { StructuredQuery, NativeQuery } from "metabase-types/types/Query";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
@@ -18,12 +17,15 @@ import Metadata from "./Metadata";
  */
 
 export default class Database extends Base {
-  id: number;
-  name: string;
-  description: string;
-  tables: Table[];
-  schemas: Schema[];
-  metadata: Metadata;
+  id!: number;
+  name!: string;
+  description!: string | null;
+  tables!: Table[];
+  schemas!: Schema[];
+  metadata!: Metadata;
+  features!: string[];
+  native_permissions!: string;
+  auto_run_queries!: boolean;
 
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {
@@ -35,7 +37,7 @@ export default class Database extends Base {
   /**
    * @param {SchemaName} [schemaName]
    */
-  schema(schemaName) {
+  schema(schemaName: string) {
     return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
 
@@ -73,7 +75,7 @@ export default class Database extends Base {
    * @typedef {"join"} VirtualDatabaseFeature
    * @param {DatabaseFeature | VirtualDatabaseFeature} [feature]
    */
-  hasFeature(feature) {
+  hasFeature(feature: string | undefined | null) {
     if (!feature) {
       return true;
     }
@@ -102,16 +104,12 @@ export default class Database extends Base {
 
   // QUESTIONS
   newQuestion() {
-    return this.question()
+    return this.question({})
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(
-    query = {
-      "source-table": null,
-    },
-  ) {
+  question(query: StructuredQuery) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -122,57 +120,21 @@ export default class Database extends Base {
     });
   }
 
-  nativeQuestion(native = {}) {
+  nativeQuestion(native: NativeQuery) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
         database: this.id,
         type: "native",
         native: {
-          query: "",
-          "template-tags": {},
           ...native,
         },
       },
     });
   }
 
-  nativeQuery(native) {
-    return this.nativeQuestion(native).query();
-  }
-
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase() {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
-  }
-
-  /**
-   * @private
-   * @param {number} id
-   * @param {string} name
-   * @param {?string} description
-   * @param {Table[]} tables
-   * @param {Schema[]} schemas
-   * @param {Metadata} metadata
-   * @param {boolean} auto_run_queries
-   */
-
-  /* istanbul ignore next */
-  _constructor(
-    id,
-    name,
-    description,
-    tables,
-    schemas,
-    metadata,
-    auto_run_queries,
-  ) {
-    this.id = id;
-    this.name = name;
-    this.description = description;
-    this.tables = tables;
-    this.schemas = schemas;
-    this.metadata = metadata;
-    this.auto_run_queries = auto_run_queries;
   }
 }
