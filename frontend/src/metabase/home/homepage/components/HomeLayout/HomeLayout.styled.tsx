@@ -23,3 +23,16 @@ export const LayoutMain = styled.div`
 export const LayoutContent = styled.div`
   margin-top: 6rem;
 `;
+
+export const LayoutScene = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+`;
+
+export const LayoutSceneImage = styled.img`
+  position: relative;
+  bottom: -3px;
+`;
