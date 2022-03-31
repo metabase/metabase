@@ -59,4 +59,7 @@ export const LoadingTitle = styled.h2`
 export const ProfileLinkContainer = styled.div`
   margin-left: auto;
   margin-right: ${space(2)};
+  position: absolute;
+  bottom: ${space(1)};
+  right: 0;
 `;

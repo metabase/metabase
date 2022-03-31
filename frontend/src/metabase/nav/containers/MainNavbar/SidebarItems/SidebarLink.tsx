@@ -36,7 +36,7 @@ function SidebarLink({
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
     return (
       <TreeNode.IconContainer>
-        <Icon {...iconProps} />
+        <Icon {...iconProps} size={14} />
       </TreeNode.IconContainer>
     );
   }, [icon]);
