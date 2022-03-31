@@ -31,6 +31,8 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
+import Mode from "metabase-lib/lib/Mode";
+import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -439,8 +441,9 @@ const isZoomingRow = createSelector(
 );
 
 export const getMode = createSelector(
-  [getLastRunQuestion],
-  question => question && question.mode(),
+  [getLastRunQuestion, isZoomingRow],
+  (question, isZoomingRow) =>
+    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
