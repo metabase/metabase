@@ -265,6 +265,21 @@
                 (map :result)
                 (map :name))))))
 
+(deftest bookmarked-test
+  (let [search-string     "my card"
+        labeled-results   {:a {:name "my card a" :model "dashboard"}
+                           :b {:name "my card b" :model "dashboard" :bookmark true :collection_position 1}
+                           :c {:name "my card c" :model "dashboard" :bookmark true}}
+        {:keys [a b c]} labeled-results]
+    (is (= (map :name [b c a])
+           (->> labeled-results
+                vals
+                (map (partial search/score-and-result search-string))
+                (sort-by :score)
+                reverse
+                (map :result)
+                (map :name))))))
+
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
     (let [scorer (reify search/ResultScore

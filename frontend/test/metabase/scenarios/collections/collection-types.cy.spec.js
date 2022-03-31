@@ -1,10 +1,12 @@
 import {
   restore,
   modal,
-  sidebar,
   describeEE,
   describeOSS,
   openNewCollectionItemFlowFor,
+  appBar,
+  navigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -83,7 +85,7 @@ describeEE("collections types", () => {
 
     getSidebarCollectionChildrenFor("First collection").within(() => {
       expandCollectionChildren("Second collection");
-      cy.icon("badge").should("have.length", 3);
+      cy.icon("badge").should("have.length", 2);
       cy.icon("folder").should("not.exist");
     });
 
@@ -99,8 +101,7 @@ describeEE("collections types", () => {
     });
 
     getSidebarCollectionChildrenFor("First collection").within(() => {
-      expandCollectionChildren("Second collection");
-      cy.icon("folder").should("have.length", 3);
+      cy.icon("folder").should("have.length", 2);
       cy.icon("badge").should("not.exist");
     });
   });
@@ -198,10 +199,13 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
+  closeNavigationSidebar();
   assertHasCollectionBadge(expectBadge);
 
   // Question Page
-  cy.findByText(COLLECTION_NAME).click();
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
+    .click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadge(expectBadge);
 
@@ -224,7 +228,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  cy.get(".Nav")
+  appBar()
     .findByPlaceholderText("Search…")
     .as("searchBar")
     .type(searchQuery);
@@ -264,7 +268,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .click();
 }
@@ -276,18 +280,17 @@ function editCollection() {
 
 function expandCollectionChildren(collectionName) {
   cy.findByText(collectionName)
-    .parent()
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .find(".Icon-chevronright")
-    .eq(0) // there may be more nested icons, but we need the top level one
     .click();
 }
 
-function getSidebarCollectionChildrenFor(collectionName) {
-  return sidebar()
-    .findByText(collectionName)
-    .closest("a")
+function getSidebarCollectionChildrenFor(item) {
+  return navigationSidebar()
+    .findByText(item)
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .parent()
-    .parent();
+    .next("ul");
 }
 
 function setOfficial(official = true) {
@@ -326,7 +329,7 @@ function assertNoCollectionTypeInput() {
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
-  sidebar()
+  navigationSidebar()
     .findByText(collectionName)
     .parent()
     .within(() => {
@@ -344,7 +347,8 @@ function assertSearchResultBadge(itemName, opts) {
 }
 
 function assertHasCollectionBadge(expectBadge = true) {
-  cy.findByText(COLLECTION_NAME)
+  cy.get("main")
+    .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");

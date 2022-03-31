@@ -421,8 +421,9 @@
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
-                                              :or   {invalid-response-handler invalid-connection-response}}]
+  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler log-exception]
+                                              :or   {invalid-response-handler invalid-connection-response
+                                                     log-exception            true}}]
   {:pre [(some? engine)]}
   (let [engine  (keyword engine)
         details (assoc details :engine engine)]
@@ -445,7 +446,8 @@
         :else
         (invalid-response-handler :db (tru "Unable to connect to database.")))
       (catch Throwable e
-        (log/error e (trs "Cannot connect to Database"))
+        (when log-exception
+          (log/error e (trs "Cannot connect to Database")))
         (invalid-response-handler :dbname (.getMessage e))))))
 
 ;; TODO - Just make `:ssl` a `feature`
@@ -465,21 +467,19 @@
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (if (and (supports-ssl? (keyword engine))
-           (true? (:ssl details)))
-    (let [error (test-database-connection engine details)]
-      (or error details))
-    (let [details (if (supports-ssl? (keyword engine))
-                    (assoc details :ssl true)
-                    details)]
-    ;; this loop tries connecting over ssl and non-ssl to establish a connection
-    ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-      (loop [details details]
-        (let [error (test-database-connection engine details)]
-          (if (and error
-                   (true? (:ssl details)))
-            (recur (assoc details :ssl false))
-            (or error details)))))))
+  (let [;; Try SSL first if SSL is supported and not already enabled
+        ;; If not successful or not applicable, details-with-ssl will be nil
+        details-with-ssl (assoc details :ssl true)
+        details-with-ssl (when (and (supports-ssl? (keyword engine))
+                                    (not (true? (:ssl details)))
+                                    (nil? (test-database-connection engine details-with-ssl :log-exception false)))
+                           details-with-ssl)]
+    (or
+      ;; Opportunistic SSL
+      details-with-ssl
+      ;; Try with original parameters
+      (test-database-connection engine details)
+      details)))
 
 (api/defendpoint POST "/"
   "Add a new `Database`."

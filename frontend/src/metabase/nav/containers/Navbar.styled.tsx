@@ -1,19 +1,32 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
-export const NavRoot = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 1rem 0.5rem 0;
-  background-color: ${color("nav")};
+const openNavbarCSS = css`
+  width: 324px;
+  position: relative;
 `;
 
-export const LogoLinkContainer = styled.div`
-  display: flex;
-  justify-content: center;
+const closedNavbarCSS = css`
+  width: 0;
+  visibility: hidden;
+`;
+
+export const NavRoot = styled.div<{ isOpen: boolean }>`
+  position: fixed;
   align-items: center;
-  min-width: 4rem;
+  padding: 0.5rem 0;
+  background-color: ${color("nav")};
+  overflow: auto;
+  overflow-x: hidden;
+  z-index: 3;
+  flex-shrink: 0;
+  border-right: 1px solid ${color("border")};
+
+  ${breakpointMinSmall} {
+    ${props => (props.isOpen ? openNavbarCSS : closedNavbarCSS)};
+  }
 `;
 
 export const LogoIconContainer = styled.div`
@@ -35,6 +48,9 @@ export const SearchBarContainer = styled.div`
 export const SearchBarContent = styled.div`
   width: 100%;
   max-width: 500px;
+  margin-left: auto;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 `;
 
 export const EntityMenuContainer = styled.div`

@@ -15,10 +15,7 @@ interface TimelinePanelProps {
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelinePanelProps) => ({
-    cardId: props.cardId,
-    include: "events",
-  }),
+  query: { include: "events" },
 };
 
 const collectionProps = {

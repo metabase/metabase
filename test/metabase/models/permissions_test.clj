@@ -14,54 +14,59 @@
 
 ;;; ----------------------------------------------- valid-path? -----------------------------------------------
 
+(def ^:private valid-paths
+  ["/db/1/"
+   "/db/1/native/"
+   "/db/1/schema/"
+   "/db/1/schema/public/"
+   "/db/1/schema/PUBLIC/"
+   "/db/1/schema//"
+   "/db/1/schema/1234/"
+   "/db/1/schema/public/table/1/"
+   "/db/1/schema/PUBLIC/table/1/"
+   "/db/1/schema//table/1/"
+   "/db/1/schema/public/table/1/"
+   "/db/1/schema/PUBLIC/table/1/"
+   "/db/1/schema//table/1/"
+   "/db/1/schema/1234/table/1/"
+   "/db/1/schema/PUBLIC/table/1/query/"
+   "/db/1/schema/PUBLIC/table/1/query/segmented/"
+   ;; download permissions
+   "/download/db/1/"
+   "/download/limited/db/1/"
+   "/download/db/1/native/"
+   "/download/limited/db/1/native/"
+   "/download/db/1/schema/PUBLIC/"
+   "/download/limited/db/1/schema/PUBLIC/"
+   "/download/db/1/schema/PUBLIC/table/1/"
+   "/download/limited/db/1/schema/PUBLIC/table/1/"
+   ;; block permissions
+   "/block/db/1/"
+   "/block/db/1000/"
+   ;; full admin (everything) root permissions
+   "/"])
+
+(def ^:private valid-paths-with-slashes
+  [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+   "/db/16/schema/COMPANY-NET\\\\john.doe/"
+   ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
+   "/db/16/schema/COMPANY-NET\\/john.doe/"
+   ;; my\schema should get escaped to my\\schema
+   "/db/1/schema/my\\\\schema/table/1/"
+   ;; my\\schema should get escaped to my\\\\schema
+   "/db/1/schema/my\\\\\\\\schema/table/1/"
+   ;; my/schema should get escaped to my\/schema
+   "/db/1/schema/my\\/schema/table/1/"])
+
 (deftest valid-path-test
   (testing "valid paths"
-    (doseq [path
-            ["/db/1/"
-             "/db/1/native/"
-             "/db/1/schema/"
-             "/db/1/schema/public/"
-             "/db/1/schema/PUBLIC/"
-             "/db/1/schema//"
-             "/db/1/schema/1234/"
-             "/db/1/schema/public/table/1/"
-             "/db/1/schema/PUBLIC/table/1/"
-             "/db/1/schema//table/1/"
-             "/db/1/schema/public/table/1/"
-             "/db/1/schema/PUBLIC/table/1/"
-             "/db/1/schema//table/1/"
-             "/db/1/schema/1234/table/1/"
-             "/db/1/schema/PUBLIC/table/1/query/"
-             "/db/1/schema/PUBLIC/table/1/query/segmented/"
-             ;; download permissions
-             "/download/db/1/"
-             "/download/limited/db/1/"
-             "/download/db/1/native/"
-             "/download/limited/db/1/native/"
-             "/download/db/1/schema/PUBLIC/"
-             "/download/limited/db/1/schema/PUBLIC/"
-             "/download/db/1/schema/PUBLIC/table/1/"
-             "/download/limited/db/1/schema/PUBLIC/table/1/"
-             ;; block permissions
-             "/block/db/1/"
-             "/block/db/1000/"
-             ;; full admin (everything) root permissions
-             "/"]]
+    (doseq [path valid-paths]
       (testing (pr-str path)
         (is (= true
                (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-      (doseq [path [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
-                    "/db/16/schema/COMPANY-NET\\\\john.doe/"
-                    ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
-                    "/db/16/schema/COMPANY-NET\\/john.doe/"
-                    ;; my\schema should get escaped to my\\schema
-                    "/db/1/schema/my\\\\schema/table/1/"
-                    ;; my\\schema should get escaped to my\\\\schema
-                    "/db/1/schema/my\\\\\\\\schema/table/1/"
-                    ;; my/schema should get escaped to my\/schema
-                    "/db/1/schema/my\\/schema/table/1/"]]
+      (doseq [path valid-paths-with-slashes]
         (testing (pr-str path)
           (is (= true
                  (perms/valid-path? path)))))))
@@ -192,6 +197,42 @@
         (testing (str "\n" (pr-str path))
           (is (= expected
                  (perms/valid-path? path))))))))
+
+(deftest valid-path-format-test
+  (testing "known valid paths"
+    (doseq [path (concat valid-paths valid-paths-with-slashes)]
+      (testing (pr-str path)
+        (is (= true
+               (perms/valid-path-format? path))))))
+
+  (testing "unknown paths with valid path format"
+    (doseq [path ["/asdf/"
+                  "/asdf/ghjk/"
+                  "/asdf-ghjk/"
+                  "/adsf//"
+                  "/asdf/1/ghkl/"
+                  "/asdf\\/ghkl/"
+                  "/asdf\\\\ghkl/"]]
+      (testing (pr-str path)
+        (is (= true
+               (perms/valid-path-format? path))))))
+
+  (testing "invalid paths"
+    (doseq [path
+            [""
+             "/asdf"
+             "asdf/"
+             "123"
+             nil
+             {}
+             []
+             true
+             false
+             (keyword "/asdf/")
+             1234]]
+      (testing (pr-str path)
+        (is (= false
+               (perms/valid-path-format? path)))))))
 
 
 ;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
@@ -722,3 +763,20 @@
         (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/"}
                (perms)))))))
+
+(deftest grant-revoke-general-permissions-test
+  (mt/with-temp PermissionsGroup [{group-id :id}]
+    (letfn [(perms []
+              (db/select-field :object Permissions
+                               {:where [:and [:= :group_id group-id]
+                                             [:like :object "/general/%"]]}))]
+      (is (= nil (perms)))
+      (doseq [[perm-type perm-path] [[:subscription "/general/subscription/"]
+                                     [:monitoring "/general/monitoring/"]
+                                     [:setting "/general/setting/"]]]
+        (testing (format "Able to grant `%s` permission" (name perm-type))
+          (perms/grant-general-permissions! group-id perm-type)
+          (is (= (perms)  #{perm-path})))
+        (testing (format "Able to revoke `%s` permission" (name perm-type))
+          (perms/revoke-general-permissions! group-id perm-type)
+          (is (not (= (perms) #{perm-path}))))))))

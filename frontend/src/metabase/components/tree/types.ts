@@ -1,3 +1,4 @@
+import React from "react";
 import { IconProps } from "../Icon";
 
 export interface ITreeNodeItem {
@@ -7,4 +8,16 @@ export interface ITreeNodeItem {
   children?: ITreeNodeItem[];
 }
 
-export type ColorScheme = "admin" | "default";
+export interface TreeNodeProps {
+  item: ITreeNodeItem;
+  depth: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  isSelected: boolean;
+  onSelect?: () => void;
+  onToggleExpand: () => void;
+}
+
+export type TreeNodeComponent = React.ComponentType<
+  TreeNodeProps & React.RefAttributes<HTMLLIElement>
+>;
