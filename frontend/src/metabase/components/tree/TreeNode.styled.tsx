@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import colors, { lighten } from "metabase/lib/colors";
+import colors, { lighten, darken } from "metabase/lib/colors";
 import Icon, { IconProps } from "metabase/components/Icon";
-import { space } from "metabase/styled-components/theme";
 
 interface TreeNodeRootProps {
   isSelected: boolean;
@@ -15,7 +14,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${props =>
-    props.isSelected ? colors["brand"] : colors["text-medium"]};
+    props.isSelected ? colors["brand"] : darken(colors["text-medium"], 0.25)};
   background-color: ${props => (props.isSelected ? ItemColor : "unset")};
   padding-left: ${props => props.depth}rem;
   padding-right: 0.5rem;
