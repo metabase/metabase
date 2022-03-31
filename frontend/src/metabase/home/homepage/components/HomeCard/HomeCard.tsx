@@ -1,13 +1,13 @@
-import React from "react";
+import React, { ReactNode } from "react";
+import { CardRoot } from "./HomeCard.styled";
 
 export interface HomeCardProps {
-  title: string;
-  icon?: string;
-  href?: string;
+  url?: string;
+  children?: ReactNode;
 }
 
-const HomeCard = ({ title }: HomeCardProps): JSX.Element => {
-  return <div />;
+const HomeCard = ({ url = "", children }: HomeCardProps): JSX.Element => {
+  return <CardRoot to={url}>{children}</CardRoot>;
 };
 
 export default HomeCard;
