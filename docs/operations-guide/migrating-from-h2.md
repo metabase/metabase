@@ -16,7 +16,7 @@ If you want to run Metabase in production, you'll need to use a production-ready
 
 You could also choose to run Metabase on a [Metabase Cloud](/pricing) plan, which takes care of all of this stuff for you.
 
-## Databases we recommend for storing your Metabase application data
+## Choose a production database for storing your Metabase application data
 
 - [PostgreSQL](https://www.postgresql.org/). Minimum version: 9.4.
 - [MySQL](https://www.mysql.com/). Minimum version: 5.7.7. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
@@ -34,7 +34,7 @@ Metabase provides a custom migration command for migrating to a new application 
 
 ### 1. Confirm that you can connect to your target application database
 
-You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database. The target database container must be supported (e.g., Postgres, MySQL).
+You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you are attempting to move the data to a cloud database, make sure you can connect to that database.
 
 ### 2. Shut down your Metabase instance
 

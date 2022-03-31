@@ -52,7 +52,7 @@ docker pull metabase/metabase:latest
 4. Start the new Docker container.  Depending on the ports and what you want to name the container, the command will look something like: Something like:
 
 ```
-docker run -d -p 3000:3000 --name metabase metabase/metabase
+docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase:latest
 ```
 
 On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.

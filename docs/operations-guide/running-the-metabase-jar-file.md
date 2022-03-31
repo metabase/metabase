@@ -16,7 +16,7 @@ If you have Java installed:
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
    ```
-   java --jar metabase.jar
+   java -jar metabase.jar
    ```
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
@@ -32,7 +32,7 @@ The below instructions are the same as the quick start above, just with a little
 You may already have Java installed. To check the version, open a terminal and run:
 
 ```
-java --version
+java -version
 ```
 
 If Java isn't installed, you'll need to install it before you can run Metabase. We recommend the latest LTS version of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported too.
@@ -50,7 +50,7 @@ On posix systems, the commands would look something like this:
 Assuming you downloaded to `/Users/person/Downloads`:
 
 ```
-mkdir metabase
+mkdir ~/metabase
 ```
 
 then
