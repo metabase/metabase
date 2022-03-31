@@ -1,9 +1,12 @@
 import { restore, navigationSidebar } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("Bookmarks in a collection page", () => {
   beforeEach(() => {
@@ -61,6 +64,16 @@ describe("Bookmarks in a collection page", () => {
 
   it("can add/remove bookmark from Dashboard in collection", () => {
     addThenRemoveBookmarkTo("Orders in a dashboard");
+  });
+
+  it("adds and removes bookmarks from Model in collection", () => {
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
+      dataset: true,
+    });
+
+    addThenRemoveBookmarkTo("Orders Model");
   });
 
   it("can remove bookmark from item in sidebar", () => {

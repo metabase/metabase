@@ -1,22 +1,23 @@
 import React, { useState, useCallback } from "react";
 import { TreeNodeList } from "./TreeNodeList";
+import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";
-import { ColorScheme, ITreeNodeItem } from "./types";
+import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeProps {
   data: ITreeNodeItem[];
-  onSelect: (item: ITreeNodeItem) => void;
   selectedId?: ITreeNodeItem["id"];
-  colorScheme?: ColorScheme;
   emptyState?: React.ReactNode;
+  onSelect?: (item: ITreeNodeItem) => void;
+  TreeNode?: TreeNodeComponent;
 }
 
-export function Tree({
+function BaseTree({
   data,
-  onSelect,
   selectedId,
-  colorScheme = "default",
   emptyState = null,
+  onSelect,
+  TreeNode = DefaultTreeNode,
 }: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(
     new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
@@ -39,13 +40,17 @@ export function Tree({
 
   return (
     <TreeNodeList
-      colorScheme={colorScheme}
       items={data}
-      onSelect={onSelect}
-      onToggleExpand={handleToggleExpand}
+      TreeNode={TreeNode}
       expandedIds={expandedIds}
       selectedId={selectedId}
       depth={0}
+      onSelect={onSelect}
+      onToggleExpand={handleToggleExpand}
     />
   );
 }
+
+export const Tree = Object.assign(BaseTree, {
+  Node: DefaultTreeNode,
+});
