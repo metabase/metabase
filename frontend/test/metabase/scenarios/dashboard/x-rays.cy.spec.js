@@ -163,7 +163,7 @@ describe("scenarios > x-rays", () => {
     cy.findByText("How these transactions are distributed");
   });
 
-  it("should be able to click the title of an x-ray dashcard to see it in the query builder", () => {
+  it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
