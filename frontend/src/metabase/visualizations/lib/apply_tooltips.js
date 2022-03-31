@@ -11,20 +11,23 @@ import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
-function isDashboardAddedSeries(card, dashboard) {
-  if (!dashboard) {
+function isDashboardAddedSeries(series, seriesIndex, dashboard) {
+  // the first series by definition can't be an "added" series
+  if (!dashboard || seriesIndex === 0) {
     return false;
   }
 
-  for (const dashCard of dashboard.ordered_cards) {
-    for (const addedCard of dashCard.series || []) {
-      if (addedCard.id === card.id) {
-        return true;
-      }
-    }
-  }
+  const { card: firstCardInSeries } = series[0];
+  const { card: addedSeriesCard } = series[seriesIndex];
 
-  return false;
+  // find the dashcard associated with the first series
+  const dashCard = dashboard.ordered_cards.find(
+    dashCard => dashCard.card_id === firstCardInSeries.id,
+  );
+
+  // evaluate whether the added series exists in its series array
+  // the "series" array on a dashcard is where "added" series are stored
+  return (dashCard?.series || []).some(card => card.id === addedSeriesCard.id);
 }
 
 export function getClickHoverObject(
@@ -50,7 +53,11 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
   const isCardNamedDerivedFromColumn = cols.some(col => col.name === card.name);
-  const isAddedSeriesOnDashcard = isDashboardAddedSeries(card, dashboard);
+  const isAddedSeriesOnDashcard = isDashboardAddedSeries(
+    series,
+    seriesIndex,
+    dashboard,
+  );
 
   function getColumnDisplayName(col, colIndex, card) {
     // when the series we are looking at is an added series on a dashcard,
