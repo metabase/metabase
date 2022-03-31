@@ -9,7 +9,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
 
-  personal_owner_id?: number | unknown;
+  personal_owner_id?: number;
 
   location?: string;
   effective_ancestors?: Collection[];
