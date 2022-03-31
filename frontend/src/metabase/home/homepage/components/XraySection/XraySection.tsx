@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Database, DatabaseCandidate } from "metabase-types/api";
@@ -26,7 +27,9 @@ const XraySection = ({
   databaseCandidates,
 }: XraySectionProps): JSX.Element => {
   const isSample = !database || database.is_sample;
-  const tableCandidates = databaseCandidates.flatMap(d => d.tables);
+  const tables = databaseCandidates.flatMap(d => d.tables);
+  const tableCount = tables.length;
+  const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
 
   return (
     <div>
@@ -44,13 +47,13 @@ const XraySection = ({
         </SectionTitle>
       )}
       <XrayList>
-        {tableCandidates.map(table => (
+        {tables.map((table, index) => (
           <XrayCard key={table.url} url={table.url}>
             <XrayIconContainer>
               <XrayIcon name="bolt" />
             </XrayIconContainer>
             <XrayTitle>
-              <XrayTitleSecondary>{t`A look at`}</XrayTitleSecondary>{" "}
+              <XrayTitleSecondary>{tableMessages[index]}</XrayTitleSecondary>{" "}
               <XrayTitlePrimary>{table.title}</XrayTitlePrimary>
             </XrayTitle>
           </XrayCard>
@@ -58,6 +61,17 @@ const XraySection = ({
       </XrayList>
     </div>
   );
+};
+
+const getMessages = (count: number) => {
+  const options = [
+    t`A look at`,
+    t`A summary of `,
+    t`A glance at`,
+    t`Some insights about`,
+  ];
+
+  return _.sample(options, count);
 };
 
 export default XraySection;
