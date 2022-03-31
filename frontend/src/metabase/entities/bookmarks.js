@@ -27,11 +27,9 @@ const Bookmarks = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    const { id, archived } = payload?.object;
-
     if (type === QUESTION_UPDATE) {
-      if (archived === true) {
-        state[`card-${id}`] = undefined;
+      if (payload?.object?.archived === true) {
+        state[`card-${payload?.object?.id}`] = undefined;
       }
 
       return state;
