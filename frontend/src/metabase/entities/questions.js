@@ -1,5 +1,4 @@
 import { createEntity, undo } from "metabase/lib/entities";
-import Bookmarks from "metabase/entities/bookmarks.js";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
@@ -17,25 +16,16 @@ const Questions = createEntity({
   path: "/api/card",
 
   objectActions: {
-    setArchived: ({ id, model }, archived, opts) => {
-      return async dispatch => {
-        const result = await dispatch(
-          Questions.actions.update(
-            { id },
-            { archived },
-            undo(
-              opts,
-              model === "dataset" ? "model" : "question",
-              archived ? "archived" : "unarchived",
-            ),
-          ),
-        );
-
-        dispatch(Bookmarks.actions.fetchList({ reload: true }));
-
-        return result;
-      };
-    },
+    setArchived: ({ id, model }, archived, opts) =>
+      Questions.actions.update(
+        { id },
+        { archived },
+        undo(
+          opts,
+          model === "dataset" ? "model" : "question",
+          archived ? "archived" : "unarchived",
+        ),
+      ),
 
     setCollection: ({ id, model }, collection, opts) => {
       return async dispatch => {

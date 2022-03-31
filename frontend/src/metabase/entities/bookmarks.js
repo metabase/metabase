@@ -5,6 +5,8 @@ import Question from "metabase/entities/questions";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
 
+const QUESTION_UPDATE = "metabase/entities/questions/UPDATE";
+
 const Bookmarks = createEntity({
   name: "bookmarks",
   nameOne: "bookmark",
@@ -22,6 +24,20 @@ const Bookmarks = createEntity({
   },
   objectSelectors: {
     getIcon,
+  },
+
+  reducer: (state = {}, { type, payload, error }) => {
+    const { id, archived } = payload?.object;
+
+    if (type === QUESTION_UPDATE) {
+      if (archived === true) {
+        state[`card-${id}`] = undefined;
+      }
+
+      return state;
+    }
+
+    return state;
   },
 });
 
