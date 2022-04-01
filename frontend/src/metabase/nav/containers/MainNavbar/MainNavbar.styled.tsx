@@ -36,17 +36,8 @@ export const SidebarHeadingWrapper = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: ${space(1)};
-
-  .Icon {
-    opacity: 0;
-  }
-
-  &:hover {
-    .Icon {
-      opacity: 1;
-    }
-  }
 `;
+
 export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
   font-weight: 700;
