@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -102,7 +102,7 @@ export default class ProfileLink extends Component {
           triggerProps={{
             color: color("text-medium"),
             hover: {
-              backgroundColor: darken(color("brand")),
+              backgroundColor: color("brand"),
               color: "white",
             },
           }}
