@@ -4,7 +4,6 @@ import {
   describeEE,
   assertPermissionTable,
   modifyPermission,
-  isPermissionDisabled,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
 const xlsx = require("xlsx");
@@ -20,14 +19,6 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("allows changing download results permission for a database", () => {
     cy.visit("/admin/permissions/data/database/1");
-
-    // Download permission is disabled when there is no data access
-    cy.findByText("All Users")
-      .closest("tr")
-      .as("allUsersRow")
-      .within(() => {
-        isPermissionDisabled(DOWNLOAD_PERMISSION_INDEX, "No", true);
-      });
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
 
@@ -51,14 +42,6 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("allows changing download results permission for a table", () => {
     cy.visit("/admin/permissions/data/database/1/table/1");
-
-    // Download permission is disabled when there is no data access
-    cy.findByText("All Users")
-      .closest("tr")
-      .as("allUsersRow")
-      .within(() => {
-        isPermissionDisabled(DOWNLOAD_PERMISSION_INDEX, "No", true);
-      });
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
 
