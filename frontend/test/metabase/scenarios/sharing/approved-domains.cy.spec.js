@@ -39,7 +39,6 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
 
   it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
     visitDashboard(1);
-    cy.icon("share").click();
     cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
@@ -55,7 +54,6 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
 
   it("should validate approved email domains for a dashboard subscription in the audit app", () => {
     visitDashboard(1);
-    cy.icon("share").click();
     cy.icon("subscription").click();
     cy.findByText("Email it").click();
 

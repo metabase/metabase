@@ -900,7 +900,6 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       visitDashboard(1);
-      cy.icon("share").click();
       cy.icon("subscription").click();
       // We're starting without email or Slack being set up so it's expected to see the following:
       cy.findByText("Create a dashboard subscription");
@@ -1028,7 +1027,6 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       visitDashboard(1);
-      cy.icon("share").click();
       cy.icon("subscription").click();
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();

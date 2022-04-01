@@ -18,7 +18,6 @@ describe.skip("issue 18009", () => {
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
     visitDashboard(1);
 
-    cy.icon("share").click();
     cy.icon("subscription").click();
 
     cy.findByText("Email it").click();
