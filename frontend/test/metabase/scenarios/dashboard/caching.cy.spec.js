@@ -52,6 +52,8 @@ describeEE("scenarios > dashboard > caching", () => {
 });
 
 function openEditingModalForm() {
-  cy.icon("ellipsis").click();
+  cy.get("header").within(() => {
+    cy.icon("ellipsis").click();
+  });
   cy.findByText("Edit dashboard details").click();
 }

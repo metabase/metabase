@@ -625,9 +625,11 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 visitDashboard(1);
                 cy.wait("@collections");
-                cy.icon("ellipsis")
-                  .should("be.visible")
-                  .click();
+                cy.get("header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
                 popover()
                   .findByText("Duplicate")
                   .click();
