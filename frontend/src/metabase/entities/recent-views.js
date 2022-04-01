@@ -1,6 +1,6 @@
 import { createEntity } from "metabase/lib/entities";
 import { entityTypeForObject } from "metabase/lib/schema";
-import { RecentsSchema } from "metabase/schema";
+import { RecentViewsSchema } from "metabase/schema";
 
 export const getEntity = item => {
   const entities = require("metabase/entities");
@@ -16,11 +16,11 @@ export const getIcon = item => {
   return entity.objectSelectors.getIcon(item.model_object);
 };
 
-const Recents = createEntity({
+const RecentViews = createEntity({
   name: "recents",
   nameOne: "recent",
   path: "/api/activity/recent_views",
-  schema: RecentsSchema,
+  schema: RecentViewsSchema,
 
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);
@@ -33,4 +33,4 @@ const Recents = createEntity({
   },
 });
 
-export default Recents;
+export default RecentViews;

@@ -1,9 +1,9 @@
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
-import Recents from "metabase/entities/recents";
+import RecentViews from "metabase/entities/recent-views";
 import HomeContent from "../../components/HomeContent";
 
 export default _.compose(
   Databases.loadList(),
-  Recents.loadList({ reload: true }),
+  RecentViews.loadList({ reload: true }),
 )(HomeContent);

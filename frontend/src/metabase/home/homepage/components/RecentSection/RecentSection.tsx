@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/recents";
+import { getIcon, getName } from "metabase/entities/recent-views";
 import { RecentView } from "metabase-types/api";
 import {
   RecentCard,

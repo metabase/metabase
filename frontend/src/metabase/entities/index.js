@@ -24,5 +24,5 @@ export { default as users } from "./users";
 export { default as groups } from "./groups";
 
 export { default as search } from "./search";
-export { default as recents } from "./recents";
+export { default as recents } from "./recent-views";
 export { default as snippets } from "./snippets";
