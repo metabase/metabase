@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
+import { isSmallScreen } from "metabase/lib/dom";
 import HomeLayout from "../../containers/HomeLayout";
 import HomeContent from "../../containers/HomeContent";
-import { isSmallScreen } from "metabase/lib/dom";
 
 export interface HomePageProps {
   onOpenNavbar?: () => void;
