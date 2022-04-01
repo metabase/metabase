@@ -10,7 +10,7 @@ import { getIn } from "icepick";
 import { GeneralPermissionsState } from "./types/state";
 
 export const canManageSubscriptions = (state: GeneralPermissionsState) =>
-  state.currentUser.can_access_subscription;
+  state.currentUser.permissions.can_access_subscription;
 
 export const getIsDirty = createSelector(
   (state: GeneralPermissionsState) =>
