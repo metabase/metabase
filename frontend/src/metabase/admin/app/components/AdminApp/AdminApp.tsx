@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode } from "react";
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
 export interface AdminAppProps {
