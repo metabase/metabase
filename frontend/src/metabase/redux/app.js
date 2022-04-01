@@ -5,7 +5,11 @@ import {
   createAction,
   handleActions,
 } from "metabase/lib/redux";
-import { openInBlankWindow, shouldOpenInBlankWindow } from "metabase/lib/dom";
+import {
+  isSmallScreen,
+  openInBlankWindow,
+  shouldOpenInBlankWindow,
+} from "metabase/lib/dom";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error) {
@@ -39,8 +43,11 @@ const PATHS_WITH_COLLAPSED_NAVBAR = [
 ];
 
 function checkIsSidebarInitiallyOpen() {
-  return !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
-    pattern.test(window.location.pathname),
+  return (
+    !isSmallScreen() &&
+    !PATHS_WITH_COLLAPSED_NAVBAR.some(pattern =>
+      pattern.test(window.location.pathname),
+    )
   );
 }
 

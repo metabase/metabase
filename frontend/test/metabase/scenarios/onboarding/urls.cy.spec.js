@@ -49,12 +49,10 @@ describe("URLs", () => {
   });
 
   describe("collections", () => {
-    ["/", "/collection/root"].forEach(url => {
-      it(`should slugify collection name when opening it from "${url}"`, () => {
-        cy.visit(url);
-        cy.findByText("First collection").click();
-        cy.location("pathname").should("eq", "/collection/9-first-collection");
-      });
+    it("should slugify collection name", () => {
+      cy.visit("/collection/root");
+      cy.findByText("First collection").click();
+      cy.location("pathname").should("eq", "/collection/9-first-collection");
     });
 
     it("should slugify current user's personal collection name correctly", () => {

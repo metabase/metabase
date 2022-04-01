@@ -1,4 +1,10 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, {
+  FocusEvent,
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -24,6 +30,7 @@ type SearchAwareLocation = Location<{ q?: string }>;
 
 type Props = {
   location: SearchAwareLocation;
+  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
@@ -39,7 +46,7 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
   return "";
 }
 
-function SearchBar({ location, onChangeLocation }: Props) {
+function SearchBar({ location, onFocus, onChangeLocation }: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
     getSearchTextFromLocation(location),
   );
@@ -108,6 +115,7 @@ function SearchBar({ location, onChangeLocation }: Props) {
           placeholder={t`Search` + "…"}
           maxLength={200}
           onClick={setActive}
+          onFocus={onFocus}
           onChange={onTextChange}
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
