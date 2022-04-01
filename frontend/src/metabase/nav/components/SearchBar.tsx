@@ -17,7 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { SearchResults } from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
-  SearchWrapper,
+  SearchInputContainer,
   SearchIcon,
   SearchInput,
   SearchResultsFloatingContainer,
@@ -108,7 +108,7 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
 
   return (
     <OnClickOutsideWrapper handleDismissal={setInactive}>
-      <SearchWrapper onClick={setActive}>
+      <SearchInputContainer onClick={setActive}>
         <SearchIcon name="search" />
         <SearchInput
           value={searchText}
@@ -131,7 +131,7 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
             )}
           </SearchResultsFloatingContainer>
         )}
-      </SearchWrapper>
+      </SearchInputContainer>
     </OnClickOutsideWrapper>
   );
 }
