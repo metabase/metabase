@@ -15,7 +15,7 @@ describe("issue 17658", () => {
     visitDashboard(1);
 
     cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
 
     cy.findByText(/^Emailed monthly/).click();
 

@@ -29,7 +29,7 @@ describeEE("issue 18669", () => {
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
     cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")

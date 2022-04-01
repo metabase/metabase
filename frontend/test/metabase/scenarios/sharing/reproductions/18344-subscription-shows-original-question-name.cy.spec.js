@@ -41,7 +41,7 @@ describe("issue 18344", () => {
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
     cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses").click();

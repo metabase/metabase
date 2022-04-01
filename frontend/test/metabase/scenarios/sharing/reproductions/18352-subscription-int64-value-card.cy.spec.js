@@ -35,7 +35,7 @@ describe("issue 18352", () => {
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
     cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
 
     cy.findByText("Email it").click();
 
