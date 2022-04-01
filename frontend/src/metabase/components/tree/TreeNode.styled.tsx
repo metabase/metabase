@@ -13,7 +13,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   align-items: center;
   color: ${props => (props.isSelected ? colors["white"] : colors["brand"])};
   background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
-  padding-left: ${props => props.depth}rem;
+  padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
   font-weight: 700;
