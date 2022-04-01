@@ -11,8 +11,6 @@ import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 import { darken, color, lighten } from "metabase/lib/colors";
 
-import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
-
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
   isSelected: boolean;
@@ -25,7 +23,7 @@ export const SidebarIcon = styled(Icon)<{
 `;
 
 SidebarIcon.defaultProps = {
-  size: SIDEBAR_ITEM_ICON_SIZE,
+  size: 14,
 };
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
