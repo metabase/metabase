@@ -263,7 +263,7 @@ describe("scenarios > collection_defaults", () => {
         cy.visit("/");
         cy.findByText("Child");
         cy.findByText("Parent").should("not.exist");
-        cy.findByText("Browse all items").click();
+        cy.findByText("Our analytics").click();
 
         navigationSidebar().within(() => {
           cy.findByText("Our analytics");
