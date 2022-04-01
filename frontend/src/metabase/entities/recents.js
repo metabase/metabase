@@ -8,24 +8,29 @@ const Recents = createEntity({
   path: "/api/activity/recent_views",
   schema: RecentsSchema,
 
-  wrapEntity(object, dispatch = null) {
-    const entity = getEntity(object);
-    return entity.wrapEntity(object, dispatch);
+  wrapEntity(item, dispatch = null) {
+    const entity = getEntity(item);
+    return entity.wrapEntity(item, dispatch);
   },
 
   objectSelectors: {
+    getName,
     getIcon,
   },
 });
 
-export const getEntity = object => {
+export const getEntity = item => {
   const entities = require("metabase/entities");
-  return entities[entityTypeForObject(object)];
+  return entities[entityTypeForObject(item)];
 };
 
-export const getIcon = object => {
-  const entity = getEntity(object);
-  return entity.objectSelectors.getIcon(object);
+export const getName = item => {
+  return item.model_object.display_name || item.model_object.name;
+};
+
+export const getIcon = item => {
+  const entity = getEntity(item);
+  return entity.objectSelectors.getIcon(item);
 };
 
 export default Recents;
