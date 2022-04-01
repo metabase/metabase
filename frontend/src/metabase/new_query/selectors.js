@@ -5,26 +5,8 @@
 
 import { createSelector } from "reselect";
 
-import { getMetadata, getDatabases } from "metabase/selectors/metadata";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
+import { getDatabases } from "metabase/selectors/metadata";
 import { getEngineNativeType } from "metabase/lib/engine";
-
-export const getPlainNativeQuery = state => {
-  const metadata = getMetadata(state);
-  const question = Question.create({ metadata: getMetadata(state) });
-  const databases = metadata
-    .databasesList()
-    .filter(db => !db.is_saved_questions && db.native_permissions === "write");
-
-  // If we only have a single database, then default to that
-  // (native query editor doesn't currently show the db selector if there is only one database available)
-  if (databases.length === 1) {
-    return new NativeQuery(question).setDatabase(databases[0]);
-  } else {
-    return new NativeQuery(question);
-  }
-};
 
 export const getDatabaseList = createSelector([getDatabases], databaseMap =>
   Object.values(databaseMap ?? {}),
