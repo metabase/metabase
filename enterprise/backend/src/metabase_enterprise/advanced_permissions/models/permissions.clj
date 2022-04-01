@@ -166,3 +166,22 @@
       (when (map? schemas)
         (doseq [[schema new-schema-perms] (seq schemas)]
           (update-schema-data-model-permissions! group-id db-id schema new-schema-perms))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Data model permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn update-db-details-permissions!
+  "Update the DB details permissions for a database."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/DetailsPermissions]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (perms/ee-permissions-exception :details)))
+  (case new-perms
+    :yes
+    (do
+      (revoke-permissions! :details :yes group-id db-id)
+      (grant-permissions! :details :yes group-id db-id))
+
+    :no
+    (revoke-permissions! :details :yes group-id db-id)))
