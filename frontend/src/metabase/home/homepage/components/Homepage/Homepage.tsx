@@ -3,6 +3,7 @@ import { t } from "ttag";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EmptyState from "metabase/components/EmptyState";
 import { useOnMount } from "metabase/hooks/use-on-mount";
+import { isSmallScreen } from "metabase/lib/dom";
 import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
 import GreetingSection from "../GreetingSection";
@@ -58,7 +59,9 @@ const Homepage = ({
   allError,
 }: HomepageProps): JSX.Element => {
   useOnMount(() => {
-    openNavbar();
+    if (!isSmallScreen()) {
+      openNavbar();
+    }
   });
 
   return (
