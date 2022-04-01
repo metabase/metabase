@@ -48,9 +48,10 @@ export const SidebarHeading = styled.h4`
   padding-left: ${space(2)};
 `;
 
-export const CollectionsMoreIconContainer = styled.span`
+export const CollectionsMoreIconContainer = styled.button`
   margin-left: auto;
   margin-right: ${space(1)};
+  cursor: pointer;
 `;
 
 export const CollectionsMoreIcon = styled(Icon)`
