@@ -58,7 +58,6 @@ describe("scenarios > binning > correctness > time series", () => {
         }).should("have.text", selected);
 
         cy.findByText("Done").click();
-        cy.findByTestId("sidebar-right").should("not.be.visible");
 
         getTitle(titleRegex);
 

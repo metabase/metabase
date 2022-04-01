@@ -169,7 +169,6 @@ describeOSS("scenarios > admin > permissions", () => {
         false,
       );
 
-      selectSidebarItem("First collection"); // Expand children
       selectSidebarItem("Second collection");
 
       assertPermissionTable([

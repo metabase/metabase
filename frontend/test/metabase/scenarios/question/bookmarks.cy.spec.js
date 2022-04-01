@@ -1,4 +1,9 @@
-import { restore, sidebar, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  navigationSidebar,
+  sidebar,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -13,7 +18,7 @@ describe("scenarios > question > bookmarks", () => {
 
     cy.visit("/collection/root");
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
     });
@@ -40,7 +45,9 @@ function toggleBookmark() {
 
   cy.intercept("/api/bookmark/card/*").as("toggleBookmark");
 
-  cy.icon("bookmark").click();
+  sidebar().within(() => {
+    cy.icon("bookmark").click();
+  });
 
   cy.wait("@toggleBookmark");
 }
