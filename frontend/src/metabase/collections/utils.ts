@@ -48,29 +48,6 @@ export function currentUserPersonalCollections(
     .map(preparePersonalCollection);
 }
 
-export function getParentPath(
-  collections: Collection[],
-  targetId: CollectionId,
-): CollectionId[] | null {
-  if (collections.length === 0) {
-    return null; // not found!
-  }
-
-  for (const collection of collections) {
-    if (collection.id === targetId) {
-      return [collection.id]; // we found it!
-    }
-    if (collection.children) {
-      const path = getParentPath(collection.children, targetId);
-      if (path !== null) {
-        // we found it under this collection
-        return [collection.id, ...path];
-      }
-    }
-  }
-  return null; // didn't find it under any collection
-}
-
 function getNonRootParentId(collection: Collection) {
   if (Array.isArray(collection.effective_ancestors)) {
     // eslint-disable-next-line no-unused-vars
