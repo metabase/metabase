@@ -47,7 +47,7 @@ const SidebarButtonRoot = styled.div`
 
 interface SidebarButtonProps {
   isSidebarOpen: boolean;
-  onClick: func;
+  onClick: () => void;
 }
 
 export function SidebarButton({ isSidebarOpen, onClick }: SidebarButtonProps) {
