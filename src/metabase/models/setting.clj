@@ -337,10 +337,10 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (or (has-advanced-setting-access?)
-          (and
-           (allows-user-local-values? setting)
-           (not= (:visibility setting) :admin)))))
+      (has-advanced-setting-access?)
+      (and
+       (allows-user-local-values? setting)
+       (not= (:visibility setting) :admin))))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
