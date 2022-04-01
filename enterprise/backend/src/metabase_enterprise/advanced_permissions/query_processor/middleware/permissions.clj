@@ -40,7 +40,8 @@
 
 (defmulti ^:private current-user-download-perms-level :type)
 
-(defmethod current-user-download-perms-level :default [_]
+(defmethod current-user-download-perms-level :default
+  [_]
   :full)
 
 (defmethod current-user-download-perms-level :native
