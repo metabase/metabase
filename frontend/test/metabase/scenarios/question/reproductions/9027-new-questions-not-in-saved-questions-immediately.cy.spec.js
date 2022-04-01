@@ -69,11 +69,12 @@ function archiveQuestion(questionName) {
 }
 
 function unarchiveQuestion(questionName) {
-  navigationSidebar()
-    .findByText("Our analytics")
+  navigationSidebar().within(() => {
+    cy.icon("ellipsis").click();
+  });
+  popover()
+    .findByText("View archive")
     .click();
-  // Button is covered with an undo toast
-  cy.findByText("View archive").click({ force: true });
   cy.findByText(questionName)
     .parent()
     .within(() => {

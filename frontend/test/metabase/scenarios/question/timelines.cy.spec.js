@@ -1,4 +1,4 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import { restore, visitQuestion, sidebar } from "__support__/e2e/cypress";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -65,7 +65,9 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByLabelText("calendar icon").click();
       cy.findByText("Releases");
-      cy.findByLabelText("ellipsis icon").click();
+      sidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
       cy.findByTextEnsureVisible("Edit event").click();
 
       cy.findByLabelText("Event name")
@@ -78,7 +80,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC2");
     });
 
-    it("should archive and unarchive and event", () => {
+    it("should archive and unarchive an event", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
@@ -90,7 +92,9 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByLabelText("calendar icon").click();
       cy.findByText("Releases");
-      cy.findByLabelText("ellipsis icon").click();
+      sidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
       cy.findByTextEnsureVisible("Archive event").click();
       cy.wait("@putTimelineEvent");
       cy.findByText("RC1").should("not.exist");
@@ -146,7 +150,9 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("calendar icon").click();
       cy.findByTextEnsureVisible("Releases");
       cy.findByText("Add an event").should("not.exist");
-      cy.findByLabelText("ellipsis icon").should("not.exist");
+      sidebar().within(() => {
+        cy.icon("ellipsis").should("not.exist");
+      });
     });
   });
 });

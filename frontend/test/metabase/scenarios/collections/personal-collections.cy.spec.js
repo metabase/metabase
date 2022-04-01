@@ -26,7 +26,12 @@ describe("personal collections", () => {
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection");
-      cy.findByText("Other users' personal collections").click();
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
+      popover()
+        .findByText("Other users' personal collections")
+        .click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
