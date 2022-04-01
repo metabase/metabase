@@ -176,9 +176,7 @@
   "Update the DB details permissions for a database."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/DetailsPermissions]
   (when-not (premium-features/enable-advanced-permissions?)
-    (throw (ex-info
-            (tru "Can''t set details permissions without having the advanced-permissions premium feature")
-            {:status-code 402})))
+    (throw (perms/ee-permissions-exception :details)))
   (case new-perms
     :yes
     (do

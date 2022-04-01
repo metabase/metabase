@@ -224,5 +224,5 @@
         (testing "Detail permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Can't set details permissions without having the advanced-permissions premium feature"
+               #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
