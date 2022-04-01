@@ -30,7 +30,7 @@ export const getName = item => {
 
 export const getIcon = item => {
   const entity = getEntity(item);
-  return entity.objectSelectors.getIcon(item);
+  return entity.objectSelectors.getIcon(item.model_object);
 };
 
 export default Recents;
