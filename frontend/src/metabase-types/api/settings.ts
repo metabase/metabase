@@ -1,6 +1,12 @@
+export interface EngineSource {
+  type?: "official" | "community" | "partner";
+  name?: string;
+  contact?: string;
+}
 export interface Engine {
   "driver-name": string;
   "superseded-by": string | undefined;
+  source: EngineSource;
 }
 
 export interface Version {

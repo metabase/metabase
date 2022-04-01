@@ -17,9 +17,29 @@ Template.args = {
     presto: createMockEngine({
       "driver-name": "Presto (Deprecated Driver)",
       "superseded-by": "presto-jdbc",
+      source: {
+        type: "official",
+      },
     }),
     "presto-jdbc": createMockEngine({
       "driver-name": "Presto",
+      source: {
+        type: "official",
+      },
+    }),
+    communityEngine: createMockEngine({
+      "driver-name": "CommunityEngine",
+      source: {
+        type: "community",
+      },
+    }),
+    partnerEngine: createMockEngine({
+      "driver-name": "PartnerEngine",
+      source: {
+        type: "partner",
+        name: "Parners Incorporated",
+        contact: "https://example.com/contact",
+      },
     }),
   },
 };
@@ -33,5 +53,17 @@ New.args = {
 export const Deprecated = Template.bind({});
 Deprecated.args = {
   engine: "presto",
+  ...Template.args,
+};
+
+export const Community = Template.bind({});
+Community.args = {
+  engine: "communityEngine",
+  ...Template.args,
+};
+
+export const Partner = Template.bind({});
+Partner.args = {
+  engine: "partnerEngine",
   ...Template.args,
 };
