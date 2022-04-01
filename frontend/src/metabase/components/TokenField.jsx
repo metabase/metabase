@@ -506,7 +506,11 @@ export default class TokenField extends Component {
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
-        {!!prefix && <span className="text-medium mb1 py1 pr1">{prefix}</span>}
+        {!!prefix && (
+          <span className="text-medium mb1 py1 pr1" data-testid="input-prefix">
+            {prefix}
+          </span>
+        )}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span

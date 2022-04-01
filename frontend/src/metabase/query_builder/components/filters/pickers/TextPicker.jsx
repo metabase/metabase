@@ -71,6 +71,7 @@ export default class TextPicker extends Component {
         <div className="FilterInput px1 pt1 relative flex align-center">
           {!!prefix && (
             <span
+              data-testid="input-prefix"
               className="text-medium px1"
               style={{ marginRight: -30, width: 30, zIndex: 2 }}
             >
