@@ -6,7 +6,7 @@ export const canDownloadResults = (result: Dataset) =>
 
 export const getDownloadWidgetMessageOverride = (result: Dataset) => {
   if (result.data?.download_perms === "limited") {
-    return t`The maximum download size is 10 thousand rows.`;
+    return t`You have permission to download up to 10 thousand rows.`;
   }
 
   return null;
