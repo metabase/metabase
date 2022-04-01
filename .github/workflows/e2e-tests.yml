@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - 'master'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".circleci/**"
 
 jobs:
 
