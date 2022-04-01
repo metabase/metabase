@@ -95,6 +95,7 @@ function MainNavbarView({
         <Tree
           data={collections}
           selectedId={isCollectionSelected ? selectedItem.id : undefined}
+          onSelect={onItemSelect}
           TreeNode={CollectionLink}
           role="tree"
         />
