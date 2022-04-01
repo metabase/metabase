@@ -2,9 +2,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import TextInput from "metabase/components/TextInput";
 
-export const QuestionListContainer = styled.div`
-  padding-right: 0.5rem;
-  padding-bottom: 1rem;
+export const QuestionListContainer = styled.ul`
+  padding: 0 0 1rem 0;
   width: 100%;
 `;
 

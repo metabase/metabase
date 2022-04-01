@@ -6,16 +6,16 @@ export const QuestionListItemRoot = styled.li`
   display: flex;
   align-items: center;
   margin: 0.5rem 0;
-  padding: 0.5rem 0 0.5rem 1rem;
+  min-height: 36px;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
 
   opacity: ${props => (props.isDisabled ? 0.5 : 1)};
   pointer-events: ${props => (props.isDisabled ? "none" : "all")};
 `;
 
-export const CheckboxContainer = styled.li`
-  display: flex;
-  flex-shrink: 0;
-  padding: 0 0.5rem;
+export const CheckboxContainer = styled.div`
+  padding: 0 0.5rem 0 0;
+  max-width: 100%;
 `;
 
 export const WarningIcon = styled(Icon)`

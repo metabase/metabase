@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { AutoSizer, List } from "react-virtualized";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
@@ -117,11 +116,7 @@ export const QuestionList = React.memo(function QuestionList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredQuestions.length]);
 
-  const hasQuestionsToShow = compatibleQuestions.length > 0;
-  const canLoadMore = questionsWithoutMetadata.length > 0;
-  const rowsCount = canLoadMore
-    ? compatibleQuestions.length + 1
-    : compatibleQuestions.length;
+  const hasQuestionsToShow = !!(compatibleQuestions.length > 0);
 
   return (
     <>
@@ -141,57 +136,41 @@ export const QuestionList = React.memo(function QuestionList({
         error={error}
         noBackground
       >
-        {() => (
-          <QuestionListContainer>
-            <AutoSizer>
-              {({ width, height }) => (
-                <List
-                  overscanRowCount={0}
-                  width={width}
-                  height={height}
-                  rowCount={rowsCount}
-                  rowHeight={36}
-                  rowRenderer={({ index, key, style }) => {
-                    const isLoadMoreRow = index === compatibleQuestions.length;
+        <QuestionListContainer>
+          {hasQuestionsToShow &&
+            compatibleQuestions.map((question, index) => {
+              const isLoadMoreRow = !!(index === compatibleQuestions.length);
+              if (isLoadMoreRow) {
+                return (
+                  <LoadMoreRow>
+                    <LoadMoreButton
+                      onClick={handleLoadNext}
+                      disabled={isLoadingMetadata}
+                    >
+                      {isLoadingMetadata ? t`Loading` : t`Load more`}
+                    </LoadMoreButton>
+                  </LoadMoreRow>
+                );
+              }
 
-                    if (isLoadMoreRow) {
-                      return (
-                        <LoadMoreRow style={style}>
-                          <LoadMoreButton
-                            onClick={handleLoadNext}
-                            disabled={isLoadingMetadata}
-                          >
-                            {isLoadingMetadata ? t`Loading` : t`Load more`}
-                          </LoadMoreButton>
-                        </LoadMoreRow>
-                      );
-                    }
-
-                    const question = compatibleQuestions[index];
-                    const isEnabled = enabledQuestions[question.id()];
-                    const isBad = badQuestions[question.id()];
-
-                    return (
-                      <QuestionListItem
-                        key={key}
-                        question={question}
-                        isEnabled={isEnabled}
-                        isBad={isBad}
-                        style={style}
-                        onChange={e => onSelect(question, e.target.checked)}
-                      />
-                    );
-                  }}
+              const isEnabled = enabledQuestions[question.id()];
+              const isBad = badQuestions[question.id()];
+              return (
+                <QuestionListItem
+                  key={`compatible-question_${index}`}
+                  question={question}
+                  isEnabled={isEnabled}
+                  isBad={isBad}
+                  onChange={e => onSelect(question, e.target.checked)}
                 />
-              )}
-            </AutoSizer>
-            {!hasQuestionsToShow && (
-              <EmptyStateContainer>
-                <EmptyState message={t`Nothing here`} icon="all" />
-              </EmptyStateContainer>
-            )}
-          </QuestionListContainer>
-        )}
+              );
+            })}
+          {!hasQuestionsToShow && (
+            <EmptyStateContainer>
+              <EmptyState message={t`Nothing here`} icon="all" />
+            </EmptyStateContainer>
+          )}
+        </QuestionListContainer>
       </LoadingAndErrorWrapper>
     </>
   );
