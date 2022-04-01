@@ -23,7 +23,13 @@ If you're just using Metabase for personal use and want to keep your application
 
 If you're running Docker, you should already have switched to a [production-ready database](migrating-from-h2.md).
 
-If you still want to keep using the H2 database (not recommended), you can [copy the application database](running-metabase-on-docker.md#copying-the-application-database) out of the container to back it up. 
+Before migrating to a production application database, you should copy the H2 app db file out of the Docker container. For example, if the container is called metabase, you'd run:
+
+```
+docker cp metabase:/metabase.db/metabase.db.mv.db ./
+```
+
+The above command would copy the database file to the directory you ran the command from.
 
 ## Amazon RDS for the application database
 

@@ -57,6 +57,8 @@ createdb metabaseappdb
 
 No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
+### Running Docker in production
+
 Here's an example Docker command that tells Metabase to use that database:
 
 ```
@@ -71,6 +73,15 @@ docker run -d -p 3000:3000 \
 ```
 
 Keep in mind that Metabase will be connecting from _within_ your Docker container, so make sure that either: a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts file`.
+
+### Running the JAR in production
+
+If you need to run the JAR in production, you should run Metabase as a service. Running Metabase as a service will:
+
+- Make sure Metabase runs automatically (and stay running).
+- Allow you to run Metabase with an unprivileged user (which is good for security).
+
+See an example of how to run Metabase as a service: [Running Metabase on Debian](running-metabase-on-debian).
 
 ## Migrating to a production installation
 

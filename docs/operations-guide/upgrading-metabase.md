@@ -15,6 +15,8 @@ Steps differ depending on whether you're running the JAR or a Docker image.
 
 ### Upgrading the JAR
 
+#### If you're running locally:
+
 If you're running the JVM Jar file directly:
 
 1. [Back up your application database](backing-up-metabase-application-data.md).
@@ -33,13 +35,37 @@ java -jar metabase.jar
 
 On startup, Metabase will perform any tasks it needs to complete the upgrade. Once Metabase has completed those tasks, you'll be running the new version.
 
+### If you're running the JAR in production as a service
+
+To upgrade, you'll need to stop the service, replace the JAR with the newer version, and restart the service.
+
+E.g., if you're running Metabase on Debian as a service using Nginx
+
+1. [Back up your application database](backing-up-metabase-application-data.md).
+
+2. [Download the latest version](https://www.metabase.com/start/oss/jar.html).
+
+3. Stop the Metabase service. Aassuming you called your service `metabase.service`), you'll run:
+
+```
+sudo systemctl stop metabase.service
+```
+
+4. In your Metabase directory on your server, replace the current (older) Metabase JAR file with the newer JAR you downloaded.
+
+5. Restart the service:
+
+```
+sudo systemctl restart metabase.service
+```
+
 ### Upgrading the Docker image
 
 If you're running Metabase in a Docker container:
 
-1. [Back up your application database](backing-up-metabase-application-data.md). 
+1. [Back up your application database](backing-up-metabase-application-data.md).
 
-> WARNING: If you're not using a [production-ready database](migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade. 
+> WARNING: If you're not using a [production-ready database](migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
 
 2. Stop the current Docker container.
 
@@ -49,7 +75,7 @@ If you're running Metabase in a Docker container:
 docker pull metabase/metabase:latest
 ```
 
-4. Start the new Docker container.  Depending on the ports and what you want to name the container, the command will look something like: Something like:
+4. Start the new Docker container. Depending on the ports and what you want to name the container, the command will look something like: Something like:
 
 ```
 docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase:latest
