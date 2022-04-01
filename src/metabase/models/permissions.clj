@@ -258,6 +258,14 @@
                                (and "schema/"
                                     (opt (and path-char "*/"
                                               (opt #"table/\d+/"))))))))
+               ;; any path starting with /data-model/ is a DATA MODEL permissions path
+               ;; /download/db/:id/ -> permissions to access the data model for the DB
+               (and "data-model/"
+                    (and #"db/\d+/"
+                         (opt (and
+                               "schema/"
+                               (opt (and path-char "*/"
+                                         (opt #"table/\d+/")))))))
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -450,7 +458,10 @@
     (str "/download" base-path)
 
     [:download :limited]
-    (str "/download/limited" base-path)))
+    (str "/download/limited" base-path)
+
+    [:data-model :all]
+    (str "/data-model" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -666,12 +677,32 @@
   (s/named
    {(s/optional-key :native)  DownloadNativePermissionsGraph
     (s/optional-key :schemas) (s/cond-pre (s/enum :full :limited :none)
-                                      {s/Str DownloadSchemaPermissionsGraph})}
+                                          {s/Str DownloadSchemaPermissionsGraph})}
    "Valid download perms graph for a database"))
+
+(def ^:private DataModelTablePermissionsGraph
+  (s/named
+   (s/enum :all :none)
+   "Valid data model perms graph for a table"))
+
+(def ^:private DataModelSchemaPermissionsGraph
+  (s/named
+    (s/cond-pre (s/enum :all :none)
+                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+   "Valid data model perms graph for a schema"))
+
+(def DataModelPermissionsGraph
+  "Schema for a data model permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
+  (s/named
+   {:schemas
+    (s/cond-pre (s/enum :all :none)
+                {s/Str DataModelSchemaPermissionsGraph})}
+   "Valid data model perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph}})
+                          (s/optional-key :download) DownloadPermissionsGraph
+                          (s/optional-key :data-model) DataModelPermissionsGraph}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -691,7 +722,9 @@
                              :schemas :all}
                             :download
                             {:native  :full
-                             :schemas :full}}))
+                             :schemas :full}
+                            :data-model
+                            {:schemas :all}}))
           {}
           db-ids))
 
@@ -702,9 +735,7 @@
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
                                    {:where [:or
                                             [:= :object (hx/literal "/")]
-                                            [:like :object (hx/literal "/db/%")]
-                                            [:like :object (hx/literal "/download/%")]
-                                            [:like :object (hx/literal "/block/db/%")]]})
+                                            [:like :object (hx/literal "%/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
                          (fn [m {:keys [group-id path]}]
@@ -876,6 +907,15 @@
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
+(defn ee-permissions-exception
+  "Exception to throw when a permissions operation fails due to missing Enterprise Edition code, or missing a valid
+   token with the advanced-permissions feature."
+  [perm-type]
+  (ex-info
+    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+         (str/replace (name perm-type) "-" " "))
+    {:status-code 402}))
+
 (defn- download-permissions-set
   [group-id]
   (db/select-field :object
@@ -1030,16 +1070,21 @@
         ;; TODO -- should this code be enterprise only?
         :block (do
                  (when-not (premium-features/has-feature? :advanced-permissions)
-                   (throw
-                    (ex-info
-                     (tru "Can''t use block permissions without having the advanced-permissions premium feature")
-                     {:status-code 402})))
+                   (throw (ee-permissions-exception :block)))
                  (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
           (doseq [schema (keys schemas)]
             (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+
+(defn- update-feature-level-permission!
+  [group-id db-id new-perms perm-type]
+  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+  (if-let [update-fn (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
+                                      (str "update-db-" (name perm-type) "-permissions!")))]
+    (update-fn group-id db-id new-perms)
+    (throw (ee-permissions-exception perm-type))))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
@@ -1050,10 +1095,10 @@
         (update-db-data-access-permissions! group-id db-id new-perms)
 
         :download
-        (do
-          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
-           group-id db-id new-perms))))))
+        (update-feature-level-permission! group-id db-id new-perms :download)
+
+        :data-model
+        (update-feature-level-permission! group-id db-id new-perms :data-model)))))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can

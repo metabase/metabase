@@ -12,6 +12,10 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Download permissions                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn- download-perms-by-group-id [group-id]
   (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :download]))
 
@@ -85,7 +89,7 @@
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Can't set download permissions without having the advanced-permissions premium feature"
+               #"The download permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full}))))))))
 
 
@@ -141,3 +145,59 @@
         (replace-tables ["Table 1" "Table 2" "Table 3"])
         (sync-tables/sync-tables-and-database! database)
         (is (= :limited (all-users-native-download-perms)))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Data model permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- data-model-perms-by-group-id [group-id]
+  (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :data-model]))
+
+(deftest update-db-data-model-permissions-test
+  (mt/with-model-cleanup [Permissions]
+    (mt/with-temp PermissionsGroup [{group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
+        (testing "Data model perms for an entire DB can be set and revoked"
+          (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
+          (is (= :all
+                 (data-model-perms-by-group-id group-id)))
+
+          (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :none})
+          (is (nil? (data-model-perms-by-group-id group-id)))
+
+          (testing "Data model perms for individual schemas can be set and revoked"
+            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas {"PUBLIC" :all}})
+            (is (= {:schemas {"PUBLIC" :all}}
+                   (data-model-perms-by-group-id group-id)))
+
+            (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas {"PUBLIC" :none}})
+            (is (nil? (data-model-perms-by-group-id group-id))))
+
+          (testing "Data model perms for individual tables can be set and revoked"
+            (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-1 :all
+                                                                                       id-2 :all
+                                                                                       id-3 :all
+                                                                                       id-4 :all}}})
+              (is (= {:schemas {"PUBLIC" {id-1 :all id-2 :all id-3 :all id-4 :all}}}
+                     (data-model-perms-by-group-id group-id)))
+
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-2 :none}}})
+              (is (= {:schemas {"PUBLIC" {id-1 :all id-3 :all id-4 :all}}}
+                     (data-model-perms-by-group-id group-id)))
+
+              (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas
+                                                                            {"PUBLIC" {id-1 :none
+                                                                                       id-3 :none
+                                                                                       id-4 :none}}})
+              (is (nil? (data-model-perms-by-group-id group-id)))))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Data model permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The data model permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+               (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all}))))))))
