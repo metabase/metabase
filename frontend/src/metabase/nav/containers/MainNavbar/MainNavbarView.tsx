@@ -7,6 +7,7 @@ import { Bookmark, Collection, User } from "metabase-types/api";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
@@ -29,7 +30,6 @@ import {
   SidebarSection,
   SidebarHeadingWrapper,
 } from "./MainNavbar.styled";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
@@ -135,25 +135,36 @@ interface CollectionSectionHeadingProps {
 function CollectionSectionHeading({
   currentUser,
 }: CollectionSectionHeadingProps) {
+  const renderMenu = useCallback(
+    ({ onClose }) => (
+      <ul>
+        {currentUser.is_superuser && (
+          <SidebarLink
+            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
+            url={OTHER_USERS_COLLECTIONS_URL}
+            onClick={onClose}
+          >
+            {t`Other users' personal collections`}
+          </SidebarLink>
+        )}
+        <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
+          {t`View archive`}
+        </SidebarLink>
+      </ul>
+    ),
+    [currentUser],
+  );
+
   return (
     <SidebarHeadingWrapper>
       <SidebarHeading>{t`Collections`}</SidebarHeading>
       <CollectionsMoreIconContainer>
-        <PopoverWithTrigger
-          triggerElement={<CollectionsMoreIcon name="ellipsis" size={12} />}
-        >
-          {currentUser.is_superuser && (
-            <SidebarLink
-              icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
-              url={OTHER_USERS_COLLECTIONS_URL}
-            >
-              {t`Other users' personal collections`}
-            </SidebarLink>
+        <TippyPopoverWithTrigger
+          renderTrigger={({ onClick }) => (
+            <CollectionsMoreIcon name="ellipsis" onClick={onClick} size={12} />
           )}
-          <SidebarLink icon="view_archive" url={ARCHIVE_URL}>
-            {t`View archive`}
-          </SidebarLink>
-        </PopoverWithTrigger>
+          popoverContent={renderMenu}
+        />
       </CollectionsMoreIconContainer>
     </SidebarHeadingWrapper>
   );
