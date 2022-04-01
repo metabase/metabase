@@ -61,6 +61,8 @@ import {
   HIDE_TIMELINES,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
+  SET_DOCUMENT_TITLE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -82,6 +84,11 @@ const DEFAULT_UI_CONTROLS = {
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
+};
+
+const DEFAULT_LOADING_CONTROLS = {
+  showLoadCompleteFavicon: false,
+  documentTitle: "",
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -293,6 +300,20 @@ export const uiControls = handleActions(
     }),
   },
   DEFAULT_UI_CONTROLS,
+);
+
+export const loadingControls = handleActions(
+  {
+    [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
+      ...state,
+      documentTitle: payload,
+    }),
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
+      ...state,
+      showLoadCompleteFavicon: payload,
+    }),
+  },
+  DEFAULT_LOADING_CONTROLS,
 );
 
 export const zoomedRowObjectId = handleActions(

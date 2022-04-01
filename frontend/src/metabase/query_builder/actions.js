@@ -101,6 +101,10 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
+export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
+
 export const setQueryBuilderMode = (
   queryBuilderMode,
   { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
@@ -1276,6 +1280,10 @@ export const runQuestionQuery = ({
   overrideWithCard,
 } = {}) => {
   return async (dispatch, getState) => {
+    dispatch.action(SET_DOCUMENT_TITLE, t`Doing Science...`);
+    const timeoutId = setTimeout(() => {
+      dispatch.action(SET_DOCUMENT_TITLE, t`Still Here...`);
+    }, 10000);
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -1329,6 +1337,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
+        clearTimeout(timeoutId);
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -1383,6 +1392,27 @@ export const queryCompleted = (question, queryResults) => {
     }
 
     dispatch.action(QUERY_COMPLETED, { card, queryResults });
+
+    dispatch.action(SET_SHOW_LOADING_COMPLETE_FAVICON, true);
+
+    if (document.hidden) {
+      dispatch.action(SET_DOCUMENT_TITLE, t`Your question is ready!`);
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          dispatch.action(SET_DOCUMENT_TITLE, "");
+          setTimeout(() => {
+            dispatch.action(SET_SHOW_LOADING_COMPLETE_FAVICON, false);
+          }, 3000);
+        },
+        { once: true },
+      );
+    } else {
+      dispatch.action(SET_DOCUMENT_TITLE, "");
+      setTimeout(() => {
+        dispatch.action(SET_SHOW_LOADING_COMPLETE_FAVICON, false);
+      }, 3000);
+    }
   };
 };
 

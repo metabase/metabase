@@ -34,7 +34,10 @@ import {
 import Mode from "metabase-lib/lib/Mode";
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+
 export const getUiControls = state => state.qb.uiControls;
+const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -819,4 +822,16 @@ export const isBasedOnExistingQuestion = createSelector(
   originalQuestion => {
     return originalQuestion != null;
   },
+);
+
+export const getDocumentTitle = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls?.documentTitle,
+);
+export const getPageFavicon = createSelector(
+  [getLoadingControls],
+  loadingControls =>
+    loadingControls?.showLoadCompleteFavicon
+      ? LOAD_COMPLETE_FAVICON
+      : undefined,
 );
