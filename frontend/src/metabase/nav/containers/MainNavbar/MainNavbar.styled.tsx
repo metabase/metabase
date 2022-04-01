@@ -25,7 +25,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   }
 `;
 
-export const SidebarSection = styled.li`
+export const SidebarSection = styled.div`
   margin-top: ${space(1)};
   margin-bottom: ${space(2)};
   padding-left: ${space(2)};
