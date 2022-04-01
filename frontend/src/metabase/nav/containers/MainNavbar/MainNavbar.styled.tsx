@@ -4,7 +4,11 @@ import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import {
+  breakpointMaxSmall,
+  breakpointMinSmall,
+  space,
+} from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
 
 export const Sidebar = styled.aside<{ isOpen: boolean }>`
@@ -12,7 +16,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-direction: column;
   box-sizing: border-box;
   padding-top: ${space(1)};
-  width: ${NAV_SIDEBAR_WIDTH};
+  height: 100%;
   background-color: transparent;
 
   overflow-x: hidden;
@@ -23,6 +27,14 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
 
   @media (prefers-reduced-motion) {
     transition: none;
+  }
+
+  ${breakpointMinSmall} {
+    width: ${NAV_SIDEBAR_WIDTH};
+  }
+
+  ${breakpointMaxSmall} {
+    width: 90vw;
   }
 `;
 
