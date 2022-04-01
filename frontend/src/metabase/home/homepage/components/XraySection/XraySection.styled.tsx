@@ -44,6 +44,7 @@ export const XrayCard = styled(HomeCard)`
 
 export const XrayIcon = styled(Icon)`
   display: block;
+  flex: 0 0 auto;
   color: ${color("white")};
   width: 1rem;
   height: 1rem;
