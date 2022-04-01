@@ -103,7 +103,7 @@ export default class ProfileLink extends Component {
             color: color("text-medium"),
             hover: {
               backgroundColor: color("brand"),
-              color: "white",
+              color: color("text-white"),
             },
           }}
         />
