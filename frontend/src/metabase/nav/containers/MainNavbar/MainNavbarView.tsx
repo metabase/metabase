@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { Bookmark, Collection, User } from "metabase-types/api";
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
@@ -21,11 +21,13 @@ import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import {
-  SidebarHeading,
+  BrowseLink,
+  CollectionsMoreIconContainer,
+  CollectionsMoreIcon,
   ProfileLinkContainer,
+  SidebarHeading,
   SidebarSection,
   SidebarHeadingWrapper,
-  BrowseLink,
 } from "./MainNavbar.styled";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
@@ -136,11 +138,9 @@ function CollectionSectionHeading({
   return (
     <SidebarHeadingWrapper>
       <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <span className="ml-auto mr1">
+      <CollectionsMoreIconContainer>
         <PopoverWithTrigger
-          triggerElement={
-            <Icon name="ellipsis" className="hover-child" size={12} />
-          }
+          triggerElement={<CollectionsMoreIcon name="ellipsis" size={12} />}
         >
           {currentUser.is_superuser && (
             <SidebarLink
@@ -154,7 +154,7 @@ function CollectionSectionHeading({
             {t`View archive`}
           </SidebarLink>
         </PopoverWithTrigger>
-      </span>
+      </CollectionsMoreIconContainer>
     </SidebarHeadingWrapper>
   );
 }

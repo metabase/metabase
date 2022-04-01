@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 import { color } from "metabase/lib/colors";
@@ -45,6 +46,15 @@ export const SidebarHeading = styled.h4`
   text-transform: uppercase;
   letter-spacing: 0.45px;
   padding-left: ${space(2)};
+`;
+
+export const CollectionsMoreIconContainer = styled.span`
+  margin-left: auto;
+  margin-right: ${space(1)};
+`;
+
+export const CollectionsMoreIcon = styled(Icon)`
+  color: ${color("text-medium")};
 `;
 
 export const LoadingContainer = styled.div`
