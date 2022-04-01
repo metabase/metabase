@@ -5,6 +5,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.public-settings.premium-features :as premium-features]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util.i18n :refer [tru]]))
 
@@ -31,27 +32,51 @@
   ;; a native query. Actual native queries will still be detected appropriately.
   (query-perms/query->source-table-ids (dissoc query :native)))
 
-(defn- download-perms-set
-  "Returns a set of permissions that are required to download a given query."
-  [{query-type :type, database :database, :as query} download-level]
-  (cond
-    (empty? query)         #{}
-    (= query-type :native) #{(perms/native-feature-perms-path :download download-level database)}
-    (= query-type :query)  (tables->download-perms-set database (query->source-table-ids query) download-level)))
+(defmulti ^:private current-user-download-perms-level :type)
 
-(defn- current-user-download-perms-level
-  "Returns the download permissions level which the current user has for the given query. If no user is bound, defaults
-  to full download permissions."
-  [query]
+(defmethod current-user-download-perms-level :default [_]
+  :full)
+
+(defmethod current-user-download-perms-level :native
+  [{database :database}]
   (cond
-    (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (download-perms-set query :full))
+    (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/native-feature-perms-path :download :full database))
     :full
 
-    (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (download-perms-set query :limited))
+    (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/native-feature-perms-path :download :limited database))
     :limited
 
     :else
     :none))
+
+(defn- table-id->download-perms-level
+  [db-id table-id]
+  (cond (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (tables->download-perms-set db-id #{table-id} :full))
+        :full
+
+        (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (tables->download-perms-set db-id #{table-id} :limited))
+        :limited
+
+        :else
+        :none))
+
+(defmethod current-user-download-perms-level :query
+  [{db-id :database, :as query}]
+  (let [table-ids (query->source-table-ids query)]
+    (reduce (fn [lowest-seen-perm-level table-id]
+              (let [table-perm-level (table-id->download-perms-level db-id table-id)]
+                (cond
+                  (= table-perm-level :none)
+                  (reduced :none)
+
+                  (or (= lowest-seen-perm-level :limited)
+                      (= table-perm-level :limited))
+                  :limited
+
+                  :else
+                  :full)))
+            :full
+            table-ids)))
 
 (defn apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
@@ -94,9 +119,9 @@
                                    :full)]
         (when (and (is-download? query)
                    (= download-perms-level :none))
-          (throw (qp.perms/perms-exception (tru "You do not have permissions to download the results of this query.")
-                                           (set/union (download-perms-set query :full)
-                                                      (download-perms-set query :limited)))))
+          (throw (ex-info (tru "You do not have permissions to download the results of this query.")
+                          {:type error-type/missing-required-permissions
+                           :permissions-error? true})))
         (qp query
             (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
             context))

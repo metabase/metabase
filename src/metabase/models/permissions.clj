@@ -915,7 +915,7 @@
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
   (let [permissions-set (download-permissions-set group-id)
         table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
-        native-perm-level (reduce (fn [highest-seen-perm-level [table-id table-schema]]
+        native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id
                                                                                        table-schema
@@ -924,7 +924,7 @@
                                         (= table-perm-level :none)
                                         (reduced :none)
 
-                                        (or (= highest-seen-perm-level :limited)
+                                        (or (= lowest-seen-perm-level :limited)
                                             (= table-perm-level :limited))
                                         :limited
 

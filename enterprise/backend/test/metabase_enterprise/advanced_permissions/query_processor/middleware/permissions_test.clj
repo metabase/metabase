@@ -280,3 +280,30 @@
                             (is (partial=
                                  {:error "You do not have permissions to download the results of this query."}
                                  results)))}}))))
+
+(deftest joins-test
+  (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :full
+                                                    (mt/id 'checkins)   :full
+                                                    (mt/id 'users)      :limited
+                                                    (mt/id 'categories) :none}}}
+    (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+      (streaming-test/do-test
+       "A user can't download the results of a query with a join if they have no permissions for one of the tables"
+       {:query (mt/mbql-query venues
+                 {:joins [{:source-table $$categories
+                           :condition    [:= $category_id 1]}]
+                  :limit 10})
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results]
+                            (is (partial=
+                                 {:error "You do not have permissions to download the results of this query."}
+                                 results)))}})
+
+      (streaming-test/do-test
+       "A user has limited downloads for a query with a join if they have limited permissions for one of the tables"
+       {:query (mt/mbql-query checkins
+                    {:joins [{:source-table $$users
+                              :condition    [:= $user_id 1]}]
+                     :limit 10})
+        :endpoints  [:card :dataset]
+        :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))
