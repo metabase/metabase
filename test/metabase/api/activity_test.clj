@@ -7,6 +7,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as models]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.util :as qputil]
@@ -110,7 +111,7 @@
                      :started_at (t/plus (t/local-date-time) (t/seconds (- hours-ago)))})
                   (reverse runs)
                   (range))]
-    (db/insert-many! 'QueryExecution runs)))
+    (db/insert-many! QueryExecution runs)))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
@@ -133,7 +134,7 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog]
+    (mt/with-model-cleanup [ViewLog QueryExecution]
       (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
                       [(mt/user->id :crowberto) "dashboard" (:id dash1)]
                       [(mt/user->id :crowberto) "card"      (:id card1)]
