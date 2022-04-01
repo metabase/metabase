@@ -35,7 +35,6 @@ export const SearchBarContainer = styled.div`
   flex: 1 0 auto;
   align-items: center;
   padding-right: 1rem;
-  z-index: 1;
 `;
 
 export const SearchBarContent = styled.div`
