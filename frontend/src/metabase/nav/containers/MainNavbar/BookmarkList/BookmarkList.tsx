@@ -13,6 +13,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
+import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
 import { SelectedEntityItem } from "../types";
 import { SidebarHeading } from "../MainNavbar.styled";
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
@@ -43,7 +44,7 @@ function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
 
   return (
     <TreeNode.IconContainer transparent={!isOfficialCollection}>
-      <Icon {...iconProps} />
+      <Icon {...iconProps} size={SIDEBAR_ITEM_ICON_SIZE} />
     </TreeNode.IconContainer>
   );
 }

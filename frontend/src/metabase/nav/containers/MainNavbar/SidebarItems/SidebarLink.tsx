@@ -4,6 +4,7 @@ import _ from "underscore";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Icon, { IconProps } from "metabase/components/Icon";
 
+import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
 import { FullWidthLink, NameContainer } from "./SidebarItems.styled";
 
 interface Props {
@@ -36,7 +37,7 @@ function SidebarLink({
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
     return (
       <TreeNode.IconContainer>
-        <Icon {...iconProps} size={14} />
+        <Icon {...iconProps} size={SIDEBAR_ITEM_ICON_SIZE} />
       </TreeNode.IconContainer>
     );
   }, [icon]);

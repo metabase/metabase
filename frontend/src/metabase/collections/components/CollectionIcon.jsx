@@ -12,7 +12,7 @@ const propTypes = {
 
 export function CollectionIcon({ collection, ...props }) {
   const icon = getCollectionIcon(collection);
-  return <Icon {...icon} {...props} size={14} />;
+  return <Icon {...icon} {...props} />;
 }
 
 CollectionIcon.propTypes = propTypes;

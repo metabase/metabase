@@ -13,6 +13,7 @@ import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
+import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
 import { FullWidthLink, NameContainer, NodeRoot } from "./SidebarItems.styled";
 
 interface SidebarItemLinkProps extends TreeNodeProps {
@@ -79,7 +80,10 @@ const SidebarCollectionLink = React.forwardRef<
             </TreeNode.ExpandToggleButton>
             <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
               <TreeNode.IconContainer transparent={isRegular}>
-                <CollectionIcon collection={collection} />
+                <CollectionIcon
+                  collection={collection}
+                  size={SIDEBAR_ITEM_ICON_SIZE}
+                />
               </TreeNode.IconContainer>
               <NameContainer>{name}</NameContainer>
             </FullWidthLink>
