@@ -5,8 +5,9 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase.api.common.internal :refer [add-route-param-regexes auto-parse route-dox route-fn-name
-                                                  validate-params wrap-response-if-needed]]
+            [metabase.api.common.internal
+             :refer
+             [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
@@ -92,7 +93,6 @@
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
   []
   (check-403 *is-superuser?*))
-
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

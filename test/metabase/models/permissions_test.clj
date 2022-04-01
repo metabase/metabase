@@ -489,6 +489,26 @@
              (perms/set-has-partial-permissions? perms path))))))
 
 
+;;; -------------------------------------- set-has-general-permission-of-type? ---------------------------------------
+
+(deftest set-has-general-permission-of-type?-test
+  (doseq [[expected inputs]
+          {true
+           [[#{"/"}                       :subscription]
+            [#{"/"}                       :monitoring]
+            [#{"/"}                       :setting]
+            [#{"/general/subscription/"}  :subscription]
+            [#{"/general/monitoring/"}    :monitoring]
+            [#{"/general/setting/"}       :setting]]
+           false
+           [[#{"/general/subscription/"}  :monitoring]
+            [#{"/general/subscription/"}  :setting]
+            [#{"/general/monitoring/"}    :subscription]]}
+          [perms path] inputs]
+    (testing (pr-str (list 'set-has-general-permission-of-type? perms path))
+      (is (= expected
+             (perms/set-has-general-permission-of-type? perms path))))))
+
 ;;; --------------------------------------- set-has-full-permissions-for-set? ----------------------------------------
 
 (deftest set-has-full-permissions-for-set?-test
@@ -742,7 +762,9 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions :group_id group-id))]
+              (db/select-field :object Permissions {:where [:and
+                                                            [:like :object "/collection/%"]
+                                                            [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
