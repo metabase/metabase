@@ -9,16 +9,17 @@ import LogoIcon from "metabase/components/LogoIcon";
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
-import {
-  SearchBarContainer,
-  SearchBarContent,
-} from "metabase/nav/containers/Navbar.styled";
 
 import Database from "metabase/entities/databases";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
-import { AppBarRoot, LogoIconWrapper } from "./AppBar.styled";
+import {
+  AppBarRoot,
+  LogoIconWrapper,
+  SearchBarContainer,
+  SearchBarContent,
+} from "./AppBar.styled";
 
 type Props = {
   isSidebarOpen: boolean;

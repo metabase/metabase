@@ -55,32 +55,6 @@ export const LogoIconContainer = styled.div`
   height: 2rem;
 `;
 
-export const SearchBarContainer = styled.div`
-  display: flex;
-  flex: 1 0 auto;
-  align-items: center;
-  padding-right: 1rem;
-  z-index: 1;
-`;
-
-export const SearchBarContent = styled.div`
-  width: 100%;
-  max-width: 500px;
-  margin-left: auto;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-
-  transition: max-width 0.2s;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-
-  ${breakpointMaxSmall} {
-    max-width: 60vw;
-  }
-`;
-
 export const EntityMenuContainer = styled.div`
   display: flex;
   position: relative;
