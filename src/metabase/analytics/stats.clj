@@ -220,8 +220,8 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  ;; :%distinct-count is a custom fn we registered in `metabase.util.honeysql-extensions`!
-  (-> (db/query {:select    [[:%distinct-count.pulse.id  :count]]
+  ;; :%distinct-count is a custom fn we registered in [[metabase.util.honeysql-1-extensions]]
+  (-> (db/query {:select    [[:%distinct-count.pulse.id :count]]
                  :from      [:pulse]
                  :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
                  :where     (cons

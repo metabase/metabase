@@ -3,11 +3,16 @@
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase.util :as u]
             [potemkin.types :as p.types]
-            [pretty.core :as pretty]
-            [honeysql.format :as hformat])
+            [pretty.core :as pretty])
   (:import honeysql.format.ToSql))
+
+;; register the function `distinct-count` with HoneySQL
+;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
+(defmethod hformat/fn-handler "distinct-count" [_ field]
+  (str "count(distinct " (hformat/to-sql field) ")"))
 
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
 ;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries

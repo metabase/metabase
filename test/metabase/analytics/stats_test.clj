@@ -173,7 +173,8 @@
                     :pulse_types          {(s/required-key "slack") (>= 1)
                                            (s/required-key "email") (>= 2)}
                     :pulse_schedules      {(s/required-key "daily")  (>= 2)
-                                           (s/required-key "weekly") (>= 1)}
+                                           (s/required-key "weekly") (>= 1)
+                                           (s/optional-key "hourly") s/Any}
                     :num_pulses_per_user  {(s/required-key "1-5") (>= 1)
                                            s/Str                  s/Any}
                     :num_pulses_per_card  {(s/required-key "6-10") (>= 1)

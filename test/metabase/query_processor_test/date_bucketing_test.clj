@@ -32,8 +32,7 @@
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime]
-           org.joda.time.DateTime))
+  (:import [java.time LocalDate LocalDateTime]))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -1082,37 +1081,40 @@
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT count(*) AS \"count\" "
-                "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
-                "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
-                ")")
-           (:query
+    (is (= ["SELECT COUNT(*) AS \"count\""
+            "FROM \"PUBLIC\".\"CHECKINS\""
+            (str "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date))"
+                 " AND "
+                 "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', 1, NOW()) AS date))")]
+           (->
             (qp/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
-                :filter      [:= $date [:relative-datetime :current]]})))))))
+                :filter      [:= $date [:relative-datetime :current]]}))
+            :query
+            str/trim
+            str/split-lines)))))
 
 (deftest compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-      (is (= (str "SELECT CHECKINS.DATE AS DATE "
-                  "FROM CHECKINS "
-                  "WHERE ("
-                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
-                  " AND "
-                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
-                  "GROUP BY CHECKINS.DATE "
-                  "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048575")
-             (sql.qp-test-util/pretty-sql
-              (:query
-               (qp/compile
-                (mt/mbql-query checkins
-                  {:filter   [:time-interval $date -4 :month]
-                   :breakout [[:datetime-field $date :day]]})))))))))
+      (is (= ["SELECT CHECKINS.DATE AS DATE"
+              "FROM CHECKINS"
+              (str "WHERE (CHECKINS.DATE >= PARSEDATETIME(FORMATDATETIME(DATEADD('month', -4, NOW()), 'yyyyMM'), 'yyyyMM'))"
+                   " AND "
+                   "(CHECKINS.DATE < PARSEDATETIME(FORMATDATETIME(NOW(), 'yyyyMM'), 'yyyyMM'))")
+              "GROUP BY CHECKINS.DATE"
+              "ORDER BY CHECKINS.DATE ASC"
+              "LIMIT 1048575"]
+             (->
+              (qp/compile
+               (mt/mbql-query checkins
+                 {:filter   [:time-interval $date -4 :month]
+                  :breakout [[:datetime-field $date :day]]}))
+              :query
+              sql.qp-test-util/pretty-sql
+              str/trim
+              str/split-lines))))))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
