@@ -1,5 +1,5 @@
 import { CardId } from "./Card";
-import { FieldId } from "./Field";
+import { Field, FieldId } from "./Field";
 import { LocalFieldReference, ForeignFieldReference } from "./Query";
 
 export type ParameterId = string;
@@ -14,10 +14,13 @@ export type ParameterValueOrArray = string | Array<string>;
 export type Parameter = {
   id: ParameterId;
   name: string;
+  sectionId: string;
   type: ParameterType;
   slug: string;
   default?: string;
+  field_id: FieldId | null;
   field_ids?: FieldId[];
+  fields: Field[];
   hasOnlyFieldTargets?: boolean; // true if the parameter is only connected to fields/dimensions rather than variables
   target?: ParameterTarget;
   filteringParameters?: ParameterId[];
