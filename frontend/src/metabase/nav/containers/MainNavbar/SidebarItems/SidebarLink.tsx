@@ -2,16 +2,21 @@ import React, { useCallback } from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/components/Icon";
 
-import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
-import { FullWidthLink, NameContainer } from "./SidebarItems.styled";
+import {
+  FullWidthLink,
+  NameContainer,
+  NodeRoot,
+  SidebarIcon,
+} from "./SidebarItems.styled";
 
 interface Props {
   children: string;
   url: string;
   icon: string | IconProps | React.ReactElement;
   isSelected?: boolean;
+  hasDefaultIconStyle?: boolean;
   right?: React.ReactNode;
   onClick?: () => void;
 }
@@ -27,6 +32,7 @@ function SidebarLink({
   icon,
   url,
   isSelected = false,
+  hasDefaultIconStyle,
   right = null,
   ...props
 }: Props) {
@@ -36,20 +42,25 @@ function SidebarLink({
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
     return (
-      <TreeNode.IconContainer>
-        <Icon {...iconProps} size={SIDEBAR_ITEM_ICON_SIZE} />
+      <TreeNode.IconContainer transparent={false}>
+        <SidebarIcon {...iconProps} isSelected={isSelected} />
       </TreeNode.IconContainer>
     );
-  }, [icon]);
+  }, [icon, isSelected]);
 
   return (
-    <TreeNode.Root depth={0} isSelected={isSelected} {...props}>
+    <NodeRoot
+      depth={0}
+      isSelected={isSelected}
+      hasDefaultIconStyle={hasDefaultIconStyle}
+      {...props}
+    >
       <FullWidthLink to={url}>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
       </FullWidthLink>
       {React.isValidElement(right) && right}
-    </TreeNode.Root>
+    </NodeRoot>
   );
 }
 

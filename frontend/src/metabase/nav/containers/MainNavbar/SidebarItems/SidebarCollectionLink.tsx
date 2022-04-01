@@ -8,13 +8,17 @@ import { TreeNode } from "metabase/components/tree/TreeNode";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { getCollectionIcon } from "metabase/entities/collections";
 
-import { SIDEBAR_ITEM_ICON_SIZE } from "../constants";
-import { FullWidthLink, NameContainer, NodeRoot } from "./SidebarItems.styled";
+import {
+  CollectionNodeRoot,
+  ExpandToggleButton,
+  FullWidthLink,
+  NameContainer,
+  SidebarIcon,
+} from "./SidebarItems.styled";
 
 interface SidebarItemLinkProps extends TreeNodeProps {
   url: string;
@@ -38,9 +42,6 @@ const SidebarCollectionLink = React.forwardRef<
   ref,
 ) {
   const { name } = collection;
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(
-    (collection as unknown) as Collection,
-  );
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -59,35 +60,38 @@ const SidebarCollectionLink = React.forwardRef<
     [isExpanded, hasChildren, onToggleExpand],
   );
 
+  const icon = getCollectionIcon(collection);
+  const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
+    (collection as unknown) as Collection,
+  );
+
   return (
     <div data-testid="sidebar-collection-link-root">
       <CollectionDropTarget collection={collection}>
         {({ hovered }: { hovered: boolean }) => (
-          <NodeRoot
+          <CollectionNodeRoot
             role="treeitem"
             depth={depth}
             isSelected={isSelected}
             hovered={hovered}
             onClick={onToggleExpand}
+            hasDefaultIconStyle={isRegularCollection}
             ref={ref}
           >
-            <TreeNode.ExpandToggleButton hidden={!hasChildren}>
+            <ExpandToggleButton hidden={!hasChildren}>
               <TreeNode.ExpandToggleIcon
                 isExpanded={isExpanded}
                 name="chevronright"
                 size={12}
               />
-            </TreeNode.ExpandToggleButton>
+            </ExpandToggleButton>
             <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
-              <TreeNode.IconContainer transparent={isRegular}>
-                <CollectionIcon
-                  collection={collection}
-                  size={SIDEBAR_ITEM_ICON_SIZE}
-                />
+              <TreeNode.IconContainer transparent={false}>
+                <SidebarIcon {...icon} isSelected={isSelected} />
               </TreeNode.IconContainer>
               <NameContainer>{name}</NameContainer>
             </FullWidthLink>
-          </NodeRoot>
+          </CollectionNodeRoot>
         )}
       </CollectionDropTarget>
     </div>
