@@ -76,12 +76,12 @@ describe("Bookmarks in a collection page", () => {
     addThenRemoveBookmarkTo("Orders Model");
   });
 
-  it("removes item from bookmarks list when it is archived", () => {
-    const itemName = "Orders";
+  it("removes items from bookmarks list when they are archived", () => {
+    // A question
+    bookmarkThenArchive("Orders");
 
-    addBookmarkTo(itemName);
-
-    archive(itemName);
+    // A dashboard
+    bookmarkThenArchive("Orders in a dashboard");
 
     navigationSidebar().within(() => {
       cy.findByText("Collections").should("not.exist");
@@ -119,44 +119,49 @@ describe("Bookmarks in a collection page", () => {
   });
 });
 
-function addThenRemoveBookmarkTo(itemName) {
-  addBookmarkTo(itemName);
-  removeBookmarkFrom(itemName);
+function addThenRemoveBookmarkTo(name) {
+  addBookmarkTo(name);
+  removeBookmarkFrom(name);
 }
 
-function addBookmarkTo(itemName) {
+function addBookmarkTo(name) {
   cy.visit("/collection/root");
 
-  openEllipsisMenuFor(itemName);
+  openEllipsisMenuFor(name);
   cy.findByText("Bookmark").click();
 
   navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/);
-    cy.findByText(itemName);
+    cy.findByText(name);
   });
 }
 
-function removeBookmarkFrom(itemName) {
-  openEllipsisMenuFor(itemName);
+function removeBookmarkFrom(name) {
+  openEllipsisMenuFor(name);
 
   cy.findByText("Remove bookmark").click();
 
   navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/).should("not.exist");
-    cy.findByText(itemName).should("not.exist");
+    cy.findByText(name).should("not.exist");
   });
 }
 
-function openEllipsisMenuFor(item) {
+function openEllipsisMenuFor(name) {
   cy.get("td")
-    .contains(item)
+    .contains(name)
     .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
 
-function archive(itemName) {
-  openEllipsisMenuFor(itemName);
+function bookmarkThenArchive(name) {
+  addBookmarkTo(name);
+  archive(name);
+}
+
+function archive(name) {
+  openEllipsisMenuFor(name);
   popover().within(() => {
     cy.findByText("Archive").click();
   });
