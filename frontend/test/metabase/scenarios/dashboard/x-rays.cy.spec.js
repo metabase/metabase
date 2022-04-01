@@ -24,23 +24,6 @@ describe("scenarios > x-rays", () => {
     cy.signInAsAdmin();
   });
 
-  it("should exist on homepage when person first signs in", () => {
-    cy.visit("/");
-
-    cy.contains("A look at your Orders table");
-    cy.contains("A look at your Products table");
-    cy.contains("A look at your Reviews table");
-
-    // Let's explore one of our tables
-    cy.contains("A look at your People table").click();
-
-    cy.findByText("Here's an overview of the people in your People table");
-    cy.findByText("Overview");
-    cy.findByText("Per state");
-
-    cy.get(".Card").should("have.length", 11);
-  });
-
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
