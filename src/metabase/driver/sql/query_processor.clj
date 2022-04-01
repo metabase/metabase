@@ -656,28 +656,28 @@
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
-  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+  (hsql/call :between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)))
 
 (defmethod ->honeysql [:sql :>]
   [driver [_ field value]]
-  [:> (->honeysql driver field) (->honeysql driver value)])
+  (hsql/call :> (->honeysql driver field) (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :<]
   [driver [_ field value]]
-  [:< (->honeysql driver field) (->honeysql driver value)])
+  (hsql/call :< (->honeysql driver field) (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :>=]
   [driver [_ field value]]
-  [:>= (->honeysql driver field) (->honeysql driver value)])
+  (hsql/call :>= (->honeysql driver field) (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :<=]
   [driver [_ field value]]
-  [:<= (->honeysql driver field) (->honeysql driver value)])
+  (hsql/call :<= (->honeysql driver field) (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
-  [:= (->honeysql driver field) (->honeysql driver value)])
+  (hsql/call := (->honeysql driver field) (->honeysql driver value)))
 
 (defn- correct-null-behaviour
   [driver [op & args]]
@@ -686,23 +686,23 @@
                                     :field        &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or
-     (into [op] (map (partial ->honeysql driver)) args)
-     [:= (->honeysql driver field-arg) nil]]))
+    (hsql/call :or
+     (apply hsql/call op (map (partial ->honeysql driver) args))
+     (hsql/call := (->honeysql driver field-arg) nil))))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
   (if (nil? (value-literal/unwrap-value-literal value))
-    [:not= (->honeysql driver field) (->honeysql driver value)]
+    (hsql/call :not= (->honeysql driver field) (->honeysql driver value))
     (correct-null-behaviour driver [:not= field value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
-  (apply vector :and (mapv (partial ->honeysql driver) subclauses)))
+  (apply hsql/call :and (mapv (partial ->honeysql driver) subclauses)))
 
 (defmethod ->honeysql [:sql :or]
   [driver [_ & subclauses]]
-  (apply vector :or (mapv (partial ->honeysql driver) subclauses)))
+  (apply hsql/call :or (mapv (partial ->honeysql driver) subclauses)))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
