@@ -1,8 +1,8 @@
 (ns metabase.api.preview-embed-test
   (:require [clojure.test :refer :all]
-            [metabase.api.preview-embed :as preview-embed]
             [metabase.api.embed-test :as embed-test]
             [metabase.api.pivots :as pivots]
+            [metabase.api.preview-embed :as preview-embed]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
