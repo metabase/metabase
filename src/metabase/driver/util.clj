@@ -316,6 +316,22 @@
                  db-details
                  secret-names->props))))
 
+(def official-drivers
+  "List of all official drivers"
+  ["bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"])
+
+(def partner-drivers
+  "List of other drivers in the partnership program"
+  ["firebolt"])
+
+(defn driver-source
+  "Return the source type of the driver: official, partner, or community"
+  [driver-name]
+  (cond
+    (contains? (set official-drivers) driver-name) "official"
+    (contains? (set partner-drivers) driver-name) "partner"
+    :else "community"))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
@@ -329,7 +345,8 @@
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields props
+             [driver {:source {:type (driver-source (name driver))}
+                      :details-fields props
                       :driver-name    (driver/display-name driver)
                       :superseded-by  (driver/superseded-by driver)}])))
 
