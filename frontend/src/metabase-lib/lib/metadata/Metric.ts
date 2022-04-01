@@ -1,6 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Base from "./Base";
+import { MetricId } from "metabase-types/types/Metric";
+import {
+  StructuredQuery as StructuredQueryType,
+  MetricAgg,
+} from "metabase-types/types/Query";
+import Table from "./Table";
+import Database from "./Database";
+import Aggregation from "../queries/structured/Aggregation";
+import StructuredQuery from "../queries/StructuredQuery";
+
 /**
  * @typedef { import("./metadata").Aggregation } Aggregation
  */
@@ -8,28 +16,31 @@ import Base from "./Base";
 /**
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
  */
-
 export default class Metric extends Base {
+  id!: MetricId;
+  name!: string;
+  description!: string;
+  definition!: StructuredQueryType;
+  table!: Table;
+  database!: Database;
+  archived!: boolean;
+
   displayName() {
     return this.name;
   }
 
-  /**
-   * @returns {Aggregation}
-   */
-  aggregationClause() {
+  aggregationClause(): MetricAgg {
     return ["metric", this.id];
   }
 
-  /** Underlying query for this metric */
-  definitionQuery() {
+  definitionQuery(): StructuredQuery | null {
     return this.definition
       ? this.table.query().setQuery(this.definition)
       : null;
   }
 
   /** Underlying aggregation clause for this metric */
-  aggregation() {
+  aggregation(): Aggregation | undefined {
     const query = this.definitionQuery();
 
     if (query) {
@@ -38,7 +49,7 @@ export default class Metric extends Base {
   }
 
   /** Column name when this metric is used in a query */
-  columnName() {
+  columnName(): string | null {
     const aggregation = this.aggregation();
 
     if (aggregation) {
@@ -53,27 +64,5 @@ export default class Metric extends Base {
 
   isActive() {
     return !this.archived;
-  }
-
-  /**
-   * @private
-   * @param {string} name
-   * @param {string} description
-   * @param {Database} database
-   * @param {Table} table
-   * @param {number} id
-   * @param {StructuredQuery} definition
-   * @param {boolean} archived
-   */
-
-  /* istanbul ignore next */
-  _constructor(name, description, database, table, id, definition, archived) {
-    this.name = name;
-    this.description = description;
-    this.database = database;
-    this.table = table;
-    this.id = id;
-    this.definition = definition;
-    this.archived = archived;
   }
 }

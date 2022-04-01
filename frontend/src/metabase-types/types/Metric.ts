@@ -1,6 +1,7 @@
 import { TableId } from "./Table";
 
-export type MetricId = number;
+type GoogleAnalyticsMetricId = string;
+export type MetricId = number | GoogleAnalyticsMetricId;
 
 // TODO: incomplete
 export type Metric = {
