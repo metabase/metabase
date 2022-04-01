@@ -75,6 +75,8 @@
 
 (s/def ::data-model (s/keys :opt-un [::native ::schemas]))
 
+;; We use "yes" and "no" instead of booleans for consistency with the general perms graph, and consistency with the
+;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 
 (s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
