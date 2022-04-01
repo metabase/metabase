@@ -8,13 +8,11 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    ["/", "/browse"].forEach(url => {
-      it(`should slugify database name when opening it from "${url}"`, () => {
-        cy.visit(url);
-        cy.findByTextEnsureVisible("Sample Database").click();
-        cy.findByText("Sample Database");
-        cy.location("pathname").should("eq", "/browse/1-sample-database");
-      });
+    it(`should slugify database name when opening it from /browse"`, () => {
+      cy.visit("/browse");
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByText("Sample Database");
+      cy.location("pathname").should("eq", "/browse/1-sample-database");
     });
 
     [

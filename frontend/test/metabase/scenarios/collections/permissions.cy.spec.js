@@ -91,15 +91,6 @@ describe("collection permissions", () => {
                     cy.findByText("Orders in a dashboard");
                     cy.findByText("Orders, Count");
                   });
-                  // Only pinned dashboards should show up on the home page...
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard");
-                  cy.findByText("Orders, Count").should("not.exist");
-                  // ...but not for the user without permissions to see the root collection
-                  cy.signOut();
-                  cy.signIn("none");
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard").should("not.exist");
                 });
               });
 
