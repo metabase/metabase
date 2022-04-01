@@ -9,6 +9,7 @@ import { Tree } from "metabase/components/tree";
 import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
+  buildCollectionTree,
 } from "metabase/entities/collections";
 import {
   isPersonalCollection,
@@ -23,7 +24,7 @@ import {
   BackButton,
   TreeContainer,
 } from "./SavedQuestionPicker.styled";
-import { buildCollectionTree, findCollectionByName } from "./utils";
+import { findCollectionByName } from "./utils";
 
 const propTypes = {
   isDatasets: PropTypes.bool,
