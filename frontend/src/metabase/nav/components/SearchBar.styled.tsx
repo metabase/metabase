@@ -15,6 +15,7 @@ export const SearchInputContainer = styled.div`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
+  position: relative;
   max-width: 50em;
 
   background-color: ${color("bg-light")};
@@ -45,8 +46,23 @@ export const SearchInput = styled.input`
   }
 `;
 
+const ICON_MARGIN = "10px";
+
 export const SearchIcon = styled(Icon)`
-  margin-left: 10px;
+  margin-left: ${ICON_MARGIN};
+`;
+
+export const ClearIconButton = styled.button`
+  position: absolute;
+  top: ${ICON_MARGIN};
+  right: ${ICON_MARGIN};
+
+  color: ${color("text-light")};
+
+  padding: 0.5em;
+  margin: -0.5em;
+
+  cursor: pointer;
 `;
 
 export const SearchResultsFloatingContainer = styled.div`

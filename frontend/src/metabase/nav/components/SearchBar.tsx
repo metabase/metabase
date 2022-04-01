@@ -8,10 +8,12 @@ import React, {
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
+import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { SearchResults } from "./SearchResults";
@@ -19,6 +21,7 @@ import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
   SearchIcon,
+  ClearIconButton,
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
@@ -60,6 +63,10 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
 
   const onTextChange = useCallback(e => {
     setSearchText(e.target.value);
+  }, []);
+
+  const onClear = useCallback(e => {
+    setSearchText("");
   }, []);
 
   useEffect(() => {
@@ -106,6 +113,8 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
     [searchText, onChangeLocation],
   );
 
+  const hasSearchText = searchText.trim().length > 0;
+
   return (
     <OnClickOutsideWrapper handleDismissal={setInactive}>
       <>
@@ -121,10 +130,15 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
             onKeyPress={handleInputKeyPress}
             ref={searchInput}
           />
+          {isSmallScreen() && hasSearchText && (
+            <ClearIconButton onClick={onClear}>
+              <Icon name="close" />
+            </ClearIconButton>
+          )}
         </SearchInputContainer>
         {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
           <SearchResultsFloatingContainer>
-            {searchText.trim().length > 0 ? (
+            {hasSearchText ? (
               <SearchResultsContainer>
                 <SearchResults searchText={searchText.trim()} />
               </SearchResultsContainer>
