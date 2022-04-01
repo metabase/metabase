@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { getIcon, getName } from "metabase/entities/popular-views";
 import { PopularView } from "metabase-types/api";
@@ -18,7 +19,7 @@ export interface PopularSectionProps {
 const PopularSection = ({ popularViews }: PopularSectionProps): JSX.Element => {
   return (
     <div>
-      <SectionTitle>{t`Pick up where you left off`}</SectionTitle>
+      <SectionTitle>{getTitle(popularViews)}</SectionTitle>
       <PopularList>
         {popularViews.map((item, index) => (
           <PopularCard key={index} url={Urls.modelToUrl(item) ?? ""}>
@@ -29,6 +30,27 @@ const PopularSection = ({ popularViews }: PopularSectionProps): JSX.Element => {
       </PopularList>
     </div>
   );
+};
+
+const getTitle = (popularViews: PopularView[]) => {
+  const models = _.uniq(popularViews.map(item => item.model));
+
+  if (models.length !== 1) {
+    return t`Here is some popular stuff`;
+  }
+
+  switch (models[0]) {
+    case "table":
+      return t`Here are some popular tables`;
+    case "card":
+      return t`Here are some popular questions`;
+    case "dataset":
+      return t`Here are some popular models`;
+    case "dashboard":
+      return t`Here are some popular dashboards`;
+    default:
+      return t`Here is some popular stuff`;
+  }
 };
 
 export default PopularSection;
