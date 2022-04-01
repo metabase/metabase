@@ -13,17 +13,13 @@ import { AdminNavbar } from "../components/AdminNavbar";
 import { closeNavbar } from "metabase/redux/app";
 
 import { getPath, getContext, getUser } from "../selectors";
-import {
-  getHasDataAccess,
-  getPlainNativeQuery,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
-  plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
 });
 
