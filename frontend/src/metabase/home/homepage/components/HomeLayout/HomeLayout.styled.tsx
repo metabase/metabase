@@ -23,7 +23,7 @@ const gradientStyles = css`
 `;
 
 export const LayoutRoot = styled.div<LayoutProps>`
-  flex: 1;
+  height: 100%;
   padding: 4rem 7rem;
   ${props => (props.showScene ? sceneStyles : gradientStyles)};
 `;
