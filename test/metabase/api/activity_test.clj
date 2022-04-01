@@ -91,9 +91,9 @@
 (defn- create-views!
   "Insert views [user-id model model-id]. Reviews are entered a second apart with last review as most recent."
   [views]
-  (let [views (map (fn [[user model model-id] hours-ago]
+  (let [views (map (fn [[user model model-id] seconds-ago]
                      {:user_id user, :model model, :model_id model-id
-                      :timestamp (t/plus (t/local-date-time) (t/seconds (- hours-ago)))})
+                      :timestamp (t/plus (t/local-date-time) (t/seconds (- seconds-ago)))})
                    (reverse views)
                    (range))]
     (db/insert-many! ViewLog views)))
@@ -108,7 +108,7 @@
                      :running_time 1
                      :result_rows 1
                      :native false
-                     :started_at (t/plus (t/local-date-time) (t/seconds (- hours-ago)))})
+                     :started_at (t/plus (t/local-date-time) (t/seconds (- seconds-ago)))})
                   (reverse runs)
                   (range))]
     (db/insert-many! QueryExecution runs)))

@@ -95,20 +95,20 @@
   (db/select
       (case model
         "card"      [Card
-                     (db/qualify Card :id) :name :collection_id :description :display
+                     :id :name :collection_id :description :display
                      :dataset_query :dataset :archived
                      (db/qualify Collection :authority_level)]
         "dashboard" [Dashboard
-                     (db/qualify Dashboard :id) :name :collection_id :description
+                     :id :name :collection_id :description
                      :archived
                      (db/qualify Collection :authority_level)]
         "table"     [Table
                      :id :name :db_id
                      :display_name :initial_sync_status
                      :visibility_type])
-                    (cond-> {:where [:in (db/qualify (symbol (str/capitalize model)) :id) ids]}
-                      (not= model "table")
-                      (merge {:left-join [Collection [:= (db/qualify Collection :id) :collection_id]]}))))
+      (cond-> {:where [:in (db/qualify (symbol (str/capitalize model)) :id) ids]}
+        (not= model "table")
+        (merge {:left-join [Collection [:= (db/qualify Collection :id) :collection_id]]}))))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -159,10 +159,13 @@
          (sort-by :max_ts)
          reverse)))
 
+(def ^:private views-limit 8)
+(def ^:private card-runs-limit 8)
+
 (defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs 8 8)
+  (let [views (views-and-runs views-limit card-runs-limit)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
@@ -224,7 +227,7 @@
   ;; total count -> higher = higher score
   ;; recently viewed -> more recent = higher score
   ;; official/verified -> yes = higher score
-  (let [views (views-and-runs 10 10)
+  (let [views (views-and-runs views-limit card-runs-limit)
         model->id->items (models-for-views views)
         filtered-views (for [{:keys [model model_id] :as view-log} views
                              :let [model-object (-> (get-in model->id->items [model model_id])
