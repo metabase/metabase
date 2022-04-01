@@ -71,7 +71,7 @@ const BaseTreeNode = React.memo(
         </ExpandToggleButton>
 
         {icon && (
-          <IconContainer transparent={false}>
+          <IconContainer>
             <Icon {...iconProps} />
           </IconContainer>
         )}
