@@ -18,8 +18,6 @@ describeEE("scenarios > admin > permissions > general", () => {
       cy.visit("/admin/permissions/general");
 
       modifyPermission("All Users", SUBSCRIPTIONS_INDEX, "No");
-      modifyPermission("data", SUBSCRIPTIONS_INDEX, "No");
-      modifyPermission("collection", SUBSCRIPTIONS_INDEX, "No");
 
       cy.button("Save changes").click();
 
