@@ -34,6 +34,7 @@ describe("issue 9027", () => {
     openNavigationSidebar();
     archiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME, false);
+    openNavigationSidebar();
     unarchiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
   });

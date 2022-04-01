@@ -849,7 +849,7 @@ function pinItem(item) {
 
 function exposeChildrenFor(collectionName) {
   cy.findByText(collectionName)
-    .parent()
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();

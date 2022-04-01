@@ -1,4 +1,4 @@
-import { restore, navigationSidebar } from "__support__/e2e/cypress";
+import { restore, popover, navigationSidebar } from "__support__/e2e/cypress";
 import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
 
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
@@ -76,6 +76,18 @@ describe("Bookmarks in a collection page", () => {
     addThenRemoveBookmarkTo("Orders Model");
   });
 
+  it("removes item from bookmarks list when it is archived", () => {
+    const itemName = "Orders";
+
+    addBookmarkTo(itemName);
+
+    archive(itemName);
+
+    navigationSidebar().within(() => {
+      cy.findByText("Collections").should("not.exist");
+    });
+  });
+
   it("can remove bookmark from item in sidebar", () => {
     cy.visit("/collection/1");
 
@@ -108,6 +120,11 @@ describe("Bookmarks in a collection page", () => {
 });
 
 function addThenRemoveBookmarkTo(itemName) {
+  addBookmarkTo(itemName);
+  removeBookmarkFrom(itemName);
+}
+
+function addBookmarkTo(itemName) {
   cy.visit("/collection/root");
 
   openEllipsisMenuFor(itemName);
@@ -117,7 +134,9 @@ function addThenRemoveBookmarkTo(itemName) {
     getSectionTitle(/Bookmarks/);
     cy.findByText(itemName);
   });
+}
 
+function removeBookmarkFrom(itemName) {
   openEllipsisMenuFor(itemName);
 
   cy.findByText("Remove bookmark").click();
@@ -134,4 +153,11 @@ function openEllipsisMenuFor(item) {
     .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function archive(itemName) {
+  openEllipsisMenuFor(itemName);
+  popover().within(() => {
+    cy.findByText("Archive").click();
+  });
 }
