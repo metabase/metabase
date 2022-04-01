@@ -4,7 +4,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.db.spec :as db.spec]

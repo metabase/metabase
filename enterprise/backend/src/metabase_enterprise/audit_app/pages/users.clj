@@ -2,7 +2,7 @@
   (:require [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 

@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -334,12 +334,12 @@
                  (some-> (qp/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
-      (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
-             (hsql/format {:select [(#'mysql/trunc-with-format "%Y" :field)]})))
-      (is (= ["SELECT str_to_date(date_format(field, '%Y'), '%Y')"]
-             (hsql/format {:select [(#'mysql/trunc-with-format
-                                     "%Y"
-                                     (hx/with-database-type-info :field "datetime"))]}))))))
+      (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(field AS datetime), '%Y'), '%Y')"]
+             (hsql/format {:select [[(#'mysql/trunc-with-format "%Y" :field)]]})))
+      (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(field, '%Y'), '%Y')"]
+             (hsql/format {:select [[(#'mysql/trunc-with-format
+                                      "%Y"
+                                      (hx/with-database-type-info :field "datetime"))]]}))))))
 
 (deftest mysql-connect-with-ssl-and-pem-cert-test
   (mt/test-driver :mysql

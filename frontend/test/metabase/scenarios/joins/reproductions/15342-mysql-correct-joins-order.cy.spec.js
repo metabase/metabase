@@ -2,7 +2,7 @@ import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
-describe.skip("issue 15342", () => {
+describe("issue 15342", () => {
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();

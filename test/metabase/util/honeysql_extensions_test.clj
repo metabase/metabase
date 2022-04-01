@@ -1,19 +1,12 @@
 (ns metabase.util.honeysql-extensions-test
   (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
+            [honey.sql :as hsql]
             [metabase.test :as mt]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import metabase.util.honeysql_extensions.Identifier))
+            [metabase.util.honeysql-extensions :as hx]))
 
-(deftest ^:parallel format-test
-  (testing "Basic format test not including a specific quoting option"
-    (is (= ["setting"]
-           (hformat/format :setting))))
-
-  (testing "`:h2` quoting will uppercase and quote the identifier"
-    (is (= ["\"SETTING\""]
-           (hformat/format :setting :quoting :h2)))))
+(defn- format-expr-with-dialect [expr dialect]
+  (binding [hsql/*dialect* (#'hsql/dialects dialect)]
+    (hsql/format-expr expr)))
 
 (deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
@@ -43,33 +36,28 @@
 
   (testing "make sure `identifier` properly handles components with dots and both strings & keywords"
     (is (= ["`A`.`B`.`C.D`.`E.F`"]
-           (hsql/format (hx/identifier :field "A" :B "C.D" :E.F)
-                        :quoting :mysql))))
+           (format-expr-with-dialect (hx/identifier :field "A" :B "C.D" :E.F) :mysql))))
 
   (testing "`identifer` should handle slashes"
     (is (= ["`A/B`.`C\\D`.`E/F`"]
-           (hsql/format (hx/identifier :field "A/B" "C\\D" :E/F)
-                        :quoting :mysql))))
+           (format-expr-with-dialect (hx/identifier :field "A/B" "C\\D" :E/F) :mysql))))
 
   (testing "`identifier` should also handle strings with quotes in them (ANSI)"
     ;; two double-quotes to escape, e.g. "A""B"
     (is (= ["\"A\"\"B\""]
-           (hsql/format (hx/identifier :field "A\"B")
-                        :quoting :ansi))))
+           (format-expr-with-dialect (hx/identifier :field "A\"B") :ansi))))
 
   (testing "`identifier` should also handle strings with quotes in them (MySQL)"
     ;; double-backticks to escape backticks seems to be the way to do it
     (is (= ["`A``B`"]
-           (hsql/format (hx/identifier :field "A`B")
-                        :quoting :mysql))))
+           (format-expr-with-dialect (hx/identifier :field "A`B") :mysql))))
 
   (testing "`identifier` shouldn't try to change `lisp-case` to `snake-case` or vice-versa"
-    (is (= ["A-B.c-d.D_E.f_g"]
-           (hsql/format (hx/identifier :field "A-B" :c-d "D_E" :f_g))))
+    (is (= ["\"A-B\".\"c-d\".\"D_E\".\"f_g\""]
+           (format-expr-with-dialect (hx/identifier :field "A-B" :c-d "D_E" :f_g) :ansi)))
 
     (is (= ["\"A-B\".\"c-d\".\"D_E\".\"f_g\""]
-           (hsql/format (hx/identifier :field "A-B" :c-d "D_E" :f_g)
-                        :quoting :ansi))))
+           (format-expr-with-dialect (hx/identifier :field "A-B" :c-d "D_E" :f_g) :ansi))))
 
   (testing "`identifier` should ignore `nil` or empty components."
     (is (= ["A.B.C"]
@@ -83,35 +71,25 @@
            (hsql/format (hx/identifier :field "A" (hx/identifier :field "B" "C") "D")))))
 
   (testing "the `identifier` function should unnest identifiers for you so drivers that manipulate `:components` don't need to worry about that"
-    (is (= (Identifier. :field ["A" "B" "C" "D"])
+    (is (= [::hx/identifier :field "A" "B" "C" "D"]
            (hx/identifier :field "A" (hx/identifier :field "B" "C") "D"))))
 
   (testing "the `identifier` function should remove nils so drivers that manipulate `:components` don't need to worry about that"
-    (is (= (Identifier. :field ["table" "field"])
+    (is (= [::hx/identifier :field "table" "field"]
            (hx/identifier :field nil "table" "field"))))
 
   (testing "the `identifier` function should convert everything to strings so drivers that manipulate `:components` don't need to worry about that"
-    (is (= (Identifier. :field ["keyword" "qualified/keyword"])
+    (is (= [::hx/identifier :field "keyword" "qualified/keyword"]
            (hx/identifier :field :keyword :qualified/keyword)))))
 
-(deftest h2-quoting-test
-  (testing (str "We provide our own quoting function for `:h2` databases. We quote and uppercase the identifier. Using "
-                "Java's toUpperCase method is surprisingly locale dependent. When uppercasing a string in a language "
-                "like Turkish, it can turn an i into an İ. This test converts a keyword with an `i` in it to verify "
-                "that we convert the identifier correctly using the english locale even when the user has changed the "
-                "locale to Turkish")
-    (mt/with-locale "tr"
-      (is (= ["\"SETTING\""]
-             (hformat/format :setting :quoting :h2))))))
-
 (deftest ^:parallel ratios-test
-  (testing (str "test ToSql behavior for Ratios (#9246). Should convert to a double rather than leaving it as a "
+  (testing (str "test SQL compilation for Ratios (#9228, #9246). Should convert to a double rather than leaving it as a "
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= ["SELECT 0.1 AS one_tenth"]
-           (hsql/format {:select [[(/ 1 10) :one_tenth]]})))))
+           (hsql/format {:select [[[::hx/numeric-literal (/ 1 10)] :one_tenth]]})))))
 
 (defn- ->sql [expr]
-  (hsql/format {:select [expr]}))
+  (hsql/format {:select [[expr]]}))
 
 (deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"
@@ -148,11 +126,6 @@
            (cast-unless-type-in (hx/with-type-info :field {::hx/database-type "date"}))))))
 
 (def ^:private typed-form (hx/with-type-info :field {::hx/database-type "text"}))
-
-(deftest ^:parallel TypedHoneySQLForm-test
-  (testing "should generate readable output"
-    (is (= (pr-str `(hx/with-type-info :field {::hx/database-type "text"}))
-           (pr-str typed-form)))))
 
 (deftest ^:parallel type-info-test
   (testing "should let you get info"

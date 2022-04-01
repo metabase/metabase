@@ -3,7 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as postgres]
@@ -22,7 +22,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.driver.sql.util :as sql.u])
   (:import java.sql.DatabaseMetaData))
 
 (defn- drop-if-exists-and-create-db!
@@ -279,22 +280,22 @@
   (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh]}]
-        (is (= ["CAST(json_extract_path_text(CAST(boop.bleh AS json), (CAST(? AS text))) AS Text)" "meh"]
-               (hsql/format (#'postgres/json-query boop-identifier boop-field))))))
+        (is (= ["CAST(JSON_EXTRACT_PATH_TEXT(CAST(\"boop\".\"bleh\" AS json), (CAST(? AS text))) AS Text)" "meh"]
+               (sql.u/format-expr :postgres (#'postgres/json-query boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234]}]
-        (is (= ["CAST(json_extract_path_text(CAST(boop.bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Text)"
+        (is (= ["CAST(JSON_EXTRACT_PATH_TEXT(CAST(\"boop\".\"bleh\" AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Text)"
                 "meh"
                 "foobar"
                 "1234"]
-               (hsql/format (#'postgres/json-query boop-identifier weird-field))))))
+               (sql.u/format-expr :postgres (#'postgres/json-query boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:effective_type :type/Boolean :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["CAST(json_extract_path_text(CAST(boop.bleh AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Boolean)"
+        (is (= ["CAST(JSON_EXTRACT_PATH_TEXT(CAST(\"boop\".\"bleh\" AS json), (CAST(? AS text), CAST(? AS text), CAST(? AS text))) AS Boolean)"
                 "boop"
                 "foobar"
                 "1234"]
-               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
+               (sql.u/format-expr :postgres (#'postgres/json-query boop-identifier boolean-boop-field))))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
@@ -406,8 +407,8 @@
 (mt/defdataset ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
-    [[(hsql/raw "'192.168.1.1'::inet")]
-     [(hsql/raw "'10.4.4.15'::inet")]]]])
+    [[[:raw "'192.168.1.1'::inet"]]
+     [[:raw "'10.4.4.15'::inet"]]]]])
 
 (deftest inet-columns-test
   (mt/test-driver :postgres

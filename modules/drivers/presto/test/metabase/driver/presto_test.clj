@@ -3,7 +3,7 @@
             [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]

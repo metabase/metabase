@@ -1,7 +1,7 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [java-time :as t]
             [metabase.db.jdbc-protocols :as jdbc-protocols]
             [metabase.db.spec :as dbspec]
@@ -99,10 +99,13 @@
     ;; for application DB purposes) convert to `:millisecond`
     (and (= unit :second)
          (not (zero? (rem amount 1))))
-    (recur driver hsql-form (* amount 1000.0) :millisecond)
+    (recur driver hsql-form (* amount 1000) :millisecond)
 
     :else
-    (hsql/call :dateadd (hx/literal unit) (hx/cast :long amount) hsql-form)))
+    (let [amount (if (number? amount)
+                   (hx/with-database-type-info (hx/numeric-literal (long amount)) "long")
+                   (hx/maybe-cast :long amount))]
+      [:dateadd (hx/literal unit) amount hsql-form])))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -139,10 +142,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- add-to-1970 [expr unit-str]
-  (hsql/call :timestampadd
-    (hx/literal unit-str)
-    expr
-    (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
+  (-> (hsql/call :timestampadd
+                 (hx/literal unit-str)
+                 (if (number? expr)
+                   (hx/numeric-literal expr)
+                   expr)
+                 [:raw "timestamp '1970-01-01T00:00:00Z'"])
+      (hx/with-database-type-info "timestamp")))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))

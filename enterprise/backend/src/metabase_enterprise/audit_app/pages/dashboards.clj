@@ -3,7 +3,7 @@
   (:require [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [schema.core :as s]))
 
 ;; Two-series timeseries that includes total number of Dashboard views and saves broken out by a `datetime-unit`.

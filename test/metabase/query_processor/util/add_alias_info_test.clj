@@ -603,6 +603,7 @@
                                    :alias        "Q2"}]})
                 [:field (mt/id :products :created_at) {:join-alias "Q2"}])))))))
 
+
 (deftest ^:parallel expression-from-source-query-alias-test
   (testing "Make sure we use the exported alias from the source query for expressions (#21131)"
     (let [source-query {:source-table 3

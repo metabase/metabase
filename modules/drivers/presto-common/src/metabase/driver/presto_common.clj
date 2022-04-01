@@ -2,7 +2,7 @@
   "Abstract common driver for Presto. It only defines SQL generation logic and doesn't involve the transport/execution
   mechanism for actually connecting to Presto."
   (:require [buddy.core.codecs :as codecs]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [java-time :as t]

@@ -8,7 +8,7 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

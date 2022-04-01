@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.binning-test
+  "Tests for binning that *are* related to the [[metabase.query-processor.middleware.binning]] middleware's behavior.
+  Tests for binning stuff that isn't really part of this middleware (e.g. how we compile the resulting MBQL) likes
+  in [[metabase.query-processor-test.binning-test]]."
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :as field :refer [Field]]

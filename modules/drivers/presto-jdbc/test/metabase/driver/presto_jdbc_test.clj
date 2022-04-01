@@ -1,7 +1,7 @@
 (ns metabase.driver.presto-jdbc-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.api.database :as database-api]

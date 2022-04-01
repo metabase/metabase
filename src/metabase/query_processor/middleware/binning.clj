@@ -99,7 +99,7 @@
   (let [scale (/ precision)]
     (/ (floor (* x scale)) scale)))
 
-(def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
+(def ^:private pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
 (s/defn ^:private nicer-bin-width
   [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
@@ -114,7 +114,7 @@
   [min-value max-value bin-width]
   [(floor-to bin-width min-value) (ceil-to bin-width max-value)])
 
-(def ^:private ^:const max-steps 10)
+(def ^:private max-steps 10)
 
 (defn- fixed-point
   [f]

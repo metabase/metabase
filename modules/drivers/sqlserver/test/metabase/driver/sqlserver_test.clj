@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [colorize.core :as colorize]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [java-time :as t]
             [medley.core :as m]
             [metabase.config :as config]

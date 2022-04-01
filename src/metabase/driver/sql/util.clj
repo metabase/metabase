@@ -2,30 +2,34 @@
   "Utility functions for writing SQL drivers."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import metabase.util.honeysql_extensions.Identifier))
+            [schema.core :as s]))
+
+(defn format-expr
+  "Call [[honey.sql/format-expr]] with appropriate dynamic variables bound for `driver`."
+  [driver honeysql-form]
+  (binding [hsql/*dialect*      (#'hsql/dialects (sql.qp/honeysql-dialect driver))
+            hsql/*quoted*       true
+            hsql/*quoted-snake* false]
+    (hsql/format-expr honeysql-form)))
 
 (s/defn quote-name
-  "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
-  on the resulting `Identifier`. Uses the `sql.qp/quote-style` of the current driver. You can implement `->honeysql`
-  for `Identifier` if you need custom behavior here.
+  "Quote unqualified string or keyword identifier(s) by passing them to [[hx/identifier]], then
+  calling [[honey.sql/format-expr]] on the resulting `::hx/identifier`. Uses the [[sql.qp/honeysql-dialect]] of the
+  current driver. You can implement [[sql.qp/->honeysql]] for `::hx/identifier` if you need custom behavior here.
 
     (quote-name :mysql \"wow\") ; -> \"`wow`\"
     (quote-name :h2 \"wow\")    ; -> \"\\\"WOW\\\"\"
 
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
-  SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
-  {:style/indent 2}
-  [driver :- s/Keyword, identifier-type :- hx/IdentifierType, & components]
-  (first
-   (hsql/format (sql.qp/->honeysql driver (apply hx/identifier identifier-type components))
-     :quoting             (sql.qp/quote-style driver)
-     :allow-dashed-names? true)))
+  SQL. For HoneySQL forms, the `::hx/identifier` is converted to SQL automatically when it is compiled."
+  [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
+  (let [honeysql-form (sql.qp/->honeysql driver (apply hx/identifier identifier-type components))]
+    (first (format-expr driver honeysql-form))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |
@@ -40,17 +44,17 @@
     ;; otherwise just stick a _2 on the end so it's col_2
     (str last-component "_2")))
 
-(s/defn ^:private increment-identifier
+(s/defn ^:private increment-identifier :- hx/Identifier
   "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
   e.g.
 
      (increment-identifier :my_col)   ; -> :my_col_2
      (increment-identifier :my_col_2) ; -> :my_col_3"
-  [identifier :- Identifier]
-  (update
-   identifier
-   :components
-   (fn [components]
+  [identifier :- hx/Identifier]
+  (apply
+   hx/identifier
+   (hx/identifier-type identifier)
+   (let [components (hx/identifier-components identifier)]
      (conj
       (vec (butlast components))
       (increment-identifier-string (u/qualified-name (last components)))))))
@@ -69,14 +73,16 @@
       ;; that as the alias.
       ;;
       ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
-      (instance? Identifier col)
-      [col (hx/identifier :field-alias (last (:components col)))]
+      (hx/identifier? col)
+      [col (hx/identifier :field-alias (last (hx/identifier-components col)))]
 
       :else
       (do
         (log/error (trs "Don''t know how to alias {0}, expected an Identifier." col))
         [col col]))))
 
+;; TODO -- I'm 95% sure this isn't actually needed anymore now that we're doing all the stuff in
+;; [[metabase.query-processor.util.add-alias-info]]. This is only used in [[metabase.driver.oracle]] at any rate.
 (defn select-clause-deduplicate-aliases
   "Make sure every column in `select-clause` has a unique alias. This is useful for databases like Oracle that can't
   figure out how to use a query that produces duplicate columns in a subselect."

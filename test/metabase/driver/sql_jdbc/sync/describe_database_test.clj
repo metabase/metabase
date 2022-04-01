@@ -24,12 +24,12 @@
       (is (= []
              (mt/rows
                (qp/process-query
-                (let [[sql] (describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                  (mt/native-query {:query sql})))))))))
+                (let [[sql & params] (describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                  (mt/native-query {:query sql, :params params})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
-  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
-  all of them.)"
+  "All SQL JDBC drivers that use the default SQL JDBC implementation of [[metabase.driver/describe-database]]. (As far
+  as I know, this is all of them.)"
   []
   (set
    (filter

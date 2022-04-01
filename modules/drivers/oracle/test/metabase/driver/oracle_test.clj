@@ -3,7 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.oracle :as oracle]

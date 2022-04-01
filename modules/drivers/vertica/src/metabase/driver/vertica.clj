@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]

@@ -4,16 +4,16 @@
             [metabase.models.field :refer [Field]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-extensions :as h2x]
             [toucan.db :as db]))
 
-(deftest nfc-field->parent-identifier-test
+(deftest ^:parallel nfc-field->parent-identifier-test
   (testing "It replaces the last identifier member"
-    (let [nfc-identifier (hx/identifier :field "boop" "beep" "boop -> deep")
+    (let [nfc-identifier (h2x/identifier :field "boop" "beep" "boop -> deep")
           new-identifier (#'metabase.models.field/nfc-field->parent-identifier
                            nfc-identifier
                            {:nfc_path ["something" "boppity"]})]
-      (is (= (hx/identifier :field "boop" "beep" "something") new-identifier)))))
+      (is (= (h2x/identifier :field "boop" "beep" "something") new-identifier)))))
 
 (deftest unknown-types-test
   (doseq [{:keys [column unknown-type fallback-type]} [{:column        :base_type

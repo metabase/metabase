@@ -128,3 +128,15 @@
   [driver prefix column-alias]
   (log-deprecation-warning driver 'metabase.driver.sql.query-processor/prefix-field-alias "0.42.0")
   (add/prefix-field-alias prefix column-alias))
+
+(defmulti quote-style
+  "Return the HoneySQL 2 dialect that should be used when compiling HoneySQL -> SQL. Defaults to `:ansi`, but
+  see [[honey.sql/dialects]] for other choices."
+  {:arglists '([driver]), :deprecated "0.43.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod quote-style :sql
+  [driver]
+  (log-deprecation-warning driver 'metabase.driver.sql.query-processor/quote-style "v0.43.0")
+  :ansi)

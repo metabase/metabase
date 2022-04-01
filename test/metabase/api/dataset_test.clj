@@ -276,24 +276,26 @@
 (deftest compile-test
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
-      (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-                           "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048575")
+      (is (= {:query  ["SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\""
+                       "FROM \"PUBLIC\".\"VENUES\""
+                       "LIMIT 1048575"]
               :params nil}
-             (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues
-                                     {:fields [$id $name]}))))
+             (-> (mt/user-http-request :rasta :post 200 "dataset/native"
+                                       (mt/mbql-query venues
+                                         {:fields [$id $name]}))
+                 (update :query (comp str/split-lines str/trim)))))
 
       (testing "\nMake sure parameters are spliced correctly"
-        (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
-                             " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
-                             "LIMIT 1048575")
+        (is (= {:query  ["SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\""
+                         "FROM \"PUBLIC\".\"CHECKINS\""
+                         "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z') AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z')"
+                         "LIMIT 1048575"]
                 :params nil}
-               (mt/user-http-request :rasta :post 200 "dataset/native"
-                                     (mt/mbql-query checkins
-                                       {:fields [$id]
-                                        :filter [:= $date "2015-11-13"]})))))
+               (-> (mt/user-http-request :rasta :post 200 "dataset/native"
+                                         (mt/mbql-query checkins
+                                           {:fields [$id]
+                                            :filter [:= $date "2015-11-13"]}))
+                   (update :query (comp str/split-lines str/trim))))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/suppress-output

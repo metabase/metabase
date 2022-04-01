@@ -4,6 +4,7 @@
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [honeysql.core :as hsql]
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
@@ -214,8 +215,9 @@
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
   max (nanosecond) resolution)."
   []
-  (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
+  (if (= (mdb.connection/db-type) :mysql)
+    (hsql/call :now 6)
+    :%now))
 
 (defn- add-created-at-timestamp [obj & _]
   (assoc obj :created_at (now)))
@@ -226,6 +228,10 @@
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
+
+;; like `timestamped?` but for models that only have a `:created_at` column
+(models/add-property! :created-at-timestamped?
+  :insert add-created-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
 (models/add-property! :updated-at-timestamped?

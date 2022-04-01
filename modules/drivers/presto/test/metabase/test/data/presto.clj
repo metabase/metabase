@@ -2,7 +2,7 @@
   "Presto driver test extensions."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.helpers :as h]
             [metabase.config :as config]
             [metabase.driver :as driver]

@@ -1,7 +1,7 @@
 (ns metabase.test.data.sparksql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [metabase.config :as config]
             [metabase.driver :as driver]

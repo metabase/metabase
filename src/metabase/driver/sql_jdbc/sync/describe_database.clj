@@ -42,8 +42,8 @@
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
   (let [honeysql {:select [[(sql.qp/->honeysql driver true) :_]]
-                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
-                  :where  [:not= 1 1]}
+                  :from   [[(sql.qp/->honeysql driver (hx/identifier :table schema table))]]
+                  :where  [:not= (hx/numeric-literal 1) (hx/numeric-literal 1)]}
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 

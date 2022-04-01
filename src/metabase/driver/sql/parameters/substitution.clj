@@ -7,12 +7,13 @@
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.common.parameters.operators :as ops]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
@@ -24,7 +25,8 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.time.temporal.Temporal
@@ -55,7 +57,7 @@
 (s/defn ^:private honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.u/format-expr driver x)]
     (make-stmt-subs snippet args)))
 
 (s/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
@@ -68,7 +70,9 @@
 
 (s/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver num))
+  (honeysql->prepared-stmt-subs driver (if (number? num)
+                                         (hx/numeric-literal num)
+                                         num)))
 
 (s/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -220,7 +224,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
-  (let [[snippet & args] (hsql/format hsql-form, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+  (let [[snippet & args] (sql.u/format-expr driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -268,7 +272,7 @@
               (mbql.u/desugar-filter-clause form)
               (wrap-value-literals/wrap-value-literals-in-mbql form)
               (sql.qp/->honeysql driver form)
-              (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
+              (sql.u/format-expr driver form))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (date-params/date-range-type? param-type) (prepend-field

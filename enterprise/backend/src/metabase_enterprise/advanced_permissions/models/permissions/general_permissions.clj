@@ -5,7 +5,7 @@
             [metabase.models :refer [GeneralPermissionsRevision Permissions]]
             [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.permissions :as perms]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

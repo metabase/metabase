@@ -5,7 +5,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.revision :as revision]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 

@@ -3,9 +3,8 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
+            [honey.sql :as hsql]
+            [honey.sql.helpers :as h]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql.query-processor.deprecated :as deprecated]
@@ -23,10 +22,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [potemkin :as p]
-            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
-  (:import metabase.models.field.FieldInstance
-           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
+  (:import metabase.models.field.FieldInstance))
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
@@ -39,25 +36,10 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
-;; use [[sql-source-query]] below to construct this pls
-(p/deftype+ SQLSourceQuery [sql params]
-  hformat/ToSql
-  (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
-    ;; strip off any trailing semicolons
-    (str "(" (str/replace sql #";+\s*$" "") ")"))
+(defn- format-sql-source-query [_ [sql params]]
+  (into [(str "(" (str/replace sql #";+\s*$" "") ")")] params))
 
-  PrettyPrintable
-  (pretty [_]
-    (list 'SQLSourceQuery. sql params))
-
-  Object
-  (equals [_ other]
-    (and (instance? SQLSourceQuery other)
-         (= sql    (.sql ^SQLSourceQuery other))
-         (= params (.params ^SQLSourceQuery other)))))
-
-(alter-meta! #'->SQLSourceQuery assoc :private true)
+(hsql/register-fn! ::sql-source-query format-sql-source-query)
 
 (defn sql-source-query
   "Preferred way to construct an instance of [[SQLSourceQuery]]. Does additional validation."
@@ -72,7 +54,7 @@
                          (.getCanonicalName (class params)))
                     {:type  qp.error-type/invalid-query
                      :query params})))
-  (SQLSourceQuery. sql params))
+  [::sql-source-query sql params])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -154,17 +136,22 @@
        :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
      day-of-week)))
 
-(defmulti quote-style
-  "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
-  statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
-  [[metabase.util.honeysql-extensions]]; like `:ansi`, but uppercases the result).
-
-    (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)"
-  {:arglists '([driver])}
+(defmulti honeysql-dialect
+  "Return the HoneySQL 2 dialect that should be used when compiling HoneySQL -> SQL. Defaults to `:ansi`, but
+  see [[honey.sql/dialects]] for other choices."
+  {:arglists '([driver]), :added "0.43.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod quote-style :sql [_] :ansi)
+(defmethod honeysql-dialect :sql
+  [driver]
+  (let [has-quote-style-impl? (not (identical? (get-method deprecated/quote-style driver)
+                                               (get-method deprecated/quote-style :sql)))]
+    (if has-quote-style-impl?
+      (do
+        (deprecated/log-deprecation-warning driver `quote-style "v0.43.0")
+        (deprecated/quote-style driver))
+      :ansi)))
 
 (defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
@@ -229,6 +216,7 @@
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
+(defmethod ->honeysql [:sql Number] [_ num]  (hx/numeric-literal num))
 
 (defmethod ->honeysql [:sql :value] [driver [_ value]] (->honeysql driver value))
 
@@ -273,13 +261,13 @@
     (when-not (= <> honeysql-form)
       (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
 
-(defmethod ->honeysql [:sql TypedHoneySQLForm]
+(defmethod ->honeysql [:sql ::hx/typed]
   [driver typed-form]
   (->honeysql driver (hx/unwrap-typed-honeysql-form typed-form)))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
-(defmethod ->honeysql [:sql Identifier]
-  [_ identifier]
+(defmethod ->honeysql [:sql ::hx/identifier]
+  [_driver identifier]
   identifier)
 
 (defn apply-temporal-bucketing
@@ -420,7 +408,7 @@
 
 (defmethod ->float :sql
   [_ value]
-  (hx/cast :float value))
+  (hx/maybe-cast :float value))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]
@@ -431,15 +419,15 @@
     (apply hsql/call :/
            (->float driver numerator)
            (for [denominator denominators]
-             (hsql/call :case
-               (hsql/call := denominator 0) nil
-               :else                        denominator)))))
+             [:case
+              [:= denominator (hx/numeric-literal 0)] nil
+              :else                                   denominator]))))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
   (hsql/call :sum (hsql/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0)))
+                    :else                    (hx/numeric-literal 0.0))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -603,7 +591,7 @@
                              (->honeysql driver (hx/identifier
                                                  :field-alias
                                                  (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
-    (reduce h/merge-select honeysql-form honeysql-ags)))
+    (apply h/select honeysql-form honeysql-ags)))
 
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
@@ -611,16 +599,16 @@
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (->> breakout-fields
-                                        (remove (set fields-fields))
-                                        (mapv (fn [field-clause]
-                                                (as driver field-clause)))))
-    (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+    (apply h/select new-hsql (->> breakout-fields
+                                  (remove (set fields-fields))
+                                  (mapv (fn [field-clause]
+                                          (as driver field-clause)))))
+    (apply h/group-by new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
-  (apply h/merge-select honeysql-form (vec (for [field-clause fields]
-                                             (as driver field-clause)))))
+  (apply h/select honeysql-form (for [field-clause fields]
+                                  (as driver field-clause))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -760,17 +748,18 @@
     (->honeysql driver (hx/identifier :table-alias join-alias))]
    (->honeysql driver condition)])
 
-(def ^:private join-strategy->merge-fn
-  {:left-join  h/merge-left-join
-   :right-join h/merge-right-join
-   :inner-join h/merge-join
-   :full-join  h/merge-full-join})
+(def ^:private join-fn
+  {:left-join  h/left-join
+   :right-join h/right-join
+   :inner-join h/join
+   :full-join  h/full-join})
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
   (reduce
    (fn [honeysql-form {:keys [strategy], :as join}]
-     (apply (join-strategy->merge-fn strategy) honeysql-form (join->honeysql driver join)))
+     (let [join-honeysql (apply (join-fn strategy) (join->honeysql driver join))]
+       (h/join-by honeysql-form join-honeysql)))
    honeysql-form
    joins))
 
@@ -787,19 +776,21 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
+  (apply h/order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :limit]
   [_ _ honeysql-form {value :limit}]
-  (h/limit honeysql-form value))
+  {:pre [(number? value)]}
+  (h/limit honeysql-form (hx/numeric-literal value)))
 
 (defmethod apply-top-level-clause [:sql :page]
   [_ _ honeysql-form {{:keys [items page]} :page}]
+  {:pre [(number? items) (number? page)]}
   (-> honeysql-form
-      (h/limit items)
-      (h/offset (* items (dec page)))))
+      (h/limit (hx/numeric-literal items))
+      (h/offset (hx/numeric-literal (* items (dec page))))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
@@ -811,7 +802,7 @@
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
-  (h/from honeysql-form (->honeysql driver (qp.store/table source-table-id))))
+  (h/from honeysql-form [(->honeysql driver (qp.store/table source-table-id))]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -840,19 +831,22 @@
 (defn format-honeysql
   "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
   [driver honeysql-form]
+  #_(println (str "HONEYSQL =>\n" (u/pprint-to-str 'yellow honeysql-form))) ; NOCOMMIT
   (try
-    (binding [hformat/*subquery?* false]
-      (hsql/format honeysql-form
-        :quoting             (quote-style driver)
-        :allow-dashed-names? true))
+    (hsql/format
+     honeysql-form
+     {:dialect      (honeysql-dialect driver)
+      :pretty       true
+      :quoted       true
+      :quoted-snake false})
     (catch Throwable e
       (try
         (log/error (u/format-color 'red
-                       (str (deferred-tru "Invalid HoneySQL form:")
-                            "\n"
-                            (u/pprint-to-str honeysql-form))))
+                                   (str (deferred-tru "Invalid HoneySQL form:")
+                                        "\n"
+                                        (u/pprint-to-str honeysql-form))))
         (finally
-          (throw (ex-info (tru "Error compiling HoneySQL form")
+          (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                           {:driver driver
                            :form   honeysql-form
                            :type   qp.error-type/driver}
@@ -860,21 +854,21 @@
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."
-  [driver {:keys [select], [from] :from, :as honeysql-form}]
+  [_driver {:keys [select], [from] :from, :as honeysql-form}]
   ;; TODO - this is hacky -- we should ideally never need to add `SELECT *`, because we should know what fields to
   ;; expect from the source query, and middleware should be handling that for us
   (cond-> honeysql-form
     (empty? select) (assoc :select (let [table-identifier (if (sequential? from)
                                                             (second from)
-                                                            from)
-                                         [raw-identifier] (format-honeysql driver table-identifier)]
-                                     (if (seq raw-identifier)
-                                       [(hsql/raw (format "%s.*" raw-identifier))]
+                                                            from)]
+                                     (println "table-identifier:" table-identifier) ; NOCOMMIT
+                                     (if table-identifier
+                                       [[(hx/identifier :field table-identifier :*)]]
                                        [:*])))))
 
 (defn- apply-top-level-clauses
   "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
-  Clauses are applied according to the order in `top-level-clause-application-order`."
+  Clauses are applied according to the order in [[top-level-clause-application-order]]."
   [driver honeysql-form inner-query]
   (->> (reduce
         (fn [honeysql-form k]
@@ -950,7 +944,8 @@
   escape-alias
   field->alias
   field->identifier
-  prefix-field-alias])
+  prefix-field-alias
+  quote-style])
 
 ;; deprecated, but we'll keep it here for now for backwards compatibility.
 (defmethod ->honeysql [:sql (type Field)]

@@ -4,7 +4,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.db.spec :as dbspec]
@@ -106,7 +106,7 @@
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
-    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
+    (hsql/call :date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))])))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
@@ -182,7 +182,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :convert expr (hsql/raw "DATETIME")))
+  (hsql/call :convert expr [:raw "DATETIME"]))
 
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]

@@ -4,7 +4,7 @@
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase-enterprise.audit-app.pages.common.cards :as cards]
             [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [ring.util.codec :as codec]

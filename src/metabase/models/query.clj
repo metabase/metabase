@@ -4,7 +4,7 @@
             [metabase.db :as mdb]
             [metabase.mbql.normalize :as normalize]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -36,7 +36,7 @@
     :integer))
 
 (defn- update-rolling-average-execution-time!
-  "Update the rolling average execution time for query with QUERY-HASH. Returns `true` if a record was updated,
+  "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
    or `false` if no matching records were found."
   ^Boolean [query, ^bytes query-hash, ^Integer execution-time-ms]
   (let [avg-execution-time (hx/cast (int-casting-type) (hx/round (hx/+ (hx/* 0.9 :average_execution_time)

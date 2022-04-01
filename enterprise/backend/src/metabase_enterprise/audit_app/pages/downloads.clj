@@ -6,7 +6,7 @@
             [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-1-extensions :as hx]))
 
 ;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
 ;; past 30 days. Intended to power scatter plot.

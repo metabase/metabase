@@ -18,7 +18,7 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.timezone :as qp.tz]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.urls :as urls]
             [schema.core :as s]

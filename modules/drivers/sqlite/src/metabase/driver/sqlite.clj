@@ -1,7 +1,7 @@
 (ns metabase.driver.sqlite
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.config :as config]

@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
@@ -72,14 +72,14 @@
   (testing "Should convert fractional seconds to milliseconds"
     (is (= (hsql/call :dateadd
              (hx/literal "millisecond")
-             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
+             (hx/with-database-type-info (hx/numeric-literal 100500) "long")
              :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
     (is (= (hsql/call :dateadd
              (hx/literal "second")
-             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
+             (hx/with-database-type-info (hx/numeric-literal 100) "long")
              :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
@@ -136,7 +136,8 @@
 (defn- pretty-sql [s]
   (-> s
       (str/replace #"\"" "")
-      (str/replace #"PUBLIC\." "")))
+      (str/replace #"PUBLIC\." "")
+      str/trim))
 
 (deftest do-not-cast-to-date-if-column-is-already-a-date-test
   (mt/test-driver :h2
@@ -145,8 +146,8 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
-                      "FROM ATTEMPTS "
-                      "GROUP BY ATTEMPTS.DATE "
-                      "ORDER BY ATTEMPTS.DATE ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))))
+          (is (= ["SELECT ATTEMPTS.DATE AS DATE, COUNT(*) AS count"
+                  "FROM ATTEMPTS"
+                  "GROUP BY ATTEMPTS.DATE"
+                  "ORDER BY ATTEMPTS.DATE ASC"]
+                 (some-> (qp/compile query) :query pretty-sql str/split-lines))))))))

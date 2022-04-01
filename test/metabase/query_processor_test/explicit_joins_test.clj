@@ -871,3 +871,28 @@
                       ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
+
+(deftest join-order-test
+  (testing "Join order should be maintained regardless of join type (#15342)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
+      (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+        (mt/dataset sample-dataset
+          (let [query (mt/mbql-query people
+                        {:joins    [{:source-table $$orders
+                                     :alias        "O"
+                                     :condition    [:= $id &O.orders.user_id]
+                                     :strategy     :left-join}
+                                    {:source-table $$products
+                                     :alias        "P"
+                                     :condition    [:= &O.orders.product_id &P.products.id]
+                                     :strategy     :inner-join
+                                     :fields       [&P.products.title]}]
+                         :fields   [$id $name &O.orders.id &P.products.title]
+                         :order-by [[:asc $id]
+                                    [:asc &O.orders.id]]
+                         :limit    2})]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "Hudson Borer" 1 "Awesome Concrete Shoes"]
+                      [1 "Hudson Borer" 2 "Mediocre Wooden Bench"]]
+                     (mt/formatted-rows [int str int str]
+                      (qp/process-query query)))))))))))

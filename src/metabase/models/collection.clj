@@ -14,7 +14,7 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [potemkin :as p]

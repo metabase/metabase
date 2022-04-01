@@ -12,7 +12,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [clojure.string :as str])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -278,12 +279,13 @@
                                 "LIMIT 1048575")]
           (mt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= {:card-id (u/the-id card), :query expected-sql, :params nil}
-                   (value-for-tag
-                    {:name         "card-template-tag-test"
-                     :display-name "Card template tag test"
-                     :type         :card
-                     :card-id      (:id card)}
-                    []))))))))
+                   (-> (value-for-tag
+                        {:name         "card-template-tag-test"
+                         :display-name "Card template tag test"
+                         :type         :card
+                         :card-id      (:id card)}
+                        [])
+                       (update :query (comp #(str/replace % #"\n" " ") str/trim))))))))))
 
   (testing "Card query template tag wraps error in tag details"
     (mt/with-temp Card [param-card {:dataset_query

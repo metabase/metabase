@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.collection :as collection]
             [metabase.util.cron :as u.cron]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]))
 
 (def table-metadata

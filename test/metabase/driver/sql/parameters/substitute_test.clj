@@ -115,15 +115,15 @@
                  2
                  [:string/contains         {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?"
                                                        ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NOT (\"PUBLIC\".\"VENUES\".\"NAME\" like ?) OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                            :expected ["select * from venues where NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?) OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                        ["%foo%"]]}
                   :string/starts-with      {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?"
                                                        ["foo%"]]}
                   :string/=                {:field    :name
                                             :value    ["foo"]
@@ -131,30 +131,30 @@
                                                        ["foo"]]}
                   :string/=                {:field    :name
                                             :value    ["foo" "bar" "baz"]
-                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" = ? OR \"PUBLIC\".\"VENUES\".\"NAME\" = ? "
-                                                            "OR \"PUBLIC\".\"VENUES\".\"NAME\" = ?)")
+                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" = ?) OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?) "
+                                                            "OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)")
                                                        ["foo" "bar" "baz"]]}
                   :string/!=               {:field    :name
                                             :value    ["foo" "bar"]
-                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL))")
+                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"NAME\" <> ?) OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)) "
+                                                            "AND ((\"PUBLIC\".\"VENUES\".\"NAME\" <> ?) OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL))")
                                                        ["foo" "bar"]]}
                   :number/=                {:field    :price
                                             :value    [1]
                                             :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" = 1" ()]}
                   :number/=                {:field    :price
                                             :value    [1 2 3]
-                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 2 "
-                                                            "OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 3)")
+                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 2) "
+                                                            "OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3)")
                                                        ()]}
                   :number/!=               {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)" ()]}
+                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)" ()]}
                   :number/!=               {:field    :price
                                             :value    [1 2 3]
-                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
-                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL))")
+                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)) "
+                                                            "AND ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)) "
+                                                            "AND ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL))")
                                                        ()]}
                   :number/>=               {:field    :price
                                             :value    [1]

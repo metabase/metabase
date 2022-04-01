@@ -1,7 +1,7 @@
 (ns metabase.driver.sparksql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.helpers :as h]
             [medley.core :as m]
             [metabase.connection-pool :as pool]

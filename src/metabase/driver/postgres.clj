@@ -6,7 +6,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.db.spec :as db.spec]
@@ -50,7 +50,7 @@
   (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
     (let [hsql-form (->timestamp hsql-form)]
-      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+      (-> (hx/+ hsql-form [:raw (format "(INTERVAL '%s %s')" amount (name unit))])
           (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -359,7 +359,7 @@
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:effective_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          unwrapped-identifier (:form identifier)
+          unwrapped-identifier (hx/unwrap-typed-honeysql-form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           ;; Array and sub-JSON coerced to text
           cast-type            (cond

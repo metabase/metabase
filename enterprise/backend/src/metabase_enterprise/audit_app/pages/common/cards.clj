@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.pages.common.cards
   (:require [metabase-enterprise.audit-app.pages.common :as common]
             [metabase.db.connection :as mdb.connection]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-1-extensions :as hx]))
 
 (def avg-exec-time
   "HoneySQL for a CTE to include the average execution time for each Card."

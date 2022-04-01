@@ -1,7 +1,7 @@
 (ns metabase.models.timeline-event
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]

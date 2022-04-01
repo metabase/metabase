@@ -101,16 +101,14 @@
 (defn exception-response
   "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
   [^Throwable e]
-  (let [[m & more :as maps] (for [e (exception-chain e)]
-                              (format-exception e))]
+  (let [[m :as maps] (mapv format-exception (exception-chain e))]
     (merge
      m
      (best-top-level-error maps)
      ;; merge in the first error_type we see
      (when-let [error-type (some :error_type maps)]
        {:error_type error-type})
-     (when (seq more)
-       {:via (vec more)}))))
+     {:via (vec maps)})))
 
 
 (defn- query-info

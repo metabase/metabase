@@ -8,6 +8,7 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]
+            [metabase.db.honeysql :as mdb.honeysql]
             [metabase.db.liquibase :as liquibase]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.setting :as setting]
@@ -17,6 +18,8 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import liquibase.exception.LockException))
+
+(comment mdb.honeysql/keep-me) ; so the `:h2` quoting style is defined.
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to

@@ -22,7 +22,7 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (query driver database (merge {:from [(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]}
+   (query driver database (merge {:from [[(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]]}
                                  honeysql-form))))
 
 

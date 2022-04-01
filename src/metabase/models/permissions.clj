@@ -185,13 +185,14 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.honeysql-1-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [metabase.util.regex :as u.regex]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models]
+            [honeysql.core :as hsql]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -752,7 +753,7 @@
                              :and
                              [:= :group_id (u/the-id group-or-id)]
                              [:or
-                              [:like path (hx/concat :object (hx/literal "%"))]
+                              [:like path (hsql/call :concat :object (hx/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]

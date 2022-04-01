@@ -173,6 +173,12 @@
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- minutes-ago-honeysql-form [db-type minutes]
+  (hsql/raw (format (case db-type
+                      :h2       "dateadd('minute', %d, now())"
+                      :mysql    "date_add(now(6), INTERVAL %d minute)"
+                      :postgres "(now() + (INTERVAL '%d minute'))") (- minutes))))
+
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type])} session-with-id-query
@@ -188,7 +194,7 @@
         :where     [:and
                     [:= :user.is_active true]
                     [:= :session.id (hsql/raw "?")]
-                    (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
+                    (let [oldest-allowed (minutes-ago-honeysql-form db-type max-age-minutes)]
                       [:> :session.created_at oldest-allowed])
                     [:= :session.anti_csrf_token (case session-type
                                                    :normal         nil

@@ -1,7 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+            [honey.sql :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.driver :as driver]
