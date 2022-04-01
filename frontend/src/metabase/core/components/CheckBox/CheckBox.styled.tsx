@@ -68,6 +68,7 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   display: flex;
   justify-content: center;
   align-items: center;
+  min-width: ${props => `${props.size}px`};
   width: ${props => `${props.size}px`};
   height: ${props => `${props.size}px`};
   border: 0.125rem solid
