@@ -108,18 +108,20 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
 
   return (
     <OnClickOutsideWrapper handleDismissal={setInactive}>
-      <SearchInputContainer onClick={setActive}>
-        <SearchIcon name="search" />
-        <SearchInput
-          value={searchText}
-          placeholder={t`Search` + "…"}
-          maxLength={200}
-          onClick={setActive}
-          onFocus={onFocus}
-          onChange={onTextChange}
-          onKeyPress={handleInputKeyPress}
-          ref={searchInput}
-        />
+      <>
+        <SearchInputContainer onClick={setActive}>
+          <SearchIcon name="search" />
+          <SearchInput
+            value={searchText}
+            placeholder={t`Search` + "…"}
+            maxLength={200}
+            onClick={setActive}
+            onFocus={onFocus}
+            onChange={onTextChange}
+            onKeyPress={handleInputKeyPress}
+            ref={searchInput}
+          />
+        </SearchInputContainer>
         {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
           <SearchResultsFloatingContainer>
             {searchText.trim().length > 0 ? (
@@ -131,7 +133,7 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
             )}
           </SearchResultsFloatingContainer>
         )}
-      </SearchInputContainer>
+      </>
     </OnClickOutsideWrapper>
   );
 }

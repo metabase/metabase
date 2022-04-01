@@ -26,10 +26,6 @@ export const SearchInputContainer = styled.div`
   &:hover {
     background-color: ${color("bg-medium")};
   }
-
-  ${breakpointMinSmall} {
-    position: relative;
-  }
 `;
 
 export const SearchInput = styled.input`
@@ -66,6 +62,7 @@ export const SearchResultsFloatingContainer = styled.div`
 
   ${breakpointMinSmall} {
     top: 60px;
+    max-width: ;
   }
 `;
 
