@@ -861,7 +861,6 @@
     (empty? select) (assoc :select (let [table-identifier (if (sequential? from)
                                                             (second from)
                                                             from)]
-                                     (println "table-identifier:" table-identifier) ; NOCOMMIT
                                      (if table-identifier
                                        [[(hx/identifier :field table-identifier :*)]]
                                        [:*])))))
