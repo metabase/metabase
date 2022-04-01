@@ -462,9 +462,9 @@ export function formatTime(value) {
   const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
-  } else {
-    return m.format("LT");
   }
+
+  return m.format("LT");
 }
 
 export function formatTimeWithUnit(value, unit, options = {}) {
