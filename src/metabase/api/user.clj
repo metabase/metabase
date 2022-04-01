@@ -165,7 +165,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :has_question_and_dashboard)
       maybe-add-general-permissions))
 
 (api/defendpoint GET "/:id"
