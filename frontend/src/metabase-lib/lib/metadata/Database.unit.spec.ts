@@ -166,9 +166,7 @@ describe("Database", () => {
       });
       expect(database.question().datasetQuery()).toEqual({
         database: 123,
-        query: {
-          "source-table": null,
-        },
+        query: {},
         type: "query",
       });
       expect(

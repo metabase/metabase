@@ -124,13 +124,15 @@ export default class Database extends Base {
     });
   }
 
-  nativeQuestion(native: NativeQuery): Question {
+  nativeQuestion(native: Partial<NativeQuery> = {}): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
         database: this.id,
         type: "native",
         native: {
+          query: "",
+          "template-tags": {},
           ...native,
         },
       },
