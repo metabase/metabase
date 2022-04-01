@@ -11,6 +11,8 @@ import {
 const openNavbarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
+  border-right: 1px solid ${color("border")};
+
   ${breakpointMaxSmall} {
     width: 90vw;
   }
@@ -29,8 +31,6 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   overflow: auto;
   overflow-x: hidden;
   z-index: 4;
-
-  border-right: 1px solid ${color("border")};
 
   transition: width 0.2s;
 
