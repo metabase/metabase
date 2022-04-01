@@ -20,14 +20,12 @@ import {
   DescriptionHeading,
   MenuContainer,
   TitleContent,
-  ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
-function Title({ collection, handleToggleMobileSidebar }) {
+function Title({ collection }) {
   return (
     <div>
       <TitleContent>
-        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
         <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
           collection={collection}
           mr={1}

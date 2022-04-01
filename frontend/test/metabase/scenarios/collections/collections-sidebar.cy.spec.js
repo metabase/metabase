@@ -1,43 +1,45 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  navigationSidebar,
+  openNavigationSidebar,
+  closeNavigationSidebar,
+} from "__support__/e2e/cypress";
 
 describe("collections sidebar (metabase#15006)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
+    cy.viewport(480, 800);
+    cy.intercept("GET", "/api/collection/*").as("fetchCollections");
     cy.visit("/collection/root");
   });
 
   it("should be able to toggle collections sidebar when switched to mobile screen size", () => {
-    cy.icon("close").should("not.be.visible");
-    cy.icon("burger").should("not.be.visible");
+    cy.wait("@fetchCollections");
+    navigationSidebar().should("have.attr", "aria-hidden", "true");
+    openNavigationSidebar();
 
-    // resize window to mobile form factor
-    cy.viewport(480, 800);
-
-    sidebar().should("not.be.visible");
-
-    cy.icon("burger").click();
-    cy.icon("burger").should("not.be.visible");
-
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.findByText("First collection");
-      cy.icon("close").click();
     });
 
-    cy.icon("burger");
+    closeNavigationSidebar();
+    navigationSidebar().should("have.attr", "aria-hidden", "true");
   });
 
   it("should close collections sidebar when collection is clicked in mobile screen size", () => {
-    cy.viewport(480, 800);
-    cy.icon("burger").click();
+    cy.wait("@fetchCollections");
+    openNavigationSidebar();
 
-    sidebar().should("be.visible");
-
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.findByText("First collection").click();
     });
+    cy.wait("@fetchCollections");
 
-    cy.icon("burger");
+    navigationSidebar().should("have.attr", "aria-hidden", "true");
+    cy.findByTestId("collection-name-heading").should(
+      "have.text",
+      "First collection",
+    );
   });
 });

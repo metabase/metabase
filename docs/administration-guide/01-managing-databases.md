@@ -140,7 +140,7 @@ If you're having trouble with your database connection, you can check out this [
 
 - [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html).
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
-- [Models](../../users-guide/models.md).
+- [Models](../users-guide/models.md).
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
 
 ---

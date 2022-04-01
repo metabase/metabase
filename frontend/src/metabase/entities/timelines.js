@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { updateIn } from "icepick";
 import _ from "underscore";
 import { TimelineSchema } from "metabase/schema";
-import { TimelineApi } from "metabase/services";
+import { TimelineApi, TimelineEventApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline } from "metabase/lib/timelines";
 import TimelineEvents from "./timeline-events";
@@ -16,32 +16,20 @@ const Timelines = createEntity({
   forms,
 
   api: {
-    list: async (params, ...args) => {
-      if (params.cardId) {
-        return TimelineApi.getCardTimelines(params, ...args);
-      } else if (params.collectionId) {
-        return TimelineApi.getCollectionTimelines(params, ...args);
-      } else {
-        return TimelineApi.getTimelines(params, ...args);
-      }
+    list: (params, ...args) => {
+      return params.collectionId
+        ? TimelineApi.listForCollection(params, ...args)
+        : TimelineApi.list(params, ...args);
     },
   },
 
   actions: {
     createWithEvent: (event, collection) => async dispatch => {
-      const timelineData = getDefaultTimeline(collection);
-      const timelineAction = Timelines.actions.create(timelineData);
-      const timelineResponse = await dispatch(timelineAction);
-      const timeline = Timelines.HACK_getObjectFromAction(timelineResponse);
+      const timeline = await TimelineApi.create(getDefaultTimeline(collection));
+      await TimelineEventApi.create({ ...event, timeline_id: timeline.id });
 
-      const eventData = { ...event, timeline_id: timeline.id };
-      const eventAction = TimelineEvents.actions.create(eventData);
-      await dispatch(eventAction);
-
-      return {
-        type: "metabase/entities/timelines/CREATE_WITH_EVENT",
-        payload: timeline,
-      };
+      dispatch({ type: Timelines.actionTypes.INVALIDATE_LISTS_ACTION });
+      dispatch({ type: TimelineEvents.actionTypes.INVALIDATE_LISTS_ACTION });
     },
   },
 

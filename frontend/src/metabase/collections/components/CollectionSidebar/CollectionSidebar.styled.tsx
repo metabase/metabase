@@ -18,11 +18,7 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-interface SidebarProps {
-  shouldDisplayMobileSidebar: boolean;
-}
-
-export const Sidebar = styled.aside<SidebarProps>`
+export const Sidebar = styled.aside`
   bottom: 0;
   display: flex;
   box-sizing: border-box;
@@ -30,24 +26,9 @@ export const Sidebar = styled.aside<SidebarProps>`
   left: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-top: ${space(3)};
-  position: fixed;
-  top: 65px;
+  padding-top: ${space(1)};
   width: 0;
-  background-color: ${color("white")};
-
-  ${({ shouldDisplayMobileSidebar }) =>
-    shouldDisplayMobileSidebar &&
-    css`
-      box-shadow: 5px 0px 8px rgba(0, 0, 0, 0.35),
-        40px 0px rgba(5, 14, 31, 0.32);
-      width: calc(100vw - 40px);
-
-      ${breakpointMinSmall} {
-        box-shadow: none;
-        width: ${SIDEBAR_WIDTH};
-      }
-    `}
+  background-color: transparent;
 
   ${breakpointMinSmall} {
     width: ${SIDEBAR_WIDTH};
@@ -58,6 +39,10 @@ export const SidebarHeading = styled.h4`
   color: ${color("text-medium")};
   font-size: 12px;
   font-weight: 700;
+  font-size: 11px;
+  margin-left: ${space(2)};
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
   letter-spacing: 0.5px;
   margin-left: ${space(3)};
   text-transform: uppercase;
@@ -90,22 +75,3 @@ export const ToggleListDisplayButton = styled(Icon)<
       transform: rotate(90deg) translate(-1px, -1px);
     `}
 `;
-
-export const ToggleMobileSidebarIcon = styled(Icon)`
-  color: ${color("brand")};
-  // margin sizes hard-coded
-  // for icon to land on
-  // same position as burger icon
-  // when sidebar is hidden in mobile
-  margin: -4px ${space(2)} 0 30px;
-
-  ${breakpointMinSmall} {
-    cursor: pointer;
-    display: none;
-  }
-`;
-
-ToggleMobileSidebarIcon.defaultProps = {
-  name: "close",
-  size: 20,
-};

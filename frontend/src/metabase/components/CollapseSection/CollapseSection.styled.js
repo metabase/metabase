@@ -31,11 +31,13 @@ const ICON_VARIANTS = {
   },
 };
 
-export const ToggleIcon = styled(({ isExpanded, variant, ...props }) => {
-  const { collapsed, expanded } = ICON_VARIANTS[variant];
-  const name = isExpanded ? expanded : collapsed;
-  return <Icon name={name} size={12} {...props} />;
-})`
+export const ToggleIcon = styled(
+  ({ isExpanded, variant, size = 12, ...props }) => {
+    const { collapsed, expanded } = ICON_VARIANTS[variant];
+    const name = isExpanded ? expanded : collapsed;
+    return <Icon name={name} size={size} {...props} />;
+  },
+)`
   ${props => css`
     margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
   `};

@@ -35,7 +35,7 @@ const colors: Record<string, string> = {
   "bg-yellow": "#FFFCF2",
   focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
-  border: "#F0F0F0",
+  border: "#EEECEC",
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
@@ -57,7 +57,8 @@ export const aliases: Record<string, string> = {
   database: "accent2",
   dashboard: "brand",
   pulse: "accent4",
-  nav: "brand",
+  nav: "bg-white",
+  content: "bg-light",
 };
 export const harmony: string[] = [];
 // DEPRECATED: we should remove these and use `colors` directly

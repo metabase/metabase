@@ -2,7 +2,7 @@ import React, { Fragment } from "react";
 import { t } from "ttag";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EmptyState from "metabase/components/EmptyState";
-import ErrorDetails from "metabase/components/ErrorDetails";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
 import GreetingSection from "../GreetingSection";
@@ -27,6 +27,7 @@ export interface HomepageProps {
   showData?: boolean;
   showPinMessage?: boolean;
   showSyncingModal?: boolean;
+  openNavbar: () => void;
   onHideData?: () => void;
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
@@ -46,6 +47,7 @@ const Homepage = ({
   showData,
   showPinMessage,
   showSyncingModal,
+  openNavbar,
   onHideData,
   onHideXrays,
   onHidePinMessage,
@@ -55,6 +57,10 @@ const Homepage = ({
   onDatabaseClick,
   allError,
 }: HomepageProps): JSX.Element => {
+  useOnMount(() => {
+    openNavbar();
+  });
+
   return (
     <HomepageRoot>
       <GreetingSection user={user} />

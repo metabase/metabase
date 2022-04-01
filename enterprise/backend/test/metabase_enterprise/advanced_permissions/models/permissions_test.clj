@@ -89,7 +89,7 @@
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Can't set download permissions without having the advanced-permissions premium feature"
+               #"The download permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full}))))))))
 
 
@@ -199,7 +199,7 @@
         (testing "Data model permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Can't set data model permissions without having the advanced-permissions premium feature"
+               #"The data model permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

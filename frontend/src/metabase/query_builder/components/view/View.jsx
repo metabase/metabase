@@ -347,6 +347,7 @@ export default class View extends React.Component {
               onEditSeries={onEditSeries}
               onRemoveSeries={onRemoveSeries}
               onEditBreakout={onEditBreakout}
+              mode={queryMode}
             />
           </StyledDebouncedFrame>
         )}

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration>
   <Appenders>
-    <Console name="STDOUT" target="SYSTEM_OUT">
+    <File name="TestLogs" fileName="logs/test.log">
       <PatternLayout pattern="%d{MM-dd HH:mm:ss} %highlight{%p} %style{%c{2}}{bright} :: %m%n">
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
-    </Console>
+    </File>
   </Appenders>
 
   <Loggers>
@@ -13,7 +13,7 @@
     <Logger name="com.mchange" level="ERROR"/>
 
     <Root level="ERROR">
-      <AppenderRef ref="STDOUT"/>
+      <AppenderRef ref="TestLogs"/>
     </Root>
   </Loggers>
 </Configuration>
