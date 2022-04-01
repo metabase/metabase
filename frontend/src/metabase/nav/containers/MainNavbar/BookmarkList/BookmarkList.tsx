@@ -97,6 +97,7 @@ const BookmarkList = ({
       initialState={BOOKMARKS_INITIALLY_VISIBLE ? "expanded" : "collapsed"}
       iconPosition="right"
       iconSize={8}
+      headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
       <ul>{bookmarks.map(renderBookmark)}</ul>
