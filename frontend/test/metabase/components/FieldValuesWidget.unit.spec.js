@@ -166,23 +166,23 @@ describe("FieldValuesWidget", () => {
 
       expect(screen.queryByText("AZ")).toBeNull();
       expect(screen.queryByText("Facebook")).toBeNull();
+    });
+  });
 
-      describe("prefix", () => {
-        it("should render a passed prefix", () => {
-          renderFieldValuesWidget({
-            fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
-            prefix: "$$$",
-          });
-          expect(screen.getByTestId("input-prefix")).toHaveTextContent("$$$");
-        });
-
-        it("should not render a prefix if omitted", () => {
-          renderFieldValuesWidget({
-            fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
-          });
-          expect(screen.queryByTestId("input-prefix")).toBeNull();
-        });
+  describe("prefix", () => {
+    it("should render a passed prefix", () => {
+      renderFieldValuesWidget({
+        fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
+        prefix: "$$$",
       });
+      expect(screen.getByTestId("input-prefix")).toHaveTextContent("$$$");
+    });
+
+    it("should not render a prefix if omitted", () => {
+      renderFieldValuesWidget({
+        fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
+      });
+      expect(screen.queryByTestId("input-prefix")).toBeNull();
     });
   });
 });
