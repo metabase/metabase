@@ -22,10 +22,11 @@ describe("issue 19737", () => {
       .should("be.visible")
       .click();
 
-    cy.findByText("Models").click();
-
-    cy.findByText("Your personal collection").click();
-    cy.findByText(modelName);
+    popover().within(() => {
+      cy.findByText("Models").click();
+      cy.findByText("Your personal collection").click();
+      cy.findByText(modelName);
+    });
   });
 
   it("should not show duplicate models in the data picker after it's moved from a custom collection without refreshing (metabase#19737)", () => {
@@ -44,10 +45,11 @@ describe("issue 19737", () => {
       .click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
-    cy.findByText("Models").click();
-
-    cy.findByText("First collection").click();
-    cy.findByText(modelName);
+    popover().within(() => {
+      cy.findByText("Models").click();
+      cy.findByText("First collection").click();
+      cy.findByText(modelName);
+    });
 
     // Use back button to so the state is kept
     cy.go("back");
@@ -64,10 +66,11 @@ describe("issue 19737", () => {
       .should("be.visible")
       .click();
 
-    cy.findByText("Models").click();
-
-    cy.findByText("First collection").click();
-    cy.findByText("Nothing here");
+    popover().within(() => {
+      cy.findByText("Models").click();
+      cy.findByText("First collection").click();
+      cy.findByText("Nothing here");
+    });
   });
 });
 

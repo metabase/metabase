@@ -2,13 +2,14 @@ import styled from "@emotion/styled";
 import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
+import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
   padding: 0.5rem;
   background: ${color("admin-navbar")};
   color: ${color("white")};
   font-size: 0.85rem;
-  height: 65px;
+  height: ${ADMIN_NAVBAR_HEIGHT};
   display: flex;
   align-items: center;
 `;

@@ -5,6 +5,7 @@
   "supportFile": "frontend/test/__support__/e2e/cypress.js",
   "videoUploadOnPasses": false,
   "chromeWebSecurity": false,
+  "modifyObstructiveCode": false,
   "projectId": "KetpiS",
   "viewportHeight": 800,
   "viewportWidth": 1280,

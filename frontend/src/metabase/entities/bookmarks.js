@@ -1,7 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
 import Collection from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
-import Question from "metabase/entities/questions";
+import Questions from "metabase/entities/questions";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
 
@@ -23,11 +23,20 @@ const Bookmarks = createEntity({
   objectSelectors: {
     getIcon,
   },
+
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
+      state[`card-${payload?.object?.id}`] = undefined;
+      return state;
+    }
+
+    return state;
+  },
 });
 
 function getEntityFor(type) {
   const entities = {
-    card: Question,
+    card: Questions,
     collection: Collection,
     dashboard: Dashboard,
   };
@@ -35,7 +44,7 @@ function getEntityFor(type) {
   return entities[type];
 }
 
-export function getIcon(bookmark) {
+function getIcon(bookmark) {
   const bookmarkEntity = getEntityFor(bookmark.type);
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }

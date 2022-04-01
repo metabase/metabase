@@ -8,12 +8,12 @@ runs:
         node-version: 14.x
         cache: 'yarn'
     - name: Get M2 cache
-      uses: actions/cache@v3
+      uses: actions/cache@v2
       with:
         path: ~/.m2
         key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get node_modules cache
-      uses: actions/cache@v3
+      uses: actions/cache@v2
       with:
         path: node_modules
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}

@@ -12,14 +12,10 @@ import CollectionLink from "metabase/collections/components/CollectionSidebar/Co
 import { Container } from "./RootCollectionLink.styled";
 
 const propTypes = {
-  handleToggleMobileSidebar: PropTypes.func.isRequired,
   isRoot: PropTypes.bool.isRequired,
 };
 
-export default function RootCollectionLink({
-  handleToggleMobileSidebar,
-  isRoot,
-}) {
+export default function RootCollectionLink({ isRoot }) {
   return (
     <Collection.Loader id={ROOT_COLLECTION.id}>
       {({ collection: root }) => (
@@ -28,7 +24,6 @@ export default function RootCollectionLink({
             {({ highlighted, hovered }) => (
               <CollectionLink
                 to={Urls.collection({ id: ROOT_COLLECTION.id })}
-                onClick={handleToggleMobileSidebar}
                 selected={isRoot}
                 highlighted={highlighted}
                 hovered={hovered}

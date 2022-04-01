@@ -164,9 +164,11 @@ describe("smoketest > user", () => {
     // Delete summary from sidebar
 
     summarize();
-    cy.icon("close")
-      .first()
-      .click();
+    sidebar().within(() => {
+      cy.icon("close")
+        .first()
+        .click();
+    });
     cy.findByText("Done").click();
 
     cy.findByText("Average of Rating by Category").should("not.exist");
