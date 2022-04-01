@@ -6,14 +6,14 @@ import XraySection from "../../containers/XraySection";
 
 export interface HomeContentProps {
   databases: Database[];
-  recents: RecentView[];
+  recentViews: RecentView[];
 }
 
 const HomeContent = ({
   databases,
-  recents,
+  recentViews,
 }: HomeContentProps): JSX.Element | null => {
-  if (recents.length) {
+  if (recentViews.length) {
     return <RecentSection />;
   } else if (databases.some(isSyncCompleted)) {
     return <XraySection />;
