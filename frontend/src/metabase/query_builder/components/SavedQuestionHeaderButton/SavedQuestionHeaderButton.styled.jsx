@@ -9,6 +9,7 @@ export const HeaderButton = styled(Button)`
   padding: 0.25rem 0.25rem;
   color: ${props => (props.isActive ? color("brand") : "unset")};
   background-color: ${props => (props.isActive ? color("bg-light") : "unset")};
+  text-align: left;
 
   .Icon:not(.Icon-chevrondown) {
     color: ${props => color(props.leftIconColor)};

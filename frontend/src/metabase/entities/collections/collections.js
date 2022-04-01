@@ -1,6 +1,6 @@
+import _ from "underscore";
 import { createEntity, undo } from "metabase/lib/entities";
 
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import { CollectionSchema } from "metabase/schema";
@@ -9,42 +9,20 @@ import { createSelector } from "reselect";
 import { GET } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
-import {
-  isPersonalCollection,
-  canonicalCollectionId,
-} from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getFormSelector } from "./collections/forms";
+import {
+  ROOT_COLLECTION,
+  PERSONAL_COLLECTION,
+  PERSONAL_COLLECTIONS,
+} from "./constants";
+import { getFormSelector } from "./forms";
+import { getCollectionIcon, getCollectionType } from "./utils";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
-
-export const ROOT_COLLECTION = {
-  id: "root",
-  name: t`Our analytics`,
-  location: "",
-  path: [],
-};
-
-export const PERSONAL_COLLECTION = {
-  id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
-  location: "/",
-  path: [ROOT_COLLECTION.id],
-  can_write: true,
-};
-
-// fake collection for admins that contains all other user's collections
-export const PERSONAL_COLLECTIONS = {
-  id: "personal", // placeholder id
-  name: t`All personal collections`,
-  location: "/",
-  path: [ROOT_COLLECTION.id],
-  can_write: false,
-};
 
 const Collections = createEntity({
   name: "collections",
@@ -142,41 +120,6 @@ const Collections = createEntity({
 });
 
 export default Collections;
-
-export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
-  if (collection.id === PERSONAL_COLLECTIONS.id) {
-    return { name: "group" };
-  }
-  if (isPersonalCollection(collection)) {
-    return { name: "person" };
-  }
-  const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
-
-  return authorityLevel
-    ? {
-        name: authorityLevel.icon,
-        color: color(authorityLevel.color),
-        tooltip: authorityLevel.tooltips?.[tooltip],
-      }
-    : { name: "folder" };
-}
-
-export function normalizedCollection(collection) {
-  if (canonicalCollectionId(collection.id) === null) {
-    return ROOT_COLLECTION;
-  }
-  return collection;
-}
-
-export const getCollectionType = (collectionId, state) =>
-  collectionId === null || collectionId === "root"
-    ? "root"
-    : collectionId === getUserPersonalCollectionId(state)
-    ? "personal"
-    : collectionId !== undefined
-    ? "other"
-    : null;
 
 // a "real" collection
 

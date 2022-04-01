@@ -138,11 +138,20 @@ export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
+export const SET_DASHBOARD_SEEN = "metabase/dashboard/SET_SEEN";
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
+
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
 export const setSidebar = createAction(SET_SIDEBAR);
 export const closeSidebar = createAction(CLOSE_SIDEBAR);
+
+export const setHasSeenLoadedDashboard = createAction(SET_DASHBOARD_SEEN);
+export const setShowLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+);
 
 export const setSharing = isSharing => dispatch => {
   if (isSharing) {
@@ -445,12 +454,34 @@ export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
-    for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
-      // we skip over virtual cards, i.e. dashcards that do not have backing cards in the backend
-      if (!isVirtualDashCard(dashcard)) {
-        dispatch(fetchCardData(card, dashcard, options));
+    const promises = getAllDashboardCards(dashboard)
+      .map(({ card, dashcard }) => {
+        if (!isVirtualDashCard(dashcard)) {
+          return dispatch(fetchCardData(card, dashcard, options));
+        }
+      })
+      .filter(p => !!p);
+
+    Promise.all(promises).then(() => {
+      dispatch(setShowLoadingCompleteFavicon(true));
+      if (!document.hidden) {
+        dispatch(setHasSeenLoadedDashboard());
+        setTimeout(() => {
+          dispatch(setShowLoadingCompleteFavicon(false));
+        }, 3000);
+      } else {
+        document.addEventListener(
+          "visibilitychange",
+          () => {
+            dispatch(setHasSeenLoadedDashboard());
+            setTimeout(() => {
+              dispatch(setShowLoadingCompleteFavicon(false));
+            }, 3000);
+          },
+          { once: true },
+        );
       }
-    }
+    });
   },
 );
 

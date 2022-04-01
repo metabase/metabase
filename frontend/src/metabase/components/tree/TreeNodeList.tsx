@@ -7,6 +7,7 @@ interface TreeNodeListProps {
   expandedIds: Set<ITreeNodeItem["id"]>;
   selectedId?: ITreeNodeItem["id"];
   depth: number;
+  role?: string;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode: TreeNodeComponent;
@@ -14,6 +15,7 @@ interface TreeNodeListProps {
 
 export function TreeNodeList({
   items,
+  role,
   expandedIds,
   selectedId,
   depth,
@@ -24,7 +26,7 @@ export function TreeNodeList({
   const selectedRef = useScrollOnMount();
 
   return (
-    <ul role="menu">
+    <ul role={role}>
       {items.map(item => {
         const isSelected = selectedId === item.id;
         const hasChildren =

@@ -6,38 +6,30 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
 
-import { t } from "ttag";
-
-import * as Urls from "metabase/lib/urls";
-import { color, darken } from "metabase/lib/colors";
-
-import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import { AdminNavbar } from "../components/AdminNavbar";
-import ProfileLink from "metabase/nav/components/ProfileLink";
+
+import { closeNavbar } from "metabase/redux/app";
 
 import { getPath, getContext, getUser } from "../selectors";
-import {
-  getHasDataAccess,
-  getPlainNativeQuery,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
-  plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
 });
 
-import { ProfileLinkContainer, NavRoot } from "./Navbar.styled";
-import CollectionSidebar from "../../collections/containers/CollectionSidebar/CollectionSidebar";
-import Footer from "metabase/collections/components/CollectionSidebar/CollectionSidebarFooter";
+import { NavRoot } from "./Navbar.styled";
+
+import MainNavbar from "./MainNavbar";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
+  closeNavbar,
 };
 
 @Database.loadList({
@@ -47,11 +39,6 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
-  state = {
-    modal: null,
-    shouldDisplayMobileSidebar: false,
-  };
-
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -83,49 +70,16 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const { isOpen, hasDataAccess, router, user } = this.props;
-    const collectionId = Urls.extractCollectionId(router.params.slug);
-    const isRoot = collectionId === "root";
-
-    const shouldDisplayMobileSidebar = this.state.shouldDisplayMobileSidebar;
-
+    const { isOpen, location, params, closeNavbar } = this.props;
+    // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
-      <NavRoot
-        // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
-        // TODO: hide nav using state in redux instead?
-        className="Nav"
-        isOpen={isOpen}
-      >
-        <CollectionSidebar
-          isRoot={isRoot}
-          handleToggleMobileSidebar={() => {
-            this.setState({
-              shouldDisplayMobileSidebar: !this.state
-                .shouldDisplayMobileSidebar,
-            });
-          }}
-          collectionId={collectionId}
-          shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
+      <NavRoot className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+        <MainNavbar
+          isOpen={isOpen}
+          location={location}
+          params={params}
+          closeNavbar={closeNavbar}
         />
-        {hasDataAccess && (
-          <Link
-            mr={[1, 2]}
-            to="browse"
-            p={1}
-            hover={{
-              backgroundColor: darken(color("brand")),
-            }}
-            className="flex align-center rounded transition-background ml2"
-            data-metabase-event={`NavBar;Data Browse`}
-          >
-            <Icon name="table_spaced" size={14} />
-            <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
-          </Link>
-        )}
-        <Footer isAdmin={user.is_superuser} />
-        <ProfileLinkContainer>
-          <ProfileLink {...this.props} user={user} />
-        </ProfileLinkContainer>
       </NavRoot>
     );
   }

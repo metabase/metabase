@@ -41,7 +41,7 @@ const correctValues = [
   },
 ];
 
-describe.skip("issue 15876", () => {
+describe("issue 15876", () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
