@@ -115,7 +115,7 @@
   [views]
   (letfn [(select-items! [model ids]
             (when (seq ids)
-              (-> (model-query model ids)
+              (-> (models-query model ids)
                   (hydrate :moderation_reviews))))
           (by-id [models] (m/index-by :id models))]
     (into {} (map (fn [[model models]]
