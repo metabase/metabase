@@ -6,3 +6,12 @@ export interface RecentView {
 export interface RecentModelObject {
   name: string;
 }
+
+export interface PopularView {
+  model: string;
+  model_object: PopularModelObject;
+}
+
+export interface PopularModelObject {
+  name: string;
+}
