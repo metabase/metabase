@@ -2,7 +2,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { canAccessDataModel, canAccessDatabaseManagement } from "./utils";
 
-import { getFeatureLevelDataPermissions } from "./permissions";
+import { getFeatureLevelDataPermissions } from "./permission-management";
 import { DATA_COLUMNS } from "./constants";
 import {
   canDownloadResults,
