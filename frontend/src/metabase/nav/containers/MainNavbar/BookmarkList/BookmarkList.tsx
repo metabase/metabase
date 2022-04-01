@@ -98,7 +98,7 @@ const BookmarkList = ({
       iconSize={8}
       onToggle={onToggleBookmarks}
     >
-      {bookmarks.map(renderBookmark)}
+      <ul>{bookmarks.map(renderBookmark)}</ul>
     </CollapseSection>
   );
 };
