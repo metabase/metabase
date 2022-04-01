@@ -6,7 +6,6 @@ import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
 
@@ -17,6 +16,8 @@ import {
   FIELDS_PICKER_STYLES,
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
+import DimensionList from "metabase/query_builder/components/DimensionList";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import {
   DimensionContainer,
   DimensionSourceName,
@@ -150,10 +151,10 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   if (join.index() === 0) {
     // first join's lhs is always the parent table
     lhsTable = join.parentTable();
-  } else if (join.parentDimensions().length > 0) {
+  } else if (parentDimensions.length > 0) {
     // subsequent can be one of the previously joined tables
     // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-    lhsTable = join.parentDimensions()[0]?.field().table;
+    lhsTable = parentDimensions[0]?.field().table;
   }
 
   function onSourceTableSet(newJoin) {
@@ -535,7 +536,7 @@ const joinDimensionCellItemPropTypes = {
 };
 
 function getDimensionSourceName(dimension) {
-  return dimension.field()?.table?.display_name || t`Previous results`;
+  return dimension.query().table().display_name || t`Previous results`;
 }
 
 function getDimensionDisplayName(dimension) {
@@ -583,13 +584,33 @@ const joinDimensionPickerPropTypes = {
 };
 
 class JoinDimensionPicker extends React.Component {
+  state = {
+    sections: [],
+  };
+
   open() {
     this._popover.open();
   }
 
   render() {
-    const { dimension, onChange, onRemove, options, query, color } = this.props;
+    const {
+      dimension,
+      onChange,
+      onRemove,
+      options = { dimensions: [], fks: [] },
+      color,
+    } = this.props;
     const testID = this.props["data-testid"] || "join-dimension";
+
+    const sections = new DimensionOptions(options).sections();
+
+    function onFieldChange(field, { isSubDimension = false } = {}) {
+      if (isDateTimeField(field)) {
+        onChange(field, { overwrite: isSubDimension });
+      } else {
+        onChange(field);
+      }
+    }
 
     function onRemoveDimension(e) {
       e.stopPropagation(); // don't trigger picker popover
@@ -609,20 +630,14 @@ class JoinDimensionPicker extends React.Component {
         }
       >
         {({ onClose }) => (
-          <FieldList
-            className="text-brand"
-            field={dimension && dimension.mbql()}
-            fieldOptions={options}
-            table={query.table()}
-            query={query}
-            onFieldChange={(field, { isSubDimension = false } = {}) => {
-              if (isDateTimeField(field)) {
-                onChange(field, { overwrite: isSubDimension });
-              } else {
-                onChange(field);
-              }
+          <DimensionList
+            sections={sections}
+            dimension={dimension}
+            onChangeDimension={(dimension, item) => {
+              onFieldChange(dimension.mbql(), item);
               onClose();
             }}
+            className="text-brand"
             enableSubDimensions
             preventNumberSubDimensions
             data-testid={`${testID}-picker`}
