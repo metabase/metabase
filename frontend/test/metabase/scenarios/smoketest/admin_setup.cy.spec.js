@@ -262,11 +262,11 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       // Check names
-      cy.wait(3000).contains("A look at your People table");
-      cy.contains("A look at your Orders table");
-      cy.contains("A look at your Test Table table").should("not.exist");
+      cy.wait(3000).contains("People");
+      cy.contains("Orders");
+      cy.contains("Test Table").should("not.exist");
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.get("h1").contains("Our analytics");
       cy.findByText("A look at your").should("not.exist");
@@ -279,10 +279,9 @@ describe("smoketest > admin_setup", () => {
     it("should rename a question and description as admin", () => {
       cy.visit("/");
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.findByText("Other users' personal collections");
-      cy.findByText("A look at your").should("not.exist");
 
       cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
@@ -386,9 +385,9 @@ describe("smoketest > admin_setup", () => {
 
       // Checking table name
 
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Reviews table");
-      cy.contains("A look at your Orders table").should("not.exist");
+      cy.contains("Test Table");
+      cy.contains("Reviews");
+      cy.contains("Orders").should("not.exist");
 
       // Navigating to Test Table table
 
@@ -496,12 +495,6 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByTextEnsureVisible("1 Hidden Table");
 
-      // Check table hidden on home page
-      cy.visit("/");
-
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
-
       // Check table hidden while browsing data
 
       cy.visit("/browse/1");
@@ -528,13 +521,13 @@ describe("smoketest > admin_setup", () => {
 
       // Check table names and visibility
 
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
+      cy.contains("People");
+      cy.contains("Test");
       cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.findByTextEnsureVisible("Orders, Count");
       cy.findByText("Orders, Count, Grouped by Created At (year)").should(
@@ -586,9 +579,9 @@ describe("smoketest > admin_setup", () => {
       // Access to all tables as user
       cy.visit("/");
 
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
-      cy.findByText("A look at your Review table").should("not.exist");
+      cy.contains("People");
+      cy.contains("Test Table");
+      cy.findByText("Reviews").should("not.exist");
 
       // Access to SQl queries as user
 
@@ -601,12 +594,12 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       cy.wait(2000).findByText("Try these x-rays based on your data");
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Review table").should("not.exist");
+      cy.contains("Test Table");
+      cy.contains("Reviews").should("not.exist");
 
       // Cannot view our analytics as no collection user
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders").should("not.exist");
     });
 
@@ -797,8 +790,8 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user can still see everything
 
-      cy.wait(2000).contains("A look at your Test Table table");
-      cy.contains("A look at your Products table");
+      cy.wait(2000).contains("Test Table");
+      cy.contains("Products");
 
       // Normal user cannot make an SQL query
 
@@ -810,13 +803,13 @@ describe("smoketest > admin_setup", () => {
 
       // No collection user sees Test Table and People table
 
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
+      cy.contains("Test Table");
+      cy.contains("People");
+      cy.contains("Reviews").should("not.exist");
     });
 
     it.skip("should be unable to change questions in Our analytics as no collection user", () => {
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.findByText("Everything");
       cy.findByText("Orders, Count");
