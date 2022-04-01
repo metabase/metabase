@@ -86,7 +86,7 @@ import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import HomePage from "metabase/home/homepage/containers/HomePage";
+import HomePage from "metabase/home/homepage/components/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
