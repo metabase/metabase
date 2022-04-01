@@ -321,9 +321,10 @@
   (u/ignore-exceptions
    (classloader/require 'metabase-enterprise.advanced-permissions.common
                         'metabase.public-settings.premium-features))
-  (if (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
-           (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
-    ((resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?) :setting)
+  (if-let [current-user-has-general-permisisons?
+           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+    (current-user-has-general-permisisons? :setting)
     false))
 
 (defn- current-user-can-access-setting?
