@@ -137,11 +137,11 @@ function addBetweenFilter([low, high] = []) {
   popover().within(() => {
     cy.get("input")
       .first()
-      .type(low);
+      .type(`${low}{enter}`);
 
     cy.get("input")
       .last()
-      .type(high);
+      .type(`${high}{enter}`);
   });
 
   cy.button("Add filter").click();
@@ -152,7 +152,7 @@ function addBetweenFilter([low, high] = []) {
  * @param {string} value
  */
 function addSimpleNumberFilter(value) {
-  cy.findByPlaceholderText("Enter a number").type(value);
+  cy.findByPlaceholderText("Enter a number").type(`${value}{enter}`);
   cy.button("Add filter").click();
 }
 
