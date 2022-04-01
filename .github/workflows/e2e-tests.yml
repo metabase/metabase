@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'e2e-optimize-native-filters'
+      - 'master'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -54,7 +54,24 @@ jobs:
       matrix:
         edition: [oss, ee]
         folder:
+          - "admin"
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
+          - "downloads"
+          - "embedding"
+          - "joins"
+          - "models"
+          - "moderation"
+          - "native"
           - "native-filters"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -106,7 +123,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }}
-      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
 
