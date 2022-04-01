@@ -38,6 +38,13 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   }
 `;
 
+export const SidebarContentRoot = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+`;
+
 export const SidebarSection = styled.div`
   margin-top: ${space(1)};
   margin-bottom: ${space(2)};
@@ -84,9 +91,6 @@ export const LoadingTitle = styled.h2`
 export const ProfileLinkContainer = styled.div`
   margin-left: auto;
   margin-right: ${space(2)};
-  position: absolute;
-  bottom: ${space(1)};
-  right: 0;
   color: ${color("text-light")};
 `;
 

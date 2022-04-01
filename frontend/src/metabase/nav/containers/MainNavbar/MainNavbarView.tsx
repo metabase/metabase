@@ -26,6 +26,7 @@ import {
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
   ProfileLinkContainer,
+  SidebarContentRoot,
   SidebarHeading,
   SidebarSection,
   SidebarHeadingWrapper,
@@ -78,54 +79,56 @@ function MainNavbarView({
   }, [handleCloseNavbar]);
 
   return (
-    <>
-      {bookmarks.length > 0 && (
-        <SidebarSection>
-          <BookmarkList
-            bookmarks={bookmarks}
-            selectedItem={
-              selectedItem.type !== "unknown" ? selectedItem : undefined
-            }
-            onSelect={onItemSelect}
-          />
-        </SidebarSection>
-      )}
-      <SidebarSection>
-        <CollectionSectionHeading currentUser={currentUser} />
-        <Tree
-          data={collections}
-          selectedId={isCollectionSelected ? selectedItem.id : undefined}
-          onSelect={onItemSelect}
-          TreeNode={CollectionLink}
-          role="tree"
-        />
-      </SidebarSection>
-      <ul>
-        {hasDataAccess && !IFRAMED && (
+    <SidebarContentRoot>
+      <div>
+        {bookmarks.length > 0 && (
           <SidebarSection>
-            <SidebarHeadingWrapper>
-              <SidebarHeading>{t`Data`}</SidebarHeading>
-            </SidebarHeadingWrapper>
-            <BrowseLink
-              icon="database"
-              url={BROWSE_URL}
-              isSelected={
-                isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+            <BookmarkList
+              bookmarks={bookmarks}
+              selectedItem={
+                selectedItem.type !== "unknown" ? selectedItem : undefined
               }
-              onClick={onItemSelect}
-              data-metabase-event="NavBar;Data Browse"
-            >
-              {t`Browse data`}
-            </BrowseLink>
+              onSelect={onItemSelect}
+            />
           </SidebarSection>
         )}
-      </ul>
+        <SidebarSection>
+          <CollectionSectionHeading currentUser={currentUser} />
+          <Tree
+            data={collections}
+            selectedId={isCollectionSelected ? selectedItem.id : undefined}
+            onSelect={onItemSelect}
+            TreeNode={CollectionLink}
+            role="tree"
+          />
+        </SidebarSection>
+        <ul>
+          {hasDataAccess && !IFRAMED && (
+            <SidebarSection>
+              <SidebarHeadingWrapper>
+                <SidebarHeading>{t`Data`}</SidebarHeading>
+              </SidebarHeadingWrapper>
+              <BrowseLink
+                icon="database"
+                url={BROWSE_URL}
+                isSelected={
+                  isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+                }
+                onClick={onItemSelect}
+                data-metabase-event="NavBar;Data Browse"
+              >
+                {t`Browse data`}
+              </BrowseLink>
+            </SidebarSection>
+          )}
+        </ul>
+      </div>
       {!IFRAMED && (
         <ProfileLinkContainer>
           <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
         </ProfileLinkContainer>
       )}
-    </>
+    </SidebarContentRoot>
   );
 }
 
