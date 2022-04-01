@@ -216,7 +216,7 @@
                     (* (/ cnt max-count) views-wt)]]
         (assoc item :score (double (reduce + scores)))))))
 
-(defendpoint GET "/popular_views"
+(defendpoint GET "/popular_items"
   "WIP Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []
@@ -224,9 +224,9 @@
   ;; total count -> higher = higher score
   ;; recently viewed -> more recent = higher score
   ;; official/verified -> yes = higher score
-  (let [views (zipmap (range) (views-and-runs 10 10))
+  (let [views (views-and-runs 10 10)
         model->id->items (models-for-views views)
-        filtered-views (for [[pos {:keys [model model_id] :as view-log}] views
+        filtered-views (for [{:keys [model model_id] :as view-log} views
                              :let [model-object (-> (get-in model->id->items [model model_id])
                                                     (dissoc :dataset_query))]
                              :when (and model-object
