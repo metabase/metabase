@@ -32,6 +32,8 @@ import {
   CLOSE_SIDEBAR,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
   SAVE_DASHBOARD_AND_CARDS,
+  SET_DASHBOARD_SEEN,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -54,6 +56,28 @@ const isEditing = handleActions(
     },
   },
   null,
+);
+
+const hasSeenLoadedDashboard = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [FETCH_DASHBOARD]: { next: state => false },
+    [SET_DASHBOARD_SEEN]: {
+      next: state => true,
+    },
+  },
+  false,
+);
+
+const showLoadingCompleteFavicon = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [FETCH_DASHBOARD]: { next: state => false },
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: {
+      next: (state, { payload }) => payload,
+    },
+  },
+  false,
 );
 
 function newDashboard(before, after, isDirty) {
@@ -271,12 +295,19 @@ const parameterValuesSearchCache = handleActions(
 
 const loadingDashCards = handleActions(
   {
+    [INITIALIZE]: {
+      next: state => ({
+        ...state,
+        isLoadingComplete: false,
+      }),
+    },
     [FETCH_DASHBOARD]: {
       next: (state, { payload }) => ({
         ...state,
         dashcardIds: Object.values(payload.entities.dashcard || {})
           .filter(dc => !isVirtualDashCard(dc))
           .map(dc => dc.id),
+        isLoadingComplete: false,
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
@@ -297,7 +328,9 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+          ...(loadingIds.length === 0
+            ? { startTime: null, isLoadingComplete: true }
+            : {}),
         };
       },
     },
@@ -307,12 +340,19 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+          ...(loadingIds.length === 0
+            ? { startTime: null, isLoadingComplete: true }
+            : {}),
         };
       },
     },
   },
-  { dashcardIds: [], loadingIds: [], startTime: null },
+  {
+    dashcardIds: [],
+    loadingIds: [],
+    startTime: null,
+    isLoadingComplete: false,
+  },
 );
 
 const DEFAULT_SIDEBAR = { props: {} };
@@ -344,6 +384,8 @@ const sidebar = handleActions(
 export default combineReducers({
   dashboardId,
   isEditing,
+  hasSeenLoadedDashboard,
+  showLoadingCompleteFavicon,
   dashboards,
   dashcards,
   dashcardData,
