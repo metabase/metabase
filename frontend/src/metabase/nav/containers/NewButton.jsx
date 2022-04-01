@@ -15,7 +15,6 @@ import { getUser } from "../selectors";
 import {
   getHasDataAccess,
   getHasNativeWrite,
-  getPlainNativeQuery,
   getHasDbWithJsonEngine,
 } from "metabase/new_query/selectors";
 
@@ -88,7 +87,6 @@ function NewButton({
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
-  plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDbWithJsonEngine: getHasDbWithJsonEngine(state, props),
