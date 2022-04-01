@@ -7,17 +7,25 @@ const Recents = createEntity({
   nameOne: "recent",
   path: "/api/activity/recent_views",
   schema: RecentsSchema,
-  // delegate to the actual object's entity wrapEntity
+
   wrapEntity(object, dispatch = null) {
-    const entities = require("metabase/entities");
-    const entity = entities[entityTypeForObject(object)];
-    if (entity) {
-      return entity.wrapEntity(object, dispatch);
-    } else {
-      console.warn("Couldn't find entity for object", object);
-      return object;
-    }
+    const entity = getEntity(object);
+    return entity.wrapEntity(object, dispatch);
+  },
+
+  objectSelectors: {
+    getIcon,
   },
 });
+
+export const getEntity = object => {
+  const entities = require("metabase/entities");
+  return entities[entityTypeForObject(object)];
+};
+
+export const getIcon = object => {
+  const entity = getEntity(object);
+  return entity.objectSelectors.getIcon(object);
+};
 
 export default Recents;
