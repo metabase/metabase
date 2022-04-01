@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'moar-onboarding'
 
 jobs:
 
@@ -50,24 +50,25 @@ jobs:
       matrix:
         edition: [oss, ee]
         folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "dashboard-filters-sql"
-          - "downloads"
-          - "embedding"
-          - "joins"
-          - "models"
-          - "moderation"
-          - "native"
-          - "native-filters"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
+          # - "admin"
+          # - "binning"
+          # - "collections"
+          # - "custom-column"
+          # - "dashboard"
+          # - "dashboard-filters"
+          # - "dashboard-filters-sql"
+          # - "downloads"
+          # - "embedding"
+          # - "joins"
+          # - "models"
+          # - "moderation"
+          # - "native"
+          # - "native-filters"
+          - "onboarding"
+          # - "permissions"
+          # - "question"
+          # - "sharing"
+          # - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
