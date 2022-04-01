@@ -23,15 +23,15 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  appBar().within(() => {
-    cy.icon("chevronright").click();
-  });
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
 }
 
 export function closeNavigationSidebar() {
-  appBar().within(() => {
-    cy.icon("chevronleft").click();
-  });
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
 }
 
 export function browse() {
