@@ -121,7 +121,7 @@ export default class Dashboard extends Component {
       this.loadDashboard(this.props.dashboardId);
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      !prevProps.dashboard
+      (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
