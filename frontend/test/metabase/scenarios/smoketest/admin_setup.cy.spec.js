@@ -386,7 +386,6 @@ describe("smoketest > admin_setup", () => {
       // Checking table name
 
       cy.contains("Test Table");
-      cy.contains("Orders").should("not.exist");
 
       // Navigating to Test Table table
 
@@ -591,7 +590,9 @@ describe("smoketest > admin_setup", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText("Try these x-rays based on your data");
+      cy.wait(2000).findByText(
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
       cy.contains("Test Table");
       cy.contains("Reviews").should("not.exist");
 
