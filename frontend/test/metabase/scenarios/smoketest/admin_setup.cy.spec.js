@@ -386,7 +386,6 @@ describe("smoketest > admin_setup", () => {
       // Checking table name
 
       cy.contains("Test Table");
-      cy.contains("Reviews");
       cy.contains("Orders").should("not.exist");
 
       // Navigating to Test Table table
@@ -579,7 +578,6 @@ describe("smoketest > admin_setup", () => {
       // Access to all tables as user
       cy.visit("/");
 
-      cy.contains("People");
       cy.contains("Test Table");
       cy.findByText("Reviews").should("not.exist");
 
@@ -791,7 +789,6 @@ describe("smoketest > admin_setup", () => {
       // Normal user can still see everything
 
       cy.wait(2000).contains("Test Table");
-      cy.contains("Products");
 
       // Normal user cannot make an SQL query
 
