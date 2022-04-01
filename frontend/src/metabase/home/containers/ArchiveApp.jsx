@@ -16,6 +16,8 @@ import listSelect from "metabase/hoc/ListSelect";
 
 import { openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { isSmallScreen } from "metabase/lib/dom";
+
 import {
   ArchiveBarContent,
   ArchiveBarText,
@@ -44,7 +46,9 @@ const ROW_HEIGHT = 68;
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ArchiveApp extends Component {
   componentDidMount() {
-    this.props.openNavbar();
+    if (!isSmallScreen()) {
+      this.props.openNavbar();
+    }
   }
 
   render() {

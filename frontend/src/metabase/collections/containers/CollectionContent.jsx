@@ -25,6 +25,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
+import { isSmallScreen } from "metabase/lib/dom";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -83,7 +84,9 @@ function CollectionContent({
   } = useListSelect(itemKeyFn);
 
   useOnMount(() => {
-    openNavbar();
+    if (!isSmallScreen()) {
+      openNavbar();
+    }
   });
 
   useEffect(() => {
