@@ -8,7 +8,7 @@ on:
 jobs:
 
   build:
-    runs-on: buildjet-8vcpu-ubuntu-2004
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 25
     strategy:
       matrix:
@@ -34,7 +34,7 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-8vcpu-ubuntu-2004
+    runs-on: buildjet-4vcpu-ubuntu-2004
     timeout-minutes: 30
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
@@ -109,7 +109,7 @@ jobs:
     - name: Run Snowlow micro
       uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -122,10 +122,13 @@ jobs:
       run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
+
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
-        path: ./cypress
+        path: |
+          ./cypress
+          ./logs/test.log
         if-no-files-found: ignore

@@ -6,7 +6,7 @@ import { space } from "metabase/styled-components/theme";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 const dimmedIconCss = css`
-  fill: ${color("white")};
+  fill: ${color("brand")};
   opacity: 0.8;
 `;
 
@@ -22,17 +22,19 @@ const CollectionSidebarLink = styled(Link)`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   display: flex;
+  font-size: 13px;
   flex-shrink: 0;
   align-items: center;
   font-weight: bold;
-  color: ${props => (props.selected ? "white" : color("brand"))};
+  color: ${props => (props.selected ? color("brand") : "text-medium")};
   background-color: ${props =>
     props.selected
-      ? color("brand")
+      ? color("brand-light")
       : props.hovered
       ? color("brand-light")
       : "inherit"};
   :hover {
+    color: ${color("brand")};
     background-color: ${props =>
       props.selected
         ? false

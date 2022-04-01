@@ -44,7 +44,7 @@ describe("visual tests > dashboard > parameters widget", () => {
   it("is sticky in view mode", () => {
     cy.findByText("test question");
 
-    cy.scrollTo(0, 264);
+    cy.get("main").scrollTo(0, 264);
 
     cy.percySnapshot();
   });

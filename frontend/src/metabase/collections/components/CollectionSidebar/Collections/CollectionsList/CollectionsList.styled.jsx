@@ -1,14 +1,16 @@
+import React from "react";
 import styled from "@emotion/styled";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import Tooltip from "metabase/components/Tooltip";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
-import { SIDEBAR_SPACER } from "metabase/collections/constants";
+import { SIDEBAR_SPACER, SIDEBAR_WIDTH } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -36,14 +38,36 @@ export const ChildrenContainer = styled.div`
 
 export const ExpandCollectionButton = styled(IconButtonWrapper)`
   align-items: center;
-  color: ${color("brand")};
+  color: ${color("white")};
   cursor: pointer;
   left: -20px;
   position: absolute;
 `;
+
+const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
+
+const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(SIDEBAR_WIDTH, 10) * 0.75);
 
 export const LabelContainer = styled.div`
   display: flex;
   align-items: center;
   position: relative;
 `;
+
+const Label = styled.span`
+  width: ${ITEM_NAME_LABEL_WIDTH}px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export function LabelText({ children: itemName }) {
+  if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
+    return (
+      <Tooltip tooltip={itemName} maxWidth={null}>
+        <Label>{itemName}</Label>
+      </Tooltip>
+    );
+  }
+  return itemName;
+}

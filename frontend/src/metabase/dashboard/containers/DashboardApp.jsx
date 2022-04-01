@@ -2,14 +2,16 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import fitViewport from "metabase/hoc/FitViewPort";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
+import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import {
   getIsEditing,
@@ -28,6 +30,12 @@ import {
   getIsAddParameterPopoverOpen,
   getSidebar,
   getShowAddQuestionSidebar,
+  getIsLoadingDashCards,
+  getTotalCards,
+  getCardsLoaded,
+  getHasSeenLoadedDashboard,
+  getIsLoadingDashCardsComplete,
+  getFavicon,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -43,6 +51,7 @@ const mapStateToProps = (state, props) => {
     dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
 
     isAdmin: getUserIsAdmin(state, props),
+    isNavbarOpen: getIsNavbarOpen(state),
     isEditing: getIsEditing(state, props),
     isSharing: getIsSharing(state, props),
     dashboardBeforeEditing: getDashboardBeforeEditing(state, props),
@@ -61,6 +70,12 @@ const mapStateToProps = (state, props) => {
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
     sidebar: getSidebar(state),
     showAddQuestionSidebar: getShowAddQuestionSidebar(state),
+    isLoadingDashCards: getIsLoadingDashCards(state),
+    isLoadingDashCardsComplete: getIsLoadingDashCardsComplete(state),
+    totalDashCards: getTotalCards(state),
+    cardsLoaded: getCardsLoaded(state),
+    hasSeenLoadedDashboard: getHasSeenLoadedDashboard(state),
+    pageFavicon: getFavicon(state),
   };
 };
 
@@ -73,8 +88,29 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@fitViewport
-@title(({ dashboard }) => dashboard && dashboard.name)
+@favicon(({ pageFavicon }) => pageFavicon)
+@title(
+  ({
+    dashboard,
+    isLoadingDashCards,
+    totalDashCards,
+    cardsLoaded,
+    hasSeenLoadedDashboard,
+    isLoadingDashCardsComplete,
+  }) => {
+    if (isLoadingDashCards) {
+      return {
+        title: t`${cardsLoaded}/${totalDashCards} loaded`,
+        titleIndex: 1,
+      };
+    }
+    if (isLoadingDashCardsComplete && !hasSeenLoadedDashboard) {
+      return t`Your dashboard is ready`;
+    } else {
+      return dashboard?.name;
+    }
+  },
+)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {

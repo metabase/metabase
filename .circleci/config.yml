@@ -21,7 +21,6 @@ executors:
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
       - image: metabase/qa-databases:mysql-sample-8
-    resource_class: xlarge
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/

@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import _ from "underscore";
+
+import { Collection, CollectionId } from "metabase-types/api";
 
 export type Item = {
   name: string;
@@ -12,20 +15,6 @@ export type Item = {
   copy?: boolean;
   setCollection?: boolean;
   model: string;
-};
-
-type CollectionId = "root" | number;
-
-export type Collection = {
-  id: CollectionId;
-  can_write: boolean;
-  name: string;
-  archived: boolean;
-  personal_owner_id?: number | unknown;
-  children?: Collection[];
-  originalName?: string;
-  effective_ancestors?: Collection[];
-  location?: string;
 };
 
 export function nonPersonalOrArchivedCollection(
