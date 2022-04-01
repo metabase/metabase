@@ -8,6 +8,7 @@ import _ from "underscore";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import { closeNavbar } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -17,7 +18,6 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
@@ -68,6 +68,8 @@ import {
   getVisibleTimelineEvents,
   getSelectedTimelineEventIds,
   getFilteredTimelines,
+  getTimeseriesXDomain,
+  getIsAnySidebarOpen,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -120,6 +122,7 @@ const mapStateToProps = (state, props) => {
     timelineEvents: getVisibleTimelineEvents(state),
     visibleTimelineIds: getVisibleTimelineIds(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -129,6 +132,7 @@ const mapStateToProps = (state, props) => {
     // includes isShowingDataReference, isEditing, isRunning, etc
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
+    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
@@ -167,6 +171,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...actions,
+  closeNavbar,
   onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
   deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
@@ -179,6 +184,9 @@ function QueryBuilder(props) {
     params,
     fromUrl,
     uiControls,
+    isNativeEditorOpen,
+    isAnySidebarOpen,
+    closeNavbar,
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
@@ -203,6 +211,8 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
+  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
 
@@ -285,6 +295,21 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
+    if (
+      (isAnySidebarOpen && !wasShowingAnySidebar) ||
+      (isNativeEditorOpen && !wasNativeEditorOpen)
+    ) {
+      closeNavbar();
+    }
+  }, [
+    isAnySidebarOpen,
+    wasShowingAnySidebar,
+    isNativeEditorOpen,
+    wasNativeEditorOpen,
+    closeNavbar,
+  ]);
+
+  useEffect(() => {
     if (allLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
@@ -341,5 +366,4 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),
-  fitViewport,
 )(QueryBuilder);

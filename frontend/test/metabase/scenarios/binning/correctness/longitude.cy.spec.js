@@ -28,7 +28,6 @@ describe("scenarios > binning > correctness > longitude", () => {
           .and("contain", selected);
 
         cy.findByText("Done").click();
-        cy.findByTestId("sidebar-right").should("not.be.visible");
 
         getTitle(`Count by Longitude: ${selected}`);
         cy.get(".bar");
@@ -49,7 +48,6 @@ describe("scenarios > binning > correctness > longitude", () => {
       .and("contain", "Unbinned");
 
     cy.findByText("Done").click();
-    cy.findByTestId("sidebar-right").should("not.be.visible");
 
     getTitle("Count by Longitude");
     cy.get(".cellData")

@@ -4,7 +4,12 @@ import {
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { GroupsPermissions, User } from "metabase-types/api";
+import {
+  Collection,
+  Bookmark,
+  GroupsPermissions,
+  User,
+} from "metabase-types/api";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -79,7 +84,7 @@ const AUTHORITY_LEVEL_REGULAR = {
 
 export const PLUGIN_COLLECTIONS = {
   authorityLevelFormFields: [],
-  isRegularCollection: () => true,
+  isRegularCollection: (_: Collection | Bookmark) => true,
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,

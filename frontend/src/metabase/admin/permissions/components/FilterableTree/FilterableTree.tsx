@@ -12,6 +12,7 @@ import {
   FilterableTreeRoot,
   FilterInputContainer,
   ItemGroupsDivider,
+  AdminTreeNode,
 } from "./FilterableTree.styled";
 import { searchItems } from "./utils";
 import { ITreeNodeItem } from "metabase/components/tree/types";
@@ -63,10 +64,10 @@ export const FilterableTree = ({
       <FilterableTreeContainer>
         {filteredList && (
           <Tree
-            colorScheme="admin"
             data={filteredList}
             selectedId={selectedId}
             onSelect={onSelect}
+            TreeNode={AdminTreeNode}
             emptyState={
               <EmptyStateContainer>
                 {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
@@ -85,10 +86,10 @@ export const FilterableTree = ({
             return (
               <React.Fragment key={index}>
                 <Tree
-                  colorScheme="admin"
                   data={items}
                   selectedId={selectedId}
                   onSelect={onSelect}
+                  TreeNode={AdminTreeNode}
                 />
                 {!isLastGroup && <ItemGroupsDivider />}
               </React.Fragment>
