@@ -1,5 +1,6 @@
 import React from "react";
-import { ModelCard, ModelIcon, ModelTitle } from "./HomeModelCard.styled";
+import HomeCard from "../HomeCard";
+import { ModelIcon, ModelTitle } from "./HomeModelCard.styled";
 
 export interface HomeModelCardProps {
   title: string;
@@ -17,10 +18,10 @@ const HomeModelCard = ({
   url,
 }: HomeModelCardProps): JSX.Element => {
   return (
-    <ModelCard url={url}>
+    <HomeCard url={url} primary>
       <ModelIcon {...icon} />
       <ModelTitle>{title}</ModelTitle>
-    </ModelCard>
+    </HomeCard>
   );
 };
 

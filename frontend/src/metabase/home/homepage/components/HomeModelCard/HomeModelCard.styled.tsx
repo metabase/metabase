@@ -2,12 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
-import HomeCard from "../HomeCard";
-
-export const ModelCard = styled(HomeCard)`
-  display: flex;
-  align-items: center;
-`;
 
 export const ModelIcon = styled(Icon)`
   display: block;

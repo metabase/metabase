@@ -1,6 +1,6 @@
 import React from "react";
+import HomeCard from "../HomeCard";
 import {
-  XrayCard,
   XrayIcon,
   XrayIconContainer,
   XrayTitle,
@@ -20,7 +20,7 @@ const HomeXrayCard = ({
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
-    <XrayCard url={url}>
+    <HomeCard url={url} primary>
       <XrayIconContainer>
         <XrayIcon name="bolt" />
       </XrayIconContainer>
@@ -28,7 +28,7 @@ const HomeXrayCard = ({
         <XrayTitleSecondary>{message}</XrayTitleSecondary>{" "}
         <XrayTitlePrimary>{title}</XrayTitlePrimary>
       </XrayTitle>
-    </XrayCard>
+    </HomeCard>
   );
 };
 
