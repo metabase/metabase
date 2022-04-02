@@ -11,7 +11,7 @@ import {
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
 
-export const Sidebar = styled.aside<{ isOpen: boolean }>`
+export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
