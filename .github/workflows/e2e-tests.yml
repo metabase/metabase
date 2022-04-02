@@ -110,7 +110,7 @@ jobs:
       uses: ./.github/actions/prepare-backend
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
-    - name: Run Snowlow micro
+    - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
 
     - uses: actions/download-artifact@v2
