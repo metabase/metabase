@@ -16,4 +16,5 @@ export interface User {
   personal_collection_id: number;
   can_access_data_model: boolean;
   can_access_database_management: boolean;
+  can_access_monitoring: boolean;
 }

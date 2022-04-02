@@ -8,9 +8,19 @@ import { getOrderedGroups } from "metabase/admin/permissions/selectors/data-perm
 import { GENERAL_PERMISSIONS_OPTIONS } from "./constants";
 import { getIn } from "icepick";
 import { GeneralPermissionsState } from "./types/state";
+import { GeneralPermissionKey, GeneralPermissions } from "./types/permissions";
 
 export const canManageSubscriptions = (state: GeneralPermissionsState) =>
   state.currentUser.permissions.can_access_subscription;
+
+export const canAccessMonitoring = (state: GeneralPermissionsState) =>
+  state.currentUser.permissions.can_access_monitoring;
+
+const getGeneralPermission = (
+  permissions: GeneralPermissions,
+  groupId: number,
+  permissionKey: GeneralPermissionKey,
+) => getIn(permissions, [groupId, permissionKey]) ?? "no";
 
 export const getIsDirty = createSelector(
   (state: GeneralPermissionsState) =>
@@ -32,9 +42,6 @@ export const getGeneralPermissionEditor = createSelector(
     const entities = groups.flat().map(group => {
       const isAdmin = isAdminGroup(group);
 
-      const subscriptionValue =
-        getIn(permissions, [group.id, "subscription"]) ?? "no";
-
       return {
         id: group.id,
         name: group.name,
@@ -45,7 +52,19 @@ export const getGeneralPermissionEditor = createSelector(
             disabledTooltip: isAdmin
               ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
               : null,
-            value: subscriptionValue,
+            value: getGeneralPermission(permissions, group.id, "subscription"),
+            options: [
+              GENERAL_PERMISSIONS_OPTIONS.yes,
+              GENERAL_PERMISSIONS_OPTIONS.no,
+            ],
+          },
+          {
+            permission: "monitoring",
+            isDisabled: isAdmin,
+            disabledTooltip: isAdmin
+              ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+              : null,
+            value: getGeneralPermission(permissions, group.id, "monitoring"),
             options: [
               GENERAL_PERMISSIONS_OPTIONS.yes,
               GENERAL_PERMISSIONS_OPTIONS.no,
@@ -60,6 +79,10 @@ export const getGeneralPermissionEditor = createSelector(
       columns: [
         { name: `General settings access` },
         { name: `Subscriptions and Alerts` },
+        {
+          name: `Monitoring access`,
+          hint: t`This grants access to Tools, Audit, and Troubleshooting`,
+        },
       ],
       entities,
     };

@@ -1,8 +1,10 @@
 import React from "react";
-import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
+import { UserAuthWrapper } from "redux-auth-wrapper";
+import { routerActions } from "react-router-redux";
 
+import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -10,6 +12,7 @@ import {
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { canAccessPath } from "metabase/nav/utils";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -55,13 +58,20 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
-const getRoutes = (
-  store,
-  CanAccessSettings,
-  IsAdmin,
-  CanAccessDataModel,
-  CanAccessDatabaseManagement,
-) => (
+export const createAdminRouteGuard = (routeKey, Component) => {
+  const Wrapper = UserAuthWrapper({
+    predicate: currentUser => canAccessPath(routeKey, currentUser),
+    failureRedirectPath: "/unauthorized",
+    authSelector: state => state.currentUser,
+    allowRedirectBack: false,
+    wrapperDisplayName: `CanAccess(${routeKey})`,
+    redirectAction: routerActions.replace,
+  });
+
+  return Wrapper(Component ?? (({ children }) => children));
+};
+
+const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
     path="/admin"
     component={withBackground("bg-white")(CanAccessSettings)}
@@ -72,14 +82,14 @@ const getRoutes = (
       <Route
         path="databases"
         title={t`Databases`}
-        component={CanAccessDatabaseManagement}
+        component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
         <Route path="create" component={DatabaseEditApp} />
         <Route path=":databaseId" component={DatabaseEditApp} />
       </Route>
 
-      <Route path="datamodel" component={CanAccessDataModel}>
+      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Data Model`} component={DataModelApp}>
           <IndexRedirect to="database" />
           <Route path="database" component={MetadataEditorApp} />
@@ -137,7 +147,10 @@ const getRoutes = (
       </Route>
 
       {/* Troubleshooting */}
-      <Route path="troubleshooting" component={IsAdmin}>
+      <Route
+        path="troubleshooting"
+        component={createAdminRouteGuard("troubleshooting")}
+      >
         <Route title={t`Troubleshooting`} component={TroubleshootingApp}>
           <IndexRedirect to="help" />
           <Route path="help" component={Help} />
