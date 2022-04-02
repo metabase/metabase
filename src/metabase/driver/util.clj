@@ -346,7 +346,7 @@
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:source {:type (driver-source (name driver))
-                               :source (driver/contact-info driver)}
+                               :contact (driver/contact-info driver)}
                       :details-fields props
                       :driver-name    (driver/display-name driver)
                       :superseded-by  (driver/superseded-by driver)}])))
