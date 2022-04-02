@@ -3,9 +3,9 @@ import moment from "moment";
 import { parseTimestamp } from "metabase/lib/time";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Database, RecentView, User } from "metabase-types/api";
-import PopularSection from "../../containers/PopularSection";
-import RecentSection from "../../containers/RecentSection";
-import XraySection from "../../containers/XraySection";
+import HomePopularSection from "../../containers/HomePopularSection";
+import HomeRecentSection from "../../containers/HomeRecentSection";
+import HomeXraySection from "../../containers/HomeXraySection";
 
 export interface HomeContentProps {
   user: User;
@@ -15,15 +15,15 @@ export interface HomeContentProps {
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
   if (isPopularSection(props)) {
-    return <PopularSection />;
+    return <HomePopularSection />;
   }
 
   if (isRecentSection(props)) {
-    return <RecentSection />;
+    return <HomeRecentSection />;
   }
 
   if (isXraySection(props)) {
-    return <XraySection />;
+    return <HomeXraySection />;
   }
 
   return null;
