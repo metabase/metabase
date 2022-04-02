@@ -23,7 +23,7 @@ const mapStateToProps = (state, props) => ({
   hasDataAccess: getHasDataAccess(state),
 });
 
-import { NavRoot } from "./Navbar.styled";
+import { Sidebar } from "./Navbar.styled";
 
 import MainNavbar from "./MainNavbar";
 
@@ -73,14 +73,14 @@ export default class Navbar extends Component {
     const { isOpen, location, params, closeNavbar } = this.props;
     // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
-      <NavRoot className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <MainNavbar
           isOpen={isOpen}
           location={location}
           params={params}
           closeNavbar={closeNavbar}
         />
-      </NavRoot>
+      </Sidebar>
     );
   }
 

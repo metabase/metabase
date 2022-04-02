@@ -23,7 +23,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import { Sidebar, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import { NavRoot, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
 
 function mapStateToProps(state: unknown) {
   return {
@@ -111,7 +111,7 @@ function MainNavbarContainer({
   }, [rootCollection, collections, currentUser]);
 
   return (
-    <Sidebar isOpen={isOpen}>
+    <NavRoot isOpen={isOpen}>
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
@@ -127,7 +127,7 @@ function MainNavbarContainer({
           <LoadingTitle>{t`Loading…`}</LoadingTitle>
         </LoadingContainer>
       )}
-    </Sidebar>
+    </NavRoot>
   );
 }
 
