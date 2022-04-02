@@ -8,7 +8,7 @@ import { space } from "metabase/styled-components/theme";
 
 import { APP_BAR_HEIGHT } from "../constants";
 
-export const AppBarRoot = styled.div`
+export const AppBarRoot = styled.header`
   position: relative;
   display: flex;
   align-items: center;
