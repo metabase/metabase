@@ -3,26 +3,21 @@ import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Database, DatabaseCandidate } from "metabase-types/api";
+import HomeXrayCard from "../HomeXrayCard";
 import {
   DatabaseIcon,
   DatabaseLink,
   DatabaseTitle,
   SectionTitle,
-  XrayCard,
-  XrayIcon,
-  XrayIconContainer,
   XrayList,
-  XrayTitle,
-  XrayTitlePrimary,
-  XrayTitleSecondary,
-} from "./XraySection.styled";
+} from "./HomeXraySection.styled";
 
 export interface XraySectionProps {
   database?: Database;
   databaseCandidates: DatabaseCandidate[];
 }
 
-const XraySection = ({
+const HomeXraySection = ({
   database,
   databaseCandidates,
 }: XraySectionProps): JSX.Element => {
@@ -48,15 +43,12 @@ const XraySection = ({
       )}
       <XrayList>
         {tables.map((table, index) => (
-          <XrayCard key={table.url} url={table.url}>
-            <XrayIconContainer>
-              <XrayIcon name="bolt" />
-            </XrayIconContainer>
-            <XrayTitle>
-              <XrayTitleSecondary>{tableMessages[index]}</XrayTitleSecondary>{" "}
-              <XrayTitlePrimary>{table.title}</XrayTitlePrimary>
-            </XrayTitle>
-          </XrayCard>
+          <HomeXrayCard
+            key={table.url}
+            title={table.title}
+            url={table.url}
+            message={tableMessages[index]}
+          />
         ))}
       </XrayList>
     </div>
@@ -78,4 +70,4 @@ const getMessages = (count: number) => {
     .value();
 };
 
-export default XraySection;
+export default HomeXraySection;
