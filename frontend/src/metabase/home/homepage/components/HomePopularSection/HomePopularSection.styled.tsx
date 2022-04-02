@@ -12,28 +12,8 @@ export const SectionTitle = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-export const RecentList = styled.div`
+export const SectionBody = styled.div`
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
-`;
-
-export const RecentCard = styled(HomeCard)`
-  display: flex;
-  align-items: center;
-`;
-
-export const RecentIcon = styled(Icon)`
-  display: block;
-  flex: 0 0 auto;
-  color: ${color("brand")};
-  width: 1rem;
-  height: 1rem;
-`;
-
-export const RecentTitle = styled(Ellipsified)`
-  color: ${color("text-dark")};
-  font-size: 1rem;
-  font-weight: bold;
-  margin-left: 1rem;
 `;

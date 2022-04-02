@@ -1,4 +1,4 @@
 import PopularViews from "metabase/entities/popular-views";
-import PopularSection from "../../components/PopularSection";
+import HomePopularSection from "../../components/HomePopularSection";
 
-export default PopularViews.loadList({ reload: true })(PopularSection);
+export default PopularViews.loadList({ reload: true })(HomePopularSection);

@@ -4,30 +4,29 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { getIcon, getName } from "metabase/entities/popular-views";
 import { PopularView } from "metabase-types/api";
-import {
-  PopularCard,
-  PopularIcon,
-  PopularList,
-  PopularTitle,
-  SectionTitle,
-} from "./PopularSection.styled";
+import HomeModelCard from "../HomeModelCard";
+import { SectionBody, SectionTitle } from "./HomePopularSection.styled";
 
-export interface PopularSectionProps {
+export interface HomePopularSectionProps {
   popularViews: PopularView[];
 }
 
-const PopularSection = ({ popularViews }: PopularSectionProps): JSX.Element => {
+const HomePopularSection = ({
+  popularViews,
+}: HomePopularSectionProps): JSX.Element => {
   return (
     <div>
       <SectionTitle>{getTitle(popularViews)}</SectionTitle>
-      <PopularList>
+      <SectionBody>
         {popularViews.map((item, index) => (
-          <PopularCard key={index} url={Urls.modelToUrl(item) ?? ""}>
-            <PopularIcon {...getIcon(item)} />
-            <PopularTitle>{getName(item)}</PopularTitle>
-          </PopularCard>
+          <HomeModelCard
+            key={index}
+            title={getName(item)}
+            icon={getIcon(item)}
+            url={Urls.modelToUrl(item) ?? ""}
+          />
         ))}
-      </PopularList>
+      </SectionBody>
     </div>
   );
 };
@@ -53,4 +52,4 @@ const getTitle = (popularViews: PopularView[]) => {
   }
 };
 
-export default PopularSection;
+export default HomePopularSection;
