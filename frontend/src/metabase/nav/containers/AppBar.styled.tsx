@@ -57,12 +57,6 @@ export const SearchBarContainer = styled.div`
 `;
 
 export const SearchBarContent = styled.div`
-  // transition: width 0.2s;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-
   ${breakpointMaxSmall} {
     width: 100%;
   }
