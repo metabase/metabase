@@ -8,6 +8,7 @@ export const CardRoot = styled(ExternalLink)`
   align-items: center;
   padding: 1rem;
   border: 1px solid ${color("focus")};
+  border-radius: 0.5rem;
 `;
 
 export const CardIcon = styled(Icon)`
