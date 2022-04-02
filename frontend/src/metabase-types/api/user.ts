@@ -14,7 +14,4 @@ export interface User {
   date_joined: string;
   last_login: string;
   personal_collection_id: number;
-  can_access_data_model: boolean;
-  can_access_database_management: boolean;
-  can_access_monitoring: boolean;
 }

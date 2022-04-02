@@ -11,8 +11,8 @@ import {
 import { NAV_PERMISSION_GUARD } from "metabase/nav/utils";
 
 if (hasPremiumFeature("advanced_permissions")) {
-  NAV_PERMISSION_GUARD["data-model"] = canAccessDataModel;
-  NAV_PERMISSION_GUARD["database"] = canAccessDatabaseManagement;
+  NAV_PERMISSION_GUARD["data-model"] = canAccessDataModel as any;
+  NAV_PERMISSION_GUARD["database"] = canAccessDatabaseManagement as any;
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions = getFeatureLevelDataPermissions;
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns = DATA_COLUMNS;
