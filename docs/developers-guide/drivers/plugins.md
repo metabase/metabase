@@ -9,6 +9,9 @@ info:
   name: Metabase SQLite Driver
   version: 1.0.0-SNAPSHOT-3.25.2
   description: Allows Metabase to connect to SQLite databases.
+contact-info:
+  name: Toucan McBird
+  info: toucan.mcbird@example.com
 driver:
   name: sqlite
   display-name: SQLite
