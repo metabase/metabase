@@ -4,6 +4,7 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { getIcon, getName } from "metabase/entities/popular-views";
 import { PopularView } from "metabase-types/api";
+import HomeHelpCard from "../HomeHelpCard";
 import HomeModelCard from "../HomeModelCard";
 import { SectionBody, SectionTitle } from "./HomePopularSection.styled";
 
@@ -26,6 +27,7 @@ const HomePopularSection = ({
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}
+        <HomeHelpCard />
       </SectionBody>
     </div>
   );
