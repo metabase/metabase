@@ -15,7 +15,7 @@ export function sidebar() {
 }
 
 export function navigationSidebar() {
-  return cy.get("aside nav");
+  return cy.get("#root aside").first();
 }
 
 export function appBar() {
