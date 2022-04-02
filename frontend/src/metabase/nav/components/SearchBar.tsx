@@ -1,16 +1,11 @@
-import React, {
-  FocusEvent,
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
 import Icon from "metabase/components/Icon";
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
+import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
+import { useOnOutsideClick } from "metabase/hooks/use-on-outside-click";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
@@ -33,8 +28,8 @@ type SearchAwareLocation = Location<{ q?: string }>;
 
 type Props = {
   location: SearchAwareLocation;
-  onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  onSearchActive?: () => void;
+  onSearchInactive?: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
@@ -50,7 +45,12 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
   return "";
 }
 
-function SearchBar({ location, onFocus, onBlur, onChangeLocation }: Props) {
+function SearchBar({
+  location,
+  onSearchActive,
+  onSearchInactive,
+  onChangeLocation,
+}: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
     getSearchTextFromLocation(location),
   );
@@ -59,7 +59,9 @@ function SearchBar({ location, onFocus, onBlur, onChangeLocation }: Props) {
     false,
   );
 
+  const wasActive = usePrevious(isActive);
   const previousLocation = usePrevious(location);
+  const container = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
 
   const onInputContainerClick = useCallback(() => {
@@ -74,6 +76,21 @@ function SearchBar({ location, onFocus, onBlur, onChangeLocation }: Props) {
   const onClear = useCallback(e => {
     setSearchText("");
   }, []);
+
+  useOnOutsideClick(container, setInactive);
+
+  useKeyboardShortcut("Escape", setInactive);
+
+  useEffect(() => {
+    if (!wasActive && isActive) {
+      onSearchActive?.();
+    } else if (wasActive && !isActive) {
+      if (isSmallScreen()) {
+        setSearchText("");
+      }
+      onSearchInactive?.();
+    }
+  }, [wasActive, isActive, onSearchActive, onSearchInactive]);
 
   useEffect(() => {
     function focusOnForwardSlashPress(e: KeyboardEvent) {
@@ -122,44 +139,36 @@ function SearchBar({ location, onFocus, onBlur, onChangeLocation }: Props) {
   const hasSearchText = searchText.trim().length > 0;
 
   return (
-    <OnClickOutsideWrapper handleDismissal={setInactive}>
-      <>
-        <SearchInputContainer
+    <div ref={container}>
+      <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
+        <SearchIcon name="search" isActive={isActive} />
+        <SearchInput
           isActive={isActive}
-          onClick={onInputContainerClick}
-        >
-          <SearchIcon name="search" isActive={isActive} />
-          <SearchInput
-            isActive={isActive}
-            value={searchText}
-            placeholder={t`Search` + "…"}
-            maxLength={200}
-            onClick={setActive}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            onChange={onTextChange}
-            onKeyPress={handleInputKeyPress}
-            ref={searchInput}
-          />
-          {isSmallScreen() && hasSearchText && (
-            <ClearIconButton onClick={onClear}>
-              <Icon name="close" />
-            </ClearIconButton>
-          )}
-        </SearchInputContainer>
-        {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
-          <SearchResultsFloatingContainer>
-            {hasSearchText ? (
-              <SearchResultsContainer>
-                <SearchResults searchText={searchText.trim()} />
-              </SearchResultsContainer>
-            ) : (
-              <RecentsList />
-            )}
-          </SearchResultsFloatingContainer>
+          value={searchText}
+          placeholder={t`Search` + "…"}
+          maxLength={200}
+          onChange={onTextChange}
+          onKeyPress={handleInputKeyPress}
+          ref={searchInput}
+        />
+        {isSmallScreen() && hasSearchText && (
+          <ClearIconButton onClick={onClear}>
+            <Icon name="close" />
+          </ClearIconButton>
         )}
-      </>
-    </OnClickOutsideWrapper>
+      </SearchInputContainer>
+      {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
+        <SearchResultsFloatingContainer>
+          {hasSearchText ? (
+            <SearchResultsContainer>
+              <SearchResults searchText={searchText.trim()} />
+            </SearchResultsContainer>
+          ) : (
+            <RecentsList />
+          )}
+        </SearchResultsFloatingContainer>
+      )}
+    </div>
   );
 }
 export default SearchBar;
