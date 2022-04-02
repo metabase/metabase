@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 
@@ -11,56 +12,108 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const SearchInputContainer = styled.div`
+const activeInputCSS = css`
+  border-radius: 6px;
+  justify-content: flex-start;
+`;
+
+export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   position: relative;
-  max-width: 50em;
 
   background-color: ${color("bg-light")};
   border: 1px solid ${color("border")};
-  border-radius: 6px;
 
-  transition: background 150ms;
+  overflow: hidden;
+
+  transition: background 150ms, width 0.2s;
 
   &:hover {
     background-color: ${color("bg-medium")};
   }
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  ${breakpointMaxSmall} {
+    justify-content: center;
+    margin-left: auto;
+
+    width: 2rem;
+    height: 2rem;
+    border-radius: 99px;
+
+    ${props =>
+      props.isActive &&
+      css`
+        width: 95%;
+        ${activeInputCSS};
+      `}
+  }
+
+  ${breakpointMinSmall} {
+    max-width: 50em;
+    ${activeInputCSS};
+  }
 `;
 
-export const SearchInput = styled.input`
-  width: 100%;
-  padding: 10px 12px;
-  font-weight: 700;
-
-  color: ${color("text-dark")};
+export const SearchInput = styled.input<{ isActive: boolean }>`
   background-color: transparent;
   border: none;
+  color: ${color("text-dark")};
+  font-weight: 700;
 
   &:focus {
     outline: none;
   }
+
   &::placeholder {
     color: ${color("text-dark")};
+  }
+
+  ${breakpointMinSmall} {
+    padding: 10px 12px;
+  }
+
+  ${breakpointMaxSmall} {
+    width: 0;
+
+    ${props =>
+      props.isActive &&
+      css`
+        width: 100%;
+        padding-top: 10px;
+        padding-bottom: 10px;
+      `}
   }
 `;
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)`
-  margin-left: ${ICON_MARGIN};
+export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+  ${breakpointMaxSmall} {
+    margin-left: ${props => (props.isActive ? ICON_MARGIN : "3px")};
+    margin-right: ${props => (props.isActive ? ICON_MARGIN : 0)};
+    transition: margin 0.3s;
+  }
+
+  ${breakpointMinSmall} {
+    margin-left: ${ICON_MARGIN};
+  }
 `;
 
 export const ClearIconButton = styled.button`
-  position: absolute;
-  top: ${ICON_MARGIN};
-  right: ${ICON_MARGIN};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 3rem;
+  height: 100%;
 
   color: ${color("text-light")};
-
-  padding: 0.5em;
-  margin: -0.5em;
 
   cursor: pointer;
 `;
@@ -78,7 +131,6 @@ export const SearchResultsFloatingContainer = styled.div`
 
   ${breakpointMinSmall} {
     top: 60px;
-    max-width: ;
   }
 `;
 

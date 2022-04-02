@@ -34,6 +34,7 @@ type SearchAwareLocation = Location<{ q?: string }>;
 type Props = {
   location: SearchAwareLocation;
   onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
@@ -49,7 +50,7 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
   return "";
 }
 
-function SearchBar({ location, onFocus, onChangeLocation }: Props) {
+function SearchBar({ location, onFocus, onBlur, onChangeLocation }: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
     getSearchTextFromLocation(location),
   );
@@ -60,6 +61,11 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
 
   const previousLocation = usePrevious(location);
   const searchInput = useRef<HTMLInputElement>(null);
+
+  const onInputContainerClick = useCallback(() => {
+    searchInput.current?.focus();
+    setActive();
+  }, [setActive]);
 
   const onTextChange = useCallback(e => {
     setSearchText(e.target.value);
@@ -118,14 +124,19 @@ function SearchBar({ location, onFocus, onChangeLocation }: Props) {
   return (
     <OnClickOutsideWrapper handleDismissal={setInactive}>
       <>
-        <SearchInputContainer onClick={setActive}>
-          <SearchIcon name="search" />
+        <SearchInputContainer
+          isActive={isActive}
+          onClick={onInputContainerClick}
+        >
+          <SearchIcon name="search" isActive={isActive} />
           <SearchInput
+            isActive={isActive}
             value={searchText}
             placeholder={t`Search` + "…"}
             maxLength={200}
             onClick={setActive}
             onFocus={onFocus}
+            onBlur={onBlur}
             onChange={onTextChange}
             onKeyPress={handleInputKeyPress}
             ref={searchInput}

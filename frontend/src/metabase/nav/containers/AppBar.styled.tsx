@@ -13,11 +13,23 @@ export const AppBarRoot = styled.header`
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
   height: ${APP_BAR_HEIGHT};
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
+`;
+
+export const RowLeft = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+`;
+
+export const RowRight = styled(RowLeft)`
+  flex: 1;
+  justify-content: flex-end;
 `;
 
 export const LogoIconWrapper = styled.div`
@@ -36,29 +48,27 @@ export const LogoIconWrapper = styled.div`
 
 export const SearchBarContainer = styled.div`
   display: flex;
-  flex: 1 0 auto;
   align-items: center;
-  padding-right: 1rem;
+  margin-right: 1rem;
+
+  ${breakpointMaxSmall} {
+    width: 100%;
+  }
 `;
 
 export const SearchBarContent = styled.div`
-  width: 100%;
-  max-width: 500px;
-  margin-left: auto;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-
-  transition: max-width 0.2s;
+  // transition: width 0.2s;
 
   @media (prefers-reduced-motion) {
     transition: none;
   }
 
   ${breakpointMaxSmall} {
-    max-width: 60vw;
+    width: 100%;
   }
 
   ${breakpointMinSmall} {
     position: relative;
+    width: 500px;
   }
 `;

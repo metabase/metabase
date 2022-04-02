@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -19,6 +19,8 @@ import {
   LogoIconWrapper,
   SearchBarContainer,
   SearchBarContent,
+  RowLeft,
+  RowRight,
 } from "./AppBar.styled";
 
 type Props = {
@@ -38,13 +40,20 @@ function AppBar({
   handleCloseSidebar,
   onChangeLocation,
 }: Props) {
+  const [isSearchActive, setSearchActive] = useState(false);
+
   const closeSidebarForSmallScreens = useCallback(() => {
     if (isSmallScreen()) {
       handleCloseSidebar();
+      setSearchActive(true);
     }
   }, [handleCloseSidebar]);
 
-  const sidebarButtonLabel = useMemo(() => {
+  const onStopSearching = useCallback(() => {
+    setSearchActive(false);
+  }, []);
+
+  const sidebarButtonTooltip = useMemo(() => {
     const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
     const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
     return `${message} ${shortcut}`;
@@ -52,31 +61,38 @@ function AppBar({
 
   return (
     <AppBarRoot>
-      <LogoIconWrapper>
-        <Link
-          to="/"
-          onClick={closeSidebarForSmallScreens}
-          data-metabase-event="Navbar;Logo"
-        >
-          <LogoIcon size={24} />
-        </Link>
-      </LogoIconWrapper>
-      <Tooltip tooltip={sidebarButtonLabel}>
-        <SidebarButton
-          onClick={onToggleSidebarClick}
-          isSidebarOpen={isSidebarOpen}
-        />
-      </Tooltip>
-      <SearchBarContainer>
-        <SearchBarContent>
-          <SearchBar
-            location={location}
-            onChangeLocation={onChangeLocation}
-            onFocus={closeSidebarForSmallScreens}
-          />
-        </SearchBarContent>
-      </SearchBarContainer>
-      <NewButton setModal={onNewClick} />
+      <RowLeft>
+        <LogoIconWrapper>
+          <Link
+            to="/"
+            onClick={closeSidebarForSmallScreens}
+            data-metabase-event="Navbar;Logo"
+          >
+            <LogoIcon size={24} />
+          </Link>
+        </LogoIconWrapper>
+        {!isSearchActive && (
+          <Tooltip tooltip={sidebarButtonTooltip}>
+            <SidebarButton
+              isSidebarOpen={isSidebarOpen}
+              onClick={onToggleSidebarClick}
+            />
+          </Tooltip>
+        )}
+      </RowLeft>
+      <RowRight>
+        <SearchBarContainer>
+          <SearchBarContent>
+            <SearchBar
+              location={location}
+              onChangeLocation={onChangeLocation}
+              onFocus={closeSidebarForSmallScreens}
+              onBlur={onStopSearching}
+            />
+          </SearchBarContent>
+        </SearchBarContainer>
+        <NewButton setModal={onNewClick} />
+      </RowRight>
     </AppBarRoot>
   );
 }
