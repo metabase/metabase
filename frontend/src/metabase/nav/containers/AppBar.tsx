@@ -42,7 +42,7 @@ function AppBar({
   }, [handleCloseSidebar]);
 
   return (
-    <AppBarRoot id="mainAppBar">
+    <AppBarRoot>
       <LogoIconWrapper>
         <Link
           to="/"
