@@ -6,7 +6,7 @@ import { t } from "ttag";
 import ToolsApp from "./containers/ToolsApp";
 import ErrorOverview from "./containers/ErrorOverview";
 import ErrorDetail from "./containers/ErrorDetail";
-import { createAdminRouteGuard } from "metabase/admin/routes";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 
 const getRoutes = store => (
   <Route

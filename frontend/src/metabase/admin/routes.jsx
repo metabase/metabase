@@ -1,8 +1,6 @@
 import React from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
-import { UserAuthWrapper } from "redux-auth-wrapper";
-import { routerActions } from "react-router-redux";
 
 import { Route } from "metabase/hoc/Title";
 import {
@@ -12,7 +10,7 @@ import {
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { canAccessPath } from "metabase/nav/utils";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -57,19 +55,6 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
-
-export const createAdminRouteGuard = (routeKey, Component) => {
-  const Wrapper = UserAuthWrapper({
-    predicate: currentUser => canAccessPath(routeKey, currentUser),
-    failureRedirectPath: "/unauthorized",
-    authSelector: state => state.currentUser,
-    allowRedirectBack: false,
-    wrapperDisplayName: `CanAccess(${routeKey})`,
-    redirectAction: routerActions.replace,
-  });
-
-  return Wrapper(Component ?? (({ children }) => children));
-};
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
