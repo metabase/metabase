@@ -15,7 +15,7 @@ describe("scenarios > dashboard > bookmarks", () => {
     visitDashboard(1);
     openNavigationSidebar();
 
-    cy.get("header").within(() => {
+    cy.get("main header").within(() => {
       cy.icon("ellipsis").click();
     });
 
@@ -25,7 +25,7 @@ describe("scenarios > dashboard > bookmarks", () => {
       cy.findByText("Orders in a dashboard");
     });
 
-    cy.get("header").within(() => {
+    cy.get("main header").within(() => {
       cy.icon("ellipsis").click();
     });
 

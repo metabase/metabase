@@ -57,7 +57,7 @@ describe("scenarios > dashboard", () => {
   it("should update the name and description", () => {
     visitDashboard(1);
 
-    cy.get("header").within(() => {
+    cy.get("main header").within(() => {
       cy.icon("ellipsis").click();
     });
     // update title
