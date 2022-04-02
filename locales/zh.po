@@ -48,7 +48,7 @@ msgstr "保存"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "为了做一些神奇的事情，Metabase 需要扫描你的数据库。我们将会定期扫描，来保持源数据是最新的。你也可以在周期的扫描之前，手工来控制扫描。"
+msgstr "为了做一些神奇的事情，MetricsLink 需要扫描你的数据库。我们将会定期扫描，来保持源数据是最新的。你也可以在周期的扫描之前，手工来控制扫描。"
 
 #: frontend/src/metabase/entities/databases/forms.js:366
 msgid "Database syncing"
@@ -74,11 +74,11 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase 可以扫描数据库中每个字段的值, 用以启用查询或仪表板中的选择框过滤器. 当您的数据库较大时, 这可能是一个资源密集型的过程."
+msgstr "MetricsLink 可以扫描数据库中每个字段的值, 用以启用查询或仪表板中的选择框过滤器. 当您的数据库较大时, 这可能是一个资源密集型的过程."
 
 #: frontend/src/metabase/entities/databases/forms.js:377
 msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Metabase 应该在什么时候自动扫描缓存的字段值"
+msgstr "MetricsLink 应该在什么时候自动扫描缓存的字段值"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:26
 msgid "Regularly, on a schedule"
@@ -115,7 +115,7 @@ msgstr "是否要删除这个数据库？"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:60
 msgid "All saved questions, metrics, and segments that rely on this database will be lost."
-msgstr "所有依赖这个数据库保存的问题，指标，数据段将要丢失。"
+msgstr "所有依赖这个数据库保存的指标，指标，数据段将要丢失。"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:61
 msgid "This cannot be undone."
@@ -349,7 +349,7 @@ msgstr "作废{0}？"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
-msgstr "保存的问题和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此{1}。"
+msgstr "保存的指标和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此{1}。"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:39
 msgid "If you're sure you want to retire this {0}, please write a quick explanation of why it's being retired:"
@@ -548,7 +548,7 @@ msgstr "创建指标并添加到查询设计器的视图下拉列表"
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:61
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:20
 msgid "Segments"
-msgstr "过滤器"
+msgstr "过滤条件"
 
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:27
 msgid "Add a Segment"
@@ -689,7 +689,7 @@ msgstr "缓存字段值"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:388
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase 通过扫描该字段，以启用仪表盘和问题的多选框筛选。"
+msgstr "MetricsLink 通过扫描该字段，以启用仪表盘和问题的多选框筛选。"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:15
 msgid "Re-scan this field"
@@ -852,7 +852,7 @@ msgstr "设置"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:85
 msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase扫描此表中的值以启用仪表板和问题中的复选框过滤器。"
+msgstr "MetricsLink扫描此表中的值以启用仪表板和问题中的复选框过滤器。"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:90
 msgid "Re-scan this table"
@@ -897,11 +897,11 @@ msgstr "所有属于这个{0}群组的用户，并且不能从这个群组中被
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:35
 msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "这是一个特殊的组，其成员可以查看Metabase实例中的所有内容，可以访问和更改管理面板中的设置，包括更改权限！ 因此，小心地将人员添加到该组。"
+msgstr "这是一个特殊的组，其成员可以查看MetricsLink实例中的所有内容，可以访问和更改管理面板中的设置，包括更改权限！ 因此，小心地将人员添加到该组。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:39
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
-msgstr "为了确保你不会被Metabase锁在外面，必须需要至少一个用户在这个群组里。"
+msgstr "为了确保你不会被MetricsLink锁在外面，必须需要至少一个用户在这个群组里。"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
 #: frontend/src/metabase/admin/people/components/group-members/GroupMembersTable.jsx:54
@@ -1245,11 +1245,11 @@ msgstr "对不起，发生错误。"
 
 #: frontend/src/metabase/admin/permissions/constants/messages.js:3
 msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "管理员始终对Metabase中的所有内容具有最高级别的访问权限。"
+msgstr "管理员始终对MetricsLink中的所有内容具有最高级别的访问权限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:70
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
-msgstr "每个Metabase用户都属于“所有用户”组。如果要限制一个用户组对某些内容的访问权限，请确保“所有用户”组具有相同或更低级别的访问权限。"
+msgstr "每个MetricsLink用户都属于“所有用户”组。如果要限制一个用户组对某些内容的访问权限，请确保“所有用户”组具有相同或更低级别的访问权限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:72
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
@@ -1377,7 +1377,7 @@ msgstr "Google账号登录"
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:55
 #: frontend/src/metabase/plugins/builtin/auth/google.js:33
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "允许拥有Metabase帐户的用户使用与其电子邮件地址匹配的Google帐户以及其Metabase用户名和密码进行登录。"
+msgstr "允许拥有MetricsLink帐户的用户使用与其电子邮件地址匹配的Google帐户以及其Metabase用户名和密码进行登录。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:25
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:32
@@ -1466,7 +1466,7 @@ msgstr "开始设置向导"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:112
 msgid "A few things you can do to get the most out of Metabase."
-msgstr "您可以采取一些措施来充分利用Metabase。"
+msgstr "您可以采取一些措施来充分利用MetricsLink。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:121
 msgid "Recommended next step"
@@ -1502,11 +1502,11 @@ msgstr "进入后，请为其命名并单击{0}。然后将Bot API令牌复制�
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:49
 msgid "You're running Metabase {0} which is the latest and greatest!"
-msgstr "你正在运行的Metabase {0}是最新版本的。"
+msgstr "你正在运行的MetricsLink {0}是最新版本的。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
 msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Metabase {0}可更新。你正在运行是{1}"
+msgstr "MetricsLink {0}可更新。你正在运行是{1}"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:65
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:82
@@ -1622,7 +1622,7 @@ msgstr "启用嵌入即表示您同意嵌入许可，该许可位于"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:21
 msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "简单来说，当您在自己的应用程序中嵌入Metabase的图表或仪表板时，只要您保留Metabase徽标和“Powered by Metabase”，该应用程序就不受涵盖Metabase其余部分的Affero通用公共许可证的约束。但是，您应该阅读上面链接的许可文本，因为这是您将通过启用此功能同意的实际许可。"
+msgstr "简单来说，当您在自己的应用程序中嵌入MetricsLink的图表或仪表板时，只要您保留Metabase徽标和“Powered by Metabase”，该应用程序就不受涵盖Metabase其余部分的Affero通用公共许可证的约束。但是，您应该阅读上面链接的许可文本，因为这是您将通过启用此功能同意的实际许可。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:34
 msgid "Enable"
@@ -1634,7 +1634,7 @@ msgstr "标准编辑已启用"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:30
 msgid "Enter the token you bought from the Metabase Store"
-msgstr "输入你从Metabase商店购买的token"
+msgstr "输入你从MetricsLink商店购买的token"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:57
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
@@ -1664,7 +1664,7 @@ msgstr "创建映射"
 msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
-msgstr "映射允许Metabase根据目录服务器提供的成员资格信息自动添加和删除组中的用户。Admin组的成员身份可以通过映射授予，但作为故障保护措施并不会被自动删除。"
+msgstr "映射允许MetricsLink根据目录服务器提供的成员资格信息自动添加和删除组中的用户。Admin组的成员身份可以通过映射授予，但作为故障保护措施并不会被自动删除。"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:110
 msgid "Distinguished Name"
@@ -1938,7 +1938,7 @@ msgstr "地图贴片服务器URL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:216
 msgid "Metabase uses OpenStreetMaps by default."
-msgstr "Metabase默认使用OpenStreet地图"
+msgstr "MetricsLink默认使用OpenStreet地图"
 
 #: frontend/src/metabase/admin/settings/selectors.js:221
 msgid "Custom Maps"
@@ -1970,7 +1970,7 @@ msgstr "嵌入在其他的应用中"
 
 #: frontend/src/metabase/admin/settings/selectors.js:334
 msgid "Enable Embedding Metabase in other Applications"
-msgstr "启用将Metabase嵌入到其他应用中"
+msgstr "启用将MetricsLink嵌入到其他应用中"
 
 #: frontend/src/metabase/admin/settings/selectors.js:344
 msgid "Embedding secret key"
@@ -2053,7 +2053,7 @@ msgstr "忘记密码"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:50
 msgid "The email you use for your Metabase account"
-msgstr "你作为Metabase账户的Email地址"
+msgstr "你作为MetricsLink账户的Email地址"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:57
 msgid "Send password reset email"
@@ -2065,7 +2065,7 @@ msgstr "检查你的邮件来获取重置密码说明"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:31
 msgid "Sign in to Metabase"
-msgstr "登录Metabase"
+msgstr "指标管理平台"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
 msgid "OR"
@@ -2082,7 +2082,7 @@ msgstr "登录"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:83
 msgid "I seem to have forgotten my password"
-msgstr "我似乎忘记了我的密码"
+msgstr "忘记密码"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:66
 msgid "request a new reset email"
@@ -2361,12 +2361,12 @@ msgstr "一些数据库安装只有通过SSH通道访问的服务器有权访问
 
 #: frontend/src/metabase/entities/databases/forms.js:349
 msgid "This is a large database, so let me choose when Metabase syncs and scans"
-msgstr "这是一个大型数据库，让我选择Metabase同步和扫描的时间"
+msgstr "这是一个大型数据库，让我选择MetricsLink同步和扫描的时间"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "默认情况下，Metabase每小时执行一次轻量级同步，每天执行一次密集扫描。\n"
+msgstr "默认情况下，MetricsLink每小时执行一次轻量级同步，每天执行一次密集扫描。\n"
 "如果您有一个大型数据库，我们建议启用此功能并查看字段值扫描的发生时间和频率。"
 
 #: frontend/src/metabase/entities/databases/forms.js:129
@@ -2393,7 +2393,7 @@ msgstr "使用Google Driver权限"
 
 #: frontend/src/metabase/entities/databases/forms.js:186
 msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
-msgstr "要将Metabase用于此数据，您必须在Google Developers Console中启用API访问权限。"
+msgstr "要将MetricsLink用于此数据，您必须在Google Developers Console中启用API访问权限。"
 
 #: frontend/src/metabase/entities/databases/forms.js:187
 msgid "{0} to go to the console if you haven't already done so."
@@ -2666,7 +2666,7 @@ msgstr "加载中……"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:72
 msgid "Metabase Newsletter"
-msgstr "Metabase新闻"
+msgstr "MetricsLink新闻"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:82
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2678,7 +2678,7 @@ msgstr "订阅"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:107
 msgid "You're subscribed. Thanks for using Metabase!"
-msgstr "订阅成功。感谢您使用Metabase！"
+msgstr "订阅成功。感谢您使用MetricsLink！"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:46
 msgid "We're a little lost..."
@@ -2779,7 +2779,7 @@ msgstr "日历日"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:257
 msgid "your Metabase timezone"
-msgstr "你的Metabase时区"
+msgstr "你的MetricsLink时区"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
 msgid "Filter this list..."
@@ -3216,7 +3216,7 @@ msgstr "Hello World!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:261
 msgid "Metabase is up and running."
-msgstr "Metabase正在运行"
+msgstr "MetricsLink正在运行"
 
 #: frontend/src/metabase/home/components/Activity.jsx:267
 #: frontend/src/metabase/home/components/Activity.jsx:297
@@ -3595,7 +3595,7 @@ msgstr "不要包括"
 
 #: frontend/src/metabase/lib/core.js:260
 msgid "Metabase will never retrieve this field. Use this for sensitive or irrelevant information."
-msgstr "Metabase永远不会获取此字段。将此用于敏感或不相关的信息。"
+msgstr "MetricsLink永远不会获取此字段。将此用于敏感或不相关的信息。"
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
@@ -4191,7 +4191,7 @@ msgstr "帮助"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:77
 msgid "About Metabase"
-msgstr "关于Metabase"
+msgstr "关于MetricsLink"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:83
 msgid "Sign out"
@@ -4219,23 +4219,23 @@ msgstr "并且它在加州，旧金山精心被打造"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:111
 msgid "Metabase Admin"
-msgstr "Metabase管理员"
+msgstr "管理员"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:242
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:36
 msgid "Ask a question"
-msgstr "创建问题"
+msgstr "工作台"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:271
 msgid "New dashboard"
-msgstr "新仪表盘"
+msgstr "新建场景"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:277
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:155
 msgid "New pulse"
-msgstr "新定时任务"
+msgstr "创建任务"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:323
 msgid "Reference"
@@ -4276,11 +4276,11 @@ msgstr "使用简单的疑问创建器来查看趋势、列表或者事物，或
 #: src/metabase/automagic_dashboards/core.clj
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Native query"
-msgstr "原生查询"
+msgstr "SQL查询"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:114
 msgid "For more complicated questions, you can write your own SQL or native query."
-msgstr "为了回答更多复杂的疑问，你可以写下你自己的SQL语句或者原生查询。"
+msgstr "通过SQL语句，快速实现对指标数据的操作和预览."
 
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:207
 msgid "Select a default value…"
@@ -4587,7 +4587,7 @@ msgstr "得到结果了！"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:200
 msgid "Where should this data go?"
-msgstr "这个数据应该去哪？"
+msgstr "推送方式"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:216
 msgid "Unarchiving…"
@@ -4634,7 +4634,7 @@ msgstr "推荐精简定时任务，方便整个团队理解和使用。"
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:161
 #: frontend/src/metabase/query_builder/components/view/View.jsx:138
 msgid "Pick your data"
-msgstr "选择你的数据"
+msgstr "选择指标"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:163
 msgid "Choose questions you'd like to send in this pulse"
@@ -4738,7 +4738,7 @@ msgstr "帮助每个在你们团队的人和你们的数据保持联结"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:32
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
-msgstr "定时通知允许您根据您选择的时间表从Metabase发送数据到电子邮件或Slack。"
+msgstr "定时通知允许您根据您选择的时间表从MetricsLink发送数据到电子邮件或Slack。"
 
 #: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:91
 msgid "After {0}"
@@ -5149,7 +5149,7 @@ msgstr "匹配"
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:149
 #: frontend/src/metabase/query_builder/components/notebook/steps/FilterStep.jsx:19
 msgid "Add filters to narrow your answer"
-msgstr "添加筛选条件来缩小你的答案范围"
+msgstr "添加过滤条件"
 
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:285
 msgid "Add a grouping"
@@ -5173,7 +5173,7 @@ msgstr "添加一个聚合"
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:107
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:112
 msgid "Data"
-msgstr "数据"
+msgstr "指标数据"
 
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:343
 msgid "Filtered by"
@@ -5352,7 +5352,7 @@ msgstr "随便看看已经存储的疑问吧"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.jsx:14
 msgid "You won't make any permanent changes to a saved question unless you click the edit icon in the top-right."
-msgstr "除非您单击右上角的编辑图标，否则您不会对保存的问题进行任何永久性更改。"
+msgstr "除非您单击右上角的编辑图标，否则您不会对保存的指标进行任何永久性更改。"
 
 #: frontend/src/metabase/query_builder/components/SearchBar.jsx:28
 msgid "Search for"
@@ -5412,7 +5412,7 @@ msgstr "返回上一次运行"
 
 #: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:203
 msgid "Visualization"
-msgstr "可视化"
+msgstr "快速试算"
 
 #: frontend/src/metabase/query_builder/components/dataref/TablePane.jsx:94
 msgid "No description set."
@@ -5951,7 +5951,7 @@ msgstr "透视这个字段"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
 msgid "Metabase is no fun without any data"
-msgstr "Metabase没有任何数据的话一点都不好玩"
+msgstr "MetricsLink没有任何数据的话一点都不好玩"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:9
 msgid "Your databases will appear here once you connect one"
@@ -6092,7 +6092,7 @@ msgstr "联系{0}"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:253
 msgid "Help new Metabase users find their way around."
-msgstr "帮助新的Metabase用户了解如何使用"
+msgstr "帮助新的MetricsLink用户了解如何使用"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:256
 msgid "The Getting Started guide highlights the dashboard, metrics, segments, and tables that matter most, and informs your users of important things they should know before digging into the data."
@@ -6329,7 +6329,7 @@ msgstr "我们不会收集任何使用事件信息"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:90
 msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
-msgstr "为了提升Metabase的用户体验，可能需要通过Google Analytics收集特定的使用数据。"
+msgstr "为了提升MetricsLink的用户体验，可能需要通过Google Analytics收集特定的使用数据。"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:95
 msgid "Here's a full list of everything we track and why."
@@ -6337,11 +6337,11 @@ msgstr "这个我们所有我们要收集的清单，以及为什么要收集"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:110
 msgid "Allow Metabase to anonymously collect usage events"
-msgstr "允许Metabase匿名收集使用事件"
+msgstr "允许MetricsLink匿名收集使用事件"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:118
 msgid "Metabase {0} collects anything about your data or question results."
-msgstr "Metabase{0}收集任何事情关于你的数据或者提问结果"
+msgstr "MetricsLink{0}收集任何事情关于你的数据或者提问结果"
 
 #: frontend/src/metabase/lib/settings.js:138
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:119
@@ -6370,7 +6370,7 @@ msgstr "点击一下"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:131
 msgid "Welcome to Metabase"
-msgstr "欢迎来到Metabase"
+msgstr "欢迎使用MetricsLink"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:132
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
@@ -6386,7 +6386,7 @@ msgstr "你已经设置完毕了！"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:198
 msgid "Take me to Metabase"
-msgstr "带我去Metabase"
+msgstr "立即使用MetricsLink"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:49
 msgid "What should we call you?"
@@ -6457,7 +6457,7 @@ msgstr "我们很快将会展示给你一些关于你的数据的有趣的探索
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:69
 msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you."
-msgstr "这需要花费一段时间。 在此期间，您可以查看其中一个示例，来了解Metabase可以为您做些什么。"
+msgstr "这需要花费一段时间。 在此期间，您可以查看其中一个示例，来了解MetricsLink可以为您做些什么。"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:83
 msgid "I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!"
@@ -7620,7 +7620,7 @@ msgstr "组织疑问"
 
 #: src/metabase/api/setup.clj
 msgid "Have a lot of saved questions in {0}? Create collections to help manage them and add context."
-msgstr "在{0}中有很多已保存的问题？创建集合以帮助管理它们并添加上下文。"
+msgstr "在{0}中有很多已保存的指标？创建集合以帮助管理它们并添加上下文。"
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
@@ -7633,7 +7633,7 @@ msgstr "在{0}中有很多已保存的问题？创建集合以帮助管理它们
 #: frontend/src/metabase/routes.jsx:138 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
-msgstr "Metabase"
+msgstr "MetricsLink"
 
 #: src/metabase/api/setup.clj
 msgid "Create metrics"
@@ -8019,15 +8019,15 @@ msgstr "请使用下列URL来设置你的Metabase安装程序:"
 
 #: src/metabase/core.clj
 msgid "Metabase Shutting Down ..."
-msgstr "Metabase正在关闭……"
+msgstr "MetricsLink正在关闭……"
 
 #: src/metabase/core.clj
 msgid "Metabase Shutdown COMPLETE"
-msgstr "Metabase关闭完成"
+msgstr "MetricsLink关闭完成"
 
 #: src/metabase/core.clj
 msgid "Starting Metabase version {0} ..."
-msgstr "开始Metabase 版本{0}……"
+msgstr "开始MetricsLink 版本{0}……"
 
 #: src/metabase/core.clj
 msgid "System timezone is ''{0}'' ..."
@@ -8044,7 +8044,7 @@ msgstr "看起来这是一个新的安装过程……正在准备安装向导"
 
 #: src/metabase/core.clj
 msgid "Metabase Initialization COMPLETE"
-msgstr "Metabase初始化完成"
+msgstr "MetricsLink初始化完成"
 
 #: src/metabase/server.clj
 msgid "Launching Embedded Jetty Webserver with config:"
@@ -8056,11 +8056,11 @@ msgstr "关闭嵌入式Jetty We服务器"
 
 #: src/metabase/core.clj
 msgid "Starting Metabase in STANDALONE mode"
-msgstr "在脱机模式下启动Metabase"
+msgstr "在脱机模式下启动MetricsLink"
 
 #: src/metabase/core.clj
 msgid "Metabase Initialization FAILED"
-msgstr "Metabase初始化失败"
+msgstr "MetricsLink初始化失败"
 
 #: src/metabase/db/liquibase.clj
 msgid "Database has migration lock; cannot run migrations."
@@ -8323,7 +8323,7 @@ msgstr "从 https://api.slack.com/web#authentication 获取的Slack API的不记
 
 #: src/metabase/metabot.clj
 msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
-msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的问题。"
+msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的指标。"
 
 #: src/metabase/metabot/instance.clj
 msgid "Last MetaBot checkin was {0} ago."
@@ -8530,7 +8530,7 @@ msgstr "保存Field{0}的FieldValues"
 
 #: src/metabase/models/humanization.clj
 msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
-msgstr "Metabase 会尝试将数据表名称和表中字段名称转换为适合阅读的版本，例如：将somehorriblename转换为 Some Horrible Name。"
+msgstr "MetricsLink 会尝试将数据表名称和表中字段名称转换为适合阅读的版本，例如：将somehorriblename转换为 Some Horrible Name。"
 
 #: src/metabase/models/humanization.clj
 msgid "This doesn’t work all that well if the names are in a language other than English, however."
@@ -8676,7 +8676,7 @@ msgstr "加载插件{0}……"
 
 #: src/metabase/plugins.clj
 msgid "It looks like you have some external dependencies in your Metabase plugins directory."
-msgstr "你的Metabase插件目录中应该有一些外部依赖项。"
+msgstr "你的MetricsLink插件目录中应该有一些外部依赖项。"
 
 #: src/metabase/plugins.clj
 msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
@@ -8696,19 +8696,19 @@ msgstr "（如果你已经用这个方法运行了Metabse，你可以忽略这�
 
 #: src/metabase/public_settings.clj
 msgid "Identify when new versions of Metabase are available."
-msgstr "确定新版本的Metabase何时可用。"
+msgstr "确定新版本的MetricsLink何时可用。"
 
 #: src/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
-msgstr "关于Metabase可用版本的信息"
+msgstr "关于MetricsLink可用版本的信息"
 
 #: src/metabase/public_settings.clj
 msgid "The name used for this instance of Metabase."
-msgstr "用于此Metabase实例的名称。"
+msgstr "用于此MetricsLink实例的名称。"
 
 #: src/metabase/public_settings.clj
 msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "此Metabase实例的基本URL，例如“http://metabase.my-company.com”。"
+msgstr "此MetricsLink实例的基本URL，例如“http://metabase.my-company.com”。"
 
 #: src/metabase/public_settings.clj
 msgid "The default language for this Metabase instance."
@@ -8724,7 +8724,7 @@ msgstr "如果碰到问题，可以使用用户的邮件地址"
 
 #: src/metabase/public_settings.clj
 msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
-msgstr "启用匿名使用数据的收集，以帮助改进Metabase。"
+msgstr "启用匿名使用数据的收集，以帮助改进MetricsLink。"
 
 #: src/metabase/public_settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
@@ -8756,7 +8756,7 @@ msgstr "保留任何缓存查询结果的绝对最长时间（以秒为单位）
 
 #: src/metabase/public_settings.clj
 msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
-msgstr "Metabase会捕捉所有平均查询时间大于这么多秒的已保存问题"
+msgstr "MetricsLink会捕捉所有平均查询时间大于这么多秒的已保存问题"
 
 #: src/metabase/public_settings.clj
 msgid "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here."
@@ -8969,7 +8969,7 @@ msgstr "job已存在"
 #. the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
 msgid "Loading Metabase..."
-msgstr "正在加载Metabase……"
+msgstr "正在加载……"
 
 #: src/metabase/util/date.clj
 msgid "Possible timezone conflict found on database {0}."
@@ -8993,11 +8993,11 @@ msgstr "MB_ENCRYPTION_SECRET_KEY至少要16个字符"
 
 #: src/metabase/util/encryption.clj
 msgid "Saved credentials encryption is ENABLED for this Metabase instance."
-msgstr "已存储的证书加密方式已经为这个Metabase事例启用"
+msgstr "已存储的证书加密方式已经为这个MetricsLink事例启用"
 
 #: src/metabase/util/encryption.clj
 msgid "Saved credentials encryption is DISABLED for this Metabase instance."
-msgstr "已存储的证书加密方式已经为这个Metabase事例禁用"
+msgstr "已存储的证书加密方式已经为这个MetricsLink事例禁用"
 
 #: src/metabase/util/encryption.clj
 msgid "nFor more information, see"
@@ -9231,7 +9231,7 @@ msgstr "没有结果"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 msgid "Metabase couldn't find any results for your search."
-msgstr "Metabase无法找到您的搜索结果。"
+msgstr "MetricsLink无法找到您的搜索结果。"
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:115
 msgid "No metrics"
@@ -9537,7 +9537,7 @@ msgstr "只是提个醒："
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:63
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
-msgstr "{0}没有样本数据集，查询创建器教程将不会工作。你可以总是重新存储样本数据集，但是任何你已经保存的问题将会丢失。"
+msgstr "{0}没有样本数据集，查询创建器教程将不会工作。你可以总是重新存储样本数据集，但是任何你已经保存的指标将会丢失。"
 
 #: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:41
 msgid "X-ray"
@@ -11469,15 +11469,15 @@ msgstr "我们需要您的反馈。"
 
 #: src/metabase/email/messages.clj
 msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr "看起来似乎Metabase不是很适合您使用。"
+msgstr "看起来似乎MetricsLink不是很适合您使用。"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr "为了帮助Metabase团队改进产品，请参与完成包含5个简单问题的调查，谢谢。"
+msgstr "为了帮助MetricsLink团队改进产品，请参与完成包含5个简单问题的调查，谢谢。"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr "我们希望您能对Metabase满意。"
+msgstr "我们希望您能对MetricsLink满意。"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
@@ -11489,23 +11489,23 @@ msgstr "{0}创建了一个Metabase账号"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr "{0}接受了Metabase的邀请"
+msgstr "{0}接受了MetricsLink的邀请"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] 重置密码请求"
+msgstr "[MetricsLink] 重置密码请求"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
-msgstr "[Metabase] 通知"
+msgstr "[MetricsLink] 通知"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase] 帮助Metabase变得更好"
+msgstr "[MetricsLink] 帮助MetricsLink变得更好"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
-msgstr "[Metabase] 使用反馈"
+msgstr "[MetricsLink] 使用反馈"
 
 #: backend/mbql/src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
@@ -11783,7 +11783,7 @@ msgstr "您可能需要将参数“？sslmode = require”添加到应用程序�
 
 #: src/metabase/db/env.clj
 msgid "If Metabase fails to launch, please add it and try again."
-msgstr "如果Metabase无法启动，请添加并重试。"
+msgstr "如果MetricsLink无法启动，请添加并重试。"
 
 #: src/metabase/db/env.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
@@ -11791,7 +11791,7 @@ msgstr "有关详细信息，请参阅https://github.com/metabase/metabase/issue
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
-msgstr "警告：建议不要将Metabase与H2应用程序数据库一起用于生产部署。"
+msgstr "警告：建议不要将MetricsLink与H2应用程序数据库一起用于生产部署。"
 
 #: src/metabase/db/env.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
@@ -11807,7 +11807,7 @@ msgstr "有关详细信息，请参阅https://metabase.com/docs/latest/operation
 
 #: src/metabase/db/setup.clj
 msgid "Unable to connect to Metabase {0} DB."
-msgstr " 不能连接到 Metabase {0} 数据库。"
+msgstr " 不能连接到 MetricsLink {0} 数据库。"
 
 #: src/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -11925,11 +11925,11 @@ msgstr "{0} {1}从现在开始"
 
 #: src/metabase/plugins.clj
 msgid "Metabase cannot use the plugins directory {0}"
-msgstr "Metabase不能使用plugins路径下的{0}文件"
+msgstr "MetricsLink不能使用plugins路径下的{0}文件"
 
 #: src/metabase/plugins.clj
 msgid "Please make sure the directory exists and that Metabase has permission to write to it."
-msgstr "请确保该目录存在，并且Metabase有权写入该目录。"
+msgstr "请确保该目录存在，并且MetricsLink有权写入该目录。"
 
 #: src/metabase/plugins.clj
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
@@ -11941,11 +11941,11 @@ msgstr "暂时回到临时目录。"
 
 #: src/metabase/plugins.clj
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr "Metabase无法写入临时目录。请将MB_PLUGINS_DIR设置为可写目录并重新启动Metabase。"
+msgstr "MetricsLink无法写入临时目录。请将MB_PLUGINS_DIR设置为可写目录并重新启动Metabase。"
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "Metabase 1.0+以上版本不再需要spark-deps.jar。您可以从plugins目录中删除它。"
+msgstr "MetricsLink 1.0+以上版本不再需要spark-deps.jar。您可以从plugins目录中删除它。"
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -11985,7 +11985,7 @@ msgstr "有关有效插件依赖项的完整列表，请参阅插件清单引用
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Metabase cannot initialize plugin {0} due to required dependencies."
-msgstr "由于所需的依赖性，Metabase无法初始化插件{0}。"
+msgstr "由于所需的依赖性，MetricsLink无法初始化插件{0}。"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
@@ -12139,7 +12139,7 @@ msgstr "找不到匹配的目标字段ID："
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr "Metabase无权写入插件目录{0}"
+msgstr "MetricsLink无权写入插件目录{0}"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"
@@ -12197,7 +12197,7 @@ msgstr "任务历史清理完毕, 无记录被删除"
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Checking for new Metabase version info."
-msgstr "检查Metabase新版本."
+msgstr "检查MetricsLink新版本."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
@@ -12245,7 +12245,7 @@ msgstr "插件{0}声明了Metabase不理解的依赖项：{1}"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Here's an overview of the people in your [[this]]"
-msgstr "由于所需的依赖性，Metabase 无法初始化插件{0}。"
+msgstr "由于所需的依赖性，MetricsLink 无法初始化插件{0}。"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by quarter of the year"
@@ -12530,7 +12530,7 @@ msgstr "请求在完成之前发生异常."
 
 #: src/metabase/middleware/json.clj
 msgid "Metabase only supports JSON requests."
-msgstr "Metabase仅支持JSON请求"
+msgstr "MetricsLink仅支持JSON请求"
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
@@ -12538,7 +12538,7 @@ msgstr "确定你设置了一个'Content-Type：application / json'报头。"
 
 #: src/metabase/server/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
-msgstr "将Metabase的站点URL设置为{0}"
+msgstr "将MetricsLink的站点URL设置为{0}"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
@@ -12644,7 +12644,7 @@ msgstr "在进行简单的过滤和汇总时自动运行查询"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr "这个选项开启时，当用户在查看表格或图表时使用“汇总”和“过滤”按钮进行简单数据探索时，Metabase将自动运行查询。 如果查询此数据库的速度很慢，可以将该选项关闭。 此设置不会影响数据钻探或SQL查询。"
+msgstr "这个选项开启时，当用户在查看表格或图表时使用“汇总”和“过滤”按钮进行简单数据探索时，MetricsLink将自动运行查询。 如果查询此数据库的速度很慢，可以将该选项关闭。 此设置不会影响数据钻探或SQL查询。"
 
 #: frontend/src/metabase/containers/Overworld.jsx:313
 msgid "Learn about this database"
@@ -12673,7 +12673,7 @@ msgstr "行数的附加计数。\\ ne.x。总销售额随着时间的推移。"
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:50
 #: frontend/src/metabase/query_builder/components/view/QuestionFilters.jsx:99
 msgid "Filter"
-msgstr "过滤器"
+msgstr "设置过滤条件"
 
 #: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.jsx:48
 msgid "record"
@@ -12686,23 +12686,23 @@ msgstr "浏览数据"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:294
 msgid "Write SQL"
-msgstr "写SQL"
+msgstr "SQL查询"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:89
 msgid "Simple question"
-msgstr "简单查询"
+msgstr "浏览数据"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:90
 msgid "Pick some data, view it, and easily filter, summarize, and visualize it."
-msgstr "挑选并浏览数据, 添加简单的过滤或聚合, 然后将数据可视化."
+msgstr "选择指标数据, 可通过简单的过滤或聚合, 快速实现指标数据预览."
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:101
 msgid "Custom question"
-msgstr "自定义查询"
+msgstr "快速试算"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:102
 msgid "Use the advanced notebook editor to join data, create custom columns, do math, and more."
-msgstr "使用高级查询编辑器完成关联, 创建自定义列, 实现数学计算等更多高级功能."
+msgstr "通过托拉拽操作，快速实现指标的试算和预览，从而完成指标的创建和定义."
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:22
 msgid "Basic Metrics"
@@ -12742,7 +12742,7 @@ msgstr "浏览您的数据库，表和列的内容。 选择一个数据库即�
 
 #: frontend/src/metabase/query_builder/components/notebook/Notebook.jsx:51
 msgid "Visualize"
-msgstr "可视化"
+msgstr "快速试算"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:37
 msgid "Join data"
@@ -12768,16 +12768,16 @@ msgstr "爆发"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:31
 msgid "Pick the metric you want to see"
-msgstr "选择你要查看的指标"
+msgstr "请选择您要统计的类型"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/BreakoutStep.jsx:31
 msgid "Pick a column to group by"
-msgstr "选择分组的列"
+msgstr "选择维度"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/DataStep.jsx:53
 #: frontend/src/metabase/query_builder/components/view/NewQuestionHeader.jsx:9
 msgid "Pick your starting data"
-msgstr "选择您的起始数据"
+msgstr "选择指标数据"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:34
 msgid "Select None"
@@ -12991,11 +12991,11 @@ msgstr "请求已取消，以后将会取消。"
 
 #: src/metabase/cmd/load_from_h2.clj
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
-msgstr "Metabase只能将数据从H2传输到Postgres或MySQL / MariaDB。"
+msgstr "MetricsLink只能将数据从H2传输到Postgres或MySQL / MariaDB。"
 
 #: src/metabase/db/env.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
-msgstr "警告：不推荐将Metabase与H2应用数据库一起用于生产环境部署。"
+msgstr "警告：不推荐将MetricsLink与H2应用数据库一起用于生产环境部署。"
 
 #: src/metabase/db.clj
 msgid "Application database setup"
@@ -13346,7 +13346,7 @@ msgstr "选择需要包含的列"
 
 #: frontend/src/metabase/entities/databases/forms.js:343
 msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr "这个选项开启时，当用户在查看表格或图表时使用“汇总”和“过滤”按钮进行简单数据探索时，Metabase将自动运行查询。 如果查询此数据库的速度很慢，可以将该选项关闭。 此设置不会影响数据钻探或SQL查询。"
+msgstr "这个选项开启时，当用户在查看表格或图表时使用“汇总”和“过滤”按钮进行简单数据探索时，MetricsLink将自动运行查询。 如果查询此数据库的速度很慢，可以将该选项关闭。 此设置不会影响数据钻探或SQL查询。"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:462
 msgid "Change join type"
@@ -13388,11 +13388,11 @@ msgstr "诊断信息"
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:126
 msgid "Select Metabase process:"
-msgstr "选择Metabase过程："
+msgstr "选择MetricsLink过程："
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:136
 msgid "All Metabase processes"
-msgstr "所有Metabase进程"
+msgstr "所有MetricsLink进程"
 
 #: frontend/src/metabase/auth/components/GoogleButton.jsx:14
 msgid "The window was closed before completing Google Authentication."
@@ -13412,7 +13412,7 @@ msgstr "使用此选项要求提供的主机是FQDN。 如果连接到Atlas群�
 
 #: frontend/src/metabase/entities/databases/forms.js:350
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "默认情况下，Metabase每小时执行一次轻量级同步，每天执行一次密集扫描。 如果您有一个大型数据库，我们建议启用此功能并查看字段值扫描的发生时间和频率。"
+msgstr "默认情况下，MetricsLink每小时执行一次轻量级同步，每天执行一次密集扫描。 如果您有一个大型数据库，我们建议启用此功能并查看字段值扫描的发生时间和频率。"
 
 #: frontend/src/metabase/containers/Overworld.jsx:108
 msgid "Remove these suggestions"
@@ -13520,7 +13520,7 @@ msgstr "您的结果将会在这出现"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.jsx:17
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
-msgstr "除非您单击“保存”并选择替换原始问题，否则您不会对已保存的问题进行任何更改。"
+msgstr "除非您单击“保存”并选择替换原始问题，否则您不会对已保存的指标进行任何更改。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:206
 msgid "There aren't any filter widgets for this type of field yet."
@@ -13743,7 +13743,7 @@ msgstr "通过邮箱发送告警（{0}：{1}）"
 
 #: src/metabase/pulse.clj
 msgid "Metabase alert: {0} has {1}"
-msgstr "Metabase 告警: {0} 有 {1}"
+msgstr "MetricsLink 告警: {0} 有 {1}"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via Slack"
@@ -13828,7 +13828,7 @@ msgstr "好"
 
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:58
 msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
-msgstr "为了让用户通过谷歌账户登录，你需要给Metabase一个谷歌开发端用户ID。只需要较少的步骤和指示即可知道如何创建一个可被寻找的钥匙"
+msgstr "为了让用户通过谷歌账户登录，你需要给MetricsLink一个谷歌开发端用户ID。只需要较少的步骤和指示即可知道如何创建一个可被寻找的钥匙"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:134
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
@@ -13836,7 +13836,7 @@ msgstr "确保包括完整的客户端ID，包括apps.googleusercontent.com后�
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:68
 msgid "Metabase {0} is available."
-msgstr "Metabase {0} 可用。"
+msgstr "MetricsLink {0} 可用。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:69
 msgid "You're running {0}"
@@ -13864,7 +13864,7 @@ msgstr "无匹配集合"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
 msgid "Metabase Documentation"
-msgstr "Metabase档案"
+msgstr "MetricsLink档案"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:110
 msgid "Includes a troubleshooting guide"
@@ -13892,7 +13892,7 @@ msgstr "请在支持请求中包括这些详细信息。谢谢！"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:39
 msgid "youlooknicetoday@email.com"
-msgstr "youlooknicetoday@email.com"
+msgstr "请输入登录账号"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:53
 msgid "Remember me"
@@ -13949,7 +13949,7 @@ msgstr "这是一个轻量级的过程，用于检查对该数据库架构的更
 
 #: frontend/src/metabase/entities/databases/forms.js:375
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
-msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
+msgstr "MetricsLink可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
 
 #: frontend/src/metabase/entities/questions/forms.js:21
 #: frontend/src/metabase/nav/components/utils.js:8
@@ -14518,7 +14518,7 @@ msgstr "找不到具有该ID号的已保存问题。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:60
 msgid "Pick a saved question"
-msgstr "选择一个已保存的问题"
+msgstr "选择一个已保存的指标"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
 msgid "Pick a different question"
@@ -14664,7 +14664,7 @@ msgstr "需要数据库升级"
 
 #: src/metabase/db/setup.clj
 msgid "NOTICE: Your database requires updates to work with this version of Metabase."
-msgstr "注意：您的数据库需要更新才能使用此版本的Metabase。"
+msgstr "注意：您的数据库需要更新才能使用此版本的MetricsLink。"
 
 #: src/metabase/db/setup.clj
 msgid "Please execute the following sql commands on your database before proceeding."
@@ -15143,7 +15143,7 @@ msgstr "您首选的语言是什么？"
 
 #: frontend/src/metabase/setup/components/LanguageStep.jsx:55
 msgid "This language will be used throughout Metabase and will be the default for new users."
-msgstr "该语言将在整个Metabase中使用，并将成为新用户的默认语言。"
+msgstr "该语言将在整个MetricsLink中使用，并将成为新用户的默认语言。"
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:155
 msgid "We filtered out {0} row(s) containing null values."
@@ -15297,7 +15297,7 @@ msgstr "获取设置值时出错"
 
 #: src/metabase/public_settings.clj
 msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
-msgstr "Metabase的UI，系统电子邮件，脉冲和警报应使用的语言。"
+msgstr "MetricsLink的UI，系统电子邮件，脉冲和警报应使用的语言。"
 
 #: src/metabase/public_settings.clj
 msgid "This is also the default language for all users, which they can change from their own account settings."
@@ -15317,7 +15317,7 @@ msgstr "除非`site-url`是HTTPS，否则不能将请求重定向到HTTPS。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "Error registering fonts: Metabase will not be able to send Pulses."
-msgstr "注册字体时出错：Metabase无法发送Pulse。"
+msgstr "注册字体时出错：MetricsLink无法发送Pulse。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
@@ -15449,7 +15449,7 @@ msgstr "配置您的身份提供者（IdP）。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:75
 msgid "Your identity provider will need the following info about Metabase."
-msgstr "你的身份提供者将需要以下关于Metabase的信息。"
+msgstr "你的身份提供者将需要以下关于MetricsLink的信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:78
 msgid "URL the IdP should redirect back to"
@@ -15485,11 +15485,11 @@ msgstr "用户的姓氏属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:106
 msgid "Tell Metabase about your identity provider"
-msgstr "告诉Metabase您的身份供应商"
+msgstr "告诉MetricsLink您的身份供应商"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:107
 msgid "Metabase will need the following info about your provider."
-msgstr "Metabase将需要以下关于您的供应商的信息。"
+msgstr "MetricsLink将需要以下关于您的供应商的信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:110
 msgid "SAML Identity Provider URL"
@@ -15521,7 +15521,7 @@ msgstr "SAML密钥库密码"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:142
 msgid "Shh..."
-msgstr "嘘..."
+msgstr "请输入登录密码"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:146
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:128
@@ -15535,7 +15535,7 @@ msgstr "将群组成员与您的SSO同步"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:154
 msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "要启用这个功能，您需要创建映射来告诉Metabase您的用户应该加入哪些组。\n"
+msgstr "要启用这个功能，您需要创建映射来告诉MetricsLink您的用户应该加入哪些组。\n"
 "根据他们所在的SSO组添加到。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:170
@@ -15608,11 +15608,11 @@ msgstr "JWT签名密钥使用的字符串"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:17
 msgid "Embedding the entire Metabase app"
-msgstr "嵌入整个Metabase应用"
+msgstr "嵌入整个MetricsLink应用"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:18
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
-msgstr "如果你想嵌入Metabase的所有内容，请在iframe中输入你想允许嵌入的网站或Web应用程序的来源，用空格隔开。下面是可以输入的{0}。"
+msgstr "如果你想嵌入MetricsLink的所有内容，请在iframe中输入你想允许嵌入的网站或Web应用程序的来源，用空格隔开。下面是可以输入的{0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:172
 msgid "Grant sandboxed access to this table"
@@ -15620,7 +15620,7 @@ msgstr "授予对该表的沙箱访问权"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:179
 msgid "When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question."
-msgstr "当这个组中的用户查看这个表格时，他们会看到一个由他们的用户属性过滤的版本，或者是基于保存的问题的自定义视图。"
+msgstr "当这个组中的用户查看这个表格时，他们会看到一个由他们的用户属性过滤的版本，或者是基于保存的指标的自定义视图。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:182
 msgid "How do you want to filter this table for users in this group?"
@@ -15628,11 +15628,11 @@ msgstr "你想如何过滤此表中的用户？"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:201
 msgid "Pick a saved question that returns the custom view of this table that these users should see."
-msgstr "选择一个保存的问题，返回这些用户应该看到的这个表的自定义视图。"
+msgstr "选择一个保存的指标，返回这些用户应该看到的这个表的自定义视图。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:219
 msgid "You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question."
-msgstr "您可以根据用户属性在这里选择添加额外的过滤器。这些过滤器将被应用在这个保存的问题中的任何过滤器之上。"
+msgstr "您可以根据用户属性在这里选择添加额外的过滤器。这些过滤器将被应用在这个保存的指标中的任何过滤器之上。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:239
 msgid "For this option to work, your users need to have some attributes"
@@ -15735,7 +15735,7 @@ msgstr "我们在验证您的令牌时遇到了麻烦。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:89
 msgid "Please double-check that your instance can connect to Metabase's servers"
-msgstr "请仔细检查您的实例是否可以连接到Metabase的服务器。"
+msgstr "请仔细检查您的实例是否可以连接到MetricsLink的服务器。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:94
 msgid "Get help"
@@ -15743,11 +15743,11 @@ msgstr "获取帮助"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:101
 msgid "Get even more out of Metabase with the Enterprise Edition"
-msgstr "使用企业版从Metabase中获得更多的好处。"
+msgstr "使用企业版从MetricsLink中获得更多的好处。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:103
 msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Metabase in a large organization"
-msgstr "所有您需要的工具都能快速、轻松地为您的客户提供报告，或帮助您在大型组织中运行和监控Metabase。"
+msgstr "所有您需要的工具都能快速、轻松地为您的客户提供报告，或帮助您在大型组织中运行和监控MetricsLink。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:115
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:137
@@ -15848,7 +15848,7 @@ msgstr "白标"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:17
 msgid "Match Metabase to your brand with custom colors, your own logo and more."
-msgstr "使用自定义颜色、您自己的徽标等，使Metabase与您的品牌相匹配。"
+msgstr "使用自定义颜色、您自己的徽标等，使MetricsLink与您的品牌相匹配。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:26
 msgid "Auditing"
@@ -15946,7 +15946,7 @@ msgstr "在"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:46
 msgid "Open the Metabase actions menu"
-msgstr "打开Metabase操作菜单"
+msgstr "打开MetricsLink操作菜单"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:374
@@ -15995,7 +15995,7 @@ msgstr "选择一个或多个过滤器进行更新"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 msgid "Saved question"
-msgstr "已保存的问题"
+msgstr "已保存的指标"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:574
 msgid "Link to"
@@ -16609,7 +16609,7 @@ msgstr "发送到Slack"
 
 #: frontend/src/metabase/sharing/components/NewPulseSidebar.jsx:100
 msgid "Pick a channel and a schedule, and Metabase will do the rest."
-msgstr "选择一个频道和时间表，Metabase将做其余的工作。"
+msgstr "选择一个频道和时间表，MetricsLink将做其余的工作。"
 
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:86
 msgid "Email this dashboard"
@@ -16671,11 +16671,11 @@ msgstr "''{0}''命令仅在Metabase企业版中可用。"
 
 #: src/metabase/core.clj
 msgid "Metabase Enterprise Edition extensions are PRESENT."
-msgstr "Metabase企业版扩展是存在的。"
+msgstr "MetricsLink企业版扩展是存在的。"
 
 #: src/metabase/core.clj
 msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "Metabase企业版功能的使用受Metabase商业许可的约束。"
+msgstr "MetricsLink企业版功能的使用受Metabase商业许可的约束。"
 
 #: src/metabase/core.clj
 msgid "See {0} for details."
@@ -16683,7 +16683,7 @@ msgstr "详见{0}。"
 
 #: src/metabase/core.clj
 msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
-msgstr "Metabase企业版扩展不存在。"
+msgstr "MetricsLink企业版扩展不存在。"
 
 #: src/metabase/email/messages.clj
 msgid "You''re invited to join {0}''s {1}"
@@ -16836,7 +16836,7 @@ msgstr "登录属性键必须是关键字或字符串。"
 
 #: src/metabase/public_settings.clj
 msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts."
-msgstr "Metabase用户界面、系统邮件、脉冲和警报中所有用户的默认语言。"
+msgstr "MetricsLink用户界面、系统邮件、脉冲和警报中所有用户的默认语言。"
 
 #: src/metabase/public_settings.clj
 msgid "Users can individually override this default language from their own account settings."
@@ -16848,7 +16848,7 @@ msgstr "显示用户的默认页面"
 
 #: src/metabase/public_settings.clj
 msgid "Allow this origin to embed the full Metabase application"
-msgstr "允许该原点嵌入完整的Metabase应用。"
+msgstr "允许该原点嵌入完整的MetricsLink应用。"
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {0} ({1}) are not allowed."
@@ -16856,11 +16856,11 @@ msgstr "不允许有大于{0}（{1}）的值。"
 
 #: src/metabase/public_settings.clj
 msgid "This will replace the word \"Metabase\" wherever it appears."
-msgstr "这将取代所有出现的 \"Metabase \"一词。"
+msgstr "这将取代所有出现的 \"MetricsLink \"一词。"
 
 #: src/metabase/public_settings.clj
 msgid "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect."
-msgstr "这些是图表和整个Metabase中使用的主要颜色。您可能需要刷新浏览器才能看到您的更改生效。"
+msgstr "这些是图表和整个MetricsLink中使用的主要颜色。您可能需要刷新浏览器才能看到您的更改生效。"
 
 #: src/metabase/public_settings.clj
 msgid "For best results, use an SVG file with a transparent background."
@@ -16991,7 +16991,7 @@ msgstr "在查询中包含用户ID和查询哈希值。"
 
 #: frontend/src/metabase/entities/databases/forms.js:24
 msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
-msgstr "当开启时，Metabase用户ID和查询散列会被附加到这个数据库的查询中，这对审计和调试很有用。然而，这将导致每个查询看起来不同，防止BigQuery返回缓存结果，这可能会增加你的成本。"
+msgstr "当开启时，MetricsLink用户ID和查询散列会被附加到这个数据库的查询中，这对审计和调试很有用。然而，这将导致每个查询看起来不同，防止BigQuery返回缓存结果，这可能会增加你的成本。"
 
 #: frontend/src/metabase/entities/databases/forms.js:356
 msgid "Periodically refingerprint tables"
@@ -16999,7 +16999,7 @@ msgstr "定期重新打印表格"
 
 #: frontend/src/metabase/entities/databases/forms.js:357
 msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
-msgstr "当与该数据库同步时，Metabase将扫描字段值的子集，以收集统计数据，从而实现诸如改进图表中的分批行为，并通常使您的Metabase实例更加智能。"
+msgstr "当与该数据库同步时，MetricsLink将扫描字段值的子集，以收集统计数据，从而实现诸如改进图表中的分批行为，并通常使您的Metabase实例更加智能。"
 
 #: frontend/src/metabase/lib/core.js:208
 msgid "Updated date"
@@ -17413,7 +17413,7 @@ msgstr "打开钥匙库的密码"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "Alias for the key that Metabase should use for signing SAML requests"
-msgstr "Metabase应该用来签署SAML请求的密钥的别名。"
+msgstr "MetricsLink应该用来签署SAML请求的密钥的别名。"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "SAML attribute for the user''s email address"
@@ -18336,7 +18336,7 @@ msgstr "无效的单元格格式"
 
 #: src/metabase/search/config.clj
 msgid "Enable typeahead search in the Metabase navbar?"
-msgstr "在Metabase导航栏中启用类型前搜索？"
+msgstr "在MetricsLink导航栏中启用类型前搜索？"
 
 #: src/metabase/server/request/util.clj
 msgid "Login in request is missing device ID information"
@@ -18476,7 +18476,7 @@ msgstr "关于所有池子的活动和空闲连接的信息"
 #: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:113
 #: src/metabase/api/database.clj
 msgid "Saved Questions"
-msgstr "保存的问题"
+msgstr "已存在的指标"
 
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:151
 msgid "Last edited by"
@@ -18722,7 +18722,7 @@ msgstr "无效字段{0}{1}：回落到{2}。"
 
 #: src/metabase/models/humanization.clj
 msgid "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces."
-msgstr "为了使表和字段的名称更加人性化，Metabase将用空格替换其中的破折号和下划线。"
+msgstr "为了使表和字段的名称更加人性化，MetricsLink将用空格替换其中的破折号和下划线。"
 
 #: src/metabase/models/humanization.clj
 msgid "We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."
@@ -18735,7 +18735,7 @@ msgstr "设置名称在会发生碰撞。{0}和{1}"
 
 #: src/metabase/public_settings.clj
 msgid "Indicates when Metabase last checked for new versions."
-msgstr "表示Metabase最后一次检查新版本的时间。"
+msgstr "表示MetricsLink最后一次检查新版本的时间。"
 
 #: src/metabase/public_settings.clj
 msgid "This URL is used for things like creating links in emails, auth redirects,"
@@ -18835,7 +18835,7 @@ msgstr "输入你从商店收到的令牌"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:34
 msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
-msgstr "Metabase Cloud会保持你的实例是最新的。你目前的版本是{0}。谢谢你成为客户!"
+msgstr "MetricsLink Cloud会保持你的实例是最新的。你目前的版本是{0}。谢谢你成为客户!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:28
 msgid "No successful checks yet."
@@ -18986,7 +18986,7 @@ msgstr "也将所有子集合设为 {0}。"
 
 #: frontend/src/metabase/plugins/components/SettingsCloudStoreLink/SettingsCloudStoreLink.jsx:10
 msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account."
-msgstr "管理您的云帐户，包括在您的 Metabase Store 帐户中有关此实例的计费首选项和技术设置。"
+msgstr "管理您的云帐户，包括在您的 MetricsLink 帐户中有关此实例的计费首选项和技术设置。"
 
 #: frontend/src/metabase/plugins/components/SettingsCloudStoreLink/SettingsCloudStoreLink.jsx:12
 msgid "Go to the Metabase Store"
@@ -19112,7 +19112,7 @@ msgstr "确保用户永远不能看到这个数据库的数据，不管他们在
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:51
 msgid "Only available in certain Metabase plans."
-msgstr "只适用于某些Metabase计划。"
+msgstr "只适用于某些MetricsLink计划。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:62
 msgid "Learn more about permissions"
@@ -19243,7 +19243,7 @@ msgstr "退订所有的订阅/提示信息"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/index.js:18
 msgid "How long to keep question results. By default, Metabase will use the value you supply on the {0}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance."
-msgstr "保留问题结果的时间。默认情况下，Metabase将使用你在{0}上提供的值，但如果这个数据库有其他影响数据新鲜度的因素，设置一个自定义的持续时间可能是有意义的。你也可以在个别问题或仪表盘上选择自定义期限，以帮助提高性能。"
+msgstr "保留问题结果的时间。默认情况下，MetricsLink将使用你在{0}上提供的值，但如果这个数据库有其他影响数据新鲜度的因素，设置一个自定义的持续时间可能是有意义的。你也可以在个别问题或仪表盘上选择自定义期限，以帮助提高性能。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/index.js:23
 msgid "cache settings page"
@@ -19462,7 +19462,7 @@ msgstr "这将删除{0}创建的任何仪表板订阅或警报，并从任何其
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:45
 msgid "This does not affect email distribution lists that are managed outside of Metabase."
-msgstr "这并不影响在Metabase之外管理的电子邮件分发列表。"
+msgstr "这并不影响在MetricsLink之外管理的电子邮件分发列表。"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:59
 msgid "Team members"
@@ -19522,7 +19522,7 @@ msgstr "你的实例管理员"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:47
 msgid "Metabase doesn’t manage those lists, so we’d recommend contacting {0}. "
-msgstr "Metabase并不管理这些名单，所以我们建议联系{0}。 "
+msgstr "MetricsLink并不管理这些名单，所以我们建议联系{0}。 "
 
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.jsx:91
 msgid "Created by you"

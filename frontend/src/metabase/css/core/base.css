@@ -1,157 +1,159 @@
 /* lato-regular - latin */
+
 @font-face {
-  font-family: "Lato";
-  font-style: normal;
-  font-weight: 400;
-  src: url("~fonts/lato-v16-latin/lato-v16-latin-regular.eot"); /* IE9 Compat Modes */
-  src: local("Lato Regular"), local("Lato-Regular"),
-    url("~fonts/lato-v16-latin/lato-v16-latin-regular.eot?#iefix")
-      format("embedded-opentype"),
-    /* IE6-IE8 */ url("~fonts/lato-v16-latin/lato-v16-latin-regular.woff2")
-      format("woff2"),
-    /* Super Modern Browsers */
-      url("~fonts/lato-v16-latin/lato-v16-latin-regular.woff") format("woff"),
-    /* Modern Browsers */
-      url("~fonts/lato-v16-latin/lato-v16-latin-regular.ttf") format("truetype"),
-    /* Safari, Android, iOS */
-      url("~fonts/lato-v16-latin/lato-v16-latin-regular.svg#Lato") format("svg"); /* Legacy iOS */
+    font-family: "Lato";
+    font-style: normal;
+    font-weight: 400;
+    src: url("~fonts/lato-v16-latin/lato-v16-latin-regular.eot");
+    /* IE9 Compat Modes */
+    src: local("Lato Regular"), local("Lato-Regular"), url("~fonts/lato-v16-latin/lato-v16-latin-regular.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
+    url("~fonts/lato-v16-latin/lato-v16-latin-regular.woff2") format("woff2"), /* Super Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-regular.woff") format("woff"), /* Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-regular.ttf") format("truetype"), /* Safari, Android, iOS */
+    url("~fonts/lato-v16-latin/lato-v16-latin-regular.svg#Lato") format("svg");
+    /* Legacy iOS */
 }
 
+
 /* lato-700 - latin */
+
 @font-face {
-  font-family: "Lato";
-  font-style: normal;
-  font-weight: 700;
-  src: url("~fonts/lato-v16-latin/lato-v16-latin-700.eot"); /* IE9 Compat Modes */
-  src: local("Lato Bold"), local("Lato-Bold"),
-    url("~fonts/lato-v16-latin/lato-v16-latin-700.eot?#iefix")
-      format("embedded-opentype"),
-    /* IE6-IE8 */ url("~fonts/lato-v16-latin/lato-v16-latin-700.woff2")
-      format("woff2"),
-    /* Super Modern Browsers */
-      url("~fonts/lato-v16-latin/lato-v16-latin-700.woff") format("woff"),
-    /* Modern Browsers */ url("~fonts/lato-v16-latin/lato-v16-latin-700.ttf")
-      format("truetype"),
-    /* Safari, Android, iOS */
-      url("~fonts/lato-v16-latin/lato-v16-latin-700.svg#Lato") format("svg"); /* Legacy iOS */
+    font-family: "Lato";
+    font-style: normal;
+    font-weight: 700;
+    src: url("~fonts/lato-v16-latin/lato-v16-latin-700.eot");
+    /* IE9 Compat Modes */
+    src: local("Lato Bold"), local("Lato-Bold"), url("~fonts/lato-v16-latin/lato-v16-latin-700.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
+    url("~fonts/lato-v16-latin/lato-v16-latin-700.woff2") format("woff2"), /* Super Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-700.woff") format("woff"), /* Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-700.ttf") format("truetype"), /* Safari, Android, iOS */
+    url("~fonts/lato-v16-latin/lato-v16-latin-700.svg#Lato") format("svg");
+    /* Legacy iOS */
 }
+
+
 /* lato-900 - latin */
+
 @font-face {
-  font-family: "Lato";
-  font-style: normal;
-  font-weight: 900;
-  src: url("~fonts/lato-v16-latin/lato-v16-latin-900.eot"); /* IE9 Compat Modes */
-  src: local("Lato Black"), local("Lato-Black"),
-    url("~fonts/lato-v16-latin/lato-v16-latin-900.eot?#iefix")
-      format("embedded-opentype"),
-    /* IE6-IE8 */ url("~fonts/lato-v16-latin/lato-v16-latin-900.woff2")
-      format("woff2"),
-    /* Super Modern Browsers */
-      url("~fonts/lato-v16-latin/lato-v16-latin-900.woff") format("woff"),
-    /* Modern Browsers */ url("~fonts/lato-v16-latin/lato-v16-latin-900.ttf")
-      format("truetype"),
-    /* Safari, Android, iOS */
-      url("~fonts/lato-v16-latin/lato-v16-latin-900.svg#Lato") format("svg"); /* Legacy iOS */
+    font-family: "Lato";
+    font-style: normal;
+    font-weight: 900;
+    src: url("~fonts/lato-v16-latin/lato-v16-latin-900.eot");
+    /* IE9 Compat Modes */
+    src: local("Lato Black"), local("Lato-Black"), url("~fonts/lato-v16-latin/lato-v16-latin-900.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
+    url("~fonts/lato-v16-latin/lato-v16-latin-900.woff2") format("woff2"), /* Super Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-900.woff") format("woff"), /* Modern Browsers */
+    url("~fonts/lato-v16-latin/lato-v16-latin-900.ttf") format("truetype"), /* Safari, Android, iOS */
+    url("~fonts/lato-v16-latin/lato-v16-latin-900.svg#Lato") format("svg");
+    /* Legacy iOS */
 }
 
 :root {
-  --default-font-family: "Lato";
-  --default-font-size: 0.875em;
-  --default-font-color: var(--color-text-dark);
-  --default-bg-color: var(--color-bg-light);
+    --default-font-family: "Lato";
+    --default-font-size: 0.875em;
+    --default-font-color: var(--color-text-dark);
+    --default-bg-color: var(--color-bg-light);
 }
 
 html {
-  height: 100%; /* ensure the entire page will fill the window */
-  width: 100%;
+    height: 100%;
+    /* ensure the entire page will fill the window */
+    width: 100%;
 }
 
 body {
-  font-family: var(--default-font-family), sans-serif;
-  font-size: var(--default-font-size);
-  font-weight: 400;
-  font-style: normal;
-  color: var(--color-text-dark);
-  margin: 0;
-  height: 100%; /* ensure the entire page will fill the window */
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg-light);
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    background-image: url("~assets/img/bg5.png");
+    background-repeat: repeat-y;
+    background-size: 100%;
+    font-family: var(--default-font-family), sans-serif;
+    font-size: var(--default-font-size);
+    font-weight: 400;
+    font-style: normal;
+    color: var(--color-text-dark);
+    margin: 0;
+    height: 100%;
+    /* ensure the entire page will fill the window */
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-bg-light);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
+
 
 /*
   override default padding and margin on lists
   in most cases we won't be using list-style so
   the padding isn't necessary
 */
+
 ul,
 ol {
-  padding: 0;
-  margin: 0;
-  list-style-type: none;
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
 }
 
+
 /* reset button element */
+
 button {
-  font-size: 100%;
-  -webkit-appearance: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  outline: none;
-  background-color: transparent;
+    font-size: 100%;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    background-color: transparent;
 }
 
 a {
-  color: inherit;
-  cursor: pointer;
-  text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
 }
 
 input,
 textarea {
-  font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
-    sans-serif;
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
 }
 
 textarea {
-  min-height: 110px;
+    min-height: 110px;
 }
 
 .pointer-events-none {
-  pointer-events: none;
+    pointer-events: none;
 }
 
 .disabled,
 :local(.disabled) {
-  pointer-events: none;
-  opacity: 0.4;
+    pointer-events: none;
+    opacity: 0.4;
 }
 
 .faded,
 :local(.faded) {
-  opacity: 0.4;
+    opacity: 0.4;
 }
+
 .fade-in-hover:hover {
-  opacity: 1;
-  transition: opacity 0.3s;
+    opacity: 1;
+    transition: opacity 0.3s;
 }
 
 .MB-lightBG {
-  background-color: var(--color-bg-light);
+    background-color: var(--color-bg-light);
 }
 
 .circle {
-  border-radius: 99px;
+    border-radius: 99px;
 }
 
 .undefined {
-  border: 1px solid red !important;
+    border: 1px solid red !important;
 }
 
 .no-outline * {
-  outline: none;
+    outline: none;
 }

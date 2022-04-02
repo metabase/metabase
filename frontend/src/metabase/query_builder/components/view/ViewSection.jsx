@@ -26,7 +26,7 @@ const ViewSection = ({
 export const ViewHeading = ({ ...props }) => <Subhead {...props} />;
 
 export const ViewSubHeading = ({ ...props }) => (
-  <div className="text-medium text-bold" {...props} />
+  <div className="text-white text-bold" {...props} />
 );
 
 export default ViewSection;

@@ -158,7 +158,7 @@ export default class Navbar extends Component {
             />
           </ul>
 
-          {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+          {/* {!MetabaseSettings.isPaidPlan() && <StoreLink />} */}
           <ProfileLink {...this.props} />
         </div>
         {this.renderModal()}
@@ -243,25 +243,42 @@ export default class Navbar extends Component {
             </Link>
           )}
           {hasDataAccess && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
+            // <IconWrapper
+            //   className="relative hide sm-show mr1 overflow-hidden"
+            //   hover={NavHover}
+            // >
+            //   <Link
+            //     to="browse"
+            //     className="flex align-center rounded transition-background"
+            //     data-metabase-event={`NavBar;Data Browse`}
+            //   >
+            //     <Icon
+            //       name="table_spaced"
+            //       size={18}
+            //       // p={"11px"}
+            //       tooltip={t`Browse data`}
+            //     />
+            //     <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+            //   </Link>
+            // </IconWrapper>
+            <Link
+              to="browse"
+              mr={[1, 2]}
+              p={1}
+              hover={{
+                backgroundColor: darken(color("brand")),
+              }}
+              className="flex align-center rounded transition-background"
+              data-metabase-event={`NavBar;Data Browse`}
             >
-              <Link
-                to="browse"
-                className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Data Browse`}
-              >
-                <Icon
-                  name="table_spaced"
-                  size={14}
-                  p={"11px"}
-                  tooltip={t`Browse data`}
-                />
-              </Link>
-            </IconWrapper>
+              <Icon
+                name="table_spaced"
+                size={18}
+              />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+            </Link>
           )}
-          <EntityMenu
+          {<EntityMenu
             tooltip={t`Create`}
             className="hide sm-show mr1"
             triggerIcon="add"
@@ -280,20 +297,38 @@ export default class Navbar extends Component {
                 event: `NavBar;New Pulse Click;`,
               },
             ]}
-          />
+          /> }
           {hasNativeWrite && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
+            // <IconWrapper
+            //   className="relative hide sm-show mr1 overflow-hidden"
+            //   hover={NavHover}
+            // >
+            //   <Link
+            //     to={this.props.plainNativeQuery.question().getUrl()}
+            //     className="flex align-center"
+            //     data-metabase-event={`NavBar;SQL`}
+            //   >
+            //     <Icon name="sql"
+            //       size={18}
+            //       // p={"11px"} 
+            //       tooltip={t`Write SQL`} />
+            //     <h4 className="hide sm-show ml1 text-nowrap">{t`Write SQL`}</h4>
+            //   </Link>
+            // </IconWrapper>
+            <Link
+              mr={[1, 2]}
+              p={1}
+              hover={{
+                backgroundColor: darken(color("brand")),
+              }}
+              to={this.props.plainNativeQuery.question().getUrl()}
+              className="flex align-center rounded transition-background"
+              data-metabase-event={`NavBar;SQL`}
             >
-              <Link
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center"
-                data-metabase-event={`NavBar;SQL`}
-              >
-                <Icon size={18} p={"11px"} name="sql" tooltip={t`Write SQL`} />
-              </Link>
-            </IconWrapper>
+              <Icon name="sql"
+                size={18} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Write SQL`}</h4>
+            </Link>
           )}
           <ProfileLink {...this.props} />
         </Flex>

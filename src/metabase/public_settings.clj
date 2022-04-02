@@ -217,7 +217,7 @@
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
   :type       :string
-  :default    "Metabase")
+  :default    "MetricsLink")
 
 (defsetting application-colors
   (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")

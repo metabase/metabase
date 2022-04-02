@@ -1,45 +1,48 @@
 .Nav {
-  z-index: 4;
-  flex-shrink: 0;
+    z-index: 4;
+    flex-shrink: 0;
+    background-image: linear-gradient(180deg, #1b5598 0%, #0f376b 100%);
+    box-shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.30);
 }
 
 .QuestionCircle {
-  display: inline-block;
-  font-size: 3.25rem;
-  width: 73px;
-  height: 73px;
-  border-radius: 99px;
-  border: 3px solid currentcolor;
-  text-align: center;
+    display: inline-block;
+    font-size: 3.25rem;
+    width: 73px;
+    height: 73px;
+    border-radius: 99px;
+    border: 3px solid currentcolor;
+    text-align: center;
 }
 
 .break-word {
-  word-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .tooltip {
-  position: absolute;
-  background-color: var(--color-bg-white);
-  border-radius: 2px;
-  box-shadow: 1px 1px 1px var(--color-shadow);
-  color: var(--color-text-light);
+    position: absolute;
+    background-color: var(--color-bg-white);
+    border-radius: 2px;
+    box-shadow: 1px 1px 1px var(--color-shadow);
+    color: var(--color-text-light);
 }
 
 .Layout-sidebar {
-  min-height: 100vh;
-  width: 346px;
-  background-color: var(--color-bg-light);
-  border-left: 2px solid var(--color-border);
+    min-height: 100vh;
+    width: 346px;
+    background-color: var(--color-bg-light);
+    border-left: 2px solid var(--color-border);
 }
+
 .Layout-mainColumn {
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .Sidebar-header {
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  line-height: 1;
-  text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    text-transform: uppercase;
 }

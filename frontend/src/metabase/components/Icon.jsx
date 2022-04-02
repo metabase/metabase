@@ -16,7 +16,7 @@ export const IconWrapper = styled("div")`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  // width: 40px;
   height: 40px;
   border-radius: 99px;
   cursor: pointer;

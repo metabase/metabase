@@ -12,16 +12,16 @@ const AuthLayout = ({ children }) => (
     flexDirection="column"
     flex={1}
     justifyContent="center"
-    alignItems="center"
-    className="overflow-hidden relative"
+    alignItems="flex-end"
+    className="overflow-hidden relative AuthLayout"
   >
-    <Flex mt={-4} flexDirection="column">
-      <LogoIcon height={65} />
-      <Card p={3} mt={3} className="relative z2" width={420}>
+    <Flex mt={-4} flexDirection="column" mr={280}>
+      {/* <LogoIcon height={65} /> */}
+      <Card p={3} mt={3} className="relative z2 bg-login" width={420}>
         {children}
       </Card>
     </Flex>
-    <AuthScene />
+    {/* <AuthScene /> */}
   </Flex>
 );
 

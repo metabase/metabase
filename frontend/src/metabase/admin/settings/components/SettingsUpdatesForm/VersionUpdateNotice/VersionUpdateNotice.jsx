@@ -112,28 +112,29 @@ function HostingCTA() {
   }
 
   return (
-    <Flex
-      justifyContent="space-between"
-      alignItems="center"
-      className="rounded bg-light mt4 text-brand py2 px1"
-    >
-      <Flex>
-        <Flex
-          className="circular bg-medium align-center justify-center ml1 mr2"
-          width={52}
-          height={32}
-        >
-          <Icon name="cloud" size={24} />
-        </Flex>
-        <div>
-          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
-          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
-        </div>
-      </Flex>
-      <Box className="pr1">
-        <HostingInfoLink text={t`Learn more`} />
-      </Box>
-    </Flex>
+    // <Flex
+    //   justifyContent="space-between"
+    //   alignItems="center"
+    //   className="rounded bg-light mt4 text-brand py2 px1"
+    // >
+    //   <Flex>
+    //     <Flex
+    //       className="circular bg-medium align-center justify-center ml1 mr2"
+    //       width={52}
+    //       height={32}
+    //     >
+    //       <Icon name="cloud" size={24} />
+    //     </Flex>
+    //     <div>
+    //       <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
+    //       <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+    //     </div>
+    //   </Flex>
+    //   <Box className="pr1">
+    //     <HostingInfoLink text={t`Learn more`} />
+    //   </Box>
+    // </Flex>
+    <></>
   );
 }
 

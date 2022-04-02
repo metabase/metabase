@@ -1,0 +1,51 @@
+.action-btn {
+  opacity: .8;
+}
+.action-btn:hover {
+  opacity: 1;
+}
+
+.btn-save {
+  background-image:linear-gradient(180deg,#5da6e1 0%,#306dc0 100%);
+  color: #fff !important;
+  opacity: .8;
+}
+.btn-save:hover {
+  opacity: 1;
+}
+
+.bg-dd {
+  background-color: rgba(28, 71, 157, 1);
+}
+
+.color-dark {
+  color: #509ee3 !important;
+}
+
+.btn-visual {
+  background-color: #0368d8;
+}
+
+.border-bottom-1 {
+  border-bottom: 1px solid #f0f0f0;
+}
+.border-top-1 {
+  border-top: 1px solid #f0f0f0;
+}
+
+.home-card {
+  position: fixed;
+  top: 90px;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+.AuthLayout {
+  background-color: #fff;
+  background-image: url("~assets/img/bg-login.png");
+}
+
+.bg-login {
+  background-color: rgba(28, 71, 157, .5) !important;
+}

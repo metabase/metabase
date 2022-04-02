@@ -89,6 +89,13 @@ import Overworld from "metabase/containers/Overworld";
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 
+import ManageIndicatorHome from "metabase/manage_indicator/containers/ManageIndicatorHome";
+
+// Diamond Counter
+import GuiTaiDemo from "metabase/guitai-demo";
+
+import ZhenZhuLianIFrame from "metabase/zhenzhulian-iframe";
+
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
   failureRedirectPath: "/setup",
@@ -186,6 +193,8 @@ export const getRoutes = store => (
           }}
         />
 
+        <Route path="/manage_indicator/:slug" component={ManageIndicatorHome}/>
+
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
@@ -247,6 +256,10 @@ export const getRoutes = store => (
       <Route path="/collections">
         <Route path="create" component={CollectionCreate} />
       </Route>
+
+      {/* Diamond counter */}
+      <Route path="/guitai" component={GuiTaiDemo} />
+      <Route path="zhenzhulian" component={ZhenZhuLianIFrame} />
 
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>

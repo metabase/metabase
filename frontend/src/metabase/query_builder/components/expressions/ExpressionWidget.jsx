@@ -68,7 +68,7 @@ export default class ExpressionWidget extends Component {
             />
             <p className="h5 text-medium">
               {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
-              &nbsp;
+              {/* &nbsp;
               <ExternalLink
                 className="link"
                 target="_blank"
@@ -76,7 +76,7 @@ export default class ExpressionWidget extends Component {
                   "users-guide/custom-questions",
                   "creating-custom-columns",
                 )}
-              >{t`Learn more`}</ExternalLink>
+              >{t`Learn more`}</ExternalLink> */}
             </p>
           </div>
 

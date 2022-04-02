@@ -118,7 +118,7 @@ export default function CollectionHeader(props) {
   const hasWritePermission = collection && collection.can_write;
 
   return (
-    <Container>
+    <Container color="white">
       <Title {...props} />
       <Menu
         {...props}

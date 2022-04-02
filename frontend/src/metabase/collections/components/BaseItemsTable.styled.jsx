@@ -27,7 +27,7 @@ export const Table = styled.table.attrs({ className: "ContentTable" })`
 
 export const ColumnHeader = styled.th`
   font-weight: bold;
-  color: ${color("text-light")};
+  color: ${color("text-white")};
 `;
 
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
@@ -54,7 +54,7 @@ export const SortingIcon = styled(Icon).attrs({
 export const SortingControlContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${props => (props.isActive ? color("text-dark") : "")};
+  color: ${props => (props.isActive ? color("text-white") : "")};
   cursor: pointer;
   user-select: none;
   .Icon {
@@ -71,5 +71,5 @@ export const SortingControlContainer = styled.div`
 export const TableItemSecondaryField = styled.p`
   font-size: 0.95em;
   font-weight: bold;
-  color: ${color("text-dark")};
+  color: ${color("text-white")};
 `;
