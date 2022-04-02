@@ -4,25 +4,17 @@ import { CardRoot } from "./HomeCard.styled";
 export interface HomeCardProps {
   className?: string;
   url?: string;
-  primary?: boolean;
-  secondary?: boolean;
+  external?: boolean;
   children?: ReactNode;
 }
 
 const HomeCard = ({
   className,
   url = "",
-  primary,
-  secondary,
   children,
 }: HomeCardProps): JSX.Element => {
   return (
-    <CardRoot
-      className={className}
-      to={url}
-      primary={primary}
-      secondary={secondary}
-    >
+    <CardRoot className={className} to={url}>
       {children}
     </CardRoot>
   );

@@ -1,17 +1,24 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/components/Ellipsified";
+import ExternalLink from "metabase/core/components/ExternalLink";
+
+export const CardRoot = styled(ExternalLink)`
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid ${color("focus")};
+`;
 
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: ${color("brand")};
+  color: ${color("text-dark")};
   width: 1rem;
   height: 1rem;
 `;
 
-export const CardTitle = styled(Ellipsified)`
+export const CardTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1rem;
   font-weight: bold;

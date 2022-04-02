@@ -1,11 +1,11 @@
 import React from "react";
 import HomeCard from "../HomeCard";
 import {
-  XrayIcon,
-  XrayIconContainer,
-  XrayTitle,
-  XrayTitlePrimary,
-  XrayTitleSecondary,
+  CardIcon,
+  CardIconContainer,
+  CardTitle,
+  CardTitlePrimary,
+  CardTitleSecondary,
 } from "./HomeXrayCard.styled";
 
 export interface HomeXrayCardProps {
@@ -20,14 +20,14 @@ const HomeXrayCard = ({
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
-    <HomeCard url={url} primary>
-      <XrayIconContainer>
-        <XrayIcon name="bolt" />
-      </XrayIconContainer>
-      <XrayTitle>
-        <XrayTitleSecondary>{message}</XrayTitleSecondary>{" "}
-        <XrayTitlePrimary>{title}</XrayTitlePrimary>
-      </XrayTitle>
+    <HomeCard url={url}>
+      <CardIconContainer>
+        <CardIcon name="bolt" />
+      </CardIconContainer>
+      <CardTitle>
+        <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
+        <CardTitlePrimary>{title}</CardTitlePrimary>
+      </CardTitle>
     </HomeCard>
   );
 };
