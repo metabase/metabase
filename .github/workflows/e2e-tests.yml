@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'e2e-gha-chrome'
+      - 'master'
     paths-ignore:
       - "docs/**"
       - "**.md"
