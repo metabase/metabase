@@ -5,6 +5,7 @@ import {
   setupSMTP,
   sidebar,
   visitDashboard,
+  clickSend,
 } from "__support__/e2e/cypress";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -45,8 +46,7 @@ describeEE("issue 18669", () => {
       cy.button("Update filter").click();
     });
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent", { timeout: 10000 });
+    clickSend();
   });
 });
 

@@ -7,8 +7,10 @@ import {
   mockSlackConfigured,
   isOSS,
   visitDashboard,
+  clickSend,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -216,8 +218,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
       // Click anywhere outside to close the popover
       cy.findByText("15705D").click();
-      cy.findByText("Send email now").click();
-      cy.findByText("Email sent");
+      clickSend();
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).not.to.include(
           "An error occurred while displaying this card.",
@@ -240,9 +241,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       // Click outside popover to close it and at the same time check that the text card content is shown as expected
       cy.findByText(TEXT_CARD).click();
-      cy.findByText("Send email now").click();
-      cy.findByText(/^Sending/);
-      cy.findByText("Email sent");
+      clickSend();
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).to.include(TEXT_CARD);
       });

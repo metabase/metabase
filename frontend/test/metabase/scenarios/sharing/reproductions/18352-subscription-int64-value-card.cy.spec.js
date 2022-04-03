@@ -3,6 +3,7 @@ import {
   setupSMTP,
   visitQuestion,
   visitDashboard,
+  clickSend,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -43,8 +44,7 @@ describe("issue 18352", () => {
     // Click this just to close the popover that is blocking the "Send email now" button
     cy.findByText(`To:`).click();
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent");
+    clickSend();
 
     cy.request("GET", "http://localhost:80/email").then(
       ({ body: [{ html }] }) => {
