@@ -170,10 +170,12 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("January 7, 2018").click();
     cy.findByText("2018/1/7").click();
     cy.wait("@updateFormatting");
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
     // update the time style setting to 24 hour
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@updateFormatting");
+    cy.findByDisplayValue("HH:mm").should("be.checked");
 
     visitQuestion(1);
     cy.findByTestId("loading-spinner").should("not.exist");
