@@ -160,6 +160,7 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should use date and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
@@ -178,11 +179,9 @@ describe("scenarios > admin > localization", () => {
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
     visitQuestion(1);
-    cy.findByTestId("loading-spinner").should("not.exist");
-    cy.findByTextEnsureVisible("Product ID");
 
     // create a date filter and set it to the 'On' view to see a specific date
-    cy.findByText("Created At").click();
+    cy.findByTextEnsureVisible("Created At").click();
     cy.findByText("Filter by this column").click();
     cy.findByText("Previous").click();
     cy.findByText("On").click();
@@ -212,7 +211,8 @@ describe("scenarios > admin > localization", () => {
       .type("56");
 
     // apply the date filter
-    cy.findByText("Update filter").click();
+    cy.button("Update filter").click();
+    cy.wait("@dataset");
 
     cy.findByTestId("loading-spinner").should("not.exist");
 
