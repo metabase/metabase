@@ -20,7 +20,8 @@
 (s/def ::info (spell/keys :req-un [::name ::version ::description]))
 
 (s/def ::address string?)
-(s/def ::contact-info (spell/keys :req-un [::name ::address]))
+(s/def ::contact-info (spell/keys :req-un [::name]
+                                  :opt-un [::address]))
 
 (def ^:private property-types #{"string" "textFile" "boolean" "secret" "info" "schema-filters"})
 
