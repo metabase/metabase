@@ -130,7 +130,7 @@ describeEE("scenarios > admin > permissions > general", () => {
 
         // Troubleshooting smoke test
         cy.findByText("Troubleshooting").click();
-        cy.find("Diagnostic Info");
+        cy.findByText("Diagnostic Info");
       });
     });
 
