@@ -9,9 +9,9 @@ export PATH="$PATH:$JAVA_HOME/bin"
 which java
 
 # install clojure version needed for Metabase
-curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh
-chmod +x linux-install-1.10.3.933.sh
-./linux-install-1.10.3.933.sh
+curl -O https://download.clojure.org/install/linux-install-1.11.0.1100.sh
+chmod +x linux-install-1.11.0.1100.sh
+./linux-install-1.11.0.1100.sh
 
 RESOURCES_DIR=/app/source/resources
 
