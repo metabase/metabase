@@ -363,7 +363,7 @@
   If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
-  is thrown if a `setting-k` is already existed.
+  is thrown if the `setting-k` is already existed.
 
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
@@ -377,7 +377,7 @@
                            (throw e))))]
     (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
       (do-with-temp-env-var-value setting env-var-value thunk)
-      (let [original-value (db/select-one-field :value Setting :key (name setting-k))]
+      (let [original-value (db/select-one-field :value Setting :key setting-k)]
         (try
          (if raw-setting?
            (upsert-raw-setting! original-value setting-k value)
