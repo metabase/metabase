@@ -1,8 +1,15 @@
-export interface RecentView {
-  model: string;
-  model_object: RecentModelObject;
+export type ModelType = "table" | "card" | "dataset" | "dashboard";
+
+export interface ModelObject {
+  name: string;
 }
 
-export interface RecentModelObject {
-  name: string;
+export interface RecentView {
+  model: ModelType;
+  model_object: ModelObject;
+}
+
+export interface PopularView {
+  model: ModelType;
+  model_object: ModelObject;
 }

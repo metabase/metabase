@@ -5,7 +5,7 @@ import DatabaseCandidates from "metabase/entities/database-candidates";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import XraySection from "../../components/XraySection";
+import HomeXraySection from "../../components/HomeXraySection";
 
 interface XraySectionProps {
   database?: Database;
@@ -30,4 +30,4 @@ export default _.compose(
   Databases.loadList(),
   connect(mapStateToProps),
   DatabaseCandidates.loadList({ query: getXrayQuery }),
-)(XraySection);
+)(HomeXraySection);
