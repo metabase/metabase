@@ -101,7 +101,7 @@
 (defn- create-runs!
   "Insert views [user-id model model-id]. Reviews are entered a second apart with last review as most recent."
   [runs]
-  (let [runs (map (fn [[user _model model-id] hours-ago]
+  (let [runs (map (fn [[user _model model-id] seconds-ago]
                     {:executor_id user :card_id model-id
                      :context :question
                      :hash (qputil/query-hash {})

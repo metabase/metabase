@@ -161,11 +161,24 @@
     user
     ((resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions) user)))
 
+(defn- add-has-question-and-dashboard
+  "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
+  [user]
+  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
+                          :collection_id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+        perms-query {:where [:and
+                             [:= :archived false]
+                             coll-ids-filter]}]
+    (assoc user :has_question_and_dashboard (and (> (db/count 'Card (perms-query user)) 0)
+                                                 (> (db/count 'Dashboard (perms-query user)) 0)))))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :has_question_and_dashboard)
+      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      add-has-question-and-dashboard
       maybe-add-general-permissions))
 
 (api/defendpoint GET "/:id"
