@@ -18,10 +18,11 @@ import {
   updateNativePermission,
   updateSchemasPermission,
   updateTablesPermission,
-} from "metabase/lib/permissions";
+} from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { trackPermissionChange } from "./analytics";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -73,7 +74,7 @@ export const limitDatabasePermission = createThunkAction(
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { name: "access" },
+          permission: { type: "access", permission: "data" },
           value: newValue,
           entityId,
         }),
@@ -88,7 +89,7 @@ const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
-  ({ groupId, permission, value, entityId, view }) => {
+  ({ groupId, permission: permissionInfo, value, entityId, view }) => {
     return (dispatch, getState) => {
       if (isDatabaseEntityId(entityId)) {
         dispatch(
@@ -100,8 +101,8 @@ export const updateDataPermission = createThunkAction(
       }
 
       const metadata = getMetadataWithHiddenTables(getState(), null);
-      if (permission.postActions) {
-        const action = permission.postActions?.[value]?.(
+      if (permissionInfo.postActions) {
+        const action = permissionInfo.postActions?.[value]?.(
           entityId,
           groupId,
           view,
@@ -112,7 +113,14 @@ export const updateDataPermission = createThunkAction(
         }
       }
 
-      return { groupId, permission, value, metadata, entityId };
+      trackPermissionChange(
+        entityId,
+        permissionInfo.permission,
+        permissionInfo.type === "native",
+        value,
+      );
+
+      return { groupId, permissionInfo, value, metadata, entityId };
     };
   },
 );
@@ -206,51 +214,54 @@ const dataPermissions = handleActions(
           return state;
         }
 
-        const { value, groupId, entityId, metadata, permission } = payload;
+        const { value, groupId, entityId, metadata, permissionInfo } = payload;
 
         const database = metadata.database(entityId.databaseId);
 
-        if (entityId.tableId != null) {
-          MetabaseAnalytics.trackStructEvent("Permissions", "fields", value);
-          const updatedPermissions = updateFieldsPermission(
-            state,
-            groupId,
-            entityId,
-            value,
-            database,
-          );
-          return inferAndUpdateEntityPermissions(
-            updatedPermissions,
-            groupId,
-            entityId,
-            database,
-          );
-        } else if (entityId.schemaName != null) {
-          MetabaseAnalytics.trackStructEvent("Permissions", "tables", value);
-          return updateTablesPermission(
-            state,
-            groupId,
-            entityId,
-            value,
-            database,
-          );
-        } else if (permission.name === "native") {
-          MetabaseAnalytics.trackStructEvent("Permissions", "native", value);
+        if (permissionInfo.type === "native") {
           return updateNativePermission(
             state,
             groupId,
             entityId,
             value,
             database,
+            permissionInfo.permission,
+          );
+        }
+
+        if (entityId.tableId != null) {
+          const updatedPermissions = updateFieldsPermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            database,
+            permissionInfo.permission,
+          );
+          return inferAndUpdateEntityPermissions(
+            updatedPermissions,
+            groupId,
+            entityId,
+            database,
+            permissionInfo.permission,
+          );
+        } else if (entityId.schemaName != null) {
+          return updateTablesPermission(
+            state,
+            groupId,
+            entityId,
+            value,
+            database,
+            permissionInfo.permission,
           );
         } else {
-          MetabaseAnalytics.trackStructEvent("Permissions", "schemas", value);
           return updateSchemasPermission(
             state,
             groupId,
             entityId,
             value,
             database,
+            permissionInfo.permission,
           );
         }
       },

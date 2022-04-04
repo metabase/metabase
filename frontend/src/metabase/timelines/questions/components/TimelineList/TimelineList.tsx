@@ -1,25 +1,25 @@
 import React from "react";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineCard from "metabase/timelines/questions/components/TimelineCard/TimelineCard";
 
 export interface TimelineListProps {
   timelines: Timeline[];
-  collection: Collection;
-  visibility?: Record<number, boolean>;
-  isVisibleByDefault?: boolean;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  visibleTimelineIds?: number[];
+  selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelineList = ({
   timelines,
-  collection,
-  visibility = {},
-  isVisibleByDefault = false,
-  onToggleTimeline,
+  visibleTimelineIds = [],
+  selectedEventIds = [],
   onEditEvent,
   onArchiveEvent,
+  onToggleEvent,
+  onToggleTimeline,
 }: TimelineListProps): JSX.Element => {
   return (
     <div>
@@ -27,10 +27,12 @@ const TimelineList = ({
         <TimelineCard
           key={timeline.id}
           timeline={timeline}
-          collection={collection}
-          isVisible={visibility[timeline.id] ?? isVisibleByDefault}
+          isDefault={timelines.length === 1}
+          isVisible={visibleTimelineIds.includes(timeline.id)}
+          selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
+          onToggleEvent={onToggleEvent}
           onArchiveEvent={onArchiveEvent}
         />
       ))}

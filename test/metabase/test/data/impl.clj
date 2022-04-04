@@ -9,6 +9,7 @@
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.sync :as sync]
+            [metabase.sync.util :as sync.u]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl.verify :as verify]
             [metabase.test.data.interface :as tx]
@@ -109,13 +110,13 @@
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [metabase.sync.util/*log-exceptions-and-continue?* false]
+              (binding [sync.u/*log-exceptions-and-continue?* false]
                 (sync/sync-database! db (when quick-sync? {:scan :schema})))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
                 (catch Throwable e
-                  (println "Error adding extra metadata:" e))))))
+                  (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
         (Database (u/the-id db))
         (catch Throwable e
@@ -124,16 +125,16 @@
                             :database-name      database-name
                             :connection-details connection-details}
                            e)]
-            (println (u/pprint-to-str 'red (Throwable->map e)))
+            (log/error e "Failed to create test database")
             (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
       (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
-        (println message "\n" e)
+        (log/error e message)
         (if config/is-test?
           (System/exit -1)
           (do
-            (println (u/format-color 'red "create-database! failed; destroying %s database %s" driver (pr-str database-name)))
+            (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
             (tx/destroy-db! driver database-definition)
             (throw (ex-info message
                             {:driver        driver

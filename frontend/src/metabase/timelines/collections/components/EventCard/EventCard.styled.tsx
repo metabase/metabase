@@ -1,6 +1,8 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Markdown from "metabase/core/components/Markdown";
 
 export const CardRoot = styled.div`
   display: flex;
@@ -39,18 +41,32 @@ export const CardThreadStroke = styled.div`
 export const CardBody = styled.div`
   flex: 1 1 auto;
   padding: 0.25rem 0.75rem 0.5rem;
+  min-width: 0;
 `;
 
-export const CardTitle = styled.div`
+export interface CardTitleProps {
+  to?: string;
+}
+
+const cardTitleHoverStyles = css`
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const CardTitle = styled.div<CardTitleProps>`
   color: ${color("text-dark")};
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
+  word-wrap: break-word;
+  ${props => props.to && cardTitleHoverStyles};
 `;
 
-export const CardDescription = styled.div`
+export const CardDescription = styled(Markdown)`
   color: ${color("text-dark")};
   margin-top: 0.25rem;
+  word-wrap: break-word;
 `;
 
 export const CardDateInfo = styled.div`
@@ -62,7 +78,7 @@ export const CardDateInfo = styled.div`
 
 export const CardCreatorInfo = styled.div`
   color: ${color("text-medium")};
-  margin-top: 0.75rem;
+  margin-top: 0.25rem;
   font-size: 0.75rem;
 `;
 

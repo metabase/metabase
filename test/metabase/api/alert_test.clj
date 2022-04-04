@@ -199,7 +199,7 @@
 ;;; |                                                POST /api/alert                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest put-alert-test
+(deftest post-alert-test
   (is (= {:errors {:alert_condition "value must be one of: `goal`, `rows`."}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "not rows"

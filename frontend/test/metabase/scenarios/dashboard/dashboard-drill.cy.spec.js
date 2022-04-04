@@ -4,6 +4,7 @@ import {
   popover,
   filterWidget,
   showDashboardCardActions,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -25,9 +26,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle URL click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId =>
-      cy.visit(`/dashboard/${dashboardId}`),
-    );
+    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
     cy.icon("click").click();
@@ -106,7 +105,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           visualization_settings: clickBehavior,
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
 
@@ -141,7 +140,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       questionId => {
         createDashboard(
           { questionId, visualization_settings: dashCardSettings },
-          dashboardIdA => cy.visit(`/dashboard/${dashboardIdA}`),
+          dashboardIdA => visitDashboard(dashboardIdA),
         );
       },
     );
@@ -153,9 +152,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle question click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId =>
-      cy.visit(`/dashboard/${dashboardId}`),
-    );
+    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
     cy.icon("click").click();
@@ -201,7 +198,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           createDashboardWithQuestion(
             { dashboardName: "end dash" },
             dashboardIdB => {
-              cy.visit(`/dashboard/${dashboardIdA}`);
+              visitDashboard(dashboardIdA);
             },
           );
         },
@@ -246,9 +243,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
   it.skip("should handle cross-filter on a table", () => {
-    createDashboardWithQuestion({}, dashboardId =>
-      cy.visit(`/dashboard/${dashboardId}`),
-    );
+    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
     cy.icon("pencil").click();
     showDashboardCardActions();
     cy.icon("click").click();
@@ -395,7 +390,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // Product ID in the first row (query fails for User ID as well)
     cy.findByText("105").click();
     cy.findByText("View details").click();
@@ -481,15 +476,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
             ],
           });
         });
-        cy.server();
-        cy.route(
+
+        visitDashboard(DASHBOARD_ID);
+
+        cy.intercept(
           "POST",
           `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-
-        cy.wait("@cardQuery");
         cy.get(".bar")
           .eq(14) // August 2017 (Total of 12 reviews, 9 unique days)
           .click({ force: true });
@@ -530,7 +524,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createQuestion({ visualization_settings: questionSettings }, questionId => {
       createDashboard(
         { questionId, visualization_settings: dashCardSettings },
-        dashboardIdA => cy.visit(`/dashboard/${dashboardIdA}`),
+        dashboardIdA => visitDashboard(dashboardIdA),
       );
     });
 
@@ -580,7 +574,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
         cy.icon("pencil").click();
         // Edit "Visualization options"
         showDashboardCardActions();
@@ -670,6 +664,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
     });
+    cy.findByTextEnsureVisible("Quantity");
     cy.get(".Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
@@ -727,13 +722,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
               ],
             });
           });
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION2_ID}/query`,
-          ).as("secondCardQuery");
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          cy.wait("@secondCardQuery");
+          visitDashboard(DASHBOARD_ID);
 
           cy.get(".bar")
             .first()
@@ -819,7 +809,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       });
 
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
     });
 
     it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {

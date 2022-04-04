@@ -56,7 +56,7 @@
                        ;; around
                        dataset? (assoc :original-model "card"))
         query       (when (seq query)
-                      (try (qp/query->preprocessed query)
+                      (try (qp/preprocess query)
                            (catch Throwable e
                              (log/error e (tru "Error preprocessing query:")))))
         database-id (some-> query :database u/the-id)

@@ -6,8 +6,11 @@ import {
   sidebar,
   mockSlackConfigured,
   isOSS,
+  visitDashboard,
+  clickSend,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -18,7 +21,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   it.skip("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     });
     cy.findByText("This dashboard is looking empty.");
 
@@ -27,14 +30,13 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.attr", "aria-disabled", "true")
       .click();
 
-    cy.findByText("Dashboard subscriptions").should("not.exist");
-    cy.findByText("Sharing and embedding").should("not.exist");
+    cy.icon("subscription").should("not.exist");
     cy.findByText(/Share this dashboard with people *./i).should("not.exist");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      visitDashboard(DASHBOARD_ID);
     });
     cy.icon("pencil").click();
     cy.icon("string").click();
@@ -51,8 +53,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    cy.findByText("Dashboard subscriptions").should("not.exist");
-    cy.findByText("Sharing and embedding").should("not.exist");
+    cy.icon("subscription").should("not.exist");
     cy.findByText(/Share this dashboard with people *./i);
   });
 
@@ -217,8 +218,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
       // Click anywhere outside to close the popover
       cy.findByText("15705D").click();
-      cy.findByText("Send email now").click();
-      cy.findByText("Email sent");
+      clickSend();
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).not.to.include(
           "An error occurred while displaying this card.",
@@ -230,7 +230,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should include text cards (metabase#15744)", () => {
       const TEXT_CARD = "FooBar";
 
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       cy.icon("pencil").click();
       cy.icon("string").click();
       cy.findByPlaceholderText(
@@ -241,9 +241,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       // Click outside popover to close it and at the same time check that the text card content is shown as expected
       cy.findByText(TEXT_CARD).click();
-      cy.findByText("Send email now").click();
-      cy.findByText(/^Sending/);
-      cy.findByText("Email sent");
+      clickSend();
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).to.include(TEXT_CARD);
       });
@@ -368,9 +366,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 // Helper functions
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
-  cy.visit(`/dashboard/${dashboard_id}`);
-  cy.icon("share").click();
-  cy.findByText("Dashboard subscriptions").click();
+  visitDashboard(dashboard_id);
+  cy.icon("subscription").click();
 }
 
 function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {

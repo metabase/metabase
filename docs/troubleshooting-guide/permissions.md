@@ -34,7 +34,7 @@ Remember that everyone is a member of the **All Users** group; this is why we re
 
 **Steps to take:**
 
-1. If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing), you can block group access to an entire database. This means that if you've blocked a group's access to a database, members of that group will not ever seen any data from this database, regardless of their permissions at the Collection level. 
+1. If you're running a [paid version of Metabase](https://www.metabase.com/pricing), you can block group access to an entire database. This means that if you've blocked a group's access to a database, members of that group will not ever seen any data from this database, regardless of their permissions at the Collection level. 
 2. In the **Admin Panel**'s **Permissions tab**, change data permissions for your user group to **Block** and save your changes.
 3. Using an incognito window, log in as the person in question to confirm that they can no longer view saved questions or dashboards that include information from the blocked database.
 

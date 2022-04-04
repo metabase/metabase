@@ -65,6 +65,7 @@ describe("scenarios > question > custom column", () => {
     }).click();
 
     popover()
+      .last()
       .findByText("10 bins")
       .click();
 
@@ -99,6 +100,7 @@ describe("scenarios > question > custom column", () => {
     }).click();
 
     popover()
+      .last()
       .findByText("Month of Year")
       .click();
 
@@ -133,6 +135,7 @@ describe("scenarios > question > custom column", () => {
     }).click();
 
     popover()
+      .last()
       .findByText("Bin every 10 degrees")
       .click();
 

@@ -80,3 +80,4 @@ dev/src/dev/nocommit/
 .lsp/*
 !.lsp/config.edn
 .clj-kondo/.cache
+*.code-workspace

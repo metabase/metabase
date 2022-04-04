@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { t } from "ttag";
+
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import { countLines } from "metabase/lib/string";
@@ -24,6 +26,8 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
+import { ValidationError } from "../ValidationError";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -285,11 +289,33 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
+  validate() {
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors;
+  }
+
+  validateTemplateTags() {
+    return this.templateTags()
+      .map(tag => {
+        const dimension = new TemplateTagDimension(
+          tag.name,
+          this.metadata(),
+          this,
+        );
+        if (!dimension) {
+          return new ValidationError(t`Invalid template tag: ${tag.name}`);
+        }
+
+        return dimension.validateTemplateTag();
+      })
+      .filter(
+        (maybeError): maybeError is ValidationError => maybeError != null,
+      );
+  }
+
   allTemplateTagsAreValid() {
-    return this.templateTags().every(
-      // field filters require a field
-      t => !(t.type === "dimension" && t.dimension == null),
-    );
+    const tagErrors = this.validateTemplateTags();
+    return tagErrors.length === 0;
   }
 
   setTemplateTag(name, tag) {

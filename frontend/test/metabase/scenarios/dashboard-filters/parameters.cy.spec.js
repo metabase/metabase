@@ -3,6 +3,7 @@ import {
   popover,
   restore,
   openNativeEditor,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -14,10 +15,15 @@ describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card/**/query").as("cardQuery");
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("GET", "/api/collection/**").as("collection");
+    cy.intercept("GET", "/api/field/**/values").as("fieldValues");
   });
 
   it("should be visible if previously added", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
+    cy.findByTextEnsureVisible("Created At");
     cy.findByText("Baker").should("not.exist");
 
     // Add a filter
@@ -27,21 +33,30 @@ describe("scenarios > dashboard > parameters", () => {
       "**Filter should be set and applied after we leave and back to the dashboard**",
     );
     cy.visit("/");
-    cy.findByText("Browse all items").click();
+    cy.wait("@collection");
+
+    cy.findByText("Our analytics").click();
+    cy.wait("@collection");
+
     cy.findByText("Orders in a dashboard").click();
-    cy.findByText("Baker");
+    cy.wait("@collection");
+    cy.findByTextEnsureVisible("Product ID");
+
+    cy.findByTextEnsureVisible("Baker");
   });
 
   it("should search across multiple fields", () => {
     cy.createDashboard({ name: "my dash" });
 
     cy.visit("/collection/root");
+    cy.wait("@collection");
     cy.findByText("my dash").click();
+    cy.wait("@collection");
 
     // add the same question twice
     cy.icon("pencil").click();
-
     cy.get(".QueryBuilder-section .Icon-add").click();
+    cy.wait("@collection");
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
@@ -59,6 +74,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("Save").click();
 
     // wait for saving to finish
+    cy.wait("@dashboard");
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // confirm that typing searches both fields
@@ -68,12 +84,14 @@ describe("scenarios > dashboard > parameters", () => {
     popover()
       .find("input")
       .type("Ga");
+    cy.wait("@dashboard");
     popover().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
     popover()
       .find("input")
       .type("d");
+    cy.wait("@dashboard");
     popover()
       .contains("Gadget")
       .click();
@@ -87,11 +105,14 @@ describe("scenarios > dashboard > parameters", () => {
     cy.createDashboard({ name: "my dash" });
 
     cy.visit("/collection/root");
+    cy.wait("@collection");
     cy.findByText("my dash").click();
+    cy.wait("@collection");
 
     // add a question
     cy.icon("pencil").click();
     cy.get(".QueryBuilder-section .Icon-add").click();
+    cy.wait("@collection");
     addQuestion("Orders, Count");
 
     // add a Number - Between filter
@@ -106,6 +127,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("Save").click();
 
     // wait for saving to finish
+    cy.wait("@dashboard");
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // populate the filter inputs
@@ -123,6 +145,7 @@ describe("scenarios > dashboard > parameters", () => {
     popover()
       .contains("Add filter")
       .click();
+    cy.wait("@dashboard");
 
     // There should be 8849 orders with a rating >= 3 && <= 4
     cy.get(".DashCard").contains("8,849");
@@ -130,7 +153,8 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should not search field for results non-exact parameter string operators", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
+    cy.findByTextEnsureVisible("Created At");
 
     // Add a filter tied to a field that triggers a search for field values
     cy.icon("pencil").click();
@@ -156,6 +180,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     cy.findByText("Save").click();
+    cy.wait("@dashboard");
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.contains("Text starts with").click();
@@ -177,13 +202,14 @@ describe("scenarios > dashboard > parameters", () => {
     // Mirrored issue in metabase-enterprise#275
 
     // Go directly to "Orders in a dashboard" dashboard
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
+    cy.findByTextEnsureVisible("Created At");
 
     // Add filter and save dashboard
     cy.icon("pencil").click();
     cy.icon("filter").click();
-    cy.contains("Text or Category").click();
-    cy.contains("Ends with").click();
+    cy.findByText("Text or Category").click();
+    cy.findByText("Ends with").click();
 
     // map the parameter to the Category field
     selectFilter(cy.get(".DashCard"), "Category");
@@ -217,6 +243,7 @@ describe("scenarios > dashboard > parameters", () => {
       .click()
       .clear();
     cy.findByText("Save").click();
+    cy.wait("@dashboard");
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.log("Filter name should be 'unnamed' and the value cleared");
@@ -230,6 +257,8 @@ describe("scenarios > dashboard > parameters", () => {
     openNativeEditor().type("SELECT * FROM ORDERS WHERE {{filter}}", {
       parseSpecialCharSequences: false,
     });
+    cy.wait("@collection");
+
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
     cy.findAllByTestId("select-button")
       .contains("Text")
@@ -251,9 +280,13 @@ describe("scenarios > dashboard > parameters", () => {
     // add question to existing dashboard, rather than creating a new one
     cy.findByText("Yes please!").click();
     cy.findByText("Orders in a dashboard").click();
+    cy.wait("@dashboard");
 
     // it automatically switches to that dashboard and enters the editing mode
-    cy.findByText("You're editing this dashboard.");
+    cy.findByTextEnsureVisible("You're editing this dashboard.");
+    cy.findByTextEnsureVisible("Created At");
+    cy.findByTextEnsureVisible("DashQ");
+    cy.wait("@cardQuery");
 
     cy.icon("filter").click();
     cy.findByText("Time").click();
@@ -273,13 +306,21 @@ describe("scenarios > dashboard > parameters", () => {
       .click();
     // save the dashboard
     cy.findByText("Save").click();
+    cy.wait("@dashboard");
+    cy.findByTextEnsureVisible("Product ID");
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.visit("/");
+    cy.wait("@collection");
     // find and edit the question
-    cy.findByText("Browse all items").click();
+    cy.findByText("Our analytics").click();
+    cy.wait("@collection");
     cy.findByText("DashQ").click();
+    cy.wait("@collection");
+
     cy.findByText("Open Editor").click();
+    cy.wait("@cardQuery");
+    cy.findByTextEnsureVisible("PRODUCT_ID");
 
     // remove the connected filter from the question...
     cy.get("@editor")
@@ -296,10 +337,11 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("New question").should("not.exist");
 
     cy.log("Bug was breaking the dashboard at this point");
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // error was always ending in "is undefined" when dashboard broke in the past
     cy.contains(/is undefined$/).should("not.exist");
     cy.findByText("Orders in a dashboard");
+    cy.wait("@collection");
     cy.findByText("DashQ");
   });
 
@@ -358,7 +400,8 @@ describe("scenarios > dashboard > parameters", () => {
           });
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
+        cy.wait("@collection");
       });
     });
 
@@ -422,12 +465,14 @@ describe("scenarios > dashboard > parameters", () => {
             });
           });
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
+          cy.wait("@collection");
         });
       });
     });
 
     cy.findByText("Category").click();
+    cy.wait("@dashboard");
     cy.findByPlaceholderText("Enter some text").type(
       "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
     );
@@ -436,7 +481,9 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should be removable from dashboard", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
+    cy.findByTextEnsureVisible("Created At");
+
     // Add a filter
     addCityFilterWithDefault();
 
@@ -445,6 +492,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Location").click();
     cy.findByText("Remove").click();
     cy.findByText("Save").click();
+    cy.wait("@dashboard");
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.findByText("Baker").should("not.exist");
@@ -452,16 +500,20 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when the user does not have self service data permissions", () => {
     beforeEach(() => {
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
+      cy.wait("@collection");
+      cy.findByTextEnsureVisible("Created At");
       addCityFilterWithDefault();
 
       cy.signIn("nodata");
       cy.reload();
+      cy.wait("@collection");
     });
 
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
       cy.findByText("Location").click({ force: true });
+      cy.wait("@fieldValues");
 
       cy.icon("key");
     });
@@ -473,12 +525,14 @@ function selectFilter(selection, filterName) {
   popover()
     .contains(filterName)
     .click({ force: true });
+  cy.wait("@fieldValues");
 }
 
 function addQuestion(name) {
   sidebar()
     .contains(name)
     .click();
+  cy.wait("@cardQuery");
 }
 
 function addCityFilterWithDefault() {
@@ -491,6 +545,7 @@ function addCityFilterWithDefault() {
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("City").click();
+    cy.wait("@fieldValues");
   });
 
   // Create a default value and save filter
@@ -505,6 +560,7 @@ function addCityFilterWithDefault() {
     .click();
 
   cy.findByText("Save").click();
+  cy.wait("@dashboard");
   cy.findByText("You're editing this dashboard.").should("not.exist");
-  cy.findByText("Baker");
+  cy.findByTextEnsureVisible("Baker");
 }

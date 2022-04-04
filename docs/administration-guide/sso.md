@@ -7,7 +7,7 @@ We recommend that you set up Single Sign-on for your Metabase installation.
 - [Google Sign-in](https://www.metabase.com/docs/latest/administration-guide/10-single-sign-on.html)
 - [LDAP](https://www.metabase.com/docs/latest/administration-guide/10-single-sign-on.html#enabling-ldap-authentication)
 
-## SSO for Metabase Pro and Enterprise Editions
+## SSO for Metabase paid versions
 
 With paid versions, you have more options to help manage lots of people and groups.
 

@@ -11,7 +11,7 @@ export const TabBar = styled.ul`
 `;
 
 function getActiveTabColor() {
-  return darken("nav");
+  return darken("brand");
 }
 
 function getInactiveTabColor() {

@@ -1,4 +1,4 @@
-import { restore, describeEE } from "__support__/e2e/cypress";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { normal } = USERS;
@@ -47,7 +47,7 @@ describeEE("audit > auditing", () => {
     });
 
     cy.log("Download a question");
-    cy.visit("/question/3");
+    visitQuestion(3);
     cy.icon("download").click();
     cy.request("POST", "/api/card/1/query/json");
 
@@ -60,7 +60,7 @@ describeEE("audit > auditing", () => {
     cy.findByText("My personal collection").should("not.exist");
 
     cy.log("View old existing question");
-    cy.visit("/question/2");
+    visitQuestion(2);
     cy.findByText("18,760");
 
     cy.log("View newly created admin's question");

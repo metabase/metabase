@@ -8,6 +8,7 @@ import {
   visualize,
   summarize,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -166,7 +167,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -248,7 +249,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -603,7 +604,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           });
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
       });
     });
 

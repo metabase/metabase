@@ -19,7 +19,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as group]
    [metabase.models.user :refer [User]]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -273,33 +272,32 @@
 
 (deftest convert-query-cache-result-to-blob-test
   (testing "the query_cache.results column was changed to"
-    (mt/with-log-level :trace
-      (impl/test-migrations ["v42.00-064"] [migrate!]
-        (with-open [conn (jdbc/get-connection (db/connection))]
-          (when (= :mysql driver/*driver*)
-            ;; simulate the broken app DB state that existed prior to the fix from #16095
-            (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
-              (.execute stmt)))
-          (migrate!) ; run migrations, then check the new type
-          (let [^String exp-type (case driver/*driver*
-                                   :mysql    "longblob"
-                                   :h2       "BLOB"
-                                   :postgres "bytea")
-                name-fn          (case driver/*driver*
-                                   :h2 str/upper-case
-                                   identity)
-                tbl-nm           "query_cache"
-                col-nm           "results"
-                tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
-              (testing (format " %s in %s" exp-type driver/*driver*)
-                ;; just get the first/only scalar value from the results (which is a vec of maps)
-                (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
-                  (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
-                          driver/*driver*
-                          tbl-nm
-                          col-nm
-                          exp-type
-                          (get tbl-cols col-nm))))))))))
+    (impl/test-migrations ["v42.00-064"] [migrate!]
+      (with-open [conn (jdbc/get-connection (db/connection))]
+        (when (= :mysql driver/*driver*)
+          ;; simulate the broken app DB state that existed prior to the fix from #16095
+          (with-open [stmt (.prepareStatement conn "ALTER TABLE query_cache MODIFY results BLOB NULL;")]
+            (.execute stmt)))
+        (migrate!)                      ; run migrations, then check the new type
+        (let [^String exp-type (case driver/*driver*
+                                 :mysql    "longblob"
+                                 :h2       "BLOB"
+                                 :postgres "bytea")
+              name-fn          (case driver/*driver*
+                                 :h2 str/upper-case
+                                 identity)
+              tbl-nm           "query_cache"
+              col-nm           "results"
+              tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+          (testing (format " %s in %s" exp-type driver/*driver*)
+            ;; just get the first/only scalar value from the results (which is a vec of maps)
+            (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
+                        driver/*driver*
+                        tbl-nm
+                        col-nm
+                        exp-type
+                        (get tbl-cols col-nm)))))))))
 
 (deftest remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
@@ -493,7 +491,7 @@
                 id))
             (all-user-perms []
               (db/query {:select [:object], :from [Permissions], :where [:= :group_id (all-users-group-id)]}))]
-      (impl/test-migrations ["v43.00-020"] [migrate!]
+      (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
         (is (= []
                (all-user-perms)))
         (migrate!)
@@ -501,14 +499,14 @@
                (all-user-perms))))
 
       (testing "add-migrated-collections data migration was ran previously: don't create an entry"
-        (impl/test-migrations ["v43.00-020"] [migrate!]
+        (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
           (add-migrated-collections-data-migration-entry!)
           (migrate!)
           (is (= []
                  (all-user-perms)))))
 
       (testing "entry already exists: don't create an entry"
-        (impl/test-migrations ["v43.00-020"] [migrate!]
+        (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
           (db/execute! {:insert-into Permissions
                         :values      [{:object   "/collection/root/"
                                        :group_id (all-users-group-id)}]})
@@ -538,3 +536,29 @@
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
               {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
              (db/query {:select [:first_name :password :password_salt :ldap_auth], :from [User], :order-by [[:id :asc]]}))))))
+
+(deftest grant-download-perms-test
+  (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
+    (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
+      (db/execute! {:insert-into Database
+                    :values      [{:name       "My DB"
+                                   :engine     "h2"
+                                   :created_at :%now
+                                   :updated_at :%now
+                                   :details    "{}"}]})
+      (migrate!)
+      (is (= [{:object "/collection/root/"} {:object "/download/db/1/"}]
+             (db/query {:select    [:p.object]
+                        :from      [[Permissions :p]]
+                        :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                        :where     [:= :pg.name group/all-users-group-name]}))))))
+
+(deftest grant-subscription-permission-tests
+  (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
+    (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
+        (migrate!)
+        (is (= #{"All Users"}
+               (set (map :name (db/query {:select    [:pg.name]
+                                          :from      [[Permissions :p]]
+                                          :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                          :where     [:= :p.object "/general/subscription/"]}))))))))

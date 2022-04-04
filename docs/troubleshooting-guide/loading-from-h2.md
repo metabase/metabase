@@ -43,7 +43,7 @@ Command failed with exception: Unsupported database file version or invalid file
     java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
     ```
 
-If you're using [Metabase Enterprise Edition][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
+If you're using a [paid version of Metabase][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
 
 ## Are you trying to downgrade?
 
@@ -126,7 +126,7 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 3.  Move Metabase to a faster server (in particular, a server with faster disks).
 
 [backup]: ../operations-guide/backing-up-metabase-application-data.md
-[enterprise]: /enterprise/
+[enterprise]: https://www.metabase.com/pricing
 [migrate]: ../operations-guide/migrating-from-h2.md
 [serialization-docs]: ../enterprise-guide/serialization.md
 [serialization-learn]: /learn/administration/serialization.html

@@ -3,6 +3,7 @@ import {
   editDashboard,
   visitQuestionAdhoc,
   popover,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -84,6 +85,6 @@ function addQuestionToDashboardAndVisit() {
       });
     });
 
-    cy.visit(`/dashboard/${id}`);
+    visitDashboard(id);
   });
 }

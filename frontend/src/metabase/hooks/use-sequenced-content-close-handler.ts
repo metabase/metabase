@@ -70,8 +70,8 @@ export default function useSequencedContentCloseHandler() {
       popoverDataRef.current = undefined;
     }
 
-    document.removeEventListener("mousedown", handleEvent, true);
     document.removeEventListener("keydown", handleEvent);
+    window.removeEventListener("mousedown", handleEvent, true);
   }, [handleEvent]);
 
   const setupCloseHandler = useCallback(
@@ -83,8 +83,8 @@ export default function useSequencedContentCloseHandler() {
         RENDERED_POPOVERS.push(popover);
         popoverDataRef.current = popover;
 
-        document.addEventListener("mousedown", handleEvent, true);
-        window.addEventListener("keydown", handleEvent);
+        document.addEventListener("keydown", handleEvent);
+        window.addEventListener("mousedown", handleEvent, true);
       }
     },
     [handleEvent, removeCloseHandler],

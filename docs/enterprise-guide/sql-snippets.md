@@ -2,7 +2,7 @@
 
 {% include plans-blockquote.html feature="SQL snippet controls" %}
 
-This article covers **SQL snippet folders**, which are an Enterprise feature for organizing and permissioning snippets. You can learn more about [how SQL snippets work in our User Guide](../users-guide/sql-snippets.md).
+This article covers **SQL snippet folders**, which allow you to organize and set permissions on [SQL snippets](../users-guide/sql-snippets.md).
 
 Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
@@ -26,7 +26,7 @@ You can create a SQL snippet folder from the **Snippets** menu in the [SQL edito
 
 ### Creating a new SQL snippet
 
-When creating a SQL snippet in the Enterprise Edition, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
+On [some plans](https://www.metabase.com/pricing), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
 
 ![Add a snippet enterprise modal](./images/sql-snippets/enterprise-add-snippet.png)
 

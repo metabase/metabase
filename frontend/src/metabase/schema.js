@@ -110,7 +110,11 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const RecentsSchema = new schema.Entity("recents", undefined, {
+export const RecentViewsSchema = new schema.Entity("recentViews", undefined, {
+  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+});
+
+export const PopularViewsSchema = new schema.Entity("popularViews", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });
 

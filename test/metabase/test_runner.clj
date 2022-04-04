@@ -17,6 +17,7 @@
             [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
+            [metabase.util :as u]
             [metabase.util.date-2 :as date-2]
             [metabase.util.i18n.impl :as i18n.impl]
             [pjstadig.humane-test-output :as humane-test-output]))
@@ -103,7 +104,9 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (find-tests only)]
+  (let [start-time-ms (System/currentTimeMillis)
+        tests         (find-tests only)]
+    (printf "Finding tests took %s.\n" (u/format-milliseconds (- (System/currentTimeMillis) start-time-ms)))
     (println "Running" (count tests) "tests")
     tests))
 
@@ -171,9 +174,11 @@
 
   To use our test runner from the REPL, use [[run]] instead."
   [options]
-  (let [summary (run (tests options) options)
-        fail?   (pos? (+ (:error summary) (:fail summary)))]
+  (let [start-time-ms (System/currentTimeMillis)
+        summary       (run (tests options) options)
+        fail?         (pos? (+ (:error summary) (:fail summary)))]
     (pprint/pprint summary)
     (printf "Ran %d tests in parallel, %d single-threaded.\n" (:parallel summary 0) (:single-threaded summary 0))
+    (printf "Finding and running tests took %s.\n" (u/format-milliseconds (- (System/currentTimeMillis) start-time-ms)))
     (println (if fail? "Tests failed." "All tests passed."))
     (System/exit (if fail? 1 0))))

@@ -67,7 +67,6 @@
   "The application name we should use for Google drivers. Requested by Google themselves -- see #2627"
   (create-application-name config/mb-version-info))
 
-
 (defn- fetch-access-and-refresh-tokens* [scopes, ^String client-id, ^String client-secret, ^String auth-code]
   {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
    :post [(seq (:access-token %)) (seq (:refresh-token %))]}

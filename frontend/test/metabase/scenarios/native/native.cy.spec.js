@@ -5,6 +5,7 @@ import {
   openNativeEditor,
   visitQuestionAdhoc,
   summarize,
+  sidebar,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -146,9 +147,13 @@ describe("scenarios > question > native", () => {
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
 
-      cy.icon("close").click();
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.icon("close").click();
+      });
       summarize();
-      cy.icon("close").click();
+      sidebar().within(() => {
+        cy.icon("close").click();
+      });
       cy.findByText("Done").click();
     });
   });

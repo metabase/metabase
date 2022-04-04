@@ -1,4 +1,4 @@
-import { describeEE, restore } from "__support__/e2e/cypress";
+import { describeEE, restore, visitQuestion } from "__support__/e2e/cypress";
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
@@ -6,7 +6,7 @@ describeEE("scenarios > saved question moderation", () => {
       restore();
       cy.signInAsAdmin();
 
-      cy.visit("/question/2");
+      visitQuestion(2);
     });
 
     it("should be able to verify a saved question", () => {
@@ -74,7 +74,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has not been verified", () => {
-      cy.visit("/question/3");
+      visitQuestion(3);
 
       cy.icon("verified").should("not.exist");
 
@@ -94,7 +94,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has been verified", () => {
-      cy.visit("/question/2");
+      visitQuestion(2);
 
       cy.icon("verified");
 
@@ -110,7 +110,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see the question verification in the question's timeline", () => {
-      cy.visit("/question/2");
+      visitQuestion(2);
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByText("History").click();

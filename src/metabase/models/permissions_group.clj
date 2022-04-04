@@ -40,7 +40,7 @@
   "All Users")
 
 (def ^{:arglists '([])} all-users
-  "Fetch the `All Users` permissions group, creating it if needed."
+  "Fetch the `All Users` permissions group"
   (magic-group all-users-group-name))
 
 (def admin-group-name
@@ -48,7 +48,7 @@
   "Administrators")
 
 (def ^{:arglists '([])} admin
-  "Fetch the `Administrators` permissions group, creating it if needed."
+  "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
 
@@ -102,10 +102,9 @@
 
 (u/strict-extend (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
-                   {:pre-delete pre-delete
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update}))
-
+                   {:pre-delete  pre-delete
+                    :pre-insert  pre-insert
+                    :pre-update  pre-update}))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -124,3 +123,8 @@
                               [:= :pgm.group_id (u/the-id group-or-id)]]
              :order-by  [[:%lower.user.first_name :asc]
                          [:%lower.user.last_name :asc]]}))
+
+(defn non-admin-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
+  []
+  (db/select PermissionsGroup :name [:not= admin-group-name]))

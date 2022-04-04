@@ -132,36 +132,72 @@ export function parseStringLiteral(expressionString) {
   return unquoteString(expressionString);
 }
 
-function quoteString(string, character) {
-  if (character === '"') {
-    return JSON.stringify(string);
-  } else if (character === "'") {
-    return swapQuotes(JSON.stringify(swapQuotes(string)));
-  } else if (character === "[") {
+const DOUBLE_QUOTE = '"';
+const SINGLE_QUOTE = "'";
+const BACKSLASH = "\\";
+
+const STRING_ESCAPE = {
+  "\b": "\\b",
+  "\t": "\\t",
+  "\n": "\\n",
+  "\f": "\\f",
+  "\r": "\\r",
+};
+
+const STRING_UNESCAPE = {
+  b: "\b",
+  t: "\t",
+  n: "\n",
+  f: "\f",
+  r: "\r",
+};
+
+export function quoteString(string, quote) {
+  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
+    let str = "";
+    for (let i = 0; i < string.length; ++i) {
+      const ch = string[i];
+      if (ch === quote && string[i - 1] !== BACKSLASH) {
+        str += BACKSLASH + ch;
+      } else {
+        const sub = STRING_ESCAPE[ch];
+        str += sub ? sub : ch;
+      }
+    }
+    return quote + str + quote;
+  } else if (quote === "[") {
     return "[" + escapeString(string) + "]";
-  } else if (character === "") {
+  } else if (quote === "") {
     // unquoted
     return string;
   } else {
-    throw new Error("Unknown quoting: " + character);
+    throw new Error("Unknown quoting: " + quote);
   }
 }
-function unquoteString(string) {
-  const character = string.charAt(0);
-  if (character === '"') {
-    return JSON.parse(string);
-  } else if (character === "'") {
-    return swapQuotes(JSON.parse(swapQuotes(string)));
-  } else if (character === "[") {
+
+export function unquoteString(string) {
+  const quote = string.charAt(0);
+  if (quote === DOUBLE_QUOTE || quote === SINGLE_QUOTE) {
+    let str = "";
+    for (let i = 1; i < string.length - 1; ++i) {
+      const ch = string[i];
+      if (ch === BACKSLASH) {
+        const seq = string[i + 1];
+        const unescaped = STRING_UNESCAPE[seq];
+        if (unescaped) {
+          str += unescaped;
+          ++i;
+          continue;
+        }
+      }
+      str += ch;
+    }
+    return str;
+  } else if (quote === "[") {
     return unescapeString(string).slice(1, -1);
   } else {
     throw new Error("Unknown quoting: " + string);
   }
-}
-
-// HACK: use JSON.stringify to escape single quotes by swapping single and doulble quotes before/after
-function swapQuotes(str) {
-  return str.replace(/['"]/g, q => (q === "'" ? '"' : "'"));
 }
 
 // move to query lib

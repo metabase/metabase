@@ -1,158 +1,252 @@
 import d3 from "d3";
-import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
-import { stretchTimeseriesDomain } from "./apply_axis";
-import timeseriesScale from "./timeseriesScale";
 
-const EVENT_ICON_OFFSET_X = -16;
-const EVENT_ICON_MARGIN_TOP = 10;
-const EVENT_GROUP_COUNT_MARGIN_LEFT = 10;
-const EVENT_GROUP_COUNT_MARGIN_TOP = EVENT_ICON_MARGIN_TOP + 8;
+const ICON_X = -16;
+const ICON_Y = 10;
+const ICON_SIZE = 16;
+const ICON_SCALE = 0.45;
+const RECT_SIZE = ICON_SIZE * 2;
+const TEXT_X = 10;
+const TEXT_Y = 16;
+const TEXT_DISTANCE = ICON_SIZE * 2;
 
-function isAxisEvent(event, [xAxisMin, xAxisMax]) {
-  return (
-    event.timestamp.isSame(xAxisMin) ||
-    event.timestamp.isBetween(xAxisMin, xAxisMax) ||
-    event.timestamp.isSame(xAxisMax)
-  );
-}
-
-function getAxisEvents(events, xDomain) {
-  return events.filter(event => isAxisEvent(event, xDomain));
-}
-
-function getEventGroups(events, xInterval) {
-  return _.groupBy(events, event =>
-    event.timestamp
-      .clone()
-      .startOf(xInterval.interval)
-      .valueOf(),
-  );
-}
-
-function getEventTicks(eventGroups) {
-  return Object.keys(eventGroups).map(value => new Date(parseInt(value)));
-}
-
-function getTranslateFromStyle(value) {
-  const style = value.replace("translate(", "").replace(")", "");
-  const [x, y] = style.split(",");
-  return [parseFloat(x), parseFloat(y)];
-}
-
-function getXAxis(chart) {
+function getAxis(chart) {
   return chart.svg().select(".axis.x");
 }
 
-function getEventAxis(xAxis, xDomain, xInterval, eventTicks) {
-  const xAxisDomainLine = xAxis.select("path.domain").node();
-  const { width: axisWidth } = xAxisDomainLine.getBoundingClientRect();
-  xAxis.selectAll("event-axis").remove();
-
-  const scale = timeseriesScale(xInterval)
-    .domain(stretchTimeseriesDomain(xDomain, xInterval))
-    .range([0, axisWidth]);
-
-  const eventsAxisGenerator = d3.svg
-    .axis()
-    .scale(scale)
-    .orient("bottom")
-    .ticks(eventTicks.length)
-    .tickValues(eventTicks);
-
-  const eventsAxis = xAxis
-    .append("g")
-    .attr("class", "events-axis")
-    .call(eventsAxisGenerator);
-
-  eventsAxis.select("path.domain").remove();
-  return eventsAxis;
+function getBrush(chart) {
+  return chart.svg().select(".brush");
 }
 
-function renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines) {
-  const svg = chart.svg();
-  const brush = svg.select("g.brush");
-  const brushHeight = brush.select("rect.background").attr("height");
+function getScale(chart) {
+  return chart.x();
+}
 
-  svg.selectAll(".event-tick").remove();
-  svg.selectAll(".event-line").remove();
+function getEventMapping(events, scale) {
+  const mapping = new Map();
+  let group = [];
+  let groupPoint = 0;
 
-  Object.values(eventGroups).forEach(group => {
-    const defaultTick = eventAxis.select(".tick");
-    const transformStyle = defaultTick.attr("transform");
-    const [tickX] = getTranslateFromStyle(transformStyle);
-    defaultTick.remove();
+  events.forEach(event => {
+    const eventPoint = scale(event.timestamp);
+    const groupDistance = eventPoint - groupPoint;
 
-    const isOnlyOneEvent = group.length === 1;
-    const iconName = isOnlyOneEvent ? group[0].icon : "star";
-
-    const iconPath = ICON_PATHS[iconName].path
-      ? ICON_PATHS[iconName].path
-      : ICON_PATHS[iconName];
-    const iconScale = iconName === "mail" ? 0.45 : 0.5;
-
-    brush
-      .append("line")
-      .attr("class", "event-line")
-      .attr("x1", tickX)
-      .attr("x2", tickX)
-      .attr("y1", "0")
-      .attr("y2", brushHeight);
-
-    const eventIconContainer = eventAxis
-      .append("g")
-      .attr("class", "event-tick")
-      .attr("transform", transformStyle);
-
-    eventIconContainer
-      .append("path")
-      .attr("class", "event-icon")
-      .attr("d", iconPath)
-      .attr(
-        "transform",
-        `scale(${iconScale}) translate(${EVENT_ICON_OFFSET_X},${EVENT_ICON_MARGIN_TOP})`,
-      );
-
-    if (!isOnlyOneEvent) {
-      eventIconContainer
-        .append("text")
-        .text(group.length)
-        .attr(
-          "transform",
-          `translate(${EVENT_GROUP_COUNT_MARGIN_LEFT},${EVENT_GROUP_COUNT_MARGIN_TOP})`,
-        );
+    if (!group.length || groupDistance < ICON_SIZE) {
+      group.push(event);
+      groupPoint += (eventPoint - groupPoint) / group.length;
+    } else {
+      mapping.set(groupPoint, group);
+      group = [event];
+      groupPoint = eventPoint;
     }
+  });
 
-    eventIconContainer.on("click", () => {
+  if (group.length) {
+    mapping.set(groupPoint, group);
+  }
+
+  return mapping;
+}
+
+function getEventPoints(eventMapping) {
+  return Array.from(eventMapping.keys());
+}
+
+function getEventGroups(eventMapping) {
+  return Array.from(eventMapping.values());
+}
+
+function isSelected(events, selectedEventIds) {
+  return events.some(event => selectedEventIds.includes(event.id));
+}
+
+function getIcon(events) {
+  return events.length === 1 ? events[0].icon : "star";
+}
+
+function getIconPath(events) {
+  const icon = getIcon(events);
+  return ICON_PATHS[icon].path ?? ICON_PATHS[icon];
+}
+
+function getIconFillRule(events) {
+  const icon = getIcon(events);
+  return ICON_PATHS[icon].attrs?.fillRule;
+}
+
+function getIconTransform() {
+  return `scale(${ICON_SCALE}) translate(${ICON_X}, ${ICON_Y})`;
+}
+
+function getIconLabel(events) {
+  const icon = getIcon(events);
+  return `${icon} icon`;
+}
+
+function isEventWithin(eventIndex, eventPoints, eventDistance) {
+  const thisPoint = eventPoints[eventIndex];
+  const prevPoint = eventPoints[eventIndex - 1] ?? Number.NEGATIVE_INFINITY;
+  const nextPoint = eventPoints[eventIndex + 1] ?? Number.POSITIVE_INFINITY;
+  const prevDistance = thisPoint - prevPoint;
+  const nextDistance = nextPoint - thisPoint;
+
+  return prevDistance < eventDistance || nextDistance < eventDistance;
+}
+
+function hasEventText(events, eventIndex, eventPoints) {
+  if (events.length > 1) {
+    return !isEventWithin(eventIndex, eventPoints, TEXT_DISTANCE);
+  } else {
+    return false;
+  }
+}
+
+function renderEventLines({
+  chart,
+  brush,
+  eventPoints,
+  eventGroups,
+  selectedEventIds,
+}) {
+  const eventLines = brush.selectAll(".event-line").data(eventGroups);
+  const brushHeight = chart.effectiveHeight();
+  eventLines.exit().remove();
+
+  eventLines
+    .enter()
+    .append("line")
+    .attr("class", "event-line")
+    .classed("hover", d => isSelected(d, selectedEventIds))
+    .attr("x1", (d, i) => eventPoints[i])
+    .attr("x2", (d, i) => eventPoints[i])
+    .attr("y1", "0")
+    .attr("y2", brushHeight);
+}
+
+function renderEventTicks({
+  axis,
+  brush,
+  eventPoints,
+  eventGroups,
+  selectedEventIds,
+  onHoverChange,
+  onOpenTimelines,
+  onSelectTimelineEvents,
+  onDeselectTimelineEvents,
+}) {
+  const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  const eventLines = brush.selectAll(".event-line").data(eventGroups);
+  eventAxis.exit().remove();
+
+  eventAxis
+    .enter()
+    .append("g")
+    .attr("class", "event-axis");
+
+  const eventTicks = eventAxis.selectAll(".event-tick").data(eventGroups);
+  eventTicks.exit().remove();
+
+  eventTicks
+    .enter()
+    .append("g")
+    .attr("class", "event-tick")
+    .classed("hover", d => isSelected(d, selectedEventIds))
+    .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
+
+  eventTicks
+    .append("path")
+    .attr("class", "event-icon")
+    .attr("d", d => getIconPath(d))
+    .attr("fill-rule", d => getIconFillRule(d))
+    .attr("transform", () => getIconTransform())
+    .attr("aria-label", d => getIconLabel(d));
+
+  eventTicks
+    .append("rect")
+    .attr("fill", "none")
+    .attr("width", RECT_SIZE)
+    .attr("height", RECT_SIZE)
+    .attr("transform", () => getIconTransform());
+
+  eventTicks
+    .filter((d, i) => hasEventText(d, i, eventPoints))
+    .append("text")
+    .attr("class", "event-text")
+    .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
+    .text(d => d.length);
+
+  eventTicks
+    .on("mousemove", function(d) {
+      const eventTick = d3.select(this);
+      const eventIcon = eventTicks.filter(data => d === data);
+      const eventLine = eventLines.filter(data => d === data);
+
+      onHoverChange({ element: eventIcon.node(), timelineEvents: d });
+      eventTick.classed("hover", true);
+      eventLine.classed("hover", true);
+    })
+    .on("mouseleave", function(d) {
+      const eventTick = d3.select(this);
+      const eventLine = eventLines.filter(data => d === data);
+
+      onHoverChange(null);
+      eventTick.classed("hover", isSelected(d, selectedEventIds));
+      eventLine.classed("hover", isSelected(d, selectedEventIds));
+    })
+    .on("click", function(d) {
+      if (isSelected(d, selectedEventIds)) {
+        onDeselectTimelineEvents();
+      } else {
+        onSelectTimelineEvents(d);
+      }
+
       onOpenTimelines();
     });
-  });
 }
 
 export function renderEvents(
   chart,
-  { timelineEvents = [], xDomain, xInterval, isTimeseries, onOpenTimelines },
+  {
+    events = [],
+    selectedEventIds = [],
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  },
 ) {
-  const xAxis = getXAxis(chart);
-  if (!xAxis || !isTimeseries) {
-    return;
+  const axis = getAxis(chart);
+  const brush = getBrush(chart);
+  const scale = getScale(chart);
+  const eventMapping = getEventMapping(events, scale);
+  const eventPoints = getEventPoints(eventMapping);
+  const eventGroups = getEventGroups(eventMapping);
+
+  if (brush) {
+    renderEventLines({
+      chart,
+      brush,
+      eventPoints,
+      eventGroups,
+      selectedEventIds,
+    });
   }
 
-  const events = getAxisEvents(timelineEvents, xDomain);
-  const eventGroups = getEventGroups(events, xInterval);
-  const eventTicks = getEventTicks(eventGroups);
-  if (!events.length) {
-    return;
+  if (axis) {
+    renderEventTicks({
+      axis,
+      brush,
+      eventPoints,
+      eventGroups,
+      selectedEventIds,
+      onHoverChange,
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
+    });
   }
-
-  const eventAxis = getEventAxis(xAxis, xDomain, xInterval, eventTicks);
-  renderEventTicks(chart, eventAxis, eventGroups, onOpenTimelines);
 }
 
-export function hasEventAxis({ timelineEvents = [], xDomain, isTimeseries }) {
-  if (!isTimeseries) {
-    return false;
-  }
-
-  return timelineEvents.some(event => isAxisEvent(event, xDomain));
+export function hasEventAxis({ timelineEvents = [], isTimeseries }) {
+  return isTimeseries && timelineEvents.length > 0;
 }

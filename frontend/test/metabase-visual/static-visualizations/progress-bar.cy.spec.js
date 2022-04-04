@@ -3,6 +3,7 @@ import {
   setupSMTP,
   openEmailPage,
   sendSubscriptionsEmail,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -27,7 +28,7 @@ describe("static visualizations", () => {
         createProgressBarQuestion({ value: 2000, goal: 1000 }),
       ],
     }).then(({ dashboard }) => {
-      cy.visit(`/dashboard/${dashboard.id}`);
+      visitDashboard(dashboard.id);
 
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 

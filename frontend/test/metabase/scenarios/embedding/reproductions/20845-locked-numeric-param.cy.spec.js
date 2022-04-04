@@ -7,7 +7,7 @@ defaultFilterValues.forEach(value => {
     ? "and the required filter with the default value"
     : "";
 
-  describe.skip("issue 20845", () => {
+  describe("issue 20845", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
@@ -51,7 +51,6 @@ defaultFilterValues.forEach(value => {
             params: {
               qty_locked: type === "string" ? "15" : 15, // IMPORTANT: integer
             },
-            exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
           });
         });
 

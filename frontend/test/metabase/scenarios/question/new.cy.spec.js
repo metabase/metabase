@@ -8,6 +8,7 @@ import {
   visualize,
   summarize,
   openNotebookEditor,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -149,7 +150,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should display the collection tree on the left side", () => {
-        cy.findByText("Our analytics");
+        popover().findByText("Our analytics");
       });
 
       it("should display the saved questions list on the right side", () => {
@@ -173,7 +174,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should display the collection tree on the left side", () => {
-        cy.findByText("Our analytics");
+        popover().findByText("Our analytics");
       });
 
       it("should display the saved questions list on the right side", () => {
@@ -192,9 +193,11 @@ describe("scenarios > question > new", () => {
         // Try to choose a different saved question
         cy.findByTestId("data-step-cell").click();
 
-        cy.findByText("Our analytics");
-        cy.findByText("Orders");
-        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        popover().within(() => {
+          cy.findByText("Our analytics");
+          cy.findByText("Orders");
+          cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        });
 
         visualize();
 
@@ -352,7 +355,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show a table info popover when hovering over the table name in the header", () => {
-      cy.visit("/question/1");
+      visitQuestion(1);
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
@@ -437,7 +440,7 @@ describe("scenarios > question > new", () => {
 
     it("'read-only' user should be able to resize column width (metabase#9772)", () => {
       cy.signIn("readonly");
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.findByText("Tax")
         .closest(".TableInteractive-headerCellData")
         .as("headerCell")

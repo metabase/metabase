@@ -39,7 +39,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type base-type effective-type coercion-strategy field-comment database-position], field-name :name :as field} new-field-metadatas]
+      (for [{:keys [database-type base-type effective-type coercion-strategy field-comment database-position nfc-path], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
                     base-type
@@ -62,6 +62,7 @@
           :coercion_strategy (when effective-type coercion-strategy)
           :semantic_type     (common/semantic-type field)
           :parent_id         parent-id
+          :nfc_path          nfc-path
           :description       field-comment
           :position          database-position
           :database_position database-position})))))
@@ -174,7 +175,8 @@
 
 (s/defn ^:private sync-nested-field-instances! :- (s/maybe su/IntGreaterThanOrEqualToZero)
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
-  `db-metadata` and `our-metadata`."
+  `db-metadata` and `our-metadata`.
+  Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
   [table        :- i/TableInstance
    db-metadata  :- #{i/TableMetadataField}
    our-metadata :- #{common/TableMetadataFieldWithID}]

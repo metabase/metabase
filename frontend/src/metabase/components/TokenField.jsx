@@ -495,6 +495,7 @@ export default class TokenField extends Component {
       placeholder = null;
     }
 
+    const isControlledInput = !!this.onInputChange;
     const valuesList = (
       <ul
         className={cx(
@@ -534,9 +535,10 @@ export default class TokenField extends Component {
             // set size to be small enough that it fits in a parameter.
             size={10}
             placeholder={placeholder}
-            value={inputValue}
+            value={isControlledInput ? inputValue : undefined}
+            defaultValue={isControlledInput ? undefined : inputValue}
             onKeyDown={this.onInputKeyDown}
-            onChange={this.onInputChange}
+            onChange={isControlledInput ? this.onInputChange : undefined}
             onFocus={this.onInputFocus}
             onBlur={this.onInputBlur}
             onPaste={this.onInputPaste}

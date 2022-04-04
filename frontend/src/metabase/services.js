@@ -24,6 +24,10 @@ export const BookmarkApi = {
     create: POST("/api/bookmark/collection/:id"),
     delete: DELETE("/api/bookmark/collection/:id"),
   },
+  dashboard: {
+    create: POST("/api/bookmark/dashboard/:id"),
+    delete: DELETE("/api/bookmark/dashboard/:id"),
+  },
 };
 
 // only available with token loaded
@@ -224,9 +228,18 @@ export const LdapApi = {
 };
 
 export const TimelineApi = {
-  getTimelines: GET("/api/timeline"),
-  getCardTimelines: GET("/api/card/:cardId/timelines"),
-  getCollectionTimelines: GET("/api/collection/:collectionId/timelines"),
+  list: GET("/api/timeline"),
+  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  get: GET("/api/timeline/:id"),
+  create: POST("/api/timeline"),
+  update: PUT("/api/timeline/:id"),
+};
+
+export const TimelineEventApi = {
+  list: GET("/api/timeline-event"),
+  get: GET("/api/timeline-event/:id"),
+  create: POST("/api/timeline-event"),
+  update: PUT("/api/timeline-event/:id"),
 };
 
 export const MetabaseApi = {

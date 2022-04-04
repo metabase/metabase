@@ -40,6 +40,9 @@ import {
 
 import "./NativeQueryEditor.css";
 
+const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
+const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
+
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
 @SnippetCollections.loadList({ loadingAndErrorWrapper: false })
@@ -267,11 +270,21 @@ export default class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
+    this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
+
     aceLanguageTools.addCompleter({
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
-          // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-          const results = await this.props.autocompleteResultsFn(prefix);
+          let { results, timestamp } = this._lastAutoComplete;
+          const cacheHit =
+            Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
+            this._lastAutoComplete.prefix === prefix;
+          if (!cacheHit) {
+            // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
+            results = await this.props.autocompleteResultsFn(prefix);
+            this._lastAutoComplete = { timestamp: Date.now(), prefix, results };
+          }
+
           // transform results of the API call into what ACE expects
           const js_results = results.map(function(result) {
             return {
@@ -336,6 +349,12 @@ export default class NativeQueryEditor extends Component {
     }
   }
 
+  _retriggerAutocomplete = _.debounce(() => {
+    if (this._editor.completer?.popup?.isOpen) {
+      this._editor.execCommand("startAutocomplete");
+    }
+  }, AUTOCOMPLETE_DEBOUNCE_DURATION);
+
   onChange() {
     const { query } = this.props;
     if (this._editor && !this._localUpdate) {
@@ -347,6 +366,8 @@ export default class NativeQueryEditor extends Component {
           .update(this.props.setDatasetQuery);
       }
     }
+
+    this._retriggerAutocomplete();
   }
 
   toggleEditor = () => {
@@ -408,17 +429,19 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor bg-light full">
         {hasTopBar && (
-          <div className="flex align-center" style={{ minHeight: 55 }}>
-            <DataSourceSelectors
-              isNativeEditorOpen={isNativeEditorOpen}
-              query={query}
-              readOnly={readOnly}
-              setDatabaseId={this.setDatabaseId}
-              setTableId={this.setTableId}
-            />
+          <div className="flex align-center" data-testid="native-query-top-bar">
+            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+              />
+            </div>
             {hasParametersList && (
               <SyncedParametersList
-                className="mt1"
+                className="mt1 mx2"
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
@@ -428,8 +451,9 @@ export default class NativeQueryEditor extends Component {
             )}
             {query.hasWritePermission() && (
               <VisibilityToggler
+                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
-                readOnly={readOnly}
+                readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
               />
             )}

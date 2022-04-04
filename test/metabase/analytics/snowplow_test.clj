@@ -135,6 +135,11 @@
                :user-id "1"}]
              (pop-event-data-and-user-id!)))
 
+      (snowplow/track-event! ::snowplow/new-event-created 1 {:source "question", :question_id 1})
+      (is (= [{:data    {"event" "new_event_created", "source" "question", "question_id" 1}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
+
       (testing "Snowplow events are not sent when tracking is disabled"
         (mt/with-temporary-setting-values [anon-tracking-enabled false]
           (snowplow/track-event! ::snowplow/new-instance-created)

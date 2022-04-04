@@ -121,6 +121,40 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
   });
 
+  it("displays parameter field on desktop and mobile", () => {
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE products.category = {{testingparamvisbility77}}",
+    );
+
+    SQLFilter.setWidgetValue("Gizmo");
+    SQLFilter.runQuery();
+
+    cy.get("fieldset")
+      .findByText("Testingparamvisbility77")
+      .should("be.visible");
+
+    // close sidebar
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.get(".Icon-close").click();
+    });
+
+    // resize window to mobile form factor
+    cy.viewport(480, 800);
+
+    cy.get("fieldset")
+      .findByText("Testingparamvisbility77")
+      .should("be.visible");
+
+    // collapse editor
+    cy.get(".Icon-contract")
+      .first()
+      .click();
+
+    cy.get("fieldset")
+      .findByText("Testingparamvisbility77")
+      .should("be.visible");
+  });
+
   // flaky test (#19454)
   it.skip("should show an info popover when hovering over fields in the field filter field picker", () => {
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");

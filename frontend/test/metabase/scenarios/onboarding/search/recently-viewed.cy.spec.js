@@ -1,21 +1,30 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 describe(`search > recently viewed`, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("shows list of recently viewed items", () => {
     cy.visit("/browse/1-sample-database");
-    cy.findByText("People").click();
+
+    // "People" table
+    cy.findByTextEnsureVisible("People").click();
+    cy.wait("@dataset");
+    cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     // "Orders in a dashboard" dashboard
-    cy.visit("/dashboard/1");
-    cy.findByText("Product ID");
+    visitDashboard(1);
+    cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry

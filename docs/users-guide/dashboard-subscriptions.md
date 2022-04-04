@@ -54,9 +54,9 @@ You can add multiple subscriptions to a single dashboard. To add a subscription,
 
 To remove a subscription from a dashboard, select the subscription you'd like to remove. At the bottom of the sidebar, select **Delete this subscription**. Follow the instructions on the modal that pops up to confirm you'd like to delete the subscription.
 
-## Enterprise Edition: customize filter values for each dashboard subscription
+## Customize filter values for each dashboard subscription
 
-Metabase Enterprise Edition allows you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
+Some plans allow you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
 
 ### Related reading
 

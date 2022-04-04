@@ -7,6 +7,7 @@ import {
   visualize,
   getDimensionByName,
   summarize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -214,8 +215,8 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.createDashboard().then(({ body: { id: DASBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASBOARD_ID}`);
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      visitDashboard(DASHBOARD_ID);
     });
 
     // Add Q2 to that dashboard
@@ -378,6 +379,8 @@ describe("scenarios > question > nested", () => {
   });
 
   it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
@@ -387,10 +390,13 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Simple question").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("14787").click();
+    cy.wait("@dataset");
 
     // The column title
     cy.findByText("Products → Category").click();
     cy.findByText("Distribution").click();
+    cy.wait("@dataset");
+
     summarize();
     cy.findByText("Group by")
       .parent()

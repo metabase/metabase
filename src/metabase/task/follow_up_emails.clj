@@ -90,11 +90,17 @@
 
 (s/defn ^:private should-send-abandoment-email?
   ([]
-   (should-send-abandoment-email?
-    (instance-creation-timestamp)
-    (db/select-one [User [:%max.date_joined :last-user]])
-    (db/select-one [Activity [:%max.timestamp :last-activity]])
-    (db/select-one [ViewLog [:%max.timestamp :last-view]])))
+   (let [[last-user last-activity last-view]
+         (map :last (db/query
+                     {:union-all
+                      [{:select [[:%max.date_joined :last]], :from [User]}
+                       {:select [[:%max.timestamp :last]], :from [Activity]}
+                       {:select [[:%max.timestamp :last]], :from [ViewLog]}]}))]
+     (should-send-abandoment-email?
+      (instance-creation-timestamp)
+      last-user
+      last-activity
+      last-view)))
 
   ([instance-creation :- (s/maybe Temporal)
     last-user         :- (s/maybe Temporal)

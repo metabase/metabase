@@ -8,7 +8,7 @@ describe("scenarios > browse data", () => {
 
   it("basic UI flow should work", () => {
     cy.visit("/");
-    cy.icon("table_spaced").click();
+    cy.findByText(/Browse data/).click();
     cy.location("pathname").should("eq", "/browse");
     cy.findByText(/^Our data$/i);
     cy.findByText("Sample Database");

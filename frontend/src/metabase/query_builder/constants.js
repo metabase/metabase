@@ -15,6 +15,10 @@ export const MODAL_TYPES = {
   TURN_INTO_DATASET: "turn-into-dataset",
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
   NEW_EVENT: "new-event",
-  NEW_EVENT_WITH_TIMELINE: "new-event-with-timeline",
   EDIT_EVENT: "edit-event",
+};
+
+export const SIDEBAR_SIZES = {
+  NORMAL: 355,
+  TIMELINE: 300,
 };

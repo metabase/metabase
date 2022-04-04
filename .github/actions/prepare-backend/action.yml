@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: Prepare JDK ${{ inputs.java-version }}
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v3
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
@@ -31,3 +31,5 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.m2-cache-key }}-

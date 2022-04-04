@@ -3,6 +3,7 @@ import {
   describeEE,
   mockSessionProperty,
   modal,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 describeEE("scenarios > dashboard > caching", () => {
@@ -14,7 +15,7 @@ describeEE("scenarios > dashboard > caching", () => {
 
   it("can set cache ttl for a saved question", () => {
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     openEditingModalForm();
     modal().within(() => {
@@ -51,6 +52,8 @@ describeEE("scenarios > dashboard > caching", () => {
 });
 
 function openEditingModalForm() {
-  cy.icon("ellipsis").click();
+  cy.get("main header").within(() => {
+    cy.icon("ellipsis").click();
+  });
   cy.findByText("Edit dashboard details").click();
 }

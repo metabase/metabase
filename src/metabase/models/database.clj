@@ -44,8 +44,10 @@
 
 (defn- post-insert [database]
   (u/prog1 database
-    ;; add this database to the All Users permissions groups
-    (perms/grant-full-db-permissions! (perm-group/all-users) database)
+    ;; add this database to the All Users permissions group
+    (perms/grant-full-data-permissions! (perm-group/all-users) database)
+    ;; give full download perms for this database to the All Users permissions group
+    (perms/grant-full-download-permissions! (perm-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
@@ -84,9 +86,7 @@
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
-                :where       [:or
-                              [:like :object (str (perms/data-perms-path id) "%")]
-                              [:= :object (perms/database-block-perms-path id)]]})
+                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
