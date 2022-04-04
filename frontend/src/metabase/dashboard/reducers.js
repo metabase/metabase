@@ -34,6 +34,7 @@ import {
   SAVE_DASHBOARD_AND_CARDS,
   SET_DASHBOARD_SEEN,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
+  RESET,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -44,6 +45,7 @@ const dashboardId = handleActions(
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { dashboardId } }) => dashboardId,
     },
+    [RESET]: { next: state => null },
   },
   null,
 );
@@ -54,6 +56,7 @@ const isEditing = handleActions(
     [SET_EDITING_DASHBOARD]: {
       next: (state, { payload }) => (payload ? payload : null),
     },
+    [RESET]: { next: state => null },
   },
   null,
 );
@@ -65,6 +68,7 @@ const hasSeenLoadedDashboard = handleActions(
     [SET_DASHBOARD_SEEN]: {
       next: state => true,
     },
+    [RESET]: { next: state => false },
   },
   false,
 );
@@ -76,6 +80,7 @@ const showLoadingCompleteFavicon = handleActions(
     [SET_SHOW_LOADING_COMPLETE_FAVICON]: {
       next: (state, { payload }) => payload,
     },
+    [RESET]: { next: state => false },
   },
   false,
 );
@@ -224,6 +229,7 @@ const isAddParameterPopoverOpen = handleActions(
     [SHOW_ADD_PARAMETER_POPOVER]: () => true,
     [HIDE_ADD_PARAMETER_POPOVER]: () => false,
     [INITIALIZE]: () => false,
+    [RESET]: () => false,
   },
   false,
 );
@@ -247,6 +253,7 @@ const dashcardData = handleActions(
           .dissoc(oldDashcardId)
           .value(),
     },
+    [RESET]: { next: state => ({}) },
   },
   {},
 );
@@ -275,6 +282,7 @@ const parameterValues = handleActions(
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
+    [RESET]: { next: state => ({}) },
   },
   {},
 );
@@ -289,6 +297,7 @@ const parameterValuesSearchCache = handleActions(
       next: (state, { payload }) =>
         payload ? assoc(state, payload.cacheKey, payload.results) : state,
     },
+    [RESET]: { next: state => ({}) },
   },
   {},
 );
@@ -346,6 +355,12 @@ const loadingDashCards = handleActions(
         };
       },
     },
+    [RESET]: {
+      next: state => ({
+        ...state,
+        isLoadingComplete: false,
+      }),
+    },
   },
   {
     dashcardIds: [],
@@ -358,6 +373,9 @@ const loadingDashCards = handleActions(
 const DEFAULT_SIDEBAR = { props: {} };
 const sidebar = handleActions(
   {
+    [INITIALIZE]: {
+      next: () => DEFAULT_SIDEBAR,
+    },
     [SET_SIDEBAR]: {
       next: (state, { payload: { name, props } }) => ({
         name,
@@ -367,14 +385,14 @@ const sidebar = handleActions(
     [CLOSE_SIDEBAR]: {
       next: () => DEFAULT_SIDEBAR,
     },
-    [INITIALIZE]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
     [SET_EDITING_DASHBOARD]: {
       next: (state, { payload: isEditing }) =>
         isEditing ? state : DEFAULT_SIDEBAR,
     },
     [REMOVE_PARAMETER]: {
+      next: () => DEFAULT_SIDEBAR,
+    },
+    [RESET]: {
       next: () => DEFAULT_SIDEBAR,
     },
   },

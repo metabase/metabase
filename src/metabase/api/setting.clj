@@ -2,6 +2,7 @@
   "/api/setting endpoints"
   (:require [compojure.core :refer [GET PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
 
@@ -23,10 +24,10 @@
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api/defendpoint GET "/"
-  "Get all `Settings` and their values. You must be a superuser to do this. For non-superusers, a list of visible
-  settings and values can be retrieved using the /api/session/properties endpoint."
+  "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
+  For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (setting/admin-writable-settings))
 
 (api/defendpoint PUT "/"

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, navigationSidebar, popover } from "__support__/e2e/cypress";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 describe("URLs", () => {
@@ -8,13 +8,11 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    ["/", "/browse"].forEach(url => {
-      it(`should slugify database name when opening it from "${url}"`, () => {
-        cy.visit(url);
-        cy.findByTextEnsureVisible("Sample Database").click();
-        cy.findByText("Sample Database");
-        cy.location("pathname").should("eq", "/browse/1-sample-database");
-      });
+    it(`should slugify database name when opening it from /browse"`, () => {
+      cy.visit("/browse");
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByText("Sample Database");
+      cy.location("pathname").should("eq", "/browse/1-sample-database");
     });
 
     [
@@ -66,7 +64,12 @@ describe("URLs", () => {
 
     it("should not slugify users' collections page URL", () => {
       cy.visit("/collection/root");
-      cy.findByText("Other users' personal collections").click();
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
+      popover()
+        .findByText("Other users' personal collections")
+        .click();
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
     });

@@ -12,7 +12,7 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | download | collection | block )
+  "permission = ( all | db | block | download | data-model | details | collection )
   all         = <'/'>
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
@@ -21,7 +21,9 @@
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
-  download    = <'/download'> ( dl-limited | dl-db )
+  block       = <'/block/db/'> #'\\d+' <'/'>
+
+  download    = <'/download'> ( dl-limited | dl-db)
   dl-limited  = <'/limited'>  dl-db
   dl-db       = <'/db/'> #'\\d+' <'/'> ( dl-native | dl-schemas )?
   dl-native   = <'native/'>
@@ -29,9 +31,14 @@
   dl-schema   = #'[^/]*' <'/'> dl-table?
   dl-table    = <'table/'> #'\\d+' <'/'>
 
-  collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?
+  data-model  = <'/data-model'> dm-db
+  dm-db       = <'/db/'> #'\\d+' <'/'> dm-schema?
+  dm-schema   = <'schema/'> #'[^/]*' <'/'> dm-table?
+  dm-table    = <'table/'> #'\\d+' <'/'>
 
-  block       = <'/block/db/'> #'\\d+' <'/'>")
+  details  = <'/details'> <'/db/'> #'\\d+' <'/'>
+
+  collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
 
 (def ^:private ^{:arglists '([s])} parser
   "Function that parses permission strings"
@@ -48,49 +55,73 @@
     (map (fn [path] (append-to-all path x)) (seq path-or-paths))
     (into path-or-paths [x])))
 
-(defn- path
-  "Recursively build permission path from parse tree"
+(defn- path1
   [tree]
   (match/match tree
-    (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
-    [:permission t]                (path t)
+    [:permission t]                (path1 t)
     [:all]                         [:all] ; admin permissions
     [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)]
                                      [[:db db-id :data :native :write]
                                       [:db db-id :data :schemas :all]])
     [:db db-id db-node]            (let [db-id (Long/parseUnsignedLong db-id)]
-                                     (into [:db db-id] (path db-node)))
+                                     (into [:db db-id] (path1 db-node)))
     [:schemas]                     [:data :schemas :all]
-    [:schemas schema]              (into [:data :schemas] (path schema))
+    [:schemas schema]              (into [:data :schemas] (path1 schema))
     [:schema schema-name]          [schema-name :all]
-    [:schema schema-name table]    (into [schema-name] (path table))
+    [:schema schema-name table]    (into [schema-name] (path1 table))
     [:table table-id]              [(Long/parseUnsignedLong table-id) :all]
-    [:table table-id table-perm]   (into [(Long/parseUnsignedLong table-id)] (path table-perm))
+    [:table table-id table-perm]   (into [(Long/parseUnsignedLong table-id)] (path1 table-perm))
     [:table-perm perm]              (case perm
                                       "read"            [:read :all]
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
     [:native]                      [:data :native :write]
+    ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
+    [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
     ;; download perms
     [:download
-     [:dl-limited db-node]]        (append-to-all (path db-node) :limited)
-    [:download db-node]            (append-to-all (path db-node) :full)
+     [:dl-limited db-node]]        (append-to-all (path1 db-node) :limited)
+    [:download db-node]            (append-to-all (path1 db-node) :full)
     [:dl-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      #{[:db db-id :download :native]
                                        [:db db-id :download :schemas]})
     [:dl-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
-                                     (into [:db db-id] (path db-node)))
+                                     (into [:db db-id] (path1 db-node)))
     [:dl-schemas]                  [:download :schemas]
-    [:dl-schemas schema]           (into [:download :schemas] (path schema))
+    [:dl-schemas schema]           (into [:download :schemas] (path1 schema))
     [:dl-schema schema-name]       [schema-name]
-    [:dl-schema schema-name table] (into [schema-name] (path table))
+    [:dl-schema schema-name table] (into [schema-name] (path1 table))
     [:dl-table table-id]           [(Long/parseUnsignedLong table-id)]
     [:dl-native]                   [:download :native]
     ;; collection perms
     [:collection id]               [:collection (collection-id id) :write]
     [:collection id "read"]        [:collection (collection-id id) :read]
-    ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
-    [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]))
+    ;; return nil if the tree could not be parsed, so that we can try calling `path2` instead
+    :else                          nil))
+
+(defn- path2
+  [tree]
+  (match/match tree
+    (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
+    [:permission t]                (path2 t)
+    ;; data model perms
+    [:data-model db-node]          (path2 db-node)
+    [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
+                                     [:db db-id :data-model :schemas :all])
+    [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
+                                     (into [:db db-id :data-model :schemas] (path2 db-node)))
+    [:dm-schema schema-name]       [schema-name :all]
+    [:dm-schema schema-name table] (into [schema-name] (path2 table))
+    [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
+    ;; DB details perms
+    [:details db-id]            (let [db-id (Long/parseUnsignedLong db-id)]
+                                  [:db db-id :details :yes])))
+
+(defn- path
+  "Recursively build permission path from parse tree. Implementation must be split between two pattern matching
+  functions, because having all the clauses in a single pattern match will cause a compilation error due to CLJ-1852"
+  [tree]
+  (or (path1 tree) (path2 tree)))
 
 (defn- graph
   "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
@@ -125,7 +156,7 @@
        (walk/prewalk (fn [x]
                        (or (when (map? x)
                              (some #(and (= (% x) '()) %)
-                                   [:block :all :some :write :read :segmented :full :limited]))
+                                   [:block :all :some :write :read :segmented :full :limited :yes]))
                            x)))))
 
 (defn permissions->graph

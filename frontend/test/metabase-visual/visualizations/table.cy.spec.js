@@ -21,10 +21,15 @@ describe("visual tests > visualizations > table", () => {
 });
 
 function saveQuestion() {
+  cy.intercept("POST", "/api/card").as("saveQuestion");
+
   cy.findByText("Save").click();
+
   modal().within(() => {
     cy.button("Save").click();
+    cy.wait("@saveQuestion");
   });
+
   modal()
     .findByText("Not now")
     .click();

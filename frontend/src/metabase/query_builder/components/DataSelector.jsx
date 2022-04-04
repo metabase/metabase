@@ -1050,7 +1050,6 @@ export class UnconnectedDataSelector extends Component {
         containerClassName={this.props.containerClassName}
         triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
-        horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}
         tetherOptions={this.props.tetherOptions}
         sizeToFit

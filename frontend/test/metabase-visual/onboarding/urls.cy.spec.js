@@ -20,9 +20,8 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.wait("@automagic-dashboards");
 
-    cy.findByText("Reviews table");
+    cy.findByText("Reviews");
     cy.findByText("First collection");
-    cy.findByText("Sample Database");
 
     cy.percySnapshot();
   });

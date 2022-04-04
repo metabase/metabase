@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import { APP_BAR_HEIGHT } from "../constants";
 
-export const AppBarRoot = styled.div`
+export const AppBarRoot = styled.header`
   position: relative;
   display: flex;
   align-items: center;
@@ -29,19 +27,5 @@ export const LogoIconWrapper = styled.div`
 
   &:hover {
     background-color: ${color("bg-light")};
-  }
-`;
-
-export const SidebarButton = styled(Icon)`
-  border: 1px solid ${color("border")};
-  padding: ${space(1)};
-  border-radius: 4px;
-  margin-left: ${space(1)};
-  color: ${color("text-medium")};
-
-  &:hover {
-    color: ${color("brand")};
-    border-color: ${color("brand")};
-    cursor: pointer;
   }
 `;

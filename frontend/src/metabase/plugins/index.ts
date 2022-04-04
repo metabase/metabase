@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import React from "react";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import {
   DatabaseEntityId,
@@ -9,7 +10,9 @@ import {
   Bookmark,
   GroupsPermissions,
   User,
+  Dataset,
 } from "metabase-types/api";
+import { State } from "metabase-types/store";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -60,8 +63,9 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getShowAuthScene: (state: any, props: any) => true,
-  getLogoBackgroundClass: (state: any, props: any) => "bg-white",
+  getShowBrandLogo: (state: State) => true,
+  getShowBrandScene: (state: State) => true,
+  getLogoBackgroundClass: (state: State) => "bg-white",
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -110,6 +114,8 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: () => null,
 };
 
+export const PLUGIN_REDUCERS = {} as any;
+
 export const PLUGIN_ADVANCED_PERMISSIONS = {
   addDatabasePermissionOptions: (permissions: any[]) => permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
@@ -134,4 +140,14 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     return [] as any;
   },
   dataColumns: [] as any,
+  getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
+  canDownloadResults: (_result: Dataset): boolean => true,
+};
+
+export const PLUGIN_GENERAL_PERMISSIONS = {
+  getRoutes: (): React.ReactNode => null,
+  tabs: [] as any,
+  selectors: {
+    canManageSubscriptions: (_state: any) => true,
+  },
 };

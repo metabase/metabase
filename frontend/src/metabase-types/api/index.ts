@@ -1,3 +1,4 @@
+export * from "./activity";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
 export * from "./collection";
@@ -10,3 +11,4 @@ export * from "./slack";
 export * from "./user";
 export * from "./group";
 export * from "./permissions";
+export * from "./dataset";

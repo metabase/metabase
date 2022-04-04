@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.api.general-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [PermissionsGroup]]
-            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]))
@@ -20,8 +19,6 @@
                  (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/general/graph"))))
 
         (testing "return general permissions for groups that has general permisions"
-          ;; TODO: remove this when subscription is granted by default for All Users
-          (perms/grant-general-permissions! group-id :subscription)
           (let [graph  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/general/graph")
                 groups (:groups graph)]
             (is (int? (:revision graph)))
@@ -29,7 +26,7 @@
                            {:monitoring   "yes"
                             :setting      "yes"
                             :subscription "yes"}
-                           group-id
+                           (:id (group/all-users))
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
@@ -66,3 +63,21 @@
                             :setting      "yes"
                             :subscription "no"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/general/graph" new-graph))))))))))
+
+(deftest current-user-test
+  (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (letfn [(user-general-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "admins should have full general permisions"
+          (is (= {:can_access_setting true
+                  :can_access_subscription true
+                  :can_access_monitoring true}
+                 (user-general-permissions :crowberto))))
+
+        (testing "non-admin users should only have subscriptions enabled"
+          (is (= {:can_access_setting false
+                  :can_access_subscription true
+                  :can_access_monitoring false}
+                 (user-general-permissions :rasta))))))))

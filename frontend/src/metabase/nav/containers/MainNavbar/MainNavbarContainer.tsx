@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -13,6 +13,7 @@ import Collections, {
   getCollectionIcon,
   buildCollectionTree,
 } from "metabase/entities/collections";
+import { openNavbar, closeNavbar } from "metabase/redux/app";
 import { getHasDataAccess } from "metabase/new_query/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
@@ -23,7 +24,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import { Sidebar, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import { NavRoot, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
 
 function mapStateToProps(state: unknown) {
   return {
@@ -31,6 +32,11 @@ function mapStateToProps(state: unknown) {
     hasDataAccess: getHasDataAccess(state),
   };
 }
+
+const mapDispatchToProps = {
+  openNavbar,
+  closeNavbar,
+};
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
@@ -51,6 +57,7 @@ type Props = {
   params: {
     slug?: string;
   };
+  openNavbar: () => void;
   closeNavbar: () => void;
 };
 
@@ -63,9 +70,27 @@ function MainNavbarContainer({
   allFetched,
   location,
   params,
+  openNavbar,
   closeNavbar,
   ...props
 }: Props) {
+  useEffect(() => {
+    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
+      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
+        if (isOpen) {
+          closeNavbar();
+        } else {
+          openNavbar();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
+    };
+  }, [isOpen, openNavbar, closeNavbar]);
+
   const selectedItem = useMemo<SelectedItem>(() => {
     const { pathname } = location;
     const { slug } = params;
@@ -111,7 +136,7 @@ function MainNavbarContainer({
   }, [rootCollection, collections, currentUser]);
 
   return (
-    <Sidebar isOpen={isOpen}>
+    <NavRoot isOpen={isOpen}>
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
@@ -127,7 +152,7 @@ function MainNavbarContainer({
           <LoadingTitle>{t`Loading…`}</LoadingTitle>
         </LoadingContainer>
       )}
-    </Sidebar>
+    </NavRoot>
   );
 }
 
@@ -144,5 +169,5 @@ export default _.compose(
     query: () => ({ tree: true }),
     loadingAndErrorWrapper: false,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(MainNavbarContainer);

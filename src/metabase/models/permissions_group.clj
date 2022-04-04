@@ -102,10 +102,9 @@
 
 (u/strict-extend (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
-                   {:pre-delete pre-delete
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update}))
-
+                   {:pre-delete  pre-delete
+                    :pre-insert  pre-insert
+                    :pre-update  pre-update}))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

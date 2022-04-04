@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE POST PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
             [metabase.util :as u]
@@ -66,10 +67,10 @@
              (str/upper-case v))])))
 
 (api/defendpoint PUT "/"
-  "Update multiple email Settings. You must be a superuser to do this."
+  "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (let [settings (-> settings
                      (select-keys (keys mb-to-smtp-settings))
                      (set/rename-keys mb-to-smtp-settings))
@@ -89,17 +90,17 @@
        :body   (humanize-error-messages response)})))
 
 (api/defendpoint DELETE "/"
-  "Clear all email related settings. You must be a superuser to ddo this"
+  "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
 (api/defendpoint POST "/test"
-  "Send a test email using the SMTP Settings. You must be a superuser to do this. Returns `{:ok true}` if we were able
-  to send the message successfully, otherwise a standard 400 error response."
+  "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
+  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (let [response (email/send-message!
                    :subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]

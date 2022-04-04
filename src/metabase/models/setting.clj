@@ -82,6 +82,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
@@ -313,6 +314,19 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
+(defn- has-advanced-setting-access?
+  "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
+  Return `false` when `advanced-permissions` is disabled."
+  []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.common
+                        'metabase.public-settings.premium-features))
+  (if-let [current-user-has-general-permisisons?
+           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+    (current-user-has-general-permisisons? :setting)
+    false))
+
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
 
@@ -323,6 +337,7 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
+      (has-advanced-setting-access?)
       (and
        (allows-user-local-values? setting)
        (not= (:visibility setting) :admin))))

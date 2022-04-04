@@ -91,15 +91,6 @@ describe("collection permissions", () => {
                     cy.findByText("Orders in a dashboard");
                     cy.findByText("Orders, Count");
                   });
-                  // Only pinned dashboards should show up on the home page...
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard");
-                  cy.findByText("Orders, Count").should("not.exist");
-                  // ...but not for the user without permissions to see the root collection
-                  cy.signOut();
-                  cy.signIn("none");
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard").should("not.exist");
                 });
               });
 
@@ -197,7 +188,12 @@ describe("collection permissions", () => {
                       cy.findByText("Archived question");
                       cy.icon("close").click();
                     });
-                    cy.findByText("View archive").click();
+                    navigationSidebar().within(() => {
+                      cy.icon("ellipsis").click();
+                    });
+                    popover()
+                      .findByText("View archive")
+                      .click();
                     cy.location("pathname").should("eq", "/archive");
                     cy.findByText("Orders");
                   });
@@ -411,7 +407,9 @@ describe("collection permissions", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
                   visitDashboard(1);
-                  cy.icon("ellipsis").click();
+                  cy.get("main header").within(() => {
+                    cy.icon("ellipsis").click();
+                  });
                 });
 
                 it("should be able to change title and description", () => {
@@ -598,9 +596,12 @@ describe("collection permissions", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
                 visitDashboard(1);
-                cy.icon("ellipsis")
-                  .should("be.visible")
-                  .click();
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
+
                 popover()
                   .findByText("Edit dashboard details")
                   .should("not.exist");
@@ -609,9 +610,11 @@ describe("collection permissions", () => {
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
                 visitDashboard(1);
-                cy.icon("ellipsis")
-                  .should("be.visible")
-                  .click();
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
                 popover()
                   .findByText("Archive")
                   .should("not.exist");
@@ -622,9 +625,11 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 visitDashboard(1);
                 cy.wait("@collections");
-                cy.icon("ellipsis")
-                  .should("be.visible")
-                  .click();
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
                 popover()
                   .findByText("Duplicate")
                   .click();
@@ -714,10 +719,9 @@ describe("collection permissions", () => {
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
-              it("should be able to revert the dashboard (metabase#15237)", () => {
+              it("should be able to revert a dashboard (metabase#15237)", () => {
                 visitDashboard(1);
-                cy.icon("ellipsis").click();
-                cy.findByText("Revision history").click();
+                openRevisionHistory();
                 clickRevert("created this");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
@@ -783,8 +787,7 @@ describe("collection permissions", () => {
               it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
                 visitDashboard(1);
-                cy.icon("ellipsis").click();
-                cy.findByText("Revision history").click();
+                openRevisionHistory();
                 cy.findAllByRole("button", { name: "Revert" }).should(
                   "not.exist",
                 );
@@ -876,6 +879,8 @@ function saveDashboard() {
 }
 
 function openRevisionHistory() {
-  cy.icon("ellipsis").click();
+  cy.get("main header").within(() => {
+    cy.icon("ellipsis").click();
+  });
   cy.findByText("Revision history").click();
 }

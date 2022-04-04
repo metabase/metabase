@@ -1,4 +1,4 @@
-name: Build + Percy Test
+name: Build + Docker Uberjar
 
 on:
   push:

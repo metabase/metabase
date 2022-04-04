@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -7,6 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
 
 import SearchBar from "metabase/nav/components/SearchBar";
+import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
 import {
   SearchBarContainer,
@@ -14,9 +15,10 @@ import {
 } from "metabase/nav/containers/Navbar.styled";
 
 import Database from "metabase/entities/databases";
+import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
-import { AppBarRoot, LogoIconWrapper, SidebarButton } from "./AppBar.styled";
+import { AppBarRoot, LogoIconWrapper } from "./AppBar.styled";
 
 type Props = {
   isSidebarOpen: boolean;
@@ -41,8 +43,14 @@ function AppBar({
     }
   }, [handleCloseSidebar]);
 
+  const sidebarButtonLabel = useMemo(() => {
+    const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+    return `${message} ${shortcut}`;
+  }, [isSidebarOpen]);
+
   return (
-    <AppBarRoot id="mainAppBar">
+    <AppBarRoot>
       <LogoIconWrapper>
         <Link
           to="/"
@@ -52,10 +60,10 @@ function AppBar({
           <LogoIcon size={24} />
         </Link>
       </LogoIconWrapper>
-      <Tooltip tooltip={isSidebarOpen ? t`Close sidebar` : t`Open sidebar`}>
+      <Tooltip tooltip={sidebarButtonLabel}>
         <SidebarButton
-          name={isSidebarOpen ? "chevronleft" : "chevronright"}
           onClick={onToggleSidebarClick}
+          isSidebarOpen={isSidebarOpen}
         />
       </Tooltip>
       <SearchBarContainer>
