@@ -37,8 +37,10 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     height: heightPx,
     totalNumGridCols,
   }) => {
+    const minSizeRem = 2.2;
+    const maxSizeRem = 12;
     if (!isDashboard || !gridSize || !widthPx || !heightPx) {
-      return undefined;
+      return `${minSizeRem}rem`;
     }
 
     // at small viewport widths totalNumGridCols is set to 1, but the dashcard's gridSize.width isn't updated.
@@ -73,8 +75,6 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
       0,
     );
 
-    const minSizeRem = 2.2;
-    const maxSizeRem = 12;
     // clamp the size in case the combo of gridWidthAdjustmentRem and gridHeightAdjustmentRem makes the font too small or too big
     const fontSize = Math.min(
       Math.max(
