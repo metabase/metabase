@@ -77,6 +77,10 @@ export const CollectionsMoreIcon = styled(Icon)`
   color: ${color("text-medium")};
 `;
 
+export const CollectionMenuList = styled.ul`
+  padding: 0.5rem;
+`;
+
 export const LoadingContainer = styled.div`
   color: ${color("brand")};
   text-align: center;
