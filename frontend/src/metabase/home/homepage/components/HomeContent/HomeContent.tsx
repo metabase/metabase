@@ -2,7 +2,7 @@ import React from "react";
 import moment from "moment";
 import { parseTimestamp } from "metabase/lib/time";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Database, RecentView, User } from "metabase-types/api";
+import { Database, RecentItem, User } from "metabase-types/api";
 import HomePopularSection from "../../containers/HomePopularSection";
 import HomeRecentSection from "../../containers/HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
@@ -10,7 +10,7 @@ import HomeXraySection from "../../containers/HomeXraySection";
 export interface HomeContentProps {
   user: User;
   databases: Database[];
-  recents: RecentView[];
+  recentItems: RecentItem[];
 }
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
@@ -29,16 +29,16 @@ const HomeContent = (props: HomeContentProps): JSX.Element | null => {
   return null;
 };
 
-const isPopularSection = ({ user, recents }: HomeContentProps) => {
+const isPopularSection = ({ user, recentItems }: HomeContentProps) => {
   return (
     !user.is_installer &&
     user.has_question_and_dashboard &&
-    (isWithinWeek(user.date_joined) || !recents.length)
+    (isWithinWeek(user.date_joined) || !recentItems.length)
   );
 };
 
-const isRecentSection = ({ recents }: HomeContentProps) => {
-  return recents.length > 0;
+const isRecentSection = ({ recentItems }: HomeContentProps) => {
+  return recentItems.length > 0;
 };
 
 const isXraySection = ({ databases }: HomeContentProps) => {

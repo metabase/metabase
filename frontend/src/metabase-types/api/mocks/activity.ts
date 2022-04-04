@@ -1,4 +1,4 @@
-import { ModelObject, PopularView, RecentView } from "metabase-types/api";
+import { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
 
 export const createMockModelObject = (
   opts?: Partial<ModelObject>,
@@ -8,16 +8,16 @@ export const createMockModelObject = (
 });
 
 export const createMockRecentView = (
-  opts?: Partial<RecentView>,
-): RecentView => ({
+  opts?: Partial<RecentItem>,
+): RecentItem => ({
   model: "table",
   model_object: createMockModelObject(),
   ...opts,
 });
 
 export const createMockPopularView = (
-  opts?: Partial<PopularView>,
-): PopularView => ({
+  opts?: Partial<PopularItem>,
+): PopularItem => ({
   model: "table",
   model_object: createMockModelObject(),
   ...opts,
