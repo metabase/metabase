@@ -198,26 +198,27 @@
 
 (defn- score-items
   [items]
-  (let [n-items (count items)
-        max-count (apply max (map :cnt items))]
-    (for [[recency-pos {:keys [cnt model_object] :as item}] (zipmap (range) items)]
-      (let [verified-wt 1
-            official-wt 1
-            recency-wt 2
-            views-wt 4
-            scores [;; cards and dashboards? can be 'verified' in enterprise
-                    (if (verified? model_object) verified-wt 0)
-                    ;; items may exist in an 'official' collection in enterprise
-                    (if (official? model_object) official-wt 0)
-                    ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
-                    (* (/ (- n-items recency-pos) n-items) recency-wt)
-                    ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
+  (when (seq items)
+    (let [n-items (count items)
+          max-count (apply max (map :cnt items))]
+      (for [[recency-pos {:keys [cnt model_object] :as item}] (zipmap (range) items)]
+        (let [verified-wt 1
+              official-wt 1
+              recency-wt 2
+              views-wt 4
+              scores [;; cards and dashboards? can be 'verified' in enterprise
+                      (if (verified? model_object) verified-wt 0)
+                      ;; items may exist in an 'official' collection in enterprise
+                      (if (official? model_object) official-wt 0)
+                      ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
+                      (* (/ (- n-items recency-pos) n-items) recency-wt)
+                      ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
 
-                    ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
-                    ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                    ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
-                    (* (/ cnt max-count) views-wt)]]
-        (assoc item :score (double (reduce + scores)))))))
+                      ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
+                      ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
+                      ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                      (* (/ cnt max-count) views-wt)]]
+          (assoc item :score (double (reduce + scores))))))))
 
 (defendpoint GET "/popular_items"
   "WIP Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
