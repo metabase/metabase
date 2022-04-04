@@ -160,7 +160,7 @@
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Data model perms for an entire DB can be set and revoked"
           (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
-          (is (= :all
+          (is (= {:schemas :all}
                  (data-model-perms-by-group-id group-id)))
 
           (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :none})

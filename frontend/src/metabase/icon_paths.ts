@@ -403,6 +403,10 @@ export const ICON_PATHS: Record<string, any> = {
       fillRule: "evenodd",
     },
   },
+  subscription: {
+    svg:
+      '<path fill-rule="evenodd" clip-rule="evenodd" d="M5 1a5 5 0 0 0-5 5v18a5 5 0 0 0 5 5h13v-4H6c-1.105 0-2 .105-2-1V8.777L16 14l12-5.223V15h4V6a5 5 0 0 0-5-5H5Zm21 4H6l10 4.625L26 5Z" /><path d="M23.25 14a1 1 0 0 0-1 1v4.25H18a1 1 0 0 0-1 1v2.5a1 1 0 0 0 1 1h4.25V28a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-4.25H31a1 1 0 0 0 1-1v-2.5a1 1 0 0 0-1-1h-4.25V15a1 1 0 0 0-1-1h-2.5Z" />',
+  },
   straight: "M2.1 27.101L0 23.516 29.9 6 32 9.585z",
   stepped: "M13.946 17.892v8H1V22h9.054v-8h9V6H32v3.892h-9.054v8z",
   sort:

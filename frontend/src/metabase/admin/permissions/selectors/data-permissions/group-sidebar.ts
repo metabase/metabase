@@ -2,15 +2,10 @@ import { createSelector } from "reselect";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Groups from "metabase/entities/groups";
-
 import { State } from "metabase-types/store";
 import { Group } from "metabase-types/api";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { RawGroupRouteParams } from "../../types";
-
-const isPinnedGroup = (group: Group) =>
-  isAdminGroup(group) || isDefaultGroup(group);
+import { getOrderedGroups } from "./groups";
 
 const getGroupRouteParams = (
   _state: State,
@@ -25,12 +20,12 @@ const getGroupRouteParams = (
 };
 
 export const getGroupsSidebar = createSelector(
-  Groups.selectors.getList,
+  getOrderedGroups,
   getGroupRouteParams,
-  (groups: Group[], params) => {
+  (groups: Group[][], params) => {
     const { groupId } = params;
 
-    const [pinnedGroups, unpinnedGroups] = _.partition(groups, isPinnedGroup);
+    const [pinnedGroups, unpinnedGroups] = groups;
 
     const pinnedGroupItems = pinnedGroups.map(group => ({
       ...group,

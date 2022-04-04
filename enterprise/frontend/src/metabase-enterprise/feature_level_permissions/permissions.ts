@@ -10,8 +10,8 @@ import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-  isRestrictivePermission,
 } from "metabase/admin/permissions/utils/graph";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { push } from "react-router-redux";
 import {
   DOWNLOAD_PERMISSION_OPTIONS,
@@ -66,12 +66,15 @@ const buildDownloadPermission = (
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
 
-  const value = isRestrictivePermission(dataAccessPermissionValue)
+  const value = PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(
+    dataAccessPermissionValue,
+  )
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
     : getPermissionValue(permissions, groupId, entityId, permissionSubject);
 
   const isDisabled =
-    isAdmin || isRestrictivePermission(dataAccessPermissionValue);
+    isAdmin ||
+    PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(dataAccessPermissionValue);
 
   return {
     permission: "download",

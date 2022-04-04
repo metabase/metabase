@@ -28,7 +28,7 @@ const gradientStyles = css`
 `;
 
 export const LayoutRoot = styled.div<LayoutProps>`
-  height: 100%;
+  min-height: 100%;
   padding: 1.5rem 1.5rem;
   ${props => (props.showScene ? sceneStyles : gradientStyles)};
 

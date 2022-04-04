@@ -169,7 +169,6 @@ describe.skip("scenarios > public", () => {
       visitDashboard(dashboardId);
 
       cy.icon("share").click();
-      cy.contains("Sharing and embedding").click();
 
       cy.contains("Enable sharing")
         .parent()
@@ -194,7 +193,6 @@ describe.skip("scenarios > public", () => {
       visitDashboard(dashboardId);
 
       cy.icon("share").click();
-      cy.contains("Sharing and embedding").click();
 
       cy.contains(".cursor-pointer", "Embed this dashboard")
         .should("not.be.disabled")

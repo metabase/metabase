@@ -11,7 +11,11 @@ import Timelines from "metabase/entities/timelines";
 import { closeNavbar } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -94,6 +98,7 @@ const timelineProps = {
 const mapStateToProps = (state, props) => {
   return {
     user: getUser(state, props),
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 

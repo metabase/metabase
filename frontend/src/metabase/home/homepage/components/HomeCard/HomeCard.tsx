@@ -4,6 +4,7 @@ import { CardRoot } from "./HomeCard.styled";
 export interface HomeCardProps {
   className?: string;
   url?: string;
+  external?: boolean;
   children?: ReactNode;
 }
 

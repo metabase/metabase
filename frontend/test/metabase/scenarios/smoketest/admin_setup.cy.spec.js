@@ -673,7 +673,7 @@ describe("smoketest > admin_setup", () => {
 
       // SQL queries permissions (table)
 
-      cy.findByText("Data permissions").click();
+      cy.findByText("Data").click();
 
       cy.findByText("data").click();
       cy.icon("check")
@@ -754,7 +754,7 @@ describe("smoketest > admin_setup", () => {
 
       // Modify permissions for top-level collection
 
-      cy.findByText("Collection permissions").click();
+      cy.findByText("Collection").click();
       cy.icon("close")
         .eq(1)
         .click();
@@ -785,7 +785,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save permissions?");
 
       cy.findByText("Yes").click();
-      cy.findByText("Collection permissions").click();
+      cy.findByText("Collection").click();
 
       cy.icon("eye");
     });

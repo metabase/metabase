@@ -441,7 +441,6 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.get(".Modal--full").within(() => {
       cy.icon("close").click();
     });
