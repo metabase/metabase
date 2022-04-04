@@ -15,11 +15,11 @@ export function sidebar() {
 }
 
 export function navigationSidebar() {
-  return cy.get(".Nav");
+  return cy.get("#root aside").first();
 }
 
 export function appBar() {
-  return cy.get("#mainAppBar");
+  return cy.get("#root header").first();
 }
 
 export function openNavigationSidebar() {

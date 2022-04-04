@@ -407,7 +407,7 @@ describe("collection permissions", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
                   visitDashboard(1);
-                  cy.get("header").within(() => {
+                  cy.get("main header").within(() => {
                     cy.icon("ellipsis").click();
                   });
                 });
@@ -596,7 +596,7 @@ describe("collection permissions", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
                 visitDashboard(1);
-                cy.get("header").within(() => {
+                cy.get("main header").within(() => {
                   cy.icon("ellipsis")
                     .should("be.visible")
                     .click();
@@ -610,7 +610,7 @@ describe("collection permissions", () => {
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
                 visitDashboard(1);
-                cy.get("header").within(() => {
+                cy.get("main header").within(() => {
                   cy.icon("ellipsis")
                     .should("be.visible")
                     .click();
@@ -625,7 +625,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 visitDashboard(1);
                 cy.wait("@collections");
-                cy.get("header").within(() => {
+                cy.get("main header").within(() => {
                   cy.icon("ellipsis")
                     .should("be.visible")
                     .click();
@@ -879,7 +879,7 @@ function saveDashboard() {
 }
 
 function openRevisionHistory() {
-  cy.get("header").within(() => {
+  cy.get("main header").within(() => {
     cy.icon("ellipsis").click();
   });
   cy.findByText("Revision history").click();

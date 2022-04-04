@@ -16,7 +16,7 @@ const openNavbarCSS = css`
   }
 `;
 
-export const NavRoot = styled.div<{ isOpen: boolean }>`
+export const Sidebar = styled.aside<{ isOpen: boolean }>`
   width: 0;
   height: 100%;
 
