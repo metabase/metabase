@@ -19,7 +19,7 @@ export const getIcon = item => {
 const PopularViews = createEntity({
   name: "popularViews",
   nameOne: "popularView",
-  path: "/api/activity/popular_views",
+  path: "/api/activity/popular_items",
   schema: PopularViewsSchema,
 
   wrapEntity(item, dispatch = null) {
