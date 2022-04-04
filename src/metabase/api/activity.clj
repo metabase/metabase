@@ -156,8 +156,9 @@
                        (map #(dissoc % :row_count))
                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
-         (sort-by :max_ts)
-         reverse)))
+         ;; cannot compare java.time.chrono.ChronoLocalDateTime with java.time.OffsetDateTime
+         #_(sort-by :max_ts)
+         #_reverse)))
 
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
