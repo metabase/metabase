@@ -133,6 +133,10 @@ export default class DashboardApp extends Component {
     }
   }
 
+  componentWillUnmount() {
+    this.props.reset();
+  }
+
   render() {
     const { editingOnLoad, addCardOnLoad } = this.state;
 
