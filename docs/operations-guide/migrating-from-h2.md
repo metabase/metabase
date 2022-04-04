@@ -41,7 +41,7 @@ Metabase provides a custom migration command for migrating to a new application 
 - [2. Shut down your Metabase instance](#2-shut-down-your-metabase-instance)
 - [3. Back up your H2 application database](#3-back-up-your-h2-application-database)
 - [4. Run the Metabase data migration command](#4-run-the-metabase-data-migration-command)
-- [5. Start your Metabase](#start-your-metabase)
+- [5. Start your Metabase](#5-start-your-metabase)
 
 ### 1. Confirm that you can connect to your target application database
 
@@ -89,8 +89,8 @@ Start your Metabase normally (without the `load-from-h2` command), and you shoul
 
 Metabase provides a custom migration command for migrating to a new application database. Here's what you'll do:
 
-- [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database-1)
-- [3. Back up your H2 application database](#3-back-up-your-h2-application-database-1)
+- [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database)
+- [3. Back up your H2 application database](#3-back-up-your-h2-application-database)
 - [4. Stop the existing Metabase container](#4-stop-the-existing-metabase-container)
 - [5. Run a new Metabase container to perform the migration](#5-run-a-new-metabase-container-to-perform-the-migration)
 
