@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -15,6 +15,7 @@ import {
 } from "metabase/nav/containers/Navbar.styled";
 
 import Database from "metabase/entities/databases";
+import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
 import { AppBarRoot, LogoIconWrapper } from "./AppBar.styled";
@@ -42,6 +43,12 @@ function AppBar({
     }
   }, [handleCloseSidebar]);
 
+  const sidebarButtonLabel = useMemo(() => {
+    const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+    return `${message} ${shortcut}`;
+  }, [isSidebarOpen]);
+
   return (
     <AppBarRoot>
       <LogoIconWrapper>
@@ -53,7 +60,7 @@ function AppBar({
           <LogoIcon size={24} />
         </Link>
       </LogoIconWrapper>
-      <Tooltip tooltip={isSidebarOpen ? t`Close sidebar` : t`Open sidebar`}>
+      <Tooltip tooltip={sidebarButtonLabel}>
         <SidebarButton
           onClick={onToggleSidebarClick}
           isSidebarOpen={isSidebarOpen}
