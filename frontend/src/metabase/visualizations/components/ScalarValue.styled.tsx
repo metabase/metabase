@@ -1,12 +1,11 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
-import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 type ScalarValueProps = {
   isDashboard?: boolean;
   gridSize?: { height: number; width: number };
+  minGridSize: { height: number; width: number };
   width: number;
   height: number;
   totalNumGridCols: number;
@@ -30,9 +29,10 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     color: ${color("brand")};
   }
 
-  ${({
+  font-size: ${({
     isDashboard,
     gridSize,
+    minGridSize,
     width: widthPx,
     height: heightPx,
     totalNumGridCols,
@@ -47,7 +47,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     const widthPxPerGridUnit = widthPx / dashCardGridWidth;
     const maxWidthPx = totalNumGridCols * widthPxPerGridUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minWidthPx = 3 * widthPxPerGridUnit;
+    const minWidthPx = minGridSize.width * widthPxPerGridUnit;
 
     // when the dashcard is at its min width, the `gridWidthAdjustment` value will be 0.
     // as it increases in width, it will increase in value up to `WIDTH_ADJUSTMENT_FACTOR`.
@@ -62,7 +62,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     // 10 is approximately the number of dashboard grid rows that are visible when browser is fully expanded
     const maxHeightPx = 10 * heightPxPerGridUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minHeightPx = 3 * heightPxPerGridUnit;
+    const minHeightPx = minGridSize.height * heightPxPerGridUnit;
 
     // when the dashcard is at its min height, the `gridHeightAdjustment` value will be 0.
     // as it increases in height, it will increase in value up to `HEIGHT_ADJUSTMENT_FACTOR`.
@@ -84,8 +84,6 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
       maxSizeRem,
     );
 
-    return css`
-      font-size: ${fontSize}rem;
-    `;
-  }}
+    return `${fontSize}rem`;
+  }};
 `;

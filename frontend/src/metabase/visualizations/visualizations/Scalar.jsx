@@ -241,6 +241,7 @@ export default class Scalar extends Component {
             <ScalarValue
               isDashboard={isDashboard}
               gridSize={gridSize}
+              minGridSize={Scalar.minSize}
               width={width}
               height={height}
               value={displayValue}
