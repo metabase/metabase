@@ -138,11 +138,7 @@ export const QuestionList = React.memo(function QuestionList({
       >
         <QuestionListContainer>
           {hasQuestionsToShow &&
-            [
-              ...compatibleQuestions,
-              ...compatibleQuestions,
-              ...compatibleQuestions,
-            ].map((question, index) => {
+            compatibleQuestions.map((question, index) => {
               const isLoadMoreRow = !!(index === compatibleQuestions.length);
               if (isLoadMoreRow) {
                 return (
