@@ -3,8 +3,9 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { getIcon, getName } from "metabase/entities/recent-views";
 import { RecentView } from "metabase-types/api";
+import HomeCaption from "../HomeCaption";
 import HomeModelCard from "../HomeModelCard";
-import { SectionBody, SectionTitle } from "./HomeRecentSection.styled";
+import { SectionBody } from "./HomeRecentSection.styled";
 
 export interface HomeRecentSectionProps {
   recentViews: RecentView[];
@@ -15,7 +16,7 @@ const HomeRecentSection = ({
 }: HomeRecentSectionProps): JSX.Element => {
   return (
     <div>
-      <SectionTitle>{t`Pick up where you left off`}</SectionTitle>
+      <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
       <SectionBody>
         {recentViews.map((item, index) => (
           <HomeModelCard

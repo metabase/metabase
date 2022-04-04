@@ -3,13 +3,13 @@ import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { Database, DatabaseCandidate } from "metabase-types/api";
+import HomeCaption from "../HomeCaption";
 import HomeXrayCard from "../HomeXrayCard";
 import {
   DatabaseIcon,
   DatabaseLink,
   DatabaseTitle,
-  SectionTitle,
-  XrayList,
+  SectionBody,
 } from "./HomeXraySection.styled";
 
 export interface XraySectionProps {
@@ -29,19 +29,19 @@ const HomeXraySection = ({
   return (
     <div>
       {isSample ? (
-        <SectionTitle>
+        <HomeCaption>
           {t`Try out these sample x-rays to see what Metabase can do.`}
-        </SectionTitle>
+        </HomeCaption>
       ) : (
-        <SectionTitle>
+        <HomeCaption>
           {t`Here are some explorations of`}
           <DatabaseLink to={Urls.browseDatabase(database)}>
             <DatabaseIcon name="database" />
             <DatabaseTitle>{database.name}</DatabaseTitle>
           </DatabaseLink>
-        </SectionTitle>
+        </HomeCaption>
       )}
-      <XrayList>
+      <SectionBody>
         {tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
@@ -50,7 +50,7 @@ const HomeXraySection = ({
             message={tableMessages[index]}
           />
         ))}
-      </XrayList>
+      </SectionBody>
     </div>
   );
 };
