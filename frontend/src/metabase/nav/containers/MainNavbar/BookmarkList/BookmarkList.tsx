@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -6,6 +6,11 @@ import _ from "underscore";
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+} from "metabase/components/sortable";
 
 import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -31,54 +36,81 @@ interface CollectionSidebarBookmarksProps {
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
+const BookmarkItem = ({
+  bookmark,
+  selectedItem,
+  onDeleteBookmark,
+  onSelect,
+  isSorting,
+}) => {
+  const { id, item_id, name, type } = bookmark;
+  const isSelected =
+    selectedItem &&
+    selectedItem.type !== "collection" &&
+    selectedItem.type === type &&
+    selectedItem.id === item_id;
+  const url = Urls.bookmark(bookmark);
+  const icon = Bookmarks.objectSelectors.getIcon(bookmark);
+  const onRemove = () => onDeleteBookmark(bookmark);
+
+  const isIrregularCollection =
+    bookmark.type === "collection" &&
+    !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+
+  return (
+    <SidebarBookmarkItem
+      key={`bookmark-${id}`}
+      url={url}
+      icon={icon}
+      isSelected={isSelected}
+      hasDefaultIconStyle={!isIrregularCollection}
+      onClick={onSelect}
+      right={
+        <button onClick={onRemove}>
+          <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
+            <Icon name="bookmark" />
+          </Tooltip>
+        </button>
+      }
+    >
+      {name}
+    </SidebarBookmarkItem>
+  );
+};
+
 const BookmarkList = ({
   bookmarks,
   selectedItem,
   onSelect,
   onDeleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
+  const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
+  const [isSorting, setIsSorting] = useState(false);
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
 
-  const renderBookmark = useCallback(
-    bookmark => {
-      const { id, item_id, name, type } = bookmark;
-      const isSelected =
-        selectedItem &&
-        selectedItem.type !== "collection" &&
-        selectedItem.type === type &&
-        selectedItem.id === item_id;
-      const url = Urls.bookmark(bookmark);
-      const icon = Bookmarks.objectSelectors.getIcon(bookmark);
-      const onRemove = () => onDeleteBookmark(bookmark);
+  const handleSortStart = () => {
+    setIsSorting(true);
+  };
 
-      const isIrregularCollection =
-        bookmark.type === "collection" &&
-        !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+  const handleSortEnd = ({
+    newIndex,
+    oldIndex,
+  }: {
+    newIndex: number;
+    oldIndex: number;
+  }) => {
+    setIsSorting(false);
 
-      return (
-        <SidebarBookmarkItem
-          key={`bookmark-${id}`}
-          url={url}
-          icon={icon}
-          isSelected={isSelected}
-          hasDefaultIconStyle={!isIrregularCollection}
-          onClick={onSelect}
-          right={
-            <button onClick={onRemove}>
-              <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                <Icon name="bookmark" />
-              </Tooltip>
-            </button>
-          }
-        >
-          {name}
-        </SidebarBookmarkItem>
-      );
-    },
-    [selectedItem, onSelect, onDeleteBookmark],
-  );
+    const bookmarksToBeReordered = [...orderedBookmarks];
+    const element = orderedBookmarks[oldIndex];
+
+    bookmarksToBeReordered.splice(oldIndex, 1);
+    bookmarksToBeReordered.splice(newIndex, 0, element);
+
+    setOrderedBookmarks(bookmarksToBeReordered);
+  };
 
   return (
     <CollapseSection
@@ -89,9 +121,34 @@ const BookmarkList = ({
       headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
-      <ul>{bookmarks.map(renderBookmark)}</ul>
+      <SortableBookmarkList
+        onSortStart={handleSortStart}
+        onSortEnd={handleSortEnd}
+        lockAxis="y"
+        pressDelay={200}
+        helperClass="sorting"
+      >
+        {orderedBookmarks.map((bookmark, index) => (
+          <SortableBookmarkItem
+            index={index}
+            key={bookmark.id}
+            bookmark={bookmark}
+            onDeleteBookmark={onDeleteBookmark}
+            isSorting={isSorting}
+          />
+        ))}
+      </SortableBookmarkList>
     </CollapseSection>
   );
 };
+
+const SortableBookmarkListContainer = ({
+  children,
+}: {
+  children: JSX.Element;
+}) => <ul>{children}</ul>;
+
+const SortableBookmarkList = SortableContainer(SortableBookmarkListContainer);
+const SortableBookmarkItem = SortableElement(BookmarkItem);
 
 export default connect(null, mapDispatchToProps)(BookmarkList);
