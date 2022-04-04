@@ -10,7 +10,7 @@ import HomeXraySection from "../../containers/HomeXraySection";
 export interface HomeContentProps {
   user: User;
   databases: Database[];
-  recentViews: RecentView[];
+  recents: RecentView[];
 }
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
@@ -29,16 +29,16 @@ const HomeContent = (props: HomeContentProps): JSX.Element | null => {
   return null;
 };
 
-const isPopularSection = ({ user, recentViews }: HomeContentProps) => {
+const isPopularSection = ({ user, recents }: HomeContentProps) => {
   return (
     !user.is_installer &&
     user.has_question_and_dashboard &&
-    (isWithinWeek(user.date_joined) || !recentViews.length)
+    (isWithinWeek(user.date_joined) || !recents.length)
   );
 };
 
-const isRecentSection = ({ recentViews }: HomeContentProps) => {
-  return recentViews.length > 0;
+const isRecentSection = ({ recents }: HomeContentProps) => {
+  return recents.length > 0;
 };
 
 const isXraySection = ({ databases }: HomeContentProps) => {

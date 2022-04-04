@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import RecentViews from "metabase/entities/recent-views";
+import Recents from "metabase/entities/recents";
 import Card from "metabase/components/Card";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
@@ -138,7 +138,7 @@ const isItemLoading = ({ model, model_object }) => {
 };
 
 export default _.compose(
-  RecentViews.loadList({
+  Recents.loadList({
     wrapped: true,
     reload: true,
     loadingAndErrorWrapper: false,
