@@ -1,7 +1,4 @@
-import React from "react";
 import styled from "@emotion/styled";
-
-import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -32,32 +29,3 @@ export const LogoIconWrapper = styled.div`
     background-color: ${color("bg-light")};
   }
 `;
-
-const SidebarIcon = styled(Icon)`
-  &:hover {
-    cursor: pointer;
-    color: ${color("brand")};
-  }
-`;
-
-const SidebarButtonRoot = styled.div`
-  margin-left: ${space(1)};
-  margin-top: ${space(1)};
-`;
-
-interface SidebarButtonProps {
-  isSidebarOpen: boolean;
-  onClick: () => void;
-}
-
-export function SidebarButton({ isSidebarOpen, onClick }: SidebarButtonProps) {
-  return (
-    <SidebarButtonRoot data-testid="sidebar-toggle-button">
-      <SidebarIcon
-        size={28}
-        name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
-        onClick={onClick}
-      />
-    </SidebarButtonRoot>
-  );
-}
