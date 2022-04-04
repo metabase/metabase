@@ -63,6 +63,7 @@ import {
   DESELECT_TIMELINE_EVENTS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -89,6 +90,7 @@ const DEFAULT_UI_CONTROLS = {
 const DEFAULT_LOADING_CONTROLS = {
   showLoadCompleteFavicon: false,
   documentTitle: "",
+  timeoutId: "",
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -311,6 +313,10 @@ export const loadingControls = handleActions(
     [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
       ...state,
       showLoadCompleteFavicon: payload,
+    }),
+    [SET_DOCUMENT_TITLE_TIMEOUT_ID]: (state, { payload }) => ({
+      ...state,
+      timeoutId: payload,
     }),
   },
   DEFAULT_LOADING_CONTROLS,

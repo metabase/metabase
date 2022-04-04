@@ -828,10 +828,16 @@ export const getDocumentTitle = createSelector(
   [getLoadingControls],
   loadingControls => loadingControls?.documentTitle,
 );
+
 export const getPageFavicon = createSelector(
   [getLoadingControls],
   loadingControls =>
     loadingControls?.showLoadCompleteFavicon
       ? LOAD_COMPLETE_FAVICON
       : undefined,
+);
+
+export const getTimeoutId = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls.timeoutId,
 );
