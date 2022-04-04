@@ -2,6 +2,7 @@
   "/api/task endpoints"
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.task :as task]
@@ -11,7 +12,7 @@
 (api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :monitoring)
   {:total  (db/count TaskHistory)
    :limit  offset-paging/*limit*
    :offset offset-paging/*offset*
@@ -25,7 +26,7 @@
 (api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :monitoring)
   (task/scheduler-info))
 
 

@@ -85,7 +85,7 @@ describeEE("collections types", () => {
 
     getSidebarCollectionChildrenFor("First collection").within(() => {
       expandCollectionChildren("Second collection");
-      cy.icon("badge").should("have.length", 3);
+      cy.icon("badge").should("have.length", 2);
       cy.icon("folder").should("not.exist");
     });
 
@@ -101,8 +101,7 @@ describeEE("collections types", () => {
     });
 
     getSidebarCollectionChildrenFor("First collection").within(() => {
-      expandCollectionChildren("Second collection");
-      cy.icon("folder").should("have.length", 3);
+      cy.icon("folder").should("have.length", 2);
       cy.icon("badge").should("not.exist");
     });
   });
@@ -281,18 +280,17 @@ function editCollection() {
 
 function expandCollectionChildren(collectionName) {
   cy.findByText(collectionName)
-    .parent()
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .find(".Icon-chevronright")
-    .eq(0) // there may be more nested icons, but we need the top level one
     .click();
 }
 
-function getSidebarCollectionChildrenFor(collectionName) {
+function getSidebarCollectionChildrenFor(item) {
   return navigationSidebar()
-    .findByText(collectionName)
-    .closest("a")
+    .findByText(item)
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .parent()
-    .parent();
+    .next("ul");
 }
 
 function setOfficial(official = true) {

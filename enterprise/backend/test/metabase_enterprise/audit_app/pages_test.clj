@@ -7,6 +7,7 @@
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
+            [metabase.models.permissions :as perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
@@ -38,7 +39,27 @@
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
                                         :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error])))))))
+                 (select-keys [:status :error]))))))
+
+  (testing "non-admin users with monitoring permissions"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
+      (perms/grant-general-permissions! group :monitoring)
+      (testing "still fail if advanced-permissions is disabled"
+        (premium-features-test/with-premium-features #{:audit-app}
+          (is (= {:status "failed", :error "You don't have permissions to do that."}
+                 (-> (mt/user-http-request user :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status :error]))))))
+
+      (testing "run successfully if advanced-permissions enabled)"
+        (premium-features-test/with-premium-features #{:audit-app :advanced-permissions}
+          (is (= {:status "completed"}
+                 (-> (mt/user-http-request user :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status])))))))))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."

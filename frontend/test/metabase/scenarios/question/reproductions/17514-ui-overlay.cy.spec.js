@@ -56,6 +56,11 @@ describe("issue 17514", () => {
         ({ body: card }) => {
           const { card_id, dashboard_id } = card;
 
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("cardQuery");
+
           const mapFilterToCard = {
             parameter_mappings: [
               {
@@ -70,10 +75,8 @@ describe("issue 17514", () => {
 
           visitDashboard(dashboard_id);
 
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
+          cy.wait("@cardQuery");
+          cy.findByText("110.93").should("be.visible");
         },
       );
     });
@@ -88,9 +91,12 @@ describe("issue 17514", () => {
       closeModal();
 
       saveDashboard();
+      cy.wait("@getDashboard");
 
       filterWidget().click();
       setAdHocFilter({ timeBucket: "Years" });
+
+      cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
@@ -127,7 +133,7 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay because ofth references to the orphaned fields (metabase#17514-1)", () => {
+    it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
       cy.findByText("Join data").click();

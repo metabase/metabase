@@ -23,3 +23,4 @@ import "./advanced_permissions";
 import "./audit_app";
 import "./license";
 import "./feature_level_permissions";
+import "./general_permissions";

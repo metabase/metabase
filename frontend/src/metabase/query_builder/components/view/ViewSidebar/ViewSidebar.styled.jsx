@@ -6,9 +6,7 @@ import { color } from "metabase/lib/colors";
 export const ViewSidebarAside = styled.aside`
   overflow-x: hidden;
   overflow-y: auto;
-  opacity: 0;
   position: relative;
-  transition: width 0.3s, opacity 0.3s;
   width: 0;
 
   ${({ side }) =>
@@ -26,13 +24,8 @@ export const ViewSidebarAside = styled.aside`
     isOpen &&
     width &&
     css`
-      opacity: 1;
       width: ${width}px;
     `}
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
 `;
 
 export const ViewSidebarContent = styled.div`

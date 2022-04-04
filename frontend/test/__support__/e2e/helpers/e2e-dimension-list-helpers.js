@@ -48,7 +48,7 @@ export function changeBinningForDimension({
   if (fromBinning) {
     binningButton.should("have.text", fromBinning);
   }
-  binningButton.click();
+  binningButton.click({ force: true });
 
   cy.findByText(toBinning).click();
 }

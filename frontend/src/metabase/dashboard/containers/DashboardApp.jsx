@@ -2,7 +2,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
+import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -27,9 +30,18 @@ import {
   getIsAddParameterPopoverOpen,
   getSidebar,
   getShowAddQuestionSidebar,
+  getIsLoadingDashCards,
+  getTotalCards,
+  getCardsLoaded,
+  getHasSeenLoadedDashboard,
+  getIsLoadingDashCardsComplete,
+  getFavicon,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
@@ -41,6 +53,7 @@ const mapStateToProps = (state, props) => {
   return {
     dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
 
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
     isEditing: getIsEditing(state, props),
@@ -61,6 +74,12 @@ const mapStateToProps = (state, props) => {
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
     sidebar: getSidebar(state),
     showAddQuestionSidebar: getShowAddQuestionSidebar(state),
+    isLoadingDashCards: getIsLoadingDashCards(state),
+    isLoadingDashCardsComplete: getIsLoadingDashCardsComplete(state),
+    totalDashCards: getTotalCards(state),
+    cardsLoaded: getCardsLoaded(state),
+    hasSeenLoadedDashboard: getHasSeenLoadedDashboard(state),
+    pageFavicon: getFavicon(state),
   };
 };
 
@@ -73,7 +92,29 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ dashboard }) => dashboard && dashboard.name)
+@favicon(({ pageFavicon }) => pageFavicon)
+@title(
+  ({
+    dashboard,
+    isLoadingDashCards,
+    totalDashCards,
+    cardsLoaded,
+    hasSeenLoadedDashboard,
+    isLoadingDashCardsComplete,
+  }) => {
+    if (isLoadingDashCards) {
+      return {
+        title: t`${cardsLoaded}/${totalDashCards} loaded`,
+        titleIndex: 1,
+      };
+    }
+    if (isLoadingDashCardsComplete && !hasSeenLoadedDashboard) {
+      return t`Your dashboard is ready`;
+    } else {
+      return dashboard?.name;
+    }
+  },
+)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {

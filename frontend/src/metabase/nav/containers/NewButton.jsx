@@ -5,6 +5,7 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
+import { closeNavbar } from "metabase/redux/app";
 import * as Urls from "metabase/lib/urls";
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -14,7 +15,6 @@ import { getUser } from "../selectors";
 import {
   getHasDataAccess,
   getHasNativeWrite,
-  getPlainNativeQuery,
   getHasDbWithJsonEngine,
 } from "metabase/new_query/selectors";
 
@@ -23,6 +23,7 @@ function NewButton({
   hasNativeWrite,
   hasDbWithJsonEngine,
   setModal,
+  closeNavbar,
 }) {
   return (
     <EntityMenu
@@ -49,6 +50,7 @@ function NewButton({
                   creationType: "custom_question",
                 }),
                 event: `NavBar;New Question Click;`,
+                onClose: closeNavbar,
               },
             ]
           : []),
@@ -62,6 +64,7 @@ function NewButton({
                   creationType: "native_question",
                 }),
                 event: `NavBar;New SQL Query Click;`,
+                onClose: closeNavbar,
               },
             ]
           : []),
@@ -84,10 +87,13 @@ function NewButton({
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
-  plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDbWithJsonEngine: getHasDbWithJsonEngine(state, props),
 });
 
-export default connect(mapStateToProps)(NewButton);
+const mapDispatchToProps = {
+  closeNavbar,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(NewButton);

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import { getScrollY } from "metabase/lib/dom";
 
@@ -8,9 +9,16 @@ import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
-import { HeaderBadges, HeaderContent } from "./Header.styled";
+import {
+  HeaderRoot,
+  HeaderBadges,
+  HeaderBadgesDivider,
+  HeaderContent,
+  HeaderButtonsContainer,
+  HeaderButtonSection,
+  StyledLastEditInfoLabel,
+} from "./Header.styled";
 
 const propTypes = {
   analyticsContext: PropTypes.string,
@@ -142,14 +150,12 @@ class Header extends Component {
         return (
           section &&
           section.length > 0 && (
-            <span
+            <HeaderButtonSection
               key={sectionIndex}
-              className="Header-buttonSection flex align-center"
+              className="Header-buttonSection"
             >
-              {section.map((button, buttonIndex) => (
-                <span key={buttonIndex}>{button}</span>
-              ))}
-            </span>
+              {section}
+            </HeaderButtonSection>
           )
         );
       },
@@ -160,11 +166,8 @@ class Header extends Component {
         {this.renderEditHeader()}
         {this.renderEditWarning()}
         {this.renderHeaderModal()}
-        <div
-          className={
-            "QueryBuilder-section flex align-center " +
-            this.props.headerClassName
-          }
+        <HeaderRoot
+          className={cx("QueryBuilder-section", this.props.headerClassName)}
           ref={this.header}
         >
           <HeaderContent>
@@ -172,25 +175,22 @@ class Header extends Component {
             {attribution}
             <HeaderBadges>
               {hasBadge && (
-                <CollectionBadge
-                  collectionId={item.collection_id}
-                  analyticsContext={this.props.analyticsContext}
-                />
+                <>
+                  <CollectionBadge
+                    collectionId={item.collection_id}
+                    analyticsContext={this.props.analyticsContext}
+                  />
+                </>
               )}
               {hasBadge && hasLastEditInfo && (
-                <span className="mx1 text-light text-smaller">•</span>
+                <HeaderBadgesDivider>•</HeaderBadgesDivider>
               )}
-              {hasLastEditInfo && <LastEditInfoLabel item={item} />}
+              {hasLastEditInfo && <StyledLastEditInfoLabel item={item} />}
             </HeaderBadges>
           </HeaderContent>
 
-          <div
-            className="flex align-center flex-align-right"
-            style={{ color: "#4C5773" }}
-          >
-            {headerButtons}
-          </div>
-        </div>
+          <HeaderButtonsContainer>{headerButtons}</HeaderButtonsContainer>
+        </HeaderRoot>
         {this.props.children}
       </div>
     );

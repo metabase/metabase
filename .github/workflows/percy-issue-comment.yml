@@ -44,7 +44,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     needs: pr_info
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       matrix:
         edition: [oss]
@@ -68,7 +68,7 @@ jobs:
 
   percy:
     timeout-minutes: 30
-    runs-on: buildjet-8vcpu-ubuntu-2004
+    runs-on: buildjet-4vcpu-ubuntu-2004
     needs: [build, pr_info]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
