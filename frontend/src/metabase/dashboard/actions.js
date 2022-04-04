@@ -80,6 +80,7 @@ const dashboard = new schema.Entity("dashboard", {
 // action constants
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
+export const RESET = "metabase/dashboard/RESET";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 
@@ -143,6 +144,7 @@ export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
 
 export const initialize = createAction(INITIALIZE);
+export const reset = createAction(RESET);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
 export const setSidebar = createAction(SET_SIDEBAR);
