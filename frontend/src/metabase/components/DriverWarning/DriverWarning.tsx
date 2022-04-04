@@ -63,8 +63,8 @@ const DriverWarning = ({
     warnings.push(
       <PartnerDriverWarning
         key="partner"
-        sourceName={engine?.source?.name}
-        sourceContact={engine?.source?.contact}
+        sourceName={engine?.source?.contact?.name}
+        sourceContact={engine?.source?.contact?.address}
       />,
     );
   }

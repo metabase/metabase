@@ -32,8 +32,10 @@ describe("DriverWarning", () => {
       "driver-name": "PartnerEngine",
       source: {
         type: "partner",
-        name: "Parners Incorporated",
-        contact: "https://example.com/contact",
+        contact: {
+          name: "Parners Incorporated",
+          address: "https://example.com/contact",
+        },
       },
     }),
     anonymousPartnerEngine: createMockEngine({
@@ -46,15 +48,19 @@ describe("DriverWarning", () => {
       "driver-name": "PartnerWithoutContactInfoEngine",
       source: {
         type: "partner",
-        name: "Parners Incorporated Two",
+        contact: {
+          name: "Parners Incorporated Two",
+        },
       },
     }),
     partnerEngineWithEmail: createMockEngine({
       "driver-name": "PartnerEngineWithEmail",
       source: {
         type: "partner",
-        name: "Parners Incorporated Three",
-        contact: "contactus@example.com",
+        contact: {
+          name: "Parners Incorporated Three",
+          address: "contactus@example.com",
+        },
       },
     }),
   };

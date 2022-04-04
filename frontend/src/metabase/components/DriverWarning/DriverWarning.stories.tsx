@@ -37,8 +37,10 @@ Template.args = {
       "driver-name": "PartnerEngine",
       source: {
         type: "partner",
-        name: "Parners Incorporated",
-        contact: "https://example.com/contact",
+        contact: {
+          name: "Parners Incorporated",
+          address: "https://example.com/contact",
+        },
       },
     }),
   },
