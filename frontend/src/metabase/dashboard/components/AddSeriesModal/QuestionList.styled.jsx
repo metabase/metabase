@@ -5,31 +5,36 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
   flex: 1;
-  padding: 0 0 1rem 0;
+  margin: 0;
+  padding: 0;
   width: 100%;
 `;
 
 export const QuestionListContainer = styled.ul`
+  margin: 0;
   padding: 0;
   width: 100%;
 `;
 
 export const LoadMoreButton = styled.button`
-  font-family: var(--default-font-family);
-  display: flex;
   align-items: center;
-  cursor: pointer;
   color: ${color("brand")};
-  padding: 0.25rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  font-family: var(--default-font-family);
   font-size: 14px;
   font-weight: 700;
+  padding: 0.25rem 1.5rem;
 `;
 
 export const LoadMoreRow = styled.li`
-  display: flex;
   align-items: center;
+  display: flex;
   justify-content: center;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 `;
 
 export const SearchContainer = styled.div`
