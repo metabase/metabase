@@ -1,9 +1,16 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import TextInput from "metabase/components/TextInput";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
+  flex: 1;
+  padding: 0 0 1rem 0;
+  width: 100%;
+`;
 
 export const QuestionListContainer = styled.ul`
-  padding: 0 0 1rem 0;
+  padding: 0;
   width: 100%;
 `;
 
@@ -29,7 +36,7 @@ export const SearchContainer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  flex-shrink: 0;
+  flex: 0;
   border-bottom: 1px solid ${color("border")};
 `;
 

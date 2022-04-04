@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -16,6 +15,7 @@ import {
   SearchInput,
   QuestionListContainer,
   EmptyStateContainer,
+  QuestionListWrapper,
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 import { isQuestionCompatible } from "./utils";
@@ -130,7 +130,7 @@ export const QuestionList = React.memo(function QuestionList({
           onChange={value => setSearchText(value)}
         />
       </SearchContainer>
-      <LoadingAndErrorWrapper
+      <QuestionListWrapper
         className="flex flex-full overflow-auto"
         loading={!filteredQuestions}
         error={error}
@@ -138,7 +138,11 @@ export const QuestionList = React.memo(function QuestionList({
       >
         <QuestionListContainer>
           {hasQuestionsToShow &&
-            compatibleQuestions.map((question, index) => {
+            [
+              ...compatibleQuestions,
+              ...compatibleQuestions,
+              ...compatibleQuestions,
+            ].map((question, index) => {
               const isLoadMoreRow = !!(index === compatibleQuestions.length);
               if (isLoadMoreRow) {
                 return (
@@ -171,7 +175,7 @@ export const QuestionList = React.memo(function QuestionList({
             </EmptyStateContainer>
           )}
         </QuestionListContainer>
-      </LoadingAndErrorWrapper>
+      </QuestionListWrapper>
     </>
   );
 });
