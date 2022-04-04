@@ -28,7 +28,7 @@ export function setWidgetType(type) {
 export function addWidgetStringFilter(value) {
   popover()
     .find("input")
-    .type(`${value}{enter}`);
+    .type(`${value}{enter}`, { delay: 0 });
   cy.button("Add filter").click();
 }
 
@@ -161,7 +161,9 @@ function addSimpleNumberFilter(value) {
  * @param {string} value
  */
 function enterDefaultValue(value) {
-  cy.findByPlaceholderText("Enter a default value...").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a default value...").type(`${value}{enter}`, {
+    delay: 0,
+  });
   cy.button("Add filter").click();
 }
 
@@ -170,7 +172,7 @@ function enterDefaultValue(value) {
  * @param {string} result
  */
 export function pickDefaultValue(searchTerm, result) {
-  cy.findByPlaceholderText("Enter a default value...").type(searchTerm);
+  cy.findByPlaceholderText("Enter a default value...").type(searchTerm, { delay: 0} );
   popover()
     .findByText(result)
     .click();
