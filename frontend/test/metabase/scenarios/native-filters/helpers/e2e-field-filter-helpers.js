@@ -172,7 +172,9 @@ function enterDefaultValue(value) {
  * @param {string} result
  */
 export function pickDefaultValue(searchTerm, result) {
-  cy.findByPlaceholderText("Enter a default value...").type(searchTerm, { delay: 0} );
+  cy.findByPlaceholderText("Enter a default value...").type(searchTerm, {
+    delay: 0,
+  });
   popover()
     .findByText(result)
     .click();
