@@ -1,26 +1,29 @@
 # Migrating from the default H2 database to a production database
 
 - [Metabase's application database](#metabases-application-database)
-- [Databases we recommend for a storing your Metabase application data](#databases-we-recommend-for-storing-your-metabase-application-data)
+- [Supported databases for storing your Metabase application data](#supported-databases-for-storing-your-metabase-application-data)
 - [JAR: How to migrate from H2 to your production application database](#jar-how-to-migrate-from-h2-to-your-production-application-database)
 - [Docker: how to migrate from H2 to your production application database](#docker-how-to-migrate-from-h2-to-your-production-application-database)
+- [Manual migrations](#manual-migrations)
 - [Troubleshooting migration issues](#troubleshooting-migration-issues)
 
 ## Metabase's application database
 
-The difference between a local installation and a production installation of Metabase is the application database. The application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on. 
+The main difference between a local installation and a production installation of Metabase is the application database. The application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on. 
 
 Metabase ships with an embedded H2 application database that you should avoid using in production. The reason Metabase ships with the H2 database is because we want people to spin up Metabase on their local machine and start playing around with asking questions.
 
-If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the app db could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
+If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
 
-The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. For example, if you're trying to migrate from H2 to a setup that uses AWS Elastic Beanstalk to run Metabase with an RDS database as the application database, you can run the migration from your computer instead of trying to cram the H2 file into your Elastic Beanstalk. 
+The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. For example, if you're trying to migrate from the H2 database to a setup that uses AWS Elastic Beanstalk to run Metabase with an RDS database as the application database, you can run the migration from your computer instead of trying to cram the H2 file into your Elastic Beanstalk. 
 
-The important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was used to create the H2 file, which must be the same version you'll be using in production. Only after completing the migration should you consider upgrading.
+### Avoid migrating and upgrading at the same time
+
+One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
 You could also choose to run Metabase on a [Metabase Cloud](/pricing) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](https://www.metabase.com/cloud/docs/migrate/guide.html).
 
-## Choose a production database for storing your Metabase application data
+## Supported databases for storing your Metabase application data
 
 - [PostgreSQL](https://www.postgresql.org/). Minimum version: 9.4.
 - [MySQL](https://www.mysql.com/). Minimum version: 5.7.7. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
@@ -46,7 +49,7 @@ You must be able to connect to the target Postgres or MySQL/MariaDB database in 
 
 ### 2. Shut down your Metabase instance
 
-You don't want people creating new stuff in your Metabase while you're migrating.
+You don't want people creating new stuff in your Metabase while you're migrating. Ideally, if you're running the Metabase JAR in production, you're [running Metabase as a service](./running-metabase-on-debian.md).
 
 ### 3. Back up your H2 application database
 

@@ -94,7 +94,14 @@ Note that in the default configuration Metabase will use a local H2 database for
 
 ## Production installation
 
-The steps are the same as above with one important difference: if you want to run Metabase in production, you'll want to use a production-ready database to store your Metabase application data. Here are some [databases we recommend](migrating-from-h2.md#databases-we-recommend-for-storing-your-metabase-application-data).
+The steps are similar to those steps above with two important differences: if you want to run Metabase in production, you'll want to:
+
+- Use a [production application database](#production-application-database) to store your Metabase application data. 
+- Run [Metabase as a service](#running-the-metabase-jar-as-a-service).
+
+### Production application database
+
+Here are some [databases we support](migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
 
 For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create an empty database:
 
@@ -118,9 +125,13 @@ java -jar metabase.jar
 
 The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`.
 
+### Running the Metabase JAR as a service
+
+The exact instructions for how to run Metabase as a service will differ depending on your operating system, but the idea is to run Metabase as a service so that Metabase will run automatically. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
+
 ## Migrating to a production installation
 
-If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, that's no problem. You can migrate to a production database at any time (though the sooner you do, the better). See [Migrating from the default H2 database to a production database](migrating-from-h2).
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the default H2 database to a production database](migrating-from-h2.md).
 
 ## Troubleshooting
 
