@@ -29,11 +29,11 @@ const HomeXraySection = ({
   return (
     <div>
       {isSample ? (
-        <HomeCaption>
+        <HomeCaption primary>
           {t`Try out these sample x-rays to see what Metabase can do.`}
         </HomeCaption>
       ) : (
-        <HomeCaption>
+        <HomeCaption primary>
           {t`Here are some explorations of`}
           <DatabaseLink to={Urls.browseDatabase(database)}>
             <DatabaseIcon name="database" />

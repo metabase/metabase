@@ -9,7 +9,8 @@ export interface CaptionProps {
 export const CaptionRoot = styled.div<CaptionProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.primary ? color("text-dark") : color(""))};
+  color: ${props =>
+    props.primary ? color("text-dark") : color("text-medium")};
   font-weight: bold;
   margin-bottom: 1.5rem;
 
