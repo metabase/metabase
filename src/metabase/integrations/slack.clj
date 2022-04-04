@@ -42,13 +42,15 @@
   :visibility :internal
   :type :json)
 
+(def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
+
 (defsetting slack-channels-and-usernames-last-updated
   "The updated-at time for the [[slack-cached-channels-and-usernames]] setting."
   :visibility :internal
   :cache?     false
   :type       :timestamp
   ;; if it has not been set, use a very early last-updated time:
-  :default    (t/zoned-date-time 1970 1 1 0))
+  :default    zoned-time-epoch)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")

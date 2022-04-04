@@ -236,3 +236,8 @@
               (is (= false (slack/valid-token? "abc")))
               (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
               (is (slack/slack-token-valid?)))))))))
+
+(deftest slack-cache-updated-at-nil
+  (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
+    (is (= (var-get (resolve 'slack/zoned-time-epoch))
+           (slack/slack-channels-and-usernames-last-updated)))))
