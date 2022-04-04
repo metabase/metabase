@@ -11,7 +11,7 @@ info:
   description: Allows Metabase to connect to SQLite databases.
 contact-info:
   name: Toucan McBird
-  info: toucan.mcbird@example.com
+  address: toucan.mcbird@example.com
 driver:
   name: sqlite
   display-name: SQLite
