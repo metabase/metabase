@@ -12,7 +12,6 @@
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
-            [metabase.util.date-2 :as date]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
@@ -157,10 +156,7 @@
                        (map #(dissoc % :row_count))
                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
-         ;;             cards -> java.time.OffsetDateTime
-         ;; tables/dashboards -> java.time.LocalDateTime
-         ;; todo: fix this. It's sorting strings which I don't think is a good idea
-         (sort-by #(date/format (:max_ts %)))
+         (sort-by :max_ts)
          reverse)))
 
 (def ^:private views-limit 8)

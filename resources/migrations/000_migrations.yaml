@@ -11330,6 +11330,16 @@ databaseChangeLog:
                 AND p.object = '/general/subscription/'
               WHERE p.object IS NULL;
 
+  - changeSet:
+      id: v43.00-049
+      author: dpsutton
+      comment: Added 0.43.0 - Unify datatype with query_execution.started_at so comparable (see 168).
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
