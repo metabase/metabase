@@ -170,8 +170,8 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (> (db/count 'Card (perms-query user)) 0)
-                                                 (> (db/count 'Dashboard (perms-query user)) 0)))))
+    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
+                                                 (db/exists? 'Dashboard (perms-query user)) 0))))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
