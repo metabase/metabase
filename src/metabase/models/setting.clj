@@ -126,7 +126,8 @@
     "ldap-sync-admin-group"})
 
 (def ^:dynamic *allow-retired-setting-names*
-  "Primarily used in test to disable retired setting check"
+  "A dynamic val that controls whether it's allowed to use retired settings.
+  Primarily used in test to disable retired setting check."
   false)
 
 (models/defmodel Setting
