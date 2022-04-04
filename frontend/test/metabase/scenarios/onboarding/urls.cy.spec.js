@@ -8,13 +8,11 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    ["/", "/browse"].forEach(url => {
-      it(`should slugify database name when opening it from "${url}"`, () => {
-        cy.visit(url);
-        cy.findByTextEnsureVisible("Sample Database").click();
-        cy.findByText("Sample Database");
-        cy.location("pathname").should("eq", "/browse/1-sample-database");
-      });
+    it(`should slugify database name when opening it from /browse"`, () => {
+      cy.visit("/browse");
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByText("Sample Database");
+      cy.location("pathname").should("eq", "/browse/1-sample-database");
     });
 
     [
@@ -49,12 +47,10 @@ describe("URLs", () => {
   });
 
   describe("collections", () => {
-    ["/", "/collection/root"].forEach(url => {
-      it(`should slugify collection name when opening it from "${url}"`, () => {
-        cy.visit(url);
-        cy.findByText("First collection").click();
-        cy.location("pathname").should("eq", "/collection/9-first-collection");
-      });
+    it("should slugify collection name", () => {
+      cy.visit("/collection/root");
+      cy.findByText("First collection").click();
+      cy.location("pathname").should("eq", "/collection/9-first-collection");
     });
 
     it("should slugify current user's personal collection name correctly", () => {

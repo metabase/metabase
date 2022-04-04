@@ -49,7 +49,6 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/error e (trs "Database connection error"))
         (throw (Exception. (str (driver/humanize-connection-error-message driver (.getMessage e))) e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)

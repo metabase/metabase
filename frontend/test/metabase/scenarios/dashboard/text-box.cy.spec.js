@@ -2,6 +2,7 @@ import {
   restore,
   showDashboardCardActions,
   popover,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 function addTextBox(string) {
@@ -21,7 +22,7 @@ describe("scenarios > dashboard > text-box", () => {
   describe("Editing", () => {
     beforeEach(() => {
       // Create text box card
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       addTextBox("Text *text* __text__");
     });
 
@@ -57,7 +58,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.createDashboard().then(({ body: { id } }) => {
         cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
 
-        cy.visit(`/dashboard/${id}`);
+        visitDashboard(id);
       });
     });
 
@@ -115,7 +116,7 @@ describe("scenarios > dashboard > text-box", () => {
   });
 
   it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // click pencil icon to edit
     cy.icon("pencil").click();
     // add text box with text

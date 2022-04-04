@@ -18,6 +18,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -44,9 +45,13 @@
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
-  [_ hsql-form amount unit]
-  (hx/+ (->timestamp hsql-form)
-        (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
+  [driver hsql-form amount unit]
+  ;; Postgres doesn't support quarter in intervals (#20683)
+  (if (= unit :quarter)
+    (recur driver hsql-form (* 3 amount) :month)
+    (let [hsql-form (->timestamp hsql-form)]
+      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+          (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -238,15 +243,17 @@
                                                   (for [[k v] %]
                                                     [k (f v)])) xs))
           table-fields     (sql-jdbc.sync/describe-table-fields driver conn table)
-          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)
-          json-field-names (mapv (comp keyword :name) json-fields)
-          sql-args         (hsql/format {:select json-field-names
-                                         :from   [(keyword (:name table))]
-                                         :limit  nested-field-sample-limit} {:quoting :ansi})
-          query            (jdbc/reducible-query spec sql-args)
-          field-types      (transduce describe-json-xform describe-json-rf query)
-          fields           (field-types->fields field-types)]
-      fields)))
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+      (if (nil? (seq json-fields))
+        #{}
+        (let [json-field-names (mapv (comp keyword :name) json-fields)
+              sql-args         (hsql/format {:select json-field-names
+                                             :from   [(keyword (:name table))]
+                                             :limit  nested-field-sample-limit} {:quoting :ansi})
+              query            (jdbc/reducible-query spec sql-args)
+              field-types      (transduce describe-json-xform describe-json-rf query)
+              fields           (field-types->fields field-types)]
+          fields)))))
 
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
@@ -262,6 +269,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/current-datetime-honeysql-form :postgres
+  [_driver]
+  (hx/with-database-type-info :%now "timestamptz"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
@@ -344,11 +355,26 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [identifier nfc-path]
+(defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (apply hsql/call [:json_extract_path_text
-                      (hx/cast :json (keyword (first nfc-path)))
-                      (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))
+    (let [field-type           (:effective_type nfc-field)
+          nfc-path             (:nfc_path nfc-field)
+          unwrapped-identifier (:form identifier)
+          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+          ;; Array and sub-JSON coerced to text
+          cast-type            (cond
+                                 (isa? field-type :type/Integer)
+                                 :type/Integer
+                                 (isa? field-type :type/Float)
+                                 :type/Float
+                                 (isa? field-type :type/Boolean)
+                                 :type/Boolean
+                                 :else
+                                 :type/Text)]
+      (hx/cast cast-type
+               (apply hsql/call [:json_extract_path_text
+                                 (hx/cast :json parent-identifier)
+                                 (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
@@ -362,7 +388,7 @@
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
-      (json-query identifier nfc-path)
+      (json-query identifier stored-field)
 
       :else
       identifier)))

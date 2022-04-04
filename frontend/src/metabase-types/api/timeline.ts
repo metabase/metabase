@@ -1,3 +1,4 @@
+import { Collection } from "./collection";
 import { User } from "./user";
 
 export interface Timeline {
@@ -7,6 +8,7 @@ export interface Timeline {
   description: string | null;
   icon: string;
   archived: boolean;
+  collection?: Collection;
   events?: TimelineEvent[];
 }
 

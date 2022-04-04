@@ -153,7 +153,6 @@
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator
-                        :bookmarked
                         :dashboard_count
                         :can_write
                         :average_query_time

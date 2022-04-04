@@ -258,14 +258,14 @@
                            :collection_authority_level nil
                            :can_write     false
                            :param_values  nil
-                           :param_fields  {(keyword (str field-id)) {:id               field-id
-                                                                     :table_id         table-id
-                                                                     :display_name     display-name
-                                                                     :base_type        "type/Text"
-                                                                     :semantic_type    nil
-                                                                     :has_field_values "search"
-                                                                     :name_field       nil
-                                                                     :dimensions       []}}
+                           :param_fields  {field-id {:id               field-id
+                                                     :table_id         table-id
+                                                     :display_name     display-name
+                                                     :base_type        "type/Text"
+                                                     :semantic_type    nil
+                                                     :has_field_values "search"
+                                                     :name_field       nil
+                                                     :dimensions       []}}
                            :ordered_cards [{:sizeX                  2
                                             :sizeY                  2
                                             :col                    0
@@ -344,9 +344,8 @@
                                        :field_id              (mt/id :venues :name)
                                        :human_readable_values []}}
                (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[^String field-id-keyword m] response]
-                            [(Long/parseUnsignedLong (name field-id-keyword))
-                             (update m :values (partial take 3))])))))))))
+                 (into {} (for [[field-id m] response]
+                            [field-id (update m :values (partial take 3))])))))))))
 
 
 
@@ -1574,11 +1573,11 @@
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
         (mt/$ids
           (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
-            (result= {(keyword (str %venues.price)) [%categories.name]}
+            (result= {%venues.price [%categories.name]}
                      {:filtered [%venues.price], :filtering [%categories.name]})
             (testing "Multiple Field IDs for each param"
-              (result= {(keyword (str %venues.price))    (sort [%venues.price %categories.name])
-                        (keyword (str %categories.name)) (sort [%venues.price %categories.name])}
+              (result= {%venues.price    (sort [%venues.price %categories.name])
+                        %categories.name (sort [%venues.price %categories.name])}
                        {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
             (testing "filtered-ids cannot be nil"
               (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"

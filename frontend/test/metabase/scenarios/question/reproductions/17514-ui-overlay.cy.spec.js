@@ -5,6 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   visualize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -72,9 +73,10 @@ describe("issue 17514", () => {
 
           cy.editDashboardCard(card, mapFilterToCard);
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
 
           cy.wait("@cardQuery");
+          cy.findByText("110.93").should("be.visible");
         },
       );
     });
@@ -89,9 +91,12 @@ describe("issue 17514", () => {
       closeModal();
 
       saveDashboard();
+      cy.wait("@getDashboard");
 
       filterWidget().click();
       setAdHocFilter({ timeBucket: "Years" });
+
+      cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
@@ -119,6 +124,7 @@ describe("issue 17514", () => {
       removeJoinedTable();
 
       visualize();
+      cy.findByTextEnsureVisible("Subtotal");
 
       cy.findByText("Save").click();
 
@@ -127,13 +133,14 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay because ofth references to the orphaned fields (metabase#17514-1)", () => {
+    it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
       cy.findByText("Join data").click();
       cy.findByText("Products").click();
 
       visualize();
+      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();

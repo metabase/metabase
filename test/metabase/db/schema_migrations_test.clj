@@ -491,7 +491,7 @@
                 id))
             (all-user-perms []
               (db/query {:select [:object], :from [Permissions], :where [:= :group_id (all-users-group-id)]}))]
-      (impl/test-migrations ["v43.00-020"] [migrate!]
+      (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
         (is (= []
                (all-user-perms)))
         (migrate!)
@@ -499,14 +499,14 @@
                (all-user-perms))))
 
       (testing "add-migrated-collections data migration was ran previously: don't create an entry"
-        (impl/test-migrations ["v43.00-020"] [migrate!]
+        (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
           (add-migrated-collections-data-migration-entry!)
           (migrate!)
           (is (= []
                  (all-user-perms)))))
 
       (testing "entry already exists: don't create an entry"
-        (impl/test-migrations ["v43.00-020"] [migrate!]
+        (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
           (db/execute! {:insert-into Permissions
                         :values      [{:object   "/collection/root/"
                                        :group_id (all-users-group-id)}]})
@@ -539,7 +539,7 @@
 
 (deftest grant-download-perms-test
   (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
-    (impl/test-migrations ["v43.00-042"] [migrate!]
+    (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
       (db/execute! {:insert-into Database
                     :values      [{:name       "My DB"
                                    :engine     "h2"
@@ -552,3 +552,13 @@
                         :from      [[Permissions :p]]
                         :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                         :where     [:= :pg.name group/all-users-group-name]}))))))
+
+(deftest grant-subscription-permission-tests
+  (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
+    (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
+        (migrate!)
+        (is (= #{"All Users"}
+               (set (map :name (db/query {:select    [:pg.name]
+                                          :from      [[Permissions :p]]
+                                          :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                          :where     [:= :p.object "/general/subscription/"]}))))))))

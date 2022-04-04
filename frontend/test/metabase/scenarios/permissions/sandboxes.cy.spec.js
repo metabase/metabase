@@ -12,6 +12,7 @@ import {
   summarize,
   filter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -898,9 +899,8 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
-      cy.icon("share").click();
-      cy.findByText("Dashboard subscriptions").click();
+      visitDashboard(1);
+      cy.icon("subscription").click();
       // We're starting without email or Slack being set up so it's expected to see the following:
       cy.findByText("Create a dashboard subscription");
       cy.findAllByRole("link", { name: "set up email" });
@@ -1026,9 +1026,8 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
-      cy.icon("share").click();
-      cy.findByText("Dashboard subscriptions").click();
+      visitDashboard(1);
+      cy.icon("subscription").click();
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();

@@ -1,20 +1,16 @@
 import d3 from "d3";
-import _ from "underscore";
 import { ICON_PATHS } from "metabase/icon_paths";
-import { stretchTimeseriesDomain } from "./apply_axis";
-import timeseriesScale from "./timeseriesScale";
 
+const ICON_X = -16;
+const ICON_Y = 10;
 const ICON_SIZE = 16;
 const ICON_SCALE = 0.45;
-const ICON_LARGE_SCALE = 0.35;
-const ICON_X = -ICON_SIZE;
-const ICON_Y = 10;
+const RECT_SIZE = ICON_SIZE * 2;
 const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 2;
-const RECT_SIZE = ICON_SIZE * 2;
 
-function getXAxis(chart) {
+function getAxis(chart) {
   return chart.svg().select(".axis.x");
 }
 
@@ -22,27 +18,42 @@ function getBrush(chart) {
   return chart.svg().select(".brush");
 }
 
-function getEventScale(chart, xDomain, xInterval) {
-  return timeseriesScale(xInterval)
-    .domain(stretchTimeseriesDomain(xDomain, xInterval))
-    .range([0, chart.effectiveWidth()]);
+function getScale(chart) {
+  return chart.x();
 }
 
-function getEventMapping(events, xInterval) {
-  return _.groupBy(events, event =>
-    event.timestamp
-      .clone()
-      .startOf(xInterval.interval)
-      .valueOf(),
-  );
+function getEventMapping(events, scale) {
+  const mapping = new Map();
+  let group = [];
+  let groupPoint = 0;
+
+  events.forEach(event => {
+    const eventPoint = scale(event.timestamp);
+    const groupDistance = eventPoint - groupPoint;
+
+    if (!group.length || groupDistance < ICON_SIZE) {
+      group.push(event);
+      groupPoint += (eventPoint - groupPoint) / group.length;
+    } else {
+      mapping.set(groupPoint, group);
+      group = [event];
+      groupPoint = eventPoint;
+    }
+  });
+
+  if (group.length) {
+    mapping.set(groupPoint, group);
+  }
+
+  return mapping;
 }
 
-function getEventDates(eventMapping) {
-  return Object.keys(eventMapping).map(value => new Date(parseInt(value)));
+function getEventPoints(eventMapping) {
+  return Array.from(eventMapping.keys());
 }
 
 function getEventGroups(eventMapping) {
-  return Object.values(eventMapping);
+  return Array.from(eventMapping.values());
 }
 
 function isSelected(events, selectedEventIds) {
@@ -63,10 +74,8 @@ function getIconFillRule(events) {
   return ICON_PATHS[icon].attrs?.fillRule;
 }
 
-function getIconTransform(events) {
-  const icon = getIcon(events);
-  const scale = icon === "mail" ? ICON_LARGE_SCALE : ICON_SCALE;
-  return `scale(${scale}) translate(${ICON_X}, ${ICON_Y})`;
+function getIconTransform() {
+  return `scale(${ICON_SCALE}) translate(${ICON_X}, ${ICON_Y})`;
 }
 
 function getIconLabel(events) {
@@ -74,19 +83,19 @@ function getIconLabel(events) {
   return `${icon} icon`;
 }
 
-function isEventWithin(eventIndex, eventScale, eventDates, eventDistance) {
-  const thisDate = eventDates[eventIndex];
-  const prevDate = eventDates[eventIndex - 1];
-  const nextDate = eventDates[eventIndex + 1];
-  const prevDistance = prevDate && eventScale(thisDate) - eventScale(prevDate);
-  const nextDistance = nextDate && eventScale(nextDate) - eventScale(thisDate);
+function isEventWithin(eventIndex, eventPoints, eventDistance) {
+  const thisPoint = eventPoints[eventIndex];
+  const prevPoint = eventPoints[eventIndex - 1] ?? Number.NEGATIVE_INFINITY;
+  const nextPoint = eventPoints[eventIndex + 1] ?? Number.POSITIVE_INFINITY;
+  const prevDistance = thisPoint - prevPoint;
+  const nextDistance = nextPoint - thisPoint;
 
   return prevDistance < eventDistance || nextDistance < eventDistance;
 }
 
-function hasEventText(events, eventIndex, eventScale, eventDates) {
+function hasEventText(events, eventIndex, eventPoints) {
   if (events.length > 1) {
-    return !isEventWithin(eventIndex, eventScale, eventDates, TEXT_DISTANCE);
+    return !isEventWithin(eventIndex, eventPoints, TEXT_DISTANCE);
   } else {
     return false;
   }
@@ -95,8 +104,7 @@ function hasEventText(events, eventIndex, eventScale, eventDates) {
 function renderEventLines({
   chart,
   brush,
-  eventScale,
-  eventDates,
+  eventPoints,
   eventGroups,
   selectedEventIds,
 }) {
@@ -109,8 +117,8 @@ function renderEventLines({
     .append("line")
     .attr("class", "event-line")
     .classed("hover", d => isSelected(d, selectedEventIds))
-    .attr("x1", (d, i) => eventScale(eventDates[i]))
-    .attr("x2", (d, i) => eventScale(eventDates[i]))
+    .attr("x1", (d, i) => eventPoints[i])
+    .attr("x2", (d, i) => eventPoints[i])
     .attr("y1", "0")
     .attr("y2", brushHeight);
 }
@@ -118,8 +126,7 @@ function renderEventLines({
 function renderEventTicks({
   axis,
   brush,
-  eventScale,
-  eventDates,
+  eventPoints,
   eventGroups,
   selectedEventIds,
   onHoverChange,
@@ -144,14 +151,14 @@ function renderEventTicks({
     .append("g")
     .attr("class", "event-tick")
     .classed("hover", d => isSelected(d, selectedEventIds))
-    .attr("transform", (d, i) => `translate(${eventScale(eventDates[i])}, 0)`);
+    .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
 
   eventTicks
     .append("path")
     .attr("class", "event-icon")
     .attr("d", d => getIconPath(d))
     .attr("fill-rule", d => getIconFillRule(d))
-    .attr("transform", d => getIconTransform(d))
+    .attr("transform", () => getIconTransform())
     .attr("aria-label", d => getIconLabel(d));
 
   eventTicks
@@ -159,10 +166,10 @@ function renderEventTicks({
     .attr("fill", "none")
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
-    .attr("transform", d => getIconTransform(d));
+    .attr("transform", () => getIconTransform());
 
   eventTicks
-    .filter((d, i) => hasEventText(d, i, eventScale, eventDates))
+    .filter((d, i) => hasEventText(d, i, eventPoints))
     .append("text")
     .attr("class", "event-text")
     .attr("transform", `translate(${TEXT_X},${TEXT_Y})`)
@@ -187,13 +194,13 @@ function renderEventTicks({
       eventLine.classed("hover", isSelected(d, selectedEventIds));
     })
     .on("click", function(d) {
-      onOpenTimelines();
-
       if (isSelected(d, selectedEventIds)) {
-        onDeselectTimelineEvents(d);
+        onDeselectTimelineEvents();
       } else {
         onSelectTimelineEvents(d);
       }
+
+      onOpenTimelines();
     });
 }
 
@@ -202,27 +209,24 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
-    xDomain = [],
-    xInterval = {},
     onHoverChange,
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
   },
 ) {
-  const axis = getXAxis(chart);
+  const axis = getAxis(chart);
   const brush = getBrush(chart);
-  const eventScale = getEventScale(chart, xDomain, xInterval);
-  const eventMapping = getEventMapping(events, xInterval);
-  const eventDates = getEventDates(eventMapping);
+  const scale = getScale(chart);
+  const eventMapping = getEventMapping(events, scale);
+  const eventPoints = getEventPoints(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 
   if (brush) {
     renderEventLines({
       chart,
       brush,
-      eventScale,
-      eventDates,
+      eventPoints,
       eventGroups,
       selectedEventIds,
     });
@@ -232,8 +236,7 @@ export function renderEvents(
     renderEventTicks({
       axis,
       brush,
-      eventScale,
-      eventDates,
+      eventPoints,
       eventGroups,
       selectedEventIds,
       onHoverChange,

@@ -14,7 +14,10 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
 
+import { openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { isSmallScreen } from "metabase/lib/dom";
+
 import {
   ArchiveBarContent,
   ArchiveBarText,
@@ -28,6 +31,10 @@ const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
 });
 
+const mapDispatchToProps = {
+  openNavbar,
+};
+
 const ROW_HEIGHT = 68;
 
 @Search.loadList({
@@ -36,8 +43,14 @@ const ROW_HEIGHT = 68;
   wrapped: true,
 })
 @listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, null)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class ArchiveApp extends Component {
+  componentDidMount() {
+    if (!isSmallScreen()) {
+      this.props.openNavbar();
+    }
+  }
+
   render() {
     const {
       isAdmin,

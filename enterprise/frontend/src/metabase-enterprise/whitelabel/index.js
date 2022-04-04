@@ -75,7 +75,7 @@ if (hasPremiumFeature("whitelabel")) {
 }
 
 // these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getShowAuthScene = (state, props) =>
-  !getIsWhitelabeled(state, props);
-PLUGIN_SELECTORS.getLogoBackgroundClass = (state, props) =>
-  getHasCustomLogo(state, props) ? "bg-brand" : "bg-white";
+PLUGIN_SELECTORS.getShowBrandLogo = state => !getIsWhitelabeled(state);
+PLUGIN_SELECTORS.getShowBrandScene = state => !getIsWhitelabeled(state);
+PLUGIN_SELECTORS.getLogoBackgroundClass = state =>
+  getHasCustomLogo(state) ? "bg-brand" : "bg-white";

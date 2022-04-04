@@ -23,7 +23,7 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
-    context: PropTypes.string.isRequired,
+    handleCloseNavbar: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -36,10 +36,10 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const { user } = this.props;
+    const { user, handleCloseNavbar } = this.props;
+    const isAdmin = user.is_superuser;
     const canAccessSettings =
-      user.is_superuser ||
-      PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
+      isAdmin || PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
 
     return [
       {
@@ -47,6 +47,7 @@ export default class ProfileLink extends Component {
         icon: null,
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
+        onClose: handleCloseNavbar,
       },
       canAccessSettings && {
         title: t`Admin settings`,
@@ -59,11 +60,16 @@ export default class ProfileLink extends Component {
         icon: null,
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
+        onClose: handleCloseNavbar,
       },
       {
         title: t`Help`,
         icon: null,
-        link: MetabaseSettings.docsUrl(),
+        link:
+          isAdmin && MetabaseSettings.isPaidPlan()
+            ? "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help"
+            : "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help",
+
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },

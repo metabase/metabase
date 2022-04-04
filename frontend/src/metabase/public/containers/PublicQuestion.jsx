@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
@@ -173,20 +172,8 @@ export default class PublicQuestion extends Component {
   };
 
   render() {
-    const {
-      params: { uuid, token },
-      metadata,
-    } = this.props;
+    const { metadata } = this.props;
     const { card, result, initialized, parameterValues } = this.state;
-
-    const actionButtons = result && (
-      <QueryDownloadWidget
-        className="m1 text-medium-hover"
-        uuid={uuid}
-        token={token}
-        result={result}
-      />
-    );
 
     const parameters =
       card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
@@ -196,7 +183,6 @@ export default class PublicQuestion extends Component {
         name={card && card.name}
         description={card && card.description}
         parameters={initialized ? parameters : []}
-        actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >

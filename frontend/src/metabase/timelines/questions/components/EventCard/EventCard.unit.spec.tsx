@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
-  createMockCollection,
+  createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 import EventCard, { EventCardProps } from "./EventCard";
@@ -36,6 +36,6 @@ describe("EventCard", () => {
 
 const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
-  collection: createMockCollection(),
+  timeline: createMockTimeline(),
   ...opts,
 });

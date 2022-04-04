@@ -1,4 +1,8 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  navigationSidebar,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
@@ -7,7 +11,7 @@ describe("scenarios > dashboard > bookmarks", () => {
   });
 
   it("should add and then remove bookmark", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     cy.icon("ellipsis").click();
 
@@ -15,7 +19,7 @@ describe("scenarios > dashboard > bookmarks", () => {
 
     cy.visit("/collection/root");
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       // Find the bookmark and click on it to visit dashboard page again
       cy.findByText("Orders in a dashboard").click();
     });
@@ -32,7 +36,7 @@ describe("scenarios > dashboard > bookmarks", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
   });

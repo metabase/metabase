@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 describe("issue 20393", () => {
   beforeEach(() => {
@@ -32,7 +32,6 @@ describe("issue 20393", () => {
 
     // open the sharing modal and enable sharing
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.findByRole("switch").click();
 
     // navigate to the public dashboard link
@@ -64,7 +63,7 @@ function createDashboardWithNestedCard() {
           .createDashboard("Q2 in a dashboard")
           .then(({ body: { id: dashId } }) => {
             cy.request("POST", `/api/dashboard/${dashId}/cards`, { cardId });
-            cy.visit(`/dashboard/${dashId}`);
+            visitDashboard(dashId);
           }),
       ),
   );

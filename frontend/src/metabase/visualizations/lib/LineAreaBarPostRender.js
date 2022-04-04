@@ -171,6 +171,7 @@ function dispatchUIEvent(element, eventName) {
 function onRenderVoronoiHover(chart) {
   const parent = chart.svg().select("svg > g");
   const dots = chart.svg().selectAll(".sub .dc-tooltip .dot")[0];
+  const axis = chart.svg().select(".axis.x");
 
   if (dots.length === 0 || dots.length > VORONOI_MAX_POINTS) {
     return;
@@ -189,13 +190,12 @@ function onRenderVoronoiHover(chart) {
 
   // HACK Atte Keinänen 8/8/17: For some reason the parent node is not present in Jest/Enzyme tests
   // so simply return empty width and height for preventing the need to do bigger hacks in test code
-  const { width, height } = parent.node()
-    ? parent.node().getBBox()
-    : { width: 0, height: 0 };
+  const axisRect = axis?.node()?.getBBox() ?? { width: 0, height: 0 };
+  const parentRect = parent.node()?.getBBox() ?? { width: 0, height: 0 };
 
   const voronoi = d3.geom.voronoi().clipExtent([
     [0, 0],
-    [width, height],
+    [parentRect.width, parentRect.height - axisRect.height],
   ]);
 
   // circular clip paths to limit distance from actual point
@@ -393,8 +393,6 @@ function onRenderAddTimelineEvents(
   {
     timelineEvents,
     selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -405,8 +403,6 @@ function onRenderAddTimelineEvents(
   renderEvents(chart, {
     events: timelineEvents,
     selectedEventIds: selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -423,7 +419,6 @@ function onRender(
     timelineEvents,
     selectedTimelineEventIds,
     isSplitAxis,
-    xDomain,
     xInterval,
     yAxisSplit,
     isStacked,
@@ -457,8 +452,6 @@ function onRender(
   onRenderAddTimelineEvents(chart, {
     timelineEvents,
     selectedTimelineEventIds,
-    xDomain,
-    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
