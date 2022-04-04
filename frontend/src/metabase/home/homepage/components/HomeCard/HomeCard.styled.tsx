@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export const CardRoot = styled(Link)`
   display: flex;
@@ -13,5 +14,9 @@ export const CardRoot = styled(Link)`
 
   &:hover {
     box-shadow: 0 10px 22px ${alpha("shadow", 0.09)};
+  }
+
+  ${breakpointMinExtraLarge} {
+    padding: 1.5rem;
   }
 `;
