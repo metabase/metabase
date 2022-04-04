@@ -2,18 +2,31 @@ import { User } from "metabase-types/api";
 import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 import { t } from "ttag";
 
-export const NAV_PERMISSION_GUARD: Record<
-  string,
-  (user?: User) => boolean
-> = {};
+type PathKeys =
+  | "data-model"
+  | "settings"
+  | "people"
+  | "databases"
+  | "permissions"
+  | "troubleshooting"
+  | "audit"
+  | "tools";
+
+export const NAV_PERMISSION_GUARD: {
+  [key in PathKeys]?: (user: User) => boolean;
+} = {};
 
 const defaultGuard = (user?: User) => user?.is_superuser;
 
-const canAccessMenuItem = (key: string, user: User) => {
+const canAccessMenuItem = (key: PathKeys, user: User) => {
   return defaultGuard(user) || NAV_PERMISSION_GUARD[key]?.(user);
 };
 
-const getAllMenuItems = () => [
+const getAllMenuItems: () => {
+  key: PathKeys;
+  name: string;
+  path: string;
+}[] = () => [
   {
     name: t`Settings`,
     path: "/admin/settings",
