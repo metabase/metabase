@@ -28,19 +28,10 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
-export const getIsLoadingDashCards = state =>
-  state.dashboard.loadingDashCards.loadingIds.length > 0;
-export const getCardsLoaded = state =>
-  state.dashboard.loadingDashCards.dashcardIds.length -
-  state.dashboard.loadingDashCards.loadingIds.length;
-export const getTotalCards = state =>
-  state.dashboard.loadingDashCards.dashcardIds.length;
-export const getHasSeenLoadedDashboard = state =>
-  state.dashboard.hasSeenLoadedDashboard;
-export const getIsLoadingDashCardsComplete = state =>
-  state.dashboard.loadingDashCards.isLoadingComplete;
 export const getFavicon = state =>
-  state.dashboard.showLoadingCompleteFavicon ? LOAD_COMPLETE_FAVICON : null;
+  state.dashboard.loadingControls?.showLoadCompleteFavicon
+    ? LOAD_COMPLETE_FAVICON
+    : null;
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>
@@ -62,6 +53,8 @@ export const getDashboard = createSelector(
   (dashboardId, dashboards) => dashboards[dashboardId],
 );
 
+export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) =>
@@ -72,6 +65,9 @@ export const getDashboardComplete = createSelector(
         .filter(dc => !dc.isRemoved),
     },
 );
+
+export const getDocumentTitle = state =>
+  state.dashboard.loadingControls.documentTitle;
 
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(
