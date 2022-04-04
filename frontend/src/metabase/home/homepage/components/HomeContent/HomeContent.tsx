@@ -47,10 +47,8 @@ const isXraySection = ({ databases }: HomeContentProps) => {
 
 const isWithinWeek = (timestamp: string) => {
   const date = parseTimestamp(timestamp);
-  const today = moment();
-  const weekAgo = today.clone().subtract(1, "week");
-
-  return date.isBetween(weekAgo, today);
+  const weekAgo = moment().subtract(1, "week");
+  return date.isAfter(weekAgo);
 };
 
 export default HomeContent;
