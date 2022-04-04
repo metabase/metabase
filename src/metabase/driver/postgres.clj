@@ -199,6 +199,7 @@
          (map #(into {} %))
          (map row->types)) member))
 
+;;;;; adding cardinalities here....
 (defn- describe-json-rf
   ([] nil)
   ([fst] fst)

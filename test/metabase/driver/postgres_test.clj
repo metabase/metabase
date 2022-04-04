@@ -308,6 +308,16 @@
             types {[:bob :cobbs] clojure.lang.PersistentVector
                    [:bob :dobbs :robbs] java.lang.Long}]
         (is (= types (#'postgres/row->types row)))))
+    (testing "blank out if huge. blank out instead of silently limiting"
+      ;;;;;; la de dah la de dah
+      ;;;;;; la de dah la de dah
+      ;;;;;; la de dah la de dah
+      )
+    (testing "back off the types"
+      ;;;;;; la de dah la de dah
+      ;;;;;; la de dah la de dah
+      ;;;;;; la de dah la de dah
+      )
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
