@@ -30,45 +30,58 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     color: ${color("brand")};
   }
 
-  ${({ isDashboard, gridSize, width, height, totalNumGridCols }) => {
-    if (!isDashboard || !gridSize || !width || !height) {
+  ${({
+    isDashboard,
+    gridSize,
+    width: widthPx,
+    height: heightPx,
+    totalNumGridCols,
+  }) => {
+    if (!isDashboard || !gridSize || !widthPx || !heightPx) {
       return undefined;
     }
 
-    // at small viewport widths totalNumGridCols is set to 1, but gridSize.width isn't updated,
-    // so we need to pick whichever is smallest.
-    const gridSizeWidth = Math.min(totalNumGridCols, gridSize.width);
-
-    const widthPxPerUnit = width / gridSizeWidth;
-    const maxWidthPx = totalNumGridCols * widthPxPerUnit;
+    // at small viewport widths totalNumGridCols is set to 1, but the dashcard's gridSize.width isn't updated.
+    // in that scenario, the dashcard's grid width should be treated as 1 as well because it spans the entire grid
+    const dashCardGridWidth = Math.min(totalNumGridCols, gridSize.width);
+    const widthPxPerGridUnit = widthPx / dashCardGridWidth;
+    const maxWidthPx = totalNumGridCols * widthPxPerGridUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minWidthPx = 3 * widthPxPerUnit;
+    const minWidthPx = 3 * widthPxPerGridUnit;
 
-    // arbitrary maxSize
-    const maxSize = 12;
-    // minSize taken from previous styling code
-    const minSize = 2.2;
-    // the 4 is an arbitrary value between minSize and maxSize
-    const gridWidthAdjustment = Math.max(
-      ((width - minWidthPx) / (maxWidthPx - minWidthPx)) * 4,
+    // when the dashcard is at its min width, the `gridWidthAdjustment` value will be 0.
+    // as it increases in width, it will increase in value up to `WIDTH_ADJUSTMENT_FACTOR`.
+    const WIDTH_ADJUSTMENT_FACTOR = 4;
+    const gridWidthAdjustmentRem = Math.max(
+      ((widthPx - minWidthPx) / (maxWidthPx - minWidthPx)) *
+        WIDTH_ADJUSTMENT_FACTOR,
       0,
     );
 
-    const heightPxPerUnit = height / gridSize.height;
+    const heightPxPerGridUnit = heightPx / gridSize.height;
     // 10 is approximately the number of dashboard grid rows that are visible when browser is fully expanded
-    const maxHeightPx = 10 * heightPxPerUnit;
+    const maxHeightPx = 10 * heightPxPerGridUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
-    const minHeightPx = 3 * heightPxPerUnit;
-    // the 4 is an arbitrary value between minSize and maxSize
-    const gridHeightAdjustment = Math.max(
-      ((height - minHeightPx) / (maxHeightPx - minHeightPx)) * 4,
+    const minHeightPx = 3 * heightPxPerGridUnit;
+
+    // when the dashcard is at its min height, the `gridHeightAdjustment` value will be 0.
+    // as it increases in height, it will increase in value up to `HEIGHT_ADJUSTMENT_FACTOR`.
+    const HEIGHT_ADJUSTMENT_FACTOR = 4;
+    const gridHeightAdjustmentRem = Math.max(
+      ((heightPx - minHeightPx) / (maxHeightPx - minHeightPx)) *
+        HEIGHT_ADJUSTMENT_FACTOR,
       0,
     );
 
-    // clamp the size in case the combo of gridWidthAdjustment and gridHeightAdjustment makes the font too small or too big
+    const minSizeRem = 2.2;
+    const maxSizeRem = 12;
+    // clamp the size in case the combo of gridWidthAdjustmentRem and gridHeightAdjustmentRem makes the font too small or too big
     const fontSize = Math.min(
-      Math.max(minSize + gridWidthAdjustment + gridHeightAdjustment, minSize),
-      maxSize,
+      Math.max(
+        minSizeRem + gridWidthAdjustmentRem + gridHeightAdjustmentRem,
+        minSizeRem,
+      ),
+      maxSizeRem,
     );
 
     return css`
