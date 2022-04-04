@@ -9,13 +9,13 @@
 
 ## Metabase's application database
 
-The main difference between a local installation and a production installation of Metabase is the application database. The application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on. 
+The main difference between a local installation and a production installation of Metabase is the application database. The application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on.
 
 Metabase ships with an embedded H2 application database that you should avoid using in production. The reason Metabase ships with the H2 database is because we want people to spin up Metabase on their local machine and start playing around with asking questions.
 
 If you want to run Metabase in production, you'll need to use a production-ready application database to store your application data. You can switch from using the default H2 application database at any time, but if you're planning on running Metabase in production, the sooner you migrate to a production application database, the better. If you keeping running Metabase with the default H2 application database, and you don't regularly back it up, the application database could get corrupted, and you could end up losing all of your questions, dashboards, collections, and other Metabase data.
 
-The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. For example, if you're trying to migrate from the H2 database to a setup that uses AWS Elastic Beanstalk to run Metabase with an RDS database as the application database, you can run the migration from your computer instead of trying to cram the H2 file into your Elastic Beanstalk. 
+The migration process is a one-off process. You can execute the migration script from any computer that has the H2 application database file. For example, if you're trying to migrate from the H2 database to a setup that uses AWS Elastic Beanstalk to run Metabase with an RDS database as the application database, you can run the migration from your computer instead of trying to cram the H2 file into your Elastic Beanstalk.
 
 ### Avoid migrating and upgrading at the same time
 
@@ -89,10 +89,13 @@ Start your Metabase normally (without the `load-from-h2` command), and you shoul
 
 Metabase provides a custom migration command for migrating to a new application database. Here's what you'll do:
 
-- [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database)
-- [3. Back up your H2 application database](#3-back-up-your-h2-application-database)
-- [4. Stop the existing Metabase container](#4-stop-the-existing-metabase-container)
-- [5. Run a new Metabase container to perform the migration](#5-run-a-new-metabase-container-to-perform-the-migration)
+- [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database-1)
+- [2. Back up your H2 application database](#2-back-up-your-h2-application-database)
+- [3. Stop the existing Metabase container](#3-stop-the-existing-metabase-container)
+- [3. Download the JAR](#3-download-the-jar)
+- [4. Run the migration command](#4-run-the-migration-command)
+- [5. Start a new Docker container that uses the new app db](#5-start-a-new-docker-container-that-uses-the-new-app-db)
+- [7. Remove the old container that was using the H2 database](#7-remove-the-old-container-that-was-using-the-h2-database)
 
 ### 1. Confirm that you can connect to your target application database
 
@@ -100,41 +103,52 @@ You must be able to connect to the target Postgres or MySQL/MariaDB database in 
 
 ### 2. Back up your H2 application database
 
-Safety first! See [Backing up Metabase Application Data](backing-up-metabase-application-data.md). 
+Safety first! See [Backing up Metabase Application Data](backing-up-metabase-application-data.md).
 
-If you don't back up your H2 database, and you replace or delete your container, you'll lose all of your questions, dashboards, and other Metabase data, so be sure to back up before you migrate. So don't skip this step.
+If you don't back up your H2 database, and you replace or delete your container, you'll lose all of your questions, dashboards, and other Metabase data, so be sure to back up before you migrate. 
 
-### 4. Stop the existing Metabase container
+### 3. Stop the existing Metabase container
 
 You don't want people creating new stuff in your Metabase while you're migrating.
 
-### 5. Run a new Metabase container to perform the migration
+### 3. Download the JAR
 
-Run the migration command, `load-from-h2`, using the appropriate [environment variables](environment-variables.md) for the target database you want to migrate to.
+In the directory where you saved your H2 file (that is, outside the container), [download the JAR](https://github.com/metabase/metabase/releases) for your current version.
+
+Make sure you use the same version of Metabase you've been using. If you want to upgrade, perform the upgrade after you've confirmed the migration is successful.
+
+### 4. Run the migration command
+
+From the directory with your H2 file and your Metabase JAR, run the migration command, `load-from-h2`. Use the appropriate connection string or [environment variables](environment-variables.md) for the target database you want to migrate to.
+
+```
+export MB_DB_TYPE=postgres
+export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+```
+
+Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db), and then exit.
 
 You can find details about specifying MySQL and Postgres databases at [Configuring the application database](configuring-application-database.md).
 
-Make sure you use the same version of Metabase you've been using. If you want to upgrade, do it after you've confirmed the migration is successful.
+### 5. Start a new Docker container that uses the new app db
 
-TODO update this.
+With your new application database populated with your Metabase data, you can start a new container and tell the Metabase in the container to connect to the appdb. The command will looks something like this:
 
 ```
-docker run --name metabase-migration \
-    -e "MB_DB_FILE=/metabase.db" \
-    -e "MB_DB_TYPE=postgres" \
-    -e "MB_DB_DBNAME=metabase" \
-    -e "MB_DB_PORT=5432" \
-    -e "MB_DB_USER=username" \
-    -e "MB_DB_PASS=password" \
-    -e "MB_DB_HOST=my-database-host" \
-     metabase/metabase load-from-h2
+docker run -d -p 3000:3000 \
+  -e "MB_DB_TYPE=postgres" \
+  -e "MB_DB_DBNAME=<your-postgres-db-name>" \
+  -e "MB_DB_PORT=5432" \
+  -e "MB_DB_USER=<db-username>" \
+  -e "MB_DB_PASS=<db-password>" \
+  -e "MB_DB_HOST=<your-database-host>" \
+  --name metabase metabase/metabase
 ```
-
-To further explain the example: in addition to specifying the target database connection details, set the `MB_DB_FILE` environment variable for the source H2 database location, and pass the argument `load-from-h2` to begin migrating.
-
-### 6. Start a new Docker container that uses the new app db
 
 ### 7. Remove the old container that was using the H2 database
+
+If you have your H2 file backed up somewhere safe, go ahead and remove the old container. See [Docker docs](https://docs.docker.com/engine/reference/commandline/rm/) for removing containers.
 
 ## Manual migrations
 
