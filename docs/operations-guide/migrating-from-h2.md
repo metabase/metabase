@@ -37,7 +37,7 @@ Go with whichever database you're familiar with. If you're not familiar with any
 
 Metabase provides a custom migration command for migrating to a new application database. Here's what you'll do:
 
-- [1. Confirm that you can connect to your target application database](#confirm-that-you-can-connect-to-your-target-application-database)
+- [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database)
 - [2. Shut down your Metabase instance](#2-shut-down-your-metabase-instance)
 - [3. Back up your H2 application database](#3-back-up-your-h2-application-database)
 - [4. Run the Metabase data migration command](#4-run-the-metabase-data-migration-command)
@@ -45,7 +45,7 @@ Metabase provides a custom migration command for migrating to a new application 
 
 ### 1. Confirm that you can connect to your target application database
 
-You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you are attempting to move the data to a cloud database, make sure you can connect to that database.
+You must be able to connect to the target Postgres or MySQL/MariaDB database in whatever environment you're running this migration command in. So, if you're attempting to move the data to a cloud database, make sure you can connect to that database.
 
 ### 2. Shut down your Metabase instance
 

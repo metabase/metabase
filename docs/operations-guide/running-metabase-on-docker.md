@@ -134,12 +134,6 @@ docker cp CONTAINER_ID:/metabase.db ./
 
 The DB contents will be left in a directory named metabase.db.
 
-Some older versions of Metabase stored their db in a different default location:
-
-```
-docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
-```
-
 ### Mounting a mapped file storage volume
 
 To persist your data outside of the container and make it available for use between container launches, we can mount a local file path inside our container.
