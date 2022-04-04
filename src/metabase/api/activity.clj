@@ -137,12 +137,12 @@
   Viewing a Dashboard will add entries to the view log for all cards on that dashboard so all card views are instead derived
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
-  [views-limit card-runs-limit]
+  [views-limit card-runs-limit all-users?]
   (let [dashboard-and-table-views (db/select [ViewLog :user_id :model :model_id
                                               [:%count.* :cnt] [:%max.timestamp :max_ts]]
                                     {:group-by [:user_id :model :model_id]
                                      :where    [:and
-                                                [:= :user_id *current-user-id*]
+                                                (when-not all-users? [:= :user_id *current-user-id*])
                                                 [:in :model #{"dashboard" "table"}]]
                                      :order-by [[:max_ts :desc]]
                                      :limit    views-limit})
@@ -150,7 +150,7 @@
                                    [:%count.* :cnt] [:%max.started_at :max_ts]]
                          {:group-by [:executor_id :card_id :context]
                           :where [:and
-                                  [:= :executor_id *current-user-id*]
+                                  (when-not all-users? [:= :executor_id *current-user-id*])
                                   [:= :context (hx/literal :question)]]
                           :order-by [[:max_ts :desc]]
                           :limit card-runs-limit})
@@ -169,7 +169,7 @@
 (defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit)
+  (let [views (views-and-runs views-limit card-runs-limit false)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
@@ -232,7 +232,7 @@
   ;; total count -> higher = higher score
   ;; recently viewed -> more recent = higher score
   ;; official/verified -> yes = higher score
-  (let [views (views-and-runs views-limit card-runs-limit)
+  (let [views (views-and-runs views-limit card-runs-limit true)
         model->id->items (models-for-views views)
         filtered-views (for [{:keys [model model_id] :as view-log} views
                              :let [model-object (-> (get-in model->id->items [model model_id])
