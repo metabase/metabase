@@ -42,7 +42,6 @@
                          {:where    [:and
                                      [:= :archived archived?]
                                      (collection/visible-collection-ids->honeysql-filter-clause
-                                      :collection_id
                                       (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
                           :order-by [[:%lower.name :asc]]})
                        (map timeline/hydrate-root-collection))]
