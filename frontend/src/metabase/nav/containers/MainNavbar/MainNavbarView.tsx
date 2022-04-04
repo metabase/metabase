@@ -7,6 +7,7 @@ import { Bookmark, Collection, User } from "metabase-types/api";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import { TreeNodeProps } from "metabase/components/tree/types";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
@@ -20,7 +21,16 @@ import * as Urls from "metabase/lib/urls";
 import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
-import { SidebarHeading, ProfileLinkContainer } from "./MainNavbar.styled";
+import {
+  BrowseLink,
+  CollectionsMoreIconContainer,
+  CollectionsMoreIcon,
+  ProfileLinkContainer,
+  SidebarContentRoot,
+  SidebarHeading,
+  SidebarSection,
+  SidebarHeadingWrapper,
+} from "./MainNavbar.styled";
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
@@ -69,69 +79,98 @@ function MainNavbarView({
   }, [handleCloseNavbar]);
 
   return (
-    <>
-      {bookmarks.length > 0 && (
-        <>
-          <BookmarkList
-            bookmarks={bookmarks}
-            selectedItem={
-              selectedItem.type !== "unknown" ? selectedItem : undefined
-            }
+    <SidebarContentRoot>
+      <div>
+        {bookmarks.length > 0 && (
+          <SidebarSection>
+            <BookmarkList
+              bookmarks={bookmarks}
+              selectedItem={
+                selectedItem.type !== "unknown" ? selectedItem : undefined
+              }
+              onSelect={onItemSelect}
+            />
+          </SidebarSection>
+        )}
+        <SidebarSection>
+          <CollectionSectionHeading currentUser={currentUser} />
+          <Tree
+            data={collections}
+            selectedId={isCollectionSelected ? selectedItem.id : undefined}
             onSelect={onItemSelect}
+            TreeNode={CollectionLink}
+            role="tree"
           />
-          <SidebarHeading>{t`Collections`}</SidebarHeading>
-        </>
-      )}
-      <Tree
-        data={collections}
-        selectedId={isCollectionSelected ? selectedItem.id : undefined}
-        onSelect={onItemSelect}
-        TreeNode={CollectionLink}
-        role="tree"
-      />
-      <ul>
-        {hasDataAccess && !IFRAMED && (
-          <SidebarLink
-            icon="table_spaced"
-            url={BROWSE_URL}
-            isSelected={
-              isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
-            }
-            onClick={onItemSelect}
-            data-metabase-event="NavBar;Data Browse"
-          >
-            {t`Browse data`}
-          </SidebarLink>
-        )}
-        {currentUser.is_superuser && (
-          <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
-            url={OTHER_USERS_COLLECTIONS_URL}
-            isSelected={
-              selectedItem.type === "collection" && selectedItem.id === "users"
-            }
-            onClick={onItemSelect}
-          >
-            {t`Other users' personal collections`}
-          </SidebarLink>
-        )}
-        <SidebarLink
-          icon="view_archive"
-          url={ARCHIVE_URL}
-          isSelected={
-            isMiscLinkSelected && selectedItem.url.startsWith(ARCHIVE_URL)
-          }
-          onClick={onItemSelect}
-        >
-          {t`View archive`}
-        </SidebarLink>
-      </ul>
+        </SidebarSection>
+        <ul>
+          {hasDataAccess && !IFRAMED && (
+            <SidebarSection>
+              <SidebarHeadingWrapper>
+                <SidebarHeading>{t`Data`}</SidebarHeading>
+              </SidebarHeadingWrapper>
+              <BrowseLink
+                icon="database"
+                url={BROWSE_URL}
+                isSelected={
+                  isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+                }
+                onClick={onItemSelect}
+                data-metabase-event="NavBar;Data Browse"
+              >
+                {t`Browse data`}
+              </BrowseLink>
+            </SidebarSection>
+          )}
+        </ul>
+      </div>
       {!IFRAMED && (
         <ProfileLinkContainer>
           <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
         </ProfileLinkContainer>
       )}
-    </>
+    </SidebarContentRoot>
+  );
+}
+
+interface CollectionSectionHeadingProps {
+  currentUser: User;
+}
+
+function CollectionSectionHeading({
+  currentUser,
+}: CollectionSectionHeadingProps) {
+  const renderMenu = useCallback(
+    ({ onClose }) => (
+      <ul>
+        {currentUser.is_superuser && (
+          <SidebarLink
+            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
+            url={OTHER_USERS_COLLECTIONS_URL}
+            onClick={onClose}
+          >
+            {t`Other users' personal collections`}
+          </SidebarLink>
+        )}
+        <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
+          {t`View archive`}
+        </SidebarLink>
+      </ul>
+    ),
+    [currentUser],
+  );
+
+  return (
+    <SidebarHeadingWrapper>
+      <SidebarHeading>{t`Collections`}</SidebarHeading>
+      <CollectionsMoreIconContainer>
+        <TippyPopoverWithTrigger
+          renderTrigger={({ onClick }) => (
+            <CollectionsMoreIcon name="ellipsis" onClick={onClick} size={12} />
+          )}
+          popoverContent={renderMenu}
+        />
+      </CollectionsMoreIconContainer>
+    </SidebarHeadingWrapper>
   );
 }
 

@@ -3,7 +3,7 @@ export type SelectedEntityItem = {
   id?: number | string;
 };
 
-type SelectedNonEntityItem = {
+export type SelectedNonEntityItem = {
   type: "unknown";
   url: string;
 };

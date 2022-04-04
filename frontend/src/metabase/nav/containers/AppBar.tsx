@@ -54,8 +54,8 @@ function AppBar({
       </LogoIconWrapper>
       <Tooltip tooltip={isSidebarOpen ? t`Close sidebar` : t`Open sidebar`}>
         <SidebarButton
-          name={isSidebarOpen ? "chevronleft" : "chevronright"}
           onClick={onToggleSidebarClick}
+          isSidebarOpen={isSidebarOpen}
         />
       </Tooltip>
       <SearchBarContainer>

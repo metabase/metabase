@@ -26,7 +26,8 @@ describe("18978, 18977", () => {
 
       popover().within(() => {
         cy.findByText("Question").should("not.exist");
-        cy.findByText("SQL query").should("not.exist");
+        cy.findByText(/SQL query/).should("not.exist");
+        cy.findByText(/Native query/).should("not.exist");
       });
 
       cy.findByTestId("qb-header-action-panel").within(() => {

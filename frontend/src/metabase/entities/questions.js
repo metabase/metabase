@@ -104,7 +104,6 @@ function getIcon(question) {
   );
   return {
     name: visualization?.iconName ?? "beaker",
-    color: color("bg-dark"),
   };
 }
 
