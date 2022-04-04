@@ -155,7 +155,7 @@
                ["dashboard" (:id dash1)]
                ["dataset" (:id dataset)]}
              (set (for [recent-view (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-                   ((juxt :model :model_id) recent-view))))))))
+                    ((juxt :model :model_id) recent-view))))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
