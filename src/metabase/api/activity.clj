@@ -9,9 +9,9 @@
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
-            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
