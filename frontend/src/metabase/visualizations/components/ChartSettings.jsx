@@ -159,6 +159,7 @@ class ChartSettings extends Component {
       noPreview,
       children,
       setSidebarPropsOverride,
+      dashboard,
     } = this.props;
     const { currentWidget } = this.state;
 
@@ -322,6 +323,7 @@ class ChartSettings extends Component {
                   showTitle
                   isEditing
                   isDashboard
+                  dashboard={dashboard}
                   isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}

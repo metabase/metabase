@@ -198,6 +198,7 @@ export default class DashCard extends Component {
               }
               isPreviewing={this.state.isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
+              dashboard={dashboard}
             />
           </DashboardCardActionsPanel>
         ) : null}
@@ -317,6 +318,7 @@ const DashCardActionButtons = ({
   showClickBehaviorSidebar,
   onPreviewToggle,
   isPreviewing,
+  dashboard,
 }) => {
   const buttons = [];
 
@@ -338,6 +340,7 @@ const DashCardActionButtons = ({
         <ChartSettingsButton
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          dashboard={dashboard}
         />,
       );
     }
@@ -373,7 +376,11 @@ const DashCardActionButtons = ({
   );
 };
 
-const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
+const ChartSettingsButton = ({
+  series,
+  onReplaceAllVisualizationSettings,
+  dashboard,
+}) => (
   <ModalWithTrigger
     wide
     tall
@@ -394,6 +401,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard
+      dashboard={dashboard}
     />
   </ModalWithTrigger>
 );
