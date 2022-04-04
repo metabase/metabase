@@ -4,7 +4,7 @@ interface ValidRefTarget {
   contains(target: EventTarget | null): boolean;
 }
 
-export function useOnOutsideClick<T extends ValidRefTarget = HTMLDivElement>(
+export function useOnClickOutside<T extends ValidRefTarget = HTMLDivElement>(
   ref: RefObject<T>,
   callback: () => void,
 ) {

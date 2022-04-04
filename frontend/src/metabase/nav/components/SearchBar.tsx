@@ -5,7 +5,7 @@ import { Location, LocationDescriptorObject } from "history";
 import Icon from "metabase/components/Icon";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
-import { useOnOutsideClick } from "metabase/hooks/use-on-outside-click";
+import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
@@ -77,7 +77,7 @@ function SearchBar({
     setSearchText("");
   }, []);
 
-  useOnOutsideClick(container, setInactive);
+  useOnClickOutside(container, setInactive);
 
   useKeyboardShortcut("Escape", setInactive);
 
