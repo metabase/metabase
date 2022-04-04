@@ -58,6 +58,11 @@ export const openEmailPage = emailSubject => {
   });
 };
 
+export const clickSend = () => {
+  cy.button("Send email now").click();
+  cy.button("Email sent", 30000);
+};
+
 export const sendSubscriptionsEmail = recipient => {
   cy.icon("subscription").click();
 
@@ -67,6 +72,5 @@ export const sendSubscriptionsEmail = recipient => {
     .type(`${recipient}{enter}`)
     .blur();
 
-  cy.button("Send email now").click();
-  cy.button("Email sent", 30000);
+  clickSend();
 };

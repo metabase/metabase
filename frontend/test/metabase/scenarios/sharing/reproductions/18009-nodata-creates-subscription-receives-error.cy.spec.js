@@ -3,6 +3,7 @@ import {
   popover,
   setupSMTP,
   visitDashboard,
+  clickSend,
 } from "__support__/e2e/cypress";
 
 describe.skip("issue 18009", () => {
@@ -30,8 +31,7 @@ describe.skip("issue 18009", () => {
     // Click anywhere to close the popover that covers the "Send email now" button
     cy.findByText("To:").click();
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent");
+    clickSend();
 
     cy.request("GET", "http://localhost:80/email").then(({ body }) => {
       expect(body[0].html).not.to.include(
