@@ -9,7 +9,7 @@ type ScalarValueProps = {
   gridSize?: { height: number; width: number };
   width: number;
   height: number;
-  numGridColumns: number;
+  totalNumGridCols: number;
 };
 
 export const ScalarRoot = styled.div`
@@ -30,17 +30,17 @@ export const ScalarValueWrapper = styled.h1<ScalarValueProps>`
     color: ${color("brand")};
   }
 
-  ${({ isDashboard, gridSize, width, height, numGridColumns }) => {
+  ${({ isDashboard, gridSize, width, height, totalNumGridCols }) => {
     if (!isDashboard || !gridSize || !width || !height) {
       return undefined;
     }
 
-    // at small viewport widths numGridColumns is set to 1, but gridSize.width isn't updated,
+    // at small viewport widths totalNumGridCols is set to 1, but gridSize.width isn't updated,
     // so we need to pick whichever is smallest.
-    const gridSizeWidth = Math.min(numGridColumns, gridSize.width);
+    const gridSizeWidth = Math.min(totalNumGridCols, gridSize.width);
 
     const widthPxPerUnit = width / gridSizeWidth;
-    const maxWidthPx = numGridColumns * widthPxPerUnit;
+    const maxWidthPx = totalNumGridCols * widthPxPerUnit;
     // 3 is taken from Scalar's min grid size -- should make it a constant.
     const minWidthPx = 3 * widthPxPerUnit;
 

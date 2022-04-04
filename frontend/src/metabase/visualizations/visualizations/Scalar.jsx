@@ -179,7 +179,7 @@ export default class Scalar extends Component {
       width,
       height,
       gridSize,
-      numGridColumns,
+      totalNumGridCols,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -244,7 +244,7 @@ export default class Scalar extends Component {
               width={width}
               height={height}
               value={displayValue}
-              numGridColumns={numGridColumns}
+              totalNumGridCols={totalNumGridCols}
             />
           </span>
         </Ellipsified>

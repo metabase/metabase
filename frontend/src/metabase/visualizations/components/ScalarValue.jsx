@@ -21,14 +21,14 @@ const ScalarValue = ({
   gridSize,
   width,
   height,
-  numGridColumns,
+  totalNumGridCols,
 }) => (
   <ScalarValueWrapper
     isDashboard={isDashboard}
     gridSize={gridSize}
     width={width}
     height={height}
-    numGridColumns={numGridColumns}
+    totalNumGridCols={totalNumGridCols}
     className="ScalarValue"
   >
     {value}

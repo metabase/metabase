@@ -78,7 +78,7 @@ function GridLayout({
         item,
         gridItemWidth,
         breakpoint: currentBreakpoint,
-        numGridColumns: cols,
+        totalNumGridCols: cols,
       });
     },
     [layout, cellSize, itemRenderer, currentBreakpoint, cols],
