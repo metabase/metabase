@@ -11,6 +11,7 @@ import {
   summarize,
   filter,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
@@ -62,7 +63,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
@@ -110,7 +112,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
@@ -245,6 +248,7 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       cy.wait("@schema");
+      cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
@@ -535,15 +539,18 @@ describe("scenarios > models", () => {
 
     it("should allow adding models to dashboards", () => {
       cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-        cy.visit(`/dashboard/${dashboardId}`);
+        visitDashboard(dashboardId);
         cy.icon("pencil").click();
         cy.get(".QueryBuilder-section .Icon-add").click();
         sidebar()
           .findByText("Orders Model")
           .click();
         cy.button("Save").click();
-        cy.wait("@fetchDashboard");
+        // The first fetch happened when visiting dashboard, and the second one upon saving it.
+        // We need to wait for both.
+        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
         cy.findByText("Orders Model");
       });
     });

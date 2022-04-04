@@ -2,7 +2,9 @@ import {
   restore,
   openOrdersTable,
   popover,
+  sidebar,
   summarize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -153,7 +155,7 @@ describe("scenarios > question > null", () => {
             });
           });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          visitDashboard(DASHBOARD_ID);
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
@@ -190,8 +192,11 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
 
       summarize();
-      // remove pre-selected "Count"
-      cy.icon("close").click();
+      sidebar().within(() => {
+        // remove pre-selected "Count"
+        cy.icon("close").click();
+      });
+      cy.findByText("Add a metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();

@@ -6,6 +6,7 @@ import {
   cancelEditingDashboard,
   saveDashboard,
   checkFilterLabelAndValue,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { setMonthAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -14,7 +15,7 @@ describe.skip("issue 17139", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
 

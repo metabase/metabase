@@ -25,8 +25,11 @@
       "/download/db/3/schema/PUBLIC/"                 {:db {3 {:download {:schemas {"PUBLIC" :full}}}}}
       "/download/limited/db/3/schema/PUBLIC/"         {:db {3 {:download {:schemas {"PUBLIC" :limited}}}}}
       "/download/db/3/schema/PUBLIC/table/4/"         {:db {3 {:download {:schemas {"PUBLIC" {4 :full}}}}}}
-      "/download/limited/db/3/schema/PUBLIC/table/4/" {:db {3 {:download {:schemas {"PUBLIC" {4 :limited}}}}}})))
-
+      "/download/limited/db/3/schema/PUBLIC/table/4/" {:db {3 {:download {:schemas {"PUBLIC" {4 :limited}}}}}}
+      "/data-model/db/3/"                             {:db {3 {:data-model {:schemas :all}}}}
+      "/data-model/db/3/schema/PUBLIC/"               {:db {3 {:data-model {:schemas {"PUBLIC" :all}}}}}
+      "/data-model/db/3/schema/PUBLIC/table/4/"       {:db {3 {:data-model {:schemas {"PUBLIC" {4 :all}}}}}}
+      "/details/db/3/"                                {:db {3 {:details :yes}}})))
 
 (deftest combines-permissions-for-graph
   (testing "When given multiple permission hierarchies, chooses the one with the most permission"

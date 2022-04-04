@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -33,7 +33,7 @@ describe("issue 18747", () => {
             },
           ],
         }).then(() => {
-          cy.visit(`/dashboard/${dashboard_id}`);
+          visitDashboard(dashboard_id);
         });
       },
     );

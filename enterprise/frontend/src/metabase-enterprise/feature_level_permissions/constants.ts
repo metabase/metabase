@@ -32,6 +32,6 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
 export const DATA_COLUMNS = [
   {
     name: t`Download results`,
-    hint: t`If you grant someone permissions to download data from a database, you won't be able to schema or table level for native queries.`,
+    hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
   },
 ];

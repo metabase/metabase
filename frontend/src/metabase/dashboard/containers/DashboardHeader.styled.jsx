@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const DashboardHeaderButton = styled.button`
   display: flex;
@@ -7,15 +7,19 @@ export const DashboardHeaderButton = styled.button`
   justify-content: center;
   padding: 8px 12px;
   border-radius: 6px;
-  color: ${props => (props.isActive ? colors["brand"] : colors["text-dark"])};
+  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
   background-color: ${props =>
-    props.isActive ? colors["brand-light"] : "transparent"};
+    props.isActive ? color("brand-light") : "transparent"};
   transition: all 200ms;
-  cursor: pointer;
 
-  &:hover {
-    color: ${props => (props.isActive ? colors["white"] : colors["brand"])};
+  &:hover:enabled {
+    cursor: pointer;
+    color: ${props => (props.isActive ? color("white") : color("brand"))};
     background-color: ${props =>
-      props.isActive ? colors["brand"] : "transparent"};
+      props.isActive ? color("brand") : "transparent"};
+  }
+
+  &:disabled {
+    color: ${color("text-light")};
   }
 `;

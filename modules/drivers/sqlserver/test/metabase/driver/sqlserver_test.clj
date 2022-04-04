@@ -150,7 +150,7 @@
                                              :fields       [$name]
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
-                           qp/query->preprocessed
+                           qp/preprocess
                            (m/dissoc-in [:query :limit]))]
       (mt/with-everything-store
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "

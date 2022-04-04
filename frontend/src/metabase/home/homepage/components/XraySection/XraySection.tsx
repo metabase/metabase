@@ -1,135 +1,81 @@
-import React, { ChangeEvent, ReactNode, useState } from "react";
+import React, { useMemo } from "react";
+import _ from "underscore";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
-import Ellipsified from "metabase/components/Ellipsified";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Select, { Option } from "metabase/core/components/Select";
-import Tooltip from "metabase/components/Tooltip";
-import { DatabaseCandidate, TableCandidate, User } from "metabase-types/api";
-import Section, {
-  SectionCloseIcon,
-  SectionHeader,
-  SectionTitle,
-} from "../Section";
+import * as Urls from "metabase/lib/urls";
+import { Database, DatabaseCandidate } from "metabase-types/api";
 import {
-  CardIcon,
-  CardIconContainer,
-  CardRoot,
-  CardTitle,
-  ListRoot,
-  SelectRoot,
-  SelectTitle,
+  DatabaseIcon,
+  DatabaseLink,
+  DatabaseTitle,
+  SectionTitle,
+  XrayCard,
+  XrayIcon,
+  XrayIconContainer,
+  XrayList,
+  XrayTitle,
+  XrayTitlePrimary,
+  XrayTitleSecondary,
 } from "./XraySection.styled";
 
 export interface XraySectionProps {
-  user: User;
-  databaseCandidates?: DatabaseCandidate[];
-  onHideXrays?: () => void;
+  database?: Database;
+  databaseCandidates: DatabaseCandidate[];
 }
 
 const XraySection = ({
-  user,
-  databaseCandidates = [],
-  onHideXrays,
-}: XraySectionProps): JSX.Element | null => {
-  if (!databaseCandidates.length) {
-    return null;
-  }
-
-  return (
-    <Section>
-      <SectionHeader>
-        <SectionTitle>{t`Try these x-rays based on your data`}</SectionTitle>
-        {user.is_superuser && (
-          <HideSectionModal onSubmit={onHideXrays}>
-            <Tooltip tooltip={t`Remove these suggestions`}>
-              <SectionCloseIcon name="close" />
-            </Tooltip>
-          </HideSectionModal>
-        )}
-      </SectionHeader>
-      <XrayContent databases={databaseCandidates} />
-    </Section>
-  );
-};
-
-interface XrayContentProps {
-  databases: DatabaseCandidate[];
-}
-
-const XrayContent = ({ databases }: XrayContentProps): JSX.Element => {
-  const schemas = databases.map(d => d.schema);
-  const [schema, setSchema] = useState(schemas[0]);
-  const database = databases.find(d => d.schema === schema);
-
-  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSchema(event.target.value);
-  };
+  database,
+  databaseCandidates,
+}: XraySectionProps): JSX.Element => {
+  const isSample = !database || database.is_sample;
+  const tables = databaseCandidates.flatMap(d => d.tables);
+  const tableCount = tables.length;
+  const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
 
   return (
     <div>
-      {schemas.length > 1 && (
-        <SelectRoot>
-          <SelectTitle>{t`Based on the schema`}</SelectTitle>
-          <Select value={schema} onChange={handleChange}>
-            {schemas.map(schema => (
-              <Option key={schema} value={schema}>
-                {schema}
-              </Option>
-            ))}
-          </Select>
-        </SelectRoot>
+      {isSample ? (
+        <SectionTitle>
+          {t`Try out these sample x-rays to see what Metabase can do.`}
+        </SectionTitle>
+      ) : (
+        <SectionTitle>
+          {t`Here are some explorations of`}
+          <DatabaseLink to={Urls.browseDatabase(database)}>
+            <DatabaseIcon name="database" />
+            <DatabaseTitle>{database.name}</DatabaseTitle>
+          </DatabaseLink>
+        </SectionTitle>
       )}
-      {database && (
-        <ListRoot>
-          {database.tables.map(table => (
-            <XrayCard key={table.url} table={table} />
-          ))}
-        </ListRoot>
-      )}
+      <XrayList>
+        {tables.map((table, index) => (
+          <XrayCard key={table.url} url={table.url}>
+            <XrayIconContainer>
+              <XrayIcon name="bolt" />
+            </XrayIconContainer>
+            <XrayTitle>
+              <XrayTitleSecondary>{tableMessages[index]}</XrayTitleSecondary>{" "}
+              <XrayTitlePrimary>{table.title}</XrayTitlePrimary>
+            </XrayTitle>
+          </XrayCard>
+        ))}
+      </XrayList>
     </div>
   );
 };
 
-interface XrayCardProps {
-  table: TableCandidate;
-}
+const getMessages = (count: number) => {
+  const options = [
+    t`A look at`,
+    t`A summary of`,
+    t`A glance at`,
+    t`Some insights about`,
+  ];
 
-const XrayCard = ({ table }: XrayCardProps): JSX.Element => {
-  return (
-    <CardRoot to={table.url}>
-      <CardIconContainer>
-        <CardIcon name="bolt" />
-      </CardIconContainer>
-      <CardTitle>
-        <Ellipsified>
-          {t`A look at your`} <strong>{table.title}</strong>
-        </Ellipsified>
-      </CardTitle>
-    </CardRoot>
-  );
-};
-
-interface HideSectionModalProps {
-  children?: ReactNode;
-  onSubmit?: () => void;
-}
-
-const HideSectionModal = ({
-  children,
-  onSubmit,
-}: HideSectionModalProps): JSX.Element => {
-  return (
-    <ModalWithTrigger
-      title={t`Remove these suggestions?`}
-      footer={<Button danger onClick={onSubmit}>{t`Remove`}</Button>}
-      triggerElement={children}
-    >
-      <span>
-        {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables.`}
-      </span>
-    </ModalWithTrigger>
-  );
+  return _.chain(count)
+    .range()
+    .map(index => options[index % options.length])
+    .sample(count)
+    .value();
 };
 
 export default XraySection;

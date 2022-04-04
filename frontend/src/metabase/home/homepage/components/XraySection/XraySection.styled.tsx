@@ -1,72 +1,75 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
+import HomeCard from "../HomeCard";
 
-export const ListRoot = styled.div`
-  display: grid;
-  grid-template-columns: repeat(1, 1fr);
-  gap: 1rem;
-
-  ${breakpointMinSmall} {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  ${breakpointMinMedium} {
-    grid-template-columns: repeat(3, 1fr);
-  }
-`;
-
-export const CardRoot = styled(Link)`
+export const SectionTitle = styled.div`
   display: flex;
   align-items: center;
-  padding: 1.125rem 1.5rem;
-  color: ${color("text-medium")};
-  border: 1px solid ${color("border")};
-  border-radius: 0.375rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 2px ${color("shadow")};
-  overflow: hidden;
-
-  &:hover {
-    color: ${color("brand")};
-  }
+  color: ${color("text-dark")};
+  font-weight: bold;
+  margin-bottom: 1.5rem;
 `;
 
-export const CardIcon = styled(Icon)`
+export const DatabaseLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  margin-left: 0.5rem;
+`;
+
+export const DatabaseIcon = styled(Icon)`
+  color: ${color("focus")};
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+`;
+
+export const DatabaseTitle = styled.span`
+  color: ${color("brand")};
+  font-weight: bold;
+`;
+
+export const XrayList = styled.div`
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+`;
+
+export const XrayCard = styled(HomeCard)`
+  display: flex;
+  align-items: center;
+`;
+
+export const XrayIcon = styled(Icon)`
   display: block;
+  flex: 0 0 auto;
   color: ${color("white")};
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1rem;
+  height: 1rem;
 `;
 
-export const CardIconContainer = styled.span`
+export const XrayIconContainer = styled.div`
   display: flex;
   flex: 0 0 auto;
   justify-content: center;
   align-items: center;
-  padding: 0.625rem;
-  border-radius: 0.375rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
   background-color: ${color("accent4")};
 `;
 
-export const CardTitle = styled.span`
-  display: block;
+export const XrayTitle = styled(Ellipsified)`
+  font-size: 1rem;
+  font-weight: bold;
   margin-left: 1rem;
-  overflow: hidden;
 `;
 
-export const SelectRoot = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
+export const XrayTitlePrimary = styled.span`
+  color: ${color("text-dark")};
 `;
 
-export const SelectTitle = styled.div`
+export const XrayTitleSecondary = styled.span`
   color: ${color("text-medium")};
-  margin-right: 0.5rem;
 `;

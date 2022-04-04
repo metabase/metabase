@@ -117,7 +117,8 @@
    ::invite    "1-0-1"
    ::dashboard "1-0-0"
    ::database  "1-0-0"
-   ::instance  "1-1-0"})
+   ::instance  "1-1-0"
+   ::timeline  "1-0-0"})
 
 (defn- context
   "Common context included in every analytics event"
@@ -158,7 +159,8 @@
    ::dashboard-created              ::dashboard
    ::question-added-to-dashboard    ::dashboard
    ::database-connection-successful ::database
-   ::database-connection-failed     ::database})
+   ::database-connection-failed     ::database
+   ::new-event-created              ::timeline})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

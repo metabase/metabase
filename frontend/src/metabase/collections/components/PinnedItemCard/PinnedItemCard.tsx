@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
+import { Collection } from "metabase-types/api";
+
 import Tooltip from "metabase/components/Tooltip";
-import { Item, Collection } from "metabase/collections/utils";
+import { Item } from "metabase/collections/utils";
 
 import {
   ItemLink,

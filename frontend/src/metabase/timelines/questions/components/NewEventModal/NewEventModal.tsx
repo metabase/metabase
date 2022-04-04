@@ -9,6 +9,7 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
+  cardId?: number;
   timelines?: Timeline[];
   collection: Collection;
   onSubmit: (values: Partial<TimelineEvent>, collection: Collection) => void;
@@ -16,24 +17,32 @@ export interface NewEventModalProps {
 }
 
 const NewEventModal = ({
+  cardId,
   timelines = [],
   collection,
   onSubmit,
   onClose,
 }: NewEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details({ timelines }), [timelines]);
-  const hasTimelines = timelines.length > 0;
-  const hasOneTimeline = timelines.length === 1;
-  const defaultTimeline = timelines[0];
+  const availableTimelines = useMemo(() => {
+    return timelines.filter(t => t.collection?.can_write);
+  }, [timelines]);
 
-  const initialValues = useMemo(
-    () => ({
-      timeline_id: hasTimelines ? defaultTimeline.id : null,
+  const form = useMemo(() => {
+    return forms.details({ timelines: availableTimelines });
+  }, [availableTimelines]);
+
+  const initialValues = useMemo(() => {
+    const defaultTimeline = availableTimelines[0];
+    const hasOneTimeline = availableTimelines.length === 1;
+
+    return {
+      timeline_id: defaultTimeline ? defaultTimeline.id : null,
       icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
-    }),
-    [defaultTimeline, hasTimelines, hasOneTimeline],
-  );
+      source: "question",
+      question_id: cardId,
+    };
+  }, [cardId, availableTimelines]);
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {

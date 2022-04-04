@@ -342,6 +342,7 @@ export default class DashboardHeader extends Component {
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
         <TippyPopoverWithTrigger
+          key="extra-actions-menu"
           placement="bottom-end"
           renderTrigger={({ onClick }) => (
             <DashboardHeaderButton onClick={onClick}>

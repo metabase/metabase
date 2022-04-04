@@ -100,7 +100,7 @@ describe("scenarios > admin > people", () => {
       cy.contains("Email address already in use.");
     });
 
-    it.skip("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
+    it("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
       cy.viewport(1000, 600);
 
       cy.visit("/admin/people");
@@ -215,7 +215,7 @@ describe("scenarios > admin > people", () => {
       generateGroups(51);
 
       cy.visit("/admin/people/groups");
-      cy.scrollTo("bottom");
+      cy.get("main").scrollTo("bottom");
       cy.findByText("readonly");
     });
 

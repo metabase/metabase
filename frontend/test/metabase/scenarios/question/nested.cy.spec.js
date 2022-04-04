@@ -7,6 +7,7 @@ import {
   visualize,
   getDimensionByName,
   summarize,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -214,8 +215,8 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.createDashboard().then(({ body: { id: DASBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASBOARD_ID}`);
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      visitDashboard(DASHBOARD_ID);
     });
 
     // Add Q2 to that dashboard

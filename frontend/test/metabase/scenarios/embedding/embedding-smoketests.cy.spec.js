@@ -1,4 +1,10 @@
-import { restore, visitQuestion, isEE, isOSS } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  isEE,
+  isOSS,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licenseUrl = "https://metabase.com/license/embedding";
@@ -84,10 +90,9 @@ describe("scenarios > embedding > smoke tests", () => {
     });
 
     it("should not let you embed the dashboard", () => {
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
 
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
 
       ensureEmbeddingIsDisabled();
     });
@@ -229,10 +234,9 @@ function visitAndEnableSharing(object) {
   }
 
   if (object === "dashboard") {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.findByText(/Embed this (question|dashboard) in an application/).click();
   }
 }

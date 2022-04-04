@@ -16,7 +16,7 @@ on:
 jobs:
   build:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 60
+    timeout-minutes: 25
     strategy:
       matrix:
         edition: [oss]
@@ -24,7 +24,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -37,10 +37,10 @@ jobs:
 
   percy:
     timeout-minutes: 30
-    runs-on: buildjet-8vcpu-ubuntu-2004
+    runs-on: buildjet-4vcpu-ubuntu-2004
     needs: build
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -57,7 +57,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

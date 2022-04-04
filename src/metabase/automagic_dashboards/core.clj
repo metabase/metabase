@@ -1316,7 +1316,7 @@
                                       first)
                        dashboard (make-dashboard root rule)]
                    {:url         (format "%stable/%s" public-endpoint (u/the-id table))
-                    :title       (:full-name root)
+                    :title       (:short-name root)
                     :score       (+ (math/sq (:specificity rule))
                                     (math/log (-> table :stats :num-fields))
                                     (if (-> table :stats :list-like?)
