@@ -363,7 +363,11 @@ const TITLE_LOCALES_BN = {
   'admin.book.flow': {
 	'en' : 'Current Status of every distributed book',
 	'bn' : 'প্রতিটি বইয়ের বিতরণের বর্তমান অবস্থা'
-  }
+  },
+  'admin.dashboard.school.status': {
+    'en' : 'School Status',
+    'bn' : 'বিদ্যালয়ের স্ট্যাটাস'
+    }
 }
 
 export function dashcard_locale_title (locale, title_key) {
