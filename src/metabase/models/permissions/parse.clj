@@ -107,7 +107,7 @@
     ;; data model perms
     [:data-model db-node]          (path2 db-node)
     [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
-                                     [:db db-id :data-model :all])
+                                     [:db db-id :data-model :schemas :all])
     [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
                                      (into [:db db-id :data-model :schemas] (path2 db-node)))
     [:dm-schema schema-name]       [schema-name :all]
