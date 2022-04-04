@@ -7,6 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
 
 import SearchBar from "metabase/nav/components/SearchBar";
+import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
 import {
   SearchBarContainer,
@@ -16,7 +17,7 @@ import {
 import Database from "metabase/entities/databases";
 import { isSmallScreen } from "metabase/lib/dom";
 
-import { AppBarRoot, LogoIconWrapper, SidebarButton } from "./AppBar.styled";
+import { AppBarRoot, LogoIconWrapper } from "./AppBar.styled";
 
 type Props = {
   isSidebarOpen: boolean;
