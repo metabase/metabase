@@ -65,9 +65,33 @@ export default function DefaultPicker({
     operator.name === "between" && operatorFields.length === 2;
 
   const extractFieldSettings = field => {
+    const visualizationSettings = filter
+      ?.query()
+      ?.question()
+      ?.settings();
+
+    // map column settings by field id
+    const parsedVisualizationSettings = Object.fromEntries(
+      Object.entries(visualizationSettings?.column_settings || {}).map(
+        ([key, value]) => {
+          try {
+            // destringify the keys eg: '["ref",["field",39,null]]' to find field ids
+            const fieldId = JSON.parse(key)[1][1];
+            return [fieldId, value];
+          } catch (err) {
+            return [null, null];
+          }
+        },
+      ),
+    );
+
     const fieldId = field?.id;
     const fieldMetadata = field?.metadata?.fields[fieldId];
-    return fieldMetadata?.settings;
+
+    return {
+      ...(fieldMetadata?.settings || {}),
+      ...(parsedVisualizationSettings[fieldId] || {}),
+    };
   };
 
   const fieldSettings = extractFieldSettings(field);
