@@ -229,6 +229,8 @@ const dataPermissions = handleActions(
           );
         }
 
+        const shouldDowngradeNative = permissionInfo.type === "access";
+
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(
             state,
@@ -237,6 +239,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
           return inferAndUpdateEntityPermissions(
             updatedPermissions,
@@ -244,6 +247,7 @@ const dataPermissions = handleActions(
             entityId,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         } else if (entityId.schemaName != null) {
           return updateTablesPermission(
@@ -253,6 +257,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         } else {
           return updateSchemasPermission(
@@ -262,6 +267,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         }
       },
