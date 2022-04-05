@@ -35,7 +35,7 @@ function CheckboxTooltip({
   );
 }
 
-const CheckBox = forwardRef(function Checkbox(
+const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
   {
     label,
     labelEllipsis = false,
@@ -91,22 +91,18 @@ const CheckBox = forwardRef(function Checkbox(
               />
             )}
           </CheckBoxIconContainer>
-          {label && (
-            <>
-              {isValidElement(label) && label}
-              {!isValidElement(label) && (
-                <CheckBoxLabel labelEllipsis={labelEllipsis} ref={labelRef}>
-                  {label}
-                </CheckBoxLabel>
-              )}
-            </>
-          )}
+          {label &&
+            (isValidElement(label) ? (
+              label
+            ) : (
+              <CheckBoxLabel labelEllipsis={labelEllipsis} ref={labelRef}>
+                {label}
+              </CheckBoxLabel>
+            ))}
         </CheckBoxContainer>
       </CheckboxTooltip>
     </CheckBoxRoot>
   );
 });
 
-export default Object.assign(CheckBox, {
-  Label: CheckBoxLabel,
-});
+export default CheckBox;

@@ -5,7 +5,7 @@ export interface CheckBoxInputProps {
 }
 
 export interface CheckBoxContainerProps {
-  disabled?: boolean;
+  disabled: boolean | undefined;
 }
 
 export interface CheckBoxIconProps {
@@ -14,7 +14,7 @@ export interface CheckBoxIconProps {
 }
 
 export interface CheckBoxIconContainerProps {
-  checked?: boolean;
+  checked: boolean | undefined;
   size: number;
   checkedColor: string;
   uncheckedColor: string;
@@ -25,14 +25,15 @@ export interface CheckBoxLabelProps {
 }
 
 export interface CheckBoxProps
-  extends CheckBoxContainerProps,
-    CheckBoxInputProps,
-    CheckBoxIconContainerProps,
-    CheckBoxIconProps,
-    CheckBoxLabelProps,
-    Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
+  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
   label?: ReactNode;
+  labelEllipsis?: boolean;
+  checked?: boolean;
   indeterminate?: boolean;
+  disabled?: boolean;
+  size?: number;
+  checkedColor?: string;
+  uncheckedColor?: string;
   autoFocus?: boolean;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
