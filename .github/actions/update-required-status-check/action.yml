@@ -5,7 +5,7 @@ runs:
   steps:
     - name: Set outputs
       id: vars
-      run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      run: echo "::set-output name=sha_short::$(git rev-parse  HEAD)"
       shell: bash
     - name: Update required status check
       run: gh api "repos/metabase/metabase/statuses/${{ steps.vars.outputs.sha_short }}" -f context="validate" -f state="success"
