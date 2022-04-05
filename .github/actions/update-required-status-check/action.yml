@@ -1,0 +1,16 @@
+name: Update Github Required for Status Check
+
+on:
+  push:
+
+jobs:
+  build:
+    name:  Update Github Required for Status Check
+    runs-on: ubuntu-20.04
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    steps:
+    - name: Update required status check
+      run: gh api "/repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
+        -f context="validate" \
+        -f state="success"

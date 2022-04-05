@@ -2,44 +2,22 @@
 name: Percy
 
 on:
-  push:
+  workflow_run:
+    workflows: [Uberjar]
+    types:
+      - completed
     branches:
-      - master
+      - workflow_run
       - "release-**"
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - "**unit.spec.js"
-      - "frontend/test/**"
-      - "!frontend/test/metabase-visual/**"
 
 jobs:
-  build:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - uses: actions/checkout@v3
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - run: ./bin/build
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-
   percy:
     timeout-minutes: 30
     runs-on: buildjet-4vcpu-ubuntu-2004
     needs: build
     steps:
+      - name: Set required status check
+        uses: ./.github/actions/set-required-status-check
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -63,3 +41,5 @@ jobs:
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
         if: env.PERCY_TOKEN != null
+      - name: Update required status check
+        uses: ./.github/actions/update-required-status-check

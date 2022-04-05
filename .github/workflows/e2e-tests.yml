@@ -1,41 +1,14 @@
 name: E2E Tests
 
 on:
-  push:
+  workflow_run:
+    workflows: [Uberjar]
+    types:
+      - completed
     branches:
-      - 'master'
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - ".circleci/**"
+      - workflow_run
 
 jobs:
-
-  build:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-
-    - run: ./bin/build version
-    - run: ./bin/build translations
-    - run: ./bin/build frontend
-    - run: ./bin/build licenses
-    - run: ./bin/build drivers
-    - run: ./bin/build uberjar
-
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
     runs-on: buildjet-4vcpu-ubuntu-2004
@@ -104,6 +77,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+    - name: Set required status check
+      uses: ./.github/actions/set-required-status-check
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
@@ -137,3 +112,5 @@ jobs:
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
+    - name: Update required status check
+      uses: ./.github/actions/update-required-status-check
