@@ -7,7 +7,7 @@ export const createMockModelObject = (
   ...opts,
 });
 
-export const createMockRecentView = (
+export const createMockRecentItem = (
   opts?: Partial<RecentItem>,
 ): RecentItem => ({
   model: "table",
@@ -15,7 +15,7 @@ export const createMockRecentView = (
   ...opts,
 });
 
-export const createMockPopularView = (
+export const createMockPopularItem = (
   opts?: Partial<PopularItem>,
 ): PopularItem => ({
   model: "table",
