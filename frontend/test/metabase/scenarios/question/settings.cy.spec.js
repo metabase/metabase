@@ -114,19 +114,26 @@ describe("scenarios > question > settings", () => {
         .trigger("mouseup", 0, -300, { force: true });
 
       reloadResults();
+
       findColumnAtIndex("Products → Category", 5);
+
       // Remove "Total"
       getSidebarColumns()
         .contains("Total")
         .closest(".cursor-grab")
         .find(".Icon-close")
         .click();
+
       reloadResults();
+
       cy.findByText("117.03").should("not.exist");
+
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
       cy.findByText("Visible columns").click();
+
       findColumnAtIndex("Products → Category", 5);
 
+      // We need to do some additional checks. Please see:
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
@@ -140,6 +147,7 @@ describe("scenarios > question > settings", () => {
 
       findColumnAtIndex("User → Address", -1).as("user-address");
 
+      // Move it one place up
       cy.get("@user-address")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
