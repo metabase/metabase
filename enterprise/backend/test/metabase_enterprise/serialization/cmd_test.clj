@@ -100,7 +100,6 @@
     (with-open [_conn (.getConnection data-source)]
       (letfn [(do-with-app-db [thunk]
                 (binding [mdb.conn/*application-db* (mdb.conn/application-db :h2 data-source)]
-                  (println (u/format-color :yellow "USING %s" (pr-str connection-string))) ; NOCOMMIT
                   (testing (format "\nApp DB = %s" (pr-str connection-string))
                     (thunk))))]
         (do-with-app-db
