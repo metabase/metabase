@@ -6,10 +6,13 @@ import { Database, DatabaseCandidate } from "metabase-types/api";
 import HomeCaption from "../HomeCaption";
 import HomeXrayCard from "../HomeXrayCard";
 import {
-  DatabaseIcon,
+  DatabaseLinkIcon,
   DatabaseLink,
-  DatabaseTitle,
+  DatabaseLinkText,
   SectionBody,
+  SchemaTrigger,
+  SchemaTriggerText,
+  SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
 
 export interface HomeXraySectionProps {
@@ -23,10 +26,11 @@ const HomeXraySection = ({
 }: HomeXraySectionProps): JSX.Element => {
   const isSample = !database || database.is_sample;
   const schemas = candidates.map(d => d.schema);
-  const [schema, setSchema] = useState(schemas[0]);
+  const [schema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
+  const canSelectSchema = schemas.length > 1;
 
   return (
     <div>
@@ -34,12 +38,25 @@ const HomeXraySection = ({
         <HomeCaption primary>
           {t`Try out these sample x-rays to see what Metabase can do.`}
         </HomeCaption>
+      ) : canSelectSchema ? (
+        <HomeCaption primary>
+          {t`Here are some explorations of the`}
+          <SchemaTrigger>
+            <SchemaTriggerText>{schema}</SchemaTriggerText>
+            <SchemaTriggerIcon name="chevrondown" />
+          </SchemaTrigger>
+          {t`schema in`}
+          <DatabaseLink to={Urls.browseDatabase(database)}>
+            <DatabaseLinkIcon name="database" />
+            <DatabaseLinkText>{database.name}</DatabaseLinkText>
+          </DatabaseLink>
+        </HomeCaption>
       ) : (
         <HomeCaption primary>
           {t`Here are some explorations of`}
           <DatabaseLink to={Urls.browseDatabase(database)}>
-            <DatabaseIcon name="database" />
-            <DatabaseTitle>{database.name}</DatabaseTitle>
+            <DatabaseLinkIcon name="database" />
+            <DatabaseLinkText>{database.name}</DatabaseLinkText>
           </DatabaseLink>
         </HomeCaption>
       )}
