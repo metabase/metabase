@@ -1,11 +1,7 @@
 import React, {
-  ChangeEvent,
-  FocusEvent,
   forwardRef,
-  HTMLAttributes,
   isValidElement,
   ReactElement,
-  ReactNode,
   Ref,
   useRef,
 } from "react";
@@ -18,21 +14,14 @@ import {
   CheckBoxLabel,
   CheckBoxRoot,
 } from "./CheckBox.styled";
-
-const DEFAULT_SIZE = 16;
-const DEFAULT_ICON_PADDING = 4;
-const DEFAULT_CHECKED_COLOR = "brand";
-const DEFAULT_UNCHECKED_COLOR = "text-light";
-
-function isEllipsisActive($span: HTMLSpanElement): boolean {
-  return $span.offsetWidth < $span.scrollWidth;
-}
-
-interface CheckboxTooltipProps {
-  condition: boolean;
-  label: ReactNode;
-  children: ReactNode;
-}
+import { CheckBoxProps, CheckboxTooltipProps } from "./types";
+import { isEllipsisActive } from "./utils";
+import {
+  DEFAULT_CHECKED_COLOR,
+  DEFAULT_ICON_PADDING,
+  DEFAULT_SIZE,
+  DEFAULT_UNCHECKED_COLOR,
+} from "./constants";
 
 function CheckboxTooltip({
   condition,
@@ -46,29 +35,13 @@ function CheckboxTooltip({
   );
 }
 
-export interface CheckBoxProps
-  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
-  label?: ReactNode;
-  labelEllipsis?: boolean;
-  checked?: boolean;
-  indeterminate?: boolean;
-  disabled?: boolean;
-  size?: number;
-  checkedColor?: string;
-  uncheckedColor?: string;
-  autoFocus?: boolean;
-  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
-}
-
 const CheckBox = forwardRef(function Checkbox(
   {
     label,
-    labelEllipsis,
+    labelEllipsis = false,
     checked,
     indeterminate,
-    disabled,
+    disabled = false,
     size = DEFAULT_SIZE,
     checkedColor = DEFAULT_CHECKED_COLOR,
     uncheckedColor = DEFAULT_UNCHECKED_COLOR,
@@ -122,10 +95,7 @@ const CheckBox = forwardRef(function Checkbox(
             <>
               {isValidElement(label) && label}
               {!isValidElement(label) && (
-                <CheckBoxLabel
-                  labelEllipsis={labelEllipsis || false}
-                  ref={labelRef}
-                >
+                <CheckBoxLabel labelEllipsis={labelEllipsis} ref={labelRef}>
                   {label}
                 </CheckBoxLabel>
               )}

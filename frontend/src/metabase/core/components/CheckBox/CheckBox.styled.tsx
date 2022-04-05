@@ -1,15 +1,18 @@
 import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+import {
+  CheckBoxContainerProps,
+  CheckBoxIconContainerProps,
+  CheckBoxIconProps,
+  CheckBoxInputProps,
+  CheckBoxLabelProps,
+} from "./types";
 
 export const CheckBoxRoot = styled.label`
   display: block;
   position: relative;
 `;
-
-export interface CheckBoxInputProps {
-  size: number;
-}
 
 export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   appearance: none;
@@ -25,10 +28,6 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   opacity: 0;
   z-index: 1;
 `;
-
-export interface CheckBoxContainerProps {
-  disabled: boolean | undefined;
-}
 
 export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: inline-flex;
@@ -46,24 +45,12 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   }
 `;
 
-export interface CheckBoxIconProps {
-  checked?: boolean;
-  uncheckedColor: string;
-}
-
 export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
   display: block;
   color: ${props => color(props.checked ? "white" : props.uncheckedColor)};
   width: ${props => `${props.size}px`};
   height: ${props => `${props.size}px`};
 `;
-
-export interface CheckBoxIconContainerProps {
-  checked: boolean | undefined;
-  size: number;
-  checkedColor: string;
-  uncheckedColor: string;
-}
 
 export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   display: flex;
@@ -78,10 +65,6 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   background-color: ${props =>
     color(props.checked ? props.checkedColor : "bg-white")};
 `;
-
-export interface CheckBoxLabelProps {
-  labelEllipsis: boolean;
-}
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`
   display: block;
