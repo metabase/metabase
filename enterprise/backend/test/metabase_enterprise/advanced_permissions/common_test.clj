@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
-            [metabase.models :refer [Permissions PermissionsGroup]]
+            [metabase.models :refer [Permissions]]
             [metabase.models.database :as database]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
