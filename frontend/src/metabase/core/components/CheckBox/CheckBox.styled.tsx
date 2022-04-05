@@ -34,6 +34,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: inline-flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
+  max-width: 100%;
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
@@ -78,7 +79,19 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
     color(props.checked ? props.checkedColor : "bg-white")};
 `;
 
-export const CheckBoxLabel = styled.span`
+export interface CheckBoxLabelProps {
+  labelEllipsis: boolean;
+}
+
+export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`
   display: block;
   margin-left: 0.5rem;
+  ${({ labelEllipsis }) =>
+    labelEllipsis
+      ? `;
+         overflow: hidden;
+         text-overflow: ellipsis;
+         white-space: nowrap;
+         `
+      : ""}
 `;

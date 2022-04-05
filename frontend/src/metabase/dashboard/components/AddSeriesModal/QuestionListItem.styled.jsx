@@ -21,17 +21,18 @@ export const QuestionListItemRoot = styled.li`
 `;
 
 export const CheckboxContainer = styled.div`
+  display: inline-block;
   padding: 0 0.5rem 0 0;
   max-width: 100%;
+  width: ${({ hasIcon }) => (hasIcon ? "calc(100% - 36px)" : "100%")};
 `;
 
 export const WarningIcon = styled(Icon)`
-  padding: 0 0.5rem;
-  display: flex;
-  margin-left: auto;
   color: ${color("text-light")};
   cursor: pointer;
-  flex-shrink: 0;
+  margin-left: auto;
+  max-width: 36px;
+  padding: 0 0.5rem;
 
   &:hover {
     color: ${color("text-medium")};
