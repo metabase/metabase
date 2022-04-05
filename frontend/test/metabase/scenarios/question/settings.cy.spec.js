@@ -136,9 +136,6 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Address")
         .siblings(".Icon-add")
         .click();
-      /**
-       * Helper functions related to THIS test only
-       */
       // The result automatically load when adding new fields
       cy.wait("@dataset");
 
@@ -157,6 +154,9 @@ describe("scenarios > question > settings", () => {
         .trigger("mouseup", 0, -50, { force: true });
 
       findColumnAtIndex("User → Address", 15);
+      /**
+       * Helper functions related to THIS test only
+       */
 
       function reloadResults() {
         cy.icon("play")
