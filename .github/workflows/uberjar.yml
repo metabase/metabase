@@ -15,6 +15,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
       GITHUB_TOKEN: ${{ github.token }}
+      HEAD: ${{ github.head_ref.sha }}
     steps:
     - name: Check out the code
       uses: actions/checkout@v3

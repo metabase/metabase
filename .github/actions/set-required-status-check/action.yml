@@ -4,12 +4,8 @@ runs:
   using: "composite"
   steps:
     - name: Log
-      run: echo $ISSUE
-      env:
-        ISSUE: ${{ github.event.head }}
+      run: echo $HEAD
       shell: bash
     - name: Set required status check
       run: gh api "repos/metabase/metabase/statuses/$HEAD" -f context="validate" -f state="pending"
-      env:
-        HEAD: ${{ github.event.head }}
       shell: bash
