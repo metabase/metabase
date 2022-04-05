@@ -79,13 +79,3 @@ export function isPermissionDisabled(index, permission, isDisabled) {
     .closest("a")
     .should("have.attr", "aria-disabled", isDisabled.toString());
 }
-
-export function assertPermissionForItem(
-  item,
-  permissionColumnIndex,
-  permissionValue,
-) {
-  getPermissionRowPermissions(item)
-    .eq(permissionColumnIndex)
-    .should("have.text", permissionValue);
-}
