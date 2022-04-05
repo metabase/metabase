@@ -8,12 +8,15 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin.types :as p.types]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+            [toucan.models :as models]
+            [metabase.plugins.classloader :as classloader]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -116,6 +119,18 @@
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
 
+(defn- write-perms-path
+  "Returns the permission path required to edit a field in the table specified by the provided args. If Enterprise
+  Edition code is available, and a valid :advanced-permissions token is present, returns the data model permissions
+  path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
+  [db-id schema table-id]
+  (let [f (u/ignore-exceptions
+           (classloader/require ' metabase-enterprise.advanced-permissions.models.permissions)
+           (resolve ' metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+    (if (and f premium-features/enable-advanced-permissions?)
+      (f db-id schema table-id)
+      "/")))
+
 (def ^:private ^{:arglists '([table-id])} perms-objects-set*
   "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
@@ -129,21 +144,25 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
-   (fn [table-id]
-     (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-       #{(perms/data-perms-path database-id schema table-id)}))
+   (fn [table-id read-or-write]
+     (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+       #{(case read-or-write
+           :read  (perms/data-perms-path db-id schema table-id)
+           :write (write-perms-path db-id schema table-id))}))
    :ttl/threshold 5000))
 
 (defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
    same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
-  [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
+  [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
-    #{(perms/data-perms-path db-id schema table-id)}
+    #{(case read-or-write
+        :read  (perms/data-perms-path db-id schema table-id)
+        :write (write-perms-objects-set db-id schema table-id))}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (perms-objects-set* table-id)))
+    (perms-objects-set* table-id read-or-write)))
 
 (defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
@@ -182,7 +201,7 @@
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
