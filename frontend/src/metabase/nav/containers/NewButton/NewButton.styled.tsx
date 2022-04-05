@@ -18,6 +18,7 @@ export const ButtonLink = styled(Link)`
   align-items: center;
   margin-right: 0.5rem;
   padding: 0.5rem;
+  height: 36px;
 `;
 
 export const Title = styled.h4`
