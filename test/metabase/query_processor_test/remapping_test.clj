@@ -232,9 +232,9 @@
                          :order-by     [[:asc $id] [:asc $product_id->products.category]]
                          :limit        1})]
             (mt/with-native-query-testing-context query
-                                                  (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 false "Rustic Paper Car"]]
-                                                         (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int boolean str]
-                                                                            (qp/process-query query)))))))))))
+              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 false "Rustic Paper Car"]]
+                     (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int boolean str]
+                       (qp/process-query query)))))))))))
 
 (deftest multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"

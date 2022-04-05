@@ -353,57 +353,6 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
-(deftest boolean-expressions-test
-  (is (= '{:select [source.ID AS ID
-                    source.booltest AS booltest]
-           :from   [{:select [VENUES.ID AS ID
-                              VENUES.ID >= 10 AS booltest]
-                     :from   [VENUES]}
-                    source]
-           :limit  [1]}
-        (-> (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :expressions  {:booltest [:>= $id 10]}
-                              :fields       [$id [:expression "booltest"]]}
-               :fields       [$id *booltest/Boolean]
-               :limit        1})
-          mbql->native
-          sql.qp-test-util/sql->sql-map))))
-
-(deftest boolean-expression-not-equal-test
-  (is (= '{:select [source.ID AS ID
-                    source.booltest AS booltest]
-           :from   [{:select [VENUES.ID AS ID
-                              (VENUES.ID <> 2 or VENUES.ID IS NULL) AS booltest]
-                     :from   [VENUES]}
-                    source]
-           :limit  [1]}
-        (-> (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :expressions  {:booltest [:!= $id 2]}
-                              :fields       [$id [:expression "booltest"]]}
-               :fields       [$id *booltest/Boolean]
-               :limit        1})
-          mbql->native
-          sql.qp-test-util/sql->sql-map))))
-
-(deftest numeric-expressions-test
-  (is (= '{:select [source.ID AS ID
-                    source.numtest AS numtest]
-           :from   [{:select [VENUES.ID AS ID
-                              (VENUES.ID + 10) AS numtest]
-                     :from   [VENUES]}
-                    source]
-           :limit  [1]}
-        (-> (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :expressions  {:numtest [:+ $id 10]}
-                              :fields       [$id [:expression "numtest"]]}
-               :fields       [$id *numtest/Integer]
-               :limit        1})
-          mbql->native
-          sql.qp-test-util/sql->sql-map))))
-
 (deftest boolean-cast-test
   (is (= '{:select [source.ID AS ID
                     source.casetest AS casetest]

@@ -1635,25 +1635,3 @@
   "Compiled schema validator for an [outer] Metabase query. (Pre-compling a validator is more efficient; use this
   instead of calling `(s/validate Query query)` or similar."
   (s/validator Query))
-
-(comment
-  (validate-query {:type :query,
-                   :query {:source-table 3, :expressions {"Bool" [:> [:field 1 nil] 10]}},
-                   :database 1,
-                   :middleware {:js-int-to-string? true, :add-default-userland-constraints? true},
-                   :info
-                   {:executed-by 1,
-                    :context :ad-hoc}})
-  (validate-query {:type :query,
-                   :query {:source-table 3, :expressions {"Bool" [:= "x" "y"]}},
-                   :database 1,
-                   :middleware {:js-int-to-string? true, :add-default-userland-constraints? true},
-                   :info
-                   {:executed-by 1,
-                    :context :ad-hoc,
-
-                    :constraints {:max-results 10000, :max-results-bare-rows 2000}}})
-
-  (s/validate case [:case [[[:> [:field 17 nil] 10] false]] {:default true}])
-  (s/validate FieldOrExpressionDef [:= true false])
-  )

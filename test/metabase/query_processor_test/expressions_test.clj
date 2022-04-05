@@ -408,20 +408,20 @@
 
 (deftest fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
-                   (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
-                     (mt/dataset sample-dataset
-                                 (let [results (mt/run-mbql-query orders
-                                                                  {:expressions {"CE" [:case
-                                                                                       [[[:> $discount 0] $created_at]]
-                                                                                       {:default $product_id->products.created_at}]}
-                                                                   :order-by    [[:asc $id]]
-                                                                   :limit       2})]
-                                   (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Canceled" "CE"]
-                                          (map :display_name (mt/cols results))))
-                                   (is (= [[1 1 14 37.7 2.1 39.7 nil "2019-02-11T21:40:27.892Z" 2 false "2017-12-31T14:41:56.87Z"]
-                                           [2 1 123 110.9 6.1 117.0 nil "2018-05-15T08:04:04.58Z" 3 false "2017-11-16T13:53:14.232Z"]]
-                                          (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int boolean str]
-                                                             results))))))))
+    (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
+      (mt/dataset sample-dataset
+        (let [results (mt/run-mbql-query orders
+                        {:expressions {"CE" [:case
+                                             [[[:> $discount 0] $created_at]]
+                                             {:default $product_id->products.created_at}]}
+                         :order-by    [[:asc $id]]
+                         :limit       2})]
+          (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "Canceled" "CE"]
+                 (map :display_name (mt/cols results))))
+          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 false "2017-12-31T14:41:56.87Z"]
+                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 false "2017-11-16T13:53:14.232Z"]]
+                 (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int boolean str]
+                   results))))))))
 
 (deftest string-operations-from-subquery
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)

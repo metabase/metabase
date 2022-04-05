@@ -633,7 +633,7 @@
     (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (partial= (mt/$ids products
-                                                           {:source-query {:source-table $$products
+                        {:source-query       {:source-table $$products
                                               :expressions  {"CATEGORY" [:concat
                                                                          [:field %category {::add/source-table  $$products
                                                                                             ::add/source-alias  "CATEGORY"
@@ -675,25 +675,25 @@
                                                                                   ::add/position      7}]
                                                              [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
                                                                                       ::add/position      8}]]}
-                                                            :breakout     [[:field "CATEGORY_2" {:base-type          :type/Text
+                         :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
                                                                     ::add/source-table  ::add/source
                                                                     ::add/source-alias  "CATEGORY_2"
                                                                     ::add/desired-alias "CATEGORY_2"
                                                                     ::add/position      0}]]
-                                                            :aggregation  [[:aggregation-options [:count] {:name               "count"
+                         :aggregation        [[:aggregation-options [:count] {:name               "count"
                                                                               ::add/desired-alias "count"
                                                                               ::add/position      1}]]
-                                                            :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                         :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                                           ::add/source-table  ::add/source
                                                                           ::add/source-alias  "CATEGORY_2"
                                                                           ::add/desired-alias "CATEGORY_2"
                                                                           ::add/position      0}]]]
-                                                            :limit        1})
+                         :limit              1})
                       (-> (mt/mbql-query products
                             {:expressions {"CATEGORY" [:concat $category "2"]}
-                                                                      :breakout    [:expression "CATEGORY"]
+                             :breakout    [:expression"CATEGORY"]
                              :aggregation [[:count]]
-                                                                      :order-by    [[:asc [:expression "CATEGORY"]]]
+                             :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
                           qp/preprocess
                           add/add-alias-info

@@ -810,7 +810,7 @@
                                                       s/Keyword s/Any}
                                                      result)))
                                       (get-in result [:data :results_metadata :columns]))
-              expected-cols (qp/query->expected-cols (mt/mbql-query orders))]
+              expected-cols         (qp/query->expected-cols (mt/mbql-query orders))]
           ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
           (doseq [[description result-metadata] {"NONE"                   nil
                                                  "from running the query" card-results-metadata
@@ -819,13 +819,13 @@
                              description (pr-str (mapv :display_name result-metadata)))
               (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query orders)
                                                  :result_metadata result-metadata}]
-                            ;; now try using this Card as a saved question,  should work
-                            (is (= {:rows    [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes"]
-                                              [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 false "Mediocre Wooden Bench"]]
-                                    :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "CANCELED" "TITLE"]}
-                                   (mt/rows+column-names
-                                     (mt/run-mbql-query orders
-                                                        {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))
+                ;; now try using this Card as a saved question,  should work
+                (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes"]
+                                  [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 false "Mediocre Wooden Bench"]]
+                        :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "CANCELED" "TITLE"]}
+                       (mt/rows+column-names
+                         (mt/run-mbql-query orders
+                           {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))
 
 (deftest nested-query-with-joins-test-2
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
