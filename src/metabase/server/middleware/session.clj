@@ -1,19 +1,19 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?* *is-group-manager?*]]
+            [metabase.api.common
+             :refer
+             [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]

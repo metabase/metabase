@@ -71,13 +71,15 @@
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
         (testing "admins should have full general permisions"
-          (is (= {:can_access_setting true
-                  :can_access_subscription true
-                  :can_access_monitoring true}
-                 (user-general-permissions :crowberto))))
+          (is (partial=
+               {:can_access_setting true
+                :can_access_subscription true
+                :can_access_monitoring true}
+               (user-general-permissions :crowberto))))
 
         (testing "non-admin users should only have subscriptions enabled"
-          (is (= {:can_access_setting false
-                  :can_access_subscription true
-                  :can_access_monitoring false}
-                 (user-general-permissions :rasta))))))))
+          (is (partial=
+               {:can_access_setting false
+                :can_access_subscription true
+                :can_access_monitoring false}
+               (user-general-permissions :rasta))))))))
