@@ -4,5 +4,5 @@ runs:
   using: "composite"
   steps:
     - name: Update required status check
-      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" -f context="validate" -f state="success"
+      run: gh api "repos/metabase/metabase/statuses/${{ github.event.head }}" -f context="validate" -f state="success"
       shell: bash
