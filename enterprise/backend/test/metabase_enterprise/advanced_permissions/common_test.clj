@@ -68,15 +68,6 @@
                           :tables)]
           (is (= [id-1] (map :id tables))))))))
 
-(defn- simple-field-details [field]
-  (select-keys field [:name
-                      :display_name
-                      :description
-                      :visibility_type
-                      :semantic_type
-                      :fk_target_field_id
-                      :nfc_path]))
-
 (deftest update-field-test
   (testing "PUT /api/field/:id"
     (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
@@ -108,3 +99,34 @@
         (testing "a non-admin can update field metadata if they have data model perms for the table"
           (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id :all}}}}}
             (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))))))
+
+(deftest update-table-test
+  (testing "PUT /api/table/:id"
+    (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+      (let [endpoint (format "table/%d" table-id)]
+        (testing "a non-admin cannot update table metadata if they have no data model permissions for the DB"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas :none}}}
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
+
+        (testing "a non-admin cannot update table metadata if they only have data model permissions for other schemas"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC"           :none
+                                                                      "different schema" :all}}}}
+
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
+
+        (testing "a non-admin cannot update table metadata if they only have data model permissions for other tables"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id       :none
+                                                                                (inc table-id) :all}}}}}
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
+
+        (testing "a non-admin can update table metadata if they have data model perms for the DB"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas :all}}}
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 2"})))
+
+        (testing "a non-admin can update table metadata if they have data model perms for the schema"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" :all}}}}
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))
+
+        (testing "a non-admin can update table metadata if they have data model perms for the table"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))))
