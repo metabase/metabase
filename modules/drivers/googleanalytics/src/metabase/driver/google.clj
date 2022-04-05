@@ -2,7 +2,6 @@
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
   (:require [clojure.tools.logging :as log]
             [metabase.config :as config]
-            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
@@ -17,8 +16,6 @@
            com.google.api.client.json.jackson2.JacksonFactory
            com.google.api.client.json.JsonFactory
            java.io.ByteArrayInputStream))
-
-(driver/register! :google, :abstract? true)
 
 (def ^HttpTransport http-transport
   "`HttpTransport` for use with Google drivers."
