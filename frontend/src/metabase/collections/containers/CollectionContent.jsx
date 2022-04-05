@@ -10,6 +10,7 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
+import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -21,8 +22,10 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
+import { isSmallScreen } from "metabase/lib/dom";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -41,10 +44,12 @@ function mapStateToProps(state, props) {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
+    isNavbarOpen: getIsNavbarOpen(state),
   };
 }
 
 const mapDispatchToProps = {
+  openNavbar,
   createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
   deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
 };
@@ -58,8 +63,9 @@ function CollectionContent({
   deleteBookmark,
   isAdmin,
   isRoot,
-  handleToggleMobileSidebar,
   metadata,
+  isNavbarOpen,
+  openNavbar,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -76,6 +82,12 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+
+  useOnMount(() => {
+    if (!isSmallScreen()) {
+      openNavbar();
+    }
+  });
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -181,7 +193,6 @@ function CollectionContent({
                   collection,
                   collectionList,
                 )}
-                handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
               <PinnedItemOverview
                 items={pinnedItems}
@@ -269,6 +280,7 @@ function CollectionContent({
                         hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
+                        isNavbarOpen={isNavbarOpen}
                       />
                     </CollectionTable>
                   );

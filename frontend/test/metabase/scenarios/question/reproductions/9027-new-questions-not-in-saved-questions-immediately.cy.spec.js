@@ -3,6 +3,8 @@ import {
   popover,
   openNativeEditor,
   openNotebookEditor,
+  openNavigationSidebar,
+  navigationSidebar,
 } from "__support__/e2e/cypress";
 
 const QUESTION_NAME = "Foo";
@@ -29,8 +31,10 @@ describe("issue 9027", () => {
 
   it("should display newly saved question in the 'Saved Questions' list immediately (metabase#9027)", () => {
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
+    openNavigationSidebar();
     archiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME, false);
+    openNavigationSidebar();
     unarchiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
   });
@@ -55,8 +59,9 @@ function saveQuestion(name) {
 }
 
 function archiveQuestion(questionName) {
-  cy.findByTestId("main-logo").click();
-  cy.findByText("Browse all items").click();
+  navigationSidebar()
+    .findByText("Our analytics")
+    .click();
   openEllipsisMenuFor(questionName);
   popover()
     .findByText("Archive")
@@ -64,10 +69,12 @@ function archiveQuestion(questionName) {
 }
 
 function unarchiveQuestion(questionName) {
-  cy.findByTestId("main-logo").click();
-  cy.findByText("Browse all items").click();
-  // Button is covered with an undo toast
-  cy.findByText("View archive").click({ force: true });
+  navigationSidebar().within(() => {
+    cy.icon("ellipsis").click();
+  });
+  popover()
+    .findByText("View archive")
+    .click();
   cy.findByText(questionName)
     .parent()
     .within(() => {

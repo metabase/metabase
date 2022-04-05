@@ -57,7 +57,9 @@ describe("scenarios > dashboard", () => {
   it("should update the name and description", () => {
     visitDashboard(1);
 
-    cy.icon("ellipsis").click();
+    cy.get("main header").within(() => {
+      cy.icon("ellipsis").click();
+    });
     // update title
     popover().within(() => cy.findByText("Edit dashboard details").click());
 
@@ -439,9 +441,9 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
-    // Fullscreen modal opens - close it now
-    cy.icon("close").click();
+    cy.get(".Modal--full").within(() => {
+      cy.icon("close").click();
+    });
     cy.get(".Modal--full").should("not.exist");
     assertScrollBarExists();
   });

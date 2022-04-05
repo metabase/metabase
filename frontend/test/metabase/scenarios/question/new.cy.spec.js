@@ -150,7 +150,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should display the collection tree on the left side", () => {
-        cy.findByText("Our analytics");
+        popover().findByText("Our analytics");
       });
 
       it("should display the saved questions list on the right side", () => {
@@ -174,7 +174,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("should display the collection tree on the left side", () => {
-        cy.findByText("Our analytics");
+        popover().findByText("Our analytics");
       });
 
       it("should display the saved questions list on the right side", () => {
@@ -193,9 +193,11 @@ describe("scenarios > question > new", () => {
         // Try to choose a different saved question
         cy.findByTestId("data-step-cell").click();
 
-        cy.findByText("Our analytics");
-        cy.findByText("Orders");
-        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        popover().within(() => {
+          cy.findByText("Our analytics");
+          cy.findByText("Orders");
+          cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        });
 
         visualize();
 

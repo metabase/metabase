@@ -71,23 +71,24 @@
                     {:aggregation [[:count]]})
             result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (= {:data                   {:rows             [[1000]]
-                                           :cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
-                                           :native_form      true
-                                           :results_timezone "UTC"}
-                  :row_count              1
-                  :status                 "completed"
-                  :context                "ad-hoc"
-                  :json_query             (-> (mt/mbql-query checkins
-                                                {:aggregation [[:count]]})
-                                              (assoc-in [:query :aggregation] [["count"]])
-                                              (assoc :type "query")
-                                              (merge query-defaults))
-                  :started_at             true
-                  :running_time           true
-                  :average_execution_time nil
-                  :database_id            (mt/id)}
-                 (format-response result))))
+          (is (partial=
+               {:data                   {:rows             [[1000]]
+                                         :cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :native_form      true
+                                         :results_timezone "UTC"}
+                :row_count              1
+                :status                 "completed"
+                :context                "ad-hoc"
+                :json_query             (-> (mt/mbql-query checkins
+                                              {:aggregation [[:count]]})
+                                            (assoc-in [:query :aggregation] [["count"]])
+                                            (assoc :type "query")
+                                            (merge query-defaults))
+                :started_at             true
+                :running_time           true
+                :average_execution_time nil
+                :database_id            (mt/id)}
+               (format-response result))))
         (testing "\nSaved QueryExecution"
           (is (= {:hash         true
                   :row_count    1

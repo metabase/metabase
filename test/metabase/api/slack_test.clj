@@ -11,7 +11,8 @@
              `slack-token` setting is cleared"
       (with-redefs [slack/valid-token? (constantly true)
                     slack/channel-exists? (constantly true)
-                    slack/refresh-channels-and-usernames! (fn ([]) ([_]))]
+                    slack/refresh-channels-and-usernames! (constantly nil)
+                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (mt/with-temporary-setting-values [slack-app-token nil
                                            slack-token     "fake-token"]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
@@ -24,7 +25,8 @@
                       ;; Token validation is skipped by default in test environments; overriding `is-test?` ensures
                       ;; that validation occurs
                       config/is-test?    false
-                      slack/refresh-channels-and-usernames! (constantly nil)]
+                      slack/refresh-channels-and-usernames! (constantly nil)
+                      slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "slack/settings" {:slack-app-token "fake-token"})]
             (is (= {:slack-app-token "invalid token"} (:errors response)))
             (is (= nil (slack/slack-app-token)))

@@ -2,8 +2,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import fitViewport from "metabase/hoc/FitViewPort";
-
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
     className={className}
@@ -41,4 +39,4 @@ SidebarLayout.propTypes = {
   children: PropTypes.element.isRequired,
 };
 
-export default fitViewport(SidebarLayout);
+export default SidebarLayout;

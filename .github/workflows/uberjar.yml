@@ -1,4 +1,4 @@
-name: Uberjar
+name: Build + Docker Uberjar
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
 
 jobs:
   build:
+    name: Build MB ${{ matrix.edition }}
     runs-on: ubuntu-20.04
     timeout-minutes: 40
     strategy:
@@ -33,7 +34,7 @@ jobs:
 
   check_jar_health:
     runs-on: ubuntu-20.04
-    name: check ${{ matrix.edition }} (java ${{ matrix.java-version }})
+    name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: build
     timeout-minutes: 10
     strategy:
@@ -48,7 +49,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -59,6 +60,7 @@ jobs:
 
   containerize_test_and_push_container:
     runs-on: ubuntu-20.04
+    name: Containerize ${{ matrix.edition }}
     needs: check_jar_health
     strategy:
       matrix:
@@ -76,7 +78,7 @@ jobs:
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v2
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: bin/docker/

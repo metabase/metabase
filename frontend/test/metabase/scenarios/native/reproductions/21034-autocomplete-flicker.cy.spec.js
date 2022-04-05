@@ -1,6 +1,6 @@
 import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
-describe.skip("issue 21034", () => {
+describe("issue 21034", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

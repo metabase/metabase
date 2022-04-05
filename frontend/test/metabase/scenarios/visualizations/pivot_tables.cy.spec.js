@@ -626,9 +626,6 @@ describe("scenarios > visualizations > pivot tables", () => {
           cy.visit("collection/root");
           cy.findByText(test.subject).click();
           cy.icon("share").click();
-          if (test.case === "dashboard") {
-            cy.findByText("Sharing and embedding").click();
-          }
         });
 
         it("should display pivot table in a public link", () => {

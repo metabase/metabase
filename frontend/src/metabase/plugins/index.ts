@@ -1,10 +1,18 @@
 import { t } from "ttag";
+import React from "react";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import {
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { GroupsPermissions, User } from "metabase-types/api";
+import {
+  Collection,
+  Bookmark,
+  GroupsPermissions,
+  User,
+  Dataset,
+} from "metabase-types/api";
+import { State } from "metabase-types/store";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -55,8 +63,9 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getShowAuthScene: (state: any, props: any) => true,
-  getLogoBackgroundClass: (state: any, props: any) => "bg-white",
+  getShowBrandLogo: (state: State) => true,
+  getShowBrandScene: (state: State) => true,
+  getLogoBackgroundClass: (state: State) => "bg-white",
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -79,7 +88,7 @@ const AUTHORITY_LEVEL_REGULAR = {
 
 export const PLUGIN_COLLECTIONS = {
   authorityLevelFormFields: [],
-  isRegularCollection: (_: any) => true,
+  isRegularCollection: (_: Collection | Bookmark) => true,
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -105,6 +114,8 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: () => null,
 };
 
+export const PLUGIN_REDUCERS = {} as any;
+
 export const PLUGIN_ADVANCED_PERMISSIONS = {
   addDatabasePermissionOptions: (permissions: any[]) => permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
@@ -115,9 +126,6 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
-  canAccessSettings: (_user: User) => false,
-  canAccessDataModel: (_user: User) => false,
-  canAccessDatabaseManagement: (_user: User) => false,
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
@@ -129,4 +137,14 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     return [] as any;
   },
   dataColumns: [] as any,
+  getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
+  canDownloadResults: (_result: Dataset): boolean => true,
+};
+
+export const PLUGIN_GENERAL_PERMISSIONS = {
+  getRoutes: (): React.ReactNode => null,
+  tabs: [] as any,
+  selectors: {
+    canManageSubscriptions: (_state: any) => true,
+  },
 };
