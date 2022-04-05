@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
 
 describe("scenarios > embedding > code snippets", () => {
   beforeEach(() => {
@@ -7,9 +7,8 @@ describe("scenarios > embedding > code snippets", () => {
   });
 
   it("dashboard should have the correct embed snippet", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.contains(/Embed this .* in an application/).click();
     cy.contains("Code").click();
 

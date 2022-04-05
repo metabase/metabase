@@ -1,4 +1,8 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openNavigationSidebar,
+} from "__support__/e2e/cypress";
 
 describe("issue 19742", () => {
   beforeEach(() => {
@@ -14,6 +18,7 @@ describe("issue 19742", () => {
     selectFromDropdown("Question");
     selectFromDropdown("Sample Database");
 
+    openNavigationSidebar();
     cy.icon("gear").click();
     selectFromDropdown("Admin settings");
 

@@ -19,7 +19,12 @@ import {
 
 const propTypes = {
   entities: PropTypes.arrayOf(PropTypes.object),
-  columns: PropTypes.arrayOf(PropTypes.string),
+  columns: PropTypes.arrayOf(
+    PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      hint: PropTypes.string,
+    }),
+  ),
   emptyState: PropTypes.node,
   onSelect: PropTypes.func,
   onChange: PropTypes.func,
@@ -74,10 +79,17 @@ export function PermissionsTable({
       <PermissionsTableRoot data-testid="permission-table">
         <thead>
           <tr>
-            {columns.map(column => {
+            {columns.map(({ name, hint }) => {
               return (
-                <PermissionTableHeaderCell key={column}>
-                  <ColumnName>{column}</ColumnName>
+                <PermissionTableHeaderCell key={name}>
+                  <ColumnName>
+                    {name}{" "}
+                    {hint && (
+                      <Tooltip placement="right" tooltip={hint}>
+                        <HintIcon />
+                      </Tooltip>
+                    )}
+                  </ColumnName>
                 </PermissionTableHeaderCell>
               );
             })}
@@ -105,7 +117,7 @@ export function PermissionsTable({
 
                 {entity.permissions.map(permission => {
                   return (
-                    <PermissionsTableCell key={permission.name}>
+                    <PermissionsTableCell key={permission.type}>
                       <PermissionsSelect
                         {...permission}
                         onChange={(value, toggleState) =>

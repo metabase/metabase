@@ -148,16 +148,6 @@ export default class Select extends Component {
   };
 
   renderItemIcon = item => {
-    if (this.itemIsSelected(item)) {
-      return (
-        <Icon
-          name="check"
-          size={14}
-          color={color("text-dark")}
-          style={{ minWidth: MIN_ICON_WIDTH }}
-        />
-      );
-    }
     const icon = this.props.optionIconFn(item);
     if (icon) {
       return (
@@ -169,6 +159,18 @@ export default class Select extends Component {
         />
       );
     }
+
+    if (this.itemIsSelected(item)) {
+      return (
+        <Icon
+          name="check"
+          size={14}
+          color={color("text-dark")}
+          style={{ minWidth: MIN_ICON_WIDTH }}
+        />
+      );
+    }
+
     return <span style={{ minWidth: MIN_ICON_WIDTH }} />;
   };
 

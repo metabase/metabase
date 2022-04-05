@@ -5,7 +5,10 @@ import {
   modal,
   openPeopleTable,
   visualize,
+  navigationSidebar,
   openNotebookEditor,
+  openNavigationSidebar,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -260,11 +263,11 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       // Check names
-      cy.wait(3000).contains("A look at your People table");
-      cy.contains("A look at your Orders table");
-      cy.contains("A look at your Test Table table").should("not.exist");
+      cy.wait(3000).contains("People");
+      cy.contains("Orders");
+      cy.contains("Test Table").should("not.exist");
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.get("h1").contains("Our analytics");
       cy.findByText("A look at your").should("not.exist");
@@ -277,10 +280,12 @@ describe("smoketest > admin_setup", () => {
     it("should rename a question and description as admin", () => {
       cy.visit("/");
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
       cy.findByText("Other users' personal collections");
-      cy.findByText("A look at your").should("not.exist");
 
       cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
@@ -384,16 +389,16 @@ describe("smoketest > admin_setup", () => {
 
       // Checking table name
 
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Reviews table");
-      cy.contains("A look at your Orders table").should("not.exist");
+      cy.contains("Test Table");
 
       // Navigating to Test Table table
 
       browse().click();
       cy.findByTextEnsureVisible("Sample Database").click();
 
-      cy.icon("database").should("not.exist");
+      cy.get("main").within(() => {
+        cy.icon("database").should("not.exist");
+      });
 
       cy.findByText("Test Table").click();
 
@@ -402,7 +407,7 @@ describe("smoketest > admin_setup", () => {
       cy.wait(1)
         .findByText("Discount")
         .should("not.exist");
-      cy.findByText("Sale ($)");
+      cy.findByTextEnsureVisible("Sale ($)");
 
       cy.findByText("Created At").should("not.exist");
 
@@ -419,7 +424,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Custom column");
 
       cy.findByText("Filter").click();
-      cy.findByText("Sale");
+      cy.findByTextEnsureVisible("Sale ($)");
       cy.findByText("Discount").should("not.exist");
 
       cy.findByText("Created At").should("not.exist");
@@ -452,7 +457,7 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/browse/1");
       cy.findByText("Test Table").click();
 
-      cy.findByText("Product ID");
+      cy.findByTextEnsureVisible("Product ID");
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Mediocre Wooden Bench");
       cy.get(".Table-ID")
@@ -492,20 +497,14 @@ describe("smoketest > admin_setup", () => {
         .find(".Icon-eye_crossed_out")
         .click({ force: true });
 
-      cy.findByText("1 Hidden Table");
-
-      // Check table hidden on home page
-      cy.visit("/");
-
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
+      cy.findByTextEnsureVisible("1 Hidden Table");
 
       // Check table hidden while browsing data
 
       cy.visit("/browse/1");
 
-      cy.findByText("Learn about our data");
-      cy.findByText("People");
+      cy.findByTextEnsureVisible("Learn about our data");
+      cy.findByTextEnsureVisible("People");
       cy.findByText("Reviews").should("not.exist");
 
       // Check table hidden in notebook editor
@@ -526,15 +525,15 @@ describe("smoketest > admin_setup", () => {
 
       // Check table names and visibility
 
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
+      cy.contains("People");
+      cy.contains("Test");
       cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
-      cy.findByText("Orders, Count");
+      cy.findByTextEnsureVisible("Orders, Count");
       cy.findByText("Orders, Count, Grouped by Created At (year)").should(
         "not.exist",
       );
@@ -552,13 +551,14 @@ describe("smoketest > admin_setup", () => {
 
       // Check column names and visiblity
 
+      openNavigationSidebar();
       browse().click();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Test Table").click();
 
-      cy.findByText("Visualization");
+      cy.findByTextEnsureVisible("Visualization");
       cy.findByText("Discount").should("not.exist");
-      cy.findByText("Sale ($)");
+      cy.findByTextEnsureVisible("Sale ($)");
       cy.findByText("Created At").should("not.exist");
 
       // Check column formatting
@@ -583,9 +583,8 @@ describe("smoketest > admin_setup", () => {
       // Access to all tables as user
       cy.visit("/");
 
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
-      cy.findByText("A look at your Review table").should("not.exist");
+      cy.contains("Test Table");
+      cy.findByText("Reviews").should("not.exist");
 
       // Access to SQl queries as user
 
@@ -597,13 +596,15 @@ describe("smoketest > admin_setup", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText("Try these x-rays based on your data");
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Review table").should("not.exist");
+      cy.wait(2000).findByText(
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
+      cy.contains("Test Table");
+      cy.contains("Reviews").should("not.exist");
 
       // Cannot view our analytics as no collection user
 
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders").should("not.exist");
     });
 
@@ -672,13 +673,16 @@ describe("smoketest > admin_setup", () => {
 
       // SQL queries permissions (table)
 
-      cy.findByText("Data permissions").click();
+      cy.findByText("Data").click();
 
       cy.findByText("data").click();
       cy.icon("check")
         .eq(1)
         .click();
-      cy.findByText("No").click();
+
+      popover().within(() => {
+        cy.findByText("No").click();
+      });
 
       cy.findByText("Save changes").click();
 
@@ -750,7 +754,7 @@ describe("smoketest > admin_setup", () => {
 
       // Modify permissions for top-level collection
 
-      cy.findByText("Collection permissions").click();
+      cy.findByText("Collection").click();
       cy.icon("close")
         .eq(1)
         .click();
@@ -781,7 +785,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save permissions?");
 
       cy.findByText("Yes").click();
-      cy.findByText("Collection permissions").click();
+      cy.findByText("Collection").click();
 
       cy.icon("eye");
     });
@@ -791,8 +795,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user can still see everything
 
-      cy.wait(2000).contains("A look at your Test Table table");
-      cy.contains("A look at your Products table");
+      cy.wait(2000).contains("Test Table");
 
       // Normal user cannot make an SQL query
 
@@ -804,13 +807,13 @@ describe("smoketest > admin_setup", () => {
 
       // No collection user sees Test Table and People table
 
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
+      cy.contains("Test Table");
+      cy.contains("People");
+      cy.contains("Reviews").should("not.exist");
     });
 
     it.skip("should be unable to change questions in Our analytics as no collection user", () => {
-      cy.findByText("Browse all items").click();
+      cy.findByText("Our analytics").click();
 
       cy.findByText("Everything");
       cy.findByText("Orders, Count");
@@ -843,7 +846,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.signOut();
       cy.signInAsNormalUser();
-      cy.visit("/question/1");
+      visitQuestion(1);
 
       // cy.findByText("Product ID");
       // cy.findByText("Quantity").should("not.exist");
@@ -931,7 +934,7 @@ describe("smoketest > admin_setup", () => {
       // This test will fail whenever the previous test fails
       cy.signIn("nocollection");
 
-      cy.visit("/question/4");
+      visitQuestion(4);
       cy.contains("sub-collection question").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
     });

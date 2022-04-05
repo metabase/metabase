@@ -20,6 +20,9 @@ function initiateAction(actionType, mode) {
       .find(`.Icon-${icon}`)
       .click();
   } else {
+    // This line could potentially reduce or completely eliminate binning flakes where sidebar renders empty because of the race condition
+    cy.findByText(/^Doing science/).should("not.exist");
+
     cy.findByTestId("qb-header-action-panel")
       .contains(actionType)
       .click();

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestion } from "__support__/e2e/cypress";
 
 describe("scenarios > permissions", () => {
   beforeEach(restore);
@@ -34,7 +34,7 @@ describe("scenarios > permissions", () => {
 
   it("should let a user with no data permissions view questions", () => {
     cy.signIn("nodata");
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.contains("February 11, 2019, 9:40 PM"); // check that the data loads
   });
 });

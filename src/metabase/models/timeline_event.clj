@@ -11,9 +11,10 @@
 
 ;;;; schemas
 
-(def Icons
-  "Timeline and TimelineEvent icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+(def Sources
+  "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
+  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  (s/enum "collections" "question"))
 
 ;;;; permissions
 

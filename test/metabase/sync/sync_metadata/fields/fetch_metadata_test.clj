@@ -11,51 +11,6 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(deftest add-nested-field-columns-test
-  (testing "adds nested field columns for one field"
-    (let [our-field  {:name      "coherent_json_val"
-                      :base-type :type/*
-                      :database-type "blah",
-                      :database-position 0,
-                      :id        1}
-          nfc-fields '#{{:name               "incoherent_json_val → b",
-                          :database-type     "blah",
-                          :base-type         :type/*,
-                          :database-position 0,
-                          :id                2,
-                          :nfc-path          [:incoherent_json_val "b"]}
-                         {:name              "coherent_json_val → a",
-                          :database-type     "blah",
-                          :base-type         :type/*,
-                          :database-position 0,
-                          :id                3,
-                          :nfc-path          [:coherent_json_val "a"]}
-                         {:name              "coherent_json_val → b",
-                          :database-type     "blah",
-                          :base-type         :type/*,
-                          :database-position 0,
-                          :id                4,
-                          :nfc-path          [:coherent_json_val "b"]}}]
-      (is (= (#'sync-fields.fetch-metadata/add-nested-field-columns our-field nfc-fields)
-             {:name "coherent_json_val",
-              :base-type :type/*,
-              :database-type "blah",
-              :database-position 0,
-              :id 1,
-              :nested-fields
-              #{{:name "coherent_json_val → b",
-                 :database-type "blah",
-                 :base-type :type/*,
-                 :database-position 0,
-                 :id 4,
-                 :nfc-path [:coherent_json_val "b"]}
-                {:name "coherent_json_val → a",
-                 :database-type "blah",
-                 :base-type :type/*,
-                 :database-position 0,
-                 :id 3,
-                 :nfc-path [:coherent_json_val "a"]}}})))))
-
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
   (mt/with-temp Database [db {:engine ::toucanery/toucanery}]

@@ -127,7 +127,9 @@ describe("visual tests > notebook", () => {
 });
 
 function selectFromDropdown(itemName) {
-  return popover().findByText(itemName);
+  return popover()
+    .last()
+    .findByText(itemName);
 }
 
 function addJoin({ rightTable }) {

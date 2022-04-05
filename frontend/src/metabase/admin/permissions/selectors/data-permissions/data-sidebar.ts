@@ -13,9 +13,8 @@ import { State } from "metabase-types/store";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 import Database from "metabase-lib/lib/metadata/Database";
-import { DataRouteParams, RawDataRouteParams } from "../types";
+import { EntityId, RawDataRouteParams } from "../../types";
 import { ITreeNodeItem } from "metabase/components/tree/types";
-import { EntityId } from "metabase/lib/permissions";
 import { getDatabase } from "../../utils/metadata";
 
 const getRouteParams = (

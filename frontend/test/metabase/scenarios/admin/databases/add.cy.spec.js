@@ -289,19 +289,43 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   describe("Google Analytics ", () => {
-    it("should generate well-formed external auth URLs", () => {
+    it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
       chooseDatabase("Google Analytics");
 
-      typeField("Client ID", "   999  ");
+      typeField("Display name", "google analytics");
 
-      cy.findByText("get an auth code", { exact: false })
-        .findByRole("link")
-        .then(el => {
-          expect(el.attr("href")).to.equal(
-            "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
-          );
-        });
+      typeField("Google Analytics Account ID", " 999  ");
+
+      // create blob to act as selected file
+      cy.get("input[type=file]")
+        .then(async input => {
+          const blob = await Cypress.Blob.binaryStringToBlob('{"foo": 123}');
+          const file = new File([blob], "service-account.json");
+          const dataTransfer = new DataTransfer();
+
+          dataTransfer.items.add(file);
+          input[0].files = dataTransfer.files;
+          return input;
+        })
+        .trigger("change", { force: true })
+        .trigger("blur", { force: true });
+
+      cy.route({
+        method: "POST",
+        url: "/api/database",
+        response: { id: 123 },
+        status: 200,
+        delay: 100,
+      }).as("createDatabase");
+
+      // submit form and check that the file's body is included
+      cy.button("Save").click();
+      cy.wait("@createDatabase").should(xhr => {
+        expect(xhr.request.body.details["service-account-json"]).to.equal(
+          '{"foo": 123}',
+        );
+      });
     });
   });
 

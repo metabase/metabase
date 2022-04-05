@@ -150,6 +150,7 @@ function selectJoinType(strategy) {
 
 function selectFromDropdown(option, clickOpts) {
   popover()
+    .last()
     .findByText(option)
     .click(clickOpts);
 }

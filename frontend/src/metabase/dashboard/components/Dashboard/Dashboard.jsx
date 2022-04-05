@@ -3,9 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { getMainElement } from "metabase/lib/dom";
+
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
-import DashboardHeader from "../DashboardHeader";
+import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import {
   CardsContainer,
   DashboardStyled,
@@ -42,6 +44,7 @@ export default class Dashboard extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
+    isNavbarOpen: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -95,19 +98,20 @@ export default class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
+  throttleParameterWidgetStickiness = _.throttle(
+    () => updateParametersWidgetStickiness(this),
+    SCROLL_THROTTLE_INTERVAL,
+  );
+
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
 
-    const throttleParameterWidgetStickiness = _.throttle(
-      () => updateParametersWidgetStickiness(this),
-      SCROLL_THROTTLE_INTERVAL,
-    );
-
-    window.addEventListener("scroll", throttleParameterWidgetStickiness, {
+    const main = getMainElement();
+    main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
-    window.addEventListener("resize", throttleParameterWidgetStickiness, {
+    main.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
   }
@@ -117,7 +121,7 @@ export default class Dashboard extends Component {
       this.loadDashboard(this.props.dashboardId);
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      !prevProps.dashboard
+      (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
@@ -125,9 +129,9 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
-
-    window.removeEventListener("scroll", updateParametersWidgetStickiness);
-    window.removeEventListener("resize", updateParametersWidgetStickiness);
+    const main = getMainElement();
+    main.removeEventListener("scroll", this.throttleParameterWidgetStickiness);
+    main.removeEventListener("resize", this.throttleParameterWidgetStickiness);
   }
 
   async loadDashboard(dashboardId) {
@@ -202,6 +206,7 @@ export default class Dashboard extends Component {
       isNightMode,
       isSharing,
       parameters,
+      isNavbarOpen,
       showAddQuestionSidebar,
       parameterValues,
       editingParameter,
@@ -279,6 +284,7 @@ export default class Dashboard extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     ref={element => (this.parametersWidgetRef = element)}
+                    isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
                   >
                     {parametersWidget}

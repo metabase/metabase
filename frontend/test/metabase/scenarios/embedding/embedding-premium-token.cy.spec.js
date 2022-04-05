@@ -63,8 +63,8 @@ describeOSS("scenarios > embedding > premium embedding token", () => {
     cy.button("Activate").click();
 
     cy.wait("@saveEmbeddingToken").then(({ response: { body } }) => {
-      expect(body.cause).to.eq("Unable to validate token");
-      expect(body["error-details"]).to.eq("clj-http: status 404");
+      expect(body.cause).to.eq("Token does not exist.");
+      expect(body["error-details"]).to.be.null;
     });
 
     cy.findByText(invalidTokenMessage);

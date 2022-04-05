@@ -75,7 +75,7 @@
           ;; we do not want something complicated
           (catch clojure.lang.ExceptionInfo e
             (log/error e (trs "Error fetching token status:"))
-            (let [body (u/ignore-exceptions (some-> (ex-data e) :object :body (json/parse-string keyword)))]
+            (let [body (u/ignore-exceptions (some-> (ex-data e) :body (json/parse-string keyword)))]
               (or
                body
                {:valid         false

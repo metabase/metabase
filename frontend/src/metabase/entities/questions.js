@@ -2,13 +2,11 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import {
+import Collections, {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
-
-import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
 
@@ -16,11 +14,6 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-
-  api: {
-    favorite: POST("/api/card/:id/favorite"),
-    unfavorite: DELETE("/api/card/:id/favorite"),
-  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>
@@ -34,12 +27,24 @@ const Questions = createEntity({
         ),
       ),
 
-    setCollection: ({ id, model }, collection, opts) =>
-      Questions.actions.update(
-        { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, model === "dataset" ? "model" : "question", "moved"),
-      ),
+    setCollection: ({ id, model }, collection, opts) => {
+      return async dispatch => {
+        const result = await dispatch(
+          Questions.actions.update(
+            { id },
+            {
+              collection_id: canonicalCollectionId(collection && collection.id),
+            },
+            undo(opts, model === "dataset" ? "model" : "question", "moved"),
+          ),
+        );
+        dispatch(
+          Collections.actions.fetchList({ tree: true }, { reload: true }),
+        );
+
+        return result;
+      };
+    },
 
     setPinned: ({ id }, pinned, opts) =>
       Questions.actions.update(
@@ -99,7 +104,6 @@ function getIcon(question) {
   );
   return {
     name: visualization?.iconName ?? "beaker",
-    color: color("bg-dark"),
   };
 }
 

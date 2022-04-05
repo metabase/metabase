@@ -8,6 +8,7 @@
   <Loggers>
     <Logger name="metabase" level="FATAL"/>
     <Logger name="metabase-enterprise" level="FATAL"/>
+    <Logger name="liquibase" level="FATAL"/>
 
     <Root level="ERROR">
       <AppenderRef ref="Console"/>

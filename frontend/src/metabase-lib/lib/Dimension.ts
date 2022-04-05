@@ -19,6 +19,7 @@ import {
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
+import { ValidationError, VALIDATION_ERROR_TYPES } from "./ValidationError";
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
@@ -1515,6 +1516,27 @@ export class TemplateTagDimension extends FieldDimension {
     return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
+  validateTemplateTag(): ValidationError | null {
+    const tag = this.tag();
+    if (!tag) {
+      return new ValidationError(t`Invalid template tag "${this.tagName()}"`);
+    }
+
+    if (this.isDimensionType() && tag.dimension == null) {
+      return new ValidationError(
+        t`The variable "${this.tagName()}" needs to be mapped to a field.`,
+        VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
+      );
+    }
+
+    return null;
+  }
+
+  isValidDimensionType() {
+    const maybeErrors = this.validateTemplateTag();
+    return this.isDimensionType() && maybeErrors === null;
+  }
+
   isDimensionType() {
     const maybeTag = this.tag();
     return maybeTag?.type === "dimension";
@@ -1526,7 +1548,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   dimension() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       const tag = this.tag();
       return Dimension.parseMBQL(tag.dimension, this._metadata, this._query);
     }
@@ -1549,7 +1571,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   field() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       return this.dimension().field();
     }
 
@@ -1557,7 +1579,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   name() {
-    return this.isDimensionType() ? this.field().name : this.tagName();
+    return this.isValidDimensionType() ? this.field().name : this.tagName();
   }
 
   tagName() {
@@ -1574,7 +1596,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   icon() {
-    if (this.isDimensionType()) {
+    if (this.isValidDimensionType()) {
       return this.dimension().icon();
     } else if (this.isVariableType()) {
       return this.variable().icon();

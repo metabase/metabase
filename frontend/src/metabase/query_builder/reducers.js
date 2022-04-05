@@ -1,6 +1,7 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   RESET_QB,
@@ -56,8 +57,10 @@ import {
   onCloseQuestionHistory,
   onOpenTimelines,
   onCloseTimelines,
-  SHOW_TIMELINE,
-  HIDE_TIMELINE,
+  SHOW_TIMELINES,
+  HIDE_TIMELINES,
+  SELECT_TIMELINE_EVENTS,
+  DESELECT_TIMELINE_EVENTS,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -500,16 +503,39 @@ export const currentState = handleActions(
   null,
 );
 
-export const timelineVisibility = handleActions(
+export const visibleTimelineIds = handleActions(
   {
-    [INITIALIZE_QB]: { next: () => ({}) },
-    [SHOW_TIMELINE]: {
-      next: (state, { payload }) => assoc(state, payload.id, true),
+    [INITIALIZE_QB]: { next: () => [] },
+    [SHOW_TIMELINES]: {
+      next: (state, { payload: timelines }) => [
+        ...state,
+        ...timelines.map(t => t.id),
+      ],
     },
-    [HIDE_TIMELINE]: {
-      next: (state, { payload }) => assoc(state, payload.id, false),
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.map(t => t.id)),
     },
-    [RESET_QB]: { next: () => ({}) },
+    [RESET_QB]: { next: () => [] },
   },
-  {},
+  [],
+);
+
+export const selectedTimelineEventIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SELECT_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [DESELECT_TIMELINE_EVENTS]: {
+      next: () => [],
+    },
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
+    },
+    [onCloseTimelines]: { next: () => [] },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
 );

@@ -41,8 +41,8 @@ describe("scenarios > question > trendline", () => {
     cy.get("rect");
 
     // Remove sum of total
-    cy.findByText("Data").click();
     sidebar().within(() => {
+      cy.findByText("Data").click();
       cy.icon("close")
         .last()
         .click();

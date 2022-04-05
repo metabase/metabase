@@ -4,6 +4,7 @@ import {
   getDimensionByName,
   getRemoveDimensionButton,
   summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > summarize sidebar", () => {
@@ -13,7 +14,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.visit("/question/1");
+    visitQuestion(1);
     summarize();
   });
 

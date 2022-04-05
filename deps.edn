@@ -40,6 +40,8 @@
                                             {:mvn/version "0.11.0"}             ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.1.1"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.62.2"}             ; Markdown parsing
+  com.vladsch.flexmark/flexmark-ext-autolink
+                                            {:mvn/version "0.62.2"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
   commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
@@ -84,7 +86,7 @@
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.17.1"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.17.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.17.1"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.17.1"}             ; liquibase logging via log4j 2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.17.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.17.1"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.2.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.0"
@@ -114,7 +116,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "9.4.44.v20210927"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.0.0.2"}           ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "3.6.3"               ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "4.8.0"               ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
   org.postgresql/postgresql                 {:mvn/version "42.3.2"}             ; Postgres driver
@@ -122,7 +124,7 @@
   org.slf4j/slf4j-api                       {:mvn/version "1.7.35"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.7.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
-  org.yaml/snakeyaml                        {:mvn/version "1.30"}               ; YAML parser (required by liquibase)
+  org.yaml/snakeyaml                        {:mvn/version "1.30"}               ; YAML parser
   potemkin/potemkin                         {:mvn/version "0.4.5"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
@@ -141,10 +143,8 @@
                                                            org.clojure/tools.logging
                                                            org.clojure/tools.namespace]}
   user-agent/user-agent                     {:mvn/version "0.1.0"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
 
-  ;; dummy dependency for the Java source file(s)
-  metabase/java-deps {:local/root "java"}}
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
  ;; !!                            *PLEASE DO NOT* ADD NEW ONES TO THE BOTTOM OF THE LIST.                            !!
@@ -152,7 +152,7 @@
 
 
  :paths
- ["src" "shared/src" "resources" "java/target/classes"]
+ ["src" "shared/src" "resources"]
 
  :aliases
  {

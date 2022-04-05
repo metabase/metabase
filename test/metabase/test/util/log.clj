@@ -15,8 +15,8 @@
 ;; make sure [[clojure.tools.logging]] is using the Log4j2 factory, otherwise the swaps we attempt to do here don't seem
 ;; to work.
 (when-not (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j")
-  (println "Setting clojure.tools.logging factory to" `log.impl/log4j2-factory)
-  (alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory))))
+  (alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory)))
+  (log/infof "Setting clojure.tools.logging factory to %s" `log.impl/log4j2-factory))
 
 (def ^:private ^:deprecated logger->original-level
   (delay

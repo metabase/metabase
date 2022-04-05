@@ -13,6 +13,7 @@
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
@@ -21,7 +22,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
+                                          'metabase-enterprise.advanced-permissions.common))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -151,11 +153,20 @@
      :offset offset-paging/*offset*}))
 
 
+(defn- maybe-add-general-permissions
+  "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  [user]
+  (if-not (and (premium-features/enable-advanced-permissions?)
+               (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))
+    user
+    ((resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions) user)))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
+      (hydrate :personal_collection_id :group_ids :has_invited_second_user)
+      maybe-add-general-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."

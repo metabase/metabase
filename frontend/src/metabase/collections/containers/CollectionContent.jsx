@@ -9,6 +9,8 @@ import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsBookmarked } from "metabase/collections/selectors";
+import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -20,8 +22,10 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
+import { isSmallScreen } from "metabase/lib/dom";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -35,16 +39,19 @@ const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
-function mapStateToProps(state) {
+function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
+    isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
+    isNavbarOpen: getIsNavbarOpen(state),
   };
 }
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id: `collection-${id}` }),
-  deleteBookmark: id => Bookmark.actions.delete({ id: `collection-${id}` }),
+  openNavbar,
+  createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
+  deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
 };
 
 function CollectionContent({
@@ -56,8 +63,9 @@ function CollectionContent({
   deleteBookmark,
   isAdmin,
   isRoot,
-  handleToggleMobileSidebar,
   metadata,
+  isNavbarOpen,
+  openNavbar,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -74,6 +82,12 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+
+  useOnMount(() => {
+    if (!isSmallScreen()) {
+      openNavbar();
+    }
+  });
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -136,7 +150,7 @@ function CollectionContent({
 
   const handleClickBookmark = () => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId);
+    toggleBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -179,7 +193,6 @@ function CollectionContent({
                   collection,
                   collectionList,
                 )}
-                handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
               <PinnedItemOverview
                 items={pinnedItems}
@@ -226,6 +239,9 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
                         items={unpinnedItems}
                         collection={collection}
                         sortingOptions={unpinnedItemsSorting}
@@ -264,6 +280,7 @@ function CollectionContent({
                         hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
+                        isNavbarOpen={isNavbarOpen}
                       />
                     </CollectionTable>
                   );

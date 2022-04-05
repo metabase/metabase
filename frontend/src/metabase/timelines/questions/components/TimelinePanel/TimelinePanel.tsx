@@ -9,24 +9,24 @@ import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
-  visibility?: Record<number, boolean>;
-  isVisibleByDefault?: boolean;
+  visibleTimelineIds?: number[];
+  selectedEventIds?: number[];
   onNewEvent?: () => void;
-  onNewEventWithTimeline?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
+  onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
 const TimelinePanel = ({
   timelines,
   collection,
-  visibility,
-  isVisibleByDefault,
+  visibleTimelineIds,
+  selectedEventIds,
   onNewEvent,
-  onNewEventWithTimeline,
   onEditEvent,
   onArchiveEvent,
+  onToggleEvent,
   onToggleTimeline,
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
@@ -42,17 +42,18 @@ const TimelinePanel = ({
       {!isEmpty ? (
         <TimelineList
           timelines={timelines}
-          collection={collection}
-          visibility={visibility}
-          isVisibleByDefault={isVisibleByDefault}
+          visibleTimelineIds={visibleTimelineIds}
+          selectedEventIds={selectedEventIds}
           onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
+          onToggleEvent={onToggleEvent}
           onArchiveEvent={onArchiveEvent}
         />
       ) : (
         <TimelineEmptyState
+          timelines={timelines}
           collection={collection}
-          onNewEventWithTimeline={onNewEventWithTimeline}
+          onNewEvent={onNewEvent}
         />
       )}
     </PanelRoot>

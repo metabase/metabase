@@ -220,6 +220,7 @@
                 :name            "parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
@@ -241,6 +242,7 @@
                 :name            "grandparent.parent.child"
                 :settings        nil
                 :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
                 :parent_id       (u/the-id parent)
                 :id              (u/the-id child)
                 :visibility_type :normal
@@ -610,7 +612,7 @@
 
 (deftest mbql-cols-nested-queries-test
   (testing "Should be able to infer MBQL columns with nested queries"
-    (let [base-query (qp/query->preprocessed
+    (let [base-query (qp/preprocess
                       (mt/mbql-query venues
                         {:joins [{:fields       :all
                                   :source-table $$categories
@@ -642,7 +644,7 @@
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
-          (let [base-query (qp/query->preprocessed
+          (let [base-query (qp/preprocess
                             (mt/mbql-query orders
                               {:joins [{:fields       :all
                                         :source-table $$products
@@ -674,7 +676,7 @@
                       Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (mt/$ids nil
-            (let [base-query (qp/query->preprocessed
+            (let [base-query (qp/preprocess
                               (mt/mbql-query nil
                                 {:source-table (str "card__" card-1-id)
                                  :joins        [{:fields       :all

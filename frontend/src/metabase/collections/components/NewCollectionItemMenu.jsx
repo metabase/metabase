@@ -2,13 +2,13 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import { newQuestion, newDashboard, newCollection } from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 const propTypes = {
-  collection: PropTypes.func,
+  collection: PropTypes.object,
   list: PropTypes.arrayOf(PropTypes.object),
 };
 
@@ -17,19 +17,19 @@ function NewCollectionItemMenu({ collection }) {
     {
       icon: "insight",
       title: t`Question`,
-      link: Urls.newQuestion({ mode: "notebook", collectionId: collection.id }),
+      link: newQuestion({ mode: "notebook", collectionId: collection.id }),
       event: `${ANALYTICS_CONTEXT};New Item Menu;Question Click`,
     },
     {
       icon: "dashboard",
       title: t`Dashboard`,
-      link: Urls.newDashboard(collection.id),
+      link: newDashboard(collection.id),
       event: `${ANALYTICS_CONTEXT};New Item Menu;Dashboard Click`,
     },
     {
       icon: "folder",
       title: t`Collection`,
-      link: Urls.newCollection(collection.id),
+      link: newCollection(collection.id),
       event: `${ANALYTICS_CONTEXT};New Item Menu;Collection Click`,
     },
   ];

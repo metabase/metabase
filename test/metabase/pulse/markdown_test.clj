@@ -74,8 +74,13 @@
       (is (= "<https://example.com/foo|Metabase>"   (mrkdwn "[Metabase](/foo)")))))
 
   (testing "Auto-links are preserved"
-    (is (= "<http://metabase.com>"      (mrkdwn "<http://metabase.com>")))
-    (is (= "<mailto:test@metabase.com>" (mrkdwn "<mailto:test@metabase.com>"))))
+    (is (= "<http://metabase.com>"                        (mrkdwn "<http://metabase.com>")))
+    (is (= "<mailto:test@metabase.com>"                   (mrkdwn "<mailto:test@metabase.com>")))
+    (is (= "<mailto:test@metabase.com|test@metabase.com>" (mrkdwn "<test@metabase.com>"))))
+
+  (testing "Bare URLs and email addresses are parsed as links"
+    (is (= "<https://metabase.com>"                       (mrkdwn "https://metabase.com")))
+    (is (= "<mailto:test@metabase.com|test@metabase.com>" (mrkdwn "test@metabase.com"))))
 
   (testing "Link references render as normal links"
     (is (= "<https://metabase.com|metabase>" (mrkdwn "[metabase]: https://metabase.com\n[metabase]")))
@@ -160,7 +165,11 @@
   (testing "HTML entities (outside of HTML tags) are converted to Unicode"
     (is (= "&" (mrkdwn "&amp;")))
     (is (= ">" (mrkdwn "&gt;")))
-    (is (= "ℋ" (mrkdwn "&HilbertSpace;")))))
+    (is (= "ℋ" (mrkdwn "&HilbertSpace;"))))
+
+  (testing "Square brackets that aren't used for a link are left as-is (#20993)"
+    (is (= "[]"     (mrkdwn "[]")))
+    (is (= "[test]" (mrkdwn "[test]")))))
 
 (defn- html
   [markdown]
@@ -187,6 +196,20 @@
                (html "![alt-text](image.png)")))
         (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
                (html "[dashboard 1](/dashboard/1)"))))))
+
+  (testing "Bare URLs and email addresses are converted to links"
+    (is (= "<p><a href=\"https://metabase.com\">https://metabase.com</a></p>\n"
+           (html "https://metabase.com")))
+    (is (= "<p><a href=\"mailto:test@metabase.com\">test@metabase.com</a></p>\n"
+           (html "test@metabase.com"))))
+
+  (testing "Link references render as normal links"
+    (is (= "<p><a href=\"https://metabase.com\">metabase</a></p>\n"
+           (html "[metabase]: https://metabase.com\n[metabase]"))))
+
+  (testing "Lone square brackets are preserved as-is (#20993)"
+    (is (= "<p>[]</p>\n"     (html "[]")))
+    (is (= "<p>[test]</p>\n" (html "[test]"))))
 
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))

@@ -12,7 +12,7 @@ clear_outdated_cpcaches() {
     cd "$script_directory/.."
     project_root=`pwd`
 
-    cpcaches=`find bin java modules -type d -name .cpcache`
+    cpcaches=`find bin modules -type d -name .cpcache`
     if [ -d .cpcache ]; then
         cpcaches=".cpcache $cpcaches"
     fi
@@ -21,7 +21,7 @@ clear_outdated_cpcaches() {
         return 0
     fi
 
-    deps_edns="deps.edn $(find bin java modules -type f -name deps.edn)"
+    deps_edns="deps.edn $(find bin modules -type f -name deps.edn)"
 
     # find the OLDEST cpcache and NEWEST deps.edn files.
     oldest_cpcache=""

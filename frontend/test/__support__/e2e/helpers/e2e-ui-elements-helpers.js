@@ -11,12 +11,32 @@ export function modal() {
 }
 
 export function sidebar() {
-  return cy.get("aside");
+  return cy.get("main aside");
+}
+
+export function navigationSidebar() {
+  return cy.get("#root aside").first();
+}
+
+export function appBar() {
+  return cy.get("#root header").first();
+}
+
+export function openNavigationSidebar() {
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
+}
+
+export function closeNavigationSidebar() {
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
 }
 
 export function browse() {
   // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return cy.get(".Nav .Icon-table_spaced");
+  return navigationSidebar().findByText("Browse data");
 }
 
 /**

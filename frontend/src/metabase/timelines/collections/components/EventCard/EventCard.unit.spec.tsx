@@ -55,8 +55,10 @@ describe("EventCard", () => {
 
   it("should not render the menu for read-only users", () => {
     const props = getProps({
-      collection: createMockCollection({
-        can_write: false,
+      timeline: createMockTimeline({
+        collection: createMockCollection({
+          can_write: false,
+        }),
       }),
     });
 
@@ -67,8 +69,10 @@ describe("EventCard", () => {
 
   it("should render the menu for users with write permissions", async () => {
     const props = getProps({
-      collection: createMockCollection({
-        can_write: true,
+      timeline: createMockTimeline({
+        collection: createMockCollection({
+          can_write: true,
+        }),
       }),
     });
 
@@ -81,11 +85,13 @@ describe("EventCard", () => {
 
   it("should render the menu for an archived event", () => {
     const props = getProps({
+      timeline: createMockTimeline({
+        collection: createMockCollection({
+          can_write: true,
+        }),
+      }),
       event: createMockTimelineEvent({
         archived: true,
-      }),
-      collection: createMockCollection({
-        can_write: true,
       }),
     });
 

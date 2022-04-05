@@ -1,7 +1,6 @@
 import {
   enterCustomColumnDetails,
   getNotebookStep,
-  interceptPromise,
   modal,
   openOrdersTable,
   openProductsTable,
@@ -153,7 +152,20 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
-    const req = interceptPromise("POST", "/api/dataset");
+    cy.intercept(
+      {
+        method: "POST",
+        url: "/api/dataset",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          // Throttle the response to 500 Kbps to simulate a mobile 3G connection
+          res.setThrottle(500);
+        });
+      },
+    ).as("dataset");
+
     const questionDetails = {
       query: {
         "source-table": ORDERS_ID,
@@ -173,9 +185,10 @@ describe("scenarios > question > notebook", () => {
       .type("3{enter}");
     cy.findByText("Product ID is 2 selections");
 
+    // Still loading
     cy.contains("Showing 98 rows");
 
-    req.resolve();
+    cy.wait("@dataset");
     cy.contains("Showing 175 rows");
   });
 

@@ -82,9 +82,10 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { canAccessAdmin } from "metabase/nav/utils";
 
+import HomePage from "metabase/home/homepage/containers/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import HomepageApp from "metabase/home/homepage/containers/HomepageApp";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -124,6 +125,16 @@ const UserIsNotAuthenticated = UserAuthWrapper({
   redirectAction: routerActions.replace,
 });
 
+const UserCanAccessSettings = UserAuthWrapper({
+  predicate: currentUser =>
+    currentUser?.is_superuser || canAccessAdmin(currentUser),
+  failureRedirectPath: "/unauthorized",
+  authSelector: state => state.currentUser,
+  allowRedirectBack: false,
+  wrapperDisplayName: "UserCanAccessSettings",
+  redirectAction: routerActions.replace,
+});
+
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -133,6 +144,10 @@ const IsAdmin = MetabaseIsSetup(
 
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
+);
+
+const CanAccessSettings = MetabaseIsSetup(
+  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
 );
 
 export const getRoutes = store => (
@@ -186,7 +201,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={HomepageApp}
+          component={HomePage}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
@@ -340,7 +355,7 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(store, IsAdmin)}
+      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}

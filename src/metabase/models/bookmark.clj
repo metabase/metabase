@@ -22,11 +22,14 @@
   "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
-  {:id                           s/Str
-   :type                         (s/enum :card :collection :dashboard)
-   :item_id                      su/IntGreaterThanZero
-   :name                         su/NonBlankString
-   (s/optional-key :description) (s/maybe s/Str)})
+  {:id                               s/Str
+   :type                             (s/enum :card :collection :dashboard)
+   :item_id                          su/IntGreaterThanZero
+   :name                             su/NonBlankString
+   (s/optional-key :dataset)         (s/maybe s/Bool)
+   (s/optional-key :display)         (s/maybe s/Str)
+   (s/optional-key :authority_level) (s/maybe s/Str)
+   (s/optional-key :description)     (s/maybe s/Str)})
 
 (s/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
@@ -47,7 +50,7 @@
     (merge
      {:id      (str (name ttype) "-" item-id-str)
       :type    ttype}
-     (select-keys normalized-result [:item_id :name :description]))))
+     (select-keys normalized-result [:item_id :name :dataset :description :display :authority_level]))))
 
 (defn- bookmarks-union-query
   [id]
@@ -82,6 +85,8 @@
         {:select    [[:bookmark.created_at :created_at]
                      [:card.id (db/qualify 'Card :item_id)]
                      [:card.name (db/qualify 'Card :name)]
+                     [:card.dataset (db/qualify 'Card :dataset)]
+                     [:card.display (db/qualify 'Card :display)]
                      [:card.description (db/qualify 'Card :description)]
                      [:card.archived (db/qualify 'Card :archived)]
                      [:dashboard.id (db/qualify 'Dashboard :item_id)]
@@ -90,6 +95,7 @@
                      [:dashboard.archived (db/qualify 'Dashboard :archived)]
                      [:collection.id (db/qualify 'Collection :item_id)]
                      [:collection.name (db/qualify 'Collection :name)]
+                     [:collection.authority_level (db/qualify 'Collection :authority_level)]
                      [:collection.description (db/qualify 'Collection :description)]
                      [:collection.archived (db/qualify 'Collection :archived)]]
          :from      [[(bookmarks-union-query id) :bookmark]]

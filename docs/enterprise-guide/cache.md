@@ -2,7 +2,7 @@
 
 {% include plans-blockquote.html feature="Question-specific caching" %}
 
-All Metabase editions include global caching controls. The Enterprise edition includes additional caching options that let you control caching for each database, as well as individual questions.
+All Metabase editions include global caching controls. Some plans include additional caching options that let you control caching for each database, as well as individual questions.
 
 ## Caching per database
 

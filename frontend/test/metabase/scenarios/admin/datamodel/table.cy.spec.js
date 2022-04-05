@@ -1,4 +1,4 @@
-import { restore, filter } from "__support__/e2e/cypress";
+import { restore, filter, visitQuestion } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -67,7 +67,7 @@ describe("scenarios > admin > databases > table", () => {
   describe.skip("turning table visibility off shouldn't prevent editing related question (metabase#15947)", () => {
     it("simple question (metabase#15947-1)", () => {
       turnTableVisibilityOff(ORDERS_ID);
-      cy.visit("/question/1");
+      visitQuestion(1);
       filter();
     });
 

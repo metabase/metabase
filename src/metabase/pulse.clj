@@ -121,7 +121,7 @@
 (defn create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
-  (let [{channel-id :id} (slack/files-channel)]
+  (let [channel-id (slack/files-channel)]
     (->> (for [card-result card-results]
            (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
              (if (and card result)

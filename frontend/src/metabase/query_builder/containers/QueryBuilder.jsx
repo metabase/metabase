@@ -7,16 +7,21 @@ import _ from "underscore";
 
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
+import Timelines from "metabase/entities/timelines";
+import { closeNavbar } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
@@ -63,9 +68,12 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
-  getTimelineVisibility,
-  getVisibleTimelines,
+  getVisibleTimelineIds,
   getVisibleTimelineEvents,
+  getSelectedTimelineEventIds,
+  getFilteredTimelines,
+  getTimeseriesXDomain,
+  getIsAnySidebarOpen,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -82,9 +90,15 @@ function autocompleteResults(card, prefix) {
   return apiCall;
 }
 
+const timelineProps = {
+  query: { include: "events" },
+  loadingAndErrorWrapper: false,
+};
+
 const mapStateToProps = (state, props) => {
   return {
     user: getUser(state, props),
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 
@@ -109,9 +123,11 @@ const mapStateToProps = (state, props) => {
     query: getQuery(state),
     metadata: getMetadata(state),
 
-    timelines: getVisibleTimelines(state),
+    timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),
-    timelineVisibility: getTimelineVisibility(state),
+    visibleTimelineIds: getVisibleTimelineIds(state),
+    selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -121,6 +137,7 @@ const mapStateToProps = (state, props) => {
     // includes isShowingDataReference, isEditing, isRunning, etc
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
+    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
@@ -159,19 +176,22 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...actions,
+  closeNavbar,
   onChangeLocation: push,
-  createBookmark: id => Bookmark.actions.create({ id: `card-${id}` }),
-  deleteBookmark: id => Bookmark.actions.delete({ id: `card-${id}` }),
+  createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
 };
 
 function QueryBuilder(props) {
   const {
-    isBookmarked,
     question,
     location,
     params,
     fromUrl,
     uiControls,
+    isNativeEditorOpen,
+    isAnySidebarOpen,
+    closeNavbar,
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
@@ -181,9 +201,11 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    isBookmarked,
     createBookmark,
     deleteBookmark,
-    loadTimelinesForCard,
+    allLoaded,
+    showTimelinesForCollection,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -194,6 +216,10 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
+  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
+  const hasQuestion = question != null;
+  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),
@@ -274,10 +300,25 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
-    if (question && question.hasBreakoutByDateTime()) {
-      loadTimelinesForCard(question.card());
+    if (
+      (isAnySidebarOpen && !wasShowingAnySidebar) ||
+      (isNativeEditorOpen && !wasNativeEditorOpen)
+    ) {
+      closeNavbar();
     }
-  }, [question, loadTimelinesForCard]);
+  }, [
+    isAnySidebarOpen,
+    wasShowingAnySidebar,
+    isNativeEditorOpen,
+    wasNativeEditorOpen,
+    closeNavbar,
+  ]);
+
+  useEffect(() => {
+    if (allLoaded && hasQuestion) {
+      showTimelinesForCollection(collectionId);
+    }
+  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -326,8 +367,8 @@ function QueryBuilder(props) {
 
 export default _.compose(
   Bookmark.loadList(),
+  Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card?.name ?? t`Question`),
   titleWithLoadingTime("queryStartTime"),
-  fitViewport,
 )(QueryBuilder);

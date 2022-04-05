@@ -9,9 +9,9 @@ export PATH="$PATH:$JAVA_HOME/bin"
 which java
 
 # install clojure version needed for Metabase
-curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh
-chmod +x linux-install-1.10.3.933.sh
-./linux-install-1.10.3.933.sh
+curl -O https://download.clojure.org/install/linux-install-1.11.0.1100.sh
+chmod +x linux-install-1.11.0.1100.sh
+./linux-install-1.11.0.1100.sh
 
 RESOURCES_DIR=/app/source/resources
 
@@ -47,10 +47,6 @@ keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacert
 
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
 &SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
-
-# Prepare dependencies
-source "./bin/prep.sh"
-prep_deps
 
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \

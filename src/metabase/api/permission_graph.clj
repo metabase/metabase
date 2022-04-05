@@ -37,7 +37,7 @@
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(s/def ::native (s/or :str->kw #{"write" "none"}
+(s/def ::native (s/or :str->kw #{"write" "none" "full" "limited"}
                       :nil->none nil?))
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
@@ -51,13 +51,13 @@
 
 (s/def ::table-perms-granular (s/keys :opt-un [::read ::query]))
 
-(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none"}
+(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                            :identity ::table-perms-granular))
 
 (s/def ::table-graph (s/map-of ::id ::table-perms
                                :conform-keys true))
 
-(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none"}
+(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
                             :identity ::table-graph))
 
 ;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms}}}}}
@@ -65,13 +65,21 @@
                                 :conform-keys true))
 
 ;; {:groups {1 {:data {:schemas ::schemas}}}}
-(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block"}
+(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block" "full" "limited"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 
 (s/def ::data (s/keys :opt-un [::native ::schemas]))
 
-(s/def ::db-perms (s/keys :opt-un [::data]))
+(s/def ::download (s/keys :opt-un [::native ::schemas]))
+
+(s/def ::data-model (s/keys :opt-un [::native ::schemas]))
+
+;; We use "yes" and "no" instead of booleans for consistency with the general perms graph, and consistency with the
+;; language used on the frontend.
+(s/def ::details (s/or :str->kw #{"yes" "no"}))
+
+(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))

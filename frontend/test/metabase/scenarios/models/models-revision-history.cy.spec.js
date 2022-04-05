@@ -1,4 +1,4 @@
-import { restore, modal, filter } from "__support__/e2e/cypress";
+import { restore, modal, filter, visitQuestion } from "__support__/e2e/cypress";
 
 import {
   assertIsModel,
@@ -26,7 +26,7 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state", () => {
-    cy.visit("/question/3");
+    cy.visit("/model/3");
     openDetailsSidebar();
     assertIsModel();
 
@@ -52,7 +52,7 @@ describe("scenarios > models > revision history", () => {
   it("should allow reverting to a model state", () => {
     cy.request("PUT", "/api/card/3", { dataset: false });
 
-    cy.visit("/question/3");
+    visitQuestion(3);
     openDetailsSidebar();
     assertIsQuestion();
 

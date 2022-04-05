@@ -4,6 +4,7 @@ import {
   modal,
   openOrdersTable,
   summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
@@ -64,7 +65,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("view and filter saved question", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
@@ -98,7 +99,7 @@ describe("scenarios > question > saved", () => {
     cy.route("POST", "/api/card").as("cardCreate");
     cy.route("POST", "/api/card/1/query").as("query");
 
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.wait("@query");
 
     cy.findByTestId("saved-question-header-button").click();
@@ -114,7 +115,7 @@ describe("scenarios > question > saved", () => {
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findByTestId("saved-question-header-button").click();
     cy.findByText("History").click();
 
@@ -158,7 +159,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show table name in header with a table info popover on hover", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     cy.findByText("9 columns");
   });
