@@ -11,10 +11,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]])
   (:import [com.google.api.services.analytics Analytics Analytics$Data$Ga$Get]
-           [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]
-           java.util.Date))
+           [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]))
 
-(driver/register! :googleanalytics, :parent :google)
+(driver/register! :googleanalytics)
 
 (defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
 
