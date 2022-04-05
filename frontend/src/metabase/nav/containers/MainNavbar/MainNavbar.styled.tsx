@@ -11,7 +11,7 @@ import {
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
 
-export const Sidebar = styled.aside<{ isOpen: boolean }>`
+export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -75,6 +75,10 @@ export const CollectionsMoreIconContainer = styled.button`
 
 export const CollectionsMoreIcon = styled(Icon)`
   color: ${color("text-medium")};
+`;
+
+export const CollectionMenuList = styled.ul`
+  padding: 0.5rem;
 `;
 
 export const LoadingContainer = styled.div`

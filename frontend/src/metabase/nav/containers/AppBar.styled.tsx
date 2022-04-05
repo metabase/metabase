@@ -1,22 +1,35 @@
-import React from "react";
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import {
+  breakpointMaxSmall,
+  breakpointMinSmall,
+  space,
+} from "metabase/styled-components/theme";
 
 import { APP_BAR_HEIGHT } from "../constants";
 
-export const AppBarRoot = styled.div`
+export const AppBarRoot = styled.header`
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
   height: ${APP_BAR_HEIGHT};
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
+`;
+
+export const RowLeft = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+`;
+
+export const RowRight = styled(RowLeft)`
+  flex: 1;
+  justify-content: flex-end;
 `;
 
 export const LogoIconWrapper = styled.div`
@@ -33,31 +46,23 @@ export const LogoIconWrapper = styled.div`
   }
 `;
 
-const SidebarIcon = styled(Icon)`
-  &:hover {
-    cursor: pointer;
-    color: ${color("brand")};
+export const SearchBarContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+
+  ${breakpointMaxSmall} {
+    width: 100%;
   }
 `;
 
-const SidebarButtonRoot = styled.div`
-  margin-left: ${space(1)};
-  margin-top: ${space(1)};
+export const SearchBarContent = styled.div`
+  ${breakpointMaxSmall} {
+    width: 100%;
+  }
+
+  ${breakpointMinSmall} {
+    position: relative;
+    width: 500px;
+  }
 `;
-
-interface SidebarButtonProps {
-  isSidebarOpen: boolean;
-  onClick: () => void;
-}
-
-export function SidebarButton({ isSidebarOpen, onClick }: SidebarButtonProps) {
-  return (
-    <SidebarButtonRoot data-testid="sidebar-toggle-button">
-      <SidebarIcon
-        size={28}
-        name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
-        onClick={onClick}
-      />
-    </SidebarButtonRoot>
-  );
-}

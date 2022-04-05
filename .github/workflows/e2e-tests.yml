@@ -68,6 +68,7 @@ jobs:
           - "moderation"
           - "native"
           - "native-filters"
+          - "onboarding"
           - "permissions"
           - "question"
           - "sharing"

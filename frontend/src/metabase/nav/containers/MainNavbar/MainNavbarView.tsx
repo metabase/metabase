@@ -25,6 +25,7 @@ import {
   BrowseLink,
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
+  CollectionMenuList,
   ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
@@ -141,7 +142,7 @@ function CollectionSectionHeading({
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
     ({ onClose }) => (
-      <ul>
+      <CollectionMenuList>
         {currentUser.is_superuser && (
           <SidebarLink
             icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
@@ -154,7 +155,7 @@ function CollectionSectionHeading({
         <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
           {t`View archive`}
         </SidebarLink>
-      </ul>
+      </CollectionMenuList>
     ),
     [currentUser],
   );

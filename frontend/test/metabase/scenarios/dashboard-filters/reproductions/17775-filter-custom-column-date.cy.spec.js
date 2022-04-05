@@ -51,7 +51,7 @@ describe.skip("issue 17775", () => {
     editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.get("header")
+    cy.get("main header")
       .find(".Icon-gear")
       .click();
 

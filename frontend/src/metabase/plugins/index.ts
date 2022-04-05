@@ -126,9 +126,6 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
-  canAccessSettings: (_user: User) => false,
-  canAccessDataModel: (_user: User) => false,
-  canAccessDatabaseManagement: (_user: User) => false,
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,

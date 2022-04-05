@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-const TRANSLATED_NAME_BY_MODEL_TYPE = {
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   card: t`Question`,
   dataset: t`Dataset`,
   dashboard: t`Dashboard`,
@@ -12,5 +12,5 @@ const TRANSLATED_NAME_BY_MODEL_TYPE = {
   pulse: t`Pulse`,
 };
 
-export const getTranslatedEntityName = type =>
+export const getTranslatedEntityName = (type: string) =>
   TRANSLATED_NAME_BY_MODEL_TYPE[type] || null;

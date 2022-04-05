@@ -75,7 +75,7 @@ describe("scenarios > collection items metadata", () => {
 
 function changeDashboard() {
   cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
-  cy.get("header").within(() => {
+  cy.get("main header").within(() => {
     cy.icon("ellipsis").click();
   });
   cy.findByText("Edit dashboard details").click();

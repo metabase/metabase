@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { canAccessAdmin } from "metabase/nav/utils";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -38,8 +38,7 @@ export default class ProfileLink extends Component {
     const { tag } = MetabaseSettings.get("version");
     const { user, handleCloseNavbar } = this.props;
     const isAdmin = user.is_superuser;
-    const canAccessSettings =
-      isAdmin || PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
+    const showAdminSettingsItem = canAccessAdmin(user);
 
     return [
       {
@@ -49,7 +48,7 @@ export default class ProfileLink extends Component {
         event: `Navbar;Profile Dropdown;Edit Profile`,
         onClose: handleCloseNavbar,
       },
-      canAccessSettings && {
+      showAdminSettingsItem && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
