@@ -36,6 +36,36 @@ describe("HomeContent", () => {
 
     expect(screen.getByText("PopularSection")).toBeInTheDocument();
   });
+
+  it("should render popular items for a user without recent items", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: false,
+        has_question_and_dashboard: true,
+        date_joined: "2020-01-15T00:00:00Z",
+      }),
+      recentItems: [],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("PopularSection")).toBeInTheDocument();
+  });
+
+  it("should render recent items for an existing user", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: false,
+        has_question_and_dashboard: true,
+        date_joined: "2020-01-15T00:00:00Z",
+      }),
+      recentItems: [createMockRecentItem()],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("RecentSection")).toBeInTheDocument();
+  });
 });
 
 const getProps = (opts?: Partial<HomeContentProps>): HomeContentProps => ({
