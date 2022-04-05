@@ -5,6 +5,7 @@ import {
   modal,
   openPeopleTable,
   visualize,
+  navigationSidebar,
   openNotebookEditor,
   openNavigationSidebar,
   visitQuestion,
@@ -281,6 +282,9 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Our analytics").click();
 
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
       cy.findByText("Other users' personal collections");
 
       cy.findByText("Orders, Count, Grouped by Created At (year)").click();
@@ -392,7 +396,9 @@ describe("smoketest > admin_setup", () => {
       browse().click();
       cy.findByTextEnsureVisible("Sample Database").click();
 
-      cy.icon("database").should("not.exist");
+      cy.get("main").within(() => {
+        cy.icon("database").should("not.exist");
+      });
 
       cy.findByText("Test Table").click();
 

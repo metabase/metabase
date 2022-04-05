@@ -27,7 +27,7 @@ function NewButton({
 }) {
   return (
     <EntityMenu
-      className="hide sm-show mr1 ml-auto"
+      className="hide sm-show mr1"
       trigger={
         <Link
           mr={1}

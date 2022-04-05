@@ -32,8 +32,7 @@ describe("dashboard reducers", () => {
       parameterValuesSearchCache: {},
       sidebar: { props: {} },
       slowCards: {},
-      hasSeenLoadedDashboard: false,
-      showLoadingCompleteFavicon: false,
+      loadingControls: {},
     });
   });
 

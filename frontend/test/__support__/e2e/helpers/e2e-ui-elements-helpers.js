@@ -15,23 +15,23 @@ export function sidebar() {
 }
 
 export function navigationSidebar() {
-  return cy.get(".Nav");
+  return cy.get("#root aside").first();
 }
 
 export function appBar() {
-  return cy.get("#mainAppBar");
+  return cy.get("#root header").first();
 }
 
 export function openNavigationSidebar() {
-  appBar().within(() => {
-    cy.icon("chevronright").click();
-  });
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
 }
 
 export function closeNavigationSidebar() {
-  appBar().within(() => {
-    cy.icon("chevronleft").click();
-  });
+  appBar()
+    .findByTestId("sidebar-toggle-button")
+    .click();
 }
 
 export function browse() {

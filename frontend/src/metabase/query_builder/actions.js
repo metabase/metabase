@@ -65,6 +65,7 @@ import {
   getTransformedSeries,
   getZoomedObjectId,
   isBasedOnExistingQuestion,
+  getTimeoutId,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
@@ -100,6 +101,26 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
+
+export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
+const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
+
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
+const showLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  () => true,
+);
+const hideLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  () => false,
+);
+
+const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
+const LOAD_START_UI_CONTROLS = "metabase/qb/LOAD_START_UI_CONTROLS";
+export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
+  "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
+const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
 
 export const setQueryBuilderMode = (
   queryBuilderMode,
@@ -1276,6 +1297,7 @@ export const runQuestionQuery = ({
   overrideWithCard,
 } = {}) => {
   return async (dispatch, getState) => {
+    dispatch(loadStartUIControls());
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -1329,6 +1351,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
+        // clearTimeout(timeoutId);
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -1342,6 +1365,17 @@ export const runQuestionQuery = ({
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
 };
+
+const loadStartUIControls = createThunkAction(
+  LOAD_START_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    dispatch(setDocumentTitle(t`Doing Science...`));
+    const timeoutId = setTimeout(() => {
+      dispatch(setDocumentTitle(t`Still Here...`));
+    }, 10000);
+    dispatch(setDocumentTitleTimeoutId(timeoutId));
+  },
+);
 
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
@@ -1383,8 +1417,36 @@ export const queryCompleted = (question, queryResults) => {
     }
 
     dispatch.action(QUERY_COMPLETED, { card, queryResults });
+    dispatch(loadCompleteUIControls());
   };
 };
+
+const loadCompleteUIControls = createThunkAction(
+  LOAD_COMPLETE_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    const timeoutId = getTimeoutId(getState());
+    clearTimeout(timeoutId);
+    dispatch(showLoadingCompleteFavicon());
+    if (document.hidden) {
+      dispatch(setDocumentTitle(t`Your question is ready!`));
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          dispatch(setDocumentTitle(""));
+          setTimeout(() => {
+            dispatch(hideLoadingCompleteFavicon());
+          }, 3000);
+        },
+        { once: true },
+      );
+    } else {
+      dispatch(setDocumentTitle(""));
+      setTimeout(() => {
+        dispatch(hideLoadingCompleteFavicon());
+      }, 3000);
+    }
+  },
+);
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that

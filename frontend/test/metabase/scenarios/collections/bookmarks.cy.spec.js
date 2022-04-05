@@ -23,7 +23,7 @@ describe("Bookmarks in a collection page", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    cy.findByText("View archive");
+    getSectionTitle("Collections");
     cy.icon("bookmark").should("not.exist");
   });
 
@@ -51,10 +51,6 @@ describe("Bookmarks in a collection page", () => {
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
       getSectionTitle(/Bookmarks/).should("not.exist");
-
-      // Once there is no list of bookmarks,
-      // we remove the heading for the list of collections
-      getSectionTitle("Collections").should("not.exist");
     });
   });
 
@@ -82,10 +78,6 @@ describe("Bookmarks in a collection page", () => {
 
     // A dashboard
     bookmarkThenArchive("Orders in a dashboard");
-
-    navigationSidebar().within(() => {
-      cy.findByText("Collections").should("not.exist");
-    });
   });
 
   it("can remove bookmark from item in sidebar", () => {

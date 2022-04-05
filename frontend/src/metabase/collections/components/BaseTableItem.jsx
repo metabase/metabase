@@ -11,6 +11,8 @@ import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
+import { color } from "metabase/lib/colors";
+
 import {
   ItemCell,
   EntityIconCheckBox,
@@ -80,6 +82,11 @@ export function BaseTableItem({
       height: 48,
     };
 
+    const icon = { name: item.getIcon().name };
+    if (item.model === "card") {
+      icon.color = color("bg-dark");
+    }
+
     // Table row can be wrapped with ItemDragSource,
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
@@ -99,7 +106,7 @@ export function BaseTableItem({
           <EntityIconCheckBox
             item={item}
             variant="list"
-            icon={item.getIcon()}
+            icon={icon}
             pinned={isPinned}
             selectable={canSelect}
             selected={isSelected}

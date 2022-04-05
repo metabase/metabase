@@ -34,7 +34,10 @@ import {
 import Mode from "metabase-lib/lib/Mode";
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+
 export const getUiControls = state => state.qb.uiControls;
+const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -323,6 +326,7 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
+    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -334,6 +338,23 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
+    }
+
+    // sort query.joins[int].fields
+    if (query.query.joins) {
+      query = updateIn(query, ["query", "joins"], joins =>
+        joins.map(joinedTable => {
+          if (!joinedTable.fields || joinedTable.fields === "all") {
+            return joinedTable;
+          }
+
+          const joinedTableFields = [...joinedTable.fields];
+          joinedTableFields.sort((a, b) =>
+            JSON.stringify(b).localeCompare(JSON.stringify(a)),
+          );
+          return { ...joinedTable, fields: joinedTableFields };
+        }),
+      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
@@ -801,4 +822,22 @@ export const isBasedOnExistingQuestion = createSelector(
   originalQuestion => {
     return originalQuestion != null;
   },
+);
+
+export const getDocumentTitle = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls?.documentTitle,
+);
+
+export const getPageFavicon = createSelector(
+  [getLoadingControls],
+  loadingControls =>
+    loadingControls?.showLoadCompleteFavicon
+      ? LOAD_COMPLETE_FAVICON
+      : undefined,
+);
+
+export const getTimeoutId = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls.timeoutId,
 );
