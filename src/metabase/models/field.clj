@@ -147,7 +147,7 @@
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     #{(case read-or-write
         :read  (perms/data-perms-path db-id schema table-id)
-        :write (write-perms-path db-id schema table-id))}
+        :write (perms/data-model-write-perms-path db-id schema table-id))}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id read-or-write)))
 
