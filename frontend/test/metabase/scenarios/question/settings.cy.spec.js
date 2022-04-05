@@ -72,7 +72,7 @@ describe("scenarios > question > settings", () => {
         .should("not.exist");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -130,18 +130,47 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Visible columns").click();
       findColumnAtIndex("Products → Category", 5);
 
+      // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
+
+      // Add "Address"
+      cy.findByText("Address")
+        .siblings(".Icon-add")
+        .click();
       /**
        * Helper functions related to THIS test only
        */
+      // The result automatically load when adding new fields
+      cy.wait("@dataset");
+
+      // Refresh @sidebarColumns as we added a new field
+      cy.findByText("Click and drag to change their order")
+        .parent()
+        .find(".cursor-grab")
+        .as("sidebarColumns"); // Store all columns in an array
+
+      findColumnAtIndex("User → Address", -1).as("user-address");
+
+      cy.get("@user-address")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, -50, { force: true })
+        .trigger("mouseup", 0, -50, { force: true });
+
+      findColumnAtIndex("User → Address", 15);
 
       function reloadResults() {
         cy.icon("play")
           .last()
           .click();
+
+        // Prevent performing actions while the query is being executed.
+        // Which caused some race condition and failed the test.
+        cy.wait("@dataset");
       }
 
       function findColumnAtIndex(column_name, index) {
-        cy.get("@sidebarColumns")
+        return cy
+          .get("@sidebarColumns")
           .eq(index)
           .contains(column_name);
       }
