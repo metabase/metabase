@@ -38,7 +38,7 @@ const getTitle = (popularItems: PopularItem[]) => {
   const models = _.uniq(popularItems.map(item => item.model));
 
   if (models.length !== 1) {
-    return t`Here is some popular stuff`;
+    return t`Here are some popular items`;
   }
 
   switch (models[0]) {
@@ -51,7 +51,7 @@ const getTitle = (popularItems: PopularItem[]) => {
     case "dashboard":
       return t`Here are some popular dashboards`;
     default:
-      return t`Here is some popular stuff`;
+      return t`Here are some popular items`;
   }
 };
 
