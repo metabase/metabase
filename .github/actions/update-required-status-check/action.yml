@@ -3,6 +3,10 @@ name: Update Github Required for Status Check
 runs:
   using: "composite"
   steps:
+    - name: Get SHA1 commit
+      id: vars
+      run: echo "::set-output name=sha::${{ github.event.pull_request.head.sha }}"
+      shell: bash
     - name: Update required status check
-      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" -f context="validate" -f state="success"
+      run: gh api "repos/metabase/metabase/statuses/$sha" -f context="validate" -f state="success"
       shell: bash
