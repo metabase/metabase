@@ -130,7 +130,7 @@
       (f db-id schema table-id)
       "/")))
 
-(def ^:private ^{:arglists '([table-id])} perms-objects-set*
+(def ^:private ^{:arglists '([table-id read-or-write])} perms-objects-set*
   "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
