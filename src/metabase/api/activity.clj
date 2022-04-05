@@ -5,6 +5,7 @@
             [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
             [metabase.models.activity :refer [Activity]]
+            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -126,12 +127,12 @@
           (group-by :model views))))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_views`. Tables and Dashboards have a limit of `views-limit`.
-  Cards have a limit of `card-runs-limit`.
+  "Common query implementation for `recent_views` and `popular_views`. Tables and Dashboards have a query limit of `views-limit`.
+  Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
   has the most recent view timestamp of the item and `:cnt` which has total views. We order the results by most recently
-  viewed then hydrate the basic details of the model.
+  viewed then hydrate the basic details of the model. Bookmarked cards and dashboards are *not* included in the result.
 
   Viewing a Dashboard will add entries to the view log for all cards on that dashboard so all card views are instead derived
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
@@ -139,22 +140,33 @@
   [views-limit card-runs-limit all-users?]
   (let [dashboard-and-table-views (db/select [ViewLog :user_id :model :model_id
                                               [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by [:user_id :model :model_id]
-                                     :where    [:and
-                                                (when-not all-users? [:= :user_id *current-user-id*])
-                                                [:in :model #{"dashboard" "table"}]]
-                                     :order-by [[:max_ts :desc]]
-                                     :limit    views-limit})
-        card-runs (->> (db/select [QueryExecution [:executor_id :user_id] [:card_id :model_id]
-                                   [:%count.* :cnt] [:%max.started_at :max_ts]]
-                         {:group-by [:executor_id :card_id :context]
-                          :where [:and
-                                  (when-not all-users? [:= :executor_id *current-user-id*])
-                                  [:= :context (hx/literal :question)]]
-                          :order-by [[:max_ts :desc]]
-                          :limit card-runs-limit})
-                       (map #(dissoc % :row_count))
-                       (map #(assoc % :model "card")))]
+                                    {:group-by  [(db/qualify ViewLog :user_id) :model :model_id]
+                                     :where     [:and
+                                                 (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                 [:in :model #{"dashboard" "table"}]
+                                                 [:= :bm.id nil]]
+                                     :order-by  [[:max_ts :desc]]
+                                     :limit     views-limit
+                                     :left-join [[DashboardBookmark :bm]
+                                                 [:and
+                                                  [:not [:= :model "table"]]
+                                                  [:= :bm.user_id *current-user-id*]
+                                                  [:= :model_id :bm.dashboard_id]]]})
+        card-runs                 (->> (db/select [QueryExecution [:executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
+                                                   [:%count.* :cnt] [:%max.started_at :max_ts]]
+                                         {:group-by [:executor_id (db/qualify QueryExecution :card_id) :context]
+                                          :where    [:and
+                                                     (when-not all-users? [:= :executor_id *current-user-id*])
+                                                     [:= :context (hx/literal :question)]
+                                                     [:= :bm.id nil]]
+                                          :order-by [[:max_ts :desc]]
+                                          :limit    card-runs-limit
+                                          :left-join [[CardBookmark :bm]
+                                                      [:and
+                                                       [:= :bm.user_id *current-user-id*]
+                                                       [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
+                                       (map #(dissoc % :row_count))
+                                       (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
          (sort-by :max_ts)
          reverse)))
