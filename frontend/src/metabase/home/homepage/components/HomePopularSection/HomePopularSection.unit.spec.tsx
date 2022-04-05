@@ -1,9 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { createMockPopularItem } from "metabase-types/api/mocks";
 import HomePopularSection, {
   HomePopularSectionProps,
 } from "./HomePopularSection";
-import { createMockPopularItem } from "metabase-types/api/mocks";
 
 describe("HomePopularSection", () => {
   it("should render a list of items of the same type", () => {
@@ -26,10 +26,7 @@ describe("HomePopularSection", () => {
 
     render(<HomePopularSection {...props} />);
 
-    expect(
-      screen.getByText("Here are some popular dashboards"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(""));
+    expect(screen.getByText(/popular dashboards/)).toBeInTheDocument();
   });
 
   it("should render a list of items of different types", () => {
@@ -52,7 +49,7 @@ describe("HomePopularSection", () => {
 
     render(<HomePopularSection {...props} />);
 
-    expect(screen.getByText("Here are some popular items")).toBeInTheDocument();
+    expect(screen.getByText(/popular items/)).toBeInTheDocument();
   });
 });
 
