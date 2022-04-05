@@ -243,35 +243,3 @@
               (perms/grant-general-permissions! group :setting)
               (get-permission-groups user 200)
               (get-permission-groups :crowberto 200))))))))
-
-(deftest premium-features--api-test
-  (testing "/api/premium-features"
-    (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
-      (letfn [(get-token-status [user status]
-                (testing (format "get token status with %s user" (user->name user))
-                  (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                                      {:valid    true
-                                                                       :status   "fake"
-                                                                       :features ["test" "fixture"]
-                                                                       :trial    false})]
-                  (mt/with-temporary-setting-values [:premium-embedding-token premium-features-test/random-fake-token]
-                    (mt/user-http-request user :get status "premium-features/token/status")))))]
-
-        (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
-            (get-token-status user 403)
-            (get-token-status :crowberto 200)))
-
-        (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "still fail if user's group doesn't have `setting` permission"
-              (get-token-status user 403)
-              (get-token-status :crowberto 200))
-
-
-            (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
-              (get-token-status user 200)
-              (get-token-status :crowberto 200))))))))
