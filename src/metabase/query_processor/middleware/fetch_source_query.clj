@@ -144,7 +144,8 @@
                                 (str/join ", " (:columns card))
                                 (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
                                 (:table_name card))}])
-            [false mbql-query]
+            (when mbql-query
+              [false mbql-query])
             (when native-query
               ;; rename `:query` to `:native` because source queries have a slightly different shape
               (let [native-query (set/rename-keys native-query {:query :native})]
