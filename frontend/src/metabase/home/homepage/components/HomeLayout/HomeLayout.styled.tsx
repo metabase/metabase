@@ -14,9 +14,13 @@ export interface LayoutProps {
 const sceneStyles = css`
   background-color: ${color("bg-light")};
   background-image: url("app/img/bridge.svg");
-  background-size: max(1728px, 100%) auto;
+  background-size: max(864px, 100%) auto;
   background-repeat: no-repeat;
   background-position: bottom;
+
+  ${breakpointMinLarge} {
+    background-size: max(1728px, 100%) auto;
+  }
 `;
 
 const gradientStyles = css`
