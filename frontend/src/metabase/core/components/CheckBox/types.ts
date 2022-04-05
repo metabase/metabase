@@ -9,7 +9,7 @@ export interface CheckBoxContainerProps {
 }
 
 export interface CheckBoxIconProps {
-  checked?: boolean;
+  checked: boolean;
   uncheckedColor: string;
 }
 
