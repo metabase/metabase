@@ -81,7 +81,7 @@
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
              driver/display-name          (when display-name (constantly display-name))
-             driver/contact-info          (when contact-info (constantly contact-info))
+             driver/contact-info          (constantly contact-info)
              driver/connection-properties (constantly connection-props)
              driver/superseded-by         (constantly (keyword superseded-by))}]
       (when f
