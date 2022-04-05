@@ -48,12 +48,12 @@ const HomeXraySection = ({
             onChange={setSchema}
           />
           {t`schema in`}
-          <DatabaseButton database={database} />
+          <DatabaseInfo database={database} />
         </HomeCaption>
       ) : (
         <HomeCaption primary>
           {t`Here are some explorations of`}
-          <DatabaseButton database={database} />
+          <DatabaseInfo database={database} />
         </HomeCaption>
       )}
       <SectionBody>
@@ -103,11 +103,11 @@ const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
   );
 };
 
-interface DatabaseButtonProps {
+interface DatabaseInfoProps {
   database: Database;
 }
 
-const DatabaseButton = ({ database }: DatabaseButtonProps) => {
+const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   return (
     <DatabaseLink to={Urls.browseDatabase(database)}>
       <DatabaseLinkIcon name="database" />
