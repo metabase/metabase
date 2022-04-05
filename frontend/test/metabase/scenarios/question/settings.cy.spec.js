@@ -72,7 +72,7 @@ describe("scenarios > question > settings", () => {
         .should("not.exist");
     });
 
-    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+    it("should preserve correct order of columns after column removal or addition via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
