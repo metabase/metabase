@@ -35,9 +35,9 @@ export const SchemaTrigger = styled.span`
 `;
 
 export const SchemaTriggerIcon = styled(Icon)`
-  color: ${color("focus")};
-  width: 1rem;
-  height: 1rem;
+  color: ${color("brand")};
+  width: 0.625rem;
+  height: 0.625rem;
   margin-left: 0.25rem;
 `;
 

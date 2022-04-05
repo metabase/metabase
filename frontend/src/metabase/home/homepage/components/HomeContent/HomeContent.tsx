@@ -15,11 +15,11 @@ export interface HomeContentProps {
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
   if (isPopularSection(props)) {
-    return <HomePopularSection />;
+    return <HomeXraySection />;
   }
 
   if (isRecentSection(props)) {
-    return <HomeRecentSection />;
+    return <HomeXraySection />;
   }
 
   if (isXraySection(props)) {

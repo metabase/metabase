@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { ChangeEvent, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
@@ -14,6 +14,7 @@ import {
   SchemaTriggerText,
   SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
+import Select from "metabase/core/components/Select";
 
 export interface HomeXraySectionProps {
   database?: Database;
@@ -26,7 +27,7 @@ const HomeXraySection = ({
 }: HomeXraySectionProps): JSX.Element => {
   const isSample = !database || database.is_sample;
   const schemas = candidates.map(d => d.schema);
-  const [schema] = useState(schemas[0]);
+  const [schema, setSchema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
@@ -41,23 +42,18 @@ const HomeXraySection = ({
       ) : canSelectSchema ? (
         <HomeCaption primary>
           {t`Here are some explorations of the`}
-          <SchemaTrigger>
-            <SchemaTriggerText>{schema}</SchemaTriggerText>
-            <SchemaTriggerIcon name="chevrondown" />
-          </SchemaTrigger>
+          <SchemaSelect
+            schema={schema}
+            schemas={schemas}
+            onChange={setSchema}
+          />
           {t`schema in`}
-          <DatabaseLink to={Urls.browseDatabase(database)}>
-            <DatabaseLinkIcon name="database" />
-            <DatabaseLinkText>{database.name}</DatabaseLinkText>
-          </DatabaseLink>
+          <DatabaseButton database={database} />
         </HomeCaption>
       ) : (
         <HomeCaption primary>
           {t`Here are some explorations of`}
-          <DatabaseLink to={Urls.browseDatabase(database)}>
-            <DatabaseLinkIcon name="database" />
-            <DatabaseLinkText>{database.name}</DatabaseLinkText>
-          </DatabaseLink>
+          <DatabaseButton database={database} />
         </HomeCaption>
       )}
       <SectionBody>
@@ -74,6 +70,52 @@ const HomeXraySection = ({
   );
 };
 
+interface SchemaSelectProps {
+  schema: string;
+  schemas: string[];
+  onChange?: (schema: string) => void;
+}
+
+const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
+  const trigger = (
+    <SchemaTrigger>
+      <SchemaTriggerText>{schema}</SchemaTriggerText>
+      <SchemaTriggerIcon name="chevrondown" />
+    </SchemaTrigger>
+  );
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      onChange?.(event.target.value);
+    },
+    [onChange],
+  );
+
+  return (
+    <Select
+      value={schema}
+      options={schemas}
+      optionNameFn={getSchemaOption}
+      optionValueFn={getSchemaOption}
+      onChange={handleChange}
+      triggerElement={trigger}
+    />
+  );
+};
+
+interface DatabaseButtonProps {
+  database: Database;
+}
+
+const DatabaseButton = ({ database }: DatabaseButtonProps) => {
+  return (
+    <DatabaseLink to={Urls.browseDatabase(database)}>
+      <DatabaseLinkIcon name="database" />
+      <DatabaseLinkText>{database.name}</DatabaseLinkText>
+    </DatabaseLink>
+  );
+};
+
 const getMessages = (count: number) => {
   const options = [
     t`A look at`,
@@ -87,6 +129,10 @@ const getMessages = (count: number) => {
     .map(index => options[index % options.length])
     .sample(count)
     .value();
+};
+
+const getSchemaOption = (schema: string) => {
+  return schema;
 };
 
 export default HomeXraySection;
