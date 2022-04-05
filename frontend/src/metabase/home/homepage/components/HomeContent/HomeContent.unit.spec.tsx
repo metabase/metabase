@@ -1,6 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockRecentItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import HomeContent, { HomeContentProps } from "./HomeContent";
 
 const PopularSectionMock = () => <div>PopularSection</div>;
@@ -15,7 +19,7 @@ jest.mock("../../containers/HomeXraySection", () => XraySectionMock);
 describe("HomeContent", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(2020, 0, 1));
+    jest.setSystemTime(new Date(2020, 0, 10));
   });
 
   afterEach(() => {
@@ -29,6 +33,7 @@ describe("HomeContent", () => {
         has_question_and_dashboard: true,
         date_joined: "2020-01-05T00:00:00Z",
       }),
+      databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
     });
 
@@ -42,8 +47,9 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        date_joined: "2020-01-15T00:00:00Z",
+        date_joined: "2020-01-05T00:00:00Z",
       }),
+      databases: [createMockDatabase()],
       recentItems: [],
     });
 
@@ -57,14 +63,47 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        date_joined: "2020-01-15T00:00:00Z",
+        date_joined: "2020-01-01T00:00:00Z",
       }),
+      databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
     });
 
     render(<HomeContent {...props} />);
 
     expect(screen.getByText("RecentSection")).toBeInTheDocument();
+  });
+
+  it("should render x-rays for an installer after the setup", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        date_joined: "2020-01-10T00:00:00Z",
+      }),
+      databases: [createMockDatabase()],
+      recentItems: [],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("XraySection")).toBeInTheDocument();
+  });
+
+  it("should render nothing if there are no databases", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        date_joined: "2020-01-10T00:00:00Z",
+      }),
+      databases: [],
+      recentItems: [],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.queryByText("XraySection")).not.toBeInTheDocument();
   });
 });
 
