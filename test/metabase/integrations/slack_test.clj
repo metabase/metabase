@@ -239,5 +239,9 @@
 
 (deftest slack-cache-updated-at-nil
   (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
-    (is (= (ns-resolve (find-ns 'metabase.integrations.slack) 'zoned-time-epoch)
+    (is (= #t "1970-01-01T00:00Z[UTC]"
+           (var-get #'slack/zoned-time-epoch)))
+    (is (= #t "1970-01-01T00:00Z[UTC]"
+           (slack/slack-channels-and-usernames-last-updated)))
+    (is (= (var-get #'slack/zoned-time-epoch)
            (slack/slack-channels-and-usernames-last-updated)))))
