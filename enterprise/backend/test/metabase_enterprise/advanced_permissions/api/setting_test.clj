@@ -1,13 +1,17 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
   "Permisisons tests for API that needs to be enforced by General Permissions to access Admin/Setting pages."
   (:require [clojure.test :refer :all]
+            [metabase.api.geojson-test :as geojson-test]
+            [metabase.api.ldap-test :as ldap-test]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.permissions :as perms]
             [metabase.models.setting-test :refer [test-setting-1 test-setting-2]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]))
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.integrations.ldap :as ldap.test]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -156,3 +160,118 @@
               (get-manifest user 200)
               (set-slack-settings :crowberto 200)
               (get-manifest :crowberto 200))))))))
+
+(deftest ldap-api-test
+  (testing "/api/ldap"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(update-ldap-settings [user status]
+                (testing (format "update ldap settings with %s user" (user->name user))
+                  (ldap.test/with-ldap-server
+                    (mt/user-http-request user :put status "ldap/settings"
+                                          (ldap-test/ldap-test-details)))))]
+
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (update-ldap-settings user 403)
+            (update-ldap-settings :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (update-ldap-settings user 403)
+              (update-ldap-settings :crowberto 200))
+
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-general-permissions! group :setting)
+              (update-ldap-settings user 200)
+              (update-ldap-settings :crowberto 200))))))))
+
+
+(deftest geojson-api-test
+  (testing "/api/geojson"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(get-geojson [user status]
+                (testing (format "get geojson with %s user" (user->name user))
+                  (mt/user-http-request user :get status "geojson"
+                                        :url geojson-test/test-geojson-url)))]
+
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (get-geojson user 403)
+            (get-geojson :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (get-geojson user 403)
+              (get-geojson :crowberto 200))
+
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-general-permissions! group :setting)
+              (get-geojson user 200)
+              (get-geojson :crowberto 200))))))))
+
+
+(deftest permissions-group-api-test
+  (testing "/api/permissions"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(get-permission-groups [user status]
+                (testing (format "get permission groups with %s user" (user->name user))
+                  (mt/user-http-request user :get status "permissions/group")))]
+
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (get-permission-groups user 403)
+            (get-permission-groups :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (get-permission-groups user 403)
+              (get-permission-groups :crowberto 200))
+
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-general-permissions! group :setting)
+              (get-permission-groups user 200)
+              (get-permission-groups :crowberto 200))))))))
+
+(deftest premium-features--api-test
+  (testing "/api/premium-features"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(get-token-status [user status]
+                (testing (format "get token status with %s user" (user->name user))
+                  (with-redefs [premium-features/fetch-token-status (fn [_x]
+                                                                      {:valid    true
+                                                                       :status   "fake"
+                                                                       :features ["test" "fixture"]
+                                                                       :trial    false})]
+                  (mt/with-temporary-setting-values [:premium-embedding-token premium-features-test/random-fake-token]
+                    (mt/user-http-request user :get status "premium-features/token/status")))))]
+
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (get-token-status user 403)
+            (get-token-status :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (get-token-status user 403)
+              (get-token-status :crowberto 200))
+
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-general-permissions! group :setting)
+              (get-token-status user 200)
+              (get-token-status :crowberto 200))))))))

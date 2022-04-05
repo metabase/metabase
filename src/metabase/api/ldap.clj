@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
@@ -89,7 +90,7 @@
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]

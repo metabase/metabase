@@ -1,12 +1,14 @@
 (ns metabase.api.premium-features
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.public-settings.premium-features :as premium-features]))
 
 (api/defendpoint GET "/token/status"
   "Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
   `features`, and when it is `valid_thru`."
   []
+  (validation/check-has-general-permission :setting)
   (premium-features/fetch-token-status (api/check-404 (premium-features/premium-embedding-token))))
 
-(api/define-routes api/+check-superuser)
+(api/define-routes)
