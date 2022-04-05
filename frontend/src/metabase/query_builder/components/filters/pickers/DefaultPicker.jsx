@@ -18,6 +18,8 @@ import {
 
 import { getCurrencySymbol } from "metabase/lib/formatting";
 
+import { keyForColumn } from "metabase/lib/dataset";
+
 import {
   BetweenLayoutContainer,
   BetweenLayoutFieldSeparator,
@@ -64,40 +66,23 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
-  const extractFieldSettings = field => {
-    const visualizationSettings = filter
-      ?.query()
-      ?.question()
-      ?.settings();
+  const visualizationSettings = filter
+    ?.query()
+    ?.question()
+    ?.settings();
 
-    // map column settings by field id
-    const parsedVisualizationSettings = Object.fromEntries(
-      Object.entries(visualizationSettings?.column_settings || {}).map(
-        ([key, value]) => {
-          try {
-            // destringify the keys eg: '["ref",["field",39,null]]' to find field ids
-            const fieldId = JSON.parse(key)[1][1];
-            return [fieldId, value];
-          } catch (err) {
-            return [null, null];
-          }
-        },
-      ),
-    );
+  const key = keyForColumn(dimension.column());
+  const columnSettings = visualizationSettings?.column_settings?.[key];
 
-    const fieldId = field?.id;
-    const fieldMetadata = field?.metadata?.fields[fieldId];
-
-    return {
-      ...(fieldMetadata?.settings || {}),
-      ...(parsedVisualizationSettings[fieldId] || {}),
-    };
+  const fieldMetadata = field?.metadata?.fields[field?.id];
+  const fieldSettings = {
+    ...(fieldMetadata?.settings ?? {}),
+    ...(columnSettings ?? {}),
   };
 
-  const fieldSettings = extractFieldSettings(field);
   const currencyPrefix =
-    isCurrency(field) && fieldSettings?.currency
-      ? getCurrencySymbol(fieldSettings.currency)
+    isCurrency(field) || fieldSettings?.currency
+      ? getCurrencySymbol(fieldSettings?.currency)
       : null;
 
   const fieldWidgets = operatorFields
