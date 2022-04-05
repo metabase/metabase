@@ -79,7 +79,7 @@ export function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
   } else {
-    return JSON.stringify(query);
+    return JSON.stringify(query, null, 2);
   }
 }
 
