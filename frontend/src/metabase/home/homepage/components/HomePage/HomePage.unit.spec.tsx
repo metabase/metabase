@@ -5,11 +5,11 @@ import HomePage from "./HomePage";
 
 jest.mock("metabase/lib/dom");
 
-const HomeLayoutMock = () => <div />;
-jest.mock("../../containers/HomeLayout", () => HomeLayoutMock);
+const LayoutMock = () => <div />;
+jest.mock("../../containers/HomeLayout", () => LayoutMock);
 
-const HomeContentMock = () => <div />;
-jest.mock("../../containers/HomeContent", () => HomeContentMock);
+const ContentMock = () => <div />;
+jest.mock("../../containers/HomeContent", () => ContentMock);
 
 describe("HomePage", () => {
   let isSmallScreenSpy: jest.SpyInstance;
