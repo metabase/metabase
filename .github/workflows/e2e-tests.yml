@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'e2e-optimize-e2e-job'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -52,6 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        java-version: [11]
         edition: [oss, ee]
         folder:
           - "admin"
@@ -107,8 +108,11 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
+    - name: Prepare JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
     - name: Run Snowplow micro
