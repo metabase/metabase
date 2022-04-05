@@ -11330,6 +11330,22 @@ databaseChangeLog:
                 AND p.object = '/general/subscription/'
               WHERE p.object IS NULL;
 
+  - changeSet:
+      id: v43.00-050
+      author: qnkhuat
+      comment: Added 0.43.0. Add permissions_group_membership.is_group_manager
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Boolean flag to indicate whether user is a group's manager.
+                name: is_group_manager
+                type: boolean
+                constraints:
+                  nullable: false
+                defaultValue: false
+            tableName: permissions_group_membership
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

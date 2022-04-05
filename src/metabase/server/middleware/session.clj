@@ -4,7 +4,8 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
+                                         *is-superuser?* *is-group-manager?*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
@@ -12,6 +13,7 @@
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
@@ -182,9 +184,12 @@
       (db/honeysql->sql
        {:select    [[:session.user_id :metabase-user-id]
                     [:user.is_superuser :is-superuser?]
+                    [(hsql/call :case [:is :pgm.is_group_manager (hsql/raw "true")] (hsql/raw "true") :else (hsql/raw "false"))
+                     :is-group-manager?]
                     [:user.locale :user-locale]]
         :from      [[Session :session]]
-        :left-join [[User :user] [:= :session.user_id :user.id]]
+        :left-join [[User :user] [:= :session.user_id :user.id]
+                    [PermissionsGroupMembership :pgm] [:and [:= :pgm.user_id :user.id] [:is :pgm.is_group_manager true]]]
         :where     [:and
                     [:= :user.is_active true]
                     [:= :session.id (hsql/raw "?")]
@@ -241,9 +246,10 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
+            *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))

@@ -153,20 +153,21 @@
      :offset offset-paging/*offset*}))
 
 
-(defn- maybe-add-general-permissions
+(defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
   [user]
-  (if-not (and (premium-features/enable-advanced-permissions?)
-               (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))
-    user
-    ((resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions) user)))
+  (if-let [with-advanced-permissions
+           (and (premium-features/enable-advanced-permissions?)
+                (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
+    (with-advanced-permissions user)
+    user))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
       (hydrate :personal_collection_id :group_ids :has_invited_second_user)
-      maybe-add-general-permissions))
+      maybe-add-advanced-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
