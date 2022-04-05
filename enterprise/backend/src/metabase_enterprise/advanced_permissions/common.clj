@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require [metabase.api.common :as api]
-            [metabase.models.permissions :as perms]))
+            [metabase.models.permissions :as perms]
+            [metabase.public-settings.premium-features :as premium-features]))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
@@ -18,3 +19,16 @@
   [perm-type]
   (or api/*is-superuser?*
       (perms/set-has-general-permission-of-type? @api/*current-user-permissions-set* perm-type)))
+
+(defn filter-tables-by-data-model-perms
+  "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions.
+  Returns the list unmodified if the :advanced-permissions feature flag is not enabled."
+  [tables]
+  (if (or api/*is-superuser?*
+          (not (premium-features/enable-advanced-permissions?)))
+    tables
+    (filter
+     (fn [{table-id :id db-id :db_id schema :schema}]
+       (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                        (perms/feature-perms-path :data-model :all db-id schema table-id)))
+     tables)))

@@ -34,8 +34,26 @@
               (ee-perms/update-db-data-model-permissions! (u/the-id (group/all-users))
                                                           (mt/id)
                                                           {:schemas {"PUBLIC" {id-1 :all
-                                                                               id-2 :all
-                                                                               id-3 :all
-                                                                               id-4 :all}}}))
+                                                                               id-2 :none
+                                                                               id-3 :none
+                                                                               id-4 :none}}}))
             (is (partial= {:can_access_data_model   true}
                           (user-permissions :rasta)))))))))
+
+(deftest fetch-database-metadata-exclude-uneditable-test
+  (testing "GET /api/database/:id/metadata?exclude_uneditable=true"
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-model-cleanup [Permissions]
+        (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+          (ee-perms/update-db-data-model-permissions! (u/the-id (group/all-users))
+                                                      (mt/id)
+                                                      {:schemas {"PUBLIC" {id-1 :all
+                                                                           id-2 :none
+                                                                           id-3 :none
+                                                                           id-4 :none}}})
+          (let [tables (->> (mt/user-http-request :rasta
+                                                  :get
+                                                  200
+                                                  (format "database/%d/metadata?exclude_uneditable=true" (mt/id)))
+                            :tables)]
+            (is (= [id-1] (map :id tables)))))))))

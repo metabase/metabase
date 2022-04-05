@@ -22,6 +22,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
@@ -297,7 +298,15 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden?]
+(defn- filter-by-data-model-perms
+  [tables]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+    (f tables)
+    tables))
+
+(defn- db-metadata [id include-hidden? exclude-uneditable?]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
@@ -311,15 +320,22 @@
                               :when (mi/can-read? table)]
                           (-> table
                               (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))))
+                              (update :metrics  (partial filter mi/can-read?))))))
+      (update :tables (fn [tables]
+                        (if exclude-uneditable?
+                          (filter-by-data-model-perms tables)
+                          tables)))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
    By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
    Returns DB, fields, and field values."
-  [id include_hidden]
-  {include_hidden (s/maybe su/BooleanString)}
-  (db-metadata id include_hidden))
+  [id include_hidden exclude_uneditable]
+  {include_hidden     (s/maybe su/BooleanString)
+   exclude_uneditable (s/maybe su/BooleanString)}
+  (db-metadata id
+               (Boolean/parseBoolean include_hidden)
+               (Boolean/parseBoolean exclude_uneditable)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
