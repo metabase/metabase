@@ -317,19 +317,19 @@
                  secret-names->props))))
 
 (def official-drivers
-  "List of all official drivers"
-  ["bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"])
+  "The set of all official drivers"
+  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"})
 
 (def partner-drivers
-  "List of other drivers in the partnership program"
-  ["firebolt"])
+  "The set of other drivers in the partnership program"
+  #{"firebolt"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"
   [driver-name]
   (cond
-    (contains? (set official-drivers) driver-name) "official"
-    (contains? (set partner-drivers) driver-name) "partner"
+    (contains? official-drivers driver-name) "official"
+    (contains? partner-drivers driver-name) "partner"
     :else "community"))
 
 (defn available-drivers-info
