@@ -164,7 +164,7 @@
 
 ;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
 ;;; [[mdb.connection/data-source]]
-(def ^javax.sql.DataSource data-source*
+(def ^:private ^javax.sql.DataSource data-source*
   (reify javax.sql.DataSource
     (getConnection [_]
       (.getConnection (mdb.connection/data-source)))))

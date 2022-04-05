@@ -16,8 +16,7 @@
             [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
             [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-            [metabase.db.connection :as mdb.conn]
-            [toucan.db :as db]))
+            [metabase.db.connection :as mdb.conn]))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a

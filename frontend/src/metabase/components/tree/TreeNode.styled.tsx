@@ -2,34 +2,17 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon, { IconProps } from "metabase/components/Icon";
-import { ColorScheme } from "./types";
-
-const COLOR_SCHEMES = {
-  admin: {
-    text: () => colors["text-medium"],
-    background: () => colors["accent7"],
-  },
-  default: {
-    text: () => colors["brand"],
-    background: () => colors["brand"],
-  },
-};
 
 interface TreeNodeRootProps {
   isSelected: boolean;
   depth: number;
-  colorScheme: ColorScheme;
 }
 
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props =>
-    props.isSelected
-      ? colors["white"]
-      : COLOR_SCHEMES[props.colorScheme].text()};
-  background-color: ${props =>
-    props.isSelected ? COLOR_SCHEMES[props.colorScheme].background() : "unset"};
+  color: ${props => (props.isSelected ? colors["white"] : colors["brand"])};
+  background-color: ${props => (props.isSelected ? colors["brand"] : "unset")};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -37,9 +20,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 
   &:hover {
     background-color: ${props =>
-      props.isSelected
-        ? COLOR_SCHEMES[props.colorScheme].background()
-        : lighten(COLOR_SCHEMES[props.colorScheme].background(), 0.6)};
+      props.isSelected ? colors["brand"] : lighten(colors["brand"], 0.6)};
   }
 `;
 
@@ -77,9 +58,13 @@ export const NameContainer = styled.div`
   flex: 1;
 `;
 
-export const IconContainer = styled.div`
+export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: 0.5;
+  opacity: ${props => (props.transparent ? 0.5 : 1)};
 `;
+
+IconContainer.defaultProps = {
+  transparent: true,
+};

@@ -62,7 +62,7 @@
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (:db-type *application-db*))
+  (.db-type *application-db*))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -76,11 +76,10 @@
 
 ;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
-  "Get a data source for the application DB, derived from environment variables. This is NOT a pooled data source!
-  That's created later as part of [[metabase.db/setup-db!]] -- use [[toucan.db/connection]] if you want to get
-  a [[clojure.java.jdbc]] spec for the connection pool."
+  "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
+  source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  *application-db*)
+  (.data-source *application-db*))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -93,7 +92,7 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (:id *application-db*))
+  (.id *application-db*))
 
 (defn memoize-for-application-db
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be

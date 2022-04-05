@@ -49,7 +49,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.findByRole("heading", { name: "Parameters" })
@@ -142,7 +141,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.findByText("Locked").click();

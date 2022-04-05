@@ -1,4 +1,9 @@
-import { restore, popover, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openNavigationSidebar,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 
 describe("18978, 18977", () => {
   beforeEach(() => {
@@ -14,15 +19,15 @@ describe("18978, 18977", () => {
     }).then(({ body: { id } }) => {
       cy.signIn("nodata");
       visitQuestion(id);
+      openNavigationSidebar();
 
-      cy.get(".Nav").within(() => {
-        cy.findByText(/Browse data/i).should("not.exist");
-        cy.icon("add").click();
-      });
+      cy.findByText(/Browse data/i).should("not.exist");
+      cy.icon("add").click();
 
       popover().within(() => {
         cy.findByText("Question").should("not.exist");
-        cy.findByText("SQL query").should("not.exist");
+        cy.findByText(/SQL query/).should("not.exist");
+        cy.findByText(/Native query/).should("not.exist");
       });
 
       cy.findByTestId("qb-header-action-panel").within(() => {

@@ -1,3 +1,5 @@
+import { getMainElement } from "metabase/lib/dom";
+
 export const updateParametersWidgetStickiness = dashboard => {
   initializeWidgetOffsetTop(dashboard);
 
@@ -36,7 +38,7 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
     dashboard.state.parametersWidgetOffsetTop ||
     dashboard.parametersWidgetRef.offsetTop;
 
-  return window.scrollY >= offsetTop;
+  return getMainElement().scrollTop >= offsetTop;
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {

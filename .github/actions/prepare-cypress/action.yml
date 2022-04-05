@@ -3,7 +3,7 @@ runs:
   using: "composite"
   steps:
     - name: Get Cypress cache
-      uses: actions/cache@v3
+      uses: actions/cache@v2
       with:
         path: ~/.cache/Cypress
         key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}

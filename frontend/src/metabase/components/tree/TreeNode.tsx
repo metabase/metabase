@@ -11,67 +11,56 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { ITreeNodeItem } from "./types";
-
-export interface TreeNodeProps {
-  item: ITreeNodeItem;
-  depth: number;
-  hasChildren: boolean;
-  isExpanded: boolean;
-  isSelected: boolean;
-  colorScheme: "default" | "admin";
-  onSelect: (item: ITreeNodeItem) => void;
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
-}
+import { TreeNodeProps } from "./types";
 
 // eslint-disable-next-line react/display-name
-export const TreeNode = React.memo(
+const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
     {
+      item,
+      depth,
       isExpanded,
       isSelected,
       hasChildren,
-      onToggleExpand,
       onSelect,
-      depth,
-      item,
-      colorScheme,
+      onToggleExpand,
+      ...props
     },
     ref,
   ) {
-    const { name, icon, id } = item;
+    const { name, icon } = item;
 
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
-    const handleSelect = () => {
-      onSelect(item);
-      onToggleExpand(id);
-    };
+    function onClick() {
+      onSelect?.();
+      onToggleExpand();
+    }
 
     const handleKeyDown: React.KeyboardEventHandler = ({ key }) => {
       switch (key) {
         case "Enter":
-          onSelect(item);
+          onSelect?.();
           break;
         case "ArrowRight":
-          !isExpanded && onToggleExpand(id);
+          !isExpanded && onToggleExpand();
           break;
         case "ArrowLeft":
-          isExpanded && onToggleExpand(id);
+          isExpanded && onToggleExpand();
           break;
       }
     };
 
     return (
       <TreeNodeRoot
-        ref={ref}
         role="menuitem"
         tabIndex={0}
-        colorScheme={colorScheme}
+        onClick={onClick}
+        {...props}
         depth={depth}
-        onClick={handleSelect}
         isSelected={isSelected}
         onKeyDown={handleKeyDown}
+        ref={ref}
       >
         <ExpandToggleButton hidden={!hasChildren}>
           <ExpandToggleIcon
@@ -91,3 +80,11 @@ export const TreeNode = React.memo(
     );
   }),
 );
+
+export const TreeNode = Object.assign(BaseTreeNode, {
+  Root: TreeNodeRoot,
+  ExpandToggleButton,
+  ExpandToggleIcon,
+  NameContainer,
+  IconContainer,
+});

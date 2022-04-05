@@ -44,7 +44,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     needs: pr_info
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       matrix:
         edition: [oss]
@@ -68,7 +68,7 @@ jobs:
 
   percy:
     timeout-minutes: 30
-    runs-on: buildjet-8vcpu-ubuntu-2004
+    runs-on: buildjet-4vcpu-ubuntu-2004
     needs: [build, pr_info]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar
@@ -95,7 +95,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

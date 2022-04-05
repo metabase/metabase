@@ -53,7 +53,11 @@
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
   (when-not (db-is-set-up?)
-    (locking (:status mdb.connection/*application-db*)
+    ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
+    ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
+    ;; use the application DB object itself to lock on since that will be a different object for different application
+    ;; DBs.
+    (locking mdb.connection/*application-db*
       (when-not (db-is-set-up?)
         (let [db-type       (mdb.connection/db-type)
               data-source   (mdb.connection/data-source)

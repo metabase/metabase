@@ -31,6 +31,8 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
+import Mode from "metabase-lib/lib/Mode";
+import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -42,6 +44,25 @@ export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
 export const getIsShowingRawTable = state =>
   getUiControls(state).isShowingRawTable;
+
+const SIDEBARS = [
+  "isShowingQuestionDetailsSidebar",
+  "isShowingChartTypeSidebar",
+  "isShowingChartSettingsSidebar",
+  "isShowingTimelineSidebar",
+
+  "isShowingSummarySidebar",
+  "isShowingFilterSidebar",
+
+  "isShowingDataReference",
+  "isShowingTemplateTagsEditor",
+  "isShowingSnippetSidebar",
+];
+
+export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
+  SIDEBARS.some(sidebar => uiControls[sidebar]),
+);
+
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 
@@ -302,6 +323,7 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
+    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -313,6 +335,23 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
+    }
+
+    // sort query.joins[int].fields
+    if (query.query.joins) {
+      query = updateIn(query, ["query", "joins"], joins =>
+        joins.map(joinedTable => {
+          if (!joinedTable.fields || joinedTable.fields === "all") {
+            return joinedTable;
+          }
+
+          const joinedTableFields = [...joinedTable.fields];
+          joinedTableFields.sort((a, b) =>
+            JSON.stringify(b).localeCompare(JSON.stringify(a)),
+          );
+          return { ...joinedTable, fields: joinedTableFields };
+        }),
+      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
@@ -439,8 +478,9 @@ const isZoomingRow = createSelector(
 );
 
 export const getMode = createSelector(
-  [getLastRunQuestion],
-  question => question && question.mode(),
+  [getLastRunQuestion, isZoomingRow],
+  (question, isZoomingRow) =>
+    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
@@ -603,13 +643,13 @@ const getIsTimeseries = createSelector(
   settings => settings && isTimeseries(settings),
 );
 
-const getTimeseriesXValues = createSelector(
+export const getTimeseriesXValues = createSelector(
   [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
   (isTimeseries, series, settings) =>
     isTimeseries && series && settings && getXValues({ series, settings }),
 );
 
-const getTimeseriesXDomain = createSelector(
+export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
 );

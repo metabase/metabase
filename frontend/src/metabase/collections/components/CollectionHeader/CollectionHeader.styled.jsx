@@ -15,7 +15,7 @@ export const Container = styled.div`
   ${breakpointMinSmall} {
     align-items: center;
     flex-direction: row;
-    padding-top: ${space(3)};
+    padding-top: ${space(1)};
   }
 `;
 
@@ -24,20 +24,6 @@ export const MenuContainer = styled.div`
   margin-top: ${space(1)};
   align-self: start;
 `;
-
-export const ToggleMobileSidebarIcon = styled(Icon)`
-  cursor: pointer;
-  margin: ${space(0)} ${space(2)} 0 ${space(1)};
-
-  ${breakpointMinSmall} {
-    display: none;
-  }
-`;
-
-ToggleMobileSidebarIcon.defaultProps = {
-  name: "burger",
-  size: 20,
-};
 
 export const DescriptionTooltipIcon = styled(Icon)`
   color: ${color("bg-dark")};

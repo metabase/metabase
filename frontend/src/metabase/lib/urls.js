@@ -366,5 +366,5 @@ export function extractCollectionId(slug) {
 export function bookmark({ type, id, name }) {
   const [, idInteger] = id.split("-");
 
-  return `${type}/${appendSlug(idInteger, slugg(name))}`;
+  return `/${type}/${appendSlug(idInteger, slugg(name))}`;
 }

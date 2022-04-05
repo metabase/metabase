@@ -10,6 +10,12 @@ const getPercentage = (number: number): string => {
 };
 
 export const QueryOptionsRoot = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  height: 100%;
+
   margin: auto 0.5rem;
 
   ${breakpointMinSmall} {

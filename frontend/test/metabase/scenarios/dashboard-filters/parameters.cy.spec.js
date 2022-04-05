@@ -35,7 +35,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.visit("/");
     cy.wait("@collection");
 
-    cy.findByText("Browse all items").click();
+    cy.findByText("Our analytics").click();
     cy.wait("@collection");
 
     cy.findByText("Orders in a dashboard").click();
@@ -313,7 +313,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.visit("/");
     cy.wait("@collection");
     // find and edit the question
-    cy.findByText("Browse all items").click();
+    cy.findByText("Our analytics").click();
     cy.wait("@collection");
     cy.findByText("DashQ").click();
     cy.wait("@collection");

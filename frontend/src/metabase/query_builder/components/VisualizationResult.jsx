@@ -17,6 +17,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "tableHeaderHeight",
   "scrollToColumn",
   "renderTableHeaderWrapper",
+  "mode",
 ];
 
 export default class VisualizationResult extends Component {

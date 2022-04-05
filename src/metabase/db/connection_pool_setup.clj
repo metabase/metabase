@@ -18,6 +18,8 @@
      {"maxPoolSize" max-pool-size})))
 
 (s/defn connection-pool-data-source :- PoolBackedDataSource
+  "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
+  `data-source` is already pooled, this will return `data-source` as-is."
   [db-type     :- s/Keyword
    data-source :- javax.sql.DataSource]
   (if (instance? PoolBackedDataSource data-source)

@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   modal,
-  sidebar,
+  navigationSidebar,
   assertCanAddItemsToCollection,
   openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
@@ -26,7 +26,12 @@ describe("personal collections", () => {
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection");
-      cy.findByText("Other users' personal collections").click();
+      navigationSidebar().within(() => {
+        cy.icon("ellipsis").click();
+      });
+      popover()
+        .findByText("Other users' personal collections")
+        .click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
@@ -48,13 +53,12 @@ describe("personal collections", () => {
       cy.icon("pencil").should("not.exist");
     });
 
-    // Quarantined because of the failures in CI caused by metabase#21026
-    it.skip("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
+    it("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
       addNewCollection("Foo");
-      sidebar()
+      navigationSidebar()
         .findByText("Foo")
         .click();
       assertCanAddItemsToCollection();
@@ -69,7 +73,7 @@ describe("personal collections", () => {
         cy.url().should("eq", String(location));
 
         // Check can't open permissions modal via URL for personal collection child
-        sidebar()
+        navigationSidebar()
           .findByText("Foo")
           .click();
         cy.location().then(location => {
@@ -86,7 +90,7 @@ describe("personal collections", () => {
       cy.findByLabelText("Name").type("Foo");
       cy.button("Create").click();
       // This repro could possibly change depending on the design decision for this feature implementation
-      sidebar().findByText("Foo");
+      navigationSidebar().findByText("Foo");
     });
   });
 
@@ -99,7 +103,7 @@ describe("personal collections", () => {
           cy.findByText("Your personal collection").click();
           // Create initial collection inside the personal collection and navigate inside it
           addNewCollection("Foo");
-          sidebar()
+          navigationSidebar()
             .as("sidebar")
             .findByText("Foo")
             .click();
