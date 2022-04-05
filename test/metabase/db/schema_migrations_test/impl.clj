@@ -11,8 +11,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.db.liquibase :as liquibase]
             [metabase.db.test-util :as mdb.test-util]
@@ -21,8 +20,7 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [toucan.db :as db])
+            [metabase.util :as u])
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))
 
@@ -69,10 +67,7 @@
      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
      ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [toucan.db/*db-connection* {:datasource data-source}
-                 toucan.db/*quoting-style* (mdb/quoting-style driver)
-                 mdb.conn/*db-type*        driver
-                 mdb.conn/*data-source*    data-source]
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db

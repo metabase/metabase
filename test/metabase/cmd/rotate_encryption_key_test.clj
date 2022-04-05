@@ -40,7 +40,7 @@
   `(do-with-model-type ~mtype ~type-fns (fn [] ~@body)))
 
 (defn- raw-value [keyy]
-  (:value (first (jdbc/query {:datasource mdb.connection/*data-source*}
+  (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
                              ["select value from setting where setting.key=?;" keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
@@ -79,11 +79,8 @@
                       i18n/*site-locale-override*  "en"
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues
-                      setting/*disable-cache*      true?
-                      mdb.connection/*db-type*     driver/*driver*
-                      mdb.connection/*data-source* data-source
-                      db/*db-connection*           {:datasource data-source}
-                      db/*quoting-style*           driver/*driver*]
+                      setting/*disable-cache*         true?
+                      mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
