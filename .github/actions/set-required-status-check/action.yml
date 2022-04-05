@@ -5,6 +5,6 @@ runs:
   steps:
     - name: Set required status check
       env:
-       GITHUB_TOKEN: ${{ github.token }}
-      run: gh api /repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }} -f context="validate" -f state="pending"
+       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh api repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }} -f context="validate" -f state="pending"
       shell: bash
