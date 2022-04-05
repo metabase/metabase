@@ -2,6 +2,7 @@ import React, { ChangeEvent, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import Select from "metabase/core/components/Select";
 import { Database, DatabaseCandidate } from "metabase-types/api";
 import HomeCaption from "../HomeCaption";
 import HomeXrayCard from "../HomeXrayCard";
@@ -14,7 +15,6 @@ import {
   SchemaTriggerText,
   SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
-import Select from "metabase/core/components/Select";
 
 export interface HomeXraySectionProps {
   database?: Database;
