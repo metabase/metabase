@@ -29,7 +29,7 @@ Before migrating to a production application database, you should copy the H2 ap
 docker cp metabase:/metabase.db/metabase.db.mv.db ./
 ```
 
-The above command would copy the database file to the directory you ran the command from.
+The above command would copy the database file to the directory you ran the command from. You can also create a copy of this H2 file and use it to migrate the data to a production-ready database. See [Migrating from H2](migrating-from-h2.md).
 
 ## Amazon RDS for the application database
 
