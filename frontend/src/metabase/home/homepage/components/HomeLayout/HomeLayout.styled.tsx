@@ -37,7 +37,7 @@ export const LayoutRoot = styled.div<LayoutProps>`
   ${props => (props.showScene ? sceneStyles : gradientStyles)};
 
   ${breakpointMinMedium} {
-    padding: 2rem 3rem 2rem;
+    padding: 3rem 4rem;
   }
 
   ${breakpointMinLarge} {
