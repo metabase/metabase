@@ -52,23 +52,13 @@ export function getClickHoverObject(
   const isBreakoutMultiseries = isMultiseries && card._breakoutColumn;
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
-  const isCardNamedDerivedFromColumn = cols.some(col => col.name === card.name);
-  const isAddedSeriesOnDashcard = isDashboardAddedSeries(
-    series,
-    seriesIndex,
-    dashboard,
-  );
 
-  function getColumnDisplayName(col, colIndex, card) {
-    // when the series we are looking at is an added series on a dashcard,
-    // the `visualization_settings.series_settings` will be keyed by `card.name`
-    // check for `columnIndex === 1` because only the first metric column
-    // should be renamed by this setting
-    const colKey =
-      isAddedSeriesOnDashcard && !isCardNamedDerivedFromColumn && colIndex === 1
-        ? card.name
-        : col.name;
-    const colTitle = getIn(settings, ["series_settings", colKey, "title"]);
+  function getColumnDisplayName(col, colVizSettingsKey = col.name) {
+    const colTitle = getIn(settings, [
+      "series_settings",
+      colVizSettingsKey,
+      "title",
+    ]);
 
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
     if (!isBreakoutMultiseries && colTitle) {
@@ -125,6 +115,42 @@ export function getClickHoverObject(
       ([x]) => key === x || (moment.isMoment(key) && key.isSame(x)),
     );
 
+    const isAddedSeriesOnDashcard = isDashboardAddedSeries(
+      series,
+      seriesIndex,
+      dashboard,
+    );
+    const isCardNameTakenFromColumnName = cols.some(
+      col => col.name === card.name,
+    );
+    const isCardNameCombinedWithColumnDisplayName = cols.some(
+      col => card.name === `${card.originalCardName}: ${col.display_name}`,
+    );
+    const colVizSettingsKeys = rawCols.map((rawCol, colIndex) => {
+      // Series that have been added to dashcards as "additional series" can have weird viz settings keys.
+      // Typically the viz settings key is the column name, but to avoid scenarios where the added series
+      // repeats column names, the card name is used OR some combo of the card name and column display_name is used.
+      if (
+        isAddedSeriesOnDashcard &&
+        // Sometimes (bar charts only?), the card name is set to one of the column names (not necessarily the `rawCol` in this function).
+        // In that scenario, we can probably be confident that the viz settings key for the column is the column name.
+        !isCardNameTakenFromColumnName &&
+        // the x axis (first) column uses the column name
+        colIndex >= 1
+      ) {
+        // When there are multiple series in a card, the column name is combined with the card name,
+        // (remember: this `card` object has a `name` property that has been changed in `LineAreaBarChart`),
+        // so we need to reconstruct the viz settings key using the original card name and the column display name
+        if (isCardNameCombinedWithColumnDisplayName) {
+          return `${card.originalCardName}: ${rawCol.display_name}`;
+        } else {
+          return card.originalCardName;
+        }
+      }
+
+      return rawCol.name;
+    });
+
     // try to get rows from _origin
     const rawRows = rows
       .map(row => {
@@ -150,7 +176,7 @@ export function getClickHoverObject(
           };
         }
         return {
-          key: getColumnDisplayName(col, i, card),
+          key: getColumnDisplayName(col, colVizSettingsKeys[i]),
           value: formatNull(aggregatedRow[i]),
           col: col,
         };
