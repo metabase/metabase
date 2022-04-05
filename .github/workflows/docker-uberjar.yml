@@ -24,6 +24,8 @@ jobs:
         edition: [ee, oss]
         java-version: [8, 11, 17]
     steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
     - name: Set required status check
       uses: ./.github/actions/set-required-status-check
     - name: Prepare JRE (Java Run-time Environment)
@@ -57,14 +59,14 @@ jobs:
         ports:
           - 5000:5000
     steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
     - name: Set required status check
       uses: ./.github/actions/set-required-status-check
     - name: Extract and clean branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
       id: extract_branch
-    - name: Check out the code (Dockerfile needed)
-      uses: actions/checkout@v3
     - name: Download uploaded artifacts to insert into container
       uses: actions/download-artifact@v2
       with:

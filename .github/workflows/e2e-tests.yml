@@ -77,9 +77,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
     - name: Set required status check
       uses: ./.github/actions/set-required-status-check
-    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
