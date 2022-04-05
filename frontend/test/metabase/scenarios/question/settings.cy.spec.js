@@ -137,14 +137,15 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Address")
         .siblings(".Icon-add")
         .click();
-      // The result automatically load when adding new fields
-      cy.wait("@dataset");
 
       // Refresh @sidebarColumns as we added a new field
       cy.findByText("Click and drag to change their order")
         .parent()
         .find(".cursor-grab")
         .as("sidebarColumns"); // Store all columns in an array
+      // The result automatically load when adding new fields but two requests are fired.
+      // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
+      cy.wait(["@dataset", "@dataset"]);
 
       findColumnAtIndex("User → Address", -1).as("user-address");
 
