@@ -16,7 +16,5 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   personal_collection_id: 1,
   date_joined: new Date().toISOString(),
   last_login: new Date().toISOString(),
-  can_access_data_model: false,
-  can_access_database_management: false,
   ...opts,
 });

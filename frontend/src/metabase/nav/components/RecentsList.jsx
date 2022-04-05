@@ -17,7 +17,7 @@ import { ItemIcon } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import { getTranslatedEntityName } from "./utils";
+import { getTranslatedEntityName } from "../utils";
 import {
   EmptyStateContainer,
   Header,
