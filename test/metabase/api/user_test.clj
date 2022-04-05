@@ -258,7 +258,7 @@
                  (dissoc :is_qbnewb :last_login :has_question_and_dashboard))
              (-> (mt/user-http-request :rasta :get 200 "user/current")
                  mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :last_login :has_question_and_dashboard)))))))
+                 (dissoc :is_qbnewb :first_login :last_login :has_question_and_dashboard)))))))
 
 (deftest get-user-test
   (testing "GET /api/user/:id"
