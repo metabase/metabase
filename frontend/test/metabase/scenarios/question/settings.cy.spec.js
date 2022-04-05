@@ -155,7 +155,7 @@ describe("scenarios > question > settings", () => {
         .trigger("mousemove", 0, -50, { force: true })
         .trigger("mouseup", 0, -50, { force: true });
 
-      findColumnAtIndex("User → Address", 15);
+      findColumnAtIndex("User → Address", -2);
       /**
        * Helper functions related to THIS test only
        */
