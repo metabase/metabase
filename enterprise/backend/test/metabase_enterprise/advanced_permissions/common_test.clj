@@ -108,4 +108,3 @@
         (testing "a non-admin can update field metadata if they have data model perms for the table"
           (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id :all}}}}}
             (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))))))
-

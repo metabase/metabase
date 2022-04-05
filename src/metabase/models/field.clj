@@ -118,18 +118,6 @@
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
 
-(defn- write-perms-path
-  "Returns the permission path required to edit a field in the table specified by the provided args. If Enterprise
-  Edition code is available, and a valid :advanced-permissions token is present, returns the data model permissions
-  path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
-  [db-id schema table-id]
-  (let [f (u/ignore-exceptions
-           (classloader/require ' metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve ' metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
-    (if (and f premium-features/enable-advanced-permissions?)
-      (f db-id schema table-id)
-      "/")))
-
 (def ^:private ^{:arglists '([table-id read-or-write])} perms-objects-set*
   "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
@@ -147,7 +135,7 @@
      (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
        #{(case read-or-write
            :read  (perms/data-perms-path db-id schema table-id)
-           :write (write-perms-path db-id schema table-id))}))
+           :write (perms/data-model-write-perms-path db-id schema table-id))}))
    :ttl/threshold 5000))
 
 (defn- perms-objects-set
