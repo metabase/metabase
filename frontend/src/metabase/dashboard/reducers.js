@@ -32,7 +32,7 @@ import {
   CLOSE_SIDEBAR,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
   SAVE_DASHBOARD_AND_CARDS,
-  SET_DASHBOARD_SEEN,
+  SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
 } from "./actions";
@@ -61,28 +61,19 @@ const isEditing = handleActions(
   null,
 );
 
-const hasSeenLoadedDashboard = handleActions(
+const loadingControls = handleActions(
   {
-    [INITIALIZE]: { next: state => false },
-    [FETCH_DASHBOARD]: { next: state => false },
-    [SET_DASHBOARD_SEEN]: {
-      next: state => true,
-    },
-    [RESET]: { next: state => false },
+    [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
+      ...state,
+      documentTitle: payload,
+    }),
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
+      ...state,
+      showLoadCompleteFavicon: payload,
+    }),
+    [RESET]: { next: state => ({}) },
   },
-  false,
-);
-
-const showLoadingCompleteFavicon = handleActions(
-  {
-    [INITIALIZE]: { next: state => false },
-    [FETCH_DASHBOARD]: { next: state => false },
-    [SET_SHOW_LOADING_COMPLETE_FAVICON]: {
-      next: (state, { payload }) => payload,
-    },
-    [RESET]: { next: state => false },
-  },
-  false,
+  {},
 );
 
 function newDashboard(before, after, isDirty) {
@@ -402,8 +393,7 @@ const sidebar = handleActions(
 export default combineReducers({
   dashboardId,
   isEditing,
-  hasSeenLoadedDashboard,
-  showLoadingCompleteFavicon,
+  loadingControls,
   dashboards,
   dashcards,
   dashcardData,

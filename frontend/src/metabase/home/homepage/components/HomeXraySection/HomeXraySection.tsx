@@ -1,30 +1,37 @@
-import React, { useMemo } from "react";
+import React, { ChangeEvent, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import Select from "metabase/core/components/Select";
 import { Database, DatabaseCandidate } from "metabase-types/api";
 import HomeCaption from "../HomeCaption";
 import HomeXrayCard from "../HomeXrayCard";
 import {
-  DatabaseIcon,
+  DatabaseLinkIcon,
   DatabaseLink,
-  DatabaseTitle,
+  DatabaseLinkText,
   SectionBody,
+  SchemaTrigger,
+  SchemaTriggerText,
+  SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
 
 export interface HomeXraySectionProps {
-  database?: Database;
-  databaseCandidates: DatabaseCandidate[];
+  database: Database;
+  candidates: DatabaseCandidate[];
 }
 
 const HomeXraySection = ({
   database,
-  databaseCandidates,
+  candidates,
 }: HomeXraySectionProps): JSX.Element => {
-  const isSample = !database || database.is_sample;
-  const tables = databaseCandidates.flatMap(d => d.tables);
-  const tableCount = tables.length;
+  const isSample = database.is_sample;
+  const schemas = candidates.map(d => d.schema);
+  const [schema, setSchema] = useState(schemas[0]);
+  const candidate = candidates.find(d => d.schema === schema);
+  const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
+  const canSelectSchema = schemas.length > 1;
 
   return (
     <div>
@@ -32,17 +39,25 @@ const HomeXraySection = ({
         <HomeCaption primary>
           {t`Try out these sample x-rays to see what Metabase can do.`}
         </HomeCaption>
+      ) : canSelectSchema ? (
+        <HomeCaption primary>
+          {t`Here are some explorations of the`}
+          <SchemaSelect
+            schema={schema}
+            schemas={schemas}
+            onChange={setSchema}
+          />
+          {t`schema in`}
+          <DatabaseInfo database={database} />
+        </HomeCaption>
       ) : (
         <HomeCaption primary>
           {t`Here are some explorations of`}
-          <DatabaseLink to={Urls.browseDatabase(database)}>
-            <DatabaseIcon name="database" />
-            <DatabaseTitle>{database.name}</DatabaseTitle>
-          </DatabaseLink>
+          <DatabaseInfo database={database} />
         </HomeCaption>
       )}
       <SectionBody>
-        {tables.map((table, index) => (
+        {candidate?.tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
             title={table.title}
@@ -52,6 +67,52 @@ const HomeXraySection = ({
         ))}
       </SectionBody>
     </div>
+  );
+};
+
+interface SchemaSelectProps {
+  schema: string;
+  schemas: string[];
+  onChange?: (schema: string) => void;
+}
+
+const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
+  const trigger = (
+    <SchemaTrigger>
+      <SchemaTriggerText>{schema}</SchemaTriggerText>
+      <SchemaTriggerIcon name="chevrondown" />
+    </SchemaTrigger>
+  );
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      onChange?.(event.target.value);
+    },
+    [onChange],
+  );
+
+  return (
+    <Select
+      value={schema}
+      options={schemas}
+      optionNameFn={getSchemaOption}
+      optionValueFn={getSchemaOption}
+      onChange={handleChange}
+      triggerElement={trigger}
+    />
+  );
+};
+
+interface DatabaseInfoProps {
+  database: Database;
+}
+
+const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
+  return (
+    <DatabaseLink to={Urls.browseDatabase(database)}>
+      <DatabaseLinkIcon name="database" />
+      <DatabaseLinkText>{database.name}</DatabaseLinkText>
+    </DatabaseLink>
   );
 };
 
@@ -68,6 +129,10 @@ const getMessages = (count: number) => {
     .map(index => options[index % options.length])
     .sample(count)
     .value();
+};
+
+const getSchemaOption = (schema: string) => {
+  return schema;
 };
 
 export default HomeXraySection;

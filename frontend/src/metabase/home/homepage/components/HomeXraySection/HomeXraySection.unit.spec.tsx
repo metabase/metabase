@@ -13,7 +13,7 @@ describe("HomeXraySection", () => {
       database: createMockDatabase({
         is_sample: true,
       }),
-      databaseCandidates: [
+      candidates: [
         createMockDatabaseCandidate({
           tables: [
             createMockTableCandidate({ title: "Orders" }),
@@ -36,11 +36,13 @@ describe("HomeXraySection", () => {
         name: "H2",
         is_sample: false,
       }),
-      databaseCandidates: [
+      candidates: [
         createMockDatabaseCandidate({
+          schema: "public",
           tables: [createMockTableCandidate({ title: "Orders" })],
         }),
         createMockDatabaseCandidate({
+          schema: "internal",
           tables: [createMockTableCandidate({ title: "People" })],
         }),
       ],
@@ -51,7 +53,7 @@ describe("HomeXraySection", () => {
     expect(screen.getByText(/Here are some explorations/)).toBeInTheDocument();
     expect(screen.getByText("H2")).toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
 });
 
@@ -59,6 +61,6 @@ const getProps = (
   opts?: Partial<HomeXraySectionProps>,
 ): HomeXraySectionProps => ({
   database: createMockDatabase(),
-  databaseCandidates: [],
+  candidates: [],
   ...opts,
 });
