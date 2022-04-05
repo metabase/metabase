@@ -12,7 +12,7 @@ import {
   SectionBody,
 } from "./HomeXraySection.styled";
 
-export interface XraySectionProps {
+export interface HomeXraySectionProps {
   database?: Database;
   databaseCandidates: DatabaseCandidate[];
 }
@@ -20,7 +20,7 @@ export interface XraySectionProps {
 const HomeXraySection = ({
   database,
   databaseCandidates,
-}: XraySectionProps): JSX.Element => {
+}: HomeXraySectionProps): JSX.Element => {
   const isSample = !database || database.is_sample;
   const tables = databaseCandidates.flatMap(d => d.tables);
   const tableCount = tables.length;
