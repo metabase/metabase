@@ -5,7 +5,7 @@ runs:
   steps:
     - name: Get SHA1 commit
       id: vars
-      run: echo "::set-output name=sha::${{ github.event.pull_request.head.sha }}"
+      run: echo "::set-output name=sha::$(git rev-parse "$GITHUB_SHA")"
       shell: bash
     - name: Update required status check
       run: gh api "repos/metabase/metabase/statuses/$sha" -f context="validate" -f state="success"
