@@ -8,15 +8,14 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
-            [potemkin.types :as p.types]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]
-            [metabase.plugins.classloader :as classloader]))
+            [toucan.models :as models]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -160,7 +159,7 @@
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     #{(case read-or-write
         :read  (perms/data-perms-path db-id schema table-id)
-        :write (write-perms-objects-set db-id schema table-id))}
+        :write (write-perms-path db-id schema table-id))}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id read-or-write)))
 
