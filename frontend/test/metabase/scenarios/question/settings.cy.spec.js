@@ -92,6 +92,7 @@ describe("scenarios > question > settings", () => {
                 alias: "Products",
               },
             ],
+            limit: 5,
           },
           database: SAMPLE_DB_ID,
         },
