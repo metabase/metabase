@@ -116,15 +116,28 @@
       (fn [do-with-dest-db]
         (f do-with-source-db do-with-dest-db))))))
 
-(defmacro ^:private with-source-and-dest-dbs {:style/indent 0} [& body]
+(defmacro ^:private with-source-and-dest-dbs
+  "Creates and sets up two in-memory H2 application databases, a source database and an application database. For
+  testing load/dump/serialization stuff. To use the source DB, use [[with-source-db]], which makes binds it as the
+  current application database; [[with-dest-db]] binds the destination DB as the current application database."
+  {:style/indent 0}
+  [& body]
+  ;; this is implemented by introducing the anaphors `&do-with-source-db` and `&do-with-dest-db` which are used by
+  ;; [[with-source-db]] and [[with-dest-db]]
   `(do-with-source-and-dest-dbs
     (fn [~'&do-with-source-db ~'&do-with-dest-db]
       ~@body)))
 
-(defmacro ^:private with-source-db {:style/indent 0} [& body]
+(defmacro ^:private with-source-db
+  "For use with [[with-source-and-dest-dbs]]. Makes the source DB the current application database."
+  {:style/indent 0}
+  [& body]
   `(~'&do-with-source-db (fn [] ~@body)))
 
-(defmacro ^:private with-dest-db {:style/indent 0} [& body]
+(defmacro ^:private with-dest-db
+  "For use with [[with-source-and-dest-dbs]]. Makes the destination DB the current application database."
+  {:style/indent 0}
+  [& body]
   `(~'&do-with-dest-db (fn [] ~@body)))
 
 (defn- do-with-random-dump-dir [f]
@@ -166,7 +179,7 @@
                       (is (nil? (cmd/dump dump-dir)))))))))
           (testing "verify the Dashboard was dumped as expected"
             (is (.exists (io/file dashboard-yaml-filename)))
-            (when-let [yaml (yaml/from-file dashboard-yaml-filename)]
+            (let [yaml (yaml/from-file dashboard-yaml-filename)]
               (is (partial= {:dashboard_cards [{:card_id "/collections/root/cards/Card_1"}
                                                {:card_id "/collections/root/cards/Card_2"}]}
                             yaml))))
