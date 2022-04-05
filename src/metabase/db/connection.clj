@@ -76,9 +76,8 @@
 
 ;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
-  "Get a data source for the application DB, derived from environment variables. This is NOT a pooled data source!
-  That's created later as part of [[metabase.db/setup-db!]] -- use [[toucan.db/connection]] if you want to get
-  a [[clojure.java.jdbc]] spec for the connection pool."
+  "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
+  source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
   (:data-source *application-db*))
 
