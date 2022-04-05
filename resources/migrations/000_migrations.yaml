@@ -11395,6 +11395,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  remarks: Error message from persisting if applicable
+                  name: error
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
                   remarks: The timestamp of when the model was first persisted
                   name: created_at
                   type: ${timestamp_type}

@@ -84,9 +84,12 @@
         (db/update! PersistedInfo (u/the-id persisted-info)
           ;; todo: we can lose a deletion request here. we need to check the state as we complete
           :active true, :state "persisted", :refresh_end :%now
-          :columns (mapv :name metadata))
+          :columns (mapv :name metadata), :error nil)
         (catch Exception e
           (log/warn e)
+          (db/update! PersistedInfo (u/the-id persisted-info)
+            :active false, :state "error" :refresh_end :%now
+            :columns (mapv :name metadata), :error (ex-message e))
           (throw e))))))
 
 (defmethod ddl.i/refresh! :postgres [driver database persisted-info]
