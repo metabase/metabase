@@ -17,7 +17,7 @@ import {
 } from "./HomeXraySection.styled";
 
 export interface HomeXraySectionProps {
-  database?: Database;
+  database: Database;
   candidates: DatabaseCandidate[];
 }
 
@@ -25,7 +25,7 @@ const HomeXraySection = ({
   database,
   candidates,
 }: HomeXraySectionProps): JSX.Element => {
-  const isSample = !database || database.is_sample;
+  const isSample = database.is_sample;
   const schemas = candidates.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
