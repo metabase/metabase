@@ -13,13 +13,13 @@ If you're trying to upgrade your Metabase version on Docker, check out these [up
 
 > The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-Assuming you have [Docker](https://www.docker.com/) installed and running:
+Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
 ```
 docker pull metabase/metabase:latest
 ```
 
-Then:
+Then start the Metabase container:
 
 ```
 docker run -d -p 3000:3000 --name metabase metabase/metabase
@@ -49,6 +49,8 @@ If you want to run Metabase in production, you'll need store your application da
 
 Once you've provisioned a database, like Postgres, for Metabase to use to store its application data, all you need to do is provide Metabase with the connection information and credentials so Metabase can connect to it.
 
+### Running Docker in production
+
 Let's say you set up a Postgres database by running:
 
 ```
@@ -57,7 +59,6 @@ createdb metabaseappdb
 
 No need to add any tables; Metabase will create those on startup. And let's assume that database is accessible via `my-database-host:5432` with username `name` and password `password`.
 
-### Running Docker in production
 
 Here's an example Docker command that tells Metabase to use that database:
 
@@ -73,15 +74,6 @@ docker run -d -p 3000:3000 \
 ```
 
 Keep in mind that Metabase will be connecting from _within_ your Docker container, so make sure that either: a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts file`.
-
-### Running the JAR in production
-
-If you need to run the JAR in production, you should run Metabase as a service. Running Metabase as a service will:
-
-- Make sure Metabase runs automatically (and stay running).
-- Allow you to run Metabase with an unprivileged user (which is good for security).
-
-See an example of how to run Metabase as a service: [Running Metabase on Debian](running-metabase-on-debian).
 
 ## Migrating to a production installation
 
@@ -151,7 +143,7 @@ When you launch your container, Metabase will use the database file (`MB_DB_FILE
 
 If you've previously run and configured your Metabase using the local Database and then stopped the container, your data will still be there unless you deleted the container with the `docker rm` command. To recover your previous configuration:
 
-1. Find the stopped container using the `docker ps -a` command. It will look something like this:
+#### 1. Find the stopped container using the `docker ps -a` command. It will look something like this:
 
 ```
 docker ps -a | grep metabase
@@ -162,14 +154,14 @@ docker ps -a | grep metabase
 
 Once you have identified the stopped container with your configuration in it, save the container ID from the left most column for the next step.
 
-2. Use `docker commit` to create a new custom docker image from the stopped container containing your configuration.
+#### 2. Use `docker commit` to create a new custom docker image from the stopped container containing your configuration.
 
 ```
 docker commit ca072cd44a49 mycompany/metabase-custom
 sha256:9ff56186de4dd0b9bb2a37c977c3a4c9358647cde60a16f11f4c05bded1fe77a
 ```
 
-3. Run your new image using `docker run` to get up and running again.
+#### 3. Run your new image using `docker run` to get up and running again.
 
 ```
 docker run -d -p 3000:3000 --name metabase mycompany/metabase-custom

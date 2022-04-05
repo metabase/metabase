@@ -99,6 +99,8 @@ The steps are similar to those steps above with two important differences: if yo
 - Use a [production application database](#production-application-database) to store your Metabase application data. 
 - Run [Metabase as a service](#running-the-metabase-jar-as-a-service).
 
+If you'd prefer to use Docker, check out [running Metabase on Docker](running-metabase-on-docker.md).
+
 ### Production application database
 
 Here are some [databases we support](migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
@@ -109,7 +111,7 @@ For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You 
 createdb metabaseappdb
 ```
 
-You can call your app DB whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables for Metabase to use on startup so Metabase knows how to connect to this database. 
+You can call your app db whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables for Metabase to use on startup so Metabase knows how to connect to this database. 
 
 You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
 
@@ -123,15 +125,20 @@ export MB_DB_HOST=localhost
 java -jar metabase.jar
 ```
 
-The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`.
+The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`. If you're running Metabase as a service, you'll put these environment variables in a separate configuration file.
 
 ### Running the Metabase JAR as a service
 
-The exact instructions for how to run Metabase as a service will differ depending on your operating system, but the idea is to run Metabase as a service so that Metabase will run automatically. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
+If you need to run the JAR in production, you should run Metabase as a service. Running Metabase as a service will:
+
+- Make sure Metabase runs automatically (and stay running).
+- Allow you to run Metabase with an unprivileged user (which is good for security).
+
+The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
 
 ## Migrating to a production installation
 
-If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the default H2 database to a production database](migrating-from-h2.md).
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](migrating-from-h2.md).
 
 ## Troubleshooting
 
