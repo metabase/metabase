@@ -9,3 +9,4 @@ runs:
       run: gh api "/repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
         -f context="validate" \
         -f state="pending"
+      shell: bash
