@@ -1,16 +1,11 @@
 name: Set Github Required for Status Check
 
-on:
-  push:
-
-jobs:
-  build:
-    name:  Set Github Required for Status Check
-    runs-on: ubuntu-20.04
-    env:
-      GITHUB_TOKEN: "${{ github.token }}"
-    steps:
+runs:
+  using: "composite"
+  steps:
     - name: Set required status check
+      env:
+       GITHUB_TOKEN: "${{ github.token }}"
       run: gh api "/repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
         -f context="validate" \
         -f state="pending"
