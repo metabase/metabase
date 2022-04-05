@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
@@ -14,16 +14,18 @@ import {
 
 export interface HomeXraySectionProps {
   database?: Database;
-  databaseCandidates: DatabaseCandidate[];
+  candidates: DatabaseCandidate[];
 }
 
 const HomeXraySection = ({
   database,
-  databaseCandidates,
+  candidates,
 }: HomeXraySectionProps): JSX.Element => {
   const isSample = !database || database.is_sample;
-  const tables = databaseCandidates.flatMap(d => d.tables);
-  const tableCount = tables.length;
+  const schemas = candidates.map(d => d.schema);
+  const [schema, setSchema] = useState(schemas[0]);
+  const candidate = candidates.find(d => d.schema === schema);
+  const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
 
   return (
@@ -42,7 +44,7 @@ const HomeXraySection = ({
         </HomeCaption>
       )}
       <SectionBody>
-        {tables.map((table, index) => (
+        {candidate?.tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
             title={table.title}
