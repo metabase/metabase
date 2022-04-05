@@ -748,11 +748,12 @@
 
 (def ^:private HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
-  [(s/one
-    [(s/one (s/pred some?) "join source")
-     (s/one (s/pred some?) "join alias")]
-    "join source and alias")
-   (s/one (s/pred sequential?) "join condition")])
+  s/Any)
+  ;[(s/one
+  ;  [(s/one (s/pred some?) "join source")
+  ;   (s/one (s/pred some?) "join alias")]
+  ;  "join source and alias")
+  ; (s/one (s/pred sequential?) "join condition")])
 
 (s/defmethod join->honeysql :sql :- HoneySQLJoin
   [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
