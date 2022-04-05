@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'e2e-optimize-e2e-job'
+      - 'master'
     paths-ignore:
       - "docs/**"
       - "**.md"
