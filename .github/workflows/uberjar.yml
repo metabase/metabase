@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build Metabase for ${{ matrix.edition }}
+    name: Build MB ${{ matrix.edition }}
     runs-on: ubuntu-20.04
     timeout-minutes: 40
     strategy:
@@ -16,14 +16,10 @@ jobs:
       INTERACTIVE: false
       GITHUB_TOKEN: "${{ github.token }}"
     steps:
+    - name: Set required status check
+      uses: ./.github/actions/set-required-status-check
     - name: Check out the code
       uses: actions/checkout@v3
-    - name: Set required status check
-      env:
-       GITHUB_TOKEN: "${{ github.token }}"
-      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
-        -f context="validate" \
-        -f state="pending"
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -33,8 +29,4 @@ jobs:
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
     - name: Update required status check
-      env:
-       GITHUB_TOKEN: "${{ github.token }}"
-      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
-        -f context="validate" \
-        -f state="success"
+      uses: ./.github/actions/update-required-status-check
