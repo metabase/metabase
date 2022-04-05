@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'e2e-question-poc'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -55,25 +55,7 @@ jobs:
         java-version: [11]
         edition: [oss, ee]
         folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "dashboard-filters-sql"
-          - "downloads"
-          - "embedding"
-          - "joins"
-          - "models"
-          - "moderation"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "permissions"
           - "question"
-          - "sharing"
-          - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
