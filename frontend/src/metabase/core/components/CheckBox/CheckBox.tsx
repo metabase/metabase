@@ -105,4 +105,6 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
   );
 });
 
-export default CheckBox;
+export default Object.assign(CheckBox, {
+  Label: CheckBoxLabel,
+});
