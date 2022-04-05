@@ -100,12 +100,8 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByText("Settings").click();
-      cy.findByTextEnsureVisible("Click and drag to change their order")
-        .parent()
-        .find(".cursor-grab")
-        .as("sidebarColumns"); // Store all columns in an array
 
-      cy.get("@sidebarColumns")
+      getSidebarColumns()
         .eq("12")
         .as("prod-category")
         .contains(/Products? → Category/);
@@ -120,7 +116,7 @@ describe("scenarios > question > settings", () => {
       reloadResults();
       findColumnAtIndex("Products → Category", 5);
       // Remove "Total"
-      cy.get("@sidebarColumns")
+      getSidebarColumns()
         .contains("Total")
         .closest(".cursor-grab")
         .find(".Icon-close")
@@ -138,11 +134,6 @@ describe("scenarios > question > settings", () => {
         .siblings(".Icon-add")
         .click();
 
-      // Refresh @sidebarColumns as we added a new field
-      cy.findByText("Click and drag to change their order")
-        .parent()
-        .find(".cursor-grab")
-        .as("sidebarColumns"); // Store all columns in an array
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
       cy.wait(["@dataset", "@dataset"]);
@@ -156,9 +147,19 @@ describe("scenarios > question > settings", () => {
         .trigger("mouseup", 0, -50, { force: true });
 
       findColumnAtIndex("User → Address", -2);
+
       /**
        * Helper functions related to THIS test only
        */
+
+      function getSidebarColumns() {
+        return cy
+          .findByText("Click and drag to change their order")
+          .scrollIntoView()
+          .should("be.visible")
+          .parent()
+          .find(".cursor-grab");
+      }
 
       function reloadResults() {
         cy.icon("play")
@@ -171,8 +172,7 @@ describe("scenarios > question > settings", () => {
       }
 
       function findColumnAtIndex(column_name, index) {
-        return cy
-          .get("@sidebarColumns")
+        return getSidebarColumns()
           .eq(index)
           .contains(column_name);
       }
