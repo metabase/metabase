@@ -85,7 +85,7 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
             {(checked || indeterminate) && (
               <CheckBoxIcon
                 name={indeterminate ? "dash" : "check"}
-                checked={checked}
+                checked={!!checked}
                 size={size - DEFAULT_ICON_PADDING}
                 uncheckedColor={uncheckedColor}
               />
