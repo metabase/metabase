@@ -21,7 +21,7 @@ jobs:
     - name: Set required status check
       env:
        GITHUB_TOKEN: "${{ github.token }}"
-      run: gh api "/repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
+      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
         -f context="validate" \
         -f state="pending"
     - name: Prepare front-end environment
@@ -35,6 +35,6 @@ jobs:
     - name: Update required status check
       env:
        GITHUB_TOKEN: "${{ github.token }}"
-      run: gh api "/repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
+      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" \
         -f context="validate" \
         -f state="success"
