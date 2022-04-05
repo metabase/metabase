@@ -3,10 +3,6 @@ name: Set Github Required for Status Check
 runs:
   using: "composite"
   steps:
-    - name: Set outputs
-      id: vars
-      run: echo "::set-output name=sha_short::$(git rev-parse HEAD)"
-      shell: bash
     - name: Set required status check
-      run: gh api "repos/metabase/metabase/statuses/${{ steps.vars.outputs.sha_short }}" -f context="validate" -f state="pending"
+      run: gh api "repos/metabase/metabase/statuses/${{ github.event.pull_request.head.sha }}" -f context="validate" -f state="pending"
       shell: bash
