@@ -8,7 +8,6 @@
             [metabase.db.connection :as mdb.conn]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Card Dashboard DashboardCard Database User]]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
