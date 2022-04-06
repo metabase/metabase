@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.common-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
             [metabase.models :refer [Field Permissions Table]]
             [metabase.models.database :as database]
@@ -111,7 +112,6 @@
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other schemas"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC"           :none
                                                                       "different schema" :all}}}}
-
             (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
 
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other tables"
@@ -129,4 +129,34 @@
 
         (testing "a non-admin can update table metadata if they have data model perms for the table"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"}))))))
+
+  (testing "POST /api/table/:id/rescan_values"
+    (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
+      (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+          (mt/user-http-request :rasta :post 403 (format "table/%d/rescan_values" table-id)))
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))))
+
+  (testing "POST /api/table/:id/discard_values"
+    (testing "A non-admin can discard field values if they have data model perms for the table"
+      (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+          (mt/user-http-request :rasta :post 403 (format "table/%d/discard_values" table-id)))
+
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id))))))
+
+  (testing "POST /api/table/:id/fields/order"
+    (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
+      (mt/with-temp* [Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+                      Field [{field-1-id :id} {:table_id table-id}]
+                      Field [{field-2-id :id} {:table_id table-id}]]
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+          (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
+                                {:request-options {:body (json/encode [field-2-id field-1-id])}}))
+
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+          (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
+                                {:request-options {:body (json/encode [field-2-id field-1-id])}}))))))
