@@ -2,7 +2,7 @@ import {
   restore,
   modal,
   describeEE,
-  assertPermissionTable,
+  assertPermissionForItem,
   modifyPermission,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
@@ -21,6 +21,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.visit("/admin/permissions/data/database/1");
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
+    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
     cy.button("Save changes").click();
 
@@ -30,14 +31,7 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Unrestricted", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
+    assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
   });
 
   it("allows changing download results permission for a table", () => {
@@ -50,6 +44,8 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Change").click();
     });
 
+    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
+
     cy.button("Save changes").click();
 
     modal().within(() => {
@@ -58,17 +54,10 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Unrestricted", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
+    assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
   });
 
-  it.skip("sets the download permission to `No` when the data access permission is revoked", () => {
+  it("sets the download permission to `No` when the data access permission is revoked", () => {
     cy.visit("/admin/permissions/data/database/1");
     const groupName = "data";
 
@@ -82,14 +71,11 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "No self-service", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "1 million rows"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
+    assertPermissionForItem(
+      groupName,
+      DOWNLOAD_PERMISSION_INDEX,
+      "1 million rows",
+    );
 
     modifyPermission(groupName, DATA_ACCESS_PERMISSION_INDEX, "Block");
     cy.button("Revoke access").click();
@@ -102,14 +88,7 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "No self-service", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Block", "No", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
+    assertPermissionForItem(groupName, DOWNLOAD_PERMISSION_INDEX, "No");
   });
 
   it("restricts users from downloading questions", () => {

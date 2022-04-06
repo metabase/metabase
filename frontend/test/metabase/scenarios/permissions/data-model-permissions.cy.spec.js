@@ -2,7 +2,6 @@ import {
   restore,
   modal,
   describeEE,
-  assertPermissionTable,
   assertPermissionForItem,
   modifyPermission,
 } from "__support__/e2e/cypress";
@@ -78,15 +77,6 @@ describeEE("scenarios > admin > permissions", () => {
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
-
-    assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "No self-service", "No", "No"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "1 million rows"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
-    ]);
 
     modifyPermission(
       groupName,
