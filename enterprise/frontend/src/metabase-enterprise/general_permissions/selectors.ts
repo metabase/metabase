@@ -33,7 +33,7 @@ const getPermission = (
   groupId: number,
   permissionKey: GeneralPermissionKey,
 ) => ({
-  permission: "setting",
+  permission: permissionKey,
   isDisabled: isAdmin,
   disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
   value: getGeneralPermission(permissions, groupId, permissionKey),
