@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'unskip-17339'
+      - 'master'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -55,25 +55,25 @@ jobs:
         java-version: [11]
         edition: [oss, ee]
         folder:
-          # - "admin"
-          # - "binning"
+          - "admin"
+          - "binning"
           - "collections"
-          # - "custom-column"
-          # - "dashboard"
-          # - "dashboard-filters"
-          # - "dashboard-filters-sql"
-          # - "downloads"
-          # - "embedding"
-          # - "joins"
-          # - "models"
-          # - "moderation"
-          # - "native"
-          # - "native-filters"
-          # - "onboarding"
-          # - "permissions"
-          # - "question"
-          # - "sharing"
-          # - "visualizations"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
+          - "downloads"
+          - "embedding"
+          - "joins"
+          - "models"
+          - "moderation"
+          - "native"
+          - "native-filters"
+          - "onboarding"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -128,7 +128,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }}
-      run: yarn run test-cypress-no-build --spec "frontend/test/metabase/scenarios/collections/collections.cy.spec.js" --env burn=20
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }} --record --key ${{ secrets.CURRENTS_KEY }} --group ${{ matrix.folder }}-${{ matrix.edition }} --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
 
