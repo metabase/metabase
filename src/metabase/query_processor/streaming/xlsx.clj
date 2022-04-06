@@ -352,8 +352,7 @@
   [^Cell cell value id-or-name]
   (let [v (double value)]
     (.setCellValue cell v)
-    (when-not (or (.isInfinite v)
-                  (.isNaN v))
+    (when (u/real-number? v)
       (let [styles (u/one-or-many (cell-style id-or-name))]
         (if (rounds-to-int? v)
           (.setCellStyle cell (or (first styles) (cell-style :integer)))
