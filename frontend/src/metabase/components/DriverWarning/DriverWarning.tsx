@@ -23,10 +23,10 @@ const DriverWarning = ({
     return null;
   }
 
-  const engineName = engine?.["driver-name"];
+  const engineName = engine["driver-name"];
   const engineSourceType = engine?.source?.type || "community";
 
-  const newEngineKey = engine?.["superseded-by"];
+  const newEngineKey = engine["superseded-by"];
   const newEngine = newEngineKey ? engines[newEngineKey] : undefined;
   const newEngineName = newEngine?.["driver-name"];
   const handleChangeToNew = () => newEngineKey && onChange?.(newEngineKey);
