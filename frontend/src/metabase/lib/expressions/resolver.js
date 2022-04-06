@@ -4,10 +4,10 @@ import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
 import { ResolverError } from "metabase/lib/expressions/pratt/types";
 import { getMBQLName, MBQL_CLAUSES } from "metabase/lib/expressions";
 
-const FIELD_MARKERS = ["dimension", "segment", "metric"];
-const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
-const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
-const COMPARISON_OPS = [
+export const FIELD_MARKERS = ["dimension", "segment", "metric"];
+export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
+export const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
+export const COMPARISON_OPS = [
   OP.Equal,
   OP.NotEqual,
   OP.GreaterThan,
