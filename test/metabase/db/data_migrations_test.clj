@@ -362,9 +362,9 @@
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (group/admin))
-        sso-group-mappings     {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
+        sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
                                "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
-        ldap-group-mappings    {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
+        ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
         sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
                                "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
         ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
