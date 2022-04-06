@@ -1,13 +1,22 @@
 import { restore } from "__support__/e2e/cypress";
 
 describe("scenarios > home > homepage", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/automagic-dashboards/table/**").as(
+      "getDashboard",
+    );
+  });
+
   it("should display x-rays for the sample database", () => {
     restore("setup");
     cy.signInAsAdmin();
 
     cy.visit("/");
     cy.findByText("Try out these sample x-rays to see what Metabase can do.");
-    cy.findByText("Orders");
+    cy.findByText("Orders").click();
+
+    cy.wait("@getXray");
+    cy.findByText("More X-rays");
   });
 
   it("should display x-rays for a user database", () => {
@@ -18,7 +27,10 @@ describe("scenarios > home > homepage", () => {
     cy.visit("/");
     cy.findByText("Here are some explorations of");
     cy.findByText("H2");
-    cy.findByText("Orders");
+    cy.findByText("Orders").click();
+
+    cy.wait("@getXray");
+    cy.findByText("More X-rays");
   });
 
   it("should allow to switch between multiple schemas for x-rays", () => {
@@ -52,8 +64,9 @@ describe("scenarios > home > homepage", () => {
 
     cy.visit("/");
     cy.findByText("Pick up where you left off");
-    cy.findByText("Orders in a dashboard");
     cy.findByText("Orders, Count").should("not.exist");
+    cy.findByText("Orders in a dashboard").click();
+    cy.findByText("Orders, Count");
   });
 
   it("should display popular items for a new user", () => {
@@ -62,6 +75,7 @@ describe("scenarios > home > homepage", () => {
 
     cy.visit("/");
     cy.findByText("Here are some popular items");
-    cy.findByText("Orders in a dashboard");
+    cy.findByText("Orders in a dashboard").click();
+    cy.findByText("Orders, Count");
   });
 });
