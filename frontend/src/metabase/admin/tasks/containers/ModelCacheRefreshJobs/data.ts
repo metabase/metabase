@@ -58,6 +58,8 @@ const data: ModelCacheRefreshJob[] = [
   {
     id: 3,
     status: "error",
+    error:
+      'ERROR: column subscriptions.ompany does not exist Hint: Perhaps you meant to reference the column "subscriptions.company"',
     model: {
       id: 3,
       name: "Subscription",

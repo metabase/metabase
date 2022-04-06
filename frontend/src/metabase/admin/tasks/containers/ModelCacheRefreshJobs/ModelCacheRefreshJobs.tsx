@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import moment from "moment";
 
@@ -13,6 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { ModelCacheRefreshJob } from "./types";
 import jobs from "./data";
 import {
+  ErrorBox,
   IconButtonContainer,
   StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
@@ -21,10 +22,19 @@ function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
   const modelUrl = Urls.dataset(job.model);
   const collectionUrl = Urls.collection(job.model.collection);
 
-  const jobStatusLabel = job.status === "error" ? "error" : t`Completed`;
   const lastRunAtLabel = capitalize(moment(job.last_run_at).fromNow());
   const lastRunTriggerLabel =
     job.last_run_trigger === "api" ? "API" : t`Scheduled`;
+
+  const renderStatus = useCallback(() => {
+    if (job.status === "completed") {
+      return t`Completed`;
+    }
+    if (job.status === "error") {
+      return <ErrorBox>{job.error}</ErrorBox>;
+    }
+    return job.status;
+  }, [job]);
 
   return (
     <tr key={job.id}>
@@ -39,7 +49,7 @@ function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
           </StyledLink>
         </span>
       </th>
-      <th>{jobStatusLabel}</th>
+      <th>{renderStatus()}</th>
       <th>
         <Tooltip tooltip={<DateTime value={job.last_run_at} />}>
           {lastRunAtLabel}
@@ -62,6 +72,16 @@ function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
 function ModelCacheRefreshJobs() {
   return (
     <table className="ContentTable border-bottom">
+      <colgroup>
+        <col style={{ width: "1%" }} />
+        <col />
+        <col style={{ width: "40%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "12%" }} />
+        <col style={{ width: "12%" }} />
+        <col style={{ width: "1%" }} />
+      </colgroup>
       <thead>
         <tr>
           <th>

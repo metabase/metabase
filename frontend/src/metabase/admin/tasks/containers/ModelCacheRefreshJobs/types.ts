@@ -3,6 +3,7 @@ import { BaseUser } from "metabase-types/api";
 export interface ModelCacheRefreshJob {
   id: number;
   status: "completed" | "error";
+  error?: string;
   model: {
     id: number;
     name: string;
