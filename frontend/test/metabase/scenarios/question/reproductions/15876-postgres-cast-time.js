@@ -41,21 +41,23 @@ const correctValues = [
   },
 ];
 
-describe("issue 15876", () => {
-  beforeEach(() => {
-    restore("postgres-12");
-    cy.signInAsAdmin();
-  });
+export function issue15876() {
+  describe("issue 15876", () => {
+    beforeEach(() => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
+    });
 
-  it("should correctly cast to `TIME` (metabase#15876)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    it("should correctly cast to `TIME` (metabase#15876)", () => {
+      cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".Visualization").within(() => {
-      correctValues.forEach(({ value, rows }) => {
-        const count = rows * castColumns;
+      cy.get(".Visualization").within(() => {
+        correctValues.forEach(({ value, rows }) => {
+          const count = rows * castColumns;
 
-        cy.findAllByText(value).should("have.length", count);
+          cy.findAllByText(value).should("have.length", count);
+        });
       });
     });
   });
-});
+}
