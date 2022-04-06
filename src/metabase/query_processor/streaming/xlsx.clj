@@ -350,11 +350,13 @@
 
 (defmethod set-cell! Number
   [^Cell cell value id-or-name]
-  (.setCellValue cell (double value))
-  (let [styles         (u/one-or-many (cell-style id-or-name))]
-    (if (rounds-to-int? value)
-      (.setCellStyle cell (or (first styles) (cell-style :integer)))
-      (.setCellStyle cell (or (second styles) (cell-style :float))))))
+  (let [v (double value)]
+    (.setCellValue cell v)
+    (when (u/real-number? v)
+      (let [styles (u/one-or-many (cell-style id-or-name))]
+        (if (rounds-to-int? v)
+          (.setCellStyle cell (or (first styles) (cell-style :integer)))
+          (.setCellStyle cell (or (second styles) (cell-style :float))))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]

@@ -370,6 +370,13 @@
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
 
+(defn real-number?
+  "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
+  [x]
+  (and (number? x)
+       (not (Double/isNaN x))
+       (not (Double/isInfinite x))))
+
 (defn- check-protocol-impl-method-map
   "Check that the methods expected for `protocol` are all implemented by `method-map`, and that no extra methods are
    provided. Used internally by `strict-extend`."
