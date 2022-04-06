@@ -129,6 +129,7 @@
             ;; make an API call to create a timeline
             (mt/user-http-request :rasta :post 200 "timeline"
                                   {:name          "Rasta's TL"
+                                   :default_name  false
                                    :creator_id    (u/the-id (mt/fetch-user :rasta))
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"

@@ -198,6 +198,7 @@
    Timeline
    (fn [_]
      {:name       "Timeline of bird squawks"
+      :default_name true
       :creator_id (rasta-id)})
 
    TimelineEvent
@@ -242,6 +243,7 @@
                    #'Segment
                    #'Table
                    #'TaskHistory
+                   #'Timeline
                    #'User]]
   (remove-watch model-var ::reload)
   (add-watch
