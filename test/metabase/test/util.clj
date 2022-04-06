@@ -363,7 +363,7 @@
   If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
 
   If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
-  is thrown if the `setting-k` is already existed.
+  is thrown if the `setting-k` already exists.
 
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
@@ -422,7 +422,7 @@
            ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
-  "Like `with-temporary-raw-setting-values` but works with raw value and it allows undefined settings."
+  "Like `with-temporary-setting-values` but works with raw value and it allows settings that are not defined using `defsetting`."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
