@@ -22,12 +22,9 @@
                                target-db-type
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
       (tx/create-db! target-db-type db-def)
-      (binding [mdb.connection/*db-type*     target-db-type
-                mdb.connection/*data-source* target-data-source]
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
         (load-from-h2/load-from-h2! h2-filename)
-        (binding [db/*quoting-style* (mdb.connection/quoting-style target-db-type)
-                  db/*db-connection* {:datasource target-data-source}]
-          (is (= 4
-                 (db/count Table)))
-          ;; TODO -- better/more complete validation
-          )))))
+        (is (= 4
+               (db/count Table)))
+        ;; TODO -- better/more complete validation
+        ))))

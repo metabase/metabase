@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -9,15 +9,19 @@ import LogoIcon from "metabase/components/LogoIcon";
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
-import {
-  SearchBarContainer,
-  SearchBarContent,
-} from "metabase/nav/containers/Navbar.styled";
 
 import Database from "metabase/entities/databases";
+import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
-import { AppBarRoot, LogoIconWrapper } from "./AppBar.styled";
+import {
+  AppBarRoot,
+  LogoIconWrapper,
+  SearchBarContainer,
+  SearchBarContent,
+  RowLeft,
+  RowRight,
+} from "./AppBar.styled";
 
 type Props = {
   isSidebarOpen: boolean;
@@ -36,39 +40,63 @@ function AppBar({
   handleCloseSidebar,
   onChangeLocation,
 }: Props) {
-  const closeSidebarForSmallScreens = useCallback(() => {
+  const [isSearchActive, setSearchActive] = useState(false);
+
+  const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
       handleCloseSidebar();
     }
   }, [handleCloseSidebar]);
 
+  const onSearchActive = useCallback(() => {
+    if (isSmallScreen()) {
+      setSearchActive(true);
+      handleCloseSidebar();
+    }
+  }, [handleCloseSidebar]);
+
+  const onSearchInactive = useCallback(() => {
+    if (isSmallScreen()) {
+      setSearchActive(false);
+    }
+  }, []);
+
+  const sidebarButtonTooltip = useMemo(() => {
+    const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+    return `${message} ${shortcut}`;
+  }, [isSidebarOpen]);
+
   return (
     <AppBarRoot>
-      <LogoIconWrapper>
-        <Link
-          to="/"
-          onClick={closeSidebarForSmallScreens}
-          data-metabase-event="Navbar;Logo"
-        >
-          <LogoIcon size={24} />
-        </Link>
-      </LogoIconWrapper>
-      <Tooltip tooltip={isSidebarOpen ? t`Close sidebar` : t`Open sidebar`}>
-        <SidebarButton
-          onClick={onToggleSidebarClick}
-          isSidebarOpen={isSidebarOpen}
-        />
-      </Tooltip>
-      <SearchBarContainer>
-        <SearchBarContent>
-          <SearchBar
-            location={location}
-            onChangeLocation={onChangeLocation}
-            onFocus={closeSidebarForSmallScreens}
-          />
-        </SearchBarContent>
-      </SearchBarContainer>
-      <NewButton setModal={onNewClick} />
+      <RowLeft>
+        <LogoIconWrapper>
+          <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
+            <LogoIcon size={24} />
+          </Link>
+        </LogoIconWrapper>
+        {!isSearchActive && (
+          <Tooltip tooltip={sidebarButtonTooltip}>
+            <SidebarButton
+              isSidebarOpen={isSidebarOpen}
+              onClick={onToggleSidebarClick}
+            />
+          </Tooltip>
+        )}
+      </RowLeft>
+      <RowRight>
+        <SearchBarContainer>
+          <SearchBarContent>
+            <SearchBar
+              location={location}
+              onChangeLocation={onChangeLocation}
+              onSearchActive={onSearchActive}
+              onSearchInactive={onSearchInactive}
+            />
+          </SearchBarContent>
+        </SearchBarContainer>
+        <NewButton setModal={onNewClick} />
+      </RowRight>
     </AppBarRoot>
   );
 }

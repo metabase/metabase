@@ -49,6 +49,7 @@ export default class NumberPicker extends Component {
       <TextPicker
         {...this.props}
         isSingleLine
+        prefix={this.props.prefix}
         values={values}
         validations={this.state.validations}
         onValuesChange={values => this.onValuesChange(values)}

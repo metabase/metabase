@@ -327,9 +327,10 @@
                           tables)))))
 
 (api/defendpoint GET "/:id/metadata"
-  "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
-   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
-   Returns DB, fields, and field values."
+  "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
+  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
+  Passing exclude_uneditable=true will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present."
   [id include_hidden exclude_uneditable]
   {include_hidden     (s/maybe su/BooleanString)
    exclude_uneditable (s/maybe su/BooleanString)}

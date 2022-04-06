@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import RecentViews from "metabase/entities/recent-views";
-import Card from "metabase/components/Card";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -17,8 +16,9 @@ import { ItemIcon } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import { getTranslatedEntityName } from "./utils";
+import { getTranslatedEntityName } from "../utils";
 import {
+  Root,
   EmptyStateContainer,
   Header,
   RecentListItemContent,
@@ -51,7 +51,7 @@ function RecentsList({ list, loading }) {
   }
 
   return (
-    <Card py={1}>
+    <Root>
       <Header>{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
         <React.Fragment>
@@ -104,7 +104,7 @@ function RecentsList({ list, loading }) {
           )}
         </React.Fragment>
       </LoadingAndErrorWrapper>
-    </Card>
+    </Root>
   );
 }
 
