@@ -14,7 +14,7 @@
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
-        (testing "admins should have full general permisions"
+        (testing "admins should have full advanced permisions"
           (is (= {:can_access_setting      true
                   :can_access_subscription true
                   :can_access_monitoring   true
