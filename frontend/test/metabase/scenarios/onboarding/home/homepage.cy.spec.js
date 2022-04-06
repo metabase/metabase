@@ -25,11 +25,21 @@ describe("scenarios > home > homepage", () => {
     restore("default");
     cy.signInAsAdmin();
 
-    cy.visit("/question/2");
-    cy.findByText("Orders, Count");
+    cy.visit("/dashboard/1");
+    cy.findByText("Orders in a dashboard");
 
     cy.visit("/");
     cy.findByText("Pick up where you left off");
-    cy.findByText("Orders, Count");
+    cy.findByText("Orders in a dashboard");
+    cy.findByText("Orders, Count").should("not.exist");
+  });
+
+  it("should display popular items for a new user", () => {
+    restore("default");
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+    cy.findByText("Here are some popular items");
+    cy.findByText("Orders in a dashboard");
   });
 });
