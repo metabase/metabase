@@ -1,6 +1,7 @@
 import { issue4482 } from "./reproductions/4482-temporal-min-max";
 import { issue6239 } from "./reproductions/6239-sort-using-cust-exp";
 import { issue9027 } from "./reproductions/9027-new-questions-not-in-saved-questions-immediately";
+import { issue13097 } from "./reproductions/13097-mongo-apply-distinct-count-multiple-columns";
 import { issue13263 } from "./reproductions/13263-postgres-show-row-details-on-pk-click";
 import { issue14957 } from "./reproductions/14957-unable-to-save-question-before-query-executed";
 import { issue15714 } from "./reproductions/15714-cc-postgres-percentile-accepts-two-params";
@@ -20,6 +21,7 @@ import { issue20683 } from "./reproductions/20683-postgres-current-quarter";
 issue4482();
 issue6239();
 issue9027();
+issue13097();
 issue13263();
 issue14957();
 issue15714();
