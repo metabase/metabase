@@ -1,36 +1,47 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import TextInput from "metabase/components/TextInput";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-export const QuestionListContainer = styled.div`
-  padding-right: 0.5rem;
-  padding-bottom: 1rem;
+export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+`;
+
+export const QuestionListContainer = styled.ul`
+  margin: 0;
+  padding: 0;
   width: 100%;
 `;
 
 export const LoadMoreButton = styled.button`
-  font-family: var(--default-font-family);
-  display: flex;
   align-items: center;
-  cursor: pointer;
   color: ${color("brand")};
-  padding: 0.25rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  font-family: var(--default-font-family);
   font-size: 14px;
   font-weight: 700;
+  padding: 0.25rem 1.5rem;
 `;
 
 export const LoadMoreRow = styled.li`
-  display: flex;
   align-items: center;
+  display: flex;
   justify-content: center;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 `;
 
 export const SearchContainer = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  flex-shrink: 0;
+  flex: 0;
   border-bottom: 1px solid ${color("border")};
 `;
 
