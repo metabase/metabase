@@ -154,7 +154,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       {/* SETTINGS */}
-      <Route path="settings" component={IsAdmin}>
+      <Route path="settings" component={createAdminRouteGuard("settings")}>
         <Route title={t`Settings`}>
           <IndexRedirect to="setup" />
           <Route

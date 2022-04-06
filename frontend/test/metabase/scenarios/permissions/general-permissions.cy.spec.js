@@ -5,8 +5,9 @@ import {
   modifyPermission,
 } from "__support__/e2e/cypress";
 
-const SUBSCRIPTIONS_INDEX = 0;
+const SETTINGS_INDEX = 0;
 const MONITORING_INDEX = 1;
+const SUBSCRIPTIONS_INDEX = 2;
 
 describeEE("scenarios > admin > permissions > general", () => {
   beforeEach(() => {
@@ -150,6 +151,49 @@ describeEE("scenarios > admin > permissions > general", () => {
 
         cy.visit("/admin/troubleshooting/help");
         cy.findByText("Sorry, you don’t have permission to see that.");
+      });
+    });
+  });
+
+  describe("settings permission", () => {
+    describe("granted", () => {
+      beforeEach(() => {
+        cy.visit("/admin/permissions/general");
+
+        modifyPermission("All Users", SETTINGS_INDEX, "Yes");
+
+        cy.button("Save changes").click();
+
+        modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.findByText("Are you sure you want to do this?");
+          cy.button("Yes").click();
+        });
+
+        cy.signInAsNormalUser();
+      });
+
+      it("allows editing settings as a non-admin user", () => {
+        cy.visit("/");
+        cy.icon("gear").click();
+
+        cy.findByText("Admin settings").click();
+
+        cy.url().should("include", "/admin/settings/setup");
+
+        cy.findByText("License and Billing").should("not.exist");
+
+        // Setup smoke test
+        cy.findByText("Getting set up");
+
+        // General smoke test
+        cy.findByText("General").click();
+        cy.get("#setting-site-name")
+          .clear()
+          .type("new name")
+          .blur();
+
+        cy.findByText("Saved");
       });
     });
   });

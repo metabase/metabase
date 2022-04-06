@@ -6,12 +6,13 @@ import { t } from "ttag";
 import { canManageSubscriptions } from "./selectors";
 import generalPermissionsReducer from "./reducer";
 import { NAV_PERMISSION_GUARD } from "metabase/nav/utils";
-import { canAccessMonitoringItems } from "./utils";
+import { canAccessMonitoringItems, canAccessSettings } from "./utils";
 
 if (hasPremiumFeature("advanced_permissions")) {
-  NAV_PERMISSION_GUARD["audit"] = canAccessMonitoringItems as any;
-  NAV_PERMISSION_GUARD["tools"] = canAccessMonitoringItems as any;
-  NAV_PERMISSION_GUARD["troubleshooting"] = canAccessMonitoringItems as any;
+  NAV_PERMISSION_GUARD["audit"] = canAccessMonitoringItems;
+  NAV_PERMISSION_GUARD["tools"] = canAccessMonitoringItems;
+  NAV_PERMISSION_GUARD["troubleshooting"] = canAccessMonitoringItems;
+  NAV_PERMISSION_GUARD["settings"] = canAccessSettings;
 
   PLUGIN_GENERAL_PERMISSIONS.getRoutes = getRoutes;
   PLUGIN_GENERAL_PERMISSIONS.tabs = [{ name: t`General`, value: `general` }];
