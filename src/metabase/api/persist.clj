@@ -21,7 +21,7 @@
                                   :triggers
                                   (u/key-by (comp #(get % "db-id") qc/from-job-data :data))
                                   (m/map-vals :next-fire-time))]
-    (->> (db/query {:select    [:p.id :p.database_id :p.columns
+    (->> (db/query {:select    [:p.id :p.database_id :p.columns :p.card_id
                                 :p.active :p.state :p.error
                                 :p.refresh_begin :p.refresh_end
                                 :p.table_name
