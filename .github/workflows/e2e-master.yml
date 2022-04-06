@@ -128,7 +128,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }}
-      run: yarn run test-cypress-no-build --spec "frontend/test/metabase/collections/collections.cy.spec.js" --env burn=20
+      run: yarn run test-cypress-no-build --spec "frontend/test/metabase/scenarios/collections/collections.cy.spec.js" --env burn=20
       env:
         TERM: xterm
 
