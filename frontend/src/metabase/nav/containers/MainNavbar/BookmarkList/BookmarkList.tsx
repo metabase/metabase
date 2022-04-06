@@ -38,6 +38,56 @@ interface CollectionSidebarBookmarksProps {
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
+const BookmarkItem = ({
+  bookmark,
+  index,
+  selectedItem,
+  onSelect,
+  onDeleteBookmark,
+}) => {
+  const { id, item_id, name, type } = bookmark;
+  const isSelected =
+    selectedItem &&
+    selectedItem.type !== "collection" &&
+    selectedItem.type === type &&
+    selectedItem.id === item_id;
+  const url = Urls.bookmark(bookmark);
+  const icon = Bookmarks.objectSelectors.getIcon(bookmark);
+  const onRemove = () => onDeleteBookmark(bookmark);
+
+  const isIrregularCollection =
+    bookmark.type === "collection" &&
+    !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+
+  const isSorting = false;
+
+  return (
+    <SortableBookmarkItem
+      index={index}
+      key={bookmark.id}
+      handleDeleteBookmark={onDeleteBookmark}
+      isSorting={isSorting}
+    >
+      <SidebarBookmarkItem
+        key={`bookmark-${id}`}
+        url={url}
+        icon={icon}
+        isSelected={isSelected}
+        hasDefaultIconStyle={!isIrregularCollection}
+        onClick={onSelect}
+        right={
+          <button onClick={onRemove}>
+            <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
+              <Icon name="bookmark" />
+            </Tooltip>
+          </button>
+        }
+      >
+        {name}
+      </SidebarBookmarkItem>
+    </SortableBookmarkItem>
+  );
+};
 const BookmarkList = ({
   bookmarks,
   selectedItem,
@@ -50,59 +100,6 @@ const BookmarkList = ({
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
-
-  const renderBookmark = useCallback(
-    bookmark => {
-      console.log("🚀", { bookmark });
-
-      if (!bookmark) {
-        return null;
-      }
-
-      const { id, item_id, name, type } = bookmark;
-      const isSelected =
-        selectedItem &&
-        selectedItem.type === type &&
-        selectedItem.id === item_id;
-      const url = Urls.bookmark(bookmark);
-      const icon = Bookmarks.objectSelectors.getIcon(bookmark);
-      const onRemove = () => onDeleteBookmark(bookmark);
-
-      const isIrregularCollection =
-        bookmark.type === "collection" &&
-        !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
-
-      const isSorting = false;
-
-      return (
-        <SortableBookmarkItem
-          index={id}
-          key={bookmark.id}
-          handleDeleteBookmark={onDeleteBookmark}
-          isSorting={isSorting}
-        >
-          <SidebarBookmarkItem
-            key={`bookmark-${id}`}
-            url={url}
-            icon={icon}
-            isSelected={isSelected}
-            hasDefaultIconStyle={!isIrregularCollection}
-            onClick={onSelect}
-            right={
-              <button onClick={onRemove}>
-                <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-                  <Icon name="bookmark" />
-                </Tooltip>
-              </button>
-            }
-          >
-            {name}
-          </SidebarBookmarkItem>
-        </SortableBookmarkItem>
-      );
-    },
-    [selectedItem, onSelect, onDeleteBookmark],
-  );
 
   const handleSortStart = () => {
     setIsSorting(true);
@@ -142,7 +139,16 @@ const BookmarkList = ({
         pressDelay={200}
         helperClass="sorting"
       >
-        {orderedBookmarks.map(renderBookmark)}
+        {orderedBookmarks.map((bookmark, index) => (
+          <BookmarkItem
+            bookmark={bookmark}
+            key={index}
+            index={index}
+            selectedItem={selectedItem}
+            onSelect={onSelect}
+            onDeleteBookmark={onDeleteBookmark}
+          />
+        ))}
       </SortableListOfBookmark>
     </CollapseSection>
   );
