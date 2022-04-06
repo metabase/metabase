@@ -17,7 +17,6 @@
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
             [ring.util.response :as resp]
             [schema.core :as s]
