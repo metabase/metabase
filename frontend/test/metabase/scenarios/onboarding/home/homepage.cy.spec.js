@@ -40,18 +40,7 @@ describe("scenarios > home > homepage", () => {
     restore("setup");
     cy.signInAsAdmin();
     cy.addH2SampleDatabase({ name: "H2" });
-    cy.intercept("/api/automagic-dashboards/database/**", [
-      {
-        id: "1/public",
-        schema: "public",
-        tables: [{ title: "Orders", url: "/auto/dashboard/table/1" }],
-      },
-      {
-        id: "1/private",
-        schema: "private",
-        tables: [{ title: "People", url: "/auto/dashboard/table/2" }],
-      },
-    ]);
+    cy.intercept("/api/automagic-*/database/**", getCandidates());
 
     cy.visit("/");
     cy.findByText(/Here are some explorations of the/);
@@ -92,3 +81,16 @@ describe("scenarios > home > homepage", () => {
     cy.findByText("Orders, Count");
   });
 });
+
+const getCandidates = () => [
+  {
+    id: "1/public",
+    schema: "public",
+    tables: [{ title: "Orders", url: "/auto/dashboard/table/1" }],
+  },
+  {
+    id: "1/private",
+    schema: "private",
+    tables: [{ title: "People", url: "/auto/dashboard/table/2" }],
+  },
+];
