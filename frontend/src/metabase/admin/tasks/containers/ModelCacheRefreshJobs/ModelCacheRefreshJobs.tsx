@@ -10,6 +10,8 @@ import Tooltip from "metabase/components/Tooltip";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
+import { useListSelect } from "metabase/hooks/use-list-select";
+
 import { ModelCacheRefreshJob } from "./types";
 import jobs from "./data";
 import {
@@ -18,7 +20,13 @@ import {
   StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
 
-function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
+type JobTableItemProps = {
+  job: ModelCacheRefreshJob;
+  isSelected: boolean;
+  handleSelect: () => void;
+};
+
+function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
   const modelUrl = Urls.dataset(job.model);
   const collectionUrl = Urls.collection(job.model.collection);
 
@@ -39,7 +47,7 @@ function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
   return (
     <tr key={job.id}>
       <th>
-        <CheckBox />
+        <CheckBox checked={isSelected} onChange={handleSelect} />
       </th>
       <th>
         <span>
@@ -69,7 +77,19 @@ function JobTableItem({ job }: { job: ModelCacheRefreshJob }) {
   );
 }
 
+function getJobId(job: ModelCacheRefreshJob) {
+  return job.id;
+}
+
 function ModelCacheRefreshJobs() {
+  const { selected, toggleItem, toggleAll, getIsSelected } = useListSelect(
+    getJobId,
+  );
+
+  const areAllJobsSelected = selected.length === jobs.length;
+
+  const toggleAllJobs = () => toggleAll(jobs);
+
   return (
     <table className="ContentTable border-bottom">
       <colgroup>
@@ -85,7 +105,7 @@ function ModelCacheRefreshJobs() {
       <thead>
         <tr>
           <th>
-            <CheckBox />
+            <CheckBox checked={areAllJobsSelected} onChange={toggleAllJobs} />
           </th>
           <th>{t`Model`}</th>
           <th>{t`Status`}</th>
@@ -98,7 +118,12 @@ function ModelCacheRefreshJobs() {
       </thead>
       <tbody>
         {jobs.map(job => (
-          <JobTableItem key={job.id} job={job} />
+          <JobTableItem
+            key={job.id}
+            job={job}
+            isSelected={getIsSelected(job)}
+            handleSelect={() => toggleItem(job)}
+          />
         ))}
       </tbody>
     </table>
