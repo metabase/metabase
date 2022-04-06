@@ -33,7 +33,7 @@ const isPopularSection = ({ user, recentItems }: HomeContentProps) => {
   return (
     !user.is_installer &&
     user.has_question_and_dashboard &&
-    (isWithinWeek(user.date_joined) || !recentItems.length)
+    (isWithinWeek(user.first_login) || !recentItems.length)
   );
 };
 
