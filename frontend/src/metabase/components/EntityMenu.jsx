@@ -139,7 +139,10 @@ class EntityMenu extends Component {
                                   }
                                   event={item.event && item.event}
                                   link={item.link}
-                                  onClose={() => this.toggleMenu()}
+                                  onClose={() => {
+                                    this.toggleMenu();
+                                    item?.onClose?.();
+                                  }}
                                 />
                               </li>
                             );

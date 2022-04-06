@@ -261,9 +261,10 @@ describe("scenarios > collection_defaults", () => {
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
         cy.visit("/");
-        cy.findByText("Child");
-        cy.findByText("Parent").should("not.exist");
-        cy.findByText("Browse all items").click();
+
+        navigationSidebar().within(() => {
+          cy.findByText("Our analytics").click();
+        });
 
         navigationSidebar().within(() => {
           cy.findByText("Our analytics");
@@ -554,7 +555,9 @@ describe("scenarios > collection_defaults", () => {
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
-      cy.findByText("First collection");
+      navigationSidebar().within(() => {
+        cy.findByText("First collection");
+      });
     });
   });
 });

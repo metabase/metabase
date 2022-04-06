@@ -82,6 +82,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
@@ -239,9 +240,14 @@
                         {:registered-settings
                          (sort (keys @registered-settings))})))))
 
-(defn- call-on-change
-  "Cache watcher that applies `:on-change` callback for all settings that have changed."
-  [_key _ref old new]
+;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; swapped out depending on which app DB we have in play
+;;
+;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
+;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
+;; references for now
+(defmethod cache/call-on-change :default
+  [old new]
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
     (doseq [changed-setting (into (set (keys d1))
@@ -249,7 +255,6 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
-(add-watch @#'cache/cache* :call-on-change call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -313,6 +318,19 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
+(defn- has-advanced-setting-access?
+  "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
+  Return `false` when `advanced-permissions` is disabled."
+  []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.common
+                        'metabase.public-settings.premium-features))
+  (if-let [current-user-has-general-permisisons?
+           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+    (current-user-has-general-permisisons? :setting)
+    false))
+
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
 
@@ -323,6 +341,7 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
+      (has-advanced-setting-access?)
       (and
        (allows-user-local-values? setting)
        (not= (:visibility setting) :admin))))

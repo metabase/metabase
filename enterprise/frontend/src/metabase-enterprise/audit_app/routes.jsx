@@ -2,6 +2,7 @@ import React from "react";
 
 import { Route } from "metabase/hoc/Title";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -73,7 +74,12 @@ function getDefaultTab(page) {
 }
 
 const getRoutes = store => (
-  <Route key="audit" path="audit" title={t`Audit`} component={AuditApp}>
+  <Route
+    key="audit"
+    path="audit"
+    title={t`Audit`}
+    component={createAdminRouteGuard("audit", AuditApp)}
+  >
     {/* <IndexRedirect to="overview" /> */}
     <IndexRedirect to="members" />
 

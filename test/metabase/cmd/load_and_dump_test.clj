@@ -33,9 +33,8 @@
                               :classname   "org.h2.Driver"}
                              (let [details (tx/dbdef->connection-details driver/*driver* :db {:database-name db-name})]
                                (db.spec/spec driver/*driver* details))))]
-          (binding [setting/*disable-cache*      true
-                    mdb.connection/*db-type*     driver/*driver*
-                    mdb.connection/*data-source* data-source]
+          (binding [setting/*disable-cache*         true
+                    mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
             (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))

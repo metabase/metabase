@@ -8,9 +8,14 @@ import _ from "underscore";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import { closeNavbar } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -19,6 +24,7 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import favicon from "metabase/hoc/Favicon";
 
 import View from "../components/view/View";
 
@@ -68,6 +74,9 @@ import {
   getSelectedTimelineEventIds,
   getFilteredTimelines,
   getTimeseriesXDomain,
+  getIsAnySidebarOpen,
+  getDocumentTitle,
+  getPageFavicon,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -92,6 +101,7 @@ const timelineProps = {
 const mapStateToProps = (state, props) => {
   return {
     user: getUser(state, props),
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 
@@ -130,6 +140,7 @@ const mapStateToProps = (state, props) => {
     // includes isShowingDataReference, isEditing, isRunning, etc
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
+    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
@@ -163,11 +174,14 @@ const mapStateToProps = (state, props) => {
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
+    documentTitle: getDocumentTitle(state),
+    pageFavicon: getPageFavicon(state),
   };
 };
 
 const mapDispatchToProps = {
   ...actions,
+  closeNavbar,
   onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
   deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
@@ -180,6 +194,9 @@ function QueryBuilder(props) {
     params,
     fromUrl,
     uiControls,
+    isNativeEditorOpen,
+    isAnySidebarOpen,
+    closeNavbar,
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
@@ -204,6 +221,8 @@ function QueryBuilder(props) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
+  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
 
@@ -286,6 +305,21 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
+    if (
+      (isAnySidebarOpen && !wasShowingAnySidebar) ||
+      (isNativeEditorOpen && !wasNativeEditorOpen)
+    ) {
+      closeNavbar();
+    }
+  }, [
+    isAnySidebarOpen,
+    wasShowingAnySidebar,
+    isNativeEditorOpen,
+    wasNativeEditorOpen,
+    closeNavbar,
+  ]);
+
+  useEffect(() => {
     if (allLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
@@ -340,6 +374,10 @@ export default _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
-  title(({ card }) => card?.name ?? t`Question`),
+  favicon(({ pageFavicon }) => pageFavicon),
+  title(({ card, documentTitle }) => ({
+    title: documentTitle || card?.name || t`Question`,
+    titleIndex: 1,
+  })),
   titleWithLoadingTime("queryStartTime"),
 )(QueryBuilder);

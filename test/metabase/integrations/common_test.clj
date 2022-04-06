@@ -3,13 +3,11 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
+            [metabase.test :as mt :refer [with-user-in-groups]]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -18,36 +16,6 @@
   [user]
   (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
-
-(defn- do-with-user-in-groups
-  ([f groups-or-ids]
-   (tt/with-temp User [user]
-     (do-with-user-in-groups f user groups-or-ids)))
-  ([f user [group-or-id & more]]
-   (if group-or-id
-     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
-     (f user))))
-
-(defmacro ^:private with-user-in-groups
-  "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
-
-    ;; create a new User, add to existing group `some-group`, execute body`
-    (with-user-in-groups [user [some-group]]
-      ...)
-
-    ;; create a Group, then create a new User and add to new Group, then execute body
-    (with-user-in-groups [new-group {:name \"My New Group\"}
-                          user      [new-group]]
-      ...)"
-  {:arglists '([[group-binding-and-definition-pairs* user-binding groups-to-put-user-in?] & body]), :style/indent 1}
-  [[& bindings] & body]
-  (if (> (count bindings) 2)
-    (let [[group-binding group-definition & more] bindings]
-      `(tt/with-temp PermissionsGroup [~group-binding ~group-definition]
-         (with-user-in-groups ~more ~@body)))
-    (let [[user-binding groups-or-ids-to-put-user-in] bindings]
-      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (deftest sync-groups-test
   (testing "does syncing group memberships leave existing memberships in place if nothing has changed?"

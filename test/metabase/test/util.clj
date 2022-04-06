@@ -12,8 +12,8 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
+                                     Pulse PulseCard PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -1030,6 +1030,36 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn do-with-user-in-groups
+  ([f groups-or-ids]
+   (tt/with-temp User [user]
+     (do-with-user-in-groups f user groups-or-ids)))
+  ([f user [group-or-id & more]]
+   (if group-or-id
+     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
+       (do-with-user-in-groups f user more))
+     (f user))))
+
+(defmacro with-user-in-groups
+  "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
+
+    ;; create a new User, add to existing group `some-group`, execute body`
+    (with-user-in-groups [user [some-group]]
+      ...)
+
+    ;; create a Group, then create a new User and add to new Group, then execute body
+    (with-user-in-groups [new-group {:name \"My New Group\"}
+                          user      [new-group]]
+      ...)"
+  {:arglists '([[group-binding-and-definition-pairs* user-binding groups-to-put-user-in?] & body]), :style/indent 1}
+  [[& bindings] & body]
+  (if (> (count bindings) 2)
+    (let [[group-binding group-definition & more] bindings]
+      `(tt/with-temp PermissionsGroup [~group-binding ~group-definition]
+         (with-user-in-groups ~more ~@body)))
+    (let [[user-binding groups-or-ids-to-put-user-in] bindings]
+      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

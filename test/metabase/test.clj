@@ -210,7 +210,8 @@
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
-  with-temporary-setting-values]
+  with-temporary-setting-values
+  with-user-in-groups]
 
  [tu.async
   wait-for-close

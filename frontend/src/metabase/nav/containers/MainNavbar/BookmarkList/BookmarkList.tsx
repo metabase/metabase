@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
-import { TreeNode } from "metabase/components/tree/TreeNode";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";
@@ -25,31 +24,17 @@ const mapDispatchToProps = {
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
   selectedItem?: SelectedEntityItem;
+  onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
-function BookmarkIcon({ bookmark }: { bookmark: Bookmark }) {
-  const icon = Bookmarks.objectSelectors.getIcon(bookmark);
-  const isOfficialCollection =
-    bookmark.type === "collection" &&
-    !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
-
-  // Make sure bookmarks have unified icon color except for official collections
-  const iconProps = isOfficialCollection ? icon : _.omit(icon, "color");
-
-  return (
-    <TreeNode.IconContainer transparent={!isOfficialCollection}>
-      <Icon {...iconProps} />
-    </TreeNode.IconContainer>
-  );
-}
-
 const BookmarkList = ({
   bookmarks,
   selectedItem,
+  onSelect,
   onDeleteBookmark,
 }: CollectionSidebarBookmarksProps) => {
   const onToggleBookmarks = useCallback(isVisible => {
@@ -65,13 +50,21 @@ const BookmarkList = ({
         selectedItem.type === type &&
         selectedItem.id === item_id;
       const url = Urls.bookmark(bookmark);
+      const icon = Bookmarks.objectSelectors.getIcon(bookmark);
       const onRemove = () => onDeleteBookmark(bookmark);
+
+      const isIrregularCollection =
+        bookmark.type === "collection" &&
+        !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
+
       return (
         <SidebarBookmarkItem
           key={`bookmark-${id}`}
           url={url}
-          icon={<BookmarkIcon bookmark={bookmark} />}
+          icon={icon}
           isSelected={isSelected}
+          hasDefaultIconStyle={!isIrregularCollection}
+          onClick={onSelect}
           right={
             <button onClick={onRemove}>
               <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
@@ -84,7 +77,7 @@ const BookmarkList = ({
         </SidebarBookmarkItem>
       );
     },
-    [selectedItem, onDeleteBookmark],
+    [selectedItem, onSelect, onDeleteBookmark],
   );
 
   return (
@@ -93,9 +86,10 @@ const BookmarkList = ({
       initialState={BOOKMARKS_INITIALLY_VISIBLE ? "expanded" : "collapsed"}
       iconPosition="right"
       iconSize={8}
+      headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
-      {bookmarks.map(renderBookmark)}
+      <ul>{bookmarks.map(renderBookmark)}</ul>
     </CollapseSection>
   );
 };

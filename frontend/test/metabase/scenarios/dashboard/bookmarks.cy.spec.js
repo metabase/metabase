@@ -1,6 +1,7 @@
 import {
   restore,
   navigationSidebar,
+  openNavigationSidebar,
   visitDashboard,
 } from "__support__/e2e/cypress";
 
@@ -12,29 +13,23 @@ describe("scenarios > dashboard > bookmarks", () => {
 
   it("should add and then remove bookmark", () => {
     visitDashboard(1);
+    openNavigationSidebar();
 
-    cy.icon("ellipsis").click();
+    cy.get("main header").within(() => {
+      cy.icon("ellipsis").click();
+    });
 
     cy.findByText("Bookmark").click();
 
-    cy.visit("/collection/root");
-
     navigationSidebar().within(() => {
-      // Find the bookmark and click on it to visit dashboard page again
-      cy.findByText("Orders in a dashboard").click();
+      cy.findByText("Orders in a dashboard");
     });
 
-    cy.icon("ellipsis").click();
+    cy.get("main header").within(() => {
+      cy.icon("ellipsis").click();
+    });
 
     cy.findByText("Remove bookmark").click();
-
-    cy.intercept("GET", "/api/collection/root/items?**").as(
-      "fetchRootCollectionItems",
-    );
-
-    cy.visit("/collection/root");
-
-    cy.wait("@fetchRootCollectionItems");
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard").should("not.exist");

@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
-import { color, darken } from "metabase/lib/colors";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { color } from "metabase/lib/colors";
+import { canAccessAdmin } from "metabase/nav/utils";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -23,6 +23,7 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
+    handleCloseNavbar: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -35,10 +36,9 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const { user } = this.props;
+    const { user, handleCloseNavbar } = this.props;
     const isAdmin = user.is_superuser;
-    const canAccessSettings =
-      isAdmin || PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(user);
+    const showAdminSettingsItem = canAccessAdmin(user);
 
     return [
       {
@@ -46,8 +46,9 @@ export default class ProfileLink extends Component {
         icon: null,
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
+        onClose: handleCloseNavbar,
       },
-      canAccessSettings && {
+      showAdminSettingsItem && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
@@ -58,6 +59,7 @@ export default class ProfileLink extends Component {
         icon: null,
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
+        onClose: handleCloseNavbar,
       },
       {
         title: t`Help`,
@@ -97,9 +99,10 @@ export default class ProfileLink extends Component {
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
           triggerProps={{
+            color: color("text-medium"),
             hover: {
-              backgroundColor: darken(color("brand")),
-              color: "white",
+              backgroundColor: color("brand"),
+              color: color("text-white"),
             },
           }}
         />

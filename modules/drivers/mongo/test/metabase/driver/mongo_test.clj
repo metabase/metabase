@@ -67,26 +67,26 @@
            (str message))))))
 
 (deftest database-supports?-test
-(mt/test-driver
-   :mongo
-   (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
-                                                   :port    3000
-                                                   :dbname  "bad-db-name"
-                                                   :version "5.0.0"}
-                                        :expected true}
-                                       {:details  {}
-                                        :expected false}
-                                       {:details  {:version nil}
-                                        :expected false}
-                                       {:details  {:host    "localhost"
-                                                   :port    27017
-                                                   :dbname  "metabase-test"
-                                                   :version "2.2134234.lol"}
-                                        :expected false}]]
-     (testing (str "connect with " details)
-       (is (= expected
-              (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
-                (driver/database-supports? :mongo :expressions db))))))))
+ (mt/test-driver
+    :mongo
+    (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
+                                                    :port    3000
+                                                    :dbname  "bad-db-name"
+                                                    :version "5.0.0"}
+                                         :expected true}
+                                        {:details  {}
+                                         :expected false}
+                                        {:details  {:version nil}
+                                         :expected false}
+                                        {:details  {:host    "localhost"
+                                                    :port    27017
+                                                    :dbname  "metabase-test"
+                                                    :version "2.2134234.lol"}
+                                         :expected false}]]
+      (testing (str "connect with " details)
+        (is (= expected
+               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
+                 (driver/database-supports? :mongo :expressions db))))))))
 
 
 (def ^:private native-query
@@ -98,23 +98,24 @@
 
 (deftest native-query-test
   (mt/test-driver :mongo
-    (is (= {:status    :completed
-            :row_count 1
-            :data      {:rows             [[1]]
-                        :cols             [{:name         "count"
-                                            :display_name "count"
-                                            :base_type    :type/Integer
-                                            :effective_type :type/Integer
-                                            :source       :native
-                                            :field_ref    [:field "count" {:base-type :type/Integer}]}]
-                        :native_form      {:collection "venues"
-                                           :query      native-query}
-                        :results_timezone "UTC"}}
-           (-> (qp/process-query {:native   {:query      native-query
-                                             :collection "venues"}
-                                  :type     :native
-                                  :database (mt/id)})
-               (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+    (is (partial=
+         {:status    :completed
+          :row_count 1
+          :data      {:rows             [[1]]
+                      :cols             [{:name         "count"
+                                          :display_name "count"
+                                          :base_type    :type/Integer
+                                          :effective_type :type/Integer
+                                          :source       :native
+                                          :field_ref    [:field "count" {:base-type :type/Integer}]}]
+                      :native_form      {:collection "venues"
+                                         :query      native-query}
+                      :results_timezone "UTC"}}
+         (-> (qp/process-query {:native   {:query      native-query
+                                           :collection "venues"}
+                                :type     :native
+                                :database (mt/id)})
+             (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
 
 ;; ## Tests for individual syncing functions
 
@@ -124,7 +125,7 @@
              {:schema nil, :name "categories"}
              {:schema nil, :name "users"}
              {:schema nil, :name "venues"}}
-             (:tables (driver/describe-database :mongo (mt/db)))))))
+            (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo

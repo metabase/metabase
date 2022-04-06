@@ -154,9 +154,7 @@ class Header extends Component {
               key={sectionIndex}
               className="Header-buttonSection"
             >
-              {section.map((button, buttonIndex) => (
-                <div key={buttonIndex}>{button}</div>
-              ))}
+              {section}
             </HeaderButtonSection>
           )
         );

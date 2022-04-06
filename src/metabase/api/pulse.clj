@@ -3,6 +3,7 @@
   (:require [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -60,6 +61,7 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)
    parameters          [su/Map]}
+  (validation/check-has-general-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -101,6 +103,7 @@
    archived      (s/maybe s/Bool)
    parameters    [su/Map]}
   ;; do various perms checks
+  (validation/check-has-general-permission :subscription false)
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
@@ -119,6 +122,7 @@
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
+  (validation/check-has-general-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]

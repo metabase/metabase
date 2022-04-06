@@ -1,4 +1,4 @@
-import { restore, navigationSidebar } from "__support__/e2e/cypress";
+import { restore, popover, navigationSidebar } from "__support__/e2e/cypress";
 import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
 
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
@@ -23,7 +23,7 @@ describe("Bookmarks in a collection page", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    cy.findByText("View archive");
+    getSectionTitle("Collections");
     cy.icon("bookmark").should("not.exist");
   });
 
@@ -51,10 +51,6 @@ describe("Bookmarks in a collection page", () => {
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
       getSectionTitle(/Bookmarks/).should("not.exist");
-
-      // Once there is no list of bookmarks,
-      // we remove the heading for the list of collections
-      getSectionTitle("Collections").should("not.exist");
     });
   });
 
@@ -74,6 +70,14 @@ describe("Bookmarks in a collection page", () => {
     });
 
     addThenRemoveBookmarkTo("Orders Model");
+  });
+
+  it("removes items from bookmarks list when they are archived", () => {
+    // A question
+    bookmarkThenArchive("Orders");
+
+    // A dashboard
+    bookmarkThenArchive("Orders in a dashboard");
   });
 
   it("can remove bookmark from item in sidebar", () => {
@@ -107,31 +111,50 @@ describe("Bookmarks in a collection page", () => {
   });
 });
 
-function addThenRemoveBookmarkTo(itemName) {
+function addThenRemoveBookmarkTo(name) {
+  addBookmarkTo(name);
+  removeBookmarkFrom(name);
+}
+
+function addBookmarkTo(name) {
   cy.visit("/collection/root");
 
-  openEllipsisMenuFor(itemName);
+  openEllipsisMenuFor(name);
   cy.findByText("Bookmark").click();
 
   navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/);
-    cy.findByText(itemName);
+    cy.findByText(name);
   });
+}
 
-  openEllipsisMenuFor(itemName);
+function removeBookmarkFrom(name) {
+  openEllipsisMenuFor(name);
 
   cy.findByText("Remove bookmark").click();
 
   navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/).should("not.exist");
-    cy.findByText(itemName).should("not.exist");
+    cy.findByText(name).should("not.exist");
   });
 }
 
-function openEllipsisMenuFor(item) {
+function openEllipsisMenuFor(name) {
   cy.get("td")
-    .contains(item)
+    .contains(name)
     .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function bookmarkThenArchive(name) {
+  addBookmarkTo(name);
+  archive(name);
+}
+
+function archive(name) {
+  openEllipsisMenuFor(name);
+  popover().within(() => {
+    cy.findByText("Archive").click();
+  });
 }

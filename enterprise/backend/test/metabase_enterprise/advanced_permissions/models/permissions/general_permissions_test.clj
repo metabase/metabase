@@ -14,21 +14,19 @@
     ;; clear the graph revisions
     (db/delete! GeneralPermissionsRevision)
     (testing "group should be in graph if one of general permission is enabled"
-      (perms/grant-general-permissions! group-id :subscription)
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
         (is (partial= {(:id (group/admin))
                        {:monitoring   :yes
                         :setting      :yes
                         :subscription :yes}
-                       group-id
+                       (:id (group/all-users))
                        {:monitoring   :no
                         :setting      :no
                         :subscription :yes}}
                       (:groups graph)))))
 
     (testing "group has no permissions will not be included in the graph"
-      (perms/revoke-general-permissions! group-id :subscription)
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
                           group-id))))))
 
@@ -38,20 +36,18 @@
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
   `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
-     ;; currently all general permissions are disabled by default
-     ;; so we manually enable subscriptions for now so we could test revoke
-     ;; TODO: remove this once subscription are enabled for All Useres by default
-     (perms/grant-general-permissions! group-id# :subscription)
      (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
 (deftest general-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id :setting] :yes)
+      (let [new-graph     (assoc-in current-graph [:groups group-id] {:setting      :yes
+                                                                      :monitoring   :no
+                                                                      :subscription :no})
             _             (g-perms/update-graph! new-graph)
             updated-graph (g-perms/graph)]
-        (is (= (:groups new-graph) (:groups updated-graph)))
+        (is (partial= (:groups new-graph) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
 
   (testing "Revoke successfully and increase revision"

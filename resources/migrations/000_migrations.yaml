@@ -11309,6 +11309,27 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
 
+  - changeSet:
+      id: v43.00-047
+      author: qnkhuat
+      comment: Added 0.43.0. Grant the 'All Users' Group permissions to create/edit subscriptions and alerts
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/general/subscription/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                ON all_users_group.id = p.group_id
+                AND p.object = '/general/subscription/'
+              WHERE p.object IS NULL;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

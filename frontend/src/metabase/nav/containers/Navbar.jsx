@@ -11,21 +11,17 @@ import LogoIcon from "metabase/components/LogoIcon";
 import { AdminNavbar } from "../components/AdminNavbar";
 
 import { getPath, getContext, getUser } from "../selectors";
-import {
-  getHasDataAccess,
-  getPlainNativeQuery,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
-  plainNativeQuery: getPlainNativeQuery(state),
   hasDataAccess: getHasDataAccess(state),
 });
 
-import { NavRoot } from "./Navbar.styled";
+import { Sidebar } from "./Navbar.styled";
 
 import MainNavbar from "./MainNavbar";
 
@@ -40,11 +36,6 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
-  state = {
-    modal: null,
-    shouldDisplayMobileSidebar: false,
-  };
-
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -79,9 +70,9 @@ export default class Navbar extends Component {
     const { isOpen, location, params } = this.props;
     // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
     return (
-      <NavRoot className="Nav" isOpen={isOpen}>
-        <MainNavbar location={location} params={params} />
-      </NavRoot>
+      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+        <MainNavbar isOpen={isOpen} location={location} params={params} />
+      </Sidebar>
     );
   }
 

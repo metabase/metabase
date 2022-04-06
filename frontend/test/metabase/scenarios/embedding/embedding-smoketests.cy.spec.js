@@ -93,7 +93,6 @@ describe("scenarios > embedding > smoke tests", () => {
       visitDashboard(1);
 
       cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
 
       ensureEmbeddingIsDisabled();
     });
@@ -238,7 +237,6 @@ function visitAndEnableSharing(object) {
     visitDashboard(1);
 
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.findByText(/Embed this (question|dashboard) in an application/).click();
   }
 }
