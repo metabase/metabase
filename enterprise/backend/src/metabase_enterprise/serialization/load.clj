@@ -439,6 +439,15 @@
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
                                                          :creator_id    @default-user))))
+        ;; MEGA HACK -- if `load` is ran with `--mode update` we should delete any Cards that were removed from a
+        ;; Dashboard (according to #20786). However there are literally zero facilities for doing this sort of thing in
+        ;; the current dump/load codebase. So for now we'll just delete ALL DashboardCards for the dumped Dashboard when
+        ;; running with `--mode update` and recreate them from the serialized definitions. This is definitely a wack way
+        ;; of doing things but no one actually understands how this code is supposed to work so this will have to do
+        ;; until we can come in here and clean things up. -- Cam 2022-03-24
+        _               (when (and (= (:mode context) :update)
+                                   (seq dashboard-ids))
+                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
