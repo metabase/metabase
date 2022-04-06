@@ -8,8 +8,6 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
