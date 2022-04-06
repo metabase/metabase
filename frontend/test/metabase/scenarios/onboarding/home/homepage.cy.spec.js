@@ -36,7 +36,7 @@ describe("scenarios > home > homepage", () => {
     cy.findByText("More X-rays");
   });
 
-  it("should allow to switch between multiple schemas for x-rays", () => {
+  it("should allow switching between multiple schemas for x-rays", () => {
     restore("setup");
     cy.signInAsAdmin();
     cy.addH2SampleDatabase({ name: "H2" });
