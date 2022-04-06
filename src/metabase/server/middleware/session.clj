@@ -17,6 +17,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
             [ring.util.response :as resp]
             [schema.core :as s]
@@ -184,12 +185,13 @@
       (db/honeysql->sql
        {:select    [[:session.user_id :metabase-user-id]
                     [:user.is_superuser :is-superuser?]
-                    [(hsql/call :case [:is :pgm.is_group_manager (hsql/raw "true")] (hsql/raw "true") :else (hsql/raw "false"))
-                     :is-group-manager?]
+                    [:pgm.is_group_manager :is-group-manager?]
                     [:user.locale :user-locale]]
         :from      [[Session :session]]
         :left-join [[User :user] [:= :session.user_id :user.id]
-                    [PermissionsGroupMembership :pgm] [:and [:= :pgm.user_id :user.id] [:is :pgm.is_group_manager true]]]
+                    [PermissionsGroupMembership :pgm] [:and
+                                                       [:= :pgm.user_id :user.id]
+                                                       [:is :pgm.is_group_manager true]]]
         :where     [:and
                     [:= :user.is_active true]
                     [:= :session.id (hsql/raw "?")]
@@ -210,7 +212,8 @@
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
-      (first (jdbc/query (db/connection) (cons sql params))))))
+      (some-> (first (jdbc/query (db/connection) (cons sql params)))
+              (update :is-group-manager? boolean)))))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
@@ -222,7 +225,7 @@
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
-  "Add `:metabase-user-id`, `:is-superuser?`, and `:user-locale` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session token was passed."
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
@@ -270,6 +273,7 @@
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
+  *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of more than one group.
   *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]

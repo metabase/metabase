@@ -222,13 +222,13 @@
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
-  (testing "If user is a group manager of at least 1 group, `:is-group-manager?` should be true"
+  (testing "If user is a group manager of more than one group, `:is-group-manager?` should be true"
     (try
      (mt/with-user-in-groups
        [group-1 {:name "New Group 1"}
         group-2 {:name "New Group 2"}
         user    [group-1 group-2]]
-       (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-1)}
+       (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
                          :is_group_manager true)
        (mt/with-temp Session [_session {:id      (str test-uuid)
                                         :user_id (:id user)}]

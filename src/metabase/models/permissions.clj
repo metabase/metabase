@@ -4,6 +4,8 @@
   The Metabase permissions system is based around permissions *paths* that are granted to individual
   [[metabase.models.permissions-group]]s.
 
+  a new line
+
   ### Core concepts
 
   Permissions are granted to individual [[metabase.models.permissions-group]]s, and Users are members of one or more
