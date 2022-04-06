@@ -436,7 +436,15 @@
       (is (= ["GB"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
       (is (= ["Portugal"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))))
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]]))))))
+  (testing "NaN and infinity values (#21343)"
+    ;; These values apparently are represented as error codes, which are parsed here into keywords
+    (is (= [:NUM]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##NaN]]))))
+    (is (= [:DIV0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##Inf]]))))
+    (is (= [:DIV0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##-Inf]]))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
