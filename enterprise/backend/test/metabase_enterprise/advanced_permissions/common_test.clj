@@ -42,6 +42,11 @@
             (is (partial= {:can_access_data_model   true}
                           (user-permissions :rasta)))))))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Data model permission enforcement                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn- do-with-all-user-data-perms
   [graph f]
   (let [all-users-group-id  (u/the-id (group/all-users))]
@@ -70,40 +75,55 @@
           (is (= [id-1] (map :id tables))))))))
 
 (deftest update-field-test
-  (testing "PUT /api/field/:id"
-    (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
-      (let [{table-id :id, schema :schema, db-id :db_id} (Table table-id)
-            endpoint (format "field/%d" field-id)]
-        (testing "a non-admin cannot update field metadata if they have no data model permissions for the DB"
-          (with-all-users-data-perms {db-id {:data-model {:schemas :none}}}
-            (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
+  (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
+    (let [{table-id :id, schema :schema, db-id :db_id} (Table table-id)]
+      (testing "PUT /api/field/:id"
+        (let [endpoint (format "field/%d" field-id)]
+          (testing "a non-admin cannot update field metadata if they have no data model permissions for the DB"
+            (with-all-users-data-perms {db-id {:data-model {:schemas :none}}}
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
 
-        (testing "a non-admin cannot update field metadata if they only have data model permissions for other schemas"
-          (with-all-users-data-perms {db-id {:data-model {:schemas {schema             :none
-                                                                    "different schema" :all}}}}
+          (testing "a non-admin cannot update field metadata if they only have data model permissions for other schemas"
+            (with-all-users-data-perms {db-id {:data-model {:schemas {schema             :none
+                                                                      "different schema" :all}}}}
 
-            (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
 
-        (testing "a non-admin cannot update field metadata if they only have data model permissions for other tables"
-          (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id       :none
-                                                                            (inc table-id) :all}}}}}
-            (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
+          (testing "a non-admin cannot update field metadata if they only have data model permissions for other tables"
+            (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id       :none
+                                                                              (inc table-id) :all}}}}}
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
 
-        (testing "a non-admin can update field metadata if they have data model perms for the DB"
-          (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"})))
+          (testing "a non-admin can update field metadata if they have data model perms for the DB"
+            (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"})))
 
-        (testing "a non-admin can update field metadata if they have data model perms for the schema"
-          (with-all-users-data-perms {db-id {:data-model {:schemas {schema :all}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))
+          (testing "a non-admin can update field metadata if they have data model perms for the schema"
+            (with-all-users-data-perms {db-id {:data-model {:schemas {schema :all}}}}
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))
 
-        (testing "a non-admin can update field metadata if they have data model perms for the table"
-          (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))))))
+          (testing "a non-admin can update field metadata if they have data model perms for the table"
+            (with-all-users-data-perms {db-id {:data-model {:schemas {schema {table-id :all}}}}}
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))))
+
+      (testing "POST /api/field/:id/rescan_values"
+        (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+            (mt/user-http-request :rasta :post 403 (format "field/%d/rescan_values" field-id)))
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" field-id)))))
+
+      (testing "POST /api/field/:id/discard_values"
+        (testing "A non-admin can discard field values if they have data model perms for the table"
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+            (mt/user-http-request :rasta :post 403 (format "field/%d/discard_values" field-id)))
+
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" field-id))))))))
 
 (deftest update-table-test
-  (testing "PUT /api/table/:id"
-    (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+  (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+    (testing "PUT /api/table/:id"
       (let [endpoint (format "table/%d" table-id)]
         (testing "a non-admin cannot update table metadata if they have no data model permissions for the DB"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas :none}}}
@@ -129,34 +149,31 @@
 
         (testing "a non-admin can update table metadata if they have data model perms for the table"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"}))))))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))
 
-  (testing "POST /api/table/:id/rescan_values"
-    (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
-      (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+    (testing "POST /api/table/:id/rescan_values"
+      (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/rescan_values" table-id)))
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))))
+          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id)))))
 
-  (testing "POST /api/table/:id/discard_values"
-    (testing "A non-admin can discard field values if they have data model perms for the table"
-      (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+    (testing "POST /api/table/:id/discard_values"
+      (testing "A non-admin can discard field values if they have data model perms for the table"
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/discard_values" table-id)))
 
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id))))))
+          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id)))))
 
-  (testing "POST /api/table/:id/fields/order"
-    (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
-      (mt/with-temp* [Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
-                      Field [{field-1-id :id} {:table_id table-id}]
-                      Field [{field-2-id :id} {:table_id table-id}]]
-        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
-          (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
-                                {:request-options {:body (json/encode [field-2-id field-1-id])}}))
+    (testing "POST /api/table/:id/fields/order"
+      (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
+        (mt/with-temp* [Field [{field-1-id :id} {:table_id table-id}]
+                        Field [{field-2-id :id} {:table_id table-id}]]
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
+            (mt/user-http-request :rasta :put 403 (format "table/%d/fields/order" table-id)
+                                  {:request-options {:body (json/encode [field-2-id field-1-id])}}))
 
-        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
-                                {:request-options {:body (json/encode [field-2-id field-1-id])}}))))))
+          (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
+            (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
+                                  {:request-options {:body (json/encode [field-2-id field-1-id])}})))))))
