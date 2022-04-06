@@ -3,6 +3,7 @@ import { t } from "ttag";
 import moment from "moment";
 
 import CheckBox from "metabase/core/components/CheckBox";
+import Link from "metabase/core/components/Link";
 import DateTime from "metabase/components/DateTime";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -39,7 +40,11 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
       return t`Completed`;
     }
     if (job.status === "error") {
-      return <ErrorBox>{job.error}</ErrorBox>;
+      return (
+        <Link to={`/admin/troubleshooting/model-caching/${job.id}`}>
+          <ErrorBox>{job.error}</ErrorBox>
+        </Link>
+      );
     }
     return job.status;
   }, [job]);
@@ -81,7 +86,11 @@ function getJobId(job: ModelCacheRefreshJob) {
   return job.id;
 }
 
-function ModelCacheRefreshJobs() {
+type Props = {
+  children: JSX.Element;
+};
+
+function ModelCacheRefreshJobs({ children }: Props) {
   const { selected, toggleItem, toggleAll, getIsSelected } = useListSelect(
     getJobId,
   );
@@ -91,42 +100,45 @@ function ModelCacheRefreshJobs() {
   const toggleAllJobs = () => toggleAll(jobs);
 
   return (
-    <table className="ContentTable border-bottom">
-      <colgroup>
-        <col style={{ width: "1%" }} />
-        <col />
-        <col style={{ width: "40%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "1%" }} />
-      </colgroup>
-      <thead>
-        <tr>
-          <th>
-            <CheckBox checked={areAllJobsSelected} onChange={toggleAllJobs} />
-          </th>
-          <th>{t`Model`}</th>
-          <th>{t`Status`}</th>
-          <th>{t`Last run at`}</th>
-          <th>{t`Last run trigger`}</th>
-          <th>{t`Created by`}</th>
-          <th>{t`Updated by`}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {jobs.map(job => (
-          <JobTableItem
-            key={job.id}
-            job={job}
-            isSelected={getIsSelected(job)}
-            handleSelect={() => toggleItem(job)}
-          />
-        ))}
-      </tbody>
-    </table>
+    <>
+      <table className="ContentTable border-bottom">
+        <colgroup>
+          <col style={{ width: "1%" }} />
+          <col />
+          <col style={{ width: "40%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "1%" }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>
+              <CheckBox checked={areAllJobsSelected} onChange={toggleAllJobs} />
+            </th>
+            <th>{t`Model`}</th>
+            <th>{t`Status`}</th>
+            <th>{t`Last run at`}</th>
+            <th>{t`Last run trigger`}</th>
+            <th>{t`Created by`}</th>
+            <th>{t`Updated by`}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map(job => (
+            <JobTableItem
+              key={job.id}
+              job={job}
+              isSelected={getIsSelected(job)}
+              handleSelect={() => toggleItem(job)}
+            />
+          ))}
+        </tbody>
+      </table>
+      {children}
+    </>
   );
 }
 

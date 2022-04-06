@@ -41,7 +41,10 @@ import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
-import ModelCacheRefreshJobs from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
+import {
+  ModelCacheRefreshJobs,
+  ModelCacheRefreshJobModal,
+} from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
@@ -150,7 +153,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               modalProps={{ wide: true }}
             />
           </Route>
-          <Route path="model-caching" component={ModelCacheRefreshJobs} />
+          <Route path="model-caching" component={ModelCacheRefreshJobs}>
+            <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+          </Route>
           <Route path="logs" component={Logs} />
         </Route>
       </Route>
