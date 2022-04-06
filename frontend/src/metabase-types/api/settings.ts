@@ -1,10 +1,10 @@
+export interface EngineSourceContact {
+  name?: string;
+  address?: string;
+}
 export interface EngineSource {
   type?: "official" | "community" | "partner";
-  name?: string;
-  contact?: {
-    name?: string;
-    address?: string;
-  };
+  contact?: EngineSourceContact;
 }
 export interface Engine {
   "driver-name": string;
