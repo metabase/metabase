@@ -32,6 +32,10 @@ export default class TroubleshootingApp extends Component {
               path="/admin/troubleshooting/jobs"
             />
             <LeftNavPaneItem
+              name={t`Model caching`}
+              path="/admin/troubleshooting/model-caching"
+            />
+            <LeftNavPaneItem
               name={t`Logs`}
               path="/admin/troubleshooting/logs"
             />
