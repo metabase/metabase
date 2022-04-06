@@ -16,6 +16,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.sync.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
@@ -184,7 +185,7 @@
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
   (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.sync/describe-nested-field-columns driver spec table)]
+        fields (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)]
     (if (> (count fields) max-nested-field-columns)
       #{}
       fields)))
