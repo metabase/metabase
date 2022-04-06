@@ -48,7 +48,7 @@
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
     "lodash.memoize": "^4.1.2",
-    "moment": "2.19.3",
+    "moment": "2.29.2",
     "moment-timezone": "^0.5.26",
     "mustache": "^2.3.2",
     "node-polyfill-webpack-plugin": "^1.1.2",
