@@ -109,7 +109,7 @@
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               (when (every? f/real-number? [offset slope])
+                               (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
