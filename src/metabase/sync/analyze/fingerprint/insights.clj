@@ -126,7 +126,7 @@
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
-              (filter (comp f/real-number? :mae))
+              (filter (comp u/real-number? :mae))
               not-empty
               (apply min-key :mae)
               :formula))))
@@ -195,7 +195,7 @@
                (redux/post-complete
                 (let [y-position (:position number-col)
                       yfn        #(nth % y-position)]
-                  ((filter (comp f/real-number? yfn))
+                  ((filter (comp u/real-number? yfn))
                    (redux/juxt ((map yfn) (last-n 2))
                                ((map xfn) (last-n 2))
                                (stats/simple-linear-regression xfn yfn)
