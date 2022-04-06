@@ -35,13 +35,19 @@
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
-  {include (s/maybe Include)
+  {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (map timeline/hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
+        timelines (->> (db/select Timeline
+                         {:where    [:and
+                                     [:= :archived archived?]
+                                     (collection/visible-collection-ids->honeysql-filter-clause
+                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                          :order-by [[:%lower.name :asc]]})
+                       (map timeline/hydrate-root-collection))]
     (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
-      (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
+      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add

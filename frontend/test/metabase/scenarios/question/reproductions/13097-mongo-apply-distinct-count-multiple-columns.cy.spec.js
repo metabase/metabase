@@ -2,7 +2,7 @@ import { restore, visualize } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe.skip("issue 13097", () => {
+describe("issue 13097", () => {
   before(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
@@ -24,8 +24,6 @@ describe.skip("issue 13097", () => {
 
     cy.findByText("Number of distinct values of ...").click();
     cy.findByText("State").click();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
 
     visualize();
 

@@ -59,9 +59,11 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleSortEnd = ({ oldIndex, newIndex }) => {
-    const fields = [...this.props.value];
-    fields.splice(newIndex, 0, fields.splice(oldIndex, 1)[0]);
-    this.props.onChange(fields);
+    const enabledColumns = [...this.props.value].filter(columnSetting =>
+      findColumnForColumnSetting(this.props.columns, columnSetting),
+    );
+    enabledColumns.splice(newIndex, 0, enabledColumns.splice(oldIndex, 1)[0]);
+    this.props.onChange(enabledColumns);
   };
 
   handleEdit = columnSetting => {

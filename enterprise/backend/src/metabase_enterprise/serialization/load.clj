@@ -8,6 +8,7 @@
             [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
             [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
             [metabase.models.card :refer [Card]]
@@ -179,15 +180,17 @@
   [entity]
   (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
 
-(def ^:private default-user (delay
-                             (let [user (db/select-one-id User :is_superuser true)]
-                               (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
-                               user)))
+(def ^:private ^{:arglists '([])} default-user-id
+  (mdb.connection/memoize-for-application-db
+   (fn []
+     (let [user (db/select-one-id User :is_superuser true)]
+       (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
+       user))))
 
 (defn- terminal-dir
   "Return the last path component (presumably a dir)"
   [path]
-  (.getName (clojure.java.io/file path)))
+  (.getName (io/file path)))
 
 (defn- unresolved-names->string
   ([entity]
@@ -209,7 +212,8 @@
 
    Passing in parent entities as context instead of decoding them from the path each time,
    saves a lot of queriying."
-  (fn [path _]
+  {:arglists '([path context])}
+  (fn [path _context]
     (terminal-dir path)))
 
 (defn- load-dimensions
@@ -285,7 +289,7 @@
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)
-                 :creator_id @default-user)
+                 :creator_id (default-user-id))
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
@@ -295,7 +299,7 @@
     (for [metric (slurp-dir path)]
       (-> metric
           (assoc :table_id   (:table context)
-                 :creator_id @default-user)
+                 :creator_id (default-user-id))
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
@@ -438,7 +442,16 @@
                                               (-> dashboard
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
-                                                         :creator_id    @default-user))))
+                                                         :creator_id    (default-user-id)))))
+        ;; MEGA HACK -- if `load` is ran with `--mode update` we should delete any Cards that were removed from a
+        ;; Dashboard (according to #20786). However there are literally zero facilities for doing this sort of thing in
+        ;; the current dump/load codebase. So for now we'll just delete ALL DashboardCards for the dumped Dashboard when
+        ;; running with `--mode update` and recreate them from the serialized definitions. This is definitely a wack way
+        ;; of doing things but no one actually understands how this code is supposed to work so this will have to do
+        ;; until we can come in here and clean things up. -- Cam 2022-03-24
+        _               (when (and (= (:mode context) :update)
+                                   (seq dashboard-ids))
+                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
@@ -513,7 +526,7 @@
                       (for [pulse pulses]
                         (-> pulse
                             (assoc :collection_id (:collection context)
-                                   :creator_id    @default-user)
+                                   :creator_id    (default-user-id))
                             (dissoc :channels :cards))))
         pulse-cards (for [[cards pulse-id pulse-idx] (map vector cards pulse-ids (range 0 (count pulse-ids)))
                           card             cards
@@ -596,7 +609,7 @@
       (update :table_id (comp :table fully-qualified-name->context))
       (update :database_id (comp :database fully-qualified-name->context))
       (update :dataset_query mbql-fully-qualified-names->ids)
-      (assoc :creator_id    @default-user
+      (assoc :creator_id    (default-user-id)
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
       resolve-visualization-settings
@@ -750,7 +763,7 @@
   (load-collections path context))
 
 (defn- prepare-snippet [context snippet]
-  (assoc snippet :creator_id    @default-user
+  (assoc snippet :creator_id    (default-user-id)
                  :collection_id (:collection context)))
 
 (defmethod load "snippets"
