@@ -33,7 +33,7 @@
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
-
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _] true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

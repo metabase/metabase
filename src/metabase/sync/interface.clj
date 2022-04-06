@@ -44,6 +44,10 @@
    :fields #{TableMetadataField}
    (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
+(def NestedFCMetadata
+  "Schema for the expected output of `describe-nested-field-columns`."
+  (s/maybe #{TableMetadataField}))
+
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
   {:fk-column-name   su/NonBlankString
