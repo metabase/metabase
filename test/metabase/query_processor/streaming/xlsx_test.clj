@@ -399,6 +399,12 @@
   (testing "ints"
     (is (= [1.0]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[1]])))))
+  (testing "bigints"
+    (is (= [1.0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[1N]])))))
+  (testing "bigdecimals"
+    (is (= [1.23]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[1.23M]])))))
   (testing "numbers that round to ints"
     (is (= [2.00001]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[2.00001]])))))
