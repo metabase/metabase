@@ -51,7 +51,7 @@
 
 (defn- drop-table-sql [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
-    (format "drop table %s.%s"
+    (format "drop table if exists %s.%s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table table-name))))
 
