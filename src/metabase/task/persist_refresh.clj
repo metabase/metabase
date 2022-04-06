@@ -27,6 +27,7 @@
   [database-id]
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
   (let [database      (Database database-id)
+        ;; todo: what states are acceptable here? certainly "error". What about "refreshing"?
         persisted     (db/select PersistedInfo :database_id database-id, :state "persisted")
         start-time    (t/zoned-date-time)
         refresh-stats (reduce (fn [stats p]
