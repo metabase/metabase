@@ -173,7 +173,7 @@
                              [:= :archived false]
                              coll-ids-filter]}]
     (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
-                                                 (db/exists? 'Dashboard (perms-query user)) 0))))
+                                                 (db/exists? 'Dashboard (perms-query user))))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with a timestamp value."
