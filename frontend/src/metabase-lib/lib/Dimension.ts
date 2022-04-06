@@ -1260,6 +1260,24 @@ export class ExpressionDimension extends Dimension {
       semantic_type = base_type;
     }
 
+    // FIX
+    // when the app uses dimension().field().dimension().field()
+    // the last generated field is badly formatted
+    const resultMetadata = query?.question()?.getResultMetadata?.();
+    if (resultMetadata) {
+      const field = _.findWhere(resultMetadata, {
+        name: this.name(),
+      });
+
+      if (field) {
+        return new Field({
+          ...field,
+          metadata: this._metadata,
+          query: this._query,
+        });
+      }
+    }
+
     const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
     const dimension_options =
       subsOptions && Array.isArray(subsOptions)
