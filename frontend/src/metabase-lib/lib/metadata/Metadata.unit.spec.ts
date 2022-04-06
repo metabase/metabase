@@ -9,6 +9,8 @@ import Field from "./Field";
 import Segment from "./Segment";
 import Metric from "./Metric";
 import Question from "../Question";
+import { createMockDatabaseInstance, createMockSchemaInstance } from "../mocks";
+
 describe("Metadata", () => {
   describe("instantiation", () => {
     it("should create an instance of Metadata", () => {
@@ -29,16 +31,16 @@ describe("Metadata", () => {
     let databaseB;
     let databaseC;
     beforeEach(() => {
-      databaseA = new Database({
+      databaseA = createMockDatabaseInstance({
         id: 2,
         name: "A",
         is_saved_questions: true,
       });
-      databaseB = new Database({
+      databaseB = createMockDatabaseInstance({
         id: 3,
         name: "B",
       });
-      databaseC = new Database({
+      databaseC = createMockDatabaseInstance({
         id: 1,
         name: "C",
       });
@@ -155,8 +157,8 @@ describe("Metadata", () => {
   [
     ["segment", obj => new Segment(obj)],
     ["metric", obj => new Metric(obj)],
-    ["database", obj => new Database(obj)],
-    ["schema", obj => new Schema(obj)],
+    ["database", obj => createMockDatabaseInstance(obj)],
+    ["schema", obj => createMockSchemaInstance(obj)],
     ["table", obj => new Table(obj)],
     ["field", obj => new Field(obj)],
   ].forEach(([fnName, instantiate]) => {

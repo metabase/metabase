@@ -22,12 +22,12 @@ export type DatabaseDetails = {
 
 export type DatabaseEngine = string;
 
-export type DatabaseNativePermission = "write" | "read";
+export type DatabaseNativePermission = "write" | "read" | "none";
 
 export type Database = {
   id: DatabaseId;
   name: string;
-  description?: string;
+  description: string | null;
 
   tables: Table[];
 

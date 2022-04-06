@@ -1,9 +1,14 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 export default class Base {
-  _plainObject: Record<string, unknown>;
+  _plainObject = null;
 
   constructor(object = {}) {
     this._plainObject = object;
-    Object.assign(this, object);
+
+    for (const property in object) {
+      this[property] = object[property];
+    }
   }
 
   /**

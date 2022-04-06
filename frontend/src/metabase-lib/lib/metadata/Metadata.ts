@@ -4,6 +4,7 @@ import _ from "underscore";
 import Base from "./Base";
 import Question from "../Question";
 import Database from "./Database";
+import Schema from "./Schema";
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
  * @typedef { import("./metadata").SchemaId } SchemaId
@@ -18,7 +19,8 @@ import Database from "./Database";
  */
 
 export default class Metadata extends Base {
-  databases: Database[];
+  databases: Record<Database["id"], Database>;
+  schemas: Record<Schema["id"], Schema>;
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
@@ -127,3 +129,5 @@ export default class Metadata extends Base {
     this.segments = segments;
   }
 }
+
+export const EMPTY_METADATA_INSTANCE = new Metadata();
