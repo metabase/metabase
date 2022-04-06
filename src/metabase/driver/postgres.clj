@@ -177,6 +177,10 @@
   "Number of rows to sample for describe-nested-field-columns"
   10000)
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
 (defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
             (lazy-seq
@@ -205,9 +209,22 @@
   ([fst snd]
    (into {}
          (for [json-column (keys snd)]
-           (if (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
-             [json-column (snd json-column)]
-             [json-column nil])))))
+             (cond
+               (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
+               [json-column (snd json-column)]
+
+               ;; Not too much complexity in type hierarchy because
+               ;; there's not too much complexity in JSON's types
+
+               (every? #{java.lang.Long java.lang.Integer} [(fst json-column) (snd json-column)])
+               [json-column java.lang.Long]
+
+               (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
+                       [(fst json-column) (snd json-column)])
+               [json-column java.lang.String]
+
+               :else
+               [json-column nil])))))
 
 (def ^:const field-type-map
   "We deserialize the JSON in order to determine types,
@@ -262,8 +279,11 @@
 ;; Every single database major is fiddly and weird and different about JSON so there's only a trivial default impl in sql.jdbc
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (describe-nested-field-columns* driver spec table)))
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (describe-nested-field-columns* driver spec table)]
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
