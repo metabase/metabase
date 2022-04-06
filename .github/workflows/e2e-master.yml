@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - 'master'
+      - 'e2e-multi-line-workflow-run-command'
     paths-ignore:
       - "docs/**"
       - "**.md"
