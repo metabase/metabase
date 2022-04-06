@@ -209,16 +209,9 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (hist/insert-simple! histogram x)))
 
-(defn real-number?
-  "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
-  [x]
-  (and (number? x)
-       (not (Double/isNaN x))
-       (not (Double/isInfinite x))))
-
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((filter real-number?) histogram)
+   ((filter u/real-number?) histogram)
    (fn [h]
      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
        (robust-map
