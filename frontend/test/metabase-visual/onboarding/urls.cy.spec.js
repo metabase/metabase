@@ -7,22 +7,9 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("home", () => {
-    cy.intercept("GET", `/api/automagic-dashboards/**`).as(
-      "automagic-dashboards",
-    );
+    cy.visit("/");
 
-    cy.visit("/", {
-      // to give predictable messages based on randomization
-      onBeforeLoad(win) {
-        cy.stub(win.Math, "random").returns(0.42);
-      },
-    });
-
-    cy.wait("@automagic-dashboards");
-
-    cy.findByText("Reviews");
-    cy.findByText("First collection");
-
+    cy.findByText("Orders in a dashboard");
     cy.percySnapshot();
   });
 
