@@ -41,7 +41,7 @@ export interface CheckBoxProps
 }
 
 export interface CheckboxTooltipProps {
-  condition: boolean;
-  label: ReactNode;
+  hasTooltip: boolean;
+  tooltipLabel: ReactNode;
   children: ReactNode;
 }

@@ -24,12 +24,12 @@ import {
 } from "./constants";
 
 function CheckboxTooltip({
-  condition,
-  label,
+  hasTooltip,
+  tooltipLabel,
   children,
 }: CheckboxTooltipProps): ReactElement {
-  return condition ? (
-    <Tooltip tooltip={label}>{children}</Tooltip>
+  return hasTooltip ? (
+    <Tooltip tooltip={tooltipLabel}>{children}</Tooltip>
   ) : (
     <>{children}</>
   );
@@ -61,8 +61,8 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
   return (
     <CheckBoxRoot ref={ref} {...props}>
       <CheckboxTooltip
-        condition={!!(labelEllipsis && hasLabelEllipsis)}
-        label={label}
+        hasTooltip={!!(labelEllipsis && hasLabelEllipsis)}
+        tooltipLabel={label}
       >
         <CheckBoxInput
           type="checkbox"
