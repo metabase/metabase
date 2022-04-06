@@ -127,7 +127,7 @@
           (group-by :model views))))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_views`. Tables and Dashboards have a query limit of `views-limit`.
+  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
