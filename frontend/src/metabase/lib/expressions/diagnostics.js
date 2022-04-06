@@ -136,7 +136,6 @@ function prattCompiler(source, startRule, query) {
     const isBoolean =
       COMPARISON_OPS.includes(expression[0]) ||
       LOGICAL_OPS.includes(expression[0]);
-    console.log(expression, startRule, isBoolean);
     if (startRule === "expression" && isBoolean) {
       throw new ResolverError(
         t`Custom columns do not support boolean expressions`,
