@@ -13,11 +13,11 @@ import { color } from "metabase/lib/colors";
 export default class RecentViews extends Component {
   static propTypes = {
     fetchRecentViews: PropTypes.func.isRequired,
-    recents: PropTypes.array.isRequired,
+    recentViews: PropTypes.array.isRequired,
   };
 
   static defaultProps = {
-    recents: [],
+    recentViews: [],
   };
 
   async componentDidMount() {
@@ -39,12 +39,12 @@ export default class RecentViews extends Component {
   }
 
   render() {
-    const { recents } = this.props;
+    const { recentViews } = this.props;
     return (
       <SidebarSection title={t`Recently Viewed`} icon="clock">
-        {recents.length > 0 ? (
+        {recentViews.length > 0 ? (
           <ul className="p2">
-            {recents.map((item, index) => {
+            {recentViews.map((item, index) => {
               const iconName = this.getIconName(item);
               return (
                 <li key={index} className="py1 ml1 flex align-center clearfix">

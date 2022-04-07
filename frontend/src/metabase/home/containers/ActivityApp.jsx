@@ -23,7 +23,7 @@ import {
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),
-  recents: getRecentViews(state),
+  recentViews: getRecentViews(state),
   user: getUser(state),
 });
 
@@ -41,7 +41,7 @@ export default class ActivityApp extends Component {
     activity: PropTypes.array,
     fetchActivity: PropTypes.func.isRequired,
 
-    recents: PropTypes.array,
+    recentViews: PropTypes.array,
     fetchRecentViews: PropTypes.func.isRequired,
   };
 

@@ -28,11 +28,11 @@ export const fetchRecentViews = createThunkAction(
   FETCH_RECENT_VIEWS,
   function() {
     return async function(dispatch, getState) {
-      const recents = await ActivityApi.recent_views();
-      for (const v of recents) {
+      const recentViews = await ActivityApi.recent_views();
+      for (const v of recentViews) {
         v.timestamp = moment(v.timestamp);
       }
-      return recents;
+      return recentViews;
     };
   },
 );
