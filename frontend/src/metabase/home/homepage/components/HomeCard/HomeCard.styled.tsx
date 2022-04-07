@@ -20,11 +20,11 @@ export const CardRoot = styled(Link)`
     max-width: 50%;
   }
 
-  &:hover {
-    box-shadow: 0 10px 22px ${alpha("shadow", 0.09)};
-  }
-
   ${breakpointMinLarge} {
     padding: 1.5rem;
+  }
+
+  &:hover {
+    box-shadow: 0 10px 22px ${alpha("shadow", 0.09)};
   }
 `;
