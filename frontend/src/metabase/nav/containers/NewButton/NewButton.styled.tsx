@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/core/components/Button";
 
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
@@ -13,7 +13,7 @@ export const Menu = styled(EntityMenu)`
   }
 `;
 
-export const ButtonLink = styled(Link)`
+export const StyledButton = styled(Button)`
   display: flex;
   align-items: center;
   margin-right: 0.5rem;

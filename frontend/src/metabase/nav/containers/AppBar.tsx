@@ -26,7 +26,7 @@ import {
 type Props = {
   isSidebarOpen: boolean;
   location: Location;
-  onNewClick: () => void;
+  onNewClick: (modalName: string) => void;
   onToggleSidebarClick: () => void;
   handleCloseSidebar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;

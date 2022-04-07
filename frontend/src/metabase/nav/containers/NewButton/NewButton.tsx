@@ -1,9 +1,8 @@
-/* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { State } from "metabase-types/store";
 
 import { closeNavbar } from "metabase/redux/app";
 import * as Urls from "metabase/lib/urls";
@@ -12,15 +11,32 @@ import {
   getHasNativeWrite,
   getHasDbWithJsonEngine,
 } from "metabase/new_query/selectors";
-import { getUser } from "../../selectors";
 
-import { Menu, ButtonLink, Title } from "./NewButton.styled";
+import { Menu, StyledButton, Title } from "./NewButton.styled";
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
-const mapStateToProps = state => ({
-  user: getUser(state),
+interface NewButtonStateProps {
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+  hasDbWithJsonEngine: boolean;
+}
+
+interface NewButtonDispatchProps {
+  closeNavbar: () => void;
+}
+
+interface NewButtonOwnProps {
+  setModal: (modalName: string) => void;
+}
+
+interface NewButtonProps
+  extends NewButtonOwnProps,
+    NewButtonStateProps,
+    NewButtonDispatchProps {}
+
+const mapStateToProps: (state: State) => NewButtonStateProps = state => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDbWithJsonEngine: getHasDbWithJsonEngine(state),
@@ -36,7 +52,7 @@ function NewButton({
   hasDbWithJsonEngine,
   setModal,
   closeNavbar,
-}) {
+}: NewButtonProps) {
   const menuItems = useMemo(() => {
     const items = [];
 
@@ -93,17 +109,26 @@ function NewButton({
   return (
     <Menu
       trigger={
-        <ButtonLink
-          className="Button Button--primary"
+        <StyledButton
+          primary
+          icon="add"
+          iconSize={14}
           data-metabase-event="NavBar;Create Menu Click"
         >
-          <Icon name="add" size={14} />
           <Title>{t`New`}</Title>
-        </ButtonLink>
+        </StyledButton>
       }
       items={menuItems}
     />
   );
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewButton);
+export default connect<
+  NewButtonStateProps,
+  NewButtonDispatchProps,
+  NewButtonOwnProps,
+  State
+>(
+  mapStateToProps,
+  mapDispatchToProps,
+)(NewButton);
