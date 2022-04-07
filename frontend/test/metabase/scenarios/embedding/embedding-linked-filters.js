@@ -1,6 +1,6 @@
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 export const nativeQuestionDetails = {
   name: "Count of People by State (SQL)",
@@ -75,6 +75,64 @@ export function mapNativeDashboardParameters({
             target: ["dimension", ["template-tag", cityFilter.slug]],
           },
         ],
+      },
+    ],
+  });
+}
+
+export const guiQuestion = {
+  query: { "source-table": PRODUCTS_ID },
+};
+
+const idFilter = {
+  name: "ID Filter",
+  slug: "id_filter",
+  id: "fde6db8b",
+  type: "id",
+  sectionId: "id",
+  default: [1],
+};
+
+const categoryFilter = {
+  name: "Category",
+  slug: "category",
+  id: "e8ff3175",
+  type: "string/=",
+  sectionId: "string",
+  filteringParameters: ["fde6db8b"],
+};
+
+export const guiDashboard = {
+  name: "Dashboard With GUI question",
+  parameters: [idFilter, categoryFilter],
+};
+
+export function mapGUIDashboardParameters(id, card_id, dashboard_id) {
+  const parameter_mappings = [
+    {
+      parameter_id: idFilter.id,
+      card_id,
+      target: ["dimension", ["field", PRODUCTS.ID, null]],
+    },
+    {
+      parameter_id: categoryFilter.id,
+      card_id,
+      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+    },
+  ];
+
+  cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+    cards: [
+      {
+        id,
+        card_id,
+        row: 0,
+        col: 0,
+        sizeX: 10,
+        sizeY: 8,
+        series: [],
+        visualization_settings: {},
+        parameter_mappings,
       },
     ],
   });
