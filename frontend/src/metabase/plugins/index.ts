@@ -9,7 +9,6 @@ import {
   Collection,
   Bookmark,
   GroupsPermissions,
-  User,
   Dataset,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
