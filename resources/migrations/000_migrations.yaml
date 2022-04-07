@@ -11333,13 +11333,13 @@ databaseChangeLog:
   - changeSet:
       id: v43.00-051
       author: adam-james
-      comment: Added 0.43.0 - is_default boolean on timelines
+      comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
       changes:
         - addColumn:
             columns:
             - column:
                 remarks: Boolean value indicating if the timeline is the default one for the containing Collection
-                name: is_default
+                name: default
                 type: boolean
                 value: false
                 constraints:

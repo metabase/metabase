@@ -198,7 +198,7 @@
    Timeline
    (fn [_]
      {:name       "Timeline of bird squawks"
-      :is_default false
+      :default    false
       :creator_id (rasta-id)})
 
    TimelineEvent

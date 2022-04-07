@@ -18,9 +18,9 @@
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
-  [:as {{:keys [name default_name description icon collection_id archived], :as body} :body}]
+  [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
-   default_name  s/Bool
+   default       s/Bool
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
@@ -68,9 +68,9 @@
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [id :as {{:keys [name default_name description icon collection_id archived] :as timeline-updates} :body}]
+  [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
-   default_name  (s/maybe s/Bool)
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
