@@ -201,9 +201,7 @@ class App extends Component {
               hasAppBar={hasAppBar}
               isAdminApp={this.isAdminApp()}
             >
-              {this.hasNavbar() && (
-                <Navbar isOpen={isSidebarOpen} location={location} />
-              )}
+              {this.hasNavbar() && <Navbar />}
               <AppContent>{children}</AppContent>
               {this.renderModal()}
               <UndoListing />
