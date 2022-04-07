@@ -104,7 +104,7 @@
         ;; password is ok, return new session if user is not deactivated
         (let [user (ldap/fetch-or-create-user! user-info)]
           (if (:is_active user)
-            (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info)
+            (create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))

@@ -11,7 +11,11 @@ describe("TimelineCard", () => {
   it("should render timeline", () => {
     const props = getProps({
       timeline: createMockTimeline({
-        events: [createMockTimelineEvent(), createMockTimelineEvent()],
+        events: [
+          createMockTimelineEvent(),
+          createMockTimelineEvent(),
+          createMockTimelineEvent({ archived: true }),
+        ],
       }),
     });
 

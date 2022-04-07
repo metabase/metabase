@@ -8,23 +8,23 @@ describe("scenarios > collections > timelines", () => {
   describe("as admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.intercept("GET", "/api/collection/root").as("collections");
-      cy.intercept("POST", "/api/timeline-event").as("timelineEvent");
-      cy.intercept("PUT", "/api/timeline-event/**").as("putTimelineEvent");
+      cy.intercept("GET", "/api/collection/root").as("getCollection");
+      cy.intercept("POST", "/api/timeline-event").as("createEvent");
+      cy.intercept("PUT", "/api/timeline-event/**").as("updateEvent");
     });
 
     it("should create the first event and timeline", () => {
       visitQuestion(3);
-      cy.wait("@collections");
+      cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2018");
       cy.button("Create").click();
-      cy.wait("@timelineEvent");
+      cy.wait("@createEvent");
 
       cy.findByTextEnsureVisible("Our analytics events");
       cy.findByText("RC1");
@@ -37,16 +37,16 @@ describe("scenarios > collections > timelines", () => {
       });
 
       visitQuestion(3);
-      cy.wait("@collections");
+      cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC2");
       cy.findByLabelText("Date").type("10/30/2018");
       cy.button("Create").click();
-      cy.wait("@timelineEvent");
+      cy.wait("@createEvent");
 
       cy.findByTextEnsureVisible("Releases");
       cy.findByText("RC1");
@@ -60,10 +60,10 @@ describe("scenarios > collections > timelines", () => {
       });
 
       visitQuestion(3);
-      cy.wait("@collections");
+      cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Releases");
       sidebar().within(() => {
         cy.icon("ellipsis").click();
@@ -74,10 +74,35 @@ describe("scenarios > collections > timelines", () => {
         .clear()
         .type("RC2");
       cy.findByText("Update").click();
-      cy.wait("@putTimelineEvent");
+      cy.wait("@updateEvent");
 
       cy.findByTextEnsureVisible("Releases");
       cy.findByText("RC2");
+    });
+
+    it("should display all events in data view", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "v1", timestamp: "2015-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2017-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2020-01-01T00:00:00Z" },
+        ],
+      });
+
+      visitQuestion(3);
+      cy.wait("@getCollection");
+      cy.findByTextEnsureVisible("Visualization");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("v1").should("not.exist");
+      cy.findByText("v2").should("be.visible");
+      cy.findByText("v3").should("be.visible");
+
+      cy.findByLabelText("table2 icon").click();
+      cy.findByText("v1").should("be.visible");
+      cy.findByText("v2").should("be.visible");
+      cy.findByText("v3").should("be.visible");
     });
 
     it("should archive and unarchive an event", () => {
@@ -87,20 +112,18 @@ describe("scenarios > collections > timelines", () => {
       });
 
       visitQuestion(3);
-      cy.wait("@collections");
+      cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Releases");
-      sidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
+      sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByTextEnsureVisible("Archive event").click();
-      cy.wait("@putTimelineEvent");
+      cy.wait("@updateEvent");
       cy.findByText("RC1").should("not.exist");
 
       cy.findByText("Undo").click();
-      cy.wait("@putTimelineEvent");
+      cy.wait("@updateEvent");
       cy.findByText("RC1");
     });
 
@@ -118,7 +141,7 @@ describe("scenarios > collections > timelines", () => {
       });
 
       visitQuestion(3);
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
 
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Release notes").should("be.visible");
@@ -131,7 +154,7 @@ describe("scenarios > collections > timelines", () => {
       visitQuestion(3);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible(/Events in Metabase/);
       cy.findByText("Add an event").should("not.exist");
     });
@@ -147,12 +170,10 @@ describe("scenarios > collections > timelines", () => {
       visitQuestion(3);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Releases");
       cy.findByText("Add an event").should("not.exist");
-      sidebar().within(() => {
-        cy.icon("ellipsis").should("not.exist");
-      });
+      sidebar().within(() => cy.icon("ellipsis").should("not.exist"));
     });
   });
 });

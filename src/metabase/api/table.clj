@@ -388,7 +388,6 @@
   []
   []) ; return empty array
 
-
 (api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
@@ -407,19 +406,19 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (api/check-superuser)
-  ;; async so as not to block the UI
-  (sync.concurrent/submit-task
-    (fn []
-      (sync-field-values/update-field-values-for-table! (api/check-404 (Table id)))))
-  {:status :success})
+  (let [table (Table id)]
+    (api/write-check table)
+    ;; async so as not to block the UI
+    (sync.concurrent/submit-task
+      (fn []
+        (sync-field-values/update-field-values-for-table! table)))
+    {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/check-superuser)
-  (api/check-404 (Table id))
+  (api/write-check (Table id))
   (when-let [field-ids (db/select-ids Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
@@ -433,7 +432,6 @@
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
-  (api/check-superuser)
-  (-> id Table api/check-404 (table/custom-order-fields! field_order)))
+  (-> id Table api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

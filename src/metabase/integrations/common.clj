@@ -12,21 +12,17 @@
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only touches groups with mappings set."
-  [user-or-id new-groups-or-ids mapped-groups-or-ids sync-admin-group?]
-  (let [included-group-ids (cond-> (set (map u/the-id mapped-groups-or-ids))
-                             sync-admin-group? (conj (u/the-id (group/admin))))
-        excluded-group-ids (cond-> #{(u/the-id (group/all-users))}
-                             (not sync-admin-group?) (conj (u/the-id (group/admin))))
+  [user-or-id new-groups-or-ids mapped-groups-or-ids]
+  (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
+        excluded-group-ids #{(u/the-id (group/all-users))}
         user-id            (u/the-id user-or-id)
-        ;; Get a set of mapped Group IDs the user currently belongs to
-        current-group-ids  (when (seq included-group-ids)
+        current-group-ids  (when (seq mapped-group-ids)
                              (db/select-field :group_id PermissionsGroupMembership
                                               :user_id  user-id
-                                              ;; Add nil to included group ids to ensure valid SQL if set is empty
-                                              :group_id [:in included-group-ids]
+                                              :group_id [:in mapped-group-ids]
                                               :group_id [:not-in excluded-group-ids]))
         new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
-                                             included-group-ids)
+                                             mapped-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed

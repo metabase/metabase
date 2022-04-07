@@ -100,13 +100,13 @@ function prattCompiler(source, startRule, query) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
       return ["metric", metric.id];
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
       return ["segment", segment.id];
     } else {

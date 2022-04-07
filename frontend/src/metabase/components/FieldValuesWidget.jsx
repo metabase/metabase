@@ -385,6 +385,7 @@ export class FieldValuesWidget extends Component {
       className,
       style,
       parameter,
+      prefix,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -429,6 +430,7 @@ export class FieldValuesWidget extends Component {
         )}
         {!hasListData && !isFetchingList && (
           <TokenField
+            prefix={prefix}
             value={value.filter(v => v != null)}
             onChange={onChange}
             placeholder={placeholder}

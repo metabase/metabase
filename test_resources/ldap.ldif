@@ -40,6 +40,7 @@ objectClass: person
 objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: Fred Taylor
+# intetionally having some attributes not properly cased to test case-insensitive when querying users
 sN: Taylor
 givenname: Fred
 uid: ftaylor300
