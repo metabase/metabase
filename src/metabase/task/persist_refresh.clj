@@ -83,7 +83,7 @@
 (jobs/defjob PersistenceRefresh [job-context]
   (refresh-tables! job-context))
 
-(def ^:private persistence-job-key "metabase.task.PersistenceRefresh.job")
+(def persistence-job-key "metabase.task.PersistenceRefresh.job")
 
 (def ^:private persistence-job
   (jobs/build

@@ -200,6 +200,12 @@
   :type    :boolean
   :default false)
 
+(defsetting enabled-persisted-models
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :admin)
+
 (defsetting persisted-model-refresh-interval-hours
   (deferred-tru "Hour interval to refresh persisted models.")
   :type       :integer

@@ -14,6 +14,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -572,6 +573,9 @@
   [id]
   {:id su/IntGreaterThanZero}
   (api/check-superuser)
+  (api/check (public-settings/enabled-persisted-models)
+             400
+             (tru "Persisting models is not enabled."))
   (api/let-404 [database (Database id)]
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -582,8 +586,8 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
-              (classloader/require 'metabase.task.persist-refresh)
-              ((resolve 'metabase.task.persist-refresh/schedule-persistence-for-database) database)
+              (task.persist-refresh/schedule-persistence-for-database database
+                                                                      (public-settings/persisted-model-refresh-interval-hours))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -607,8 +611,8 @@
                  (try (ddl.i/unpersist! (:engine database) database unpersist)
                       (catch Exception e
                         (log/info e
-                                  "Error unpersisting model with card-id {0}"
-                                  (:card_id unpersist))))))))
+                                  (tru "Error unpersisting model with card-id {0}"
+                                       (:card_id unpersist)))))))))
           (classloader/require 'metabase.task.persist-refresh)
           ((resolve 'metabase.task.persist-refresh/unschedule-persistence-for-database) database)
           api/generic-204-no-content)

@@ -1,7 +1,9 @@
 (ns metabase.api.persist
-  (:require [clojurewerkz.quartzite.conversion :as qc]
+  (:require [clojure.tools.logging :as log]
+            [clojurewerkz.quartzite.conversion :as qc]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.driver.ddl.concurrent :as ddl.concurrent]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
@@ -10,7 +12,7 @@
             [metabase.task :as task]
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -19,8 +21,7 @@
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   []
   (let [instance-id-str  (public-settings/site-uuid)
-        db-id->fire-time (some->> (resolve 'metabase.task.persist-refresh/persistence-job-key)
-                                  deref
+        db-id->fire-time (some->> task.persist-refresh/persistence-job-key
                                   task/job-info
                                   :triggers
                                   (u/key-by (comp #(get % "db-id") qc/from-job-data :data))
@@ -57,8 +58,58 @@
   "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
   [:as {{:keys [hours], :as _body} :body}]
   {hours HoursInterval}
+  (api/check-superuser)
   (public-settings/persisted-model-refresh-interval-hours hours)
   (task.persist-refresh/reschedule-refresh)
+  api/generic-204-no-content)
+
+(api/defendpoint POST "/enable"
+  "Enable global setting to allow databases to persist models."
+  []
+  (api/check-superuser)
+  (log/info (tru "Enabling model persistence"))
+  (public-settings/enabled-persisted-models true)
+  api/generic-204-no-content)
+
+(defn- disable-persisting
+  "Disables persistence.
+  - update all [[PersistedInfo]] rows to be inactive and deleteable
+  - remove `:persist-models-enabled` from relevant [[Database]] options
+  - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
+  []
+  (let [id->db      (u/key-by :id (Database))
+        enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
+    (log/info (tru "Disabling model persistence"))
+    (doseq [db enabled-dbs]
+      (db/update! Database (u/the-id db)
+                  :options (not-empty (dissoc (:options db) :persist-models-enabled))))
+    (db/update-where! PersistedInfo {}
+                      :active false, :state "deleteable")
+    (task.persist-refresh/unschedule-all-triggers)
+    (ddl.concurrent/submit-task
+     (fn []
+       (let [to-unpersist (db/select PersistedInfo :state "deleteable")]
+         (log/info (tru "Unpersisting all persisted models"))
+         (doseq [unpersist to-unpersist
+                 :let [database (id->db (:database_id unpersist))]]
+           (try (ddl.i/unpersist! (:engine database) database unpersist)
+                (catch Exception e
+                  (log/info e
+                            (tru "Error unpersisting model with card-id {0}"
+                                 (:card_id unpersist)))))))))))
+
+(api/defendpoint POST "/disable"
+  "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
+  that option from databases which might have it enabled, and delete all cached tables."
+  []
+  (api/check-superuser)
+  (when (public-settings/enabled-persisted-models)
+    (try (public-settings/enabled-persisted-models false)
+         (disable-persisting)
+         (catch Exception e
+           ;; re-enable so can continue to attempt to clean up
+           (public-settings/enabled-persisted-models true)
+           (throw e))))
   api/generic-204-no-content)
 
 (api/define-routes)
