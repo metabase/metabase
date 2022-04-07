@@ -33,7 +33,8 @@
             (is (= [] (slack/slack-cached-channels-and-usernames)))))))
 
     (testing "The Slack files channel setting can be set by an admin, and the leading # is stripped if it is present"
-      (mt/with-temporary-setting-values [slack-files-channel nil]
+      (mt/with-temporary-setting-values [slack-files-channel                       nil
+                                         slack-channels-and-usernames-last-updated nil]
         (with-redefs [slack/channel-exists? (constantly true)]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-files-channel "fake-channel"})
           (is (= "fake-channel" (slack/slack-files-channel)))
