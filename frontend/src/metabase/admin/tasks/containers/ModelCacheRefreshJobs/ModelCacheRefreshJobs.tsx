@@ -41,7 +41,7 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
     }
     if (job.status === "error") {
       return (
-        <Link to={`/admin/troubleshooting/model-caching/${job.id}`}>
+        <Link to={`/admin/tools/model-caching/${job.id}`}>
           <ErrorBox>{job.error}</ErrorBox>
         </Link>
       );

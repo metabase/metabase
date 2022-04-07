@@ -6,6 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 
 import { withBackground } from "metabase/hoc/Background";
@@ -59,6 +60,9 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+
+// Tools
+import Tools from "metabase/admin/tools/containers/Tools";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -153,9 +157,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               modalProps={{ wide: true }}
             />
           </Route>
-          <Route path="model-caching" component={ModelCacheRefreshJobs}>
-            <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
-          </Route>
           <Route path="logs" component={Logs} />
         </Route>
       </Route>
@@ -175,6 +176,20 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
+      </Route>
+
+      <Route path="tools" component={IsAdmin}>
+        <Route title={t`Tools`} component={Tools}>
+          <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
+          <Route
+            path="model-caching"
+            title={t`Model Caching Log`}
+            component={ModelCacheRefreshJobs}
+          >
+            <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+          </Route>
+          {PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES}
+        </Route>
       </Route>
 
       {/* PLUGINS */}
