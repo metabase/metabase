@@ -65,13 +65,14 @@ const TimelineDetailsModal = ({
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
   const canWrite = timeline.collection?.can_write;
+  const canGoBack = isArchive || !isOnlyTimeline;
 
   return (
     <ModalRoot>
       <ModalHeader
         title={title}
         onClose={onClose}
-        onGoBack={isArchive || !isOnlyTimeline ? handleGoBack : undefined}
+        onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
