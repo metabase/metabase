@@ -7,6 +7,7 @@
             [metabase.driver.ddl.concurrent :as ddl.concurrent]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
@@ -28,14 +29,18 @@
                                   :triggers
                                   (u/key-by (comp #(get % "db-id") qc/from-job-data :data))
                                   (m/map-vals :next-fire-time))]
-    (->> (cond-> {:select    [:p.id :p.database_id :p.columns :p.card_id
+    (->> (cond-> {:select    [:p.id :p.database_id :p.columns
                               :p.active :p.state :p.error
                               :p.refresh_begin :p.refresh_end
                               :p.table_name
-                              [:db.name :database_name] [:c.name :card_name]]
+                              :p.card_id [:c.name :card_name]
+                              [:db.name :database_name]
+                              [:col.id :collection_id] [:col.name :collection_name]
+                              [:col.authority_level :collection_authority_level]]
                   :from      [[PersistedInfo :p]]
                   :left-join [[Database :db] [:= :db.id :p.database_id]
-                              [Card :c] [:= :c.id :p.card_id]]
+                              [Card :c] [:= :c.id :p.card_id]
+                              [Collection :col] [:= :c.collection_id :col.id]]
                   :order-by  [[:p.refresh_begin :asc]]}
            limit (hh/limit limit)
            offset (hh/offset offset))
