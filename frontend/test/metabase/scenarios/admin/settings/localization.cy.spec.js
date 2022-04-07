@@ -227,4 +227,3 @@ function setFirstWeekDayTo(day) {
     value: day.toLowerCase(),
   });
 }
-fix up clj unit tests
