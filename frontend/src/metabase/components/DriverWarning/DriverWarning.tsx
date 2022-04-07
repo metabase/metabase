@@ -8,7 +8,6 @@ import Icon from "metabase/components/Icon";
 export interface DriverWarningProps {
   engine?: string;
   engines: Record<string, Engine>;
-  hasBorder?: boolean;
   onChange?: (engine: string) => void;
 }
 
@@ -98,7 +97,7 @@ const OldEngineWarning = ({
   engineName: string;
   handleChange: () => void;
 }) => (
-  <WarningRoot>
+  <WarningRoot hasBorder>
     <p>
       {t`This is our new ${engineName} driver.`}{" "}
       {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
