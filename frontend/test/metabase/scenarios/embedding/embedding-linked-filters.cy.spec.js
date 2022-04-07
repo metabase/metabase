@@ -6,9 +6,9 @@ import {
 } from "__support__/e2e/cypress";
 
 import {
-  questionDetails,
-  dashboardDetails,
-  mapParameters,
+  nativeQuestionDetails,
+  nativeDashboardDetails,
+  mapNativeDashboardParameters,
 } from "./embedding-linked-filters";
 
 describe("scenarios > embedding > dashboard > linked filters (metabase#13639, metabase#13868)", () => {
@@ -20,12 +20,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
   context("SQL question with field filters", () => {
     beforeEach(() => {
       cy.createNativeQuestionAndDashboard({
-        questionDetails,
-        dashboardDetails,
+        questionDetails: nativeQuestionDetails,
+        dashboardDetails: nativeDashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
         cy.wrap(dashboard_id).as("dashboardId");
 
-        mapParameters({ id, card_id, dashboard_id });
+        mapNativeDashboardParameters({ id, card_id, dashboard_id });
 
         // Enable embedding for this dashboard with both the city and state filters enabled
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -47,8 +47,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         visitEmbeddedPage(payload);
       });
-      cy.findByRole("heading", { name: dashboardDetails.name });
-      cy.get(".Card").contains(questionDetails.name);
+
+      cy.findByRole("heading", { name: nativeDashboardDetails.name });
+      cy.get(".Card").contains(nativeQuestionDetails.name);
 
       cy.get(".bar").should("have.length", 49);
 

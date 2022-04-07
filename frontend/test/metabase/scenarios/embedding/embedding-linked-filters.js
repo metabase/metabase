@@ -2,7 +2,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
-export const questionDetails = {
+export const nativeQuestionDetails = {
   name: "Count of People by State (SQL)",
   native: {
     query:
@@ -44,12 +44,16 @@ const cityFilter = {
   filteringParameters: [stateFilter.id],
 };
 
-export const dashboardDetails = {
+export const nativeDashboardDetails = {
   name: "Embedding Dashboard With Linked Filters",
   parameters: [stateFilter, cityFilter],
 };
 
-export function mapParameters({ id, card_id, dashboard_id } = {}) {
+export function mapNativeDashboardParameters({
+  id,
+  card_id,
+  dashboard_id,
+} = {}) {
   return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
     cards: [
       {
