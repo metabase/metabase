@@ -793,7 +793,8 @@
                                                       :active        false
                                                       :refresh_begin :%now
                                                       :refresh_end   nil
-                                                      :state         "creating"})]
+                                                      :state         "creating"
+                                                      :creator_id    api/*current-user-id*})]
         (ddl.concurrent/submit-task
          #(ddl.i/persist! (:engine database) database persisted-info card)))
       ;; todo: persist it

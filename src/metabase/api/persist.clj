@@ -18,7 +18,8 @@
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
@@ -29,27 +30,28 @@
                                   :triggers
                                   (u/key-by (comp #(get % "db-id") qc/from-job-data :data))
                                   (m/map-vals :next-fire-time))]
-    (->> (cond-> {:select    [:p.id :p.database_id :p.columns
-                              :p.active :p.state :p.error
-                              :p.refresh_begin :p.refresh_end
-                              :p.table_name
-                              :p.card_id [:c.name :card_name]
-                              [:db.name :database_name]
-                              [:col.id :collection_id] [:col.name :collection_name]
-                              [:col.authority_level :collection_authority_level]]
-                  :from      [[PersistedInfo :p]]
-                  :left-join [[Database :db] [:= :db.id :p.database_id]
-                              [Card :c] [:= :c.id :p.card_id]
-                              [Collection :col] [:= :c.collection_id :col.id]]
-                  :order-by  [[:p.refresh_begin :asc]]}
-           limit (hh/limit limit)
-           offset (hh/offset offset))
-         (db/query)
-         (db/do-post-select PersistedInfo)
-         (map (fn [{:keys [database_id] :as pi}]
-                (assoc pi
-                       :schema_name (ddl.i/schema-name {:id database_id} instance-id-str)
-                       :next-fire-time (get db-id->fire-time database_id)))))))
+    (-> (cond-> {:select    [:p.id :p.database_id :p.columns
+                             :p.active :p.state :p.error
+                             :p.refresh_begin :p.refresh_end
+                             :p.table_name :p.creator_id
+                             :p.card_id [:c.name :card_name]
+                             [:db.name :database_name]
+                             [:col.id :collection_id] [:col.name :collection_name]
+                             [:col.authority_level :collection_authority_level]]
+                 :from      [[PersistedInfo :p]]
+                 :left-join [[Database :db] [:= :db.id :p.database_id]
+                             [Card :c] [:= :c.id :p.card_id]
+                             [Collection :col] [:= :c.collection_id :col.id]]
+                 :order-by  [[:p.refresh_begin :asc]]}
+          limit (hh/limit limit)
+          offset (hh/offset offset))
+        (db/query)
+        (hydrate :creator)
+        (->> (db/do-post-select PersistedInfo)
+             (map (fn [{:keys [database_id] :as pi}]
+                    (assoc pi
+                           :schema_name (ddl.i/schema-name {:id database_id} instance-id-str)
+                           :next-fire-time (get db-id->fire-time database_id))))))))
 
 (api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
