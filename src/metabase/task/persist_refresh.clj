@@ -5,6 +5,7 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
+            [metabase.public-settings :as public-settings]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :refer [PersistedInfo]]
@@ -94,7 +95,15 @@
 (defn- trigger-key [database]
   (triggers/key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id database))))
 
-(defn- trigger [database]
+(defn- cron-schedule
+  "Return a cron schedule that fires every `hours` hours."
+  [hours]
+  (cron/schedule
+   ;; every 8 hours
+   (cron/cron-schedule (format "0 0 0/%d * * ? *" hours))
+   (cron/with-misfire-handling-instruction-do-nothing)))
+
+(defn- trigger [database interval-hours]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (trigger-key database))
@@ -102,15 +111,12 @@
    (triggers/for-job (jobs/key persistence-job-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron/schedule
-      ;; every 8 hours
-      (cron/cron-schedule "0 0 0/8 * * ? *")
-      (cron/with-misfire-handling-instruction-do-nothing)))))
+     (cron-schedule interval-hours))))
 
 (defn schedule-persistence-for-database
   "Schedule a database for persistence refreshing."
-  [database]
-  (let [tggr (trigger database)]
+  [database interval-hours]
+  (let [tggr (trigger database interval-hours)]
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
@@ -128,6 +134,22 @@
   [database]
   (task/delete-trigger! (trigger-key database)))
 
+(defn unschedule-all-triggers
+  []
+  (let [trigger-keys (->> (task/job-info persistence-job-key)
+                          :triggers
+                          (map :key))]
+    (doseq [tk trigger-keys]
+      (task/delete-trigger! (triggers/key tk)))))
+
+(defn reschedule-refresh
+  []
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
+        interval-hours       (public-settings/persisted-model-refresh-interval-hours)]
+    (unschedule-all-triggers)
+    (doseq [db dbs-with-persistence]
+      (schedule-persistence-for-database db interval-hours))))
+
 (defn- job-init
   []
   (task/add-job! persistence-job))
@@ -135,6 +157,4 @@
 (defmethod task/init! ::PersistRefresh
   [_]
   (job-init)
-  (let [dbs-with-persistence (filter (comp :persist-models :details) (Database))]
-    (doseq [db dbs-with-persistence]
-      (schedule-persistence-for-database db))))
+  (reschedule-refresh))

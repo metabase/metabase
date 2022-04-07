@@ -8,7 +8,11 @@
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.task :as task]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- fetch-persisted-info
@@ -41,5 +45,20 @@
   []
   (api/check-superuser)
   (fetch-persisted-info))
+
+(def ^:private HoursInterval
+  "Schema representing valid interval hours for refreshing persisted models."
+  (su/with-api-error-message
+    (s/constrained s/Int #(<= 1 % 23)
+                   (deferred-tru "Integer greater than or equal to one and less than twenty-four"))
+    (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than twenty-four")))
+
+(api/defendpoint POST "/set-interval"
+  "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
+  [:as {{:keys [hours], :as _body} :body}]
+  {hours HoursInterval}
+  (public-settings/persisted-model-refresh-interval-hours hours)
+  (task.persist-refresh/reschedule-refresh)
+  api/generic-204-no-content)
 
 (api/define-routes)
