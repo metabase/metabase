@@ -279,6 +279,7 @@
             tables (db/select Table (query-params "table"))]
         (->> (for [item (concat cards dashboards tables)]
                {:model (cond
+                         (:dataset item) "dataset"
                          (instance? metabase.models.card.CardInstance item) "card"
                          (instance? metabase.models.dashboard.DashboardInstance item) "dashboard"
                          (instance? metabase.models.table.TableInstance item) "table")
