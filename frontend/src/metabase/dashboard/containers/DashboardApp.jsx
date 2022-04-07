@@ -11,7 +11,7 @@ import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import Toaster from "metabase/components/Toaster";
 
-import { useLoadingTimer } from "../../hooks/use-loading-timer";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
