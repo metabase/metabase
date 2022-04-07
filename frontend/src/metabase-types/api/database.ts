@@ -1,7 +1,9 @@
+export type DatabaseId = number;
+
 export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
 
 export interface Database {
-  id: number;
+  id: DatabaseId;
   name: string;
   engine: string;
   is_sample: boolean;
