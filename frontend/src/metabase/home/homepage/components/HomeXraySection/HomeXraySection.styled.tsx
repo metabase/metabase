@@ -3,12 +3,10 @@ import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 
-export const SectionTitle = styled.div`
+export const SectionBody = styled.div`
   display: flex;
-  align-items: center;
-  color: ${color("text-dark")};
-  font-weight: bold;
-  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 `;
 
 export const DatabaseLink = styled(Link)`
@@ -17,20 +15,33 @@ export const DatabaseLink = styled(Link)`
   margin-left: 0.5rem;
 `;
 
-export const DatabaseIcon = styled(Icon)`
+export const DatabaseLinkIcon = styled(Icon)`
   color: ${color("focus")};
   width: 1rem;
   height: 1rem;
   margin-right: 0.25rem;
 `;
 
-export const DatabaseTitle = styled.span`
+export const DatabaseLinkText = styled.span`
   color: ${color("brand")};
   font-weight: bold;
 `;
 
-export const XrayList = styled.div`
+export const SchemaTrigger = styled.span`
   display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0.5rem;
+  cursor: pointer;
+`;
+
+export const SchemaTriggerIcon = styled(Icon)`
+  color: ${color("brand")};
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-left: 0.25rem;
+`;
+
+export const SchemaTriggerText = styled.span`
+  color: ${color("brand")};
+  font-weight: bold;
 `;

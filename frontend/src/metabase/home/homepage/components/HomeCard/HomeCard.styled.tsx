@@ -1,7 +1,10 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+import {
+  breakpointMinLarge,
+  breakpointMinSmall,
+} from "metabase/styled-components/theme";
 
 export const CardRoot = styled(Link)`
   display: flex;
@@ -15,6 +18,10 @@ export const CardRoot = styled(Link)`
 
   ${breakpointMinSmall} {
     max-width: 50%;
+  }
+
+  ${breakpointMinLarge} {
+    padding: 1.5rem;
   }
 
   &:hover {
