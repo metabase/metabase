@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { hasTimePart, parseTimestamp } from "metabase/lib/time";
-import { getTimelineIcons } from "metabase/lib/timelines";
+import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
 import validate from "metabase/lib/validate";
 
 const createForm = ({ timelines }) => {
@@ -38,7 +38,7 @@ const createForm = ({ timelines }) => {
       name: "timeline_id",
       title: t`Timeline`,
       type: timelines.length > 1 ? "select" : "hidden",
-      options: timelines.map(t => ({ name: t.name, value: t.id })),
+      options: timelines.map(t => ({ name: getTimelineName(t), value: t.id })),
     },
     {
       name: "source",

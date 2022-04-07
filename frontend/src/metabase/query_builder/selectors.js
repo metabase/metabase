@@ -27,6 +27,7 @@ import Timelines from "metabase/entities/timelines";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { parseTimestamp } from "metabase/lib/time";
+import { getTimelineName } from "metabase/lib/timelines";
 import {
   getXValues,
   isTimeseries,
@@ -674,7 +675,7 @@ export const getTransformedTimelines = createSelector(
             .value(),
         ),
       )
-      .sortBy(timeline => timeline.name)
+      .sortBy(getTimelineName)
       .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
       .value();
   },

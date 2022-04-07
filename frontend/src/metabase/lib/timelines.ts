@@ -13,6 +13,12 @@ export const getDefaultTimeline = (
   };
 };
 
+export const getTimelineName = (timeline: Timeline) => {
+  return timeline.default && timeline.collection
+    ? `${timeline.collection.name} events`
+    : timeline.name;
+};
+
 export const getTimelineIcons = () => {
   return [
     { name: t`Star`, value: "star", icon: "star" },
