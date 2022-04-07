@@ -1,6 +1,7 @@
 (ns metabase.api.persist
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.conversion :as qc]
+            [honeysql.helpers :as hh]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver.ddl.concurrent :as ddl.concurrent]
@@ -9,6 +10,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.task :as task]
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
@@ -19,22 +21,25 @@
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
-  []
+  [limit offset]
   (let [instance-id-str  (public-settings/site-uuid)
         db-id->fire-time (some->> task.persist-refresh/persistence-job-key
                                   task/job-info
                                   :triggers
                                   (u/key-by (comp #(get % "db-id") qc/from-job-data :data))
                                   (m/map-vals :next-fire-time))]
-    (->> (db/query {:select    [:p.id :p.database_id :p.columns :p.card_id
-                                :p.active :p.state :p.error
-                                :p.refresh_begin :p.refresh_end
-                                :p.table_name
-                                [:db.name :database_name] [:c.name :card_name]]
-                    :from      [[PersistedInfo :p]]
-                    :left-join [[Database :db] [:= :db.id :p.database_id]
-                                [Card :c] [:= :c.id :p.card_id]]
-                    :order-by  [[:p.refresh_begin :asc]]})
+    (->> (cond-> {:select    [:p.id :p.database_id :p.columns :p.card_id
+                              :p.active :p.state :p.error
+                              :p.refresh_begin :p.refresh_end
+                              :p.table_name
+                              [:db.name :database_name] [:c.name :card_name]]
+                  :from      [[PersistedInfo :p]]
+                  :left-join [[Database :db] [:= :db.id :p.database_id]
+                              [Card :c] [:= :c.id :p.card_id]]
+                  :order-by  [[:p.refresh_begin :asc]]}
+           limit (hh/limit limit)
+           offset (hh/offset offset))
+         (db/query)
          (db/do-post-select PersistedInfo)
          (map (fn [{:keys [database_id] :as pi}]
                 (assoc pi
@@ -45,7 +50,10 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (api/check-superuser)
-  (fetch-persisted-info))
+  {:data   (fetch-persisted-info offset-paging/*limit* offset-paging/*offset*)
+   :total  (db/count PersistedInfo)
+   :limit  offset-paging/*limit*
+   :offset offset-paging/*offset*})
 
 (def ^:private HoursInterval
   "Schema representing valid interval hours for refreshing persisted models."
