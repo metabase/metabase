@@ -1,12 +1,10 @@
-import React from "react";
-import cx from "classnames";
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 interface ToasterContainerProps {
   show: boolean;
+  fixed?: boolean;
 }
 
 export const ToasterContainer = styled.div<ToasterContainerProps>`
@@ -17,12 +15,18 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   background-color: ${color("text-dark")};
   padding: 16px;
   border-radius: 6px;
-  position: relative;
-  top: ${props => (props.show ? "0px" : "10px")};
+  ${props =>
+    props.fixed
+      ? `position: fixed;
+       bottom: ${props.show ? "20px" : "10px"};
+       left: 20px;`
+      : `position: relative;
+       bottom: ${props.show ? "0px" : "-10px"};`}
   opacity: ${props => (props.show ? "1.0" : "0")};
   transition: all 200ms ease-out;
   column-gap: 16px;
   align-items: center;
+  z-index: 100;
 `;
 
 export const ToasterMessage = styled.p`

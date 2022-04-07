@@ -1,5 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -21,12 +27,15 @@ import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
+import { useLoadingTimer } from "../../hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
 import View from "../components/view/View";
+import Toaster from "metabase/components/Toaster";
 
 import {
   getCard,
@@ -211,6 +220,7 @@ function QueryBuilder(props) {
     deleteBookmark,
     allLoaded,
     showTimelinesForCollection,
+    card,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -354,19 +364,62 @@ function QueryBuilder(props) {
     }
   });
 
+  const { isRunning } = uiControls;
+
+  const [sendNotification, setSendNotification] = useState(false);
+  const [showToaster, setShowToaster] = useState(false);
+
+  const toastTrigger = useLoadingTimer(isRunning, 5000);
+  const [requestPermission, showNotification] = useWebNotification();
+
+  useEffect(() => {
+    if (toastTrigger) {
+      setShowToaster(true);
+    }
+  }, [toastTrigger]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setShowToaster(false);
+    }
+    if (!isRunning && sendNotification) {
+      showNotification(
+        `All Set! You question is ready.`,
+        `${card.name} is loaded.`,
+      );
+    }
+  }, [isRunning, sendNotification, showNotification, card.name]);
+
+  const handleToastConfirm = async () => {
+    const result = await requestPermission();
+    if (result === "granted") {
+      setShowToaster(false);
+      setSendNotification(true);
+    }
+  };
+
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-      toggleBookmark={onClickBookmark}
-    />
+    <>
+      <View
+        {...props}
+        modal={uiControls.modal}
+        recentlySaved={uiControls.recentlySaved}
+        onOpenModal={openModal}
+        onCloseModal={closeModal}
+        onSetRecentlySaved={setRecentlySaved}
+        onSave={handleSave}
+        onCreate={handleCreate}
+        handleResize={forceUpdateDebounced}
+        toggleBookmark={onClickBookmark}
+      />
+      <Toaster
+        message="Would you like to be notified when this question is done loading?"
+        show={showToaster}
+        onDismiss={() => setShowToaster(false)}
+        onConfirm={() => handleToastConfirm()}
+        fixed
+      />
+    </>
   );
 }
 

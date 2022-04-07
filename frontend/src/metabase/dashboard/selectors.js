@@ -32,12 +32,9 @@ export const getFavicon = state =>
   state.dashboard.loadingControls?.showLoadCompleteFavicon
     ? LOAD_COMPLETE_FAVICON
     : null;
-export const getRenderWebNotificationToast = state =>
-  state.dashboard.webNotificationLoadingComplete.renderToast;
-export const getShowWebNotificationToast = state =>
-  state.dashboard.webNotificationLoadingComplete.showToast;
-export const getSendWebNotification = state =>
-  state.dashboard.webNotificationLoadingComplete.sendNotification;
+
+export const getLoadingComplete = state =>
+  state.dashboard.loadingDashCards?.isLoadingComplete;
 
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;

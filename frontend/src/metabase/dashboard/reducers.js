@@ -35,9 +35,6 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
-  SET_SEND_WEB_NOTIFICATION,
-  SET_SHOW_WEB_NOTIFICATION_TOAST,
-  SET_RENDER_WEB_NOTIFICATION_TOAST,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -75,32 +72,6 @@ const loadingControls = handleActions(
       showLoadCompleteFavicon: payload,
     }),
     [RESET]: { next: state => ({}) },
-  },
-  {},
-);
-
-const webNotificationLoadingComplete = handleActions(
-  {
-    [INITIALIZE]: { next: state => {} },
-    [FETCH_DASHBOARD]: { next: state => {} },
-    [SET_SEND_WEB_NOTIFICATION]: {
-      next: (state, { payload }) => ({
-        ...state,
-        sendNotification: payload,
-      }),
-    },
-    [SET_SHOW_WEB_NOTIFICATION_TOAST]: {
-      next: (state, { payload }) => ({
-        ...state,
-        showToast: payload,
-      }),
-    },
-    [SET_RENDER_WEB_NOTIFICATION_TOAST]: {
-      next: (state, { payload }) => ({
-        ...state,
-        renderToast: payload,
-      }),
-    },
   },
   {},
 );
@@ -423,7 +394,6 @@ export default combineReducers({
   dashboardId,
   isEditing,
   loadingControls,
-  webNotificationLoadingComplete,
   dashboards,
   dashcards,
   dashcardData,
