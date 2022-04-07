@@ -21,6 +21,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
 
   overflow-x: hidden;
   overflow-y: auto;
+  padding-bottom: 4rem;
 
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
@@ -93,7 +94,15 @@ export const LoadingTitle = styled.h2`
 `;
 
 export const ProfileLinkContainer = styled.div`
-  margin-left: auto;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: ${space(0)};
+  width: ${NAV_SIDEBAR_WIDTH};
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
+  display: flex;
+  align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
 `;
