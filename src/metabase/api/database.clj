@@ -594,9 +594,8 @@
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (api/let-404 [existing-database (Database id)]
+  (let [existing-database (api/write-check (Database id))]
     (let [details    (driver.u/db-details-client->server engine details)
           details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
@@ -654,7 +653,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (api/write-check db)
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))

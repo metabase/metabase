@@ -183,8 +183,10 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database _]
-  #{(perms/data-perms-path (u/the-id database))})
+(defn- perms-objects-set [database read-or-write]
+  #{(case read-or-write
+      :read (perms/data-perms-path (u/the-id database))
+      :write (perms/db-details-write-perms-path (u/the-id database)))})
 
 (u/strict-extend (class Database)
   models/IModel
@@ -207,7 +209,7 @@
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
