@@ -16,5 +16,5 @@ export const CardTitle = styled(Ellipsified)`
   font-size: 1rem;
   font-weight: bold;
   margin-left: 1rem;
-  max-width: 300px;
+  max-width: 100%;
 `;
