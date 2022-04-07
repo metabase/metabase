@@ -100,7 +100,10 @@
   [hours]
   (cron/schedule
    ;; every 8 hours
-   (cron/cron-schedule (format "0 0 0/%d * * ? *" hours))
+   (cron/cron-schedule (if (= hours 24)
+                         ;; hack: scheduling for midnight UTC but this does raise the issue of anchor time
+                         "0 0 0 * * ? *"
+                         (format "0 0 0/%d * * ? *" hours)))
    (cron/with-misfire-handling-instruction-do-nothing)))
 
 (defn- trigger [database interval-hours]
@@ -135,6 +138,7 @@
   (task/delete-trigger! (trigger-key database)))
 
 (defn unschedule-all-triggers
+  "Unschedule all database persisted model refresh triggers."
   []
   (let [trigger-keys (->> (task/job-info persistence-job-key)
                           :triggers

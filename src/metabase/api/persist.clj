@@ -49,9 +49,9 @@
 (def ^:private HoursInterval
   "Schema representing valid interval hours for refreshing persisted models."
   (su/with-api-error-message
-    (s/constrained s/Int #(<= 1 % 23)
-                   (deferred-tru "Integer greater than or equal to one and less than twenty-four"))
-    (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than twenty-four")))
+    (s/constrained s/Int #(<= 1 % 24)
+                   (deferred-tru "Integer greater than or equal to one and less than or equal to twenty-four"))
+    (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four")))
 
 (api/defendpoint POST "/set-interval"
   "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
