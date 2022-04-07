@@ -133,13 +133,13 @@
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
   | ----------- | ----------- | ------ | ---------- | -------- |
   |          no |          no |     no |         no |       ⛔ |
-  |          no |          no |     no |        yes |       ⚠ |
+  |          no |          no |     no |        yes |       ⚠️ |
   |          no |          no |    yes |         no |       ⛔ |
-  |          no |          no |    yes |        yes |       ⚠ |
+  |          no |          no |    yes |        yes |       ⚠️ |
   |          no |         yes |     no |         no |       ✅ |
-  |          no |         yes |     no |        yes |       ⚠ |
+  |          no |         yes |     no |        yes |       ⚠️ |
   |          no |         yes |    yes |         no |       ⛔ |
-  |          no |         yes |    yes |        yes |       ⚠ |
+  |          no |         yes |    yes |        yes |       ⚠️ |
   |         yes |          no |     no |         no |       ✅ |
   |         yes |          no |     no |        yes |       ✅ |
   |         yes |          no |    yes |         no |       ✅ |
@@ -149,7 +149,7 @@
   |         yes |         yes |    yes |         no |       ✅ |
   |         yes |         yes |    yes |        yes |       ✅ |
 
-  (`⚠` = runs in sandboxed mode)
+  (`⚠️` = runs in sandboxed mode)
 
   ### Known Permissions Paths
 
