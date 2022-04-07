@@ -128,7 +128,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .should("have.length", 1);
   });
 
-  it.skip("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
+  it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
       `/admin/datamodel/database/1/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
     );
@@ -138,7 +138,15 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .findByText("Search box")
       .click();
 
-    cy.reload();
+    openOptionsForSection("Display values");
+    popover()
+      .findByText("Custom mapping")
+      .should("not.exist");
+
+    openOptionsForSection("Filtering on this field");
+    popover()
+      .findByText("A list of all values")
+      .click();
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");
