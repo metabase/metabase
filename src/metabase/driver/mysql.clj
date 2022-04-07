@@ -197,6 +197,19 @@
   ;; no-op as MySQL doesn't support cast to float
   value)
 
+(defn- json-query [identifier nfc-field]
+
+(defmethod sql.qp/->honeysql [:mysql :field]
+  [driver [_ id-or-name _opts :as clause]]
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)
+        nfc-path      (:nfc_path stored-field)]
+    (if (some? nfc-path)
+      (json-query identifier stored-field)
+      identifier)))
+
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
