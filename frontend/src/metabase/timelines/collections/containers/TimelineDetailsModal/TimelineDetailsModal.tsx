@@ -9,11 +9,14 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
 
-const timelineProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
+interface ModalProps {
+  params: ModalParams;
+  timelines: Timeline[];
+}
+
+const timelinesProps = {
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
@@ -22,6 +25,15 @@ const collectionProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractCollectionId(props.params.slug),
   LoadingAndErrorWrapper,
+};
+
+const mapStateToProps = (state: State, { timelines, params }: ModalProps) => {
+  const timelineId = Urls.extractEntityId(params.timelineId);
+
+  return {
+    timeline: timelines.find(t => t.id === timelineId),
+    isOnlyTimeline: timelines.length === 1,
+  };
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
@@ -34,7 +46,7 @@ const mapDispatchToProps = (dispatch: any) => ({
 });
 
 export default _.compose(
-  Timelines.load(timelineProps),
+  Timelines.loadList(timelinesProps),
   Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(TimelineDetailsModal);
