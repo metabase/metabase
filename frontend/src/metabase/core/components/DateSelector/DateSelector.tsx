@@ -41,7 +41,6 @@ const DateSelector = forwardRef(function DateSelector(
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const today = useMemo(() => moment().startOf("date"), []);
-  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, date: Moment) => {
@@ -56,13 +55,11 @@ const DateSelector = forwardRef(function DateSelector(
   const handleTimeClick = useCallback(() => {
     const newValue = value ?? today;
     onChange?.(newValue);
-    setIsTimeShown(true);
   }, [value, today, onChange]);
 
   const handleTimeClear = useCallback(
     (newValue: Moment) => {
       onChange?.(newValue);
-      setIsTimeShown(false);
     },
     [onChange],
   );
@@ -75,7 +72,7 @@ const DateSelector = forwardRef(function DateSelector(
         isRangePicker={false}
         onChange={handleDateChange}
       />
-      {value && isTimeShown && (
+      {value && hasTime && (
         <SelectorTimeContainer>
           <TimeInput
             value={value}
@@ -86,7 +83,7 @@ const DateSelector = forwardRef(function DateSelector(
         </SelectorTimeContainer>
       )}
       <SelectorFooter>
-        {hasTime && !isTimeShown && (
+        {!hasTime && (
           <SelectorTimeButton icon="clock" borderless onClick={handleTimeClick}>
             {t`Add time`}
           </SelectorTimeButton>
