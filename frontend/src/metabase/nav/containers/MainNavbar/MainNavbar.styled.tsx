@@ -93,12 +93,12 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div`
+export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   position: fixed;
   bottom: 0;
   left: 0;
   padding: ${space(0)};
-  width: ${NAV_SIDEBAR_WIDTH};
+  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
   border-top: 1px solid ${color("border")};
   background-color: ${color("white")};
   display: flex;
