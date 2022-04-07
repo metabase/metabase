@@ -9,7 +9,7 @@ export const activity = handleActions(
   null,
 );
 
-export const recents = handleActions(
+export const recentViews = handleActions(
   {
     [FETCH_RECENT_VIEWS]: { next: (state, { payload }) => payload },
   },
