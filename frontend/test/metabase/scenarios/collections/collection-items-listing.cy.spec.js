@@ -5,6 +5,15 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collection items listing", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/collection/root/items?*").as(
+      "getCollectionItems",
+    );
+
+    restore();
+    cy.signInAsAdmin();
+  });
+
   const TEST_QUESTION_QUERY = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -22,11 +31,8 @@ describe("scenarios > collection items listing", () => {
     const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS;
 
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
-      // Removes questions and dashboards included in a default dataset,
-      // so the test won't fail if we change the default dataset
+      // Removes questions and dashboards included in the default database,
+      // so the test won't fail if we change the default database
       cy.request("GET", "/api/collection/root/items").then(response => {
         response.body.data.forEach(({ model, id }) => {
           if (model !== "collection") {
@@ -49,7 +55,7 @@ describe("scenarios > collection items listing", () => {
     });
 
     it("should allow to navigate back and forth", () => {
-      cy.visit("/collection/root");
+      visitRootCollection();
 
       // First page
       cy.findByText(`1 - ${PAGE_SIZE}`);
@@ -57,6 +63,7 @@ describe("scenarios > collection items listing", () => {
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
 
       cy.findByTestId("next-page-btn").click();
+      cy.wait("@getCollectionItems");
 
       // Second page
       cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
@@ -78,9 +85,6 @@ describe("scenarios > collection items listing", () => {
 
   describe("sorting", () => {
     beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
       // Removes questions and dashboards included in a default dataset,
       // so it's easier to test sorting
       cy.request("GET", "/api/collection/root/items").then(response => {
@@ -112,7 +116,7 @@ describe("scenarios > collection items listing", () => {
         });
       });
 
-      cy.visit("/collection/root");
+      visitRootCollection();
 
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted alphabetically by default").to.deep.equal(
@@ -121,6 +125,8 @@ describe("scenarios > collection items listing", () => {
       });
 
       toggleSortingFor(/Name/i);
+      cy.wait("@getCollectionItems");
+
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
           sortedNames.reverse(),
@@ -128,11 +134,13 @@ describe("scenarios > collection items listing", () => {
       });
 
       toggleSortingFor(/Name/i);
+      // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted alphabetically").to.deep.equal(sortedNames);
       });
 
       toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         const dashboardsFirst = _.sortBy(sortedNames, name =>
           name.toLowerCase().includes("question"),
@@ -143,6 +151,7 @@ describe("scenarios > collection items listing", () => {
       });
 
       toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         const questionsFirst = _.sortBy(sortedNames, name =>
           name.toLowerCase().includes("dashboard"),
@@ -155,6 +164,8 @@ describe("scenarios > collection items listing", () => {
       const lastEditedByColumnTestId = "collection-entry-last-edited-by";
 
       toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
+
       cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
         const actualNames = _.map(nodes, "innerText");
         const sortedNames = _.sortBy(actualNames);
@@ -165,6 +176,8 @@ describe("scenarios > collection items listing", () => {
       });
 
       toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
+
       cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
         const actualNames = _.map(nodes, "innerText");
         const sortedNames = _.sortBy(actualNames);
@@ -175,11 +188,15 @@ describe("scenarios > collection items listing", () => {
       });
 
       toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted newest last").to.deep.equal(sortedNames);
       });
 
       toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted newest first").to.deep.equal(
           sortedNames.reverse(),
@@ -196,12 +213,15 @@ describe("scenarios > collection items listing", () => {
         }),
       );
 
-      cy.visit("/collection/root");
+      visitRootCollection();
 
       cy.findByText(`1 - ${PAGE_SIZE}`);
+
       cy.findByTestId("next-page-btn").click();
+      cy.wait("@getCollectionItems");
 
       toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
 
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
@@ -222,4 +242,9 @@ function getAllCollectionItemNames() {
     const sortedNames = _.sortBy(actualNames);
     return { actualNames, sortedNames };
   });
+}
+
+function visitRootCollection() {
+  cy.visit("/collection/root");
+  cy.wait(["@getCollectionItems", "@getCollectionItems"]);
 }

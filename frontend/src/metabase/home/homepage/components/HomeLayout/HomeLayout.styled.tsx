@@ -1,6 +1,11 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
+import {
+  breakpointMinExtraLarge,
+  breakpointMinLarge,
+  breakpointMinMedium,
+} from "metabase/styled-components/theme";
 
 export interface LayoutProps {
   showScene?: boolean;
@@ -24,10 +29,30 @@ const gradientStyles = css`
 
 export const LayoutRoot = styled.div<LayoutProps>`
   min-height: 100%;
-  padding: 4rem 7rem;
+  padding: 1rem;
   ${props => (props.showScene ? sceneStyles : gradientStyles)};
+
+  ${breakpointMinMedium} {
+    padding: 3rem 4rem;
+  }
+
+  ${breakpointMinLarge} {
+    padding: 4rem 7rem 2rem;
+  }
+
+  ${breakpointMinExtraLarge} {
+    padding: 10rem 15rem 4rem;
+  }
 `;
 
 export const LayoutBody = styled.div`
-  margin-top: 6rem;
+  margin-top: 2.5rem;
+
+  ${breakpointMinMedium} {
+    margin-top: 4rem;
+  }
+
+  ${breakpointMinLarge} {
+    margin-top: 6rem;
+  }
 `;

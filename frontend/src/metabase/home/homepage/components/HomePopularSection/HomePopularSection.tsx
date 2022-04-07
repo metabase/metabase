@@ -2,24 +2,25 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/popular-views";
-import { PopularView } from "metabase-types/api";
+import { getIcon, getName } from "metabase/entities/popular-items";
+import { PopularItem } from "metabase-types/api";
+import HomeCaption from "../HomeCaption";
 import HomeHelpCard from "../HomeHelpCard";
 import HomeModelCard from "../HomeModelCard";
-import { SectionBody, SectionTitle } from "./HomePopularSection.styled";
+import { SectionBody } from "./HomePopularSection.styled";
 
 export interface HomePopularSectionProps {
-  popularViews: PopularView[];
+  popularItems: PopularItem[];
 }
 
 const HomePopularSection = ({
-  popularViews,
+  popularItems,
 }: HomePopularSectionProps): JSX.Element => {
   return (
     <div>
-      <SectionTitle>{getTitle(popularViews)}</SectionTitle>
+      <HomeCaption>{getTitle(popularItems)}</HomeCaption>
       <SectionBody>
-        {popularViews.map((item, index) => (
+        {popularItems.map((item, index) => (
           <HomeModelCard
             key={index}
             title={getName(item)}
@@ -33,11 +34,11 @@ const HomePopularSection = ({
   );
 };
 
-const getTitle = (popularViews: PopularView[]) => {
-  const models = _.uniq(popularViews.map(item => item.model));
+const getTitle = (popularItems: PopularItem[]) => {
+  const models = _.uniq(popularItems.map(item => item.model));
 
   if (models.length !== 1) {
-    return t`Here is some popular stuff`;
+    return t`Here are some popular items`;
   }
 
   switch (models[0]) {
@@ -50,7 +51,7 @@ const getTitle = (popularViews: PopularView[]) => {
     case "dashboard":
       return t`Here are some popular dashboards`;
     default:
-      return t`Here is some popular stuff`;
+      return t`Here are some popular items`;
   }
 };
 
