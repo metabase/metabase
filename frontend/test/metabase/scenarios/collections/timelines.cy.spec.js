@@ -283,7 +283,7 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("New timeline").click();
-      cy.findByLabelText("Timeline name").type("Launches");
+      cy.findByLabelText("Name").type("Launches");
       cy.findByText("Create").click();
       cy.wait("@createTimeline");
 
@@ -300,7 +300,7 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Timeline name")
+      cy.findByLabelText("Name")
         .clear()
         .type("Launches");
       cy.findByText("Update").click();
@@ -432,7 +432,14 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@updateCollection");
 
       cy.icon("calendar").click();
-      cy.findByText("1st collection events");
+      openMenu("1st collection events");
+      cy.findByText("Edit timeline details").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("Releases");
+      cy.button("Update").click();
+      cy.wait("@updateTimeline");
+      cy.findByText("Releases");
     });
   });
 

@@ -6,7 +6,7 @@ const createForm = () => {
   return [
     {
       name: "name",
-      title: t`Timeline name`,
+      title: t`Name`,
       placeholder: t`Product releases`,
       autoFocus: true,
       validate: validate.required().maxLength(255),
