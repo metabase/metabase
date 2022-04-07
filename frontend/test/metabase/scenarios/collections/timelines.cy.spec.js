@@ -132,6 +132,24 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText(/10:20 AM/).should("be.visible");
     });
 
+    it("should create an event with date and time at midnight", () => {
+      cy.visit("/collection/root");
+
+      cy.findByLabelText("calendar icon").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("15").click();
+      cy.findByText("Add time").click();
+      cy.findByText("Done").click();
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText(/12:00 AM/).should("be.visible");
+    });
+
     it("should edit an event", () => {
       cy.createTimelineWithEvents({ events: [{ name: "RC1" }] });
       cy.visit("/collection/root/timelines");
