@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -96,6 +96,10 @@ const BookmarkList = ({
 }: CollectionSidebarBookmarksProps) => {
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
+
+  useEffect(() => {
+    setOrderedBookmarks(bookmarks);
+  }, [bookmarks]);
 
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
