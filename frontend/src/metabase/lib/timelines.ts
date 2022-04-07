@@ -9,6 +9,7 @@ export const getDefaultTimeline = (
     name: t`${collection.name} events`,
     collection_id: canonicalCollectionId(collection.id),
     icon: getDefaultTimelineIcon(),
+    default: true,
   };
 };
 

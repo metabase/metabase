@@ -28,6 +28,10 @@ const createForm = () => {
       name: "collection_id",
       type: "hidden",
     },
+    {
+      name: "default",
+      type: "hidden",
+    },
   ];
 };
 
