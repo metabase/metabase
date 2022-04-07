@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
 
+import Link from "metabase/core/components/Link";
+
 import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
@@ -32,7 +34,7 @@ export const RowRight = styled(RowLeft)`
   justify-content: flex-end;
 `;
 
-export const LogoIconWrapper = styled.div`
+export const LogoLink = styled(Link)`
   cursor: pointer;
   display: flex;
   align-items: center;
