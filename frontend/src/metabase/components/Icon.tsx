@@ -34,6 +34,10 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   }
   ${hover};
   transition: all 300ms ease-in-out;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 IconWrapper.defaultProps = {
