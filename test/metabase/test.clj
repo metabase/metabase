@@ -211,6 +211,7 @@
   with-temp-scheduler
   with-temp-vals-in-db
   with-temporary-setting-values
+  with-temporary-raw-setting-values
   with-user-in-groups]
 
  [tu.async

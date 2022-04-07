@@ -30,11 +30,6 @@
   :default "userPassword,dn,distinguishedName"
   :type    :csv)
 
-(defsetting ldap-sync-admin-group
-  (deferred-tru "Sync the admin group?")
-  :type    :boolean
-  :default false)
-
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
   :default "(member={dn})")
@@ -92,8 +87,7 @@
               all-mapped-group-ids (default-impl/all-mapped-group-ids settings)]
           (integrations.common/sync-group-memberships! user
                                                        group-ids
-                                                       all-mapped-group-ids
-                                                       (ldap-sync-admin-group)))))))
+                                                       all-mapped-group-ids))))))
 
 (def ^:private impl
   (reify
