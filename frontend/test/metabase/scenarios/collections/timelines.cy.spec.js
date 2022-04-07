@@ -233,6 +233,26 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("No events found").should("be.visible");
     });
 
+    it("should allow navigating back to the list of timelines", () => {
+      cy.createTimeline({ name: "Releases" });
+      cy.createTimeline({ name: "Metrics" });
+
+      cy.visit(`/collection/root/timelines/1`);
+      cy.findByText("Releases");
+
+      cy.icon("chevronleft").click();
+      cy.findByText("Releases");
+      cy.findByText("Metrics");
+    });
+
+    it("should not allow navigating back when there is only one timeline in a collection", () => {
+      cy.createTimeline({ name: "Releases" });
+
+      cy.visit(`/collection/root/timelines/1`);
+      cy.findByText("Releases");
+      cy.icon("chevronleft").should("not.exist");
+    });
+
     it("should create an additional timeline", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },

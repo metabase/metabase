@@ -25,7 +25,7 @@ export interface TimelineDetailsModalProps {
   timeline: Timeline;
   collection: Collection;
   isArchive?: boolean;
-  isDefault?: boolean;
+  isOnlyTimeline?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
@@ -36,7 +36,7 @@ const TimelineDetailsModal = ({
   timeline,
   collection,
   isArchive = false,
-  isDefault = false,
+  isOnlyTimeline = false,
   onArchive,
   onUnarchive,
   onClose,
@@ -55,8 +55,8 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection, isArchive, isDefault);
-  }, [timeline, collection, isArchive, isDefault]);
+    return getMenuItems(timeline, collection, isArchive, isOnlyTimeline);
+  }, [timeline, collection, isArchive, isOnlyTimeline]);
 
   const handleGoBack = useCallback(() => {
     onGoBack?.(timeline, collection);
@@ -65,13 +65,14 @@ const TimelineDetailsModal = ({
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
   const canWrite = timeline.collection?.can_write;
+  const canGoBack = isArchive || !isOnlyTimeline;
 
   return (
     <ModalRoot>
       <ModalHeader
         title={title}
         onClose={onClose}
-        onGoBack={!isDefault ? handleGoBack : undefined}
+        onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
@@ -139,7 +140,7 @@ const getMenuItems = (
   timeline: Timeline,
   collection: Collection,
   isArchive: boolean,
-  isDefault: boolean,
+  isOnlyTimeline: boolean,
 ) => {
   const items: MenuItem[] = [];
 
@@ -163,7 +164,7 @@ const getMenuItems = (
     });
   }
 
-  if (isDefault) {
+  if (isOnlyTimeline) {
     items.push({
       title: t`View archived timelines`,
       link: Urls.timelinesArchiveInCollection(collection),
