@@ -137,3 +137,13 @@
 .TableInteractive-cellWrapper--firstColumn {
   padding-left: 1.5em;
 }
+
+.TableInteractive-detailButton {
+  color: var(--color-brand);
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0;
+}
+
+.TableInteractive-detailButton.show {
+  opacity: 1;
+}

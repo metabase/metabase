@@ -38,7 +38,7 @@ import colors from "metabase/lib/colors";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
-const SIDEBAR_WIDTH = 40;
+const SIDEBAR_WIDTH = 45;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -435,13 +435,16 @@ export default class TableInteractive extends Component {
   }
 
   onKeyDown = event => {
-    const canViewRowDetail =
-      this.state.hoverRow !== null &&
-      this.state.hoverRow !== undefined &&
-      !!this.state.IDColumn;
+    const visibleDetailButton = document.querySelector(
+      ".TableInteractive-detailButton.show",
+    );
+    const canViewRowDetail = !!this.state.IDColumn && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
-      this.pkClick(this.state.hoverRow)(event);
+      const hoveredRowIndex = Number(
+        visibleDetailButton.parentElement.dataset.showDetailRowindex,
+      );
+      this.pkClick(hoveredRowIndex)(event);
     }
   };
 
@@ -517,7 +520,7 @@ export default class TableInteractive extends Component {
             : undefined
         }
         onMouseEnter={() => this.handleHoverRow(rowIndex)}
-        onMouseLeave={this.handleLeaveRow}
+        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
@@ -797,11 +800,16 @@ export default class TableInteractive extends Component {
   };
 
   handleHoverRow = rowIndex => {
-    this.setState({ hoverRow: rowIndex });
+    // tracking the hovered row in state kills performance
+    document
+      .querySelector(`[data-show-detail-rowindex="${rowIndex}"] button`)
+      ?.classList.add("show");
   };
 
-  handleLeaveRow = () => {
-    this.setState({ hoverRow: null });
+  handleLeaveRow = rowIndex => {
+    document
+      .querySelector(`[data-show-detail-rowindex="${rowIndex}"] button`)
+      ?.classList.remove("show");
   };
 
   handleOnMouseEnter = () => {
@@ -943,9 +951,8 @@ export default class TableInteractive extends Component {
                       <DetailShortcut
                         onClick={this.pkClick(rowIndex)}
                         onMouseEnter={() => this.handleHoverRow(rowIndex)}
-                        onMouseLeave={this.handleLeaveRow}
+                        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
                         rowIndex={rowIndex}
-                        show={this.state.hoverRow === rowIndex}
                         key={key}
                         style={style}
                       />
@@ -993,7 +1000,6 @@ function DetailShortcut({
   rowIndex,
   key,
   style,
-  show,
   onMouseEnter,
   onMouseLeave,
   onClick,
@@ -1006,22 +1012,15 @@ function DetailShortcut({
         ...style,
         backgroundColor: colors["bg-white"],
       }}
-      data-id={rowIndex}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      data-show-detail-rowindex={rowIndex}
     >
       <Button
         iconOnly
         icon="expand"
-        style={{
-          borderRadius: "4px",
-          padding: "4px",
-          color: colors.brand,
-          border: `1px solid ${colors.border}`,
-          transition: "opacity 0.2s ease-in-out",
-          opacity: show ? 1 : 0,
-        }}
+        className="TableInteractive-detailButton"
       />
     </div>
   );
