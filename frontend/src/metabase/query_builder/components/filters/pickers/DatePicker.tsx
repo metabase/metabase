@@ -132,9 +132,6 @@ export const DATE_OPERATORS: DateOperator[] = [
     displayName: t`Between`,
     init: filter => {
       const values = ["between", ...getDateTimeFieldAndValues(filter, 2)];
-      if (!values[3]) {
-        values[3] = values[2];
-      }
       return values;
     },
     test: ([op]) => op === "between",

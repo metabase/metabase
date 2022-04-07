@@ -99,6 +99,7 @@ export const BetweenPicker = ({
     </TimeContainer>
     <div className="Calendar--noContext">
       <Calendar
+        isRangePicker
         initial={startValue ? moment(startValue) : moment()}
         selected={startValue && moment(startValue)}
         selectedEnd={endValue && moment(endValue)}

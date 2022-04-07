@@ -229,7 +229,11 @@ export default class FilterPopover extends Component<Props, State> {
       const isTemporal = field.isDate() || field.isTime();
       const showDateShortcuts = showShortcuts && isTemporal;
       const onBack = () => {
-        this.setState({ choosingField: true });
+        if (isTemporal) {
+          this.setState({ showShortcuts: true });
+        } else {
+          this.setState({ choosingField: true });
+        }
       };
       return (
         <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>

@@ -111,14 +111,17 @@ const EXCLUDE: Group[] = [
     test: testTemporalUnit("hour-of-day"),
     init: filter => ["!=", getDateTimeField(filter[1], "hour-of-day")],
     getOptions: () => {
-      const now = moment();
+      const now = moment().utc();
       return _.range(0, 24).map(hour => {
         const date = now.hour(hour);
         const displayName = date.format("h A");
         return {
           displayName,
           value: date.toISOString(),
-          test: value => moment(value).format("h A") === displayName,
+          test: value =>
+            moment(value)
+              .utc()
+              .format("h A") === displayName,
         };
       });
     },

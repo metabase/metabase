@@ -158,7 +158,7 @@ export default class Calendar extends Component<Props, State> {
           key={date.toString()}
           date={moment(date)}
           month={current}
-          onClickDay={this.onClickDay}
+          onClickDay={this.onClickDay.bind(this)}
           isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
           selectedEnd={this.props.selectedEnd}

@@ -178,7 +178,7 @@ class DatePicker extends Component<Props, State> {
       </OptionsContainer>
     );
     return (
-      <div className={cx(className, "flex align-center")}>
+      <div className={cx(className, "flex align-center pb1")}>
         <NumericInput
           className="mr2 input border-purple text-right"
           style={{
