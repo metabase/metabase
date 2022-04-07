@@ -680,9 +680,8 @@
 (api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this in a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -694,9 +693,8 @@
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this is a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-field-values/update-field-values! db)))
   {:status :ok})
@@ -720,8 +718,7 @@
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (api/check-superuser)
-  (delete-all-field-values-for-database! id)
+  (delete-all-field-values-for-database! (api/write-check (Database id)))
   {:status :ok})
 
 

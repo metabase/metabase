@@ -227,3 +227,17 @@
     (testing "A non-admin can update database metadata if they have DB details permissions"
       (with-all-users-data-perms {db-id {:details :yes}}
         (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"})))))
+
+(deftest db-operations-test
+  (mt/with-temp Database [{db-id :id}]
+    (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
+      (with-all-users-data-perms {db-id {:details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
+
+    (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
+      (with-all-users-data-perms {db-id {:details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" db-id))))
+
+    (testing "A non-admin can discard saved field values if they have DB details permissions"
+      (with-all-users-data-perms {db-id {:details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))))
