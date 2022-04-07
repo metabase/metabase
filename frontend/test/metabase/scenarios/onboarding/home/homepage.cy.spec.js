@@ -1,11 +1,12 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
+    cy.intercept("GET", `/api/dashboard/**`).as("getDashboard");
+    cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
+    cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
     cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
-    cy.intercept("GET", "/api/automagic-*/database/**").as("getCandidates");
-    cy.intercept("GET", "/api/automagic-*/table/**").as("getDashboard");
   });
 
   it("should display x-rays for the sample database", () => {
@@ -13,11 +14,11 @@ describe("scenarios > home > homepage", () => {
     cy.signInAsAdmin();
 
     cy.visit("/");
-    cy.wait("@getCandidates");
+    cy.wait("@getXrayCandidates");
     cy.findByText("Try out these sample x-rays to see what Metabase can do.");
     cy.findByText("Orders").click();
 
-    cy.wait("@getDashboard");
+    cy.wait("@getXrayDashboard");
     cy.findByText("More X-rays");
   });
 
@@ -27,12 +28,12 @@ describe("scenarios > home > homepage", () => {
     cy.addH2SampleDatabase({ name: "H2" });
 
     cy.visit("/");
-    cy.wait("@getCandidates");
+    cy.wait("@getXrayCandidates");
     cy.findByText("Here are some explorations of");
     cy.findByText("H2");
     cy.findByText("Orders").click();
 
-    cy.wait("@getDashboard");
+    cy.wait("@getXrayDashboard");
     cy.findByText("More X-rays");
   });
 
@@ -40,7 +41,7 @@ describe("scenarios > home > homepage", () => {
     restore("setup");
     cy.signInAsAdmin();
     cy.addH2SampleDatabase({ name: "H2" });
-    cy.intercept("/api/automagic-*/database/**", getCandidates());
+    cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
     cy.visit("/");
     cy.findByText(/Here are some explorations of the/);
@@ -59,30 +60,33 @@ describe("scenarios > home > homepage", () => {
     restore("default");
     cy.signInAsAdmin();
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.findByText("Orders in a dashboard");
 
     cy.visit("/");
     cy.wait("@getRecentItems");
     cy.findByText("Pick up where you left off");
-    cy.findByText("Orders, Count").should("not.exist");
+
     cy.findByText("Orders in a dashboard").click();
-    cy.findByText("Orders, Count");
+    cy.wait("@getDashboard");
+    cy.findByText("Orders");
   });
 
-  it("should display popular items for a new user", () => {
+  it.skip("should display popular items for a new user", () => {
     restore("default");
     cy.signInAsNormalUser();
 
     cy.visit("/");
     cy.wait("@getPopularItems");
     cy.findByText("Here are some popular items");
+
     cy.findByText("Orders in a dashboard").click();
-    cy.findByText("Orders, Count");
+    cy.wait("@getDashboard");
+    cy.findByText("Orders");
   });
 });
 
-const getCandidates = () => [
+const getXrayCandidates = () => [
   {
     id: "1/public",
     schema: "public",
