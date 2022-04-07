@@ -1,7 +1,10 @@
+/* eslint-disable react/display-name */
+import React from "react";
 import _ from "underscore";
 import { createSelector } from "reselect";
+import { t, jt } from "ttag";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
@@ -17,6 +20,8 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
+import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
@@ -390,6 +395,29 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "number",
         getHidden: settings => !settings["enable-query-caching"],
         allowValueCollection: true,
+      },
+      {
+        widget: SectionDivider,
+      },
+      {
+        key: "persisted-model-refresh-interval-hours",
+        display_name: t`Refresh models cache interval`,
+        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
+          <ExternalLink
+            key="model-caching-link"
+            href="https://metabase.com"
+          >{t`Learn more`}</ExternalLink>
+        )}.`,
+        type: "radio",
+        options: {
+          1: t`Hour`,
+          2: t`2 hours`,
+          3: t`3 hours`,
+          6: t`6 hours`,
+          12: t`12 hours`,
+          24: t`24 hours`,
+        },
+        widget: PersistedModelRefreshIntervalWidget,
       },
     ],
   },
