@@ -408,7 +408,7 @@
 
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
-   (t/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
      (-> {:native     {:query
                        sql
                        :template-tags {"date" {:name         "date"
