@@ -71,7 +71,7 @@ const TimelineDetailsModal = ({
       <ModalHeader
         title={title}
         onClose={onClose}
-        onGoBack={!isOnlyTimeline ? handleGoBack : undefined}
+        onGoBack={isArchive || !isOnlyTimeline ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
