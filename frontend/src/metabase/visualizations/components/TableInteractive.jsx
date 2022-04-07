@@ -7,6 +7,7 @@ import "./TableInteractive.css";
 import Icon from "metabase/components/Icon";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Button from "metabase/core/components/Button";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -21,6 +22,7 @@ import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
+import { getScrollBarSize } from "metabase/lib/dom";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -32,9 +34,12 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import colors from "metabase/lib/colors";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
+const SIDEBAR_WIDTH = 40;
+
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 // if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
@@ -103,12 +108,24 @@ export default class TableInteractive extends Component {
     document.body.appendChild(this._div);
 
     this._measure();
+
+    if (!this.props.isPivoted) {
+      const pkIndex = this.props.data.cols.findIndex(col => isID(col));
+      this.setState({
+        IDColumnIndex: pkIndex === -1 ? null : pkIndex,
+        IDColumn: this.props.data.cols[pkIndex],
+      });
+      if (pkIndex !== -1) {
+        document.addEventListener("keydown", this.onKeyDown);
+      }
+    }
   }
 
   componentWillUnmount() {
     if (this._div && this._div.parentNode) {
       this._div.parentNode.removeChild(this._div);
     }
+    document.removeEventListener("keydown", this.onKeyDown);
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
@@ -410,6 +427,24 @@ export default class TableInteractive extends Component {
     }
   }
 
+  pkClick(rowIndex) {
+    const columnIndex = this.state.IDColumnIndex;
+    const clicked = this.getCellClickedObject(rowIndex, columnIndex);
+
+    return e => this.onVisualizationClick(clicked, e.currentTarget);
+  }
+
+  onKeyDown = event => {
+    const canViewRowDetail =
+      this.state.hoverRow !== null &&
+      this.state.hoverRow !== undefined &&
+      !!this.state.IDColumn;
+
+    if (event.key === "Enter" && canViewRowDetail) {
+      this.pkClick(this.state.hoverRow)(event);
+    }
+  };
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
     const { data, settings } = this.props;
     const { dragColIndex } = this.state;
@@ -455,7 +490,8 @@ export default class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx("TableInteractive-cellWrapper text-dark", {
-          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+          "TableInteractive-cellWrapper--firstColumn":
+            columnIndex === 0 && !this.state.IDColumn,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
           "TableInteractive-emptyCell": value == null,
@@ -480,6 +516,8 @@ export default class TableInteractive extends Component {
               }
             : undefined
         }
+        onMouseEnter={() => this.handleHoverRow(rowIndex)}
+        onMouseLeave={this.handleLeaveRow}
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
@@ -662,7 +700,8 @@ export default class TableInteractive extends Component {
           className={cx(
             "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
-              "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+              "TableInteractive-cellWrapper--firstColumn":
+                columnIndex === 0 && !this.state.IDColumn,
               "TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
@@ -757,6 +796,14 @@ export default class TableInteractive extends Component {
     );
   };
 
+  handleHoverRow = rowIndex => {
+    this.setState({ hoverRow: rowIndex });
+  };
+
+  handleLeaveRow = () => {
+    this.setState({ hoverRow: null });
+  };
+
   handleOnMouseEnter = () => {
     // prevent touchpad gestures from navigating forward/back if you're expecting to just scroll the table
     // https://stackoverflow.com/a/50846937
@@ -814,11 +861,12 @@ export default class TableInteractive extends Component {
               <Grid
                 ref={ref => (this.header = ref)}
                 style={{
+                  position: "absolute",
                   top: 0,
                   left: 0,
-                  right: 0,
+                  paddingLeft: this.state.IDColumn ? SIDEBAR_WIDTH : 0,
+                  marginRight: getScrollBarSize(),
                   height: headerHeight,
-                  position: "absolute",
                   overflow: "hidden",
                 }}
                 className="TableInteractive-header scroll-hide-all"
@@ -844,13 +892,11 @@ export default class TableInteractive extends Component {
               <Grid
                 ref={ref => (this.grid = ref)}
                 style={{
+                  position: "absolute",
                   top: headerHeight,
                   left: 0,
-                  right: 0,
-                  bottom: 0,
-                  position: "absolute",
+                  paddingLeft: this.state.IDColumn ? SIDEBAR_WIDTH : 0,
                 }}
-                className=""
                 width={width}
                 height={height - headerHeight}
                 columnCount={cols.length}
@@ -858,14 +904,58 @@ export default class TableInteractive extends Component {
                 rowCount={rows.length}
                 rowHeight={ROW_HEIGHT}
                 cellRenderer={this.cellRenderer}
-                onScroll={({ scrollLeft }) => {
+                scrollTop={scrollTop}
+                onScroll={({ scrollLeft, scrollTop }) => {
                   this.props.onActionDismissal();
-                  return onScroll({ scrollLeft });
+                  return onScroll({ scrollLeft, scrollTop });
                 }}
                 {...mainGridProps}
                 tabIndex={null}
                 overscanRowCount={20}
               />
+              {!!this.state.IDColumn && (
+                <>
+                  <div
+                    className="TableInteractive-header TableInteractive--noHover"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: SIDEBAR_WIDTH,
+                      height: headerHeight,
+                    }}
+                  />
+                  <Grid
+                    ref={ref => (this.sidebar = ref)}
+                    className="scroll-hide-all"
+                    style={{
+                      position: "absolute",
+                      top: headerHeight,
+                      left: 0,
+                    }}
+                    width={SIDEBAR_WIDTH}
+                    height={height - headerHeight - getScrollBarSize()}
+                    columnCount={1}
+                    columnWidth={SIDEBAR_WIDTH}
+                    rowCount={rows.length}
+                    rowHeight={ROW_HEIGHT}
+                    cellRenderer={({ rowIndex, key, style }) => (
+                      <DetailShortcut
+                        onClick={this.pkClick(rowIndex)}
+                        onMouseEnter={() => this.handleHoverRow(rowIndex)}
+                        onMouseLeave={this.handleLeaveRow}
+                        rowIndex={rowIndex}
+                        show={this.state.hoverRow === rowIndex}
+                        key={key}
+                        style={style}
+                      />
+                    )}
+                    scrollTop={scrollTop}
+                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                    overscanRowCount={20}
+                  />
+                </>
+              )}
             </div>
           );
         }}
@@ -897,4 +987,42 @@ export default class TableInteractive extends Component {
     }
     next();
   }
+}
+
+function DetailShortcut({
+  rowIndex,
+  key,
+  style,
+  show,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+}) {
+  return (
+    <div
+      key={key}
+      className="TableInteractive-cellWrapper px1 cursor-pointer"
+      style={{
+        ...style,
+        backgroundColor: colors["bg-white"],
+      }}
+      data-id={rowIndex}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <Button
+        iconOnly
+        icon="expand"
+        style={{
+          borderRadius: "4px",
+          padding: "4px",
+          color: colors.brand,
+          border: `1px solid ${colors.border}`,
+          transition: "opacity 0.2s ease-in-out",
+          opacity: show ? 1 : 0,
+        }}
+      />
+    </div>
+  );
 }
