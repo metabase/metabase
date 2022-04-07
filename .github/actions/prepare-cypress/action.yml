@@ -2,6 +2,10 @@ name: Prepare cypress environment
 runs:
   using: "composite"
   steps:
+    - name: Changing folder permissions
+      # 1001 means (U)ser can't read, can't write and can't execute. (G)roup can't read, can't write and can't execute. (O)thers can't read, can't write and can execute.
+      run: chown -R 1001:1001 ~/.cache
+      shell: bash
     - name: Get Cypress cache
       uses: actions/cache@v2
       with:

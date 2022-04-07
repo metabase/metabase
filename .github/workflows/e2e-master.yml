@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "master"
+      - "fix-permission-issue-gha"
     paths-ignore:
       - "docs/**"
       - "**.md"
