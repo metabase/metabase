@@ -16,24 +16,25 @@ interface ModalProps {
   timelines: Timeline[];
 }
 
+const timelineProps = {
+  id: (state: State, props: ModalProps) =>
+    Urls.extractEntityId(props.params.timelineId),
+  query: { include: "events" },
+  LoadingAndErrorWrapper,
+};
+
 const timelinesProps = {
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
+const mapStateToProps = (state: State, { timelines }: ModalProps) => ({
+  isOnlyTimeline: timelines.length === 1,
+});
+
 const collectionProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
-
-const mapStateToProps = (state: State, { timelines, params }: ModalProps) => {
-  const timelineId = Urls.extractEntityId(params.timelineId);
-
-  return {
-    timeline: timelines.find(t => t.id === timelineId),
-    isOnlyTimeline: timelines.length === 1,
-  };
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
@@ -46,6 +47,7 @@ const mapDispatchToProps = (dispatch: any) => ({
 });
 
 export default _.compose(
+  Timelines.load(timelineProps),
   Timelines.loadList(timelinesProps),
   Collections.load(collectionProps),
   connect(mapStateToProps, mapDispatchToProps),
