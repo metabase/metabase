@@ -10,7 +10,7 @@
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap as ldap.test])):
+            [metabase.test.integrations.ldap :as ldap.test]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
