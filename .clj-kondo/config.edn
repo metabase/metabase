@@ -77,7 +77,8 @@
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both
                                       {:namespaces ["metabase.*"]}}}
-           :unresolved-var {:exclude [colorize.core]}}
+           :unresolved-var {:exclude [colorize.core]}
+           :unsorted-required-namespaces {:level :warning}}
  :lint-as {metabase.api.common/let-404 clojure.core/let
            metabase.db.data-migrations/defmigration clojure.core/def
            metabase.query-processor.error-type/deferror clojure.core/def
@@ -100,7 +101,7 @@
            metabase.driver.mongo.util/with-mongo-connection clojure.core/let
            metabase.driver.mongo.query-processor/mongo-let clojure.core/let
            toucan.db/with-call-counting clojure.core/fn
-
+           ;; external libs
            potemkin.types/defprotocol+ clojure.core/defprotocol
            potemkin/defprotocol+ clojure.core/defprotocol
            potemkin.types/defrecord+ clojure.core/defrecord
