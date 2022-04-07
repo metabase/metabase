@@ -212,8 +212,7 @@
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
       (some-> (first (jdbc/query (db/connection) (cons sql params)))
-              ;; is-group-manager? could return `nil` or `0/1` if using db like mysql
-              ;; convert it to boolean for consistency
+              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
 (defn- merge-current-user-info

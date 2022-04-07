@@ -18,14 +18,16 @@
           (is (= {:can_access_setting      true
                   :can_access_subscription true
                   :can_access_monitoring   true
-                  :can_access_data_model   true}
+                  :can_access_data_model   true
+                  :is_group_manager        false}
                  (user-permissions :crowberto))))
 
         (testing "non-admin users should only have subscriptions enabled by default"
           (is (= {:can_access_setting      false
                   :can_access_subscription true
                   :can_access_monitoring   false
-                  :can_access_data_model   false}
+                  :can_access_data_model   false
+                  :is_group_manager        false}
                  (user-permissions :rasta))))
 
         (testing "can_access_data_model is true if a user has any data model perms"
