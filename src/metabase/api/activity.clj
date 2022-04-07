@@ -3,11 +3,11 @@
             [clojure.string :as str]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
+            [metabase.api.common :as api :refer [*current-user-id* defendpoint define-routes]]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.query-execution :refer [QueryExecution]]
@@ -229,8 +229,67 @@
                       ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
                       ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
                       ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
-                      (* (/ cnt max-count) views-wt)]]
+                      (* (if (< max-count 1) 0 (/ cnt max-count)) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
+
+(defn- permissions-set->visible-table-ids
+  [permissions-set]
+  (for [path  permissions-set
+        :let  [[_ _ _ id-str _] (re-matches #"/db/(\d+)/schema/(.+)/table/(\d+)/(read/)?" path)]
+        :when id-str]
+    (Integer/parseInt id-str)))
+
+(defn- table-ids->honeysql-filter-clause
+  [ids]
+  (when (seq ids)
+    [:in :id ids]))
+
+(defn- maybe-add-unviewed-items
+  "Supplement a list of fewer than 5 views with unviewed items that the user has permissions to see.
+
+  This is necessary for the situation where "
+  [views]
+  (let [perms-set @api/*current-user-permissions-set*
+        coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
+                         :collection_id
+                         (collection/permissions-set->visible-collection-ids perms-set))
+        table-ids-filter (table-ids->honeysql-filter-clause (permissions-set->visible-table-ids perms-set))]
+    (if (and ;; only run queries if less than 5 views exist AND the user has non-empty permissions access
+         (< (count views) 5)
+         (or coll-ids-filter table-ids-filter))
+      (let [limit (- 5 (count views))
+            grouped-views (group-by :model views)
+            query-params (fn [model]
+                           (let [viewed-item-ids (mapv :model_id (get grouped-views model))]
+                             (merge {:sort-by [:updated_at :desc]
+                                     :limit limit}
+                                    (cond
+                                      (and (= model "table") table-ids-filter)
+                                      {:where [:and
+                                               table-ids-filter
+                                               (when (seq viewed-item-ids) [:not [:in :id viewed-item-ids]])]}
+                                      (not= model "table")
+                                      {:where [:and
+                                               [:= :archived false]
+                                               coll-ids-filter
+                                               (when (seq viewed-item-ids) [:not [:in :id viewed-item-ids]])]}
+                                      :else {}))))
+            cards (db/select Card (query-params "card"))
+            dashboards (db/select Dashboard (query-params "dashboard"))
+            tables (db/select Table (query-params "table"))]
+        (->> (for [item (concat cards dashboards tables)]
+               {:model (cond
+                         (instance? metabase.models.card.CardInstance item) "card"
+                         (instance? metabase.models.dashboard.DashboardInstance item) "dashboard"
+                         (instance? metabase.models.table.TableInstance item) "table")
+                :model_id (:id item)
+                :cnt 0
+                :max_ts (:updated_at item)
+                :model_object item})
+             (sort-by :max_ts)
+             reverse
+             (concat views)))
+      views)))
 
 (defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
@@ -251,12 +310,12 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (:dataset model-object) (assoc :model "dataset")))
-        scored-views (score-items filtered-views)]
-    (->> scored-views
+                           (:dataset model-object) (assoc :model "dataset")))]
+    (->> filtered-views
+         maybe-add-unviewed-items
+         score-items
          (sort-by :score)
          reverse
-         (take 5)
-         (map #(dissoc % :score)))))
+         (take 5))))
 
 (define-routes)

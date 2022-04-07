@@ -148,7 +148,14 @@
                ((juxt :model :model_id) recent-view)))))))
 
 (deftest popular-items-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+  (mt/with-temp* [Table     [table1 {:name "rand-name"}]
+                  Table     [hidden-table {:name            "hidden table"
+                                           :visibility_type "hidden"}]
+                  Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Card      [card2 {:name                   "unviewed-card"
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
@@ -160,29 +167,32 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table1 {:name "rand-name"}]
-                  Table     [hidden-table {:name            "hidden table"
-                                           :visibility_type "hidden"}]
                   Card      [dataset {:name                   "rand-name"
                                       :dataset                true
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog QueryExecution]
-      (create-views! (concat
-                      ;; one item with many views is considered more popular
-                      (repeat 10 [(mt/user->id :rasta) "card" (:id dataset)])
-                      [[(mt/user->id :rasta) "dashboard" (:id dash1)]
-                       [(mt/user->id :rasta) "card"      (:id card1)]
-                       [(mt/user->id :rasta) "table"     (:id table1)]
-                       [(mt/user->id :rasta) "card"      (:id card1)]]))
-      (is (= [["dataset" (:id dataset)]
-              ["card" (:id card1)]
-              ["table" (:id table1)]
-              ["dashboard" (:id dash1)]]
-             ;; all views are from :rasta, but :crowberto can still see popular items
+    (testing "Popular items shows un-viewd items that the user has permissions for."
+      (is (= [["dataset" 7] ["dashboard" 2] ["card" 5] ["card" 4] ["table" 7]]
              (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
-               ((juxt :model :model_id) popular-item)))))))
+                 ((juxt :model :model_id) popular-item)))))
+    (testing "Popular Items shown after some views are created"
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! (concat
+                        ;; one item with many views is considered more popular
+                        (repeat 10 [(mt/user->id :rasta) "card" (:id dataset)])
+                        [[(mt/user->id :rasta) "dashboard" (:id dash1)]
+                         [(mt/user->id :rasta) "card"      (:id card1)]
+                         [(mt/user->id :rasta) "table"     (:id table1)]
+                         [(mt/user->id :rasta) "card"      (:id card1)]]))
+        (is (= [["dataset" (:id dataset)]
+                ["card" (:id card1)]
+                ["table" (:id table1)]
+                ["dashboard" (:id dash1)]
+                ["card" (:id card2)]] ;; no views, but should still show
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
