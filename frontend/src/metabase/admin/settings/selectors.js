@@ -367,7 +367,7 @@ const SECTIONS = updateSectionsWithPlugins({
     settings: [
       {
         key: "enable-query-caching",
-        display_name: t`Enable Caching`,
+        display_name: t`Saved questions`,
         type: "boolean",
       },
       {
