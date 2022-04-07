@@ -7,11 +7,10 @@
             [metabase.integrations.slack :as slack]
             [metabase.models.permissions :as perms]
             [metabase.models.setting-test :refer [test-setting-1 test-setting-2]]
-            [metabase.public-settings.premium-features :as premium-features]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test]))
+            [metabase.test.integrations.ldap as ldap.test])):
 
 (use-fixtures :once (fixtures/initialize :db))
 
