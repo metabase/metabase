@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import { hasTimePart } from "metabase/lib/time";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
@@ -25,6 +24,7 @@ export interface DateSelectorProps {
   hasTime?: boolean;
   is24HourMode?: boolean;
   onChange?: (date?: Moment) => void;
+  onHasTimeChange?: (hasTime: boolean) => void;
   onSubmit?: () => void;
 }
 
@@ -36,6 +36,7 @@ const DateSelector = forwardRef(function DateSelector(
     hasTime,
     is24HourMode,
     onChange,
+    onHasTimeChange,
     onSubmit,
   }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
@@ -55,13 +56,15 @@ const DateSelector = forwardRef(function DateSelector(
   const handleTimeClick = useCallback(() => {
     const newValue = value ?? today;
     onChange?.(newValue);
-  }, [value, today, onChange]);
+    onHasTimeChange?.(true);
+  }, [value, today, onChange, onHasTimeChange]);
 
   const handleTimeClear = useCallback(
     (newValue: Moment) => {
       onChange?.(newValue);
+      onHasTimeChange?.(false);
     },
-    [onChange],
+    [onChange, onHasTimeChange],
   );
 
   return (
