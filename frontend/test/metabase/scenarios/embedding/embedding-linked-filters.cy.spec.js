@@ -9,6 +9,9 @@ import {
   nativeQuestionDetails,
   nativeDashboardDetails,
   mapNativeDashboardParameters,
+  guiQuestion,
+  guiDashboard,
+  mapGUIDashboardParameters,
 } from "./embedding-linked-filters";
 
 describe("scenarios > embedding > dashboard > linked filters (metabase#13639, metabase#13868)", () => {
@@ -238,6 +241,205 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.location("search").should("eq", "?city=Anchorage");
     });
   });
+
+  context("GUI question in the dashboard", () => {
+    beforeEach(() => {
+      cy.createQuestionAndDashboard({
+        questionDetails: guiQuestion,
+        dashboardDetails: guiDashboard,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.wrap(dashboard_id).as("guiDashboardId");
+
+        mapGUIDashboardParameters(id, card_id, dashboard_id);
+
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          embedding_params: {
+            id_filter: "enabled",
+            category: "enabled",
+          },
+          enable_embedding: true,
+        });
+      });
+    });
+
+    it("works when both filters are enabled and their values are set through UI", () => {
+      cy.get("@guiDashboardId").then(dashboard_id => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload);
+      });
+
+      // ID filter already comes with the default value
+      cy.location("search").should("eq", "?id_filter=1");
+
+      // But it should still be editable, and that's why we see two filter widgets
+      filterWidget()
+        .should("have.length", 2)
+        .contains("Category")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Gizmo").click();
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+
+        cy.button("Add filter").click();
+      });
+
+      cy.location("search").should("eq", "?id_filter=1&category=Gizmo");
+
+      cy.findByTestId("table-row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
+    });
+
+    it("works when main filter's value is set through URL", () => {
+      cy.get("@guiDashboardId").then(dashboard_id => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        cy.log("Make sure we can override the default value");
+        visitEmbeddedPage(payload, { setFilters: "id_filter=4" });
+
+        cy.location("search").should("eq", "?id_filter=4");
+
+        filterWidget()
+          .should("have.length", 2)
+          .contains("Category")
+          .click();
+
+        popover().within(() => {
+          cy.findByText("Doohickey").click();
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Gadget").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+
+          cy.button("Add filter").click();
+        });
+
+        cy.location("search").should("eq", "?id_filter=4&category=Doohickey");
+
+        cy.findByTestId("table-row")
+          .should("have.length", 1)
+          .and("contain", "Doohickey");
+
+        cy.log("Make sure we can set multiple values");
+        visitEmbeddedPage(payload, {
+          setFilters: "id_filter=4&id_filter=29&category=Widget",
+        });
+
+        filterWidget()
+          .should("have.length", 2)
+          .and("contain", "2 selections")
+          .and("contain", "Widget");
+
+        cy.findByTestId("table-row")
+          .should("have.length", 1)
+          .and("contain", "Widget")
+          .and("contain", "Durable Steel Toucan");
+
+        removeValueForFilter("Category");
+
+        cy.findAllByTestId("table-row")
+          .should("have.length", 2)
+          .and("contain", "Widget")
+          .and("contain", "Doohickey")
+          .and("contain", "Durable Steel Toucan");
+
+        cy.findByText("2 selections").click();
+
+        // Remove one of the previously set filter values
+        popover()
+          .findByText("29")
+          .closest("li")
+          .find(".Icon-close")
+          .click();
+        cy.button("Update filter").click();
+
+        cy.findByTestId("table-row")
+          .should("have.length", 1)
+          .and("contain", "Doohickey");
+
+        openFilterOptions("Category");
+
+        popover().within(() => {
+          cy.findByText("Doohickey");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Gadget").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
+      });
+    });
+
+    it("works when the default filter is hidden", () => {
+      cy.get("@guiDashboardId").then(dashboard_id => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        visitEmbeddedPage(payload, {
+          hideFilters: "id_filter",
+        });
+      });
+
+      cy.findByTestId("table-row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
+
+      filterWidget()
+        .should("have.length", 1)
+        .and("contain", "Category")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Gizmo");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+    });
+
+    it("works when the default filter is locked", () => {
+      cy.get("@guiDashboardId").then(dashboard_id => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          embedding_params: {
+            id_filter: "locked",
+            category: "enabled",
+          },
+        });
+
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: { id_filter: [1] },
+        };
+
+        visitEmbeddedPage(payload);
+      });
+
+      cy.findByTestId("table-row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
+
+      filterWidget()
+        .should("have.length", 1)
+        .and("contain", "Category")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Gizmo");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+    });
+  });
 });
 
 function openFilterOptions(name) {
@@ -265,4 +467,12 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 
 function getXAxisValues() {
   return cy.get(".axis.x .tick");
+}
+
+function removeValueForFilter(label) {
+  cy.get("legend")
+    .contains(label)
+    .closest("fieldset")
+    .find(".Icon-close")
+    .click();
 }
