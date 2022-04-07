@@ -9,7 +9,7 @@ export interface Timeline {
   icon: string;
   default: boolean;
   archived: boolean;
-  collection?: Collection;
+  collection: Collection;
   events?: TimelineEvent[];
 }
 
