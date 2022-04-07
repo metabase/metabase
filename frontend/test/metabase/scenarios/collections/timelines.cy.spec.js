@@ -215,6 +215,23 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("No events found").should("be.visible");
     });
 
+    it("should show the back button in timeline details", () => {
+      cy.createTimeline({ name: "Releases" });
+      cy.createTimeline({ name: "Metrics" });
+
+      cy.visit(`/collection/root/timelines/1`);
+      cy.findByText("Releases");
+      cy.icon("chevronleft").should("be.visible");
+    });
+
+    it("should not show the back button for the single timeline", () => {
+      cy.createTimeline({ name: "Releases" });
+
+      cy.visit(`/collection/root/timelines/1`);
+      cy.findByText("Releases");
+      cy.icon("chevronleft").should("not.exist");
+    });
+
     it("should create an additional timeline", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
