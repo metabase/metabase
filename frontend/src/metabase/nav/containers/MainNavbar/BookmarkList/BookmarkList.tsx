@@ -35,16 +35,26 @@ interface CollectionSidebarBookmarksProps {
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
+interface BookmarkItemProps {
+  bookmark: Bookmark;
+  index: number;
+  isSorting: boolean;
+  selectedItem?: SelectedEntityItem;
+  onSelect: () => void;
+  onDeleteBookmark: (bookmark: Bookmark) => void;
+}
+
 const BOOKMARKS_INITIALLY_VISIBLE =
   localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
 const BookmarkItem = ({
   bookmark,
   index,
+  isSorting,
   selectedItem,
   onSelect,
   onDeleteBookmark,
-}) => {
+}: BookmarkItemProps) => {
   const { id, item_id, name, type } = bookmark;
   const isSelected =
     selectedItem &&
@@ -59,20 +69,14 @@ const BookmarkItem = ({
     bookmark.type === "collection" &&
     !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
 
-  const isSorting = false;
-
   return (
-    <SortableBookmarkItem
-      index={index}
-      key={bookmark.id}
-      handleDeleteBookmark={onDeleteBookmark}
-      isSorting={isSorting}
-    >
+    <SortableBookmarkItem index={index} key={bookmark.id}>
       <SidebarBookmarkItem
         key={`bookmark-${id}`}
         url={url}
         icon={icon}
         isSelected={isSelected}
+        isSorting={isSorting}
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
         right={
@@ -88,6 +92,7 @@ const BookmarkItem = ({
     </SortableBookmarkItem>
   );
 };
+
 const BookmarkList = ({
   bookmarks,
   selectedItem,
@@ -146,6 +151,7 @@ const BookmarkList = ({
         {orderedBookmarks.map((bookmark, index) => (
           <BookmarkItem
             bookmark={bookmark}
+            isSorting={isSorting}
             key={index}
             index={index}
             selectedItem={selectedItem}
