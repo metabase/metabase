@@ -123,7 +123,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn data-model-write-perms-path
-  "Returns the permissions path required to edit the data model for a table specified by `path-components`"
+  "Returns the permissions path required to edit the data model for a table specified by `path-components`."
   [& path-components]
   (apply (partial perms/feature-perms-path :data-model :all) path-components))
 
