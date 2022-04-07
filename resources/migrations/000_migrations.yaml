@@ -11341,7 +11341,7 @@ databaseChangeLog:
                 remarks: Boolean value indicating if the timeline is the default one for the containing Collection
                 name: default
                 type: boolean
-                value: false
+                defaultValue: false
                 constraints:
                   nullable: false
             tableName: timeline

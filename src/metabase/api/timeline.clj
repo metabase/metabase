@@ -20,7 +20,7 @@
   "Create a new [[Timeline]]."
   [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
-   default       s/Bool
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
