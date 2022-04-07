@@ -31,6 +31,7 @@ const createForm = () => {
     {
       name: "default",
       type: "hidden",
+      initial: false,
     },
   ];
 };
