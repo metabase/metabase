@@ -19,7 +19,7 @@ describe("scenarios > collections > timelines", () => {
 
     it("should create the first event and timeline", () => {
       cy.visit("/collection/root");
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
 
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC1");
@@ -28,7 +28,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByText("RC1").should("be.visible");
       cy.findByText("October 20, 2020").should("be.visible");
-      cy.findByLabelText("star icon").should("be.visible");
+      cy.icon("star").should("be.visible");
 
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC2");
@@ -39,13 +39,13 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByText("RC2").should("be.visible");
       cy.findByText("May 12, 2021").should("be.visible");
-      cy.findByLabelText("balloons icon").should("be.visible");
+      cy.icon("balloons").should("be.visible");
     });
 
     it("should create an event in a personal collection", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
 
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC1");
@@ -77,7 +77,7 @@ describe("scenarios > collections > timelines", () => {
     it("should create an event with date", () => {
       cy.visit("/collection/root");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
@@ -94,7 +94,7 @@ describe("scenarios > collections > timelines", () => {
     it("should create an event with description", () => {
       cy.visit("/collection/root");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
@@ -111,7 +111,7 @@ describe("scenarios > collections > timelines", () => {
     it("should create an event with date and time", () => {
       cy.visit("/collection/root");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
@@ -130,6 +130,24 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
       cy.findByText(/10:20 AM/).should("be.visible");
+    });
+
+    it("should create an event with date and time at midnight", () => {
+      cy.visit("/collection/root");
+
+      cy.icon("calendar").click();
+      cy.findByText("Add an event").click();
+
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("15").click();
+      cy.findByText("Add time").click();
+      cy.findByText("Done").click();
+      cy.findByText("Create").click();
+
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText("RC1").should("be.visible");
+      cy.findByText(/12:00 AM/).should("be.visible");
     });
 
     it("should edit an event", () => {
@@ -353,7 +371,7 @@ describe("scenarios > collections > timelines", () => {
       cy.signIn("readonly");
       cy.visit("/collection/root");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
     });
@@ -368,7 +386,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.signIn("readonly");
       cy.visit("/collection/root");
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
     });
@@ -393,7 +411,7 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
     cy.visit("/collection/root");
 
     // 3 - pageview
-    cy.findByLabelText("calendar icon").click();
+    cy.icon("calendar").click();
 
     cy.findByText("Add an event").click();
     cy.findByLabelText("Event name").type("Event");
@@ -412,5 +430,5 @@ const openMenu = name => {
     .findByText(name)
     .parent()
     .parent()
-    .within(() => cy.findByLabelText("ellipsis icon").click());
+    .within(() => cy.icon("ellipsis").click());
 };

@@ -18,7 +18,7 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
@@ -40,7 +40,7 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC2");
@@ -63,7 +63,7 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Releases");
       sidebar().within(() => {
         cy.icon("ellipsis").click();
@@ -115,7 +115,7 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@getCollection");
       cy.findByTextEnsureVisible("Visualization");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByText("Releases");
       sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByTextEnsureVisible("Archive event").click();
@@ -141,7 +141,7 @@ describe("scenarios > collections > timelines", () => {
       });
 
       visitQuestion(3);
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
 
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Release notes").should("be.visible");
@@ -154,7 +154,7 @@ describe("scenarios > collections > timelines", () => {
       visitQuestion(3);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible(/Events in Metabase/);
       cy.findByText("Add an event").should("not.exist");
     });
@@ -170,7 +170,7 @@ describe("scenarios > collections > timelines", () => {
       visitQuestion(3);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.findByLabelText("calendar icon").click();
+      cy.icon("calendar").click();
       cy.findByTextEnsureVisible("Releases");
       cy.findByText("Add an event").should("not.exist");
       sidebar().within(() => cy.icon("ellipsis").should("not.exist"));
