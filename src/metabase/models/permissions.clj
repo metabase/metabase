@@ -114,15 +114,29 @@
                       (seq object-path))
              (re-matches valid-object-path-regex object-path))))
 
+(defn valid-path-format?
+  "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
+  just checks that the path components contain alphanumeric characters or dashes, separated by slashes
+  This should be used for schema validation in most places, to preserve downgradability when new permissions paths are
+  added."
+  ^Boolean [^String path]
+  (boolean (when (and (string? path)
+                      (seq path))
+             (re-matches (re-pattern (str "^/(" path-char "*/)*$")) path))))
+
 (def ObjectPath
   "Schema for a valid permissions path to an object."
-  (s/pred valid-object-path? "Valid permissions object path."))
+  (s/pred valid-path-format? "Valid permissions object path."))
 
 (def UserPath
   "Schema for a valid permissions path that a user might possess in their `*current-user-permissions-set*`. This is the
   same as what's allowed for `ObjectPath` but also includes root permissions, which admins will have."
-  (s/pred #(or (= % "/") (valid-object-path? %))
+  (s/pred #(or (= % "/") (valid-path-format? %))
           "Valid user permissions path."))
+
+(def Path
+  "Schema for a permissions path with a valid format."
+  (s/pred valid-path-format? "Valid permissions path"))
 
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
@@ -177,7 +191,7 @@
    (str (object-path database-or-id) "schema/" (escape-path-component schema-name) "/"))
 
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str), table-or-id :- MapOrID]
-   (str (object-path database-or-id schema-name) "table/" (u/the-id table-or-id) "/" )))
+   (str (object-path database-or-id schema-name) "table/" (u/the-id table-or-id) "/")))
 
 (s/defn adhoc-native-query-path :- ObjectPath
   "Return the native query read/write permissions path for a database.
@@ -674,8 +688,8 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
-                               " "
-                               (deferred-tru "Please fetch new data and try again."))
+                         " "
+                         (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!
