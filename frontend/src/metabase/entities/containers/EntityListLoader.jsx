@@ -17,6 +17,7 @@ const propTypes = {
   wrapped: PropTypes.bool,
   debounced: PropTypes.bool,
   loadingAndErrorWrapper: PropTypes.bool,
+  LoadingAndErrorWrapper: PropTypes.elementType,
   keepListWhileLoading: PropTypes.bool,
   listName: PropTypes.string,
   selectorName: PropTypes.string,
@@ -41,6 +42,7 @@ const propTypes = {
 
 const defaultProps = {
   loadingAndErrorWrapper: true,
+  LoadingAndErrorWrapper: LoadingAndErrorWrapper,
   keepListWhileLoading: false,
   reload: false,
   wrapped: false,
@@ -56,6 +58,7 @@ const CONSUMED_PROPS = [
   "wrapped",
   "debounced",
   "loadingAndErrorWrapper",
+  "LoadingAndErrorWrapper",
   "selectorName",
 ];
 
@@ -245,7 +248,12 @@ class EntityListLoader extends React.Component {
   };
 
   render() {
-    const { allFetched, allError, loadingAndErrorWrapper } = this.props;
+    const {
+      allFetched,
+      allError,
+      loadingAndErrorWrapper,
+      LoadingAndErrorWrapper,
+    } = this.props;
     const { isReloading } = this.state;
 
     return loadingAndErrorWrapper ? (
