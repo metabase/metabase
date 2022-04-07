@@ -5,7 +5,11 @@ import { space } from "metabase/styled-components/theme";
 
 import { SidebarLink } from "../SidebarItems";
 
-export const SidebarBookmarkItem = styled(SidebarLink)`
+type SidebarBookmarkItem = {
+  isSorting: boolean;
+};
+
+export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`
   padding-left: 0.75rem;
 
   &:hover {
