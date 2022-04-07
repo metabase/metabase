@@ -7,7 +7,6 @@
   "Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
   `features`, and when it is `valid_thru`."
   []
-  (api/check-superuser)
   (premium-features/fetch-token-status (api/check-404 (premium-features/premium-embedding-token))))
 
-(api/define-routes)
+(api/define-routes api/+check-superuser)

@@ -183,7 +183,6 @@
               (update-ldap-settings user 403)
               (update-ldap-settings :crowberto 200))
 
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-general-permissions! group :setting)
               (update-ldap-settings user 200)
@@ -211,12 +210,10 @@
               (get-geojson user 403)
               (get-geojson :crowberto 200))
 
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-general-permissions! group :setting)
               (get-geojson user 200)
               (get-geojson :crowberto 200))))))))
-
 
 (deftest permissions-group-api-test
   (testing "/api/permissions"
@@ -237,7 +234,6 @@
             (testing "still fail if user's group doesn't have `setting` permission"
               (get-permission-groups user 403)
               (get-permission-groups :crowberto 200))
-
 
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-general-permissions! group :setting)
