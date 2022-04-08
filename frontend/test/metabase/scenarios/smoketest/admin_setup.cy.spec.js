@@ -263,8 +263,7 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       // Check names
-      cy.wait(3000).contains("People");
-      cy.contains("Orders");
+      cy.wait(3000).contains("Orders");
       cy.contains("Test Table").should("not.exist");
 
       cy.findByText("Our analytics").click();
@@ -525,8 +524,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check table names and visibility
 
-      cy.contains("People");
-      cy.contains("Test");
+      cy.contains("Test Table");
       cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
@@ -596,9 +594,7 @@ describe("smoketest > admin_setup", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText(
-        "Try out these sample x-rays to see what Metabase can do.",
-      );
+      cy.wait(2000).findByText("Here are some popular tables");
       cy.contains("Test Table");
       cy.contains("Reviews").should("not.exist");
 

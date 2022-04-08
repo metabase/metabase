@@ -72,7 +72,7 @@ describe("scenarios > home > homepage", () => {
     cy.findByText("Orders");
   });
 
-  it.skip("should display popular items for a new user", () => {
+  it("should display popular items for a new user", () => {
     restore("default");
     cy.signInAsNormalUser();
 
