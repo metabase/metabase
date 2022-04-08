@@ -228,11 +228,8 @@
                (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
                [json-column (snd json-column)]
 
-               ;; Not too much complexity in type hierarchy because
-               ;; there's not too much complexity in JSON's types
-
-               (every? #{java.lang.Long java.lang.Integer} [(fst json-column) (snd json-column)])
-               [json-column java.lang.Long]
+               (nil? snd)
+               [json-column (fst json-column)]
 
                (every? #(instance? Number) [(fst json-column) (snd json-column)])
                [json-column java.lang.Number]
@@ -240,8 +237,6 @@
                (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
                        [(fst json-column) (snd json-column)])
                [json-column java.lang.String]
-
-               ;; if exactly one is nil just shove it in basically...
 
                :else
                [json-column nil])))))
@@ -263,12 +258,13 @@
   (let [valid-fields (for [[field-path field-type] (seq field-types)]
                        (if (nil? field-type)
                          nil
-                         {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                          :database-type     nil
-                          :base-type         (get field-type-map field-type :type/*)
-                          ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
-                          :database-position 0
-                          :nfc-path          field-path}))
+                         (let [curr-type (get field-type-map field-type :type/*)]
+                           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                            :database-type     curr-type
+                            :base-type         curr-type
+                            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                            :database-position 0
+                            :nfc-path          field-path})))
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
