@@ -299,16 +299,6 @@
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
-    (testing "flattened-row"
-      (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
-            flattened {[:mob :bob :dobbs] 123
-                       [:mob :bob :cobbs] "boop"}]
-        (is (= flattened (#'postgres/flattened-row :mob row)))))
-    (testing "row->types"
-      (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
-            types {[:bob :cobbs] clojure.lang.PersistentVector
-                   [:bob :dobbs :robbs] java.lang.Long}]
-        (is (= types (#'postgres/row->types row)))))
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
