@@ -252,8 +252,7 @@ function getFields(metadata, parameter) {
 
 function getFieldIds(parameter) {
   const { field_ids = [], field_id } = parameter;
-  const fieldIds = field_id ? [field_id] : field_ids;
-  return fieldIds.filter(id => typeof id === "number");
+  return field_id ? [field_id] : field_ids;
 }
 
 function Widget({
