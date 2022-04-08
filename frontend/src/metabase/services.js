@@ -118,6 +118,7 @@ export const CardApi = {
   delete: DELETE("/api/card/:id"),
   persist: POST("/api/card/:id/persist"),
   unpersist: POST("/api/card/:id/unpersist"),
+  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {

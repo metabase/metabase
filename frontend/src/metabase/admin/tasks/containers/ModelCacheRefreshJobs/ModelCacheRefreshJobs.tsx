@@ -12,6 +12,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import PersistedModels from "metabase/entities/persisted-models";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
+import { CardApi } from "metabase/services";
 
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -53,6 +54,8 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
     return job.state;
   }, [job]);
 
+  const handleRefresh = () => CardApi.refreshModelCache({ id: job.card_id });
+
   return (
     <tr key={job.id}>
       <th>
@@ -75,7 +78,7 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
       <th>{job.creator.common_name}</th>
       <th>
         <Tooltip tooltip={t`Refresh`}>
-          <IconButtonContainer>
+          <IconButtonContainer onClick={handleRefresh}>
             <Icon name="refresh" />
           </IconButtonContainer>
         </Tooltip>
