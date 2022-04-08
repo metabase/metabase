@@ -224,22 +224,22 @@
   ([fst snd]
    (into {}
          (for [json-column (keys snd)]
-             (cond
-               (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
-               [json-column (snd json-column)]
+           (cond
+             (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
+             [json-column (snd json-column)]
 
-               (nil? snd)
-               [json-column (fst json-column)]
+             (nil? snd)
+             [json-column (fst json-column)]
 
-               (every? #(instance? Number) [(fst json-column) (snd json-column)])
-               [json-column java.lang.Number]
+             (every? #(instance? Number %) [(fst json-column) (snd json-column)])
+             [json-column java.lang.Number]
 
-               (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
-                       [(fst json-column) (snd json-column)])
-               [json-column java.lang.String]
+             (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
+                     [(fst json-column) (snd json-column)])
+             [json-column java.lang.String]
 
-               :else
-               [json-column nil])))))
+             :else
+             [json-column nil])))))
 
 (def ^:const field-type-map
   "We deserialize the JSON in order to determine types,

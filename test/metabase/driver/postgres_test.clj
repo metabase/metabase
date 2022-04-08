@@ -314,24 +314,27 @@
                       (first)
                       (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
-                     :database-type     nil,
+                     :database-type     :type/Text,
                      :base-type         :type/Text,
                      :database-position 0,
-                     :nfc-path          [:incoherent_json_val "b"]}
+                     :nfc-path          [:incoherent_json_val "b"]
+                     :visibility-type   :details-only}
                     {:name              "coherent_json_val → a",
-                     :database-type     nil,
+                     :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
-                     :nfc-path          [:coherent_json_val "a"]}
+                     :nfc-path          [:coherent_json_val "a"]
+                     :visibility-type   :details-only}
                     {:name              "coherent_json_val → b",
-                     :database-type     nil,
+                     :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
-                     :nfc-path          [:coherent_json_val "b"]}}
+                     :nfc-path          [:coherent_json_val "b"]
+                     :visibility-type   :details-only}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
-                   {:name "describe_json_table"}))))))
+                   {:name "describe_json_table"})))))))
     (testing "blank out if huge. blank out instead of silently limiting"
       (drop-if-exists-and-create-db! "big-json-test")
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
