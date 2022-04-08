@@ -31,8 +31,8 @@ const MoveEventModal = ({
   const [selectedTimeline, setSelectedTimeline] = useState(currentTimeline);
   const hasChanged = selectedTimeline.id !== currentTimeline.id;
 
-  const handleSubmit = useCallback(() => {
-    onSubmit(event, selectedTimeline, currentTimeline);
+  const handleSubmit = useCallback(async () => {
+    await onSubmit(event, selectedTimeline, currentTimeline);
   }, [event, selectedTimeline, currentTimeline, onSubmit]);
 
   return (
