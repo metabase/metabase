@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { t } from "ttag";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,
@@ -15,7 +15,6 @@ import {
 export interface EventListProps {
   events: TimelineEvent[];
   timeline: Timeline;
-  collection: Collection;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
 }
@@ -23,7 +22,6 @@ export interface EventListProps {
 const EventList = ({
   events,
   timeline,
-  collection,
   onArchive,
   onUnarchive,
 }: EventListProps): JSX.Element => {
@@ -34,7 +32,6 @@ const EventList = ({
           key={event.id}
           event={event}
           timeline={timeline}
-          collection={collection}
           onArchive={onArchive}
           onUnarchive={onUnarchive}
         />

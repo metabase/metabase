@@ -4,7 +4,7 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewTimelineModal from "../../components/NewTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -17,11 +17,11 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<Timeline>, collection: Collection) => {
+  onSubmit: async (values: Partial<Timeline>) => {
     const action = Timelines.actions.create(values);
     const response = await dispatch(action);
     const timeline = Timelines.HACK_getObjectFromAction(response);
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(push(Urls.timelineInCollection(timeline)));
   },
   onCancel: () => {
     dispatch(goBack());

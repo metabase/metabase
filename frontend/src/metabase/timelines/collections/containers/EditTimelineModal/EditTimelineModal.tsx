@@ -3,7 +3,7 @@ import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import EditTimelineModal from "../../components/EditTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -17,7 +17,7 @@ const timelineProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline, collection: Collection) => {
+  onSubmit: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.update(timeline));
     dispatch(push(Urls.timelineInCollection(timeline)));
   },
