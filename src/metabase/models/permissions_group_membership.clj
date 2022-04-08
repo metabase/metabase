@@ -8,6 +8,7 @@
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
 (def fail-to-remove-last-admin-msg
+  "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By

@@ -105,14 +105,15 @@
 
   (testing "Make sure the delete last admin exception are catched"
     (with-user-in-groups [user [(group/admin)]]
-      (let [log-warn-count (atom #{})]
-        (with-redefs [db/delete! (fn [model & _args]
-                                   (when (= model PermissionsGroupMembership)
-                                     (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
-                                                     {:status-code 400}))))
-                      log/warn (fn [msg & _args]
-                                  (swap! log-warn-count conj msg))]
-          ;; make sure sync run without throwing exception
-          (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
-          ;; make sure we log a warning for that
-          (is (@log-warn-count "Attempted to remove the last admin.")))))))
+      (mt/with-log-level :warn
+        (let [log-warn-count (atom #{})]
+          (with-redefs [db/delete! (fn [model & _args]
+                                     (when (= model PermissionsGroupMembership)
+                                       (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
+                                                       {:status-code 400}))))
+                        log/warn (fn [msg & _args]
+                                   (swap! log-warn-count conj msg))]
+            ;; make sure sync run without throwing exception
+            (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
+            ;; make sure we log a warning for that
+            (is (@log-warn-count "Attempted to remove the last admin."))))))))
