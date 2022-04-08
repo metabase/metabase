@@ -70,7 +70,7 @@ export default function ErrorOverview(props) {
 
   return (
     <>
-      <h2>Questions that errored when last run</h2>
+      <h2>{t`Questions that errored when last run`}</h2>
       <AuditParameters
         parameters={[
           { key: "errorFilter", placeholder: t`Error contents` },
