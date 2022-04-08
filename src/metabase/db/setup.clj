@@ -7,7 +7,9 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require [clojure.tools.logging :as log]
+            [honeysql.format :as hformat]
             [metabase.db.connection :as mdb.connection]
+            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
             [metabase.db.liquibase :as liquibase]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.setting :as setting]
@@ -126,14 +128,13 @@
   ;; TODO -- check whether we can remove the circular ref busting here.
   (when-not *disable-data-migrations*
     (classloader/require 'metabase.db.data-migrations)
-    (binding [mdb.connection/*db-type*     db-type
-              mdb.connection/*data-source* data-source
-              db/*db-connection*           {:datasource data-source}
-              db/*quoting-style*           (mdb.connection/quoting-style db-type)
-              setting/*disable-cache*      true]
+    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool.
+              setting/*disable-cache*         true]
       ((resolve 'metabase.db.data-migrations/run-all!)))))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
+;;
+;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
 (s/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
@@ -146,3 +147,28 @@
       (run-schema-migrations! db-type data-source auto-migrate?)
       (run-data-migrations!   db-type data-source)))
   :done)
+
+;;;; Toucan Setup.
+
+;;; Done at namespace load time these days.
+
+;;; create a custom HoneySQL quoting style called `::application-db` that uses the appropriate quote function based on
+;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
+(defn quote-for-application-db
+  "Quote SQL identifier string `s` appropriately for the currently bound application database."
+  [s]
+  ((get @#'hformat/quote-fns (mdb.connection/quoting-style (mdb.connection/db-type))) s))
+
+(alter-var-root #'hformat/quote-fns assoc ::application-db quote-for-application-db)
+(db/set-default-quoting-style! ::application-db)
+
+;;; Define the default Toucan JDBC connection spec; it's just a proxy DataSource that ultimately calls
+;;; [[mdb.connection/data-source]]
+(def ^:private ^javax.sql.DataSource data-source*
+  (reify javax.sql.DataSource
+    (getConnection [_]
+      (.getConnection (mdb.connection/data-source)))))
+
+(db/set-default-db-connection! {:datasource data-source*})
+
+(db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})

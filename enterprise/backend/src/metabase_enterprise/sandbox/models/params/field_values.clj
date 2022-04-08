@@ -3,6 +3,7 @@
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as sandbox.api.table]
             [metabase.api.common :as api]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
@@ -13,6 +14,7 @@
             [toucan.hydrate :refer [hydrate]]))
 
 (comment api/keep-me)
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 (def ^:private ^{:arglist '([last-updated field])} fetch-sandboxed-field-values*
   (memoize/ttl
@@ -20,7 +22,8 @@
    ;; set, so we cache per-User (and so changes to that User's permissions will result in a cache miss), and Field ID
    ;; instead of an entire Field object (so maps with slightly different keys are still considered equal)
    ^{::memoize/args-fn (fn [[updated-at field]]
-                         [api/*current-user-id*
+                         [(mdb.connection/unique-identifier)
+                          api/*current-user-id*
                           (hash @api/*current-user-permissions-set*)
                           updated-at
                           (u/the-id field)])}

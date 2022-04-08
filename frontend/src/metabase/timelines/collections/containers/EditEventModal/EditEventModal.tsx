@@ -27,6 +27,7 @@ const timelineEventProps = {
 const collectionProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractCollectionId(props.params.slug),
+  LoadingAndErrorWrapper,
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

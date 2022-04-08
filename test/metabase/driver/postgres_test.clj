@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -314,7 +315,7 @@
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
                                   "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": 2}');")])
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\"}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= :type/SerializedJSON
                  (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
@@ -324,7 +325,7 @@
                      (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
                      :database-type     nil,
-                     :base-type         :type/Integer,
+                     :base-type         :type/Text,
                      :database-position 0,
                      :nfc-path          [:incoherent_json_val "b"]}
                     {:name              "coherent_json_val → a",
@@ -340,7 +341,22 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   :postgres
                   database
-                  {:name "describe_json_table"}))))))))
+                  {:name "describe_json_table"}))))))
+    (testing "blank out if huge. blank out instead of silently limiting"
+      (drop-if-exists-and-create-db! "big-json-test")
+      (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
+            spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+            big-map  (into {} (for [x (range 300)] [x :dobbs]))
+            big-json (json/generate-string big-map)
+            sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
+                          (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
+        (jdbc/execute! spec [sql])
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= #{}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  :postgres
+                  database
+                  {:name "big_json_table"}))))))))
 
 (mt/defdataset with-uuid
   [["users"

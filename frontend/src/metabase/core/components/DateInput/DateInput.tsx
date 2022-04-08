@@ -11,7 +11,6 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import { hasTimePart } from "metabase/lib/time";
 import Input from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";
@@ -70,7 +69,7 @@ const DateInput = forwardRef(function DateInput(
   const valueText = useMemo(() => {
     if (!value) {
       return "";
-    } else if (hasTime && hasTimePart(value)) {
+    } else if (hasTime) {
       return value.format(dateTimeFormat);
     } else {
       return value.format(dateFormat);

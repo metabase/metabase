@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { hasTimePart, parseTimestamp } from "metabase/lib/time";
 import { getTimelineIcons } from "metabase/lib/timelines";
 import validate from "metabase/lib/validate";
 
@@ -16,7 +15,7 @@ const createForm = ({ timelines }) => {
       name: "timestamp",
       title: t`Date`,
       type: "date",
-      hasTime: true,
+      hasTimeField: "time_matters",
       validate: validate.required(),
     },
     {
@@ -59,18 +58,8 @@ const createForm = ({ timelines }) => {
   ];
 };
 
-const normalizeForm = values => {
-  const timestamp = parseTimestamp(values.timestamp);
-
-  return {
-    ...values,
-    time_matters: hasTimePart(timestamp),
-  };
-};
-
 export default {
   details: ({ timelines = [] } = {}) => ({
     fields: createForm({ timelines }),
-    normalize: normalizeForm,
   }),
 };

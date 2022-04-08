@@ -281,6 +281,7 @@
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
 (deftest fetch-database-metadata-include-hidden-test
+  ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
   (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type "sensitive"}
       (testing "GET /api/database/:id/metadata?include_hidden=true"
