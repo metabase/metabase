@@ -24,5 +24,17 @@ Default.args = {
         name: "Our analytics",
       }),
     }),
+    createMockTimeline({
+      name: "Releases",
+      collection: createMockCollection({
+        name: "Our analytics",
+      }),
+    }),
+    createMockTimeline({
+      name: "Our analytics events",
+      collection: createMockCollection({
+        name: "Our analytics",
+      }),
+    }),
   ],
 };
