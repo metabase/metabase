@@ -52,6 +52,11 @@ const getAllMenuItems: () => {
     path: "/admin/permissions",
     key: "permissions",
   },
+  {
+    name: t`Tools`,
+    path: "/admin/tools",
+    key: "tools",
+  },
   ...PLUGIN_ADMIN_NAV_ITEMS,
   {
     name: t`Troubleshooting`,

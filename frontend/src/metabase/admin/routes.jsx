@@ -6,6 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 
 import { withBackground } from "metabase/hoc/Background";
@@ -41,6 +42,10 @@ import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
+import {
+  ModelCacheRefreshJobs,
+  ModelCacheRefreshJobModal,
+} from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
@@ -55,6 +60,9 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+
+// Tools
+import Tools from "metabase/admin/tools/containers/Tools";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -168,6 +176,20 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
+      </Route>
+
+      <Route path="tools" component={createAdminRouteGuard("tools")}>
+        <Route title={t`Tools`} component={Tools}>
+          <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
+          <Route
+            path="model-caching"
+            title={t`Model Caching Log`}
+            component={ModelCacheRefreshJobs}
+          >
+            <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+          </Route>
+          {PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES}
+        </Route>
       </Route>
 
       {/* PLUGINS */}
