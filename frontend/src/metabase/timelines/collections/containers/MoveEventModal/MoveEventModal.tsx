@@ -30,9 +30,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     oldTimeline: Timeline,
   ) => {
     await dispatch(TimelineEvents.actions.setTimeline(event, newTimeline));
-    dispatch(
-      push(Urls.timelineInCollection(oldTimeline, oldTimeline.collection)),
-    );
+    dispatch(push(Urls.timelineInCollection(oldTimeline)));
   },
   onCancel: () => {
     dispatch(goBack());

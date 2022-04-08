@@ -10,10 +10,10 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface NewEventModalProps {
   timeline?: Timeline;
-  collection: Collection;
+  collection?: Collection;
   onSubmit: (
     values: Partial<TimelineEvent>,
-    collection: Collection,
+    collection?: Collection,
     timeline?: Timeline,
   ) => void;
   onCancel: () => void;
