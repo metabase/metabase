@@ -1,5 +1,5 @@
 import { ISO8601Time } from ".";
-import { TableId } from "./Table";
+import { Table, TableId } from "./Table";
 import { Value } from "./Dataset";
 
 export type FieldId = number;
@@ -37,6 +37,8 @@ export type Field = {
 
   caveats?: string;
   points_of_interest?: string;
+
+  table: Table;
 
   last_analyzed: ISO8601Time;
   created_at: ISO8601Time;
