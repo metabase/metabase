@@ -1,0 +1,180 @@
+{
+    "version": 2,
+    "pipeline_id": "pipeline-metabase",
+    "source": {
+        "type": "s3",
+        "endpoint": "http://cos/",
+        "bucket": "misc",
+        "file_groups": {
+            "test-data_users": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/test-data_users.jsonl"
+            },
+            "test-data_categories": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/test-data_categories.jsonl"
+            },
+            "test-data_venues": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/test-data_venues.jsonl"
+            },
+            "test-data_checkins": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/test-data_checkins.jsonl"
+            }
+        },
+        "partitions": 2,
+        "partitions_assigned": [
+            0,
+            1
+        ]
+    },
+    "sink": {
+        "type": "ocient",
+        "remotes": [
+            "127.0.0.1:5050"
+        ]
+    },
+    "transform": {
+        "topics": {
+            "test-data_users": {
+                "tables": {
+                    "test-data-with-time.public.users": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "last_login_date": "to_date(substring_before(last_login,'T'), 'yyyy-MM-dd')",
+                            "last_login_time": "to_time(substring_after(last_login, 'T'), 'HH:mm')",
+                            "password": "\"password\""
+                        }
+                    },
+                    "test-data-with-null-date-checkins.public.users": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "last_login": "to_timestamp(last_login, 'yyyy-MM-dd\\'T\\'HH:mm')",
+                            "password": "\"password\""
+                        }
+                    },
+                    "test-data-self-referencing-user.public.users": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "last_login": "to_timestamp(last_login, 'yyyy-MM-dd\\'T\\'HH:mm')",
+                            "password": "\"password\"",
+                            "created_by": "if(id == `1`, `1`, subtract(to_number(id), `1`))"
+                        }
+                    },
+                    "test-data-with-timezones.public.users": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "last_login": "to_timestamp(last_login, 'yyyy-MM-dd\\'T\\'HH:mm')",
+                            "password": "\"password\""
+                        }
+                    }
+                }
+            },
+            "test-data_categories": {
+                "tables": {
+                    "test-data-with-null-date-checkins.public.categories": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\""
+                        }
+                    },
+                    "test-data-with-null-date-checkins.public.categories": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\""
+                        }
+                    },
+                    "test-data-self-referencing-user.public.categories": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\""
+                        }
+                    },
+                    "test-data-with-timezones.public.categories": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\""
+                        }
+                    }
+                }
+            },
+            "test-data_venues": {
+                "tables": {
+                    "test-data-with-null-date-checkins.public.venues": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "category_id": "\"category_id\"",
+                            "latitude": "\"latitude\"",
+                            "longitude": "\"longitude\"",
+                            "price": "\"price\""
+                        }
+                    },
+                    "test-data-with-null-date-checkins.public.venues": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "category_id": "\"category_id\"",
+                            "latitude": "\"latitude\"",
+                            "longitude": "\"longitude\"",
+                            "price": "\"price\""
+                        }
+                    },
+                    "test-data-self-referencing-user.public.venues": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "category_id": "\"category_id\"",
+                            "latitude": "\"latitude\"",
+                            "longitude": "\"longitude\"",
+                            "price": "\"price\""
+                        }
+                    },
+                    "test-data-with-timezones.public.venues": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "category_id": "\"category_id\"",
+                            "latitude": "\"latitude\"",
+                            "longitude": "\"longitude\"",
+                            "price": "\"price\""
+                        }
+                    }
+                }
+            },
+            "test-data_checkins": {
+                "tables": {
+                    "test-data-with-null-date-checkins.public.checkins": {
+                        "columns": {
+                            "id": "id",
+                            "date": "\"date\"",
+                            "user_id": "\"user_id\"",
+                            "venue_id": "\"venue_id\""
+                        }
+                    },
+                    "test-data-self-referencing-user.public.checkins": {
+                        "columns": {
+                            "id": "id",
+                            "date": "\"date\"",
+                            "user_id": "\"user_id\"",
+                            "venue_id": "\"venue_id\""
+                        }
+                    },
+                    "test-data-with-timezones.public.checkins": {
+                        "columns": {
+                            "id": "id",
+                            "date": "\"date\"",
+                            "user_id": "\"user_id\"",
+                            "venue_id": "\"venue_id\""
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

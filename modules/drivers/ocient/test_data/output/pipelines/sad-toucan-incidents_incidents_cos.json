@@ -1,0 +1,41 @@
+{
+    "version": 2,
+    "pipeline_id": "pipeline-incidents",
+    "source": {
+        "type": "s3",
+        "endpoint": "http://cos/",
+        "bucket": "misc",
+        "file_groups": {
+            "sad-toucan-incidents_incidents": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/sad-toucan-incidents_incidents.jsonl"
+            }
+        },
+        "partitions": 2,
+        "partitions_assigned": [
+            0,
+            1
+        ]
+    },
+    "sink": {
+        "type": "ocient",
+        "remotes": [
+            "127.0.0.1:5050"
+        ]
+    },
+    "transform": {
+        "topics": {
+            "sad-toucan-incidents_incidents": {
+                "tables": {
+                    "sad-toucan-incidents.public.incidents": {
+                        "columns": {
+                            "id": "id",
+                            "severity": "\"severity\"",
+                            "timestamp": "\"timestamp\""
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

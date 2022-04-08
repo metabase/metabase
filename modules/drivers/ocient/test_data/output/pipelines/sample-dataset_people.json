@@ -1,0 +1,49 @@
+{
+    "version": 2,
+    "pipeline_id": "pipeline-people",
+    "source": {
+        "type": "local",
+        "file_groups": {
+            "sample-dataset_people": {
+                "type": "lexicographic",
+                "path": "/home/jkelley/test_data/jsonl/sample-dataset_people.jsonl"
+            }
+        },
+        "partitions": 8,
+        "partitions_assigned": [
+            0,
+            7
+        ]
+    },
+    "sink": {
+        "type": "ocient",
+        "remotes": [
+            "127.0.0.1:5050"
+        ]
+    },
+    "transform": {
+        "topics": {
+            "sample-dataset_people": {
+                "tables": {
+                    "sample-dataset.public.people": {
+                        "columns": {
+                            "id": "id",
+                            "address": "\"address\"",
+                            "email": "\"email\"",
+                            "password": "\"password\"",
+                            "name": "\"name\"",
+                            "city": "\"city\"",
+                            "longitude": "\"longitude\"",
+                            "state": "\"state\"",
+                            "source": "\"source\"",
+                            "birth_date": "\"birth_date\"",
+                            "zip": "\"zip\"",
+                            "latitude": "\"latitude\"",
+                            "created_at": "\"created_at\""
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
