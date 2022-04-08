@@ -7,7 +7,7 @@ import {
   restore,
   visualize,
   summarize,
-  openNotebookEditor,
+  startNewQuestion,
   visitQuestion,
 } from "__support__/e2e/cypress";
 
@@ -345,7 +345,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
