@@ -161,6 +161,8 @@ describeEE("scenarios > admin > permissions > general", () => {
         cy.url().should("include", "/admin/settings/setup");
 
         cy.findByText("License and Billing").should("not.exist");
+        cy.findByText("Setup").should("not.exist");
+        cy.findByText("Updates").should("not.exist");
 
         // Setup smoke test
         cy.findByText("Getting set up");

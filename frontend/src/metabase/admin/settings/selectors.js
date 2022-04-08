@@ -55,6 +55,7 @@ const SECTIONS = updateSectionsWithPlugins({
     order: 1,
     settings: [],
     component: SettingsSetupList,
+    adminOnly: true,
   },
   general: {
     name: t`General`,
@@ -132,6 +133,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "boolean",
       },
     ],
+    adminOnly: true,
   },
   email: {
     name: t`Email`,

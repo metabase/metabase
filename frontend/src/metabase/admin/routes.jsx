@@ -10,7 +10,10 @@ import {
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { createAdminRouteGuard } from "metabase/admin/utils";
+import {
+  createAdminRouteGuard,
+  createAdminRedirect,
+} from "metabase/admin/utils";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -155,8 +158,8 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
 
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
+        <IndexRoute component={createAdminRedirect("setup", "general")} />
         <Route title={t`Settings`}>
-          <IndexRedirect to="setup" />
           <Route
             path="premium-embedding-license"
             component={PremiumEmbeddingLicensePage}
