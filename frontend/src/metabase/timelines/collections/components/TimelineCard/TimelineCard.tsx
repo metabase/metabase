@@ -26,7 +26,7 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const timelineUrl = Urls.timelineInCollection(timeline, collection);
   const menuItems = getMenuItems(timeline, collection, onUnarchive);
-  const eventCount = timeline.events?.length;
+  const eventCount = getEventCount(timeline);
   const hasDescription = Boolean(timeline.description);
   const hasMenuItems = menuItems.length > 0;
   const hasEventCount = !hasMenuItems && eventCount != null;
@@ -56,6 +56,10 @@ const TimelineCard = ({
       )}
     </CardRoot>
   );
+};
+
+const getEventCount = (timeline: Timeline) => {
+  return timeline.events ? timeline.events.filter(e => !e.archived).length : 0;
 };
 
 const getMenuItems = (

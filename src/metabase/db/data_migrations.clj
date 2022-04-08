@@ -1,9 +1,10 @@
 (ns ^:deprecated metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
-  These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
-  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
-  thus, all of these migrations need to be repeatable, e.g.:
+  Data migrations are run once when Metabase is first launched.
+  Note that there is no locking mechanism for data-migration - thus upon launching Metabase, It's possible
+  for a migration to be run multiple times (e.g: when running multiple Metabase instances).
 
+  That said, these migrations should be idempotent, e.g:
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cheshire.core :as json]
@@ -11,6 +12,8 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.setting :as setting :refer [Setting]]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -32,11 +35,12 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-        (@migration-var)
-        (catch Exception e
-          (if catch?
-            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-            (throw e))))
+       (db/transaction
+        (@migration-var))
+       (catch Exception e
+         (if catch?
+           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+           (throw e))))
       (db/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
@@ -171,6 +175,41 @@
                                   :dashcard.visualization_settings "%\"link_template\":%"]
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+
+(defn- raw-setting
+  "Get raw setting directly from DB.
+  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
+  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  [k]
+  (db/select-one-field :value Setting :key (name k)))
+
+(defn- remove-admin-group-from-mappings-by-setting-key!
+  [mapping-setting-key]
+  (let [admin-group-id (:id (group/admin))
+        mapping        (try
+                        (json/parse-string (raw-setting mapping-setting-key))
+                        (catch Exception _e
+                          {}))]
+    (when-not (empty? mapping)
+      (db/update! Setting (name mapping-setting-key)
+                  :value
+                  (->> mapping
+                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                       (into {})
+                       json/generate-string)))))
+
+(defmigration ^{:author "qnkhuat" :added "0.43.0"} migrate-remove-admin-from-group-mapping-if-needed
+  ;;  In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken and haven't really worked (see #13820)
+  ;;  In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+  ;;  But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
+  ;;  - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
+  ;;  - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
+  (when (= (raw-setting :ldap-sync-admin-group) "false")
+    (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
+  ;; sso are enterprise feature but we still run this even in OSS in case a customer
+  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
+  (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

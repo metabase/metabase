@@ -273,7 +273,7 @@
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
-  *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of more than one group.
+  *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
   *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]

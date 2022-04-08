@@ -4,8 +4,6 @@
   The Metabase permissions system is based around permissions *paths* that are granted to individual
   [[metabase.models.permissions-group]]s.
 
-  a new line
-
   ### Core concepts
 
   Permissions are granted to individual [[metabase.models.permissions-group]]s, and Users are members of one or more
@@ -135,13 +133,13 @@
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
   | ----------- | ----------- | ------ | ---------- | -------- |
   |          no |          no |     no |         no |       ⛔ |
-  |          no |          no |     no |        yes |       ⚠ |
+  |          no |          no |     no |        yes |       ⚠️ |
   |          no |          no |    yes |         no |       ⛔ |
-  |          no |          no |    yes |        yes |       ⚠ |
+  |          no |          no |    yes |        yes |       ⚠️ |
   |          no |         yes |     no |         no |       ✅ |
-  |          no |         yes |     no |        yes |       ⚠ |
+  |          no |         yes |     no |        yes |       ⚠️ |
   |          no |         yes |    yes |         no |       ⛔ |
-  |          no |         yes |    yes |        yes |       ⚠ |
+  |          no |         yes |    yes |        yes |       ⚠️ |
   |         yes |          no |     no |         no |       ✅ |
   |         yes |          no |     no |        yes |       ✅ |
   |         yes |          no |    yes |         no |       ✅ |
@@ -151,7 +149,7 @@
   |         yes |         yes |    yes |         no |       ✅ |
   |         yes |         yes |    yes |        yes |       ✅ |
 
-  (`⚠` = runs in sandboxed mode)
+  (`⚠️` = runs in sandboxed mode)
 
   ### Known Permissions Paths
 
@@ -482,6 +480,30 @@
   (e.g. full or limited)."
   [perm-type perm-value database-or-id]
   (base->feature-perms-path perm-type perm-value (adhoc-native-query-path database-or-id)))
+
+(s/defn data-model-write-perms-path :- Path
+  "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
+  If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
+  permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
+  [db-id schema table-id]
+  (let [f (u/ignore-exceptions
+           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+    (if (and f (premium-features/enable-advanced-permissions?))
+      (f db-id schema table-id)
+      "/")))
+
+(s/defn db-details-write-perms-path :- Path
+  "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
+  If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the DB details
+  permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
+  [db-id]
+  (let [f (u/ignore-exceptions
+           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+    (if (and f (premium-features/enable-advanced-permissions?))
+      (f db-id)
+      "/")))
 
 (s/defn general-perms-path :- Path
   "Returns the permissions path for *full* access a general permission."

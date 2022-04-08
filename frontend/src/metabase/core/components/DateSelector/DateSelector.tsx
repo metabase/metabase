@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment";
 import { t } from "ttag";
-import { hasTimePart } from "metabase/lib/time";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
@@ -25,6 +24,7 @@ export interface DateSelectorProps {
   hasTime?: boolean;
   is24HourMode?: boolean;
   onChange?: (date?: Moment) => void;
+  onHasTimeChange?: (hasTime: boolean) => void;
   onSubmit?: () => void;
 }
 
@@ -36,12 +36,12 @@ const DateSelector = forwardRef(function DateSelector(
     hasTime,
     is24HourMode,
     onChange,
+    onHasTimeChange,
     onSubmit,
   }: DateSelectorProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const today = useMemo(() => moment().startOf("date"), []);
-  const [isTimeShown, setIsTimeShown] = useState(hasTime && hasTimePart(value));
 
   const handleDateChange = useCallback(
     (unused1: string, unused2: string, date: Moment) => {
@@ -56,15 +56,15 @@ const DateSelector = forwardRef(function DateSelector(
   const handleTimeClick = useCallback(() => {
     const newValue = value ?? today;
     onChange?.(newValue);
-    setIsTimeShown(true);
-  }, [value, today, onChange]);
+    onHasTimeChange?.(true);
+  }, [value, today, onChange, onHasTimeChange]);
 
   const handleTimeClear = useCallback(
     (newValue: Moment) => {
       onChange?.(newValue);
-      setIsTimeShown(false);
+      onHasTimeChange?.(false);
     },
-    [onChange],
+    [onChange, onHasTimeChange],
   );
 
   return (
@@ -75,7 +75,7 @@ const DateSelector = forwardRef(function DateSelector(
         isRangePicker={false}
         onChange={handleDateChange}
       />
-      {value && isTimeShown && (
+      {value && hasTime && (
         <SelectorTimeContainer>
           <TimeInput
             value={value}
@@ -86,7 +86,7 @@ const DateSelector = forwardRef(function DateSelector(
         </SelectorTimeContainer>
       )}
       <SelectorFooter>
-        {hasTime && !isTimeShown && (
+        {!hasTime && (
           <SelectorTimeButton icon="clock" borderless onClick={handleTimeClick}>
             {t`Add time`}
           </SelectorTimeButton>

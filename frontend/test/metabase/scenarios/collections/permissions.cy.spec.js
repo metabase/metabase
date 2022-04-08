@@ -213,29 +213,47 @@ describe("collection permissions", () => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         collection => collection.slug === "third_collection",
                       );
+
+                      cy.intercept(
+                        "PUT",
+                        `/api/collection/${THIRD_COLLECTION_ID}`,
+                      ).as("editCollection");
+
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
+
                     cy.icon("pencil").click();
+
                     cy.findByText("Archive this collection").click();
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
+
+                    cy.wait("@editCollection");
+
                     cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Second collection");
+
                     navigationSidebar().within(() => {
                       cy.findByText("First collection");
                       cy.findByText("Second collection");
                       cy.findByText("Third collection").should("not.exist");
                     });
+
                     // While we're here, we can test unarchiving the collection as well
                     cy.findByText("Archived collection");
                     cy.findByText("Undo").click();
+
+                    cy.wait("@editCollection");
+
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
+
                     // We're still in the parent collection
                     cy.get("@title").contains("Second collection");
+
                     // But unarchived collection is now visible in the sidebar
                     navigationSidebar().within(() => {
                       cy.findByText("Third collection");

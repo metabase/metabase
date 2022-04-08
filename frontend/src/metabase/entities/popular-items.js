@@ -1,6 +1,6 @@
 import { createEntity } from "metabase/lib/entities";
 import { entityTypeForObject } from "metabase/lib/schema";
-import { PopularViewsSchema } from "metabase/schema";
+import { PopularItemSchema } from "metabase/schema";
 
 export const getEntity = item => {
   const entities = require("metabase/entities");
@@ -16,11 +16,11 @@ export const getIcon = item => {
   return entity.objectSelectors.getIcon(item.model_object);
 };
 
-const PopularViews = createEntity({
-  name: "popularViews",
-  nameOne: "popularView",
-  path: "/api/activity/popular_views",
-  schema: PopularViewsSchema,
+const PopularItems = createEntity({
+  name: "popularItems",
+  nameOne: "popularItem",
+  path: "/api/activity/popular_items",
+  schema: PopularItemSchema,
 
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);
@@ -33,4 +33,4 @@ const PopularViews = createEntity({
   },
 });
 
-export default PopularViews;
+export default PopularItems;

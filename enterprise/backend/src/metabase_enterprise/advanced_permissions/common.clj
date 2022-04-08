@@ -12,8 +12,9 @@
            {:can_access_setting      (perms/set-has-general-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-general-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-general-permission-of-type? permissions-set :monitoring)
-            :is_group_manager        api/*is-group-manager?*
-            :can_access_data_model   (perms/set-has-partial-permissions? permissions-set "/data-model/")})))
+            :can_access_data_model   (perms/set-has-partial-permissions? permissions-set "/data-model/")
+            :can_access_db_details   (perms/set-has-partial-permissions? permissions-set "/details/")
+            :is_group_manager        api/*is-group-manager?*})))
 
 (defn current-user-has-general-permissions?
   "Check if `*current-user*` has permissions for a general permissions of type `perm-type`."

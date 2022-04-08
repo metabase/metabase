@@ -19,7 +19,6 @@ const TimelineIndexModal = ({
     return (
       <TimelineDetailsModal
         params={{ ...params, timelineId: timelines[0].id }}
-        isDefault={true}
         onClose={onClose}
       />
     );

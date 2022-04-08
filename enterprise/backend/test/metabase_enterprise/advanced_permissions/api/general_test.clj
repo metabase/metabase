@@ -63,23 +63,3 @@
                             :setting      "yes"
                             :subscription "no"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/general/graph" new-graph))))))))))
-
-(deftest current-user-test
-  (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
-    (premium-features-test/with-premium-features #{:advanced-permissions}
-      (letfn [(user-general-permissions [user]
-                (-> (mt/user-http-request user :get 200 "user/current")
-                    :permissions))]
-        (testing "admins should have full general permisions"
-          (is (partial=
-               {:can_access_setting true
-                :can_access_subscription true
-                :can_access_monitoring true}
-               (user-general-permissions :crowberto))))
-
-        (testing "non-admin users should only have subscriptions enabled"
-          (is (partial=
-               {:can_access_setting false
-                :can_access_subscription true
-                :can_access_monitoring false}
-               (user-general-permissions :rasta))))))))
