@@ -9,12 +9,11 @@ import { ModalRoot, ModalBody } from "./MoveEventModal.styled";
 
 export interface MoveEventModalProps {
   event: TimelineEvent;
-  timeline: Timeline;
   timelines: Timeline[];
   onSubmit: (
     event: TimelineEvent,
-    newTimeline: Timeline,
-    oldTimeline: Timeline,
+    newTimeline?: Timeline,
+    oldTimeline?: Timeline,
     onClose?: () => void,
   ) => void;
   onCancel?: () => void;
@@ -23,14 +22,14 @@ export interface MoveEventModalProps {
 
 const MoveEventModal = ({
   event,
-  timeline: oldTimeline,
   timelines,
   onSubmit,
   onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
+  const oldTimeline = timelines.find(t => t.id === event.timeline_id);
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
-  const hasChanged = newTimeline.id !== oldTimeline.id;
+  const hasChanged = newTimeline?.id !== oldTimeline?.id;
 
   const handleSubmit = useCallback(async () => {
     await onSubmit(event, newTimeline, oldTimeline, onClose);
