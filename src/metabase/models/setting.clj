@@ -123,7 +123,13 @@
   these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
-    "metabot-enabled"})
+    "metabot-enabled"
+    "ldap-sync-admin-group"})
+
+(def ^:dynamic *allow-retired-setting-names*
+  "A dynamic val that controls whether it's allowed to use retired settings.
+  Primarily used in test to disable retired setting check."
+  false)
 
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
@@ -240,9 +246,14 @@
                         {:registered-settings
                          (sort (keys @registered-settings))})))))
 
-(defn- call-on-change
-  "Cache watcher that applies `:on-change` callback for all settings that have changed."
-  [_key _ref old new]
+;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; swapped out depending on which app DB we have in play
+;;
+;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
+;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
+;; references for now
+(defmethod cache/call-on-change :default
+  [old new]
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
     (doseq [changed-setting (into (set (keys d1))
@@ -250,7 +261,6 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
-(add-watch @#'cache/cache* :call-on-change call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -737,7 +747,7 @@
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
-      (when (retired-setting-names (name setting-name))
+      (when (and (retired-setting-names (name setting-name)) (not *allow-retired-setting-names*))
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))

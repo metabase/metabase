@@ -207,7 +207,7 @@
                                                                                    :is_group_manager "false"})))))))
 
 (deftest delete-group-membership-test
-  (testing "delete /api/permissions/membership"
+  (testing "DELETE /api/permissions/membership/:id"
     (mt/with-temp* [User                       [user]
                     PermissionsGroup           [group]
                     PermissionsGroupMembership [{id :id} {:group_id (:id group)

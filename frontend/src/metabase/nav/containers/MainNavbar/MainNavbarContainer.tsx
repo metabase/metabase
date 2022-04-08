@@ -140,6 +140,7 @@ function MainNavbarContainer({
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
+          isOpen={isOpen}
           currentUser={currentUser}
           collections={collectionTree}
           selectedItem={selectedItem}

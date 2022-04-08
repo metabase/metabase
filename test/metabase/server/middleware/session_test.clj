@@ -222,7 +222,7 @@
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
-  (testing "If user is a group manager of more than one group, `:is-group-manager?` should be true"
+  (testing "If user is a group manager of at least one group, `:is-group-manager?` should be true"
     (try
      (mt/with-user-in-groups
        [group-1 {:name "New Group 1"}

@@ -48,11 +48,11 @@
 
 (s/defn ^:private user-groups :- (s/maybe [su/NonBlankString])
   "Retrieve groups for a supplied DN."
-  [ldap-connection                              :- LDAPConnectionPool
-   dn                                           :- su/NonBlankString
-   uid                                          :- su/NonBlankString
-   {:keys [group-base]}                         :- i/LDAPSettings
-   group-membership-filter                      :- su/NonBlankString]
+  [ldap-connection         :- LDAPConnectionPool
+   dn                      :- su/NonBlankString
+   uid                     :- su/NonBlankString
+   {:keys [group-base]}    :- i/LDAPSettings
+   group-membership-filter :- su/NonBlankString]
   (when group-base
     (let [results (ldap-client/search
                    ldap-connection
@@ -64,7 +64,7 @@
 (s/defn ldap-search-result->user-info :- (s/maybe i/UserInfo)
   "Convert the result "
   [ldap-connection               :- LDAPConnectionPool
-   {:keys [dn uid], :as result} :- su/Map
+   {:keys [dn uid], :as result}  :- su/Map
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
@@ -125,15 +125,16 @@
 (s/defn ^:private fetch-or-create-user!* :- (class User)
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user (db/select-one [User :id :last_login :first_name :last_name :is_active] :%lower.email (u/lower-case-en email))
+  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active]
+                                :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
-                         old-last-name (:last_name user)
+                         old-last-name  (:last_name user)
                          new-first-name (updated-name-part first-name old-first-name)
-                         new-last-name (updated-name-part last-name old-last-name)
-                         user-changes (merge
-                                       (when-not (= new-first-name old-first-name) {:first_name new-first-name})
-                                       (when-not (= new-last-name old-last-name) {:last_name new-last-name}))]
+                         new-last-name  (updated-name-part last-name old-last-name)
+                         user-changes   (merge
+                                          (when-not (= new-first-name old-first-name) {:first_name new-first-name})
+                                          (when-not (= new-last-name old-last-name) {:last_name new-last-name}))]
                      (if (seq user-changes)
                        (do
                          (db/update! User (:id user) user-changes)
@@ -145,9 +146,9 @@
                        (assoc :is_active true)))]
     (u/prog1 new-user
       (when sync-groups?
-        (let [group-ids   (ldap-groups->mb-group-ids groups settings)
+        (let [group-ids            (ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (all-mapped-group-ids settings)]
-          (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids false))))))
+          (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))
 
 ;;; ------------------------------------------------------ impl ------------------------------------------------------
 

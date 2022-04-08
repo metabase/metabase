@@ -34,7 +34,7 @@
   false)
 
 (def ^:dynamic ^Boolean *is-group-manager?*
-  "Is the current user a group manager of more than one group?"
+  "Is the current user a group manager of at least one group?"
   false)
 
 (def ^:dynamic *current-user-permissions-set*

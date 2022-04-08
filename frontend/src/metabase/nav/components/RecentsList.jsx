@@ -3,8 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import RecentViews from "metabase/entities/recent-views";
-import Card from "metabase/components/Card";
+import RecentItems from "metabase/entities/recent-items";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -19,6 +18,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { getTranslatedEntityName } from "../utils";
 import {
+  Root,
   EmptyStateContainer,
   Header,
   RecentListItemContent,
@@ -51,7 +51,7 @@ function RecentsList({ list, loading }) {
   }
 
   return (
-    <Card py={1}>
+    <Root>
       <Header>{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
         <React.Fragment>
@@ -104,7 +104,7 @@ function RecentsList({ list, loading }) {
           )}
         </React.Fragment>
       </LoadingAndErrorWrapper>
-    </Card>
+    </Root>
   );
 }
 
@@ -138,7 +138,7 @@ const isItemLoading = ({ model, model_object }) => {
 };
 
 export default _.compose(
-  RecentViews.loadList({
+  RecentItems.loadList({
     wrapped: true,
     reload: true,
     loadingAndErrorWrapper: false,
