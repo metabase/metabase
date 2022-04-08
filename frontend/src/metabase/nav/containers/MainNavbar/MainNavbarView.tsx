@@ -39,6 +39,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
+  isOpen: boolean;
   currentUser: User;
   bookmarks: Bookmark[];
   collections: CollectionTreeItem[];
@@ -52,6 +53,7 @@ const OTHER_USERS_COLLECTIONS_URL = Urls.collection({ id: "users" });
 const ARCHIVE_URL = "/archive";
 
 function MainNavbarView({
+  isOpen,
   currentUser,
   bookmarks,
   collections,
@@ -125,7 +127,7 @@ function MainNavbarView({
         </ul>
       </div>
       {!IFRAMED && (
-        <ProfileLinkContainer>
+        <ProfileLinkContainer isOpen={isOpen}>
           <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
         </ProfileLinkContainer>
       )}
