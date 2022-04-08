@@ -1,11 +1,14 @@
 (ns metabase.models.permissions-group-membership
   (:require [metabase.models.permissions-group :as group]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
+
+(def fail-to-remove-last-admin-msg
+  (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
@@ -24,8 +27,8 @@
   (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
-    (throw (ex-info (tru "You cannot remove the last member of the ''Admin'' group!")
-             {:status-code 400}))))
+    (throw (ex-info (str fail-to-remove-last-admin-msg)
+                    {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
