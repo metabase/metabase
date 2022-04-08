@@ -158,17 +158,13 @@ describeEE("scenarios > admin > permissions > general", () => {
 
         cy.findByText("Admin settings").click();
 
-        cy.url().should("include", "/admin/settings/setup");
+        cy.url().should("include", "/admin/settings/general");
 
         cy.findByText("License and Billing").should("not.exist");
         cy.findByText("Setup").should("not.exist");
         cy.findByText("Updates").should("not.exist");
 
-        // Setup smoke test
-        cy.findByText("Getting set up");
-
         // General smoke test
-        cy.findByText("General").click();
         cy.get("#setting-site-name")
           .clear()
           .type("new name")
