@@ -4,8 +4,8 @@ import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import { TimelineEvent } from "metabase-types/api";
 import ModalBody from "metabase/timelines/common/components/ModalBody";
+import ModalDangerButton from "metabase/timelines/common/components/ModalDangerButton";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { ModalDangerButton } from "./EditEventModal.styled";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
@@ -46,7 +46,7 @@ const EditEventModal = ({
           onSubmit={handleSubmit}
           onClose={onClose}
           footerExtraButtons={
-            <ModalDangerButton type="button" borderless onClick={handleArchive}>
+            <ModalDangerButton onClick={handleArchive}>
               {t`Archive event`}
             </ModalDangerButton>
           }

@@ -3,9 +3,9 @@ import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
 import ModalBody from "metabase/timelines/common/components/ModalBody";
+import ModalDangerButton from "metabase/timelines/common/components/ModalDangerButton";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline } from "metabase-types/api";
-import { ModalDangerButton } from "./EditTimelineModal.styled";
 
 export interface EditTimelineModalProps {
   timeline: Timeline;
@@ -46,7 +46,7 @@ const EditTimelineModal = ({
           onSubmit={handleSubmit}
           onClose={onCancel}
           footerExtraButtons={
-            <ModalDangerButton type="button" borderless onClick={handleArchive}>
+            <ModalDangerButton onClick={handleArchive}>
               {t`Archive timeline and all events`}
             </ModalDangerButton>
           }

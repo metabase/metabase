@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
 
-export const ModalBody = styled.div`
+export const BodyRoot = styled.div`
   padding: 2rem;
 `;
