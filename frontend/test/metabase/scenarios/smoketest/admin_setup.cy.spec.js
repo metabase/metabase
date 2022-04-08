@@ -525,8 +525,8 @@ describe("smoketest > admin_setup", () => {
 
       // Check table names and visibility
 
-      cy.contains("People");
-      cy.contains("Test");
+      cy.findByText("Here are some popular items");
+      cy.findByText("Test Table");
       cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
@@ -596,9 +596,7 @@ describe("smoketest > admin_setup", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText(
-        "Try out these sample x-rays to see what Metabase can do.",
-      );
+      cy.wait(2000).findByText("Here are some popular tables");
       cy.contains("Test Table");
       cy.contains("Reviews").should("not.exist");
 
@@ -808,7 +806,6 @@ describe("smoketest > admin_setup", () => {
       // No collection user sees Test Table and People table
 
       cy.contains("Test Table");
-      cy.contains("People");
       cy.contains("Reviews").should("not.exist");
     });
 
