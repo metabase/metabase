@@ -88,6 +88,7 @@ export default class NativeQueryButton extends React.Component {
           <SqlIconButton iconSize={size} onClick={this.handleOpen} />
         </Tooltip>
         <Modal
+          style={{ padding: "1em" }}
           isOpen={this.state.open}
           title={title}
           footer={
