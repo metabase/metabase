@@ -234,9 +234,14 @@
                (every? #{java.lang.Long java.lang.Integer} [(fst json-column) (snd json-column)])
                [json-column java.lang.Long]
 
+               (every? #(instance? Number) [(fst json-column) (snd json-column)])
+               [json-column java.lang.Number]
+
                (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
                        [(fst json-column) (snd json-column)])
                [json-column java.lang.String]
+
+               ;; if exactly one is nil just shove it in basically...
 
                :else
                [json-column nil])))))
@@ -249,6 +254,7 @@
    java.lang.Long                  :type/Integer
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    clojure.lang.PersistentVector   :type/Array
    clojure.lang.PersistentArrayMap :type/Structured})
