@@ -1,7 +1,12 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import {
+  breakpointMinHeightExtraSmall,
+  breakpointMinHeightMedium,
+  breakpointMinHeightSmall,
+  space,
+} from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 
 export const SqlIconButton = styled(Button)`
@@ -37,11 +42,23 @@ export const NativeCodeContainer = styled.code`
   box-sizing: border-box;
   display: inline-block;
   margin: 0;
-  max-height: 30vh;
+  max-height: 20vh;
   max-width: 100%;
   overflow: auto;
   vertical-align: bottom;
   white-space: pre;
   width: 100%;
   word-break: break-all;
+
+  ${breakpointMinHeightExtraSmall} {
+    max-height: 25vh;
+  }
+
+  ${breakpointMinHeightSmall} {
+    max-height: 45vh;
+  }
+
+  ${breakpointMinHeightMedium} {
+    max-height: 60vh;
+  }
 `;
