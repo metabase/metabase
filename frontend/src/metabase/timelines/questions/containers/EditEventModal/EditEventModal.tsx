@@ -7,12 +7,12 @@ import { TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import EditEventModal from "../../components/EditEventModal";
 
-export interface EditEventModalProps {
+interface ModalProps {
   eventId: number;
 }
 
 const timelineEventProps = {
-  id: (state: State, props: EditEventModalProps) => props.eventId,
+  id: (state: State, props: ModalProps) => props.eventId,
   entityAlias: "event",
 };
 

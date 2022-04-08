@@ -9,7 +9,7 @@ import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewEventModal from "../../components/NewEventModal";
 
-interface TimelinePanelProps {
+interface ModalProps {
   cardId?: number;
   collectionId?: number;
 }
@@ -19,7 +19,7 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelinePanelProps) => {
+  id: (state: State, props: ModalProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
