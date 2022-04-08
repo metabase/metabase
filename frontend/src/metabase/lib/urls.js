@@ -305,41 +305,41 @@ export function timelinesArchiveInCollection(collection) {
   return `${timelinesInCollection(collection)}/archive`;
 }
 
-export function timelineInCollection(timeline, collection) {
-  return `${timelinesInCollection(collection)}/${timeline.id}`;
+export function timelineInCollection(timeline) {
+  return `${timelinesInCollection(timeline.collection)}/${timeline.id}`;
 }
 
 export function newTimelineInCollection(collection) {
   return `${timelinesInCollection(collection)}/new`;
 }
 
-export function editTimelineInCollection(timeline, collection) {
-  return `${timelineInCollection(timeline, collection)}/edit`;
+export function editTimelineInCollection(timeline) {
+  return `${timelineInCollection(timeline)}/edit`;
 }
 
-export function timelineArchiveInCollection(timeline, collection) {
-  return `${timelineInCollection(timeline, collection)}/archive`;
+export function timelineArchiveInCollection(timeline) {
+  return `${timelineInCollection(timeline)}/archive`;
 }
 
-export function deleteTimelineInCollection(timeline, collection) {
-  return `${timelineInCollection(timeline, collection)}/delete`;
+export function deleteTimelineInCollection(timeline) {
+  return `${timelineInCollection(timeline)}/delete`;
 }
 
-export function newEventInCollection(timeline, collection) {
-  return `${timelineInCollection(timeline, collection)}/events/new`;
+export function newEventInCollection(timeline) {
+  return `${timelineInCollection(timeline)}/events/new`;
 }
 
 export function newEventAndTimelineInCollection(collection) {
   return `${timelinesInCollection(collection)}/new/events/new`;
 }
 
-export function editEventInCollection(event, timeline, collection) {
-  const timelineUrl = timelineInCollection(timeline, collection);
+export function editEventInCollection(event, timeline) {
+  const timelineUrl = timelineInCollection(timeline);
   return `${timelineUrl}/events/${event.id}/edit`;
 }
 
-export function deleteEventInCollection(event, timeline, collection) {
-  const timelineUrl = timelineInCollection(timeline, collection);
+export function deleteEventInCollection(event, timeline) {
+  const timelineUrl = timelineInCollection(timeline);
   return `${timelineUrl}/events/${event.id}/delete`;
 }
 

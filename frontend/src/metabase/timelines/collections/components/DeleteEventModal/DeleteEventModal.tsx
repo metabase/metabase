@@ -3,17 +3,12 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import ModalFooter from "metabase/timelines/common/components/ModalFooter";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;
   timeline: Timeline;
-  collection: Collection;
-  onSubmit: (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => void;
+  onSubmit: (event: TimelineEvent, timeline: Timeline) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
@@ -21,14 +16,13 @@ export interface DeleteEventModalProps {
 const DeleteEventModal = ({
   event,
   timeline,
-  collection,
   onSubmit,
   onCancel,
   onClose,
 }: DeleteEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(async () => {
-    await onSubmit(event, timeline, collection);
-  }, [event, timeline, collection, onSubmit]);
+    await onSubmit(event, timeline);
+  }, [event, timeline, onSubmit]);
 
   return (
     <div>
