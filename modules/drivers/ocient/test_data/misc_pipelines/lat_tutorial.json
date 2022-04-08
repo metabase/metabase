@@ -1,0 +1,73 @@
+{
+        "topics": {
+            "orders": {
+                "tables": {
+                    "metabase.public.orders": {
+                        "columns": {
+                            "id": "id",
+                            "user_id": "user_id",
+                            "product_id": "product_id",
+                            "subtotal": "subtotal",
+                            "tax": "tax",
+                            "total": "total",
+                            "discount": "discount",
+                            "created_at": "to_timestamp(created_at, 'yyyy-MM-dd\\'T\\'HH:mm:ss[.SSS]X')",
+                            "quantity": "quantity"
+                        }
+                    }
+                }
+            },
+            "people": {
+                "tables": {
+                    "metabase.public.people": {
+                        "columns": {
+                            "id": "id",
+                            "address": "address",
+                            "email": "email",
+                            "password": "password",
+                            "name": "name",
+                            "city": "city",
+                            "longitude": "longitude",
+                            "state": "state",
+                            "source": "source",
+                            "birth_date": "birth_date",
+                            "zip": "zip",
+                            "latitude": "latitude",
+                            "created_at": "to_timestamp(created_at, 'yyyy-MM-dd\\'T\\'HH:mm:ss[.SSS]X')"
+                        }
+                    }
+                }
+            },
+            "reviews": {
+                "tables": {
+                    "metabase.public.reviews": {
+                        "columns": {
+                            "id": "id",
+                            "product_id": "product_id",
+                            "reviewer": "reviewer",
+                            "rating": "rating",
+                            "body": "body",
+                            "created_at": "to_timestamp(created_at, 'yyyy-MM-dd\\'T\\'HH:mm:ss[.SSS]ZZZZZ')"
+                        }
+                    }
+                }
+            },
+            "products": {
+                "tables": {
+                    "metabase.public.products": {
+                        "columns": {
+                            "id": "id",
+                            "ean": "ean",
+                            "title": "title",
+                            "category": "category",
+                            "vendor": "vendor",
+                            "price": "price",
+                            "rating": "rating",
+                            "created_at": "to_timestamp(created_at, 'yyyy-MM-dd\\'T\\'HH:mm:ss[.SSS]X')"
+                        }
+                    }
+                }
+            }
+        }
+
+}

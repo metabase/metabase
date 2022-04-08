@@ -1,0 +1,41 @@
+{
+    "version": 2,
+    "pipeline_id": "pipeline-municipality",
+    "source": {
+        "type": "s3",
+        "endpoint": "http://cos/",
+        "bucket": "misc",
+        "file_groups": {
+            "airports_municipality": {
+                "type": "lexicographic",
+                "prefix": "jkelley/metabase/jsonl/airports_municipality.jsonl"
+            }
+        },
+        "partitions": 2,
+        "partitions_assigned": [
+            0,
+            1
+        ]
+    },
+    "sink": {
+        "type": "ocient",
+        "remotes": [
+            "127.0.0.1:5050"
+        ]
+    },
+    "transform": {
+        "topics": {
+            "airports_municipality": {
+                "tables": {
+                    "airports.public.municipality": {
+                        "columns": {
+                            "id": "id",
+                            "name": "\"name\"",
+                            "region-id": "\"region-id\""
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
