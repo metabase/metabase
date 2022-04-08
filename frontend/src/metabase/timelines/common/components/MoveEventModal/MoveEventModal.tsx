@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import ModalFooter from "metabase/timelines/common/components/ModalFooter";
-import TimelinePicker from "metabase/timelines/common/components/TimelinePicker";
 import { Timeline, TimelineEvent } from "metabase-types/api";
+import ModalHeader from "../ModalHeader";
+import ModalFooter from "../ModalFooter";
+import TimelinePicker from "../TimelinePicker";
 import { ModalRoot, ModalBody } from "./MoveEventModal.styled";
 
 export interface MoveEventModalProps {
@@ -15,8 +15,9 @@ export interface MoveEventModalProps {
     event: TimelineEvent,
     newTimeline: Timeline,
     oldTimeline: Timeline,
+    onClose?: () => void,
   ) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -32,8 +33,8 @@ const MoveEventModal = ({
   const hasChanged = newTimeline.id !== oldTimeline.id;
 
   const handleSubmit = useCallback(async () => {
-    await onSubmit(event, newTimeline, oldTimeline);
-  }, [event, newTimeline, oldTimeline, onSubmit]);
+    await onSubmit(event, newTimeline, oldTimeline, onClose);
+  }, [event, newTimeline, oldTimeline, onSubmit, onClose]);
 
   return (
     <ModalRoot>
@@ -46,7 +47,7 @@ const MoveEventModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button onClick={onCancel ?? onClose}>{t`Cancel`}</Button>
         <Button primary disabled={!hasChanged} onClick={handleSubmit}>
           {t`Move`}
         </Button>
