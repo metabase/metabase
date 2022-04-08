@@ -65,9 +65,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Releases");
-      sidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
+      sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByTextEnsureVisible("Edit event").click();
 
       cy.findByLabelText("Event name")

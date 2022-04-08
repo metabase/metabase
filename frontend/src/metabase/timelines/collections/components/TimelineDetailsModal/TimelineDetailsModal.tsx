@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
+import { getTimelineName } from "metabase/lib/timelines";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Urls from "metabase/lib/urls";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -42,7 +43,7 @@ const TimelineDetailsModal = ({
   onClose,
   onGoBack,
 }: TimelineDetailsModalProps): JSX.Element => {
-  const title = isArchive ? t`Archived events` : timeline.name;
+  const title = isArchive ? t`Archived events` : getTimelineName(timeline);
   const [inputText, setInputText] = useState("");
 
   const searchText = useDebouncedValue(

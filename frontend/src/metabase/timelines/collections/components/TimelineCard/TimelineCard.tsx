@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { t, msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { getTimelineName } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -35,7 +36,7 @@ const TimelineCard = ({
     <CardRoot to={!timeline.archived ? timelineUrl : ""}>
       <CardIcon name={timeline.icon} />
       <CardBody>
-        <CardTitle>{timeline.name}</CardTitle>
+        <CardTitle>{getTimelineName(timeline)}</CardTitle>
         {timeline.description && (
           <CardDescription>{timeline.description}</CardDescription>
         )}

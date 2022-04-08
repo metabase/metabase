@@ -2,6 +2,10 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import {
+  getDefaultTimelineName,
+  getTimelineName,
+} from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
@@ -75,7 +79,7 @@ const getTitle = (
   } else if (timelines.length) {
     return t`Events`;
   } else {
-    return t`${collection.name} events`;
+    return getDefaultTimelineName(collection);
   }
 };
 
@@ -102,7 +106,7 @@ const getMenuItems = (
 
 const getSortedTimelines = (timelines: Timeline[]) => {
   return _.chain(timelines)
-    .sortBy(timeline => timeline.name)
+    .sortBy(getTimelineName)
     .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
     .value();
 };

@@ -7,6 +7,7 @@ export interface Timeline {
   name: string;
   description: string | null;
   icon: string;
+  default: boolean;
   archived: boolean;
   collection?: Collection;
   events?: TimelineEvent[];
