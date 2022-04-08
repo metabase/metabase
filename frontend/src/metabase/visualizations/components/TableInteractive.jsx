@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -38,7 +39,7 @@ import colors from "metabase/lib/colors";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
-const SIDEBAR_WIDTH = 45;
+const SIDEBAR_WIDTH = 50;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -1017,11 +1018,14 @@ function DetailShortcut({
       onMouseLeave={onMouseLeave}
       data-show-detail-rowindex={rowIndex}
     >
-      <Button
-        iconOnly
-        icon="expand"
-        className="TableInteractive-detailButton"
-      />
+      <Tooltip tooltip="View Details">
+        <Button
+          iconOnly
+          iconSize={10}
+          icon="expand"
+          className="TableInteractive-detailButton"
+        />
+      </Tooltip>
     </div>
   );
 }
