@@ -1,3 +1,4 @@
+import { push } from "react-router-redux";
 import { GroupsPermissions } from "metabase-types/api";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
@@ -11,12 +12,30 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { push } from "react-router-redux";
-import {
-  DOWNLOAD_PERMISSION_OPTIONS,
-  DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS,
-} from "./constants";
+import { t } from "ttag";
+
+export const DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS = t`Data model access requires full data access.`;
+
+export const DATA_MODEL_PERMISSION_OPTIONS = {
+  none: {
+    label: t`No`,
+    value: "none",
+    icon: "close",
+    iconColor: "danger",
+  },
+  edit: {
+    label: t`Edit`,
+    value: "all",
+    icon: "pencil",
+    iconColor: "accent7",
+  },
+  controlled: {
+    label: t`Granular`,
+    value: "controlled",
+    icon: "permissions_limited",
+    iconColor: "warning",
+  },
+};
 
 const buildControlledActionUrl = (
   entityId: EntityId,
@@ -42,54 +61,49 @@ const getPermissionValue = (
         permissions,
         groupId,
         entityId as TableEntityId,
-        "download",
+        "data-model",
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
         entityId as SchemaEntityId,
-        "download",
+        "data-model",
       );
     default:
-      return getSchemasPermission(permissions, groupId, entityId, "download");
+      return getSchemasPermission(permissions, groupId, entityId, "data-model");
   }
 };
 
-const buildDownloadPermission = (
+export const buildDataModelPermission = (
   entityId: EntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  dataAccessPermissionValue: string,
   permissionSubject: PermissionSubject,
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
 
-  const value = PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(
-    dataAccessPermissionValue,
-  )
-    ? DOWNLOAD_PERMISSION_OPTIONS.none.value
-    : getPermissionValue(permissions, groupId, entityId, permissionSubject);
-
-  const isDisabled =
-    isAdmin ||
-    PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(dataAccessPermissionValue);
+  const value = getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+  );
 
   return {
-    permission: "download",
-    type: "download",
-    isDisabled,
+    permission: "data-model",
+    type: "data-model",
+    isDisabled: isAdmin,
     disabledTooltip: isAdmin
       ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS,
+      : DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS,
     isHighlighted: isAdmin,
     value,
     options: [
-      DOWNLOAD_PERMISSION_OPTIONS.none,
-      ...(hasChildEntities ? [DOWNLOAD_PERMISSION_OPTIONS.controlled] : []),
-      DOWNLOAD_PERMISSION_OPTIONS.limited,
-      DOWNLOAD_PERMISSION_OPTIONS.full,
+      DATA_MODEL_PERMISSION_OPTIONS.none,
+      ...(hasChildEntities ? [DATA_MODEL_PERMISSION_OPTIONS.controlled] : []),
+      DATA_MODEL_PERMISSION_OPTIONS.edit,
     ],
     postActions: hasChildEntities
       ? {
@@ -100,23 +114,4 @@ const buildDownloadPermission = (
         }
       : undefined,
   };
-};
-
-export const getFeatureLevelDataPermissions = (
-  entityId: EntityId,
-  groupId: number,
-  isAdmin: boolean,
-  permissions: GroupsPermissions,
-  dataAccessPermissionValue: string,
-  permissionSubject: PermissionSubject,
-) => {
-  const downloadPermission = buildDownloadPermission(
-    entityId,
-    groupId,
-    isAdmin,
-    permissions,
-    dataAccessPermissionValue,
-    permissionSubject,
-  );
-  return [downloadPermission];
 };

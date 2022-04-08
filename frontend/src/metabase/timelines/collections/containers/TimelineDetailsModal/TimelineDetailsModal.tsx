@@ -23,7 +23,9 @@ const timelineProps = {
 };
 
 const timelinesProps = {
-  query: { include: "events" },
+  query: (state: State, props: ModalProps) => ({
+    collectionId: Urls.extractCollectionId(props.params.slug),
+  }),
   LoadingAndErrorWrapper,
 };
 

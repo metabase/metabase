@@ -43,7 +43,7 @@
                 :features ["test" "fixture"]
                 :trial    false}))
 
-(def ^:private random-fake-token
+(def random-fake-token
   "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
 
 (deftest fetch-token-status-test

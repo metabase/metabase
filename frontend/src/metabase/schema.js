@@ -86,6 +86,7 @@ MetricSchema.define({
 });
 
 TimelineSchema.define({
+  collection: CollectionSchema,
   events: [TimelineEventSchema],
 });
 

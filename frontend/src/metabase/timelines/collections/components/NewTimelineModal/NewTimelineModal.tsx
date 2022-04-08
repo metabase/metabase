@@ -25,6 +25,7 @@ const NewTimelineModal = ({
     return {
       collection_id: canonicalCollectionId(collection.id),
       icon: getDefaultTimelineIcon(),
+      default: false,
     };
   }, [collection]);
 

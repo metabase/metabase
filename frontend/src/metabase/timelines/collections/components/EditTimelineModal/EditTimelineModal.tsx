@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
@@ -22,6 +22,10 @@ const EditTimelineModal = ({
   onCancel,
   onClose,
 }: EditTimelineModalProps): JSX.Element => {
+  const initialValues = useMemo(() => {
+    return { ...timeline, default: false };
+  }, [timeline]);
+
   const handleSubmit = useCallback(
     async (values: Partial<Timeline>) => {
       await onSubmit(values);
@@ -39,7 +43,7 @@ const EditTimelineModal = ({
       <ModalBody>
         <Form
           form={forms.details}
-          initialValues={timeline}
+          initialValues={initialValues}
           isModal={true}
           onSubmit={handleSubmit}
           onClose={onCancel}

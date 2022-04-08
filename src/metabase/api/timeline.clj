@@ -86,7 +86,7 @@
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
-        :present #{:description :icon :collection_id :archived}
+        :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
