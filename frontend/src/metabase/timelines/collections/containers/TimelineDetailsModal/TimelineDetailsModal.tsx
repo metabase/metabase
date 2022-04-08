@@ -9,7 +9,12 @@ import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface ModalProps {
+  params: ModalParams;
+  timelines: Timeline[];
+}
 
 const timelineProps = {
   id: (state: State, props: ModalProps) =>
@@ -17,6 +22,15 @@ const timelineProps = {
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
+
+const timelinesProps = {
+  query: { include: "events" },
+  LoadingAndErrorWrapper,
+};
+
+const mapStateToProps = (state: State, { timelines }: ModalProps) => ({
+  isOnlyTimeline: timelines.length === 1,
+});
 
 const collectionProps = {
   id: (state: State, props: ModalProps) =>
@@ -34,6 +48,7 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
+  Timelines.loadList(timelinesProps),
   Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(TimelineDetailsModal);

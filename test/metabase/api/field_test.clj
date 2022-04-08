@@ -166,7 +166,11 @@
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
               (let [field (Field field-id)]
                 (is (= :type/Instant (:effective_type field)))
-                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
+                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))
+
+    (testing "A field can only be updated by a superuser"
+      (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
+        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"

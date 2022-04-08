@@ -30,6 +30,7 @@ describe("snapshots", () => {
       snapshot("blank");
       setup();
       updateSettings();
+      snapshot("setup");
       addUsersAndGroups();
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {

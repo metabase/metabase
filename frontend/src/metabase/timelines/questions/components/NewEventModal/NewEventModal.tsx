@@ -41,6 +41,7 @@ const NewEventModal = ({
       timezone: getDefaultTimezone(),
       source: "question",
       question_id: cardId,
+      time_matters: false,
     };
   }, [cardId, availableTimelines]);
 

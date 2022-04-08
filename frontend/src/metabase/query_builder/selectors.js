@@ -683,14 +683,12 @@ export const getTransformedTimelines = createSelector(
 export const getFilteredTimelines = createSelector(
   [getTransformedTimelines, getTimeseriesXDomain],
   (timelines, xDomain) => {
-    if (!xDomain) {
-      return [];
-    }
-
     return timelines
       .map(timeline =>
         updateIn(timeline, ["events"], events =>
-          events.filter(event => isEventWithinDomain(event, xDomain)),
+          xDomain
+            ? events.filter(event => isEventWithinDomain(event, xDomain))
+            : events,
         ),
       )
       .filter(timeline => timeline.events.length > 0);

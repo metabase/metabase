@@ -8,6 +8,7 @@
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [redux.core :as redux])
@@ -109,7 +110,7 @@
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               (when (every? f/real-number? [offset slope])
+                               (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
@@ -125,7 +126,7 @@
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
-              (filter (comp f/real-number? :mae))
+              (filter (comp u/real-number? :mae))
               not-empty
               (apply min-key :mae)
               :formula))))
@@ -194,7 +195,7 @@
                (redux/post-complete
                 (let [y-position (:position number-col)
                       yfn        #(nth % y-position)]
-                  ((filter (comp f/real-number? yfn))
+                  ((filter (comp u/real-number? yfn))
                    (redux/juxt ((map yfn) (last-n 2))
                                ((map xfn) (last-n 2))
                                (stats/simple-linear-regression xfn yfn)

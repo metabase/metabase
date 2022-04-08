@@ -46,11 +46,14 @@
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [table read-or-write]
-  ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions; to write a Table (e.g. update its
-  ;; metadata) you must have *full* permissions.
+  ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions
+  ;; To write a Table (e.g. update its metadata):
+  ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
+  ;;     data-model permissions for othe table
+  ;;   * Else, you must be an admin
   #{(case read-or-write
       :read  (perms/table-read-path table)
-      :write (perms/data-perms-path (:db_id table) (:schema table) (:id table)))})
+      :write (perms/data-model-write-perms-path (:db_id table) (:schema table) (:id table)))})
 
 (u/strict-extend (class Table)
   models/IModel
@@ -65,7 +68,7 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        i/superuser?
+          :can-write?        (partial i/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 
