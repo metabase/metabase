@@ -304,8 +304,8 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\"}');")])
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2, \"c\": 3}');"
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\", \"c\": 3.22}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= :type/SerializedJSON
                  (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
@@ -330,7 +330,13 @@
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
-                     :visibility-type   :details-only}}
+                     :visibility-type   :details-only}
+                    {:name              "incoherent_json_val → c",
+                     :database-type     :type/Number,
+                     :base-type         :type/Number,
+                     :database-position 0,
+                     :visibility-type   :details-only,
+                     :nfc-path          [:incoherent_json_val "c"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
@@ -349,7 +355,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   :postgres
                   database
-                  {:name "big_json_table"}))))))))
+                  {:name "big_json_table"})))))))
 
 (mt/defdataset with-uuid
   [["users"

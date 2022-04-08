@@ -231,7 +231,7 @@
              (nil? snd)
              [json-column (fst json-column)]
 
-             (every? #(instance? Number %) [(fst json-column) (snd json-column)])
+             (every? #(isa? % Number) [(fst json-column) (snd json-column)])
              [json-column java.lang.Number]
 
              (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
