@@ -132,6 +132,7 @@ describe("NotificationCard", () => {
         user={user}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        isEditable
       />,
     );
 
@@ -157,12 +158,32 @@ describe("NotificationCard", () => {
         user={creator}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        isEditable
       />,
     );
 
     fireEvent.click(screen.getByLabelText("close icon"));
     expect(onUnsubscribe).toHaveBeenCalledWith(alert, "alert");
     expect(onArchive).not.toHaveBeenCalled();
+  });
+
+  it("should hide archive button when not editable", () => {
+    const creator = getUser();
+    const alert = getAlert({ creator });
+    const onUnsubscribe = jest.fn();
+    const onArchive = jest.fn();
+
+    render(
+      <NotificationCard
+        item={alert}
+        type="alert"
+        user={creator}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      />,
+    );
+
+    expect(screen.queryByLabelText("close icon")).toBeNull();
   });
 
   it("should archive when the user is the creator and not subscribed", () => {
@@ -178,6 +199,7 @@ describe("NotificationCard", () => {
         user={creator}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        isEditable
       />,
     );
 
@@ -202,6 +224,7 @@ describe("NotificationCard", () => {
         user={creator}
         onUnsubscribe={onUnsubscribe}
         onArchive={onArchive}
+        isEditable
       />,
     );
 
