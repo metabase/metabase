@@ -33,3 +33,22 @@
        (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                         (perms/feature-perms-path :data-model :all db-id schema table-id)))
      tables)))
+
+(defn filter-databases-by-data-model-perms
+  "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.
+  If databases are already hydrated with their tables, also removes tables for which `*current-user*` has no data
+  model editing perms. Returns the list unmodified if the :advanced-permissions feature flag is not enabled."
+  [dbs]
+  (if (or api/*is-superuser?*
+          (not (premium-features/enable-advanced-permissions?)))
+    dbs
+    (reduce
+     (fn [result {db-id :id tables :tables :as db}]
+       (if (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+                                               (perms/feature-perms-path :data-model :all db-id))
+         (if tables
+           (conj result (update db :tables filter-tables-by-data-model-perms))
+           (conj result db))
+         result))
+     []
+     dbs)))
