@@ -158,6 +158,17 @@ describe("TokenField", () => {
     findWithinOptions(["bar"]);
   });
 
+  it("should not allow adding new items when canAddItems is false", () => {
+    render(
+      <TokenFieldWithStateAndDefaults
+        value={["foo"]}
+        options={["bar", "baz"]}
+        canAddItems={false}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
   it("should add freeform value if parseFreeformValue is provided", () => {
     render(
       <TokenFieldWithStateAndDefaults
