@@ -60,6 +60,8 @@ export default class TokenField extends Component {
 
     color: "brand",
 
+    canAddItems: true,
+
     style: {},
     valueStyle: {},
     optionsStyle: {},
@@ -455,6 +457,8 @@ export default class TokenField extends Component {
       optionsStyle,
       optionsClassName,
       prefix,
+
+      canAddItems,
     } = this.props;
     let {
       inputValue,
@@ -533,23 +537,25 @@ export default class TokenField extends Component {
             )}
           </TokenFieldItem>
         ))}
-        <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
-          <input
-            ref={this.inputRef}
-            style={{ ...defaultStyleValue, ...valueStyle }}
-            className={cx("full no-focus borderless px1")}
-            // set size to be small enough that it fits in a parameter.
-            size={10}
-            placeholder={placeholder}
-            value={isControlledInput ? inputValue : undefined}
-            defaultValue={isControlledInput ? undefined : inputValue}
-            onKeyDown={this.onInputKeyDown}
-            onChange={isControlledInput ? this.onInputChange : undefined}
-            onFocus={this.onInputFocus}
-            onBlur={this.onInputBlur}
-            onPaste={this.onInputPaste}
-          />
-        </li>
+        {canAddItems && (
+          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+            <input
+              ref={this.inputRef}
+              style={{ ...defaultStyleValue, ...valueStyle }}
+              className={cx("full no-focus borderless px1")}
+              // set size to be small enough that it fits in a parameter.
+              size={10}
+              placeholder={placeholder}
+              value={isControlledInput ? inputValue : undefined}
+              defaultValue={isControlledInput ? undefined : inputValue}
+              onKeyDown={this.onInputKeyDown}
+              onChange={isControlledInput ? this.onInputChange : undefined}
+              onFocus={this.onInputFocus}
+              onBlur={this.onInputBlur}
+              onPaste={this.onInputPaste}
+            />
+          </li>
+        )}
       </ul>
     );
 
