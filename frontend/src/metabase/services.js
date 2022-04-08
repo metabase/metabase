@@ -424,6 +424,12 @@ export const PermissionsApi = {
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
+export const PersistedModelsApi = {
+  enablePersistence: POST("/api/persist/enable"),
+  disablePersistence: POST("/api/persist/disable"),
+  setRefreshInterval: POST("/api/persist/set-interval"),
+};
+
 export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
