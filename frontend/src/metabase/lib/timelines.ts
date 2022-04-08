@@ -31,7 +31,7 @@ export const getDefaultTimeline = (
 };
 
 export const getDefaultTimelineName = (collection: Collection) => {
-  return `${collection.name} events`;
+  return t`${collection.name} events`;
 };
 
 export const getDefaultTimelineIcon = () => {
