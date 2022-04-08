@@ -16,7 +16,7 @@ export interface NewEventModalProps {
     collection: Collection,
     timeline?: Timeline,
   ) => void;
-  onCancel: (location: string) => void;
+  onCancel: () => void;
   onClose?: () => void;
 }
 
