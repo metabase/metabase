@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+
+import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
@@ -97,10 +99,18 @@ const DashboardApp = props => {
   const [addCardOnLoad] = useState(options.edit);
   const [editingOnLoad] = useState(options.add && parseInt(options.add));
 
-  const [sendNotification, setSendNotification] = useState(false);
-  const [showToaster, setShowToaster] = useState(false);
+  const [shouldSendNotification, setShouldSendNotification] = useState(false);
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
 
-  const toastTrigger = useLoadingTimer(!loadingComplete, 5000);
+  const onTimeout = useCallback(() => {
+    setIsShowingToaster(true);
+  }, []);
+
+  useLoadingTimer(!loadingComplete, {
+    timer: 15000,
+    onTimeout,
+  });
+
   const [requestPermission, showNotification] = useWebNotification();
 
   useEffect(() => {
@@ -108,30 +118,36 @@ const DashboardApp = props => {
   }, [props.reset]);
 
   useEffect(() => {
-    if (toastTrigger) {
-      setShowToaster(true);
-    }
-  }, [toastTrigger]);
-
-  useEffect(() => {
     if (loadingComplete) {
-      setShowToaster(false);
+      setIsShowingToaster(false);
     }
-    if (loadingComplete && sendNotification) {
-      showNotification(
-        `All Set! ${dashboard.name} is ready.`,
-        `All questions loaded`,
-      );
+    if (loadingComplete && shouldSendNotification) {
+      if (document.hidden) {
+        showNotification(
+          t`All Set! ${dashboard.name} is ready.`,
+          t`All questions loaded`,
+        );
+      }
+      setShouldSendNotification(false);
     }
-  }, [loadingComplete, sendNotification, showNotification, dashboard.name]);
+  }, [
+    loadingComplete,
+    shouldSendNotification,
+    showNotification,
+    dashboard?.name,
+  ]);
 
-  const handleToastConfirm = async () => {
+  const onConfirmToast = useCallback(async () => {
     const result = await requestPermission();
     if (result === "granted") {
-      setShowToaster(false);
-      setSendNotification(true);
+      setIsShowingToaster(false);
+      setShouldSendNotification(true);
     }
-  };
+  }, [requestPermission]);
+
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
 
   return (
     <div className="shrink-below-content-size full-height">
@@ -143,10 +159,10 @@ const DashboardApp = props => {
       {/* For rendering modal urls */}
       {props.children}
       <Toaster
-        message="Would you like to be notified when this dashboard is done loading?"
-        show={showToaster}
-        onDismiss={() => setShowToaster(false)}
-        onConfirm={() => handleToastConfirm()}
+        message={t`Would you like to be notified when this dashboard is done loading?`}
+        isShown={isShowingToaster}
+        onDismiss={onDismissToast}
+        onConfirm={onConfirmToast}
         fixed
       />
     </div>

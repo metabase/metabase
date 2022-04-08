@@ -2,12 +2,14 @@
 import React from "react";
 import { Motion, spring } from "react-motion";
 import _ from "underscore";
+import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Toaster from "metabase/components/Toaster";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -412,6 +414,9 @@ export default class View extends React.Component {
       queryBuilderMode,
       fitClassNames,
       closeQbNewbModal,
+      onDismissToast,
+      onConfirmToast,
+      isShowingToaster,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -477,6 +482,13 @@ export default class View extends React.Component {
 
         {isStructured && this.renderAggregationPopover()}
         {isStructured && this.renderBreakoutPopover()}
+        <Toaster
+          message={t`Would you like to be notified when this question is done loading?`}
+          isShown={isShowingToaster}
+          onDismiss={onDismissToast}
+          onConfirm={onConfirmToast}
+          fixed
+        />
       </div>
     );
   }

@@ -22,7 +22,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
        left: 20px;`
       : `position: relative;
        bottom: ${props.show ? "0px" : "-10px"};`}
-  opacity: ${props => (props.show ? "1.0" : "0")};
+  opacity: ${props => (props.show ? 1 : 0)};
   transition: all 200ms ease-out;
   column-gap: 16px;
   align-items: center;

@@ -35,7 +35,6 @@ import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
 import View from "../components/view/View";
-import Toaster from "metabase/components/Toaster";
 
 import {
   getCard,
@@ -366,60 +365,63 @@ function QueryBuilder(props) {
 
   const { isRunning } = uiControls;
 
-  const [sendNotification, setSendNotification] = useState(false);
-  const [showToaster, setShowToaster] = useState(false);
+  const [shouldSendNotification, setShouldSendNotification] = useState(false);
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
 
-  const toastTrigger = useLoadingTimer(isRunning, 5000);
+  const onTimeout = useCallback(() => {
+    setIsShowingToaster(true);
+  }, []);
+
+  useLoadingTimer(isRunning, {
+    timer: 15000,
+    onTimeout,
+  });
+
   const [requestPermission, showNotification] = useWebNotification();
 
   useEffect(() => {
-    if (toastTrigger) {
-      setShowToaster(true);
-    }
-  }, [toastTrigger]);
-
-  useEffect(() => {
     if (!isRunning) {
-      setShowToaster(false);
+      setIsShowingToaster(false);
     }
-    if (!isRunning && sendNotification) {
-      showNotification(
-        `All Set! You question is ready.`,
-        `${card.name} is loaded.`,
-      );
+    if (!isRunning && shouldSendNotification) {
+      if (document.hidden) {
+        showNotification(
+          t`All Set! Your question is ready.`,
+          t`${card.name} is loaded.`,
+        );
+      }
+      setShouldSendNotification(false);
     }
-  }, [isRunning, sendNotification, showNotification, card.name]);
+  }, [isRunning, shouldSendNotification, showNotification, card?.name]);
 
-  const handleToastConfirm = async () => {
+  const onConfirmToast = useCallback(async () => {
     const result = await requestPermission();
     if (result === "granted") {
-      setShowToaster(false);
-      setSendNotification(true);
+      setIsShowingToaster(false);
+      setShouldSendNotification(true);
     }
-  };
+  }, [requestPermission]);
+
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
 
   return (
-    <>
-      <View
-        {...props}
-        modal={uiControls.modal}
-        recentlySaved={uiControls.recentlySaved}
-        onOpenModal={openModal}
-        onCloseModal={closeModal}
-        onSetRecentlySaved={setRecentlySaved}
-        onSave={handleSave}
-        onCreate={handleCreate}
-        handleResize={forceUpdateDebounced}
-        toggleBookmark={onClickBookmark}
-      />
-      <Toaster
-        message="Would you like to be notified when this question is done loading?"
-        show={showToaster}
-        onDismiss={() => setShowToaster(false)}
-        onConfirm={() => handleToastConfirm()}
-        fixed
-      />
-    </>
+    <View
+      {...props}
+      modal={uiControls.modal}
+      recentlySaved={uiControls.recentlySaved}
+      onOpenModal={openModal}
+      onCloseModal={closeModal}
+      onSetRecentlySaved={setRecentlySaved}
+      onSave={handleSave}
+      onCreate={handleCreate}
+      handleResize={forceUpdateDebounced}
+      toggleBookmark={onClickBookmark}
+      onDismissToast={onDismissToast}
+      onConfirmToast={onConfirmToast}
+      isShowingToaster={isShowingToaster}
+    />
   );
 }
 

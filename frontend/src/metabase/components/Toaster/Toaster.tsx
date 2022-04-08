@@ -1,15 +1,18 @@
 import React, { useState, useEffect, HTMLAttributes } from "react";
+import { t } from "ttag";
+import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
+
 import {
   ToasterContainer,
   ToasterMessage,
   ToasterButton,
 } from "./Toaster.styled";
-import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
 
 export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
   message: string;
-  show: boolean;
+  confirmText?: string;
+  isShown: boolean;
   fixed?: boolean;
   className: string;
   onConfirm: () => void;
@@ -18,7 +21,8 @@ export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
 
 const Toaster = ({
   message,
-  show,
+  confirmText = t`Turn on`,
+  isShown,
   fixed,
   onConfirm,
   onDismiss,
@@ -28,7 +32,7 @@ const Toaster = ({
   const [render, setRender] = useState(false);
 
   useEffect(() => {
-    if (show) {
+    if (isShown) {
       setRender(true);
       setTimeout(() => {
         setOpen(true);
@@ -39,12 +43,12 @@ const Toaster = ({
         setRender(false);
       }, 300);
     }
-  }, [show]);
+  }, [isShown]);
 
   return render ? (
     <ToasterContainer show={open} fixed={fixed} className={className}>
       <ToasterMessage>{message}</ToasterMessage>
-      <ToasterButton onClick={onConfirm}>Turn on</ToasterButton>
+      <ToasterButton onClick={onConfirm}>{confirmText}</ToasterButton>
       <Icon name="close" color={color("bg-dark")} onClick={onDismiss} />
     </ToasterContainer>
   ) : null;
