@@ -338,6 +338,11 @@ export function editEventInCollection(event, timeline) {
   return `${timelineUrl}/events/${event.id}/edit`;
 }
 
+export function moveEventInCollection(event, timeline) {
+  const timelineUrl = timelineInCollection(timeline);
+  return `${timelineUrl}/events/${event.id}/move`;
+}
+
 export function deleteEventInCollection(event, timeline) {
   const timelineUrl = timelineInCollection(timeline);
   return `${timelineUrl}/events/${event.id}/delete`;

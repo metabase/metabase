@@ -14,6 +14,12 @@ const timelineProps = {
   id: (state: State, props: ModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
+  LoadingAndErrorWrapper,
+};
+
+const timelinesProps = {
+  query: { include: "events" },
+  LoadingAndErrorWrapper,
 };
 
 const timelineEventProps = {
@@ -39,6 +45,7 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
+  Timelines.loadList(timelinesProps),
   TimelineEvents.load(timelineEventProps),
   connect(null, mapDispatchToProps),
 )(MoveEventModal);

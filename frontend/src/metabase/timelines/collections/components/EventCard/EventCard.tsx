@@ -88,6 +88,10 @@ const getMenuItems = (
         link: Urls.editEventInCollection(event, timeline),
       },
       {
+        title: t`Move event`,
+        link: Urls.moveEventInCollection(event, timeline),
+      },
+      {
         title: t`Archive event`,
         action: () => onArchive?.(event),
       },
