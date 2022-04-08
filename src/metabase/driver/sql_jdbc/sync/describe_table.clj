@@ -2,6 +2,7 @@
   "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -223,12 +224,15 @@
   ([fst] fst)
   ([fst snd]
    (into {}
-         (for [json-column (keys snd)]
+         (for [json-column (set/union (keys snd) (keys fst))]
            (cond
-             (or (nil? fst) (= (hash (fst json-column)) (hash (snd json-column))))
+             (or (nil? fst)
+                 (nil? (fst json-column))
+                 (= (hash (fst json-column)) (hash (snd json-column))))
              [json-column (snd json-column)]
 
-             (nil? snd)
+             (or (nil? snd)
+                 (nil? (snd json-column)))
              [json-column (fst json-column)]
 
              (every? #(isa? % Number) [(fst json-column) (snd json-column)])
