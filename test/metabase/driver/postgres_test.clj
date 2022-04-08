@@ -347,7 +347,10 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
-                   {:name "describe_json_table"})))))))
+                   {:name "describe_json_table"}))))))))
+
+(deftest describe-big-nested-field-columns-test
+  (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
       (drop-if-exists-and-create-db! "big-json-test")
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
@@ -363,7 +366,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   :postgres
                   database
-                  {:name "big_json_table"})))))))
+                  {:name "big_json_table"}))))))))
 
 (mt/defdataset with-uuid
   [["users"
