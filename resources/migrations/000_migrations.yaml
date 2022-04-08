@@ -11340,6 +11340,22 @@ databaseChangeLog:
             columnName: timestamp
             newDataType: ${timestamp_type}
 
+  - changeSet:
+      id: v43.00-051
+      author: adam-james
+      comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Boolean value indicating if the timeline is the default one for the containing Collection
+                name: default
+                type: boolean
+                defaultValue: false
+                constraints:
+                  nullable: false
+            tableName: timeline
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

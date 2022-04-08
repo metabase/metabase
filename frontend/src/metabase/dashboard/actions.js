@@ -2,6 +2,8 @@
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
+import { t } from "ttag";
+
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
@@ -57,6 +59,7 @@ import {
   getDashboardComplete,
   getParameterValues,
   getDashboardParameterValuesSearchCache,
+  getLoadingDashCards,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -139,9 +142,13 @@ export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
-export const SET_DASHBOARD_SEEN = "metabase/dashboard/SET_SEEN";
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
+export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
+const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
+
+export const SET_LOADING_DASHCARDS_COMPLETE =
+  "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
 
 export const initialize = createAction(INITIALIZE);
 export const reset = createAction(RESET);
@@ -150,7 +157,6 @@ export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 export const setSidebar = createAction(SET_SIDEBAR);
 export const closeSidebar = createAction(CLOSE_SIDEBAR);
 
-export const setHasSeenLoadedDashboard = createAction(SET_DASHBOARD_SEEN);
 export const setShowLoadingCompleteFavicon = createAction(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
 );
@@ -456,34 +462,47 @@ export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
+
     const promises = getAllDashboardCards(dashboard)
       .map(({ card, dashcard }) => {
         if (!isVirtualDashCard(dashcard)) {
-          return dispatch(fetchCardData(card, dashcard, options));
+          return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+            return dispatch(updateLoadingTitle());
+          });
         }
       })
       .filter(p => !!p);
 
+    dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+
     Promise.all(promises).then(() => {
-      dispatch(setShowLoadingCompleteFavicon(true));
-      if (!document.hidden) {
-        dispatch(setHasSeenLoadedDashboard());
-        setTimeout(() => {
-          dispatch(setShowLoadingCompleteFavicon(false));
-        }, 3000);
-      } else {
-        document.addEventListener(
-          "visibilitychange",
-          () => {
-            dispatch(setHasSeenLoadedDashboard());
-            setTimeout(() => {
-              dispatch(setShowLoadingCompleteFavicon(false));
-            }, 3000);
-          },
-          { once: true },
-        );
-      }
+      dispatch(loadingComplete());
     });
+  },
+);
+
+const loadingComplete = createThunkAction(
+  SET_LOADING_DASHCARDS_COMPLETE,
+  () => dispatch => {
+    dispatch(setShowLoadingCompleteFavicon(true));
+    if (!document.hidden) {
+      dispatch(setDocumentTitle(""));
+      setTimeout(() => {
+        dispatch(setShowLoadingCompleteFavicon(false));
+      }, 3000);
+    } else {
+      dispatch(setDocumentTitle(t`Your dashboard is ready`));
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          dispatch(setDocumentTitle(""));
+          setTimeout(() => {
+            dispatch(setShowLoadingCompleteFavicon(false));
+          }, 3000);
+        },
+        { once: true },
+      );
+    }
   },
 );
 
@@ -672,6 +691,16 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     };
   };
 });
+
+const updateLoadingTitle = createThunkAction(
+  SET_DOCUMENT_TITLE,
+  () => (dispatch, getState) => {
+    const loadingDashCards = getLoadingDashCards(getState());
+    const totalCards = loadingDashCards.dashcardIds.length;
+    const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
+    return `${loadingComplete}/${totalCards} loaded`;
+  },
+);
 
 export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,

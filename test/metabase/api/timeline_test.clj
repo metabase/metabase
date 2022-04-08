@@ -1,8 +1,11 @@
 (ns metabase.api.timeline-test
   "Tests for /api/timeline endpoints."
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.http-client :as http]
             [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
             [metabase.server.middleware.util :as middleware.u]
@@ -37,7 +40,7 @@
           (testing "check that `:collection` key is hydrated on each timeline"
             (is (= #{id}
                    (->> (mt/user-http-request :rasta :get 200 "timeline")
-                         (filter (comp #{id} :collection_id))
+                        (filter (comp #{id} :collection_id))
                         (map #(get-in % [:collection :id]))
                         set))))
           (testing "check that `:can_write` key is hydrated"
@@ -45,7 +48,28 @@
                  #(contains? % :can_write)
                  (->> (mt/user-http-request :rasta :get 200 "timeline")
                       (filter (comp #{id} :collection_id))
-                      :collection)))))))))
+                      :collection)))))))
+    (testing "checks permissions"
+      (mt/with-temp* [Collection    [{coll-id :id :as collection} {:name "private collection"}]
+                      Timeline      [tl-a {:name "Timeline A" :collection_id coll-id}]
+                      Timeline      [tl-b {:name "Timeline B" :collection_id coll-id}]
+                      TimelineEvent [e-a  {:name "Event 1" :timeline_id (u/the-id tl-a)}]
+                      TimelineEvent [e-b  {:name "Event 2" :timeline_id (u/the-id tl-b)}]]
+        (letfn [(events-for [user events?]
+                  (->> (m/mapply mt/user-http-request user :get 200 "timeline" (when events? {:include "events"}))
+                       (filter (comp #{coll-id} :collection_id))))]
+          (perms/revoke-collection-permissions! (group/all-users) coll-id)
+          (testing "a non-admin user cannot see any timelines"
+            (is (= [] (events-for :rasta true)))
+            (is (= [] (events-for :rasta false))))
+          (testing "an admin user can see these timelines"
+            (is (partial= [{:name "Timeline A"
+                            :events [{:name "Event 1"}]}
+                           {:name "Timeline B"
+                            :events [{:name "Event 2"}]}]
+                          (events-for :crowberto true)))
+            (is (partial= [{:name "Timeline A"} {:name "Timeline B"}]
+                          (events-for :crowberto false)))))))))
 
 (deftest get-timeline-test
   (testing "GET /api/timeline/:id"
@@ -129,6 +153,7 @@
             ;; make an API call to create a timeline
             (mt/user-http-request :rasta :post 200 "timeline"
                                   {:name          "Rasta's TL"
+                                   :default       false
                                    :creator_id    (u/the-id (mt/fetch-user :rasta))
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"

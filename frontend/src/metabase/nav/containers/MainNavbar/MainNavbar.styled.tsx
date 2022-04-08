@@ -21,6 +21,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
 
   overflow-x: hidden;
   overflow-y: auto;
+  padding-bottom: 4rem;
 
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
@@ -77,6 +78,10 @@ export const CollectionsMoreIcon = styled(Icon)`
   color: ${color("text-medium")};
 `;
 
+export const CollectionMenuList = styled.ul`
+  padding: 0.5rem;
+`;
+
 export const LoadingContainer = styled.div`
   color: ${color("brand")};
   text-align: center;
@@ -88,8 +93,16 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div`
-  margin-left: auto;
+export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: ${space(0)};
+  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
+  display: flex;
+  align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
 `;

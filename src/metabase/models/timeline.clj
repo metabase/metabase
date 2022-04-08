@@ -26,8 +26,7 @@
 (defn- root-collection
   []
   (-> (collection/root-collection-with-ui-details nil)
-      collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (hydrate :can_write)))
 
 (defn hydrate-root-collection
   "Hydrate `:collection` on [[Timelines]] when the id is `nil`."

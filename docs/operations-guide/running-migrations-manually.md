@@ -1,6 +1,6 @@
 # Running Metabase database migrations manually
 
-When Metabase is starting up, it will typically attempt to determine if any changes are required to the application database, and, if so, will execute those changes automatically.  If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
+When Metabase is starting up, it will typically attempt to determine if any changes are required to the application database, and, if so, will execute those changes automatically. If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
 
 Simply set the following environment variable before launching Metabase:
 
@@ -30,4 +30,4 @@ When the application launches, if there are necessary database changes, you'll r
 
     2015-12-01 12:46:39,489 [INFO ] metabase.core :: Metabase Shutting Down ...
 
-You can then take the supplied SQL script and apply it to your database manually.  Once that's done just restart Metabase and everything should work normally.
+You can then take the supplied SQL script and apply it to your database manually. Once that's done just restart Metabase and everything should work normally.

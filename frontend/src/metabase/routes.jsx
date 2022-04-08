@@ -1,9 +1,6 @@
 import React from "react";
 
-import {
-  PLUGIN_LANDING_PAGE,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-} from "metabase/plugins";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
@@ -85,6 +82,7 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { canAccessAdmin } from "metabase/nav/utils";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
@@ -129,28 +127,13 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 
 const UserCanAccessSettings = UserAuthWrapper({
   predicate: currentUser =>
-    currentUser?.is_superuser ||
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessSettings(currentUser),
+    currentUser?.is_superuser || canAccessAdmin(currentUser),
   failureRedirectPath: "/unauthorized",
   authSelector: state => state.currentUser,
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessSettings",
   redirectAction: routerActions.replace,
 });
-
-const createRouteGuard = (userPredicate, displayName) => {
-  const Wrapper = UserAuthWrapper({
-    predicate: currentUser =>
-      currentUser?.is_superuser || userPredicate(currentUser),
-    failureRedirectPath: "/unauthorized",
-    authSelector: state => state.currentUser,
-    allowRedirectBack: false,
-    wrapperDisplayName: displayName,
-    redirectAction: routerActions.replace,
-  });
-
-  return Wrapper(({ children }) => children);
-};
 
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
@@ -165,16 +148,6 @@ const IsNotAuthenticated = MetabaseIsSetup(
 
 const CanAccessSettings = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
-);
-
-const CanAccessDataModel = createRouteGuard(
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
-  "CanAccessDataModel",
-);
-
-const CanAccessDatabaseManagement = createRouteGuard(
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDatabaseManagement,
-  "CanAccessDatabasesManagement",
 );
 
 export const getRoutes = store => (
@@ -382,13 +355,7 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(
-        store,
-        CanAccessSettings,
-        IsAdmin,
-        CanAccessDataModel,
-        CanAccessDatabaseManagement,
-      )}
+      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
