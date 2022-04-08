@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useCallback } from "react";
+import { msgid, ngettext } from "ttag";
+import { getEventCount } from "metabase/lib/timelines";
 import { Timeline } from "metabase-types/api";
 import {
   CardAside,
@@ -21,22 +23,51 @@ const TimelinePicker = ({ value, options, onChange }: TimelinePickerProps) => {
   return (
     <ListRoot>
       {options.map(option => (
-        <CardRoot
+        <TimelineCard
           key={option.id}
+          timeline={option}
           isSelected={option.id === value?.id}
-          onClick={() => onChange?.(option)}
-        >
-          <CardIconContainer>
-            <CardIcon name={option.icon} />
-          </CardIconContainer>
-          <CardBody>
-            <CardTitle>{option.name}</CardTitle>
-            <CardDescription>{option.description}</CardDescription>
-          </CardBody>
-          <CardAside>0 events</CardAside>
-        </CardRoot>
+          onChange={onChange}
+        />
       ))}
     </ListRoot>
+  );
+};
+
+interface TimelineCardProps {
+  timeline: Timeline;
+  isSelected: boolean;
+  onChange?: (value: Timeline) => void;
+}
+
+const TimelineCard = ({
+  timeline,
+  isSelected,
+  onChange,
+}: TimelineCardProps): JSX.Element => {
+  const eventCount = getEventCount(timeline);
+
+  const handleClick = useCallback(() => {
+    onChange?.(timeline);
+  }, [timeline, onChange]);
+
+  return (
+    <CardRoot key={timeline.id} isSelected={isSelected} onClick={handleClick}>
+      <CardIconContainer>
+        <CardIcon name={timeline.icon} />
+      </CardIconContainer>
+      <CardBody>
+        <CardTitle>{timeline.name}</CardTitle>
+        <CardDescription>{timeline.description}</CardDescription>
+      </CardBody>
+      <CardAside>
+        {ngettext(
+          msgid`${eventCount} event`,
+          `${eventCount} events`,
+          eventCount,
+        )}
+      </CardAside>
+    </CardRoot>
   );
 };
 
