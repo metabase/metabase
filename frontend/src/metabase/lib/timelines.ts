@@ -26,3 +26,7 @@ export const getTimelineIcons = () => {
 export const getDefaultTimelineIcon = () => {
   return "star";
 };
+
+export const getEventCount = ({ events = [], archived }: Timeline) => {
+  return events.filter(e => e.archived === archived).length;
+};

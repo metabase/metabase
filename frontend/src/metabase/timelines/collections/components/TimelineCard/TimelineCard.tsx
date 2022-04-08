@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { getEventCount } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Timeline } from "metabase-types/api";
 import {
@@ -54,10 +55,6 @@ const TimelineCard = ({
       )}
     </CardRoot>
   );
-};
-
-const getEventCount = (timeline: Timeline) => {
-  return timeline.events ? timeline.events.filter(e => !e.archived).length : 0;
 };
 
 const getMenuItems = (
