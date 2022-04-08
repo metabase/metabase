@@ -7,17 +7,20 @@ import Link from "metabase/core/components/Link";
 import DateTime from "metabase/components/DateTime";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import PaginationControls from "metabase/components/PaginationControls";
 
+import PersistedModels from "metabase/entities/persisted-models";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
 import { useListSelect } from "metabase/hooks/use-list-select";
+import { usePagination } from "metabase/hooks/use-pagination";
 
 import { ModelCacheRefreshJob } from "./types";
-import jobs from "./data";
 import {
   ErrorBox,
   IconButtonContainer,
+  PaginationControlsContainer,
   StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
 
@@ -28,25 +31,26 @@ type JobTableItemProps = {
 };
 
 function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
-  const modelUrl = Urls.dataset(job.model);
-  const collectionUrl = Urls.collection(job.model.collection);
+  const modelUrl = Urls.dataset({ id: job.card_id, name: job.card_name });
+  const collectionUrl = Urls.collection({
+    id: job.collection_id,
+    name: job.collection_name,
+  });
 
-  const lastRunAtLabel = capitalize(moment(job.last_run_at).fromNow());
-  const lastRunTriggerLabel =
-    job.last_run_trigger === "api" ? "API" : t`Scheduled`;
+  const lastRunAtLabel = capitalize(moment(job.refresh_begin).fromNow());
 
   const renderStatus = useCallback(() => {
-    if (job.status === "completed") {
+    if (job.state === "persisted") {
       return t`Completed`;
     }
-    if (job.status === "error") {
+    if (job.state === "error") {
       return (
         <Link to={`/admin/tools/model-caching/${job.id}`}>
           <ErrorBox>{job.error}</ErrorBox>
         </Link>
       );
     }
-    return job.status;
+    return job.state;
   }, [job]);
 
   return (
@@ -56,21 +60,19 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
       </th>
       <th>
         <span>
-          <StyledLink to={modelUrl}>{job.model.name}</StyledLink> {t`in`}{" "}
+          <StyledLink to={modelUrl}>{job.card_name}</StyledLink> {t`in`}{" "}
           <StyledLink to={collectionUrl}>
-            {job.model.collection.name}
+            {job.collection_name || t`Our analytics`}
           </StyledLink>
         </span>
       </th>
       <th>{renderStatus()}</th>
       <th>
-        <Tooltip tooltip={<DateTime value={job.last_run_at} />}>
+        <Tooltip tooltip={<DateTime value={job.refresh_begin} />}>
           {lastRunAtLabel}
         </Tooltip>
       </th>
-      <th>{lastRunTriggerLabel}</th>
       <th>{job.creator.common_name}</th>
-      <th>{job.updated_by.common_name}</th>
       <th>
         <Tooltip tooltip={t`Refresh`}>
           <IconButtonContainer>
@@ -82,6 +84,8 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 function getJobId(job: ModelCacheRefreshJob) {
   return job.id;
 }
@@ -90,53 +94,80 @@ type Props = {
   children: JSX.Element;
 };
 
+type PersistedModelsListLoaderProps = {
+  persistedModels: ModelCacheRefreshJob[];
+  metadata: {
+    total: number;
+    limit: number | null;
+    offset: number | null;
+  };
+};
+
 function ModelCacheRefreshJobs({ children }: Props) {
+  const { page, handleNextPage, handlePreviousPage } = usePagination();
   const { selected, toggleItem, toggleAll, getIsSelected } = useListSelect(
     getJobId,
   );
 
-  const areAllJobsSelected = selected.length === jobs.length;
-
-  const toggleAllJobs = () => toggleAll(jobs);
+  const query = {
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+  };
 
   return (
     <>
-      <table className="ContentTable border-bottom">
-        <colgroup>
-          <col style={{ width: "1%" }} />
-          <col />
-          <col style={{ width: "40%" }} />
-          <col style={{ width: "10%" }} />
-          <col style={{ width: "10%" }} />
-          <col style={{ width: "12%" }} />
-          <col style={{ width: "12%" }} />
-          <col style={{ width: "1%" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>
-              <CheckBox checked={areAllJobsSelected} onChange={toggleAllJobs} />
-            </th>
-            <th>{t`Model`}</th>
-            <th>{t`Status`}</th>
-            <th>{t`Last run at`}</th>
-            <th>{t`Last run trigger`}</th>
-            <th>{t`Created by`}</th>
-            <th>{t`Updated by`}</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {jobs.map(job => (
-            <JobTableItem
-              key={job.id}
-              job={job}
-              isSelected={getIsSelected(job)}
-              handleSelect={() => toggleItem(job)}
-            />
-          ))}
-        </tbody>
-      </table>
+      <PersistedModels.ListLoader query={query} keepListWhileLoading>
+        {({ persistedModels, metadata }: PersistedModelsListLoaderProps) => {
+          const areAllJobsSelected = selected.length === persistedModels.length;
+          const hasPagination = metadata.total > PAGE_SIZE;
+          const toggleAllJobs = () => toggleAll(persistedModels);
+
+          return (
+            <>
+              <table className="ContentTable border-bottom">
+                <thead>
+                  <tr>
+                    <th>
+                      <CheckBox
+                        checked={areAllJobsSelected}
+                        onChange={toggleAllJobs}
+                      />
+                    </th>
+                    <th>{t`Model`}</th>
+                    <th>{t`Status`}</th>
+                    <th>{t`Last run at`}</th>
+                    <th>{t`Created by`}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {persistedModels.map(job => (
+                    <JobTableItem
+                      key={job.id}
+                      job={job}
+                      isSelected={getIsSelected(job)}
+                      handleSelect={() => toggleItem(job)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+              {hasPagination && (
+                <PaginationControlsContainer>
+                  <PaginationControls
+                    showTotal
+                    page={page}
+                    pageSize={PAGE_SIZE}
+                    total={metadata.total}
+                    itemsLength={persistedModels.length}
+                    onNextPage={handleNextPage}
+                    onPreviousPage={handlePreviousPage}
+                  />
+                </PaginationControlsContainer>
+              )}
+            </>
+          );
+        }}
+      </PersistedModels.ListLoader>
       {children}
     </>
   );

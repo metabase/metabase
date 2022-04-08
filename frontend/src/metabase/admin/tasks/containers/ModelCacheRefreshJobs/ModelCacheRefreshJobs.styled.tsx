@@ -34,3 +34,9 @@ export const IconButtonContainer = styled.button`
     }
   }
 `;
+
+export const PaginationControlsContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin: 1.5rem 0;
+`;
