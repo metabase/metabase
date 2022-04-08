@@ -304,7 +304,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2, \"c\": 3}');"
+                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 44}');"
                                   "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\", \"c\": 3.22}');")])
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= :type/SerializedJSON
@@ -336,7 +336,13 @@
                      :base-type         :type/Number,
                      :database-position 0,
                      :visibility-type   :details-only,
-                     :nfc-path          [:incoherent_json_val "c"]}}
+                     :nfc-path          [:incoherent_json_val "c"]}
+                    {:name              "incoherent_json_val → d",
+                     :database-type     :type/Integer,
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :visibility-type   :details-only,
+                     :nfc-path          [:incoherent_json_val "d"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
