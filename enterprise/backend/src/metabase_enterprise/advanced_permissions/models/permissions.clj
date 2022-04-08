@@ -123,7 +123,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn data-model-write-perms-path
-  "Returns the permissions path required to edit the data model for a table specified by `path-components`."
+  "Returns the permissions path required to edit the data model for a table specified by `path-components`.
+  This is a simple wrapper around `perms/feature-perms-path`, but it lives in an EE namespace to ensure that data model
+  permissions only work when EE code can be loaded."
   [& path-components]
   (apply (partial perms/feature-perms-path :data-model :all) path-components))
 
@@ -176,6 +178,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Data model permissions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn db-details-write-perms-path
+  "Returns the permissions path required to edit the database details for the provided database ID.
+  This is a simple wrapper around `perms/feature-perms-path`, but it lives in an EE namespace to ensure that database
+  permissions only work when EE code can be loaded."
+  [db-id]
+  (perms/feature-perms-path :details :yes db-id))
 
 (s/defn update-db-details-permissions!
   "Update the DB details permissions for a database."
