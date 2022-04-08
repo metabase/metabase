@@ -17,11 +17,11 @@ export interface TimelinePickerProps {
   onChange?: (value: Timeline) => void;
 }
 
-const TimelinePicker = ({ options }: TimelinePickerProps) => {
+const TimelinePicker = ({ options, onChange }: TimelinePickerProps) => {
   return (
     <ListRoot>
       {options.map(option => (
-        <CardRoot key={option.id}>
+        <CardRoot key={option.id} onClick={() => onChange?.(option)}>
           <CardIconContainer>
             <CardIcon name={option.icon} />
           </CardIconContainer>
