@@ -21,3 +21,27 @@ export const SqlIconButton = styled(Button)`
 SqlIconButton.defaultProps = {
   icon: "sql",
 };
+
+export const NativeCodeWrapper = styled.pre`
+  box-sizing: border-box;
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: bottom;
+  width: 100%;
+`;
+
+export const NativeCodeContainer = styled.code`
+  box-sizing: border-box;
+  display: inline-block;
+  margin: 0;
+  max-height: 30vh;
+  max-width: 100%;
+  overflow: auto;
+  vertical-align: bottom;
+  white-space: pre;
+  width: 100%;
+  word-break: break-all;
+`;
