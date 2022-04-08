@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   openNativeEditor,
-  openNotebookEditor,
+  startNewQuestion,
   openNavigationSidebar,
   navigationSidebar,
 } from "__support__/e2e/cypress";
@@ -45,7 +45,7 @@ export function issue9027() {
     questionName,
     exists = true,
   ) {
-    openNotebookEditor({ fromCurrentPage: true });
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
 
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");

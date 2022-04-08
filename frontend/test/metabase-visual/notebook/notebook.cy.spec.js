@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;
@@ -120,7 +120,7 @@ describe("visual tests > notebook", () => {
   });
 
   it("data picker", () => {
-    openNotebookEditor();
+    startNewQuestion();
     cy.findByText("Sample Database");
     cy.percySnapshot();
   });

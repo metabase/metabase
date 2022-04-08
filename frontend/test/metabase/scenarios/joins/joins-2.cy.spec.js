@@ -3,7 +3,7 @@ import {
   openOrdersTable,
   popover,
   visualize,
-  openNotebookEditor,
+  startNewQuestion,
   enterCustomColumnDetails,
   visitQuestionAdhoc,
   summarize,
@@ -295,7 +295,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       // Join two previously saved questions
-      openNotebookEditor();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
 
       cy.findByText("12928_Q1").click();

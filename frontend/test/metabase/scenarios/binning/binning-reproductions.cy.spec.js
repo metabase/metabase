@@ -5,7 +5,7 @@ import {
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
-  openNotebookEditor,
+  startNewQuestion,
   summarize,
 } from "__support__/e2e/cypress";
 
@@ -165,7 +165,7 @@ describe("binning related reproductions", () => {
 
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
-    openNotebookEditor();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("11439").click();
     visualize();

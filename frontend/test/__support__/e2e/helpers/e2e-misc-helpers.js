@@ -44,25 +44,6 @@ export function openNativeEditor({
 }
 
 /**
- * Open notebook editor.
- *
- * @param {object} options
- * @param {boolean} [options.fromCurrentPage] - Open notebook editor from current location
- * @example
- * openNotebookEditor({ fromCurrentPage: true })
- */
-export function openNotebookEditor({ fromCurrentPage } = {}) {
-  if (!fromCurrentPage) {
-    cy.visit("/");
-  }
-
-  cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
-}
-
-/**
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
  * @param {string} [xhrAlias ="dataset"]
