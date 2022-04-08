@@ -13,85 +13,95 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept(
+      "GET",
+      "/api/table/2/query_metadata?include_sensitive_fields=true",
+    ).as("tableMetadataFetch");
   });
 
-  it("allows changing data model permission for a database", () => {
+  it("allows data model permission for a table in database", () => {
     cy.visit("/admin/permissions/data/database/1");
 
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
+    // Change permission
+    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
+    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+
+    // Save permission graph
+    cy.button("Save changes").click();
+    modal().within(() => {
+      cy.findByText("Save permissions?");
+      cy.findByText("Are you sure you want to do this?");
+      cy.button("Yes").click();
+    });
+
+    // Assert the permission has changed
+    assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+
+    // Check limited access as a non-admin user
+    cy.signInAsNormalUser();
+    cy.visit("/");
+
+    // Go to the admin settings
+    cy.icon("gear").click();
+    cy.findByText("Admin settings").click();
+
+    // Assert the Data Model page state
+    cy.findByText("Data Model");
+    cy.findByText("1 Queryable Table");
+    cy.findByText("Orders").click();
+
+    cy.wait("@tableMetadataFetch");
+
+    // Update the table name
+    cy.get("[name=display_name]")
+      .should("have.value", "Orders")
+      .clear()
+      .should("have.value", "")
+      .type("Changed Name")
+      .blur();
+    cy.wait("@tableUpdate");
+
+    cy.findByText("Updated Table display_name");
+
+    // Update the table visibility
+    cy.findByText("Hidden").click();
+    cy.findByText("1 Hidden Table");
+  });
+
+  it("allows changing data model permission for an entire database", () => {
+    cy.visit("/admin/permissions/data/database/1");
+
+    // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
 
+    // Save permission graph
     cy.button("Save changes").click();
-
     modal().within(() => {
       cy.findByText("Save permissions?");
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
 
-    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
-  });
-
-  it("allows changing data model permission for a table", () => {
-    cy.visit("/admin/permissions/data/database/1/table/1");
-
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-
-    modal().within(() => {
-      cy.findByText("Change access to this database to limited?");
-      cy.button("Change").click();
-    });
-
-    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
-
+    // Assert the permission has changed
     assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
 
-    // Shows granular data model permission on the database level
-    cy.visit("/admin/permissions/data/database/1");
+    // Check limited access as a non-admin user
+    cy.signInAsNormalUser();
+    cy.visit("/");
 
-    assertPermissionForItem(
-      "All Users",
-      DATA_MODEL_PERMISSION_INDEX,
-      "Granular",
-    );
-  });
+    // Go to the admin settings
+    cy.icon("gear").click();
+    cy.findByText("Admin settings").click();
 
-  it("sets the data model permission to `No` when the data access permission is revoked", () => {
-    cy.visit("/admin/permissions/data/database/1");
-    const groupName = "data";
-
-    modifyPermission(groupName, DATA_MODEL_PERMISSION_INDEX, "Edit");
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
-
-    modifyPermission(
-      groupName,
-      DATA_ACCESS_PERMISSION_INDEX,
-      "No self-service",
-    );
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
-
-    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "No");
+    // Assert the Data Model page state
+    cy.findByText("Data Model");
+    cy.findByText("4 Queryable Tables");
+    cy.findByText("Orders");
+    cy.findByText("Products");
+    cy.findByText("People");
+    cy.findByText("Reviews");
   });
 });

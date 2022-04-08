@@ -25,7 +25,6 @@ export const getFeatureLevelDataPermissions = (
     groupId,
     isAdmin,
     permissions,
-    dataAccessPermissionValue,
     permissionSubject,
   );
 

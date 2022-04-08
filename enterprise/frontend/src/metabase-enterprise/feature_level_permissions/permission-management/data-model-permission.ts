@@ -11,7 +11,6 @@ import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-  isRestrictivePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { t } from "ttag";
 
@@ -81,22 +80,21 @@ export const buildDataModelPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  dataAccessPermissionValue: string,
   permissionSubject: PermissionSubject,
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
 
-  const value = isRestrictivePermission(dataAccessPermissionValue)
-    ? DATA_MODEL_PERMISSION_OPTIONS.none.value
-    : getPermissionValue(permissions, groupId, entityId, permissionSubject);
-
-  const isDisabled =
-    isAdmin || isRestrictivePermission(dataAccessPermissionValue);
+  const value = getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+  );
 
   return {
     permission: "data-model",
     type: "data-model",
-    isDisabled,
+    isDisabled: isAdmin,
     disabledTooltip: isAdmin
       ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
       : DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS,
