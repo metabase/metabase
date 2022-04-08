@@ -2,9 +2,10 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
+import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline } from "metabase-types/api";
-import { ModalDangerButton, ModalBody } from "./EditTimelineModal.styled";
+import { ModalDangerButton } from "./EditTimelineModal.styled";
 
 export interface EditTimelineModalProps {
   timeline: Timeline;

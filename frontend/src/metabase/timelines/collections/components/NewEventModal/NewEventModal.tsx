@@ -4,9 +4,9 @@ import { getDefaultTimezone } from "metabase/lib/time";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
+import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import { ModalBody } from "./NewEventModal.styled";
 
 export interface NewEventModalProps {
   timeline?: Timeline;

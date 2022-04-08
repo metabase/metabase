@@ -2,8 +2,9 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import ModalBody from "metabase/timelines/common/components/ModalBody";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import { ModalBody, ModalFooter } from "./DeleteEventModal.styled";
+import { ModalFooter } from "./DeleteEventModal.styled";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;

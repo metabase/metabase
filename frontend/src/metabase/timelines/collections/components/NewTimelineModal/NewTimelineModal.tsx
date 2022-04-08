@@ -4,9 +4,9 @@ import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline } from "metabase-types/api";
-import { ModalBody } from "./NewTimelineModal.styled";
 
 export interface NewTimelineModalProps {
   collection: Collection;
