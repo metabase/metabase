@@ -2,9 +2,8 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import ModalBody from "metabase/timelines/common/components/ModalBody";
+import ModalFooter from "metabase/timelines/common/components/ModalFooter";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import { ModalFooter } from "./DeleteEventModal.styled";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;
@@ -34,12 +33,10 @@ const DeleteEventModal = ({
   return (
     <div>
       <ModalHeader title={t`Delete ${event?.name}?`} onClose={onClose} />
-      <ModalBody>
-        <ModalFooter>
-          <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
-        </ModalFooter>
-      </ModalBody>
+      <ModalFooter>
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
+      </ModalFooter>
     </div>
   );
 };

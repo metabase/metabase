@@ -1,10 +1,9 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
-import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import ModalFooter from "metabase/timelines/common/components/ModalFooter";
 import { Collection, Timeline } from "metabase-types/api";
-import { ModalFooter } from "./DeleteTimelineModal.styled";
 
 export interface DeleteTimelineModalProps {
   timeline: Timeline;
@@ -28,12 +27,10 @@ const DeleteTimelineModal = ({
   return (
     <div>
       <ModalHeader title={t`Delete ${timeline?.name}?`} onClose={onClose} />
-      <ModalBody>
-        <ModalFooter>
-          <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
-        </ModalFooter>
-      </ModalBody>
+      <ModalFooter>
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
+      </ModalFooter>
     </div>
   );
 };
