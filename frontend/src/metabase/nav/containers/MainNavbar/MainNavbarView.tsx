@@ -22,6 +22,7 @@ import { SelectedItem } from "./types";
 import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import {
+  AddYourOwnDataLink,
   BrowseLink,
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
@@ -42,21 +43,24 @@ type Props = {
   isOpen: boolean;
   currentUser: User;
   bookmarks: Bookmark[];
+  hasDataAccess: boolean;
+  hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
-  hasDataAccess: boolean;
   handleCloseNavbar: () => void;
 };
 
 const BROWSE_URL = "/browse";
 const OTHER_USERS_COLLECTIONS_URL = Urls.collection({ id: "users" });
 const ARCHIVE_URL = "/archive";
+const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
   isOpen,
   currentUser,
   bookmarks,
   collections,
+  hasOwnDatabase,
   selectedItem,
   hasDataAccess,
   handleCloseNavbar,
@@ -122,6 +126,20 @@ function MainNavbarView({
               >
                 {t`Browse data`}
               </BrowseLink>
+              {!hasOwnDatabase && (
+                <AddYourOwnDataLink
+                  icon="database"
+                  url={ADD_YOUR_OWN_DATA_URL}
+                  isSelected={
+                    isMiscLinkSelected &&
+                    selectedItem.url.startsWith(ADD_YOUR_OWN_DATA_URL)
+                  }
+                  onClick={onItemSelect}
+                  data-metabase-event="NavBar;Add your own data"
+                >
+                  {t`Add your own data`}
+                </AddYourOwnDataLink>
+              )}
             </SidebarSection>
           )}
         </ul>

@@ -14,7 +14,10 @@ import Collections, {
   buildCollectionTree,
 } from "metabase/entities/collections";
 import { openNavbar, closeNavbar } from "metabase/redux/app";
-import { getHasDataAccess } from "metabase/new_query/selectors";
+import {
+  getHasOwnDatabase,
+  getHasDataAccess,
+} from "metabase/new_query/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
   nonPersonalOrArchivedCollection,
@@ -30,6 +33,7 @@ function mapStateToProps(state: unknown) {
   return {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
+    hasOwnDatabase: getHasOwnDatabase(state),
   };
 }
 
@@ -50,6 +54,7 @@ type Props = {
   collections: Collection[];
   rootCollection: Collection;
   hasDataAccess: boolean;
+  hasOwnDatabase: boolean;
   allFetched: boolean;
   location: {
     pathname: string;
@@ -64,6 +69,7 @@ type Props = {
 function MainNavbarContainer({
   isOpen,
   currentUser,
+  hasOwnDatabase,
   collections = [],
   rootCollection,
   hasDataAccess,
@@ -143,6 +149,7 @@ function MainNavbarContainer({
           isOpen={isOpen}
           currentUser={currentUser}
           collections={collectionTree}
+          hasOwnDatabase={hasOwnDatabase}
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
           handleCloseNavbar={closeNavbar}
