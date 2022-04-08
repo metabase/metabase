@@ -128,6 +128,13 @@ function ModelCacheRefreshJobs({ children }: Props) {
           return (
             <>
               <table className="ContentTable border-bottom">
+                <colgroup>
+                  <col style={{ width: "30%" }} />
+                  <col style={{ width: "40%" }} />
+                  <col />
+                  <col />
+                  <col style={{ width: "5%" }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>
