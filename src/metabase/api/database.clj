@@ -613,8 +613,7 @@
                         (log/info e
                                   (tru "Error unpersisting model with card-id {0}"
                                        (:card_id unpersist)))))))))
-          (classloader/require 'metabase.task.persist-refresh)
-          ((resolve 'metabase.task.persist-refresh/unschedule-persistence-for-database) database)
+          (task.persist-refresh/unschedule-persistence-for-database database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))
