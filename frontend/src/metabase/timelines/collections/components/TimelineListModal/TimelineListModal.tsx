@@ -50,11 +50,7 @@ const TimelineListModal = ({
       </ModalHeader>
       <ModalBody isTopAligned={hasTimelines}>
         {hasTimelines ? (
-          <TimelineList
-            timelines={sortedTimelines}
-            collection={collection}
-            onUnarchive={onUnarchive}
-          />
+          <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
         ) : isArchive ? (
           <SearchEmptyState isTimeline={isArchive} />
         ) : (
