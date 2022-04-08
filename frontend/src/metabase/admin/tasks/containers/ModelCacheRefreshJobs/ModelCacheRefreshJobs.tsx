@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import moment from "moment";
+import { connect } from "react-redux";
 
-import CheckBox from "metabase/core/components/CheckBox";
 import Link from "metabase/core/components/Link";
 import DateTime from "metabase/components/DateTime";
 import Icon from "metabase/components/Icon";
@@ -12,9 +12,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import PersistedModels from "metabase/entities/persisted-models";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
-import { CardApi } from "metabase/services";
 
-import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 
 import { ModelCacheRefreshJob } from "./types";
@@ -27,11 +25,10 @@ import {
 
 type JobTableItemProps = {
   job: ModelCacheRefreshJob;
-  isSelected: boolean;
-  handleSelect: () => void;
+  onRefresh: () => void;
 };
 
-function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
+function JobTableItem({ job, onRefresh }: JobTableItemProps) {
   const modelUrl = Urls.dataset({ id: job.card_id, name: job.card_name });
   const collectionUrl = Urls.collection({
     id: job.collection_id,
@@ -57,13 +54,8 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
     return job.state;
   }, [job]);
 
-  const handleRefresh = () => CardApi.refreshModelCache({ id: job.card_id });
-
   return (
     <tr key={job.id}>
-      <th>
-        <CheckBox checked={isSelected} onChange={handleSelect} />
-      </th>
       <th>
         <span>
           <StyledLink to={modelUrl}>{job.card_name}</StyledLink> {t`in`}{" "}
@@ -81,7 +73,7 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
       <th>{job.creator.common_name}</th>
       <th>
         <Tooltip tooltip={t`Refresh`}>
-          <IconButtonContainer onClick={handleRefresh}>
+          <IconButtonContainer onClick={onRefresh}>
             <Icon name="refresh" />
           </IconButtonContainer>
         </Tooltip>
@@ -92,12 +84,9 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
 
 const PAGE_SIZE = 20;
 
-function getJobId(job: ModelCacheRefreshJob) {
-  return job.id;
-}
-
 type Props = {
   children: JSX.Element;
+  onRefresh: (job: ModelCacheRefreshJob) => void;
 };
 
 type PersistedModelsListLoaderProps = {
@@ -109,11 +98,13 @@ type PersistedModelsListLoaderProps = {
   };
 };
 
-function ModelCacheRefreshJobs({ children }: Props) {
+const mapDispatchToProps = {
+  onRefresh: (job: ModelCacheRefreshJob) =>
+    PersistedModels.objectActions.refreshCache(job),
+};
+
+function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
-  const { selected, toggleItem, toggleAll, getIsSelected } = useListSelect(
-    getJobId,
-  );
 
   const query = {
     limit: PAGE_SIZE,
@@ -124,9 +115,7 @@ function ModelCacheRefreshJobs({ children }: Props) {
     <>
       <PersistedModels.ListLoader query={query} keepListWhileLoading>
         {({ persistedModels, metadata }: PersistedModelsListLoaderProps) => {
-          const areAllJobsSelected = selected.length === persistedModels.length;
           const hasPagination = metadata.total > PAGE_SIZE;
-          const toggleAllJobs = () => toggleAll(persistedModels);
 
           return (
             <>
@@ -140,12 +129,6 @@ function ModelCacheRefreshJobs({ children }: Props) {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>
-                      <CheckBox
-                        checked={areAllJobsSelected}
-                        onChange={toggleAllJobs}
-                      />
-                    </th>
                     <th>{t`Model`}</th>
                     <th>{t`Status`}</th>
                     <th>{t`Last run at`}</th>
@@ -158,8 +141,7 @@ function ModelCacheRefreshJobs({ children }: Props) {
                     <JobTableItem
                       key={job.id}
                       job={job}
-                      isSelected={getIsSelected(job)}
-                      handleSelect={() => toggleItem(job)}
+                      onRefresh={() => onRefresh(job)}
                     />
                   ))}
                 </tbody>
@@ -186,4 +168,4 @@ function ModelCacheRefreshJobs({ children }: Props) {
   );
 }
 
-export default ModelCacheRefreshJobs;
+export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);

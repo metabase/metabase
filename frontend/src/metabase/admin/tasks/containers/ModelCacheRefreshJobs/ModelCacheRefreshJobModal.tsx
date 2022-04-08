@@ -21,6 +21,7 @@ type ModelCacheRefreshJobModalOwnProps = {
 
 type ModelCacheRefreshJobModalStateProps = {
   job?: ModelCacheRefreshJob;
+  onRefresh: (job: ModelCacheRefreshJob) => void;
 };
 
 type ModelCacheRefreshJobModalProps = ModelCacheRefreshJobModalOwnProps &
@@ -38,15 +39,28 @@ function mapStateToProps(
   };
 }
 
+const mapDispatchToProps = {
+  onRefresh: (job: ModelCacheRefreshJob) =>
+    PersistedModels.objectActions.refreshCache(job),
+};
+
 function ModelCacheRefreshJobModal({
   job,
   onClose,
+  onRefresh,
 }: ModelCacheRefreshJobModalProps) {
   useEffect(() => {
     if (job?.state === "persisted" && onClose) {
       onClose();
     }
   }, [job, onClose]);
+
+  const onRefreshClick = () => {
+    if (job) {
+      onRefresh(job);
+      onClose();
+    }
+  };
 
   return (
     <ModalContent
@@ -55,7 +69,11 @@ function ModelCacheRefreshJobModal({
       footer={
         job
           ? [
-              <Button key="retry" primary>{t`Retry now`}</Button>,
+              <Button
+                key="retry"
+                primary
+                onClick={onRefreshClick}
+              >{t`Retry now`}</Button>,
               <Link
                 key="edit"
                 className="Button"
@@ -70,4 +88,7 @@ function ModelCacheRefreshJobModal({
   );
 }
 
-export default connect(mapStateToProps)(ModelCacheRefreshJobModal);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ModelCacheRefreshJobModal);
