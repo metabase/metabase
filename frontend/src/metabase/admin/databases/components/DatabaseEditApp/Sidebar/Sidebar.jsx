@@ -16,6 +16,7 @@ const propTypes = {
   syncDatabaseSchema: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
+  isAdmin: PropTypes.bool,
 };
 
 const DatabaseEditAppSidebar = ({
@@ -24,6 +25,7 @@ const DatabaseEditAppSidebar = ({
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  isAdmin,
 }) => {
   const discardSavedFieldValuesModal = useRef();
   const deleteDatabaseModal = useRef();
@@ -83,19 +85,21 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            <li className="mt2">
-              <ModalWithTrigger
-                ref={deleteDatabaseModal}
-                triggerClasses="Button Button--deleteDatabase Button--danger"
-                triggerElement={t`Remove this database`}
-              >
-                <DeleteDatabaseModal
-                  database={database}
-                  onClose={() => deleteDatabaseModal.current.toggle()}
-                  onDelete={() => deleteDatabase(database.id, true)}
-                />
-              </ModalWithTrigger>
-            </li>
+            {isAdmin && (
+              <li className="mt2">
+                <ModalWithTrigger
+                  ref={deleteDatabaseModal}
+                  triggerClasses="Button Button--deleteDatabase Button--danger"
+                  triggerElement={t`Remove this database`}
+                >
+                  <DeleteDatabaseModal
+                    database={database}
+                    onClose={() => deleteDatabaseModal.current.toggle()}
+                    onDelete={() => deleteDatabase(database.id, true)}
+                  />
+                </ModalWithTrigger>
+              </li>
+            )}
           </ol>
         </div>
       </div>

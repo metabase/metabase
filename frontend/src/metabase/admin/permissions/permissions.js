@@ -18,6 +18,7 @@ import {
   updateNativePermission,
   updateSchemasPermission,
   updateTablesPermission,
+  updatePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
@@ -217,6 +218,15 @@ const dataPermissions = handleActions(
         const { value, groupId, entityId, metadata, permissionInfo } = payload;
 
         const database = metadata.database(entityId.databaseId);
+
+        if (permissionInfo.type === "details") {
+          return updatePermission(
+            state,
+            groupId,
+            [entityId.databaseId, permissionInfo.type],
+            value,
+          );
+        }
 
         if (permissionInfo.type === "native") {
           return updateNativePermission(

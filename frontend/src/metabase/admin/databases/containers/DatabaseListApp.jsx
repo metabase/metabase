@@ -13,6 +13,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
@@ -37,6 +39,7 @@ const getReloadInterval = (state, props, databases = []) => {
 };
 
 const mapStateToProps = (state, props) => ({
+  isAdmin: getUserIsAdmin(state),
   hasSampleDatabase: Database.selectors.getHasSampleDatabase(state),
   isAddingSampleDatabase: getIsAddingSampleDatabase(state),
   addSampleDatabaseError: getAddSampleDatabaseError(state),
@@ -56,9 +59,11 @@ const mapDispatchToProps = {
   addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
 };
-
 @Database.loadList({
   reloadInterval: getReloadInterval,
+  query: () => ({
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+  }),
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
@@ -103,6 +108,7 @@ export default class DatabaseList extends Component {
       addSampleDatabaseError,
       engines,
       deletionError,
+      isAdmin,
     } = this.props;
     const { isSyncingModalOpened } = this.state;
 
@@ -111,10 +117,12 @@ export default class DatabaseList extends Component {
     return (
       <div className="wrapper">
         <section className="PageHeader px2 clearfix">
-          <Link
-            to="/admin/databases/create"
-            className="Button Button--primary float-right"
-          >{t`Add database`}</Link>
+          {isAdmin && (
+            <Link
+              to="/admin/databases/create"
+              className="Button Button--primary float-right"
+            >{t`Add database`}</Link>
+          )}
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
         {error && (
