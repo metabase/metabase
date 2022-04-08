@@ -178,7 +178,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         {getAdminPermissionsRoutes(store)}
       </Route>
 
-      <Route path="tools" component={IsAdmin}>
+      <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={Tools}>
           <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
           <Route
