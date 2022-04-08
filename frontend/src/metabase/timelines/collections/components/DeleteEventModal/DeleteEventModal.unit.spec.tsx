@@ -2,7 +2,6 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
@@ -24,7 +23,6 @@ const getProps = (
 ): DeleteEventModalProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   onSubmit: jest.fn(),
   onCancel: jest.fn(),
   onClose: jest.fn(),

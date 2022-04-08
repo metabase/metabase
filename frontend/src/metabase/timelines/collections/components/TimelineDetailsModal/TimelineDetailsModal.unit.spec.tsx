@@ -75,6 +75,5 @@ const getProps = (
   opts?: Partial<TimelineDetailsModalProps>,
 ): TimelineDetailsModalProps => ({
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   ...opts,
 });
