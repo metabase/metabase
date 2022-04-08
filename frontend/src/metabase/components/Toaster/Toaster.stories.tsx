@@ -14,7 +14,7 @@ const Template: ComponentStory<typeof Toaster> = args => {
 export const Default = Template.bind({});
 Default.args = {
   message: "Would you like to be notified when this dashboard is done loading?",
-  show: true,
+  isShown: true,
   onConfirm: () => {
     alert("Confirmed");
   },
