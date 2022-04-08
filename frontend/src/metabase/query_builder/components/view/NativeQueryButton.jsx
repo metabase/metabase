@@ -10,7 +10,11 @@ import Tooltip from "metabase/components/Tooltip";
 import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { MetabaseApi } from "metabase/services";
 
-import { SqlIconButton } from "./NativeQueryButton.styled";
+import {
+  NativeCodeWrapper,
+  NativeCodeContainer,
+  SqlIconButton,
+} from "./NativeQueryButton.styled";
 
 const STRINGS = {
   "": {
@@ -84,6 +88,7 @@ export default class NativeQueryButton extends React.Component {
           <SqlIconButton iconSize={size} onClick={this.handleOpen} />
         </Tooltip>
         <Modal
+          style={{ padding: "1em" }}
           isOpen={this.state.open}
           title={title}
           footer={
@@ -96,7 +101,11 @@ export default class NativeQueryButton extends React.Component {
           onClose={this.handleClose}
         >
           <LoadingAndErrorWrapper loading={loading} error={error}>
-            <pre className="mb3 p2 sql-code">{this.getFormattedQuery()}</pre>
+            <NativeCodeWrapper>
+              <NativeCodeContainer className="p2 sql-code">
+                {this.getFormattedQuery()}
+              </NativeCodeContainer>
+            </NativeCodeWrapper>
           </LoadingAndErrorWrapper>
         </Modal>
       </span>
