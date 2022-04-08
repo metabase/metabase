@@ -6,9 +6,14 @@ import { t } from "ttag";
 import ToolsApp from "./containers/ToolsApp";
 import ErrorOverview from "./containers/ErrorOverview";
 import ErrorDetail from "./containers/ErrorDetail";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 
 const getRoutes = store => (
-  <Route path="tools" title={t`Tools`} component={ToolsApp}>
+  <Route
+    path="tools"
+    title={t`Tools`}
+    component={createAdminRouteGuard("tools", ToolsApp)}
+  >
     <IndexRedirect to="errors" />
     <Route
       path="errors"

@@ -18,8 +18,9 @@
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
-  [:as {{:keys [name description icon collection_id archived], :as body} :body}]
+  [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
@@ -35,13 +36,19 @@
 (api/defendpoint GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
-  {include (s/maybe Include)
+  {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (map timeline/hydrate-root-collection (db/select Timeline [:where [:= :archived archived?]]))]
+        timelines (->> (db/select Timeline
+                         {:where    [:and
+                                     [:= :archived archived?]
+                                     (collection/visible-collection-ids->honeysql-filter-clause
+                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                          :order-by [[:%lower.name :asc]]})
+                       (map timeline/hydrate-root-collection))]
     (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
-      (map #(timeline-event/include-events-singular % {:events/all?  archived?})))))
+      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
@@ -67,8 +74,9 @@
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
+  [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
@@ -78,7 +86,7 @@
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
-        :present #{:description :icon :collection_id :archived}
+        :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))

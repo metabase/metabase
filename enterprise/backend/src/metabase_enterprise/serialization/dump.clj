@@ -3,7 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
-            [metabase-enterprise.serialization.serialize :as serialize :refer [serialize]]
+            [metabase-enterprise.serialization.serialize :as serialize]
             [metabase.config :as config]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
@@ -43,7 +43,7 @@
       (log/warn (str filename " is about to be overwritten."))
       (log/debug (str "With object: " (pr-str entity))))
 
-    (spit-yaml filename (serialize entity))))
+    (spit-yaml filename (serialize/serialize entity))))
 
 (defn dump
   "Serialize entities into a directory structure of YAMLs at `path`."
@@ -60,7 +60,7 @@
 (defn dump-dependencies
   "Combine all dependencies into a vector and dump it into YAML at `path`."
   [path]
-  (spit-yaml (str path "/dependencies.yaml") (map serialize (Dependency))))
+  (spit-yaml (str path "/dependencies.yaml") (map serialize/serialize (Dependency))))
 
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."
@@ -84,4 +84,4 @@
                  (format "%s%s/dimensions.yaml"
                          path
                          (->> table :db_id (fully-qualified-name Database))))
-               (map serialize dimensions))))
+               (map serialize/serialize dimensions))))

@@ -22,6 +22,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
@@ -297,7 +298,15 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden?]
+(defn- filter-by-data-model-perms
+  [tables]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+    (f tables)
+    tables))
+
+(defn- db-metadata [id include-hidden? exclude-uneditable?]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
@@ -311,15 +320,23 @@
                               :when (mi/can-read? table)]
                           (-> table
                               (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))))
+                              (update :metrics  (partial filter mi/can-read?))))))
+      (update :tables (fn [tables]
+                        (if exclude-uneditable?
+                          (filter-by-data-model-perms tables)
+                          tables)))))
 
 (api/defendpoint GET "/:id/metadata"
-  "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
-   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
-   Returns DB, fields, and field values."
-  [id include_hidden]
-  {include_hidden (s/maybe su/BooleanString)}
-  (db-metadata id include_hidden))
+  "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
+  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
+  Passing exclude_uneditable=true will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present."
+  [id include_hidden exclude_uneditable]
+  {include_hidden     (s/maybe su/BooleanString)
+   exclude_uneditable (s/maybe su/BooleanString)}
+  (db-metadata id
+               (Boolean/parseBoolean include_hidden)
+               (Boolean/parseBoolean exclude_uneditable)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -577,9 +594,8 @@
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (api/let-404 [existing-database (Database id)]
+  (let [existing-database (api/write-check (Database id))]
     (let [details    (driver.u/db-details-client->server engine details)
           details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
@@ -637,7 +653,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (api/write-check db)
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
@@ -664,9 +680,8 @@
 (api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this in a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -678,9 +693,8 @@
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this is a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-field-values/update-field-values! db)))
   {:status :ok})
@@ -704,8 +718,7 @@
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (api/check-superuser)
-  (delete-all-field-values-for-database! id)
+  (delete-all-field-values-for-database! (api/write-check (Database id)))
   {:status :ok})
 
 

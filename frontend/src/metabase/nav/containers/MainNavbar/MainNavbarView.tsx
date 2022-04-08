@@ -25,6 +25,7 @@ import {
   BrowseLink,
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
+  CollectionMenuList,
   ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
@@ -38,6 +39,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
+  isOpen: boolean;
   currentUser: User;
   bookmarks: Bookmark[];
   collections: CollectionTreeItem[];
@@ -51,6 +53,7 @@ const OTHER_USERS_COLLECTIONS_URL = Urls.collection({ id: "users" });
 const ARCHIVE_URL = "/archive";
 
 function MainNavbarView({
+  isOpen,
   currentUser,
   bookmarks,
   collections,
@@ -124,7 +127,7 @@ function MainNavbarView({
         </ul>
       </div>
       {!IFRAMED && (
-        <ProfileLinkContainer>
+        <ProfileLinkContainer isOpen={isOpen}>
           <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
         </ProfileLinkContainer>
       )}
@@ -141,7 +144,7 @@ function CollectionSectionHeading({
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
     ({ onClose }) => (
-      <ul>
+      <CollectionMenuList>
         {currentUser.is_superuser && (
           <SidebarLink
             icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
@@ -154,7 +157,7 @@ function CollectionSectionHeading({
         <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
           {t`View archive`}
         </SidebarLink>
-      </ul>
+      </CollectionMenuList>
     ),
     [currentUser],
   );

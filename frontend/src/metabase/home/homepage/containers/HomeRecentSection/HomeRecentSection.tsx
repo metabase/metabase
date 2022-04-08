@@ -1,4 +1,4 @@
-import RecentViews from "metabase/entities/recent-views";
+import RecentItems from "metabase/entities/recent-items";
 import HomeRecentSection from "../../components/HomeRecentSection";
 
-export default RecentViews.loadList()(HomeRecentSection);
+export default RecentItems.loadList()(HomeRecentSection);

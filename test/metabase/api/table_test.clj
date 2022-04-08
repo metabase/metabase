@@ -282,7 +282,11 @@
                :display_name    "Userz"
                :pk_field        (table/pk-field-id table)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
-                     :updated_at))))))
+                     :updated_at))))
+
+    (testing "A table can only be updated by a superuser"
+      (mt/with-temp Table [table]
+        (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
 ;; hidden -> not hidden at the spots marked below, twice total

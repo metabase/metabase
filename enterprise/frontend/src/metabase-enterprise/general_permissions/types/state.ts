@@ -1,9 +1,9 @@
 import { State } from "metabase-types/store";
 import { GeneralPermissions } from "./permissions";
-import { UserWithPermissions } from "./user";
+import { UserWithGeneralPermissions } from "./user";
 
 export interface GeneralPermissionsState extends State {
-  currentUser: UserWithPermissions;
+  currentUser: UserWithGeneralPermissions;
   plugins: {
     generalPermissionsPlugin: {
       generalPermissions: GeneralPermissions;

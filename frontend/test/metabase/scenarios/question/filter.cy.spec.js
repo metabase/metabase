@@ -799,6 +799,37 @@ describe("scenarios > question > filter", () => {
     }
   });
 
+  describe("currency filters", () => {
+    beforeEach(() => {
+      // set the currency on the Orders/Discount column to Euro
+      cy.visit("/admin/datamodel/database/1/table/2");
+      // this value isn't actually selected, it's just the default
+      cy.findByText("US Dollar").click();
+      cy.findByText("Euro").click();
+
+      openOrdersTable();
+    });
+
+    it("should show correct currency symbols in currency single field filter", () => {
+      cy.findByText("Discount (€)").click();
+      cy.findByText("Filter by this column").click();
+      cy.findByTestId("input-prefix").should("contain", "€");
+    });
+
+    it("should show correct currency symbols in currency between field filter", () => {
+      cy.findByText("Discount (€)").click();
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Equal to").click();
+      cy.findByText("Between").click();
+
+      cy.findAllByTestId("input-prefix").then(els => {
+        expect(els).to.have.lengthOf(2);
+        expect(els[0].innerText).to.equal("€");
+        expect(els[1].innerText).to.equal("€");
+      });
+    });
+  });
+
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
       visitQuestionAdhoc({

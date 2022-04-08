@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { t, msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { getTimelineName } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import {
@@ -26,7 +27,7 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const timelineUrl = Urls.timelineInCollection(timeline, collection);
   const menuItems = getMenuItems(timeline, collection, onUnarchive);
-  const eventCount = timeline.events?.length;
+  const eventCount = getEventCount(timeline);
   const hasDescription = Boolean(timeline.description);
   const hasMenuItems = menuItems.length > 0;
   const hasEventCount = !hasMenuItems && eventCount != null;
@@ -35,7 +36,7 @@ const TimelineCard = ({
     <CardRoot to={!timeline.archived ? timelineUrl : ""}>
       <CardIcon name={timeline.icon} />
       <CardBody>
-        <CardTitle>{timeline.name}</CardTitle>
+        <CardTitle>{getTimelineName(timeline)}</CardTitle>
         {timeline.description && (
           <CardDescription>{timeline.description}</CardDescription>
         )}
@@ -56,6 +57,10 @@ const TimelineCard = ({
       )}
     </CardRoot>
   );
+};
+
+const getEventCount = (timeline: Timeline) => {
+  return timeline.events ? timeline.events.filter(e => !e.archived).length : 0;
 };
 
 const getMenuItems = (

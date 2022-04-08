@@ -114,7 +114,9 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: () => null,
 };
 
-export const PLUGIN_REDUCERS = {} as any;
+export const PLUGIN_REDUCERS: { generalPermissionsPlugin: any } = {
+  generalPermissionsPlugin: () => null,
+};
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
   addDatabasePermissionOptions: (permissions: any[]) => permissions,
@@ -126,9 +128,6 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
-  canAccessSettings: (_user: User) => false,
-  canAccessDataModel: (_user: User) => false,
-  canAccessDatabaseManagement: (_user: User) => false,
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
@@ -142,6 +141,8 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   dataColumns: [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
+  tableMetadataQueryProps: {} as any,
+  databaseQueryProps: {} as any,
 };
 
 export const PLUGIN_GENERAL_PERMISSIONS = {

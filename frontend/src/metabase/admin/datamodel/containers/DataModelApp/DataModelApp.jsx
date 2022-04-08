@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Radio from "metabase/core/components/Radio";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ModelEducationalModal } from "./ModelEducationalModal";
 import { NavBar, ModelEducationButton } from "./DataModelApp.styled";
@@ -17,7 +18,12 @@ const propTypes = {
     pathname: PropTypes.string.isRequired,
   }).isRequired,
   children: PropTypes.node.isRequired,
+  isAdmin: PropTypes.bool,
 };
+
+const mapStateToProps = state => ({
+  isAdmin: getUserIsAdmin(state),
+});
 
 const mapDispatchToProps = {
   onChangeTab: tab => push(`/admin/datamodel/${tab}`),
@@ -29,7 +35,12 @@ const TAB = {
   DATABASE: "database",
 };
 
-function DataModelApp({ children, onChangeTab, location: { pathname } }) {
+function DataModelApp({
+  children,
+  onChangeTab,
+  location: { pathname },
+  isAdmin,
+}) {
   const [
     isModelEducationalModalShown,
     { turnOn: showModelEducationalModal, turnOff: hideModelEducationalModal },
@@ -45,16 +56,22 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
     return TAB.DATABASE;
   }, [pathname]);
 
+  const options = [
+    { name: t`Data`, value: TAB.DATABASE },
+    ...(isAdmin
+      ? [
+          { name: t`Segments`, value: TAB.SEGMENTS },
+          { name: t`Metrics`, value: TAB.METRICS },
+        ]
+      : []),
+  ];
+
   return (
     <React.Fragment>
       <NavBar>
         <Radio
           value={currentTab}
-          options={[
-            { name: t`Data`, value: TAB.DATABASE },
-            { name: t`Segments`, value: TAB.SEGMENTS },
-            { name: t`Metrics`, value: TAB.METRICS },
-          ]}
+          options={options}
           onChange={onChangeTab}
           variant="underlined"
         />
@@ -73,4 +90,4 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
 
 DataModelApp.propTypes = propTypes;
 
-export default connect(null, mapDispatchToProps)(DataModelApp);
+export default connect(mapStateToProps, mapDispatchToProps)(DataModelApp);
