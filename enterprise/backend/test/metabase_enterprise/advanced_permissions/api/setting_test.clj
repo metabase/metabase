@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
   "Permisisons tests for API that needs to be enforced by General Permissions to access Admin/Setting pages."
   (:require [clojure.test :refer :all]
+            [metabase-enterprise.advanced-permissions.common :as adv-perms]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.permissions :as perms]
@@ -11,25 +12,21 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- user->name
-  [user]
-  (if (map? user) "non-admin" (name user)))
-
 (deftest setting-api-test
   (testing "/api/setting"
     (mt/with-user-in-groups
       [group {:name "New Group"}
        user  [group]]
       (letfn [(get-setting [user status]
-                (testing (format "get setting with %s user" (user->name user))
+                (testing (format "get setting with %s user" (adv-perms/friendly-user-name user))
                   (mt/user-http-request user :get status "setting")))
 
               (update-setting [user status]
-                (testing (format "update single setting with %s user" (user->name user))
+                (testing (format "update single setting with %s user" (adv-perms/friendly-user-name user))
                   (mt/user-http-request user :put status "setting/test-setting-1" {:value "ABC"})))
 
               (update-settings [user status]
-                (testing (format "update multiple settings setting with %s user" (user->name user))
+                (testing (format "update multiple settings setting with %s user" (adv-perms/friendly-user-name user))
                   (mt/user-http-request user :put status "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))]
         ;; we focus on permissions in these tests, so set default value to make it easier to test
         (test-setting-1 "ABC")
@@ -58,10 +55,7 @@
               (perms/grant-general-permissions! group :setting)
               (get-setting user 200)
               (update-setting user 204)
-              (update-settings user 204)
-              (get-setting :crowberto 200)
-              (update-setting :crowberto 204)
-              (update-settings :crowberto 204))))))))
+              (update-settings user 204))))))))
 
 (deftest email-api-test
   (testing "/api/email"
@@ -69,7 +63,7 @@
       [group {:name "New Group"}
        user  [group]]
       (letfn [(set-email-setting [user status]
-                (testing (format "set email setting with %s user" (user->name user))
+                (testing (format "set email setting with %s user" (adv-perms/friendly-user-name user))
                   (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                     (mt/user-http-request user :put status "email" {:email-smtp-host     "foobar"
                                                                     :email-smtp-port     "789"
@@ -79,13 +73,13 @@
                                                                     :email-from-address  "eating@hungry.com"}))))
 
               (delete-email-setting [user status]
-                (testing (format "delete email setting with %s user" (user->name user))
+                (testing (format "delete email setting with %s user" (adv-perms/friendly-user-name user))
                   (mt/user-http-request user :delete status "email")))
 
               (send-test-email [user status]
                 (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"]
                   (mt/with-fake-inbox
-                    (testing (format "send test email with %s user" (user->name user))
+                    (testing (format "send test email with %s user" (adv-perms/friendly-user-name user))
                       (mt/user-http-request user :post status "email/test")))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
@@ -111,10 +105,7 @@
               (perms/grant-general-permissions! group :setting)
               (set-email-setting user 200)
               (delete-email-setting user 204)
-              (send-test-email user 200)
-              (set-email-setting :crowberto 200)
-              (delete-email-setting :crowberto 204)
-              (send-test-email :crowberto 200))))))))
+              (send-test-email user 200))))))))
 
 (deftest slack-api-test
   (testing "/api/slack"
@@ -122,7 +113,7 @@
       [group {:name "New Group"}
        user  [group]]
       (letfn [(set-slack-settings [user status]
-                (testing (format "set slack setting with %s user" (user->name user))
+                (testing (format "set slack setting with %s user" (adv-perms/friendly-user-name user))
                   (with-redefs [slack/valid-token? (constantly true)
                                 slack/channel-exists? (constantly true)
                                 slack/refresh-channels-and-usernames! (constantly true)
@@ -132,7 +123,7 @@
                       (mt/user-http-request user :put status "slack/settings" {:slack-app-token "fake-token"})))))
 
               (get-manifest [user status]
-                (testing (format "get slack manifest %s user" (user->name user))
+                (testing (format "get slack manifest %s user" (adv-perms/friendly-user-name user))
                   (mt/user-http-request user :get status "slack/manifest" )))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
@@ -153,6 +144,4 @@
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-general-permissions! group :setting)
               (set-slack-settings user 200)
-              (get-manifest user 200)
-              (set-slack-settings :crowberto 200)
-              (get-manifest :crowberto 200))))))))
+              (get-manifest user 200))))))))
