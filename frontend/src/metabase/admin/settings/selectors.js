@@ -21,6 +21,7 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
 import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import PersistingModelsToggleWidget from "./components/widgets/PersistingModelsToggleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -400,14 +401,21 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: SectionDivider,
       },
       {
-        key: "persisted-model-refresh-interval-hours",
-        display_name: t`Refresh models cache interval`,
+        key: "enabled-persisted-models",
+        display_name: t`Models`,
         description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
-            href="https://metabase.com"
+            href={MetabaseSettings.docsUrl("users-guide/models")}
           >{t`Learn more`}</ExternalLink>
         )}.`,
+        type: "boolean",
+        widget: PersistingModelsToggleWidget,
+      },
+      {
+        key: "persisted-model-refresh-interval-hours",
+        description: "",
+        display_name: t`Refresh every`,
         type: "radio",
         options: {
           1: t`Hour`,
@@ -418,6 +426,7 @@ const SECTIONS = updateSectionsWithPlugins({
           24: t`24 hours`,
         },
         widget: PersistedModelRefreshIntervalWidget,
+        getHidden: settings => !settings["enabled-persisted-models"],
       },
     ],
   },
