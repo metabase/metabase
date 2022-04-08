@@ -5,22 +5,13 @@ import forms from "metabase/entities/timeline-events/forms";
 import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalDangerButton from "metabase/timelines/common/components/ModalDangerButton";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
   timeline: Timeline;
-  collection: Collection;
-  onSubmit: (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => void;
-  onArchive: (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => void;
+  onSubmit: (event: TimelineEvent, timeline: Timeline) => void;
+  onArchive: (event: TimelineEvent, timeline: Timeline) => void;
   onCancel: () => void;
   onClose?: () => void;
 }
@@ -28,7 +19,6 @@ export interface EditEventModalProps {
 const EditEventModal = ({
   event,
   timeline,
-  collection,
   onSubmit,
   onArchive,
   onCancel,
@@ -38,14 +28,14 @@ const EditEventModal = ({
 
   const handleSubmit = useCallback(
     async (event: TimelineEvent) => {
-      await onSubmit(event, timeline, collection);
+      await onSubmit(event, timeline);
     },
-    [timeline, collection, onSubmit],
+    [timeline, onSubmit],
   );
 
   const handleArchive = useCallback(async () => {
-    await onArchive(event, timeline, collection);
-  }, [event, timeline, collection, onArchive]);
+    await onArchive(event, timeline);
+  }, [event, timeline, onArchive]);
 
   return (
     <div>

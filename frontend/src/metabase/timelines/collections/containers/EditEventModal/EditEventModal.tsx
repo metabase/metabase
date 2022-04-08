@@ -31,21 +31,13 @@ const collectionProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => {
+  onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(push(Urls.timelineInCollection(timeline)));
   },
-  onArchive: async (
-    event: TimelineEvent,
-    timeline: Timeline,
-    collection: Collection,
-  ) => {
+  onArchive: async (event: TimelineEvent, timeline: Timeline) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(push(Urls.timelineInCollection(timeline)));
   },
   onCancel: () => {
     dispatch(goBack());
