@@ -13,8 +13,8 @@ export interface MoveEventModalProps {
   timelines: Timeline[];
   onSubmit: (
     event: TimelineEvent,
-    selectedTimeline: Timeline,
-    currentTimeline: Timeline,
+    newTimeline: Timeline,
+    oldTimeline: Timeline,
   ) => void;
   onCancel: () => void;
   onClose?: () => void;
@@ -22,27 +22,27 @@ export interface MoveEventModalProps {
 
 const MoveEventModal = ({
   event,
-  timeline: currentTimeline,
+  timeline: oldTimeline,
   timelines,
   onSubmit,
   onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
-  const [selectedTimeline, setSelectedTimeline] = useState(currentTimeline);
-  const hasChanged = selectedTimeline.id !== currentTimeline.id;
+  const [newTimeline, setNewTimeline] = useState(oldTimeline);
+  const hasChanged = newTimeline.id !== oldTimeline.id;
 
   const handleSubmit = useCallback(async () => {
-    await onSubmit(event, selectedTimeline, currentTimeline);
-  }, [event, selectedTimeline, currentTimeline, onSubmit]);
+    await onSubmit(event, newTimeline, oldTimeline);
+  }, [event, newTimeline, oldTimeline, onSubmit]);
 
   return (
     <ModalRoot>
       <ModalHeader title={t`Move ${event.name}`} onClose={onClose} />
       <ModalBody>
         <TimelinePicker
-          value={selectedTimeline}
+          value={newTimeline}
           options={timelines}
-          onChange={setSelectedTimeline}
+          onChange={setNewTimeline}
         />
       </ModalBody>
       <ModalFooter>
