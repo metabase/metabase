@@ -41,6 +41,9 @@ function JobTableItem({ job, isSelected, handleSelect }: JobTableItemProps) {
   const lastRunAtLabel = capitalize(moment(job.refresh_begin).fromNow());
 
   const renderStatus = useCallback(() => {
+    if (job.state === "refreshing") {
+      return t`Refreshing`;
+    }
     if (job.state === "persisted") {
       return t`Completed`;
     }

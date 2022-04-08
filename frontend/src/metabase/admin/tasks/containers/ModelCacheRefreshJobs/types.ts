@@ -2,7 +2,7 @@ import { BaseUser, CollectionId, UserId } from "metabase-types/api";
 
 export interface ModelCacheRefreshJob {
   id: number;
-  state: "persisted" | "error";
+  state: "refreshing" | "persisted" | "error";
   error: string | null;
   active: boolean;
 
