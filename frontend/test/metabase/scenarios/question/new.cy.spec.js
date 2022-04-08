@@ -46,8 +46,7 @@ describe("scenarios > question > new", () => {
     cy.findByText("Sample3").isVisibleInPopover();
 
     // Then move to the Custom question UI
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Sample3").isVisibleInPopover();
   });
 
@@ -72,12 +71,9 @@ describe("scenarios > question > new", () => {
   });
 
   describe("data picker search", () => {
-    beforeEach(() => {
-      cy.visit("/question/new");
-    });
-
     describe("on a (simple) question page", () => {
       beforeEach(() => {
+        cy.visit("/question/new");
         cy.findByText("Simple question").click();
         cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
@@ -102,7 +98,7 @@ describe("scenarios > question > new", () => {
 
     describe("on a (custom) question page", () => {
       beforeEach(() => {
-        cy.findByText("Custom question").click();
+        startNewQuestion();
         cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
@@ -133,18 +129,15 @@ describe("scenarios > question > new", () => {
       cy.intercept("/api/search", req => {
         expect("Unexpected call to /api/search").to.be.false;
       });
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByPlaceholderText("Search for a table…").type("  ");
     });
   });
 
   describe("saved question picker", () => {
-    beforeEach(() => {
-      cy.visit("/question/new");
-    });
-
     describe("on a (simple) question page", () => {
       beforeEach(() => {
+        cy.visit("/question/new");
         cy.findByText("Simple question").click();
         cy.findByText("Saved Questions").click();
       });
@@ -169,7 +162,7 @@ describe("scenarios > question > new", () => {
 
     describe("on a (custom) question page", () => {
       beforeEach(() => {
-        cy.findByText("Custom question").click();
+        startNewQuestion();
         cy.findByText("Saved Questions").click();
       });
 

@@ -15,8 +15,7 @@ export function issue9027() {
       restore();
       cy.signInAsAdmin();
 
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
 
       // Wait for the existing questions to load

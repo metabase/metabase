@@ -13,7 +13,9 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
+
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -763,8 +765,7 @@ describeEE("formatting > sandboxes", () => {
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
       createJoinedQuestion("14766_joined");
 
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("14766_joined").click();
       cy.findByText("Pick the metric you want to see").click();

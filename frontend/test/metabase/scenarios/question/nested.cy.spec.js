@@ -545,12 +545,15 @@ describe("scenarios > question > nested", () => {
       });
       // Window object gets recreated for every `cy.visit`
       // See: https://stackoverflow.com/a/65218352/8815185
-      cy.visit("/question/new", {
+      cy.visit("/", {
         onBeforeLoad(win) {
           cy.spy(win.console, "warn").as("consoleWarn");
         },
       });
-      cy.findByText("Custom question").click();
+      cy.findByText("New").click();
+      cy.findByText("Question")
+        .should("be.visible")
+        .click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15725").click();
       cy.findByText("Pick the metric you want to see").click();

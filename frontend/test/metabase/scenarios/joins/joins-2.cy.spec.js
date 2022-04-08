@@ -36,8 +36,7 @@ describe("scenarios > question > joined questions", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
 
       // start a custom question with orders
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
@@ -81,8 +80,7 @@ describe("scenarios > question > joined questions", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
 
       cy.log("Start a custom question with Orders");
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -133,8 +131,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       // start a custom question with question a
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("question a").click();
 
@@ -548,8 +545,7 @@ function joinTwoSavedQuestions() {
       },
     }).then(() => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      cy.visit(`/question/new`);
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Saved Questions").click();
