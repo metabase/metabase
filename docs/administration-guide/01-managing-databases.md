@@ -18,7 +18,17 @@ Once in the Admin section, select the **Databases** tab from the navigation bar 
 
 Although connection details differ database to database, in general you'll need to get connection info from your database admin, usually some combination of hostname (sometimes called endpoint), port, database username and password, and the name of the database.
 
+## Databases
+
+Metabase supports many different databases and data sources, with different levels of support. 
+
+- [Official](#officially-supported-databases)
+- [Partner](#partner)
+- [Community](#community)
+
 ### Officially supported databases
+
+The following database have official drivers maintained by the Metabase team.
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -36,15 +46,35 @@ Although connection details differ database to database, in general you'll need 
 - SQLite
 - [Vertica](databases/vertica.md)
 
-Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if someone's built one, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases](#officially-supported-databases) listed above.
+### Partner drivers
 
-### Connecting to databases hosted by a cloud provider
+Partner drivers are drivers developed and supported by partners.
+
+- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
+
+Why partner drivers? We want to make Metabase useful for as many people as possible, but we want to make sure that the drivers we support.
+
+To qualify as a partner driver, the driver must:
+
+- Be available for use with Metabase Cloud
+- Have a permissive license
+- Pass the Metabase test suite 
+- Survive a code review by the Metabase developers
+- Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
+
+If all goes well, and we see people using the driver, we'll consider making it official, but in no way does this imply that partner drivers will eventually become officially supported drivers.
+
+### Community drivers 
+
+Our [Community Drivers](../developers-guide-drivers.md) page lists drivers that are built by people who want to contribute to the Metabase ecosystem.To see if someone's built the driver you're looking for, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases](#officially-supported-databases) listed above.
+
+## Connecting to databases hosted by a cloud provider
 
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
 
-### Errors when connecting to your database
+## Errors when connecting to your database
 
 Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 
