@@ -237,7 +237,6 @@
    saved                         (s/maybe su/BooleanString)
    exclude_uneditable_data_model (s/maybe su/BooleanString)
    exclude_uneditable_details    (s/maybe su/BooleanString)}
-  (def my-include include)
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
@@ -259,7 +258,6 @@
                                                       :exclude-uneditable-data-model?  (Boolean/parseBoolean exclude_uneditable_data_model)
                                                       :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
                                             [])]
-    (def my-include-tables? include-tables?)
     {:data  db-list-res
      :total (count db-list-res)}))
 
