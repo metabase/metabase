@@ -1,5 +1,6 @@
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { DATA_PERMISSIONS_TOOLBAR_CONTENT } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { canAccessDataModel, canAccessDatabaseManagement } from "./utils";
 
 import { getFeatureLevelDataPermissions } from "./permission-management";
@@ -16,6 +17,7 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions = getFeatureLevelDataPermissions;
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns = DATA_COLUMNS;
+
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride = getDownloadWidgetMessageOverride;
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults = canDownloadResults;
 
@@ -26,4 +28,6 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseQueryProps = {
     exclude_uneditable: true,
   };
+
+  DATA_PERMISSIONS_TOOLBAR_CONTENT.length = 0;
 }

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import CollectionPermissionsPage from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
 import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import GroupsPermissionsPage from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-import DataPermissionsPage from "./pages/DataPermissionsPage/DataPermissionsPage";
+import DataPermissionsPage from "./pages/DataPermissionsPage";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
