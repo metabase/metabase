@@ -4,9 +4,9 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import NewTimelineModal from "../../components/NewTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import { ModalParams } from "../../types";
 

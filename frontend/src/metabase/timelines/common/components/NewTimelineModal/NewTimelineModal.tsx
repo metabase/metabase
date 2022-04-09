@@ -4,20 +4,22 @@ import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timelines/forms";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import ModalBody from "metabase/timelines/common/components/ModalBody";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Collection, Timeline } from "metabase-types/api";
+import ModalBody from "../ModalBody";
+import ModalHeader from "../ModalHeader";
 
 export interface NewTimelineModalProps {
   collection: Collection;
   onSubmit: (values: Partial<Timeline>, collection: Collection) => void;
-  onCancel: () => void;
+  onSubmitSuccess?: () => void;
+  onCancel?: () => void;
   onClose?: () => void;
 }
 
 const NewTimelineModal = ({
   collection,
   onSubmit,
+  onSubmitSuccess,
   onCancel,
   onClose,
 }: NewTimelineModalProps): JSX.Element => {
@@ -32,8 +34,9 @@ const NewTimelineModal = ({
   const handleSubmit = useCallback(
     async (values: Partial<Timeline>) => {
       await onSubmit(values, collection);
+      onSubmitSuccess?.();
     },
-    [collection, onSubmit],
+    [collection, onSubmit, onSubmitSuccess],
   );
 
   return (
