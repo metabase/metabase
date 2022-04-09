@@ -98,9 +98,11 @@ describe("personal collections", () => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
+
           cy.visit("/collection/root");
           cy.findByText("Your personal collection").click();
-          // Create initial collection inside the personal collection and navigate inside it
+
+          // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
           navigationSidebar()
             .as("sidebar")
@@ -120,6 +122,7 @@ describe("personal collections", () => {
            *  1. editing collection's title
            *  2. editing collection's description and
            *  3. moving that collection within personal collection
+           *  4. archiving the collection within personal collection (metabase#15343)
            */
           cy.findByText("Edit this collection").click();
           modal().within(() => {
@@ -142,10 +145,12 @@ describe("personal collections", () => {
             .findByText("Foo")
             .click();
           cy.get("@sidebar").findByText("Bar1");
-        });
 
-        it("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
-          cy.icon("pencil").click();
+          cy.log(
+            "should be able to archive collection(s) inside personal collection (metabase#15343)",
+          );
+
+          cy.icon("pencil").click(); /* [4] */
           cy.findByText("Archive this collection").click();
           modal()
             .findByRole("button", { name: "Archive" })
