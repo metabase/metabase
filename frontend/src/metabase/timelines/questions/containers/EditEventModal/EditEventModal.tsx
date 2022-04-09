@@ -7,17 +7,17 @@ import EditEventModal from "metabase/timelines/common/components/EditEventModal"
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-interface ModalProps {
+interface EditEventModalProps {
   eventId: number;
   onClose?: () => void;
 }
 
 const timelineEventProps = {
-  id: (state: State, props: ModalProps) => props.eventId,
+  id: (state: State, props: EditEventModalProps) => props.eventId,
   entityAlias: "event",
 };
 
-const mapStateToProps = (state: State, { onClose }: ModalProps) => ({
+const mapStateToProps = (state: State, { onClose }: EditEventModalProps) => ({
   onSubmitSuccess: onClose,
   onArchiveSuccess: onClose,
   onCancel: onClose,

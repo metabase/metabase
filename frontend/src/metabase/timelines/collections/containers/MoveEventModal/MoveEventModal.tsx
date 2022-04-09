@@ -8,7 +8,11 @@ import MoveEventModal from "metabase/timelines/common/components/MoveEventModal"
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface MoveEventModalProps {
+  params: ModalParams;
+}
 
 const timelinesProps = {
   query: { include: "events" },
@@ -16,7 +20,7 @@ const timelinesProps = {
 };
 
 const timelineEventProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: MoveEventModalProps) =>
     Urls.extractEntityId(props.params.timelineEventId),
   entityAlias: "event",
   LoadingAndErrorWrapper,

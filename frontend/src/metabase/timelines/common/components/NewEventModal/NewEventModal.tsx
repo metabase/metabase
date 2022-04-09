@@ -6,45 +6,62 @@ import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import ModalBody from "metabase/timelines/common/components/ModalBody";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import {
+  Collection,
+  Timeline,
+  TimelineEvent,
+  TimelineEventSource,
+} from "metabase-types/api";
 
 export interface NewEventModalProps {
-  timeline?: Timeline;
+  timelines?: Timeline[];
   collection?: Collection;
-  onSubmit: (
-    values: Partial<TimelineEvent>,
-    collection?: Collection,
-    timeline?: Timeline,
-  ) => void;
-  onCancel: () => void;
+  cardId?: number;
+  source: TimelineEventSource;
+  onSubmit: (values: Partial<TimelineEvent>, collection?: Collection) => void;
+  onSubmitSuccess?: () => void;
+  onCancel?: () => void;
   onClose?: () => void;
 }
 
 const NewEventModal = ({
-  timeline,
+  timelines = [],
   collection,
+  cardId,
+  source,
   onSubmit,
+  onSubmitSuccess,
   onCancel,
   onClose,
 }: NewEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details(), []);
+  const availableTimelines = useMemo(() => {
+    return timelines.filter(t => t.collection?.can_write);
+  }, [timelines]);
 
-  const initialValues = useMemo(
-    () => ({
-      timeline_id: timeline?.id,
-      icon: timeline ? timeline.icon : getDefaultTimelineIcon(),
+  const form = useMemo(() => {
+    return forms.details({ timelines: availableTimelines });
+  }, [availableTimelines]);
+
+  const initialValues = useMemo(() => {
+    const defaultTimeline = availableTimelines[0];
+    const hasOneTimeline = availableTimelines.length === 1;
+
+    return {
+      timeline_id: defaultTimeline ? defaultTimeline.id : null,
+      icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
-      source: "collections",
+      source,
+      question_id: cardId,
       time_matters: false,
-    }),
-    [timeline],
-  );
+    };
+  }, [cardId, source, availableTimelines]);
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, collection, timeline);
+      await onSubmit(values, collection);
+      onSubmitSuccess?.();
     },
-    [timeline, collection, onSubmit],
+    [collection, onSubmit, onSubmitSuccess],
   );
 
   return (

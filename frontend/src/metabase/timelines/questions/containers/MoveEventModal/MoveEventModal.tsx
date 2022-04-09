@@ -6,7 +6,7 @@ import MoveEventModal from "metabase/timelines/common/components/MoveEventModal"
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-interface ModalProps {
+interface MoveEventModalProps {
   eventId: number;
   onClose?: () => void;
 }
@@ -16,11 +16,11 @@ const timelinesProps = {
 };
 
 const timelineEventProps = {
-  id: (state: State, props: ModalProps) => props.eventId,
+  id: (state: State, props: MoveEventModalProps) => props.eventId,
   entityAlias: "event",
 };
 
-const mapStateToProps = (state: State, { onClose }: ModalProps) => ({
+const mapStateToProps = (state: State, { onClose }: MoveEventModalProps) => ({
   onSubmitSuccess: onClose,
   onCancel: onClose,
 });
