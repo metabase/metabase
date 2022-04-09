@@ -36,8 +36,8 @@ const TimelineListModal = ({
   const hasMenuItems = menuItems.length > 0;
 
   const sortedTimelines = useMemo(() => {
-    return getSortedTimelines(timelines);
-  }, [timelines]);
+    return getSortedTimelines(timelines, collection);
+  }, [timelines, collection]);
 
   const handleGoBack = useCallback(() => {
     onGoBack?.(collection);

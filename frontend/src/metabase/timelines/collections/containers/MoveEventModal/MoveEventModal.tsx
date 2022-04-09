@@ -2,6 +2,7 @@ import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import MoveEventModal from "metabase/timelines/common/components/MoveEventModal";
@@ -26,6 +27,12 @@ const timelineEventProps = {
   LoadingAndErrorWrapper,
 };
 
+const collectionProps = {
+  id: (state: State, props: MoveEventModalProps) =>
+    Urls.extractCollectionId(props.params.slug),
+  LoadingAndErrorWrapper,
+};
+
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (
     event: TimelineEvent,
@@ -43,5 +50,6 @@ const mapDispatchToProps = (dispatch: any) => ({
 export default _.compose(
   Timelines.loadList(timelinesProps),
   TimelineEvents.load(timelineEventProps),
+  Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
 )(MoveEventModal);

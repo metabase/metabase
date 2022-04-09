@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import ModalFooter from "../ModalFooter";
 import TimelinePicker from "../TimelinePicker";
@@ -11,6 +11,7 @@ import { getSortedTimelines } from "metabase/lib/timelines";
 export interface MoveEventModalProps {
   event: TimelineEvent;
   timelines: Timeline[];
+  collection?: Collection;
   onSubmit: (
     event: TimelineEvent,
     newTimeline?: Timeline,
@@ -24,6 +25,7 @@ export interface MoveEventModalProps {
 const MoveEventModal = ({
   event,
   timelines,
+  collection,
   onSubmit,
   onSubmitSuccess,
   onCancel,
@@ -34,8 +36,8 @@ const MoveEventModal = ({
   const isEnabled = newTimeline?.id !== oldTimeline?.id;
 
   const sortedTimelines = useMemo(() => {
-    return getSortedTimelines(timelines);
-  }, [timelines]);
+    return getSortedTimelines(timelines, collection);
+  }, [timelines, collection]);
 
   const handleSubmit = useCallback(async () => {
     await onSubmit(event, newTimeline, oldTimeline);
