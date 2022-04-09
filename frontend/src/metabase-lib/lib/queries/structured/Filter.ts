@@ -9,7 +9,10 @@ import {
 import { FilterOperator } from "metabase-types/types/Metadata";
 import StructuredQuery from "../StructuredQuery";
 import Dimension from "../../Dimension";
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
+import {
+  generateTimeFilterValuesDescriptions,
+  getRelativeDatetimeField,
+} from "metabase/lib/query_time";
 import {
   isStandard,
   isSegment,
@@ -163,6 +166,10 @@ export default class Filter extends MBQLClause {
   dimension(): Dimension | null | undefined {
     if (this.isFieldFilter()) {
       return this._query.parseFieldReference(this[1]);
+    }
+    const field = getRelativeDatetimeField(this);
+    if (field) {
+      return this._query.parseFieldReference(field);
     }
   }
 

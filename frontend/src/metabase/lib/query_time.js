@@ -443,17 +443,6 @@ export function getRelativeDatetimeField(filter) {
   }
 }
 
-export function getRelativeDatetimeDimension(filter) {
-  const field = getRelativeDatetimeField(filter);
-  return field
-    ? FieldDimension.parseMBQLOrWarn(
-        field,
-        filter.metadata?.(),
-        filter.query?.(),
-      )
-    : null;
-}
-
 export function getRelativeDatetimeInterval(filter) {
   if (isStartingFrom(filter)) {
     const [_op, _field, [_left, leftNum, unit], right] = filter;

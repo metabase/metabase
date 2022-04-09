@@ -5,7 +5,6 @@ import cx from "classnames";
 import OperatorSelector from "../filters/OperatorSelector";
 import SidebarHeader from "../SidebarHeader";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 type Props = {
   className?: string;
@@ -25,7 +24,7 @@ export default function FilterPopoverHeader({
   onBack,
   isSidebar,
 }: Props) {
-  const dimension = filter.dimension() || getRelativeDatetimeDimension(filter);
+  const dimension = filter.dimension();
   if (!dimension) {
     return null;
   }

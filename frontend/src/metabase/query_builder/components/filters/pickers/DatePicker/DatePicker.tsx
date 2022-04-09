@@ -17,11 +17,11 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import {
-  getRelativeDatetimeDimension,
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
   isStartingFrom,
   getRelativeDatetimeInterval,
+  getRelativeDatetimeField,
 } from "metabase/lib/query_time";
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
@@ -57,8 +57,11 @@ const hasTime = (value: unknown) =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(filter: any[], bucketing?: string | null) {
-  const dimension = getRelativeDatetimeDimension(filter);
+function getDateTimeField(filter: any, bucketing?: string | null) {
+  const field = filter[1];
+  const dimension = FieldDimension.parseMBQLOrWarn(
+    field[0] !== "field" ? getRelativeDatetimeField(filter) : field,
+  );
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
@@ -128,7 +131,8 @@ export const DATE_OPERATORS: DateOperator[] = [
     name: "current",
     displayName: t`Current`,
     init: filter => ["time-interval", getDateTimeField(filter[1]), "current"],
-    test: ([op, field, value]) => op === "time-interval" && value === "current",
+    test: ([op, field, value]) =>
+      op === "time-interval" && (value === "current" || value === null),
     group: "relative",
     widget: CurrentPicker,
   },
@@ -293,6 +297,7 @@ export default class DatePicker extends Component<Props, State> {
             hideExcludeOperators={hideExcludeOperators}
             onCommit={onCommit}
             filter={filter}
+            onBack={onBack}
           />
         ) : (
           <>

@@ -35,7 +35,9 @@ export const PastPicker = (props: Props) => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
 );
 
-export const NextPicker = (props: Props) => <RelativeDatePicker {...props} />;
+export const NextPicker = (props: Props) => (
+  <RelativeDatePicker {...props} offsetFormatter={value => value * -1} />
+);
 
 const periodPopoverText = (period: string) => {
   const now = moment();
@@ -143,6 +145,7 @@ type Props = {
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   formatter: (value: number) => number;
+  offsetFormatter: (value: number) => number;
   primaryColor?: string;
 };
 
@@ -151,6 +154,7 @@ const RelativeDatePicker: React.SFC<Props> = props => {
     filter,
     onFilterChange,
     formatter = value => value,
+    offsetFormatter = value => value,
     className,
     primaryColor,
   } = props;
@@ -246,7 +250,11 @@ const RelativeDatePicker: React.SFC<Props> = props => {
             }
             onChange={(value: number) =>
               onFilterChange(
-                setStartingFrom(filter, formatter(value), startingFrom[1]),
+                setStartingFrom(
+                  filter,
+                  offsetFormatter(value),
+                  startingFrom[1],
+                ),
               )
             }
             placeholder="30"

@@ -4,11 +4,12 @@ import { t } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
-import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { Field } from "metabase-types/types/Field";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+
+import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
 
 function getDateTimeField(field: Field, bucketing?: string) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
@@ -124,18 +125,13 @@ const MISC_OPTIONS: Option[] = [
   },
   {
     displayName: t`Relative dates...`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      "current",
-      "none",
-    ],
+    init: filter => ["time-interval", getDateTimeField(filter[1]), null],
   },
 ];
 
 const EXCLUDE_OPTION: Option = {
   displayName: t`Exclude...`,
-  init: filter => ["!=", getDateTimeField(filter[1], "day"), 1],
+  init: filter => ["!=", getDateTimeField(filter[1])],
 };
 
 type Props = {
@@ -146,6 +142,7 @@ type Props = {
   hideExcludeOperators?: boolean;
   onCommit: (value: any[]) => void;
   onFilterChange: (filter: any[]) => void;
+  onBack?: () => void;
 };
 
 export default function DatePickerShortcuts({
@@ -154,12 +151,30 @@ export default function DatePickerShortcuts({
   filter,
   onCommit,
   hideExcludeOperators,
+  onBack,
 }: Props) {
   const options = hideExcludeOperators
     ? MISC_OPTIONS
     : [...MISC_OPTIONS, EXCLUDE_OPTION];
+
+  const dimension = filter.dimension();
+  let title = "";
+  if (dimension) {
+    const field = dimension.field();
+    title =
+      (field.table ? field.table.displayName() + " – " : "") +
+      field.displayName();
+  }
+
   return (
     <div className={className}>
+      {onBack ? (
+        <SidebarHeader
+          className={"text-default py1 mb1"}
+          title={title}
+          onBack={onBack}
+        />
+      ) : null}
       {DAY_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}

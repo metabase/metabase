@@ -6,6 +6,8 @@ import _ from "underscore";
 
 import {
   ExcludeCheckBox,
+  ExcludeColumn,
+  ExcludeContainer,
   ExcludeLabel,
   OptionButton,
   Separator,
@@ -38,7 +40,7 @@ type Group = {
   displayName: string;
   init: (filter: Filter) => any[];
   test: (filter: Filter) => boolean;
-  getOptions: () => Option[];
+  getOptions: () => Option[][];
   twoColumns?: boolean;
 };
 
@@ -57,16 +59,18 @@ const EXCLUDE: Group[] = [
     init: filter => ["!=", getDateTimeField(filter[1], "day-of-week")],
     getOptions: () => {
       const now = moment();
-      return _.range(0, 7).map(day => {
-        // We increment day here because 0 = Sunday in Memento
-        const date = now.day(day + 1);
-        const displayName = date.format("dddd");
-        return {
-          displayName,
-          value: date.toISOString(),
-          test: value => moment(value).format("dddd") === displayName,
-        };
-      });
+      return [
+        _.range(0, 7).map(day => {
+          // We increment day here because 0 = Sunday in Memento
+          const date = now.day(day + 1);
+          const displayName = date.format("dddd");
+          return {
+            displayName,
+            value: date.toISOString(),
+            test: value => moment(value).format("dddd") === displayName,
+          };
+        }),
+      ];
     },
   },
   {
@@ -75,15 +79,16 @@ const EXCLUDE: Group[] = [
     init: filter => ["!=", getDateTimeField(filter[1], "month-of-year")],
     getOptions: () => {
       const now = moment();
-      return _.range(0, 12).map(month => {
+      const func = (month: number) => {
         const date = now.month(month);
         const displayName = date.format("MMMM");
         return {
           displayName,
           value: date.toISOString(),
-          test: value => moment(value).format("MMMM") === displayName,
+          test: (value: string) => moment(value).format("MMMM") === displayName,
         };
-      });
+      };
+      return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
     },
     twoColumns: true,
   },
@@ -94,16 +99,18 @@ const EXCLUDE: Group[] = [
     getOptions: () => {
       const now = moment();
       const suffix = " " + t`quarter`;
-      return _.range(1, 5).map(quarter => {
-        const date = now.quarter(quarter);
+      return [
+        _.range(1, 5).map(quarter => {
+          const date = now.quarter(quarter);
 
-        const displayName = date.format("Qo") + suffix;
-        return {
-          displayName,
-          value: date.toISOString(),
-          test: value => moment(value).format("Qo") + suffix === displayName,
-        };
-      });
+          const displayName = date.format("Qo") + suffix;
+          return {
+            displayName,
+            value: date.toISOString(),
+            test: value => moment(value).format("Qo") + suffix === displayName,
+          };
+        }),
+      ];
     },
   },
   {
@@ -112,18 +119,19 @@ const EXCLUDE: Group[] = [
     init: filter => ["!=", getDateTimeField(filter[1], "hour-of-day")],
     getOptions: () => {
       const now = moment().utc();
-      return _.range(0, 24).map(hour => {
+      const func = (hour: number) => {
         const date = now.hour(hour);
         const displayName = date.format("h A");
         return {
           displayName,
           value: date.toISOString(),
-          test: value =>
+          test: (value: string) =>
             moment(value)
               .utc()
               .format("h A") === displayName,
         };
-      });
+      };
+      return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
     },
     twoColumns: true,
   },
@@ -201,7 +209,7 @@ export default function ExcludeDatePicker({
   const options = getOptions();
   const update = (values: string[]) =>
     onFilterChange([operator, field, ...values]);
-  const allSelected = options.length === values.length;
+  const allSelected = values.length === 0;
   const selectAllLabel = allSelected ? t`Select none...` : t`Select all...`;
 
   return (
@@ -210,28 +218,34 @@ export default function ExcludeDatePicker({
         label={<ExcludeLabel>{selectAllLabel}</ExcludeLabel>}
         checked={allSelected}
         onChange={() =>
-          update(allSelected ? [] : options.map(({ value }) => value))
+          update(allSelected ? options.flat().map(({ value }) => value) : [])
         }
       />
       <Separator />
-      {options.map(({ displayName, value, test }) => {
-        const checked = !!_.find(values, value => test(value));
-        return (
-          <ExcludeCheckBox
-            key={value}
-            label={<ExcludeLabel>{displayName}</ExcludeLabel>}
-            checked={checked}
-            checkedColor={primaryColor}
-            onChange={() => {
-              if (checked) {
-                update(values.filter(value => !test(value)));
-              } else {
-                update([...values, value]);
-              }
-            }}
-          />
-        );
-      })}
+      <ExcludeContainer>
+        {options.map((inner, index) => (
+          <ExcludeColumn key={index}>
+            {inner.map(({ displayName, value, test }) => {
+              const checked = !_.find(values, value => test(value));
+              return (
+                <ExcludeCheckBox
+                  key={value}
+                  label={<ExcludeLabel>{displayName}</ExcludeLabel>}
+                  checked={checked}
+                  checkedColor={primaryColor}
+                  onChange={() => {
+                    if (checked) {
+                      update([...values, value]);
+                    } else {
+                      update(values.filter(value => !test(value)));
+                    }
+                  }}
+                />
+              );
+            })}
+          </ExcludeColumn>
+        ))}
+      </ExcludeContainer>
     </div>
   );
 }

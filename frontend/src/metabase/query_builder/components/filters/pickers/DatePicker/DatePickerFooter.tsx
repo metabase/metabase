@@ -72,6 +72,13 @@ const DatePickerFooter: React.SFC<Props> = ({
     }
   };
 
+  if (
+    operator === "time-interval" &&
+    (startValue === "current" || startValue === null)
+  ) {
+    // Hide it here since "current" picker has a bunch of button shortcuts
+    return null;
+  }
   const showTimeSelectors =
     !hideTimeSelectors &&
     typeof hours !== "number" &&
@@ -91,10 +98,7 @@ const DatePickerFooter: React.SFC<Props> = ({
         {t`Add a time`}
       </ToggleButton>
     );
-  } else if (
-    (operator === "time-interval" && startValue !== "current") ||
-    isStartingFrom(filter)
-  ) {
+  } else if (operator === "time-interval" || isStartingFrom(filter)) {
     const interval = getIntervalString(filter);
     content = interval ? (
       <Interval>

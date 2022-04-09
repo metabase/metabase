@@ -28,10 +28,26 @@ export const Separator = styled.div`
 `;
 
 export const ExcludeCheckBox = styled(CheckBox)`
-  margin: ${space(1)} ${space(2)};
+  font-size: 1em;
+  color: ${color("text-dark")};
+  font-weight: 600;
+  min-height: 1.5em;
 `;
 
 export const ExcludeLabel = styled.div`
   font-size: 1rem;
   margin-left: ${space(2)};
+`;
+
+export const ExcludeContainer = styled.div`
+  display: flex;
+  flex-wrap: no-wrap;
+  grid-gap: ${space(3)};
+`;
+
+export const ExcludeColumn = styled.div`
+  display: flex;
+  flex-wrap: no-wrap;
+  flex-direction: column;
+  grid-gap: ${space(1)};
 `;

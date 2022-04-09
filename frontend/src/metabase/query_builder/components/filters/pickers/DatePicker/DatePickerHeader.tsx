@@ -6,7 +6,6 @@ import { Container, BackButton, TabButton } from "./DatePickerHeader.styled";
 import { DateOperator, DATE_OPERATORS } from "./DatePicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { getHeaderText } from "./ExcludeDatePicker";
-import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 type Props = {
   className?: string;
@@ -27,8 +26,7 @@ export default function DatePickerHeader({
   onBack,
 }: Props) {
   const [_op, _field] = filter;
-  const dimension =
-    filter.dimension?.() || getRelativeDatetimeDimension(filter);
+  const dimension = filter.dimension?.();
   const operator = _.find(operators, o => o.test(filter));
   const tabs = operators.filter(o => o.group === operator?.group);
 

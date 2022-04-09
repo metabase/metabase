@@ -18,10 +18,7 @@ import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import {
-  getRelativeDatetimeDimension,
-  isStartingFrom,
-} from "metabase/lib/query_time";
+import { isStartingFrom } from "metabase/lib/query_time";
 import Button from "metabase/core/components/Button";
 import DatePicker from "./pickers/DatePicker/DatePicker";
 import TimePicker from "./pickers/TimePicker";
@@ -173,8 +170,7 @@ export default class FilterPopover extends Component<Props, State> {
       );
     }
 
-    const dimension =
-      (filter && filter.dimension()) || getRelativeDatetimeDimension(filter);
+    const dimension = filter && filter.dimension();
     if (!filter || choosingField || !dimension) {
       return (
         <div
