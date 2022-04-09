@@ -4,9 +4,9 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
+import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DeleteEventModal from "../../components/DeleteEventModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {

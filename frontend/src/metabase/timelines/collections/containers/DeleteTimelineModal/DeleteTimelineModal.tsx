@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DeleteTimelineModal from "../../components/DeleteTimelineModal";
+import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import { ModalProps } from "../../types";
 
 const timelineProps = {

@@ -1,15 +1,16 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import ModalFooter from "metabase/timelines/common/components/ModalFooter";
 import { Timeline, TimelineEvent } from "metabase-types/api";
+import ModalHeader from "../ModalHeader";
+import ModalFooter from "../ModalFooter";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;
   timeline: Timeline;
   onSubmit: (event: TimelineEvent, timeline: Timeline) => void;
-  onCancel: () => void;
+  onSubmitSuccess?: () => void;
+  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -17,12 +18,14 @@ const DeleteEventModal = ({
   event,
   timeline,
   onSubmit,
+  onSubmitSuccess,
   onCancel,
   onClose,
 }: DeleteEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(async () => {
     await onSubmit(event, timeline);
-  }, [event, timeline, onSubmit]);
+    onSubmitSuccess?.();
+  }, [event, timeline, onSubmit, onSubmitSuccess]);
 
   return (
     <div>
