@@ -1,11 +1,13 @@
 import moment from "moment";
+import { assoc } from "icepick";
 import inflection from "inflection";
+import { t, ngettext, msgid } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
-import { t, ngettext, msgid } from "ttag";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { isValidField } from "metabase/lib/query/field_ref";
 
 export const DATETIME_UNITS = [
   // "default",
@@ -52,12 +54,18 @@ export function computeFilterTimeRange(filter) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
   }
+  if (isStartingFrom(filter)) {
+    const [value, unit] = getStartingFrom(filter);
+    start = start.add(-value, unit);
+    end = end.add(-value, unit);
+  }
 
   return [start, end];
 }
 
 export function expandTimeIntervalFilter(filter) {
-  let [operator, field, n, unit] = filter;
+  let [operator, field, n, unit, options] = filter;
+  const includeCurrent = !!options?.["include-current"];
 
   if (operator !== "time-interval") {
     throw new Error("translateTimeInterval expects operator 'time-interval'");
@@ -81,17 +89,24 @@ export function expandTimeIntervalFilter(filter) {
       "between",
       field,
       ["relative-datetime", n - 1, unit],
-      ["relative-datetime", -1, unit],
+      ["relative-datetime", includeCurrent ? 0 : -1, unit],
     ];
   } else if (n > 1) {
     return [
       "between",
       field,
-      ["relative-datetime", 1, unit],
+      ["relative-datetime", includeCurrent ? 0 : 1, unit],
       ["relative-datetime", n, unit],
     ];
   } else if (n === 0) {
     return ["=", field, ["relative-datetime", "current"]];
+  } else if (includeCurrent) {
+    return [
+      "between",
+      field,
+      ["relative-datetime", n < 0 ? n : 0, unit],
+      ["relative-datetime", n < 0 ? 0 : n, unit],
+    ];
   } else {
     return ["=", field, ["relative-datetime", n, unit]];
   }
@@ -159,7 +174,7 @@ export function generateTimeValueDescription(value, bucketing) {
     } else {
       return m.format("MMMM D, YYYY");
     }
-  } else if (Array.isArray(value) && value[0] === "relative-datetime") {
+  } else if (isRelativeDatetime(value)) {
     let n = value[1];
     let unit = value[2];
 
@@ -280,4 +295,254 @@ function max() {
 
 function min() {
   return moment(new Date(-864000000000000));
+}
+
+export function isRelativeDatetime(value) {
+  return Array.isArray(value) && value[0] === "relative-datetime";
+}
+
+export function isInterval(mbql) {
+  if (!Array.isArray(mbql)) {
+    return false;
+  }
+  const [op, num, unit] = mbql;
+  return (
+    op === "interval" &&
+    typeof num === "number" &&
+    DATETIME_UNITS.indexOf(unit) > -1
+  );
+}
+
+export function isStartingFrom(mbql) {
+  if (!Array.isArray(mbql)) {
+    return false;
+  }
+
+  const [op, expr, left, right] = mbql;
+  if (
+    isRelativeDatetime(left) &&
+    Array.isArray(expr) &&
+    ((op === "between" && isRelativeDatetime(right)) || op === "=")
+  ) {
+    const [innerOp, innerField, interval] = expr;
+    if (innerOp === "+" && isValidField(innerField) && isInterval(interval)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function getStartingFrom(mbql) {
+  if (!isStartingFrom(mbql)) {
+    return null;
+  }
+
+  const [_op, expr, _left, _right] = mbql;
+  const [_expr, _field, interval] = expr;
+  const [_interval, num, unit] = interval;
+  return [num, unit];
+}
+
+export function formatStartingFrom(bucketing, n) {
+  const suffix = n >= 0 ? "from now" : "ago";
+  switch (bucketing) {
+    case "minute":
+      return ngettext(msgid`minute ${suffix}`, `minutes ${suffix}`, n);
+    case "hour":
+      return ngettext(msgid`hour ${suffix}`, `hours ${suffix}`, n);
+    case "day":
+      return ngettext(msgid`day ${suffix}`, `days ${suffix}`, n);
+    case "week":
+      return ngettext(msgid`week ${suffix}`, `weeks ${suffix}`, n);
+    case "month":
+      return ngettext(msgid`month ${suffix}`, `months ${suffix}`, n);
+    case "quarter":
+      return ngettext(msgid`quarter ${suffix}`, `quarters ${suffix}`, n);
+    case "year":
+      return ngettext(msgid`year ${suffix}`, `years ${suffix}`, n);
+  }
+  return "";
+}
+
+export function getTimeInterval(mbql) {
+  if (
+    Array.isArray(mbql) &&
+    mbql[0] === "time-interval" &&
+    isValidField(mbql[1])
+  ) {
+    return [mbql[1], mbql[2], mbql[3] || "day"];
+  }
+  return null;
+}
+
+export function setStartingFrom(mbql, num, unit) {
+  unit = unit && unit !== "none" ? unit : null;
+  if (isStartingFrom(mbql)) {
+    const [op, expr, left, right] = mbql;
+    const [exprOp, field, interval] = expr;
+    const [intervalOp, _num, originalUnit] = interval;
+    const newUnit = unit || originalUnit;
+    const newExpr = [
+      exprOp,
+      field,
+      [intervalOp, num ?? getDefaultStartingFrom(newUnit), newUnit],
+    ];
+    return [op, newExpr, left, right];
+  }
+
+  const interval = getTimeInterval(mbql);
+  if (interval) {
+    const [field, intervalNum, intervalUnit] = interval;
+    const newUnit = unit || intervalUnit;
+    const expr = [
+      "+",
+      field,
+      ["interval", num ?? getDefaultStartingFrom(newUnit), newUnit],
+    ];
+    const newInterval = ["relative-datetime", intervalNum, intervalUnit];
+    if (intervalNum === -1 || intervalNum === 1) {
+      return ["=", expr, newInterval];
+    } else {
+      const zeroed = ["relative-datetime", 0, intervalUnit];
+      const left = intervalNum < 0 ? newInterval : zeroed;
+      const right = intervalNum < 0 ? zeroed : newInterval;
+      return ["between", expr, left, right];
+    }
+  }
+
+  return mbql;
+}
+
+function getDefaultStartingFrom(unit) {
+  switch (unit) {
+    case "minute":
+      return 60;
+    case "hour":
+      return 24;
+    case "day":
+      return 7;
+    case "week":
+      return 4;
+    case "month":
+      return 3;
+    case "quarter":
+      return 4;
+    case "year":
+      return 1;
+  }
+}
+
+export function getRelativeDatetimeField(filter) {
+  if (isStartingFrom(filter)) {
+    const [_op, expr] = filter;
+    const [_exprOp, field] = expr;
+    return field;
+  } else {
+    return filter?.[1];
+  }
+}
+
+export function getRelativeDatetimeDimension(filter) {
+  const field = getRelativeDatetimeField(filter);
+  return field
+    ? FieldDimension.parseMBQLOrWarn(
+        field,
+        filter.metadata?.(),
+        filter.query?.(),
+      )
+    : null;
+}
+
+export function getRelativeDatetimeInterval(filter) {
+  if (isStartingFrom(filter)) {
+    const [_op, _field, [_left, leftNum, unit], right] = filter;
+    if (right) {
+      const [_right, rightNum] = right;
+      return [
+        leftNum < 0 ? leftNum : rightNum,
+        unit && unit !== "none" ? unit : "day",
+      ];
+    } else {
+      return [leftNum, unit];
+    }
+  } else if (filter[0] === "time-interval") {
+    const unit = filter[3];
+    return [filter[2], unit && unit !== "none" ? unit : "day"];
+  }
+
+  return [null, null];
+}
+
+export function toTimeInterval(filter) {
+  const field = getRelativeDatetimeField(filter);
+
+  const [num, unit] = getRelativeDatetimeInterval(filter);
+  if (isStartingFrom(filter)) {
+    return ["time-interval", field, -num, unit];
+  }
+  return ["time-interval", field, num, unit];
+}
+
+export function updateRelativeDatetimeFilter(filter, positive) {
+  if (!filter) {
+    return null;
+  }
+
+  if (filter[0] === "time-interval") {
+    const [op, field, value, unit, options] = filter;
+    if (typeof value !== "number") {
+      return null;
+    }
+    const newValue = positive ? Math.abs(value) : -Math.abs(value);
+    return [op, field, newValue, unit, options];
+  } else if (isStartingFrom(filter)) {
+    const [
+      _op,
+      [fieldOp, field, [intervalOp, intervalNum, intervalUnit]],
+    ] = filter;
+    const [value, unit] = getRelativeDatetimeInterval(filter);
+    const absValue = Math.abs(value);
+    const newValue = positive ? absValue : -absValue;
+    const newField = [fieldOp, field, [intervalOp, -intervalNum, intervalUnit]];
+    if (absValue === 1) {
+      return ["=", newField, ["relative-datetime", newValue, unit]];
+    }
+    const zeroed = ["relative-datetime", 0, unit];
+    const interval = ["relative-datetime", newValue, unit];
+    const left = newValue < 0 ? interval : zeroed;
+    const right = newValue < 0 ? zeroed : interval;
+    return ["between", newField, left, right];
+  }
+  return null;
+}
+
+export function setRelativeDatetimeUnit(filter, unit) {
+  if (filter[0] === "time-interval") {
+    return assoc(filter, 3, unit);
+  }
+  if (isStartingFrom(filter)) {
+    const [op, field, start, end] = filter;
+    return [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end];
+  }
+  return filter;
+}
+
+export function setRelativeDatetimeValue(filter, value) {
+  if (filter[0] === "time-interval") {
+    return assoc(filter, 2, value);
+  }
+  if (isStartingFrom(filter)) {
+    const [_op, field, start, end] = filter;
+    if (value === 1 || value === -1) {
+      return ["=", field, assoc(start, 1, value)];
+    }
+    return [
+      "between",
+      field,
+      assoc(start, 1, value < 0 ? value : 0),
+      assoc(end, 1, value < 0 ? 0 : value),
+    ];
+  }
+  return filter;
 }

@@ -1,31 +1,41 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import cx from "classnames";
+import React from "react";
+import { t } from "ttag";
+import moment from "moment";
+import { assoc } from "icepick";
 
 import NumericInput from "metabase/components/NumericInput";
-import { formatBucketing } from "metabase/lib/query_time";
+import {
+  formatBucketing,
+  formatStartingFrom,
+  getRelativeDatetimeInterval,
+  getStartingFrom,
+  setRelativeDatetimeUnit,
+  setRelativeDatetimeValue,
+  setStartingFrom,
+  toTimeInterval,
+} from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import DateUnitSelector from "../DateUnitSelector";
 
-import { assoc } from "icepick";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   CurrentButton,
   CurrentContainer,
   CurrentPopover,
+  GridContainer,
+  GridText,
   MoreButton,
   OptionButton,
   OptionsContainer,
 } from "./RelativeDatePicker.styled";
-import { t } from "ttag";
-import moment from "moment";
 
 export const PastPicker = (props: Props) => (
-  <DatePicker {...props} formatter={value => value * -1} />
+  <RelativeDatePicker {...props} formatter={value => value * -1} />
 );
 
-export const NextPicker = (props: Props) => <DatePicker {...props} />;
+export const NextPicker = (props: Props) => <RelativeDatePicker {...props} />;
 
 const periodPopoverText = (period: string) => {
   const now = moment();
@@ -125,102 +135,138 @@ type Props = {
   primaryColor?: string;
 };
 
-type State = {
-  showStartingFrom: boolean;
-  showOptions: boolean;
-};
+const RelativeDatePicker: React.SFC<Props> = props => {
+  const {
+    filter,
+    onFilterChange,
+    formatter = value => value,
+    className,
+    primaryColor,
+  } = props;
 
-class DatePicker extends Component<Props, State> {
-  state = {
-    showStartingFrom: false,
-    showOptions: false,
-  };
+  const startingFrom = getStartingFrom(filter);
+  const [intervals = 30, unit = "day"] = getRelativeDatetimeInterval(filter);
+  const options = filter[4] || {};
+  const includeCurrent = !!options["include-current"];
 
-  static defaultProps = {
-    formatter: (value: string) => value,
-  };
+  const showOptions = !startingFrom;
+  const numColumns = showOptions ? 3 : 4;
 
-  render() {
-    const {
-      filter,
-      onFilterChange,
-      formatter,
-      className,
-      primaryColor,
-    } = this.props;
-    const { showStartingFrom, showOptions } = this.state;
-    const intervals = filter[2];
-    const unit = filter[3];
-    const options = filter[4] || {};
-    const includeCurrent = !!options["include-current"];
+  const [optionsVisible, setOptionsVisible] = React.useState(false);
 
-    const optionsContent = (
-      <OptionsContainer>
-        {/* <OptionButton icon="arrow_left_to_line">
-          {t`Starting from...`}
-        </OptionButton> */}
-        <OptionButton
-          selected={includeCurrent}
-          primaryColor={primaryColor}
-          icon={includeCurrent ? "check" : "calendar"}
-          onClick={() => {
-            onFilterChange(
-              assoc(filter, 4, {
-                ...options,
-                "include-current": !includeCurrent,
-              }),
-            );
-            this.setState({ showOptions: false });
-          }}
+  const optionsContent = (
+    <OptionsContainer>
+      <OptionButton
+        icon="arrow_left_to_line"
+        onClick={() => {
+          setOptionsVisible(false);
+          onFilterChange(setStartingFrom(filter));
+        }}
+      >
+        {t`Starting from...`}
+      </OptionButton>
+      <OptionButton
+        selected={includeCurrent}
+        primaryColor={primaryColor}
+        icon={includeCurrent ? "check" : "calendar"}
+        onClick={() => {
+          setOptionsVisible(false);
+          onFilterChange(
+            assoc(filter, 4, {
+              ...options,
+              "include-current": !includeCurrent,
+            }),
+          );
+        }}
+      >
+        {getCurrentString(filter)}
+      </OptionButton>
+    </OptionsContainer>
+  );
+  return (
+    <GridContainer className={className} numColumns={numColumns}>
+      {startingFrom ? (
+        <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
+      ) : null}
+      <NumericInput
+        className="input border-purple text-right"
+        style={SELECT_STYLE}
+        data-ui-tag="relative-date-input"
+        value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
+        onChange={(value: number) => {
+          onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
+        }}
+        placeholder="30"
+      />
+      <DateUnitSelector
+        value={unit}
+        onChange={value => {
+          onFilterChange(setRelativeDatetimeUnit(filter, value));
+        }}
+        intervals={intervals}
+        formatter={formatter}
+        periods={ALL_PERIODS}
+      />
+      {showOptions ? (
+        <TippyPopover
+          visible={optionsVisible}
+          placement={"bottom-start"}
+          content={optionsContent}
         >
-          {getCurrentString(filter)}
-        </OptionButton>
-      </OptionsContainer>
-    );
-    return (
-      <div className={cx(className, "flex align-center pb1")}>
-        <NumericInput
-          className="mr2 input border-purple text-right"
-          style={{
-            width: 65,
-            // needed to match Select's AdminSelect classes :-/
-            fontSize: 14,
-            fontWeight: 700,
-            padding: 8,
-          }}
-          data-ui-tag="relative-date-input"
-          value={
-            typeof intervals === "number" ? Math.abs(intervals) : intervals
-          }
-          onChange={(value: any) =>
-            onFilterChange(assoc(filter, 2, formatter(value)))
-          }
-          placeholder="30"
-        />
-        <div className="flex-full">
+          <MoreButton
+            icon="ellipsis"
+            onClick={() => setOptionsVisible(!optionsVisible)}
+          />
+        </TippyPopover>
+      ) : (
+        <div />
+      )}
+      {startingFrom ? (
+        <>
+          <GridText>{t`Starting from`}</GridText>
+          <NumericInput
+            className="input border-purple text-right"
+            style={SELECT_STYLE}
+            data-ui-tag="relative-date-input"
+            value={
+              typeof startingFrom[0] === "number"
+                ? Math.abs(startingFrom[0])
+                : startingFrom[0]
+            }
+            onChange={(value: number) =>
+              onFilterChange(
+                setStartingFrom(filter, formatter(value), startingFrom[1]),
+              )
+            }
+            placeholder="30"
+          />
           <DateUnitSelector
-            value={unit}
+            value={startingFrom[1]}
             onChange={value => {
-              onFilterChange(assoc(filter, 3, value));
+              onFilterChange(setStartingFrom(filter, startingFrom[0], value));
             }}
-            intervals={intervals}
+            formatDisplayName={(period, intervals) =>
+              formatStartingFrom(period, intervals)
+            }
+            intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
             periods={ALL_PERIODS}
           />
-        </div>
-        {showStartingFrom ? null : (
-          <TippyPopover
-            visible={showOptions}
-            placement={"bottom-start"}
-            content={optionsContent}
-          >
-            <MoreButton
-              icon="ellipsis"
-              onClick={() => this.setState({ showOptions: !showOptions })}
-            />
-          </TippyPopover>
-        )}
-      </div>
-    );
-  }
-}
+          <MoreButton
+            icon="close"
+            onClick={() => {
+              onFilterChange(toTimeInterval(filter));
+            }}
+          />
+        </>
+      ) : null}
+    </GridContainer>
+  );
+};
+
+const SELECT_STYLE = {
+  width: 65,
+  fontSize: 14,
+  fontWeight: 700,
+  padding: 8,
+};

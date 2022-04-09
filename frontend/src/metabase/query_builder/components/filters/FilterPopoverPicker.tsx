@@ -5,6 +5,7 @@ import TimePicker from "../filters/pickers/TimePicker";
 import BooleanPicker from "../filters/pickers/BooleanPicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 type Props = {
   className?: string;
@@ -53,7 +54,8 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       onFilterChange(filter.setArguments(values));
     };
 
-    const dimension = filter.dimension();
+    const dimension =
+      filter.dimension() || getRelativeDatetimeDimension(filter);
     const field = dimension?.field();
 
     return field?.isTime() ? (

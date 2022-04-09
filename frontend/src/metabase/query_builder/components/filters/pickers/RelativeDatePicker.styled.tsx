@@ -63,10 +63,27 @@ export const OptionButton = styled(Button)<ButtonProps>`
 
 export const MoreButton = styled(Button)<ButtonProps>`
   border: none;
-  margin-left: ${space(2)};
-  color: ${color("text-dark")};
+  color: ${color("text-medium")};
 
   &:hover {
     color: ${({ primaryColor = defaultColor }) => primaryColor};
   }
+`;
+
+type GridProps = {
+  numColumns?: number;
+};
+
+export const GridContainer = styled.div<GridProps>`
+  display: grid;
+  grid-template-columns: repeat(${({ numColumns = 3 }) => numColumns}, auto);
+  justify-items: start;
+  align-items: center;
+  grid-gap: ${space(1)};
+  padding-bottom: ${space(1)};
+`;
+
+export const GridText = styled.div`
+  font-size: 1em;
+  color: ${color("text-medium")};
 `;

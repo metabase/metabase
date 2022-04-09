@@ -19,6 +19,10 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import DatePickerShortcuts from "./pickers/DatePickerShortcuts";
+import {
+  getRelativeDatetimeDimension,
+  isStartingFrom,
+} from "metabase/lib/query_time";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -66,7 +70,9 @@ export default class FilterPopover extends Component<Props, State> {
     this.state = {
       filter: filter,
       choosingField: !filter,
-      editingFilter: filter ? filter.isCustom() : false,
+      editingFilter: filter
+        ? filter.isCustom() && !isStartingFrom(filter)
+        : false,
       showShortcuts: !props.filter?.[0],
     };
   }
@@ -134,9 +140,10 @@ export default class FilterPopover extends Component<Props, State> {
     this.setState({ choosingField: false });
   };
 
-  handleFilterChange = (newFilter: any[]) => {
+  handleFilterChange = (mbql: any[]) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
-    this.setFilter(filter.set(newFilter));
+    const newFilter = filter.set(mbql);
+    this.setFilter(newFilter);
   };
 
   render() {
@@ -167,7 +174,8 @@ export default class FilterPopover extends Component<Props, State> {
       );
     }
 
-    const dimension = filter && filter.dimension();
+    const dimension =
+      (filter && filter.dimension()) || getRelativeDatetimeDimension(filter);
     if (choosingField || !dimension) {
       return (
         <div

@@ -8,6 +8,7 @@ import FilterOptions from "./FilterOptions";
 import { getOperator } from "../filters/pickers/DatePicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import DateOperatorFooter from "./DateOperatorFooter";
+import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 export function shouldHidePopoverFooter(filter: Filter): boolean {
   const [op, _, value] = filter;
@@ -46,7 +47,7 @@ export default function FilterPopoverFooter({
     return null;
   }
 
-  const dimension = filter.dimension();
+  const dimension = filter.dimension() || getRelativeDatetimeDimension(filter);
   const field = dimension?.field();
 
   const containerClassName = cx(className, "flex align-center", {

@@ -12,6 +12,10 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "./pickers/SpecificDatePicker";
+import {
+  computeFilterTimeRange,
+  isStartingFrom,
+} from "metabase/lib/query_time";
 
 type Props = {
   primaryColor?: string;
@@ -26,36 +30,12 @@ const HAS_TIME_TOGGLE = ["between", "=", "<", ">"];
 const TIME_SELECTOR_DEFAULT_HOUR = 12;
 const TIME_SELECTOR_DEFAULT_MINUTE = 30;
 
-const getIntervalString = ([_op, _field, count, interval]: Filter) => {
-  if (typeof count !== "number") {
-    return null;
-  }
-
-  let start: Moment = moment();
-  let end: Moment = moment();
-  const formatString = "MMM D";
-  let unit;
-  switch (interval) {
-    case "week":
-      unit = "week";
-      break;
-    case "month":
-      unit = "month";
-      break;
-    case "quarter":
-      unit = "quarter";
-      break;
-    case "year":
-      unit = "year";
-      break;
-    default:
-      unit = "day";
-  }
-  if (count >= 0) {
-    end = end.add(count, unit as moment.DurationInputArg2);
-  } else {
-    start = start.add(count, unit as moment.DurationInputArg2);
-  }
+const getIntervalString = (filter: Filter) => {
+  const [start = moment(), end = moment()] = computeFilterTimeRange(filter);
+  const formatString =
+    start?.year() === end?.year() && start?.year() === moment().year()
+      ? "MMM D"
+      : "MMM D, YY";
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
@@ -96,7 +76,11 @@ export default function DateOperatorFooter({
     !hideTimeSelectors &&
     typeof hours !== "number" &&
     typeof minutes !== "number";
-  if (HAS_TIME_TOGGLE.indexOf(operator) > -1 && showTimeSelectors) {
+  if (
+    HAS_TIME_TOGGLE.indexOf(operator) > -1 &&
+    showTimeSelectors &&
+    !isStartingFrom(filter)
+  ) {
     return (
       <ToggleButton
         primaryColor={primaryColor}
@@ -108,7 +92,7 @@ export default function DateOperatorFooter({
     );
   }
 
-  if (operator === "time-interval") {
+  if (operator === "time-interval" || isStartingFrom(filter)) {
     const interval = getIntervalString(filter);
     return interval ? (
       <Interval>

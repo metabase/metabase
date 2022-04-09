@@ -18,11 +18,23 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { shouldHidePopoverFooter } from "../FilterPopoverFooter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import { Container } from "./DatePicker.styled";
+import {
+  getRelativeDatetimeDimension,
+  updateRelativeDatetimeFilter,
+  isRelativeDatetime,
+  isStartingFrom,
+  getRelativeDatetimeInterval,
+} from "metabase/lib/query_time";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
-const getUnit = ([op, _field, _value, unit]: Filter) =>
-  op === "time-interval" && unit ? unit : "day";
+const getUnit = (
+  [op, _field, _value, unit]: Filter,
+  ignoreNone: boolean = true,
+) => {
+  const result = op === "time-interval" && unit ? unit : "day";
+  return !ignoreNone && result === "none" ? "day" : result;
+};
 const getOptions = ([op, _field, _value, _unit, options]: Filter) =>
   (op === "time-interval" && options) || {};
 
@@ -44,8 +56,8 @@ const hasTime = (value: unknown) =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(field: any[], bucketing?: string | null) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
+function getDateTimeField(filter: any[], bucketing?: string | null) {
+  const dimension = getRelativeDatetimeDimension(filter);
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
@@ -53,7 +65,7 @@ function getDateTimeField(field: any[], bucketing?: string | null) {
       return dimension.withoutTemporalBucketing().mbql();
     }
   }
-  return field;
+  return null;
 }
 
 export function getDateTimeFieldTarget(field: any[]) {
@@ -71,7 +83,7 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
     .slice(2, 2 + count)
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
-  const field = getDateTimeField(filter[1], bucketing);
+  const field = getDateTimeField(filter, bucketing);
   return [field, ...values];
 }
 
@@ -91,15 +103,22 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "previous",
     displayName: t`Past`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      -getIntervals(filter),
-      getUnit(filter),
-      getOptions(filter),
-    ],
-    test: ([op, field, value]) =>
-      (op === "time-interval" && value < 0) || Object.is(value, -0),
+    init: filter =>
+      updateRelativeDatetimeFilter(filter, false) || [
+        "time-interval",
+        getDateTimeField(filter),
+        -getIntervals(filter),
+        getUnit(filter, false),
+        getOptions(filter),
+      ],
+    test: filter => {
+      const [op, _field, left] = filter;
+      if (op === "time-interval" && left < 0) {
+        return true;
+      }
+      const [value] = getRelativeDatetimeInterval(filter);
+      return typeof value === "number" && value < 0;
+    },
     group: "relative",
     widget: PastPicker,
     options: { "include-current": true },
@@ -115,14 +134,22 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "next",
     displayName: t`Next`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      getIntervals(filter),
-      getUnit(filter),
-      getOptions(filter),
-    ],
-    test: ([op, field, value]) => op === "time-interval" && value >= 0,
+    init: filter =>
+      updateRelativeDatetimeFilter(filter, true) || [
+        "time-interval",
+        getDateTimeField(filter),
+        getIntervals(filter),
+        getUnit(filter, false),
+        getOptions(filter),
+      ],
+    test: filter => {
+      const [op, _field, left] = filter;
+      if (op === "time-interval" && left > 0) {
+        return true;
+      }
+      const [value] = getRelativeDatetimeInterval(filter);
+      return typeof value === "number" && value > 0;
+    },
     group: "relative",
     widget: NextPicker,
     options: { "include-current": true },
@@ -134,7 +161,10 @@ export const DATE_OPERATORS: DateOperator[] = [
       const values = ["between", ...getDateTimeFieldAndValues(filter, 2)];
       return values;
     },
-    test: ([op]) => op === "between",
+    test: ([op, _field, left, right]) =>
+      op === "between" &&
+      !isRelativeDatetime(left) &&
+      !isRelativeDatetime(right),
     group: "specific",
     widget: BetweenPicker,
   },
@@ -208,9 +238,6 @@ export default class DatePicker extends Component<Props, State> {
   UNSAFE_componentWillMount() {
     const operators = this.props.operators || DATE_OPERATORS;
 
-    const operator = getOperator(this.props.filter, operators) || operators[0];
-    this.props.onFilterChange(operator.init(this.props.filter));
-
     this.setState({ operators });
   }
 
@@ -247,7 +274,7 @@ export default class DatePicker extends Component<Props, State> {
             onCommit={onCommit}
             primaryColor={primaryColor}
             onFilterChange={(filter: Filter) => {
-              if (operator && operator.init) {
+              if (!isStartingFrom(filter) && operator && operator.init) {
                 onFilterChange(operator.init(filter));
               } else {
                 onFilterChange(filter);

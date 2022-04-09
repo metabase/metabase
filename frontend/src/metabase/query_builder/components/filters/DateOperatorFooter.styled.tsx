@@ -28,4 +28,5 @@ export const Interval = styled.div`
   font-weight: normal;
   color: ${color("text-medium")};
   margin-left: ${space(1)};
+  margin-right: ${space(2)};
 `;

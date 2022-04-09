@@ -4,12 +4,16 @@ import React from "react";
 import Select, { Option } from "metabase/core/components/Select";
 import { formatBucketing } from "metabase/lib/query_time";
 
+const defaultDisplayName = (period: string, intervals: number) =>
+  formatBucketing(period, intervals).toLowerCase();
+
 type Props = {
   className?: string;
   value: number | string;
   onChange: (value: number | string) => void;
   intervals: number | string;
   formatter: (value: any) => any;
+  formatDisplayName?: (period: string, intervals: number) => string;
   periods: string[];
 };
 
@@ -19,6 +23,7 @@ const DateUnitSelector = ({
   onChange,
   intervals,
   formatter,
+  formatDisplayName = defaultDisplayName,
   periods,
 }: Props) => (
   <Select
@@ -30,7 +35,7 @@ const DateUnitSelector = ({
   >
     {periods.map(period => (
       <Option value={period} key={period}>
-        {formatBucketing(period, formatter(intervals) || 1)}
+        {formatDisplayName(period, formatter(intervals) || 1)}
       </Option>
     ))}
   </Select>
