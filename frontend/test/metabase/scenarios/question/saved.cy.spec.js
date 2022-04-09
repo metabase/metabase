@@ -6,6 +6,7 @@ import {
   summarize,
   visitQuestion,
   startNewQuestion,
+  visualize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
@@ -143,6 +144,7 @@ describe("scenarios > question > saved", () => {
     startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
+    visualize();
     cy.findAllByText("Filter")
       .first()
       .click();

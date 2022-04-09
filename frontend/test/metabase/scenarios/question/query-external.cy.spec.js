@@ -1,4 +1,4 @@
-import { restore, startNewQuestion } from "__support__/e2e/cypress";
+import { restore, startNewQuestion, visualize } from "__support__/e2e/cypress";
 
 const supportedDatabases = [
   {
@@ -27,7 +27,7 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
       cy.findByText(dbName).click();
       cy.findByText("Orders").click();
 
-      cy.wait("@dataset");
+      visualize();
       cy.contains("37.65");
     });
   });

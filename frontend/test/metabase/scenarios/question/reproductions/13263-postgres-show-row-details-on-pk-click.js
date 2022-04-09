@@ -1,4 +1,4 @@
-import { restore, startNewQuestion } from "__support__/e2e/cypress";
+import { restore, startNewQuestion, visualize } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -11,6 +11,7 @@ export function issue13263() {
       startNewQuestion();
       cy.findByTextEnsureVisible(PG_DB_NAME).click();
       cy.findByTextEnsureVisible("Orders").click();
+      visualize();
     });
 
     it("should show row details when clicked on its entity key (metabase#13263)", () => {

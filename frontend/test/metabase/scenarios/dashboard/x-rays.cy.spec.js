@@ -4,6 +4,7 @@ import {
   visitQuestionAdhoc,
   popover,
   summarize,
+  visualize,
   startNewQuestion,
 } from "__support__/e2e/cypress";
 
@@ -86,6 +87,7 @@ describe("scenarios > x-rays", () => {
       startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
+      visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
       cy.button("Done").click();

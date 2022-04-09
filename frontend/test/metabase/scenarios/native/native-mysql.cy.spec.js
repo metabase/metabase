@@ -44,7 +44,9 @@ describe("scenatios > question > native > mysql", () => {
   });
 
   it("can save a native MySQL query", () => {
-    cy.get(".ace_content").type(`SELECT * FROM ORDERS`);
+    openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+      `SELECT * FROM ORDERS`,
+    );
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset");
