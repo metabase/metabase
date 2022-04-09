@@ -11,7 +11,6 @@ import { USERS } from "__support__/e2e/cypress_data";
 describe("personal collections", () => {
   beforeEach(() => {
     restore();
-    cy.server();
   });
 
   describe("admin", () => {
