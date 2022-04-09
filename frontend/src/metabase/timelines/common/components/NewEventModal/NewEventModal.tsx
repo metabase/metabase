@@ -18,7 +18,11 @@ export interface NewEventModalProps {
   collection?: Collection;
   cardId?: number;
   source: TimelineEventSource;
-  onSubmit: (values: Partial<TimelineEvent>, collection?: Collection) => void;
+  onSubmit: (
+    values: Partial<TimelineEvent>,
+    collection?: Collection,
+    timeline?: Timeline,
+  ) => void;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
   onClose?: () => void;
@@ -58,10 +62,11 @@ const NewEventModal = ({
 
   const handleSubmit = useCallback(
     async (values: Partial<TimelineEvent>) => {
-      await onSubmit(values, collection);
+      const timeline = timelines.find(t => t.id === values.timeline_id);
+      await onSubmit(values, collection, timeline);
       onSubmitSuccess?.();
     },
-    [collection, onSubmit, onSubmitSuccess],
+    [collection, timelines, onSubmit, onSubmitSuccess],
   );
 
   return (
