@@ -5,7 +5,6 @@ import cx from "classnames";
 import OperatorSelector from "../filters/OperatorSelector";
 import SidebarHeader from "../SidebarHeader";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import DateOperatorTabs from "./DateOperatorHeader";
 import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 type Props = {
@@ -34,13 +33,8 @@ export default function FilterPopoverHeader({
   const field = dimension.field();
   const operator = filter.operatorName();
 
-  const showOperatorSelector = !(
-    field.isTime() ||
-    field.isDate() ||
-    field.isBoolean()
-  );
-  const showDateHeader = field.isTime() || field.isDate();
-  const showHeader = showFieldPicker || showOperatorSelector || showDateHeader;
+  const showOperatorSelector = !field.isBoolean();
+  const showHeader = showFieldPicker || showOperatorSelector;
   const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
 
   const setOperator = (operatorName: string) => {
@@ -54,11 +48,10 @@ export default function FilterPopoverHeader({
       className={cx(className, "text-medium", {
         "flex align-center": !showOperatorSelectorOnOwnRow,
         "px1 pt1": isSidebar,
-        "p1 mb1 border-bottom": !isSidebar && !showDateHeader,
-        "mb1 border-bottom": showDateHeader,
+        "p1 mb1 border-bottom": !isSidebar,
       })}
     >
-      {showFieldPicker && !showDateHeader && (
+      {showFieldPicker && (
         <SidebarHeader
           className={cx("text-default py1", {
             pr2: !showOperatorSelectorOnOwnRow,
@@ -79,14 +72,6 @@ export default function FilterPopoverHeader({
           operator={operator}
           operators={filter.filterOperators(operator)}
           onOperatorChange={setOperator}
-        />
-      )}
-      {showDateHeader && (
-        <DateOperatorTabs
-          filter={filter}
-          onBack={onBack}
-          operator={operator}
-          onFilterChange={onFilterChange}
         />
       )}
     </div>

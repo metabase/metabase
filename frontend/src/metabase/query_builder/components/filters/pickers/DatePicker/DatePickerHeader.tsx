@@ -2,10 +2,11 @@
 import React from "react";
 import _ from "underscore";
 
-import { Container, BackButton, TabButton } from "./DateOperatorHeader.styled";
-import { DateOperator, DATE_OPERATORS } from "./pickers/DatePicker";
+import { Container, BackButton, TabButton } from "./DatePickerHeader.styled";
+import { DateOperator, DATE_OPERATORS } from "./DatePicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { getHeaderText } from "./pickers/ExcludeDatePicker";
+import { getHeaderText } from "./ExcludeDatePicker";
+import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 type Props = {
   className?: string;
@@ -13,37 +14,38 @@ type Props = {
   primaryColor?: string;
 
   filter: Filter;
-  operator: string;
   operators?: DateOperator[];
-  onBack: () => void;
+  onBack?: () => void;
   onFilterChange: (filter: any[]) => void;
 };
 
-export default function DateOperatorHeader({
+export default function DatePickerHeader({
   operators = DATE_OPERATORS,
   filter,
   primaryColor,
   onFilterChange,
   onBack,
 }: Props) {
-  const [_op, _field, ...values] = filter;
-  const dimension = filter.dimension();
+  const [_op, _field] = filter;
+  const dimension =
+    filter.dimension?.() || getRelativeDatetimeDimension(filter);
   const operator = _.find(operators, o => o.test(filter));
   const tabs = operators.filter(o => o.group === operator?.group);
 
   if (operator?.name === "exclude") {
-    return (
+    const hasTemporalUnit = dimension?.temporalUnit();
+    return onBack || hasTemporalUnit ? (
       <Container>
         <BackButton
           primaryColor={primaryColor}
           onClick={() => {
-            if (dimension?.temporalUnit()) {
+            if (hasTemporalUnit) {
               onFilterChange([
                 "!=",
-                dimension.withoutTemporalBucketing().mbql(),
+                dimension?.withoutTemporalBucketing().mbql(),
               ]);
             } else {
-              onBack();
+              onBack?.();
             }
           }}
           icon="chevronleft"
@@ -51,18 +53,18 @@ export default function DateOperatorHeader({
           {getHeaderText(filter)}
         </BackButton>
       </Container>
-    );
+    ) : null;
   }
 
   return (
     <Container>
-      <BackButton
-        primaryColor={primaryColor}
-        onClick={() => {
-          onBack();
-        }}
-        icon="chevronleft"
-      />
+      {onBack ? (
+        <BackButton
+          primaryColor={primaryColor}
+          onClick={onBack}
+          icon="chevronleft"
+        />
+      ) : null}
       {tabs.map(({ test, displayName, init }) => (
         <TabButton
           selected={!!test(filter)}

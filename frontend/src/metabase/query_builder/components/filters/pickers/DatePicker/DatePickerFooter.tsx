@@ -7,17 +7,15 @@ import _ from "underscore";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Icon from "metabase/components/Icon";
 
-import { Interval, ToggleButton } from "./DateOperatorFooter.styled";
-import {
-  getTimeComponent,
-  setTimeComponent,
-} from "./pickers/SpecificDatePicker";
+import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
+import { getTimeComponent, setTimeComponent } from "./SpecificDatePicker";
 import {
   computeFilterTimeRange,
   isStartingFrom,
 } from "metabase/lib/query_time";
 
 type Props = {
+  isSidebar?: boolean;
   primaryColor?: string;
   hideTimeSelectors?: boolean;
 
@@ -39,12 +37,14 @@ const getIntervalString = (filter: Filter) => {
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
-export default function DateOperatorFooter({
+const DatePickerFooter: React.SFC<Props> = ({
   filter,
+  isSidebar,
   primaryColor,
   onFilterChange,
   hideTimeSelectors,
-}: Props) {
+  children,
+}) => {
   const [operator, field, startValue, endValue] = filter;
   const { hours, minutes } = getTimeComponent(startValue);
 
@@ -76,12 +76,13 @@ export default function DateOperatorFooter({
     !hideTimeSelectors &&
     typeof hours !== "number" &&
     typeof minutes !== "number";
+  let content;
   if (
     HAS_TIME_TOGGLE.indexOf(operator) > -1 &&
     showTimeSelectors &&
     !isStartingFrom(filter)
   ) {
-    return (
+    content = (
       <ToggleButton
         primaryColor={primaryColor}
         onClick={enableTimeSelectors}
@@ -90,11 +91,12 @@ export default function DateOperatorFooter({
         {t`Add a time`}
       </ToggleButton>
     );
-  }
-
-  if (operator === "time-interval" || isStartingFrom(filter)) {
+  } else if (
+    (operator === "time-interval" && startValue !== "current") ||
+    isStartingFrom(filter)
+  ) {
     const interval = getIntervalString(filter);
-    return interval ? (
+    content = interval ? (
       <Interval>
         <Icon className="mr1" name="calendar" />
         <div>{interval}</div>
@@ -102,5 +104,12 @@ export default function DateOperatorFooter({
     ) : null;
   }
 
-  return null;
-}
+  return (
+    <Container isSidebar={isSidebar}>
+      {content || <div />}
+      {children}
+    </Container>
+  );
+};
+
+export default DatePickerFooter;

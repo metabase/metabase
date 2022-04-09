@@ -59,6 +59,7 @@ export const setTimeComponent = (
 };
 
 type BetweenPickerProps = {
+  isSidebar?: boolean;
   className?: string;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
@@ -68,12 +69,13 @@ type BetweenPickerProps = {
 
 export const BetweenPicker = ({
   className,
+  isSidebar,
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
 }: BetweenPickerProps) => (
   <div className={className}>
-    <TimeContainer>
+    <TimeContainer isSidebar={isSidebar}>
       <div>
         <SpecificDatePicker
           value={startValue}
@@ -148,6 +150,7 @@ export const AfterPicker = (props: SingleDatePickerProps) => {
 
 type Props = {
   className?: string;
+  isSidebar?: boolean;
   calendar?: boolean;
   selectAll?: SelectAll;
 

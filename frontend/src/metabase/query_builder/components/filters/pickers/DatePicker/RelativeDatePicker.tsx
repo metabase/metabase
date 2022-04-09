@@ -17,7 +17,7 @@ import {
 } from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import DateUnitSelector from "../DateUnitSelector";
+import DateUnitSelector from "./DateUnitSelector";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
@@ -64,6 +64,7 @@ const periodPopoverText = (period: string) => {
 };
 
 type CurrentPickerProps = {
+  className?: string;
   filter: Filter;
   primaryColor?: string;
   onCommit: (filter?: any[]) => void;
@@ -71,40 +72,50 @@ type CurrentPickerProps = {
 
 export function CurrentPicker(props: CurrentPickerProps) {
   const {
+    className,
     primaryColor,
     onCommit,
     filter: [operator, field, intervals, unit],
   } = props;
   return (
-    <CurrentContainer>
-      {DATE_PERIODS.map(period => (
-        <TippyPopover
-          key={period}
-          placement="bottom"
-          content={<CurrentPopover>{periodPopoverText(period)}</CurrentPopover>}
-        >
-          <CurrentButton
-            key={period}
-            primaryColor={primaryColor}
-            selected={operator && unit === period.toLowerCase()}
-            onClick={() => {
-              onCommit([operator, field, intervals, period]);
-            }}
-          >
-            {formatBucketing(period, 1)}
-          </CurrentButton>
-        </TippyPopover>
+    <div className={className}>
+      {DATE_PERIODS.map((periods, index) => (
+        <CurrentContainer key={periods.length} first={index === 0}>
+          {periods.map(period => (
+            <TippyPopover
+              key={period}
+              placement="bottom"
+              content={
+                <CurrentPopover>{periodPopoverText(period)}</CurrentPopover>
+              }
+            >
+              <CurrentButton
+                key={period}
+                primaryColor={primaryColor}
+                selected={operator && unit === period.toLowerCase()}
+                onClick={() => {
+                  onCommit([operator, field, intervals, period]);
+                }}
+              >
+                {formatBucketing(period, 1)}
+              </CurrentButton>
+            </TippyPopover>
+          ))}
+        </CurrentContainer>
       ))}
-    </CurrentContainer>
+    </div>
   );
 }
 
-export const DATE_PERIODS = ["day", "week", "month", "quarter", "year"];
+export const DATE_PERIODS = [
+  ["day", "week", "month"],
+  ["quarter", "year"],
+];
 
 const TIME_PERIODS = ["minute", "hour"];
 
 // define ALL_PERIODS in increasing order of duration
-const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS);
+const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS.flat());
 
 const getCurrentString = (filter: Filter) =>
   t`Include ${getCurrentIntervalName(filter)}`;

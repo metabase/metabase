@@ -20,8 +20,6 @@ export const CurrentButton = styled(Button)<ButtonProps>`
   color: ${({ selected, primaryColor = defaultColor }) =>
     selected ? "white" : primaryColor};
 
-  margin-bottom: ${space(2)};
-  margin-right: ${space(1)};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
@@ -31,10 +29,11 @@ export const CurrentButton = styled(Button)<ButtonProps>`
   }
 `;
 
-export const CurrentContainer = styled.div`
+export const CurrentContainer = styled.div<{ first?: boolean }>`
   display: flex;
-  flex-wrap: wrap;
-  padding: ${space(1)};
+  flex-wrap: no-wrap;
+  grid-gap: ${space(2)};
+  margin-bottom: ${({ first }) => (first ? space(2) : "")};
 `;
 
 export const CurrentPopover = styled.div`
@@ -77,10 +76,9 @@ type GridProps = {
 export const GridContainer = styled.div<GridProps>`
   display: grid;
   grid-template-columns: repeat(${({ numColumns = 3 }) => numColumns}, auto);
-  justify-items: start;
+  justify-content: start;
   align-items: center;
   grid-gap: ${space(1)};
-  padding-bottom: ${space(1)};
 `;
 
 export const GridText = styled.div`

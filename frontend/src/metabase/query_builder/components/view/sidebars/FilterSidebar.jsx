@@ -35,7 +35,6 @@ export default class FilterSidebar extends React.Component {
         <FilterPopover
           isTopLevel
           isSidebar
-          className="mx2 pt1"
           fieldPickerTitle={t`Filter by`}
           query={question.query()}
           // fires every time the filter is changed:

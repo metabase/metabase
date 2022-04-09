@@ -8,8 +8,8 @@ import _ from "underscore";
 
 import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
-import DateOperatorSelector from "../../DateOperatorSelector";
-import DateUnitSelector from "../../DateUnitSelector";
+import DatePickerSelector from "../DatePicker/DatePickerSelector";
+import DateUnitSelector from "../DatePicker/DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
@@ -332,7 +332,7 @@ export default class DatePicker extends Component {
         style={{ minWidth: 300 }}
       >
         {!disableOperatorSelection && (
-          <DateOperatorSelector
+          <DatePickerSelector
             className={cx({
               mr2: Widget && Widget.horizontalLayout,
               mb2: Widget && !Widget.horizontalLayout,

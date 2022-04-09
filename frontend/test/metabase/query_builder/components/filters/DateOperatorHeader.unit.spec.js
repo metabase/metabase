@@ -1,13 +1,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import DateOperatorHeader from "metabase/query_builder/components/filters/DateOperatorHeader";
+import DatePickerHeader from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerHeader";
 
 const nop = () => {};
 
-describe("DateOperatorHeader", () => {
+describe("DatePickerHeader", () => {
   it("should render 'Past'/'Current'/'Next'", () => {
     render(
-      <DateOperatorHeader
+      <DatePickerHeader
         filter={["time-interval", ["field", 1, null], -30, "day"]}
         onFilterChange={nop}
       />,
@@ -20,7 +20,7 @@ describe("DateOperatorHeader", () => {
 
   it("should render 'Between'/'before'/'after'/'on'", () => {
     render(
-      <DateOperatorHeader
+      <DatePickerHeader
         filter={[">", ["field", 1, null], "2018-01-01"]}
         onFilterChange={nop}
       />,

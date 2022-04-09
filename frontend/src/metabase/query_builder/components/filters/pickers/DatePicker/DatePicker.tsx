@@ -15,9 +15,7 @@ import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { shouldHidePopoverFooter } from "../FilterPopoverFooter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
-import { Container } from "./DatePicker.styled";
 import {
   getRelativeDatetimeDimension,
   updateRelativeDatetimeFilter,
@@ -25,6 +23,9 @@ import {
   isStartingFrom,
   getRelativeDatetimeInterval,
 } from "metabase/lib/query_time";
+import DatePickerFooter from "./DatePickerFooter";
+import DatePickerHeader from "./DatePickerHeader";
+import DatePickerShortcuts from "./DatePickerShortcuts";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
@@ -87,7 +88,7 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
   return [field, ...values];
 }
 
-export type DateOperatorGroup = "relative" | "specific";
+export type DatePickerGroup = "relative" | "specific";
 
 export type DateOperator = {
   name: string;
@@ -95,7 +96,7 @@ export type DateOperator = {
   init: (filter: Filter) => any[];
   test: (filter: Filter) => boolean;
   widget: any;
-  group?: DateOperatorGroup;
+  group?: DatePickerGroup;
   options?: any;
 };
 
@@ -207,38 +208,49 @@ export function getOperator(filter: Filter, operators = DATE_OPERATORS) {
 }
 
 type Props = {
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-  className?: string;
-  isNew?: boolean;
   isSidebar?: boolean;
+  className?: string;
+
+  filter: Filter;
   operators?: DateOperator[];
-  disableOperatorSelection?: boolean;
 
   hideTimeSelectors?: boolean;
+  hideExcludeOperators?: boolean;
   hideEmptinessOperators?: boolean;
+  disableOperatorSelection?: boolean;
 
   primaryColor?: string;
   minWidth?: number | null;
   maxWidth?: number | null;
+
+  onBack?: () => void;
   onCommit: (filter: any[]) => void;
+  onFilterChange: (filter: any[]) => void;
 };
 
 type State = {
   operators: DateOperator[];
+  showShortcuts: boolean;
 };
 
 export default class DatePicker extends Component<Props, State> {
   state = {
     operators: [],
+    showShortcuts: false,
   };
 
   static propTypes = {};
 
   UNSAFE_componentWillMount() {
-    const operators = this.props.operators || DATE_OPERATORS;
+    let operators = this.props.operators || DATE_OPERATORS;
+    if (this.props.hideExcludeOperators) {
+      operators = operators.filter(op => op.name !== "exclude");
+    }
 
-    this.setState({ operators });
+    this.setState({
+      operators,
+      showShortcuts: !this.props.filter?.isValid?.(),
+    });
   }
 
   render() {
@@ -250,39 +262,76 @@ export default class DatePicker extends Component<Props, State> {
       minWidth,
       primaryColor,
       onCommit,
+      children,
+      hideTimeSelectors,
+      hideExcludeOperators,
     } = this.props;
 
-    const { operators } = this.state;
+    const { operators, showShortcuts } = this.state;
 
     const operator = getOperator(this.props.filter, operators);
     const Widget = operator && operator.widget;
 
+    const onBack = () => {
+      if (showShortcuts) {
+        this.props.onBack?.();
+      } else {
+        this.setState({ showShortcuts: true });
+      }
+    };
+
     return (
-      <Container
-        // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, {
-          "PopoverBody--marginBottom":
-            !isSidebar && !shouldHidePopoverFooter(filter),
-        })}
-        style={{ minWidth: minWidth || 300 }}
-      >
-        {Widget && (
-          <Widget
-            {...this.props}
-            className="flex-full"
-            filter={filter}
-            onCommit={onCommit}
+      <div className={cx(className)}>
+        {!operator || showShortcuts ? (
+          <DatePickerShortcuts
+            className={"p2"}
             primaryColor={primaryColor}
-            onFilterChange={(filter: Filter) => {
-              if (!isStartingFrom(filter) && operator && operator.init) {
-                onFilterChange(operator.init(filter));
-              } else {
-                onFilterChange(filter);
-              }
+            onFilterChange={filter => {
+              this.setState({ showShortcuts: false });
+              onFilterChange(filter);
             }}
+            hideExcludeOperators={hideExcludeOperators}
+            onCommit={onCommit}
+            filter={filter}
           />
+        ) : (
+          <>
+            {operator ? (
+              <DatePickerHeader
+                filter={filter}
+                onBack={onBack}
+                operators={operators}
+                onFilterChange={onFilterChange}
+              />
+            ) : null}
+            {Widget && (
+              <Widget
+                {...this.props}
+                className="flex-full p2"
+                filter={filter}
+                onCommit={onCommit}
+                primaryColor={primaryColor}
+                onFilterChange={(filter: Filter) => {
+                  if (!isStartingFrom(filter) && operator && operator.init) {
+                    onFilterChange(operator.init(filter));
+                  } else {
+                    onFilterChange(filter);
+                  }
+                }}
+              />
+            )}
+            <DatePickerFooter
+              isSidebar={isSidebar}
+              filter={filter}
+              primaryColor={primaryColor}
+              onFilterChange={onFilterChange}
+              hideTimeSelectors={hideTimeSelectors}
+            >
+              {children}
+            </DatePickerFooter>
+          </>
         )}
-      </Container>
+      </div>
     );
   }
 }

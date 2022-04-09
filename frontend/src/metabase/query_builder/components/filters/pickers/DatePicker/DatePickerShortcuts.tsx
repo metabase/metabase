@@ -131,18 +131,21 @@ const MISC_OPTIONS: Option[] = [
       "none",
     ],
   },
-  {
-    displayName: t`Exclude...`,
-    init: filter => ["!=", getDateTimeField(filter[1], "day"), 1],
-  },
 ];
 
+const EXCLUDE_OPTION: Option = {
+  displayName: t`Exclude...`,
+  init: filter => ["!=", getDateTimeField(filter[1], "day"), 1],
+};
+
 type Props = {
-  primaryColor?: string;
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-  onCommit: (value: any[]) => void;
   className?: string;
+  primaryColor?: string;
+
+  filter: Filter;
+  hideExcludeOperators?: boolean;
+  onCommit: (value: any[]) => void;
+  onFilterChange: (filter: any[]) => void;
 };
 
 export default function DatePickerShortcuts({
@@ -150,7 +153,11 @@ export default function DatePickerShortcuts({
   onFilterChange,
   filter,
   onCommit,
+  hideExcludeOperators,
 }: Props) {
+  const options = hideExcludeOperators
+    ? MISC_OPTIONS
+    : [...MISC_OPTIONS, EXCLUDE_OPTION];
   return (
     <div className={className}>
       {DAY_OPTIONS.map(({ displayName, init }) => (
@@ -175,7 +182,7 @@ export default function DatePickerShortcuts({
         </ShortcutButton>
       ))}
       <Separator />
-      {MISC_OPTIONS.map(({ displayName, init }) => (
+      {options.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
           onClick={() => {

@@ -5,10 +5,7 @@ import cx from "classnames";
 import Button from "metabase/core/components/Button";
 
 import FilterOptions from "./FilterOptions";
-import { getOperator } from "../filters/pickers/DatePicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import DateOperatorFooter from "./DateOperatorFooter";
-import { getRelativeDatetimeDimension } from "metabase/lib/query_time";
 
 export function shouldHidePopoverFooter(filter: Filter): boolean {
   const [op, _, value] = filter;
@@ -25,8 +22,6 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
   onCommit?: (() => void) | null;
 
-  hideTimeSelectors?: boolean;
-
   isSidebar?: boolean;
   minWidth?: number;
   maxWidth?: number;
@@ -41,13 +36,12 @@ export default function FilterPopoverFooter({
   onCommit,
   className,
   primaryColor,
-  hideTimeSelectors,
 }: Props) {
   if (shouldHidePopoverFooter(filter)) {
     return null;
   }
 
-  const dimension = filter.dimension() || getRelativeDatetimeDimension(filter);
+  const dimension = filter.dimension();
   const field = dimension?.field();
 
   const containerClassName = cx(className, "flex align-center", {
@@ -59,22 +53,8 @@ export default function FilterPopoverFooter({
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
-        operator={
-          field?.isDate()
-            ? // DatePicker uses a different set of operator objects
-              getOperator(filter)
-            : // Normal operators defined in schema_metadata
-              filter.operator()
-        }
+        operator={filter.operator()}
       />
-      {!isSidebar ? (
-        <DateOperatorFooter
-          filter={filter}
-          primaryColor={primaryColor}
-          onFilterChange={onFilterChange}
-          hideTimeSelectors={hideTimeSelectors}
-        />
-      ) : null}
       {onCommit && (
         <Button
           data-ui-tag="add-filter"

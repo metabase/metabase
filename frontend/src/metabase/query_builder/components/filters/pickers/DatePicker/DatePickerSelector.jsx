@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
 
-export default class DateOperatorSelector extends Component {
+export default class DatePickerSelector extends Component {
   render() {
     const { className, operator, operators, onOperatorChange } = this.props;
 

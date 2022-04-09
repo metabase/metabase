@@ -8,6 +8,7 @@ export const Container = styled.div`
   display: flex;
   flex-wrap: nowrap;
   padding-left: ${space(1)};
+  border-bottom: 1px solid ${color("border")};
 `;
 
 type TabButtonProps = {
@@ -25,7 +26,7 @@ export const TabButton = styled(Button)<TabButtonProps>`
   border-bottom: ${props =>
     props.selected
       ? `2px solid ${props.primaryColor || color("brand")}`
-      : "none"};
+      : "2px solid transparent"};
 
   color: ${props =>
     props.selected
