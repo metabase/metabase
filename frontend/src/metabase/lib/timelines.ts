@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { t } from "ttag";
 import { Collection, Timeline } from "metabase-types/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -36,6 +37,17 @@ export const getDefaultTimelineName = (collection: Collection) => {
 
 export const getDefaultTimelineIcon = () => {
   return "star";
+};
+
+export const getSortedTimelines = (
+  timelines: Timeline[],
+  collection?: Collection,
+) => {
+  return _.chain(timelines)
+    .sortBy(timeline => getTimelineName(timeline).toLowerCase())
+    .sortBy(timeline => timeline.collection?.personal_owner_id != null)
+    .sortBy(timeline => timeline.collection?.id !== collection?.id)
+    .value();
 };
 
 export const getEventCount = ({ events = [], archived }: Timeline) => {

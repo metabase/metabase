@@ -27,7 +27,7 @@ import Timelines from "metabase/entities/timelines";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { parseTimestamp } from "metabase/lib/time";
-import { getTimelineName } from "metabase/lib/timelines";
+import { getSortedTimelines } from "metabase/lib/timelines";
 import {
   getXValues,
   isTimeseries,
@@ -666,18 +666,16 @@ export const getFetchedTimelines = createSelector([getEntities], entities => {
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
   timelines => {
-    return _.chain(timelines)
-      .map(timeline =>
+    return getSortedTimelines(
+      timelines.map(timeline =>
         updateIn(timeline, ["events"], (events = []) =>
           _.chain(events)
             .map(event => updateIn(event, ["timestamp"], parseTimestamp))
             .filter(event => !event.archived)
             .value(),
         ),
-      )
-      .sortBy(getTimelineName)
-      .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
-      .value();
+      ),
+    );
   },
 );
 

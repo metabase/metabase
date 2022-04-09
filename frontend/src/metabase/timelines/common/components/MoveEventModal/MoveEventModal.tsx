@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
 import { Timeline, TimelineEvent } from "metabase-types/api";
@@ -6,6 +6,7 @@ import ModalHeader from "../ModalHeader";
 import ModalFooter from "../ModalFooter";
 import TimelinePicker from "../TimelinePicker";
 import { ModalRoot, ModalBody } from "./MoveEventModal.styled";
+import { getSortedTimelines } from "metabase/lib/timelines";
 
 export interface MoveEventModalProps {
   event: TimelineEvent;
@@ -32,6 +33,10 @@ const MoveEventModal = ({
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
   const isEnabled = newTimeline?.id !== oldTimeline?.id;
 
+  const sortedTimelines = useMemo(() => {
+    return getSortedTimelines(timelines);
+  }, [timelines]);
+
   const handleSubmit = useCallback(async () => {
     await onSubmit(event, newTimeline, oldTimeline);
     onSubmitSuccess?.();
@@ -43,7 +48,7 @@ const MoveEventModal = ({
       <ModalBody>
         <TimelinePicker
           value={newTimeline}
-          options={timelines}
+          options={sortedTimelines}
           onChange={setNewTimeline}
         />
       </ModalBody>
