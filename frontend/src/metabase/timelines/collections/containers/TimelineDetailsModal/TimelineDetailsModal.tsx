@@ -10,27 +10,27 @@ import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import { ModalParams } from "../../types";
 
-interface ModalProps {
+interface TimelineDetailsModalProps {
   params: ModalParams;
   timelines: Timeline[];
 }
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: TimelineDetailsModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
 const timelinesProps = {
-  query: (state: State, props: ModalProps) => ({
+  query: (state: State, props: TimelineDetailsModalProps) => ({
     collectionId: Urls.extractCollectionId(props.params.slug),
   }),
   LoadingAndErrorWrapper,
 };
 
-const mapStateToProps = (state: State, { timelines }: ModalProps) => ({
-  isOnlyTimeline: timelines.length === 1,
+const mapStateToProps = (state: State, props: TimelineDetailsModalProps) => ({
+  isOnlyTimeline: props.timelines.length === 1,
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

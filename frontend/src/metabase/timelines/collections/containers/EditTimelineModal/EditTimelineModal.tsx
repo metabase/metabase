@@ -7,10 +7,14 @@ import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import EditTimelineModal from "../../components/EditTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface EditTimelineModalProps {
+  params: ModalParams;
+}
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: EditTimelineModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,

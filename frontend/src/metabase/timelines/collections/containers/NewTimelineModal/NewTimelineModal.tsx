@@ -8,10 +8,14 @@ import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import NewTimelineModal from "../../components/NewTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface NewTimelineModalProps {
+  params: ModalParams;
+}
 
 const collectionProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: NewTimelineModalProps) =>
     Urls.extractCollectionId(props.params.slug),
   LoadingAndErrorWrapper,
 };

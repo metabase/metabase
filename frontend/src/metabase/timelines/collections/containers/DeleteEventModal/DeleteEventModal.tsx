@@ -7,16 +7,20 @@ import TimelineEvents from "metabase/entities/timeline-events";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface DeleteEventModalProps {
+  params: ModalParams;
+}
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: DeleteEventModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
 };
 
 const timelineEventProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: DeleteEventModalProps) =>
     Urls.extractEntityId(props.params.timelineEventId),
   entityAlias: "event",
 };
