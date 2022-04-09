@@ -14,8 +14,8 @@ export interface MoveEventModalProps {
     event: TimelineEvent,
     newTimeline?: Timeline,
     oldTimeline?: Timeline,
-    onClose?: () => void,
   ) => void;
+  onSubmitSuccess?: () => void;
   onCancel?: () => void;
   onClose?: () => void;
 }
@@ -24,16 +24,18 @@ const MoveEventModal = ({
   event,
   timelines,
   onSubmit,
+  onSubmitSuccess,
   onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
   const oldTimeline = timelines.find(t => t.id === event.timeline_id);
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
-  const hasChanged = newTimeline?.id !== oldTimeline?.id;
+  const isEnabled = newTimeline?.id !== oldTimeline?.id;
 
   const handleSubmit = useCallback(async () => {
-    await onSubmit(event, newTimeline, oldTimeline, onClose);
-  }, [event, newTimeline, oldTimeline, onSubmit, onClose]);
+    await onSubmit(event, newTimeline, oldTimeline);
+    onSubmitSuccess?.();
+  }, [event, newTimeline, oldTimeline, onSubmit, onSubmitSuccess]);
 
   return (
     <ModalRoot>
@@ -46,8 +48,8 @@ const MoveEventModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onCancel ?? onClose}>{t`Cancel`}</Button>
-        <Button primary disabled={!hasChanged} onClick={handleSubmit}>
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button primary disabled={!isEnabled} onClick={handleSubmit}>
           {t`Move`}
         </Button>
       </ModalFooter>

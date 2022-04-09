@@ -2,17 +2,19 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
-import ModalBody from "metabase/timelines/common/components/ModalBody";
-import ModalDangerButton from "metabase/timelines/common/components/ModalDangerButton";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Timeline, TimelineEvent } from "metabase-types/api";
+import ModalBody from "../ModalBody";
+import ModalDangerButton from "../ModalDangerButton";
+import ModalHeader from "../ModalHeader";
 
 export interface EditEventModalProps {
   event: TimelineEvent;
-  timeline: Timeline;
-  onSubmit: (event: TimelineEvent, timeline: Timeline) => void;
-  onArchive: (event: TimelineEvent, timeline: Timeline) => void;
-  onCancel: () => void;
+  timeline?: Timeline;
+  onSubmit: (event: TimelineEvent, timeline?: Timeline) => void;
+  onSubmitSuccess?: () => void;
+  onArchive: (event: TimelineEvent, timeline?: Timeline) => void;
+  onArchiveSuccess?: () => void;
+  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -20,7 +22,9 @@ const EditEventModal = ({
   event,
   timeline,
   onSubmit,
+  onSubmitSuccess,
   onArchive,
+  onArchiveSuccess,
   onCancel,
   onClose,
 }: EditEventModalProps): JSX.Element => {
@@ -29,13 +33,15 @@ const EditEventModal = ({
   const handleSubmit = useCallback(
     async (event: TimelineEvent) => {
       await onSubmit(event, timeline);
+      onSubmitSuccess?.();
     },
-    [timeline, onSubmit],
+    [timeline, onSubmit, onSubmitSuccess],
   );
 
   const handleArchive = useCallback(async () => {
     await onArchive(event, timeline);
-  }, [event, timeline, onArchive]);
+    onArchiveSuccess?.();
+  }, [event, timeline, onArchive, onArchiveSuccess]);
 
   return (
     <div>

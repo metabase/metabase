@@ -4,9 +4,9 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
+import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import EditEventModal from "../../components/EditEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import { ModalProps } from "../../types";
 
@@ -25,13 +25,13 @@ const timelineEventProps = {
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
+  onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
   },
-  onArchive: async (event: TimelineEvent, timeline: Timeline) => {
+  onArchive: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
   },
   onCancel: () => {
     dispatch(goBack());
