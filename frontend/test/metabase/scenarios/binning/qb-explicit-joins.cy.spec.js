@@ -3,6 +3,7 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -129,8 +130,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
   context("via custom question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
 

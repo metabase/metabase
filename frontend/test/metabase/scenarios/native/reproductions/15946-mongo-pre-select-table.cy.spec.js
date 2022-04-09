@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal, startNewQuestion } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -7,8 +7,7 @@ describe.skip("issue 15946", () => {
     restore("mongo-4");
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText(MONGO_DB_NAME).click();
     cy.findByText("Orders").click();
   });

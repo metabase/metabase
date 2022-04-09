@@ -1,4 +1,9 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visualize,
+  startNewQuestion,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -19,8 +24,7 @@ describe("issue 18502", () => {
     cy.createQuestion(question1);
     cy.createQuestion(question2);
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
 
     cy.findByText("18502#1").click();
