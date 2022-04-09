@@ -87,8 +87,9 @@ describe("visual tests > notebook > Run buttons", () => {
 
   // This tests that the run buttons are the correct size on the Native query page
   it("in Native Query render correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
+    cy.visit("/");
+    cy.findByText("New").click();
+    cy.findByText("SQL query").click();
 
     // Check that we're on the blank question page
     cy.findByText("Here's where your results will appear");
