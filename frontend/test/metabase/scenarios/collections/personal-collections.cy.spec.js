@@ -130,7 +130,7 @@ describe("personal collections", () => {
 
             cy.findByLabelText("Description") /* [2] */
               .click()
-              .type("ex-bar");
+              .type("ex-bar", { delay: 0 });
             cy.findByTestId("select-button").click();
           });
           popover()
@@ -163,6 +163,6 @@ describe("personal collections", () => {
 
 function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
-  cy.findByLabelText("Name").type(name);
+  cy.findByLabelText("Name").type(name, { delay: 0 });
   cy.button("Create").click();
 }
