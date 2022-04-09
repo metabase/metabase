@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, startNewQuestion } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -8,11 +8,8 @@ export function issue13263() {
       restore("postgres-12");
       cy.signInAsAdmin();
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText(PG_DB_NAME)
-        .should("be.visible")
-        .click();
+      startNewQuestion();
+      cy.findByTextEnsureVisible(PG_DB_NAME).click();
       cy.findByTextEnsureVisible("Orders").click();
     });
 

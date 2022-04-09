@@ -203,8 +203,9 @@ describe("binning related reproductions", () => {
       );
     });
 
-    it("should work for simple question", () => {
-      openSummarizeOptions("Simple question");
+    it("should work for simple mode", () => {
+      openSummarizeOptions("Simple mode");
+
       changeBinningForDimension({
         name: "Average of Subtotal",
         fromBinning: "Auto binned",
@@ -214,8 +215,8 @@ describe("binning related reproductions", () => {
       cy.get(".bar");
     });
 
-    it("should work for custom question", () => {
-      openSummarizeOptions("Custom question");
+    it("should work for notebook mode", () => {
+      openSummarizeOptions("Notebook mode");
 
       cy.findByText("Pick the metric you want to see").click();
       cy.findByText("Count of rows").click();
@@ -252,13 +253,11 @@ describe("binning related reproductions", () => {
         },
       });
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.wait("@dataset");
+
+      visualize();
       summarize();
     });
 
@@ -298,12 +297,12 @@ describe("binning related reproductions", () => {
 });
 
 function openSummarizeOptions(questionType) {
-  cy.visit("/question/new");
-  cy.findByText(questionType).click();
+  startNewQuestion();
   cy.findByText("Saved Questions").click();
   cy.findByText("16379").click();
 
-  if (questionType === "Simple question") {
+  if (questionType === "Simple mode") {
+    visualize();
     summarize();
   }
 }

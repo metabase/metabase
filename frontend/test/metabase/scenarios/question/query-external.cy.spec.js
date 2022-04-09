@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, startNewQuestion } from "__support__/e2e/cypress";
 
 const supportedDatabases = [
   {
@@ -23,8 +23,7 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
     });
 
     it(`can query ${database} database`, () => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText(dbName).click();
       cy.findByText("Orders").click();
 
