@@ -73,7 +73,9 @@ it("removes database", () => {
   const database = { id: databaseId, name };
   const deleteDatabase = jest.fn();
 
-  render(<Sidebar database={database} deleteDatabase={deleteDatabase} />);
+  render(
+    <Sidebar database={database} deleteDatabase={deleteDatabase} isAdmin />,
+  );
 
   const removeDBButton = screen.getByText("Remove this database");
 
@@ -96,6 +98,12 @@ it("removes database", () => {
   fireEvent.click(deleteButton);
 
   expect(deleteDatabase).toHaveBeenCalled();
+});
+
+it("does not allow to remove databases for non-admins", () => {
+  const database = { id: 1, name: "DB Name" };
+  render(<Sidebar database={database} deleteDatabase={jest.fn()} />);
+  expect(screen.queryByText("Remove this database")).toBeNull();
 });
 
 it("shows loading indicator when a sync is in progress", () => {

@@ -65,7 +65,7 @@ describe("scenarios > admin > databases > list", () => {
   });
 
   it("should display a deprecated database warning", () => {
-    cy.intercept(/\/api\/database$/, req => {
+    cy.intercept("/api/database*", req => {
       req.reply(res => {
         res.body.data = res.body.data.map(database => ({
           ...database,
