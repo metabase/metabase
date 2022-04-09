@@ -6,7 +6,7 @@ import {
   openPeopleTable,
   visualize,
   navigationSidebar,
-  openNotebookEditor,
+  startNewQuestion,
   openNavigationSidebar,
   visitQuestion,
 } from "__support__/e2e/cypress";
@@ -797,7 +797,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user cannot make an SQL query
 
-      openNotebookEditor({ fromCurrentPage: true });
+      startNewQuestion();
 
       cy.signOut();
       cy.signIn("nocollection");
@@ -887,7 +887,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("pencil");
 
-      openNotebookEditor({ fromCurrentPage: true });
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();

@@ -5,8 +5,9 @@ import {
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
-  openNotebookEditor,
+  startNewQuestion,
   summarize,
+  openOrdersTable,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -26,8 +27,7 @@ describe("binning related reproductions", () => {
       native: { query: "select * from products limit 5" },
     });
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("16327").click();
 
@@ -89,8 +89,7 @@ describe("binning related reproductions", () => {
       { loadMetadata: true },
     );
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("17975").click();
 
@@ -119,10 +118,7 @@ describe("binning related reproductions", () => {
       { loadMetadata: true },
     );
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByTextEnsureVisible("Sample Database").click();
-    cy.findByTextEnsureVisible("Orders").click();
+    openOrdersTable({ mode: "notebook" });
 
     cy.icon("join_left_outer").click();
 
@@ -165,7 +161,7 @@ describe("binning related reproductions", () => {
 
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
-    openNotebookEditor();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("11439").click();
     visualize();
