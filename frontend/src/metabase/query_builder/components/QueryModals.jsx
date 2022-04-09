@@ -236,7 +236,11 @@ export default class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.MOVE_EVENT ? (
       <Modal onClose={onCloseModal}>
-        <MoveEventModal eventId={modalContext} onClose={onCloseModal} />
+        <MoveEventModal
+          eventId={modalContext}
+          collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : null;
   }
