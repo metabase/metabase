@@ -52,6 +52,10 @@ const mapStateToProps = (state, props) => ({
   deletionError: getDeletionError(state),
 });
 
+const query = {
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+};
+
 const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
@@ -61,9 +65,7 @@ const mapDispatchToProps = {
 };
 @Database.loadList({
   reloadInterval: getReloadInterval,
-  query: () => ({
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
-  }),
+  query,
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
@@ -195,7 +197,7 @@ export default class DatabaseList extends Component {
                 ) : (
                   <a
                     className="text-light text-brand-hover no-decoration"
-                    onClick={() => this.props.addSampleDatabase()}
+                    onClick={() => this.props.addSampleDatabase(query)}
                   >
                     {t`Bring the sample database back`}
                   </a>
