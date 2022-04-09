@@ -38,7 +38,7 @@ describe("homepage",() => {
 
 We strongly prefer using selectors like `cy.findByText()` and `cy.findByLabelText()` from [`@testing-library/cypress`](https://github.com/testing-library/cypress-testing-library) since they encourage writing tests that don't depend on implementation details like CSS class names.
 
-Try to avoid repeatedly testing pieces of the application incidentally. For example, if you want to test something about the query builder, jump straight there using a URL like `cy.visit("/question/new?database=1&table=2");` rather than starting from the home page, clicking "Ask a question", etc.
+Try to avoid repeatedly testing pieces of the application incidentally. For example, if you want to test something about the query builder, jump straight there using a helper like `openOrdersTable()` rather than starting from the home page, clicking "New", then "Question", etc.
 
 ## Cypress Documentation
 
