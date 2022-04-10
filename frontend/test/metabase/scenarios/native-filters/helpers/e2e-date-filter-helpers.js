@@ -54,7 +54,7 @@ export function setAdHocFilter({
 
   if (timeBucket) {
     cy.findAllByTestId("select-button")
-      .contains("Days")
+      .contains("days")
       .click();
 
     popover()

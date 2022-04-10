@@ -7,14 +7,6 @@ import Button from "metabase/core/components/Button";
 import FilterOptions from "./FilterOptions";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-export function shouldHidePopoverFooter(filter: Filter): boolean {
-  const [op, _, value] = filter;
-  if (op === "time-interval" && value === "current") {
-    return true;
-  }
-  return false;
-}
-
 type Props = {
   className?: string;
   primaryColor?: string;
@@ -37,10 +29,6 @@ export default function FilterPopoverFooter({
   className,
   primaryColor,
 }: Props) {
-  if (shouldHidePopoverFooter(filter)) {
-    return null;
-  }
-
   const dimension = filter.dimension();
   const field = dimension?.field();
 

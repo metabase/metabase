@@ -3,9 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import DatePicker, {
   DATE_OPERATORS,
-  getOperator,
-} from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
-import FilterOptions from "metabase/query_builder/components/filters/FilterOptions";
+} from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import { Container, Footer, UpdateButton } from "./DateWidget.styled";
@@ -33,7 +31,7 @@ const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
   between: getFilterValueSerializer((from, to) => `${from}~${to}`),
 };
 
-function getFilterOperator(filter: any[]) {
+function getFilterOperator(filter: any[] = []) {
   return DATE_OPERATORS.find(op => op.test(filter as any));
 }
 function filterToUrlEncoded(filter: any[]) {
@@ -79,8 +77,8 @@ const DateAllOptionsWidget = ({
     value != null ? dateParameterValueToMBQL(value, noopRef) || [] : [],
   );
 
-  const commitAndClose = () => {
-    setValue(filterToUrlEncoded(filter));
+  const commitAndClose = (newFilter?: any) => {
+    setValue(filterToUrlEncoded(newFilter || filter));
     onClose?.();
   };
 
@@ -92,28 +90,23 @@ const DateAllOptionsWidget = ({
   return (
     <Container>
       <DatePicker
-        className="m2"
-        filter={filter}
+        filter={filter as any}
         onFilterChange={setFilter}
-        hideEmptinessOperators
+        onCommit={commitAndClose}
         hideTimeSelectors
+        hideExcludeOperators
+        hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
-      />
-      <Footer>
-        <FilterOptions
-          filter={filter}
-          onFilterChange={setFilter}
-          operator={getOperator(filter)}
-        />
+      >
         <UpdateButton
           className={cx({
             disabled: !isValid(),
           })}
-          onClick={commitAndClose}
+          onClick={() => commitAndClose()}
         >
           {t`Update filter`}
         </UpdateButton>
-      </Footer>
+      </DatePicker>
     </Container>
   );
 };

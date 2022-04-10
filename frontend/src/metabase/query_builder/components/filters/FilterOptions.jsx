@@ -1,18 +1,39 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const OPTION_NAMES = {
+  "include-current": filter => {
+    const period = (
+      <strong key="notsurewhythisneedsakey">
+        {getCurrentIntervalName(filter)}
+      </strong>
+    );
+    return jt`Include ${period}`;
+  },
   "case-sensitive": () => t`Case sensitive`,
 };
 
-// These options are shown in the specific picker components
-const IGNORE_OPTIONS = ["include-current"];
+const CURRENT_INTERVAL_NAME = {
+  day: t`today`,
+  week: t`this week`,
+  month: t`this month`,
+  year: t`this year`,
+  minute: t`this minute`,
+  hour: t`this hour`,
+};
+
+function getCurrentIntervalName(filter) {
+  if (filter[0] === "time-interval") {
+    return CURRENT_INTERVAL_NAME[filter[3]];
+  }
+  return null;
+}
 
 export default class FilterOptions extends Component {
   static propTypes = {
@@ -23,12 +44,7 @@ export default class FilterOptions extends Component {
   };
 
   getOptions() {
-    const options = (this.props.operator && this.props.operator.options) || {};
-    return Object.fromEntries(
-      Object.entries(options).filter(
-        ([key]) => IGNORE_OPTIONS.indexOf(key) === -1,
-      ),
-    );
+    return (this.props.operator && this.props.operator.options) || {};
   }
 
   getOptionName(name) {
