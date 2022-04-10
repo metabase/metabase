@@ -14,7 +14,7 @@ export const questionDetails = {
         "display-name": "City",
         type: "dimension",
         dimension: ["field", PEOPLE.CITY, null],
-        "widget-type": "category",
+        "widget-type": "string/=",
       },
       state: {
         id: "6b8b10ef-0104-1047-1e1b-24s2d5954545",
