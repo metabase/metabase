@@ -8,14 +8,15 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [PermissionsGroupMembership Session User]]
-            [metabase.server.middleware.session :as mw.session]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
             [ring.mock.request :as mock]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
-           java.util.UUID))
+           java.util.UUID)).
 
 (use-fixtures :once (fn [thunk]
                       (init-status/set-complete!)
@@ -234,10 +235,14 @@
        (mt/with-temp Session [_session {:id      (str test-uuid)
                                         :user_id (:id user)}]
          (testing "is `false` if advanced-permisison is disabled"
+           (premium-features-test/with-premium-features #{}
            (is (= false
-                  (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))
+                  (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
+
          (testing "is `true` if advanced-permisison is enabled"
-           (premium-features-test/with-premium-features #{:advanced-permissions}
+           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
+           ;; `enable-advanced-permissions?` will still return false
+           (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
              (is (= true
                     (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))))
          (finally

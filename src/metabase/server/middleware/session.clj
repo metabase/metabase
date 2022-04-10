@@ -179,7 +179,7 @@
 
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type])} session-with-id-query
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions?])} session-with-id-query
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
