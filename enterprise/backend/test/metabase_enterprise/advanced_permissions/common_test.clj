@@ -72,6 +72,33 @@
   [graph & body]
   `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
 
+(deftest fetch-databases-exclude-uneditable-data-model-test
+  (testing "GET /api/database?exclude_uneditable_data_model=true"
+    (letfn [(get-test-db
+              ([] (get-test-db "database?exclude_uneditable_data_model=true"))
+              ([url] (->> (mt/user-http-request :rasta :get 200 url)
+                          :data
+                          (filter (fn [db] (= (mt/id) (:id db))))
+                          first)))]
+      (is (partial= {:id (mt/id)} (get-test-db)))
+
+      (testing "DB with no data model perms is excluded"
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas :none}}}
+          (is (= nil (get-test-db)))))
+
+      (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+        (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {id-1 :all
+                                                                              id-2 :none
+                                                                              id-3 :none
+                                                                              id-4 :none}}}}}
+          (testing "DB with data model perms for a single table is included"
+            (is (partial= {:id (mt/id)} (get-test-db))))
+
+          (testing "if include=tables, only tables with data model perms are included"
+            (is (= [id-1] (->> (get-test-db "database?exclude_uneditable_data_model=true&include=tables")
+                               :tables
+                               (map :id))))))))))
+
 (deftest fetch-database-metadata-exclude-uneditable-test
   (testing "GET /api/database/:id/metadata?exclude_uneditable=true"
     (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
