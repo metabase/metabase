@@ -197,14 +197,14 @@
                                :is_group_manager "false"})))))
 
 (deftest update-group-membership-test
-  (testing "PUT /api/permissions/membership"
-    (mt/with-temp* [User             [user]
-                    PermissionsGroup [group]]
+  (testing "PUT /api/permissions/membership/:id"
+    (mt/with-temp* [User                       [user]
+                    PermissionsGroup           [group]
+                    PermissionsGroupMembership [{id :id} {:group_id (:id group)
+                                                          :user_id  (:id user)}]]
       (testing "This API is for EE only"
         (is (= "Group Manager is only enabled if you have a premium token with the advanced permissions feature."
-               (mt/user-http-request :crowberto :put 402 "permissions/membership" {:group_id         (:id group)
-                                                                                   :user_id          (:id user)
-                                                                                   :is_group_manager "false"})))))))
+               (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager "false"})))))))
 
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"

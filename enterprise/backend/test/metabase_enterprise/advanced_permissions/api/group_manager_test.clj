@@ -78,12 +78,10 @@
             (update-membership [user status group-info is-group-manager]
               (testing (format ", update membership with %s user" (adv-perms/friendly-user-name user))
                 (mt/with-temp* [User                       [user-info]
-                                PermissionsGroupMembership [_ {:user_id  (:id user-info)
-                                                               :group_id (:id group-info)}]]
-                  (mt/user-http-request user :put status "permissions/membership"
-                                        {:group_id         (:id group-info)
-                                         :user_id          (:id user-info)
-                                         :is_group_manager (str is-group-manager)}))))
+                                PermissionsGroupMembership [{:keys [id]} {:user_id  (:id user-info)
+                                                                          :group_id (:id group-info)}]]
+                  (mt/user-http-request user :put status (format "permissions/membership/%d" id)
+                                        {:is_group_manager (str is-group-manager)}))))
 
             (delete-membership [user status group-info]
               (testing (format ", delete membership with %s user" (adv-perms/friendly-user-name user))
@@ -116,7 +114,7 @@
 
           (testing "if `advanced-permissions` is enabled"
             (premium-features-test/with-premium-features #{:advanced-permissions}
-              (testing "still fails if user is not a manager"
+              (testing "requires Group Manager or admins"
                 (get-membership user 403)
                 (add-membership user 403 group false)
                 (update-membership user 403 group false)
@@ -172,4 +170,3 @@
                 (testing "Admin can could view all groups"
                   (is (= (db/select-field :id PermissionsGroup)
                          (membership->groups-ids (get-membership :crowberto 200))))))))))))
-

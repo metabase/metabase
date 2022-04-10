@@ -188,20 +188,21 @@
     ;; let the frontend add it as appropriate
     (group/members {:id group_id})))
 
-(api/defendpoint PUT "/membership"
+(api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
-  [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         su/IntGreaterThanZero
-   user_id          su/IntGreaterThanZero
-   is_group_manager su/BooleanString}
+  [id :as {{:keys [is_group_manager]} :body}]
+  {is_group_manager su/BooleanString}
   ;; currently this API is only used to update the `is_group_manager` flag and it's require advanced-permissions
   (check-advanced-permissions-enabled)
-  (validation/check-group-manager group_id)
-  (let [old              (db/select-one PermissionsGroupMembership :user_id user_id :group_id group_id)
+  ;; Make sure only Group Managers can call this
+  (validation/check-group-manager)
+  (let [old              (db/select-one PermissionsGroupMembership :id id)
         is_group_manager (Boolean/parseBoolean is_group_manager)]
     (api/check-404 old)
+    ;; only Group manager of this group could update
+    (validation/check-group-manager (:group_id old))
     (api/check
-       (db/exists? User :id user_id :is_superuser false)
+       (db/exists? User :id (:user_id old) :is_superuser false)
        [400 "Admin can't be a group manager."])
     (db/update! PermissionsGroupMembership (:id old)
                 :is_group_manager is_group_manager)
