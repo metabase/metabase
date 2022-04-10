@@ -4,6 +4,7 @@ import {
   isEE,
   isOSS,
   visitDashboard,
+  visitIframe,
 } from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
@@ -217,13 +218,6 @@ function ensureEmbeddingIsDisabled() {
   cy.findByText(/Embed this (question|dashboard) in an application/).closest(
     ".disabled",
   );
-}
-
-function visitIframe() {
-  cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-    cy.visit(iframe.src);
-  });
 }
 
 function visitAndEnableSharing(object) {

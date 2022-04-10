@@ -3,6 +3,7 @@ import {
   popover,
   filterWidget,
   visitEmbeddedPage,
+  visitIframe,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -102,12 +103,7 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
-
-        cy.signOut();
-        cy.visit(iframe.src);
-      });
+      visitIframe();
 
       cy.contains("Lora Cronin");
       cy.contains("Organic");
@@ -150,12 +146,7 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
-
-        cy.signOut();
-        cy.visit(iframe.src);
-      });
+      visitIframe();
 
       cy.contains("Organic");
       cy.contains("Twitter").should("not.exist");
