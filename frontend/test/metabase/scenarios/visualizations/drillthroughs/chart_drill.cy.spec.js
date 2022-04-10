@@ -9,6 +9,7 @@ import {
   summarize,
   visitQuestion,
   visitDashboard,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -281,8 +282,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
     // Because there's only 5 rows, it automatically switches to the chart, but issues another
     // dataset request. So we wait for the dataset to load.
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     // People in CA
     cy.createQuestion({
@@ -290,8 +290,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
     // Build a new question off that grouping by City
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
+    startNewQuestion();
     cy.contains("Saved Questions").click();
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");

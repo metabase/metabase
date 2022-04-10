@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -109,4 +109,28 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
 
 export const BrowseLink = styled(SidebarLink)`
   padding-left: 14px;
+`;
+
+export const AddYourOwnDataLink = styled(SidebarLink)`
+  background: ${color("brand")};
+  border-radius: 8px;
+  color: ${color("white")};
+  float: left;
+  margin: ${space(1)};
+  padding: 2px 6px;
+  transition: background-color 0.3s linear;
+  width: auto;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  &:hover {
+    background: ${lighten("brand", 0.12)};
+    color: ${color("white")};
+
+    svg {
+      color: ${color("brand-light")} !important;
+    }
+  }
 `;

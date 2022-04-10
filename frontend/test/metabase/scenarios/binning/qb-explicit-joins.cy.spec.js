@@ -3,6 +3,7 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -64,13 +65,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  context("via simple question", () => {
+  context("via simple mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
-      cy.wait("@dataset");
+
+      visualize();
       summarize();
     });
 
@@ -127,10 +128,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
   });
 
-  context("via custom question", () => {
+  context("via notebook mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
 
@@ -197,10 +197,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
+      visualize();
     });
 
     it("should work for time series", () => {
@@ -297,6 +297,10 @@ function assertQueryBuilderState({
   cy.get(visualizaitonSelector);
 
   cy.findByText(title);
+
+  cy.get(".y-axis-label")
+    .invoke("text")
+    .should("eq", "Count");
 
   values &&
     cy.get(".axis.x").within(() => {

@@ -1,8 +1,4 @@
-import {
-  restore,
-  visualize,
-  openNotebookEditor,
-} from "__support__/e2e/cypress";
+import { restore, visualize, startNewQuestion } from "__support__/e2e/cypress";
 
 export function issue4482() {
   describe("issue 4482", () => {
@@ -10,7 +6,7 @@ export function issue4482() {
       restore();
       cy.signInAsAdmin();
 
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
     });

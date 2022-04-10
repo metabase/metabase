@@ -3,6 +3,8 @@ import {
   popover,
   restore,
   visualize,
+  openProductsTable,
+  summarize,
 } from "__support__/e2e/cypress";
 
 export function issue18207() {
@@ -12,16 +14,12 @@ export function issue18207() {
 
       restore();
       cy.signInAsAdmin();
+
+      openProductsTable({ mode: "notebook" });
+      summarize({ mode: "notebook" });
     });
 
     it("should be possible to use MIN on a string column (metabase#18207)", () => {
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-
-      cy.contains("Pick the metric").click();
-
       cy.contains("Minimum of").click();
       cy.findByText("Price");
       cy.findByText("Rating");
@@ -33,13 +31,6 @@ export function issue18207() {
     });
 
     it("should be possible to use MAX on a string column (metabase#18207)", () => {
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-
-      cy.contains("Pick the metric").click();
-
       cy.contains("Maximum of").click();
       cy.findByText("Price");
       cy.findByText("Rating");
@@ -51,13 +42,6 @@ export function issue18207() {
     });
 
     it("should be not possible to use AVERAGE on a string column (metabase#18207)", () => {
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-
-      cy.contains("Pick the metric").click();
-
       cy.contains("Average of").click();
       cy.findByText("Price");
       cy.findByText("Rating");
@@ -65,12 +49,6 @@ export function issue18207() {
     });
 
     it("should be possible to group by a string expression (metabase#18207)", () => {
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-
-      cy.contains("Pick the metric").click();
       popover()
         .contains("Custom Expression")
         .click();

@@ -1,6 +1,6 @@
 import { GroupId } from "metabase-types/api";
 
-export type GeneralPermissionKey = "subscription" | "monitoring";
+export type GeneralPermissionKey = "subscription" | "monitoring" | "setting";
 export type GeneralPermissionValue = "yes" | "no";
 
 export type GroupGeneralPermissions = {

@@ -4,12 +4,14 @@
             [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
@@ -162,11 +164,35 @@
     (with-advanced-permissions user)
     user))
 
+(defn- add-has-question-and-dashboard
+  "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
+  [user]
+  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
+                          :collection_id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+        perms-query {:where [:and
+                             [:= :archived false]
+                             coll-ids-filter]}]
+    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
+                                                 (db/exists? 'Dashboard (perms-query user))))))
+
+(defn- add-first-login
+  "Adds `first_login` key to the `User` with a timestamp value."
+  [{:keys [user_id] :as user}]
+  (let [ts (or
+            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id user_id
+                                       {:limit    1
+                                        :order-by [[:timestamp :desc]]}))
+            (t/offset-date-time))]
+    (assoc user :first_login ts)))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :has_invited_second_user)
+      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      add-has-question-and-dashboard
+      add-first-login
       maybe-add-advanced-permissions))
 
 (api/defendpoint GET "/:id"

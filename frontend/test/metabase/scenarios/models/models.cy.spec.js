@@ -12,8 +12,11 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
 import {
   turnIntoModel,
   assertIsModel,
@@ -189,8 +192,7 @@ describe("scenarios > models", () => {
     });
 
     it("transforms the data picker", () => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         testDataPickerSearch({
@@ -238,8 +240,7 @@ describe("scenarios > models", () => {
 
     it("allows to create a question based on a model", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Models").click();
@@ -278,8 +279,7 @@ describe("scenarios > models", () => {
 
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       popover().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");

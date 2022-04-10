@@ -9,6 +9,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [PermissionsGroupMembership Session User]]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
             [ring.mock.request :as mock]
@@ -222,7 +223,7 @@
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
-  (testing "If user is a group manager of at least one group, `:is-group-manager?` should be true"
+  (testing "If user is a group manager of at least one group, `:is-group-manager?` "
     (try
      (mt/with-user-in-groups
        [group-1 {:name "New Group 1"}
@@ -232,10 +233,15 @@
                          :is_group_manager true)
        (mt/with-temp Session [_session {:id      (str test-uuid)
                                         :user_id (:id user)}]
-         (is (= {:metabase-user-id (:id user), :is-superuser? false, :is-group-manager? true, :user-locale nil}
-                (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))
-      (finally
-        (db/delete! Session :id (str test-uuid)))))
+         (testing "is `false` if advanced-permisison is disabled"
+           (is (= false
+                  (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))
+         (testing "is `true` if advanced-permisison is enabled"
+           (premium-features-test/with-premium-features #{:advanced-permissions}
+             (is (= true
+                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))))
+         (finally
+          (db/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try

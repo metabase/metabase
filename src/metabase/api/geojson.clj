@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -114,7 +115,7 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (let [decoded-url (rc/url-decode url)]
     (try
       (when-not (valid-geojson-url? decoded-url)

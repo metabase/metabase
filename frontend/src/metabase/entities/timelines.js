@@ -37,7 +37,7 @@ const Timelines = createEntity({
     setArchived: ({ id }, archived, opts) =>
       Timelines.actions.update(
         { id },
-        { archived },
+        { archived, default: false },
         undo(opts, t`timeline`, archived ? t`archived` : t`unarchived`),
       ),
   },

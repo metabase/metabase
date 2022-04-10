@@ -2,14 +2,10 @@ import { t } from "ttag";
 import { Collection, Timeline } from "metabase-types/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-export const getDefaultTimeline = (
-  collection: Collection,
-): Partial<Timeline> => {
-  return {
-    name: t`${collection.name} events`,
-    collection_id: canonicalCollectionId(collection.id),
-    icon: getDefaultTimelineIcon(),
-  };
+export const getTimelineName = (timeline: Timeline) => {
+  return timeline.default && timeline.collection
+    ? getDefaultTimelineName(timeline.collection)
+    : timeline.name;
 };
 
 export const getTimelineIcons = () => {
@@ -21,6 +17,21 @@ export const getTimelineIcons = () => {
     { name: t`Bell`, value: "bell", icon: "bell" },
     { name: t`Cloud`, value: "cloud", icon: "cloud" },
   ];
+};
+
+export const getDefaultTimeline = (
+  collection: Collection,
+): Partial<Timeline> => {
+  return {
+    name: getDefaultTimelineName(collection),
+    collection_id: canonicalCollectionId(collection.id),
+    icon: getDefaultTimelineIcon(),
+    default: true,
+  };
+};
+
+export const getDefaultTimelineName = (collection: Collection) => {
+  return t`${collection.name} events`;
 };
 
 export const getDefaultTimelineIcon = () => {

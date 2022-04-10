@@ -3,6 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.helpers :as hh]
             [metabase.api.common
              :refer
              [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
@@ -15,6 +16,7 @@
             [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
@@ -179,27 +181,34 @@
 ;; once rather than every time
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes session-type]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
       (db/honeysql->sql
-       {:select    [[:session.user_id :metabase-user-id]
-                    [:user.is_superuser :is-superuser?]
-                    [:pgm.is_group_manager :is-group-manager?]
-                    [:user.locale :user-locale]]
-        :from      [[Session :session]]
-        :left-join [[User :user] [:= :session.user_id :user.id]
-                    [PermissionsGroupMembership :pgm] [:and
-                                                       [:= :pgm.user_id :user.id]
-                                                       [:is :pgm.is_group_manager true]]]
-        :where     [:and
-                    [:= :user.is_active true]
-                    [:= :session.id (hsql/raw "?")]
-                    (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                      [:> :session.created_at oldest-allowed])
-                    [:= :session.anti_csrf_token (case session-type
-                                                   :normal         nil
-                                                   :full-app-embed "?")]]
-        :limit     1})))))
+       (cond->
+         {:select    [[:session.user_id :metabase-user-id]
+                      [:user.is_superuser :is-superuser?]
+                      [:user.locale :user-locale]]
+          :from      [[Session :session]]
+          :left-join [[User :user] [:= :session.user_id :user.id]
+                      ]
+          :where     [:and
+                      [:= :user.is_active true]
+                      [:= :session.id (hsql/raw "?")]
+                      (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
+                        [:> :session.created_at oldest-allowed])
+                      [:= :session.anti_csrf_token (case session-type
+                                                     :normal         nil
+                                                     :full-app-embed "?")]]
+          :limit     1}
+
+         enable-advanced-permissions?
+         (->
+          (hh/merge-select
+           [:pgm.is_group_manager :is-group-manager?])
+          (hh/merge-left-join
+           [PermissionsGroupMembership :pgm] [:and
+                                              [:= :pgm.user_id :user.id]
+                                              [:is :pgm.is_group_manager true]]))))))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
@@ -207,7 +216,8 @@
   (when (and session-id (init-status/complete?))
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
-                                        (if (seq anti-csrf-token) :full-app-embed :normal))
+                                        (if (seq anti-csrf-token) :full-app-embed :normal)
+                                        (premium-features/enable-advanced-permissions?))
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
