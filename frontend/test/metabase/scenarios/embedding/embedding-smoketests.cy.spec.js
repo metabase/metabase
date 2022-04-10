@@ -139,6 +139,8 @@ describe("scenarios > embedding > smoke tests", () => {
           cy.contains("Powered by Metabase").should("not.exist");
         }
 
+        cy.signInAsAdmin();
+
         cy.visit(embeddingPage);
         cy.wait("@currentlyEmbeddedObject");
 
@@ -162,6 +164,8 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitIframe();
         cy.findByText("Embedding is not enabled for this object.");
+
+        cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
         cy.wait("@currentlyEmbeddedObject");
