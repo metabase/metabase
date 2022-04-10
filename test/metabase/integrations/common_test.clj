@@ -104,18 +104,19 @@
                  (group-memberships user)))))))
 
   (testing "Make sure the delete last admin exception is catched"
-    (with-user-in-groups [user [(group/admin)]]
-      (let [log-warn-count (atom #{})]
-        (with-redefs [db/delete! (fn [model & _args]
-                                   (when (= model PermissionsGroupMembership)
-                                     (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
-                                                     {:status-code 400}))))
-                      log/log*   (fn [_logger level _throwable msg]
-                                   (when (:= level :warn)
-                                     (swap! log-warn-count conj msg)))]
-          ;; make sure sync run without throwing exception
-          (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
-          ;; make sure we log a msg for that
-          (is (@log-warn-count
-               (str "Attempted to remove the last admin during group sync! "
-                    "Check your SSO group mappings and make sure the Administrators group is mapped correctly."))))))))
+    (mt/with-log-level :warn
+      (with-user-in-groups [user [(group/admin)]]
+        (let [log-warn-count (atom #{})]
+          (with-redefs [db/delete! (fn [model & _args]
+                                     (when (= model PermissionsGroupMembership)
+                                       (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
+                                                       {:status-code 400}))))
+                        log/log*   (fn [_logger level _throwable msg]
+                                     (when (:= level :warn)
+                                       (swap! log-warn-count conj msg)))]
+            ;; make sure sync run without throwing exception
+            (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
+            ;; make sure we log a msg for that
+            (is (@log-warn-count
+                 (str "Attempted to remove the last admin during group sync! "
+                      "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")))))))))
