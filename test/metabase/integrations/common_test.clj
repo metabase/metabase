@@ -110,8 +110,9 @@
                                    (when (= model PermissionsGroupMembership)
                                      (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
                                                      {:status-code 400}))))
-                      log/log* (fn [_logger _level _throwable msg]
-                                 (swap! log-warn-count conj msg))]
+                      log/log*   (fn [_logger level _throwable msg]
+                                   (when (:= level :warn)
+                                     (swap! log-warn-count conj msg)))]
           ;; make sure sync run without throwing exception
           (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
           ;; make sure we log a msg for that
