@@ -35,7 +35,8 @@
          ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
          ;; but we don't want to block user from logging-in, so catch this exception and log a warning
          (if (= (ex-message e) (str pgm/fail-to-remove-last-admin-msg))
-           (log/warn "Attempted to remove the last admin.")
+           (log/warn "Attempted to remove the last admin during group sync!"
+                     "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
            (throw e)))))
     ;; add new memberships for any groups as needed
     (doseq [id    to-add
