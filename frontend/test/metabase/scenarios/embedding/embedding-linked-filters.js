@@ -22,7 +22,7 @@ export const questionDetails = {
         "display-name": "State",
         type: "dimension",
         dimension: ["field", PEOPLE.STATE, null],
-        "widget-type": "category",
+        "widget-type": "string/=",
       },
     },
   },
