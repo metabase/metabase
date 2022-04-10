@@ -33,8 +33,8 @@ export const getFavicon = state =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getLoadingComplete = state =>
-  state.dashboard.loadingDashCards?.isLoadingComplete;
+export const getIsRunning = state =>
+  state.dashboard.loadingDashCards.loadingIds > 0;
 
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
