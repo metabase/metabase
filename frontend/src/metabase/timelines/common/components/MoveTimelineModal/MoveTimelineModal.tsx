@@ -38,7 +38,11 @@ const MoveTimelineModal = ({
         onClose={onClose}
       />
       <ModalBody>
-        <CollectionPicker value={collectionId} onChange={setCollectionId} />
+        <CollectionPicker
+          value={collectionId}
+          showScroll={false}
+          onChange={setCollectionId}
+        />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onCancel}>{t`Cancel`}</Button>
