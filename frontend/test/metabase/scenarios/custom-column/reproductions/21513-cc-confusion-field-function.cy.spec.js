@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   openProductsTable,
+  summarize,
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
@@ -13,7 +14,7 @@ describe.skip("issue 21513", () => {
 
   it("should handle cc with the same name as an aggregation function (metabase#21513)", () => {
     openProductsTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     popover()
       .findByText("Count of rows")
       .click();
