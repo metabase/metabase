@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 
-interface loadingTimerProps {
+interface LoadingTimerProps {
   timer: number;
   onTimeout: () => void;
 }
 
-export function useLoadingTimer(isLoading: any, props: loadingTimerProps) {
-  const [trigger, setTrigger] = useState(false);
+export function useLoadingTimer(isLoading: boolean, props: LoadingTimerProps) {
   const { onTimeout, timer } = props;
-
   useEffect(() => {
     if (isLoading) {
       const timeoutId = setTimeout(() => {
         if (isLoading) {
-          setTrigger(true);
-          if (onTimeout) {
-            onTimeout();
-          }
+          onTimeout();
         }
       }, timer);
       return () => clearTimeout(timeoutId);
     }
   }, [isLoading, timer, onTimeout]);
-
-  return trigger;
 }
