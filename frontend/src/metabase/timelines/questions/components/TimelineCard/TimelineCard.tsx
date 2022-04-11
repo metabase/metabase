@@ -55,11 +55,22 @@ const TimelineCard = ({
     event.stopPropagation();
   }, []);
 
-  const handleCheckboxChange = useCallback(
+  const handleToggleTimeline = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onToggleTimeline?.(timeline, event.target.checked);
     },
     [timeline, onToggleTimeline],
+  );
+
+  const handleToggleEvent = useCallback(
+    (event: TimelineEvent, isSelected: boolean) => {
+      onToggleEvent?.(event, isSelected);
+
+      if (isSelected && !isVisible) {
+        onToggleTimeline?.(timeline, true);
+      }
+    },
+    [timeline, isVisible, onToggleTimeline, onToggleEvent],
   );
 
   useEffect(() => {
@@ -74,7 +85,7 @@ const TimelineCard = ({
         <CardCheckbox
           checked={isVisible}
           onClick={handleCheckboxClick}
-          onChange={handleCheckboxChange}
+          onChange={handleToggleTimeline}
         />
         <CardLabel>
           <Ellipsified tooltipMaxWidth="100%">
@@ -94,7 +105,7 @@ const TimelineCard = ({
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
-              onToggle={onToggleEvent}
+              onToggle={handleToggleEvent}
             />
           ))}
         </CardContent>
