@@ -65,16 +65,14 @@ describe("ScalarValue.styled", () => {
       expect(computeFontSizeAdjustment(props)).toEqual(0);
     });
 
-    it("should only consider height in the final output if the width is at the min", () => {
+    it("should NOT consider height in the final output if the width is at the min", () => {
       const props = {
         ...baseProps,
         gridSize: { height: MAX_HEIGHT_GRID_SIZE, width: 3 },
         minGridSize: { height: 3, width: 3 },
       };
 
-      expect(computeFontSizeAdjustment(props)).toEqual(
-        HEIGHT_ADJUSTMENT_FACTOR,
-      );
+      expect(computeFontSizeAdjustment(props)).toEqual(0);
     });
 
     it("should only consider width in the final output if the height is at the min", () => {
@@ -137,12 +135,25 @@ describe("ScalarValue.styled", () => {
         Math.round(
           computeFontSizeAdjustment({
             ...baseProps,
+            gridSize: { height: 9, width: 9 },
+            minGridSize: { height: 2, width: 2 },
+            totalNumGridCols: 10,
+          }),
+        ),
+      ).toEqual(7);
+    });
+
+    it("should avoid a large height adjustment for a low gridSize.width", () => {
+      expect(
+        Math.round(
+          computeFontSizeAdjustment({
+            ...baseProps,
             gridSize: { height: 9, width: 5 },
             minGridSize: { height: 2, width: 2 },
             totalNumGridCols: 10,
           }),
         ),
-      ).toEqual(5);
+      ).toEqual(3);
     });
   });
 });

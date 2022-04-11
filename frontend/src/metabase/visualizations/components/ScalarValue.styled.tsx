@@ -95,7 +95,9 @@ export function computeFontSizeAdjustment({
     0,
   );
 
-  const heightPxPerGridUnit = heightPx / gridSizeHeight;
+  // Avoid a big height adjustment value for large height, small width cards by using the `dashCardGridWidth` when it is less than the `gridSizeHeight`
+  const dashCardGridHeight = Math.min(dashCardGridWidth, gridSizeHeight);
+  const heightPxPerGridUnit = heightPx / dashCardGridHeight;
   // `MAX_HEIGHT_GRID_SIZE` is approximately the number of grid rows that are visible when browser is fully expanded
   const maxHeightPx = MAX_HEIGHT_GRID_SIZE * heightPxPerGridUnit;
   // 3 is taken from Scalar's min grid size -- should make it a constant.
