@@ -79,33 +79,6 @@
               (q :field field-name)))
            query)))
 
-(defn- create-table!
-  [conn {:keys [database persisted-info card]}]
-  (let [metadata   (:result_metadata card)
-        definition (metadata->definition metadata (:table_name persisted-info))]
-    (try
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :refresh_begin :%now, :refresh_end nil, :error nil)
-      (jdbc/execute! conn [(create-table-sql database definition)])
-      (jdbc/execute! conn [(populate-table-sql database
-                                               definition
-                                               (binding [persisted-info/*allow-persisted-substitution* false]
-                                                 (-> (:dataset_query card)
-                                                     qp/compile
-                                                     :query)))])
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        ;; todo: we can lose a deletion request here. we need to check the state as we complete
-        :active true, :state "persisted", :refresh_end :%now
-        :columns (mapv :name metadata), :error nil)
-      (catch Exception e
-        (log/warn e (trs "Error while persisting table for {0}, card-id {1}"
-                         (:table_name persisted-info)
-                         (:id card)))
-        (db/update! PersistedInfo (u/the-id persisted-info)
-          :active false, :state "error" :refresh_end :%now
-          :columns (mapv :name metadata), :error (ex-message e))
-        (throw e)))))
-
 (def StepArg
   "Schema for argument to step"
   (let [Map {s/Any s/Any}]
@@ -138,7 +111,14 @@
   (let [steps (keys all-steps)]
     [(apply s/enum steps)]))
 
-(s/defn execute-steps [database persisted-info card steps :- Steps]
+(s/defn execute-steps
+  "Executes `steps`. These steps should be in `all-steps` and have a signature of `[conn
+  {:database :persisted-info :card :definition}]`. The `conn` arg is a connection to the database acted upon and help
+  open for the duration of the steps. Returns a map of {:args :state :results}` where args is the map arg passed to
+  each step, state is either :error or :success, and results is a vector of tuples of step name and step return value.
+
+  Will catch errors in each step and not continue running steps after that point."
+  [database persisted-info card steps :- Steps]
   (let [args {:database       database
               :persisted-info persisted-info
               :card           card
@@ -149,7 +129,7 @@
                  (fn step-runner
                    ([] {:state   :valid
                         :results []})
-                   ([{:keys [state] :as results}]
+                   ([results]
                     (-> results
                         (update :state #(if (#{:valid} %) :success %))
                         (assoc :args args)))
