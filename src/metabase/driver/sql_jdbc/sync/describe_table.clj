@@ -1,8 +1,11 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-table` and `describe-table-fks`."
-  (:require [clojure.java.jdbc :as jdbc]
+  "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -189,3 +192,106 @@
     (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
       (with-open [conn (jdbc/get-connection spec)]
         (describe-table-fks* driver conn table db-name-or-nil)))))
+
+(def ^:const nested-field-sample-limit
+  "Number of rows to sample for describe-nested-field-columns"
+  10000)
+
+(defn- flattened-row [field-name row]
+  (letfn [(flatten-row [row path]
+            (lazy-seq
+              (when-let [[[k v] & xs] (seq row)]
+                (cond (and (map? v) (not-empty v))
+                      (into (flatten-row v (conj path k))
+                            (flatten-row xs path))
+                      :else
+                      (cons [(conj path k) v]
+                            (flatten-row xs path))))))]
+    (into {} (flatten-row row [field-name]))))
+
+(defn- row->types [row]
+  (into {} (for [[field-name field-val] row]
+             (let [flat-row (flattened-row field-name field-val)]
+               (into {} (map (fn [[k v]] [k (type v)]) flat-row))))))
+
+(defn- describe-json-xform [member]
+  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+         (map #(into {} %))
+         (map row->types)) member))
+
+(defn- describe-json-rf
+  ([] nil)
+  ([fst] fst)
+  ([fst snd]
+   (into {}
+         (for [json-column (set/union (keys snd) (keys fst))]
+           (cond
+             (or (nil? fst)
+                 (nil? (fst json-column))
+                 (= (hash (fst json-column)) (hash (snd json-column))))
+             [json-column (snd json-column)]
+
+             (or (nil? snd)
+                 (nil? (snd json-column)))
+             [json-column (fst json-column)]
+
+             (every? #(isa? % Number) [(fst json-column) (snd json-column)])
+             [json-column java.lang.Number]
+
+             (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
+                     [(fst json-column) (snd json-column)])
+             [json-column java.lang.String]
+
+             :else
+             [json-column nil])))))
+
+(def ^:const field-type-map
+  "We deserialize the JSON in order to determine types,
+  so the java / clojure types we get have to be matched to MBQL types"
+  {java.lang.String                :type/Text
+   ;; JSON itself has the single number type, but Java serde of JSON is stricter
+   java.lang.Long                  :type/Integer
+   java.lang.Integer               :type/Integer
+   java.lang.Double                :type/Float
+   java.lang.Number                :type/Number
+   java.lang.Boolean               :type/Boolean
+   clojure.lang.PersistentVector   :type/Array
+   clojure.lang.PersistentArrayMap :type/Structured})
+
+(defn- field-types->fields [field-types]
+  (let [valid-fields (for [[field-path field-type] (seq field-types)]
+                       (if (nil? field-type)
+                         nil
+                         (let [curr-type (get field-type-map field-type :type/*)]
+                           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+                            :database-type     curr-type
+                            :base-type         curr-type
+                            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+                            :database-position 0
+                            :visibility-type   :normal
+                            :nfc-path          field-path})))
+        field-hash   (apply hash-set (filter some? valid-fields))]
+    field-hash))
+
+
+;; The name's nested field columns but what the people wanted (issue #708)
+;; was JSON so what they're getting is JSON.
+(defn describe-nested-field-columns
+  "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
+  [driver spec table]
+  (with-open [conn (jdbc/get-connection spec)]
+    (let [map-inner        (fn [f xs] (map #(into {}
+                                                  (for [[k v] %]
+                                                    [k (f v)])) xs))
+          table-fields     (describe-table-fields driver conn table)
+          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+      (if (nil? (seq json-fields))
+        #{}
+        (let [json-field-names (mapv (comp keyword :name) json-fields)
+              sql-args         (hsql/format {:select json-field-names
+                                             :from   [(keyword (:name table))]
+                                             :limit  nested-field-sample-limit} {:quoting :ansi})
+              query            (jdbc/reducible-query spec sql-args)
+              field-types      (transduce describe-json-xform describe-json-rf query)
+              fields           (field-types->fields field-types)]
+          fields)))))
