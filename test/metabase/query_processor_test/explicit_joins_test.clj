@@ -760,6 +760,7 @@
                         "Discount"
                         "Created At"
                         "Quantity"
+                        "Canceled"
                         "CC"
                         "Products Renamed → ID"
                         "Products Renamed → Ean"
@@ -770,11 +771,11 @@
                         "Products Renamed → Rating"
                         "Products Renamed → Created At"]
                        (map :display_name (get-in results [:data :results_metadata :columns])))))
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 2
+              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 false 2
                        60 "4819782507258" "Rustic Paper Car" "Doohickey" "Stroman-Carroll" 19.87 4.1 "2017-12-16T11:14:43.264Z"]
-                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 2
+                      [10 1 6 97.44 5.36 102.8 nil "2020-01-17T01:44:37.233Z" 2 false 2
                        6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40.15Z"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int int
+                     (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 str int boolean int
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
