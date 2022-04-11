@@ -4,10 +4,14 @@ import Database from "metabase-lib/lib/metadata/Database";
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { TemplateTag } from "metabase-types/types/Query";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
+import {
+  Card as CardObject,
+  CardId,
+  StructuredDatasetQuery,
+} from "metabase-types/types/Card";
 
 export function isSupportedTemplateTagForModel(tag: TemplateTag) {
-  return tag.type === "card";
+  return ["card", "snippet"].includes(tag.type);
 }
 
 export function checkDatabaseSupportsModels(database?: Database | null) {
@@ -29,6 +33,11 @@ export function checkCanBeModel(question: Question) {
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }
+
+type Card = CardObject & {
+  id?: CardId;
+  dataset?: boolean;
+};
 
 export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
   if (!originalCard || !isStructured(card.dataset_query)) {

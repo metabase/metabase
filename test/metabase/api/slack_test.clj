@@ -10,11 +10,12 @@
     (testing "An admin can set a valid Slack app token to the slack-app-token setting, and any value in the
              `slack-token` setting is cleared"
       (with-redefs [slack/valid-token? (constantly true)
-                    slack/channel-with-name (constantly {})]
+                    slack/channel-exists? (constantly true)
+                    slack/refresh-channels-and-usernames! (constantly nil)
+                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (mt/with-temporary-setting-values [slack-app-token nil
                                            slack-token     "fake-token"]
-          (mt/user-http-request :crowberto :put 200 "slack/settings"
-                                {:slack-app-token "fake-token"})
+          (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
           (is (= "fake-token" (slack/slack-app-token)))
           (is (= nil (slack/slack-token))))))
 
@@ -23,25 +24,26 @@
         (with-redefs [slack/valid-token? (constantly false)
                       ;; Token validation is skipped by default in test environments; overriding `is-test?` ensures
                       ;; that validation occurs
-                      config/is-test?    false]
-          (let [response (mt/user-http-request :crowberto :put 400 "slack/settings"
-                                               {:slack-app-token "fake-token"})]
+                      config/is-test?    false
+                      slack/refresh-channels-and-usernames! (constantly nil)
+                      slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 400 "slack/settings" {:slack-app-token "fake-token"})]
             (is (= {:slack-app-token "invalid token"} (:errors response)))
-            (is (= nil (slack/slack-app-token)))))))
+            (is (= nil (slack/slack-app-token)))
+            (is (= [] (slack/slack-cached-channels-and-usernames)))))))
 
     (testing "The Slack files channel setting can be set by an admin, and the leading # is stripped if it is present"
-      (mt/with-temporary-setting-values [slack-files-channel nil]
-        (with-redefs [slack/channel-with-name (constantly {})]
-          (mt/user-http-request :crowberto :put 200 "slack/settings"
-                                {:slack-files-channel "fake-channel"})
+      (mt/with-temporary-setting-values [slack-files-channel                       nil
+                                         slack-channels-and-usernames-last-updated nil]
+        (with-redefs [slack/channel-exists? (constantly true)]
+          (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-files-channel "fake-channel"})
           (is (= "fake-channel" (slack/slack-files-channel)))
 
-          (mt/user-http-request :crowberto :put 200 "slack/settings"
-                                {:slack-files-channel "#fake-channel"})
+          (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-files-channel "#fake-channel"})
           (is (= "fake-channel" (slack/slack-files-channel))))))
 
     (testing "An error is returned if the Slack files channel cannot be found"
-      (with-redefs [slack/channel-with-name (constantly nil)]
+      (with-redefs [slack/channel-exists? (constantly nil)]
         (let [response (mt/user-http-request :crowberto :put 400 "slack/settings"
                                              {:slack-files-channel "fake-channel"})]
           (is (= {:slack-files-channel "channel not found"} (:errors response))))))

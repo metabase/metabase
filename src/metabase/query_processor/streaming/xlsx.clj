@@ -204,15 +204,16 @@
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings semantic-type]
+  [format-settings {semantic-type :semantic_type, effective-type :effective_type, :as _col}]
   (u/one-or-many
    (cond
      ;; Primary key or foreign key
      (isa? semantic-type :Relation/*)
      "0"
 
-     (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-         (isa? semantic-type :type/Temporal))
+     (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+              (isa? semantic-type :type/Temporal))
+          (isa? effective-type :type/Temporal))
      (datetime-format-string format-settings)
 
      (or (some #(contains? number-setting-keys %) (keys format-settings))
@@ -264,8 +265,7 @@
                                    {::mb.viz/column-name (:name col)})
                    id-or-name    (first (vals settings-key))
                    settings      (get col-settings settings-key)
-                   semantic-type (:semantic_type col)
-                   format-strings (format-settings->format-strings settings semantic-type)]
+                   format-strings (format-settings->format-strings settings col)]
                (when (seq format-strings)
                  {id-or-name
                   (map
@@ -350,11 +350,13 @@
 
 (defmethod set-cell! Number
   [^Cell cell value id-or-name]
-  (.setCellValue cell (double value))
-  (let [styles         (u/one-or-many (cell-style id-or-name))]
-    (if (rounds-to-int? value)
-      (.setCellStyle cell (or (first styles) (cell-style :integer)))
-      (.setCellStyle cell (or (second styles) (cell-style :float))))))
+  (let [v (double value)]
+    (.setCellValue cell v)
+    (when (u/real-number? v)
+      (let [styles (u/one-or-many (cell-style id-or-name))]
+        (if (rounds-to-int? v)
+          (.setCellStyle cell (or (first styles) (cell-style :integer)))
+          (.setCellStyle cell (or (second styles) (cell-style :float))))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]

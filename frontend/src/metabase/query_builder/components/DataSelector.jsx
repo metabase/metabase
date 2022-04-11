@@ -676,7 +676,10 @@ export class UnconnectedDataSelector extends Component {
         return this.props.fetchDatabases(this.props.databaseQuery);
       },
       [SCHEMA_STEP]: () => {
-        return this.props.fetchSchemas(this.state.selectedDatabaseId);
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchSchemas(this.state.selectedDatabaseId),
+        ]);
       },
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {
@@ -1047,7 +1050,6 @@ export class UnconnectedDataSelector extends Component {
         containerClassName={this.props.containerClassName}
         triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
-        horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}
         tetherOptions={this.props.tetherOptions}
         sizeToFit

@@ -1,4 +1,9 @@
-import { restore, showDashboardCardActions } from "__support__/e2e/cypress";
+import {
+  restore,
+  showDashboardCardActions,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();
@@ -17,7 +22,7 @@ describe("scenarios > dashboard > text-box", () => {
   describe("Editing", () => {
     beforeEach(() => {
       // Create text box card
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       addTextBox("Text *text* __text__");
     });
 
@@ -53,7 +58,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.createDashboard().then(({ body: { id } }) => {
         cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
 
-        cy.visit(`/dashboard/${id}`);
+        visitDashboard(id);
       });
     });
 
@@ -108,5 +113,27 @@ describe("scenarios > dashboard > text-box", () => {
         .should("be.visible")
         .and("have.length", 2);
     });
+  });
+
+  it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
+    visitDashboard(1);
+    // click pencil icon to edit
+    cy.icon("pencil").click();
+    // add text box with text
+    cy.icon("string").click();
+    cy.get(".DashCard")
+      .last()
+      .find("textarea")
+      .type("text text text");
+    cy.icon("filter").click();
+    popover().within(() => {
+      cy.findByText("Text or Category").click();
+      cy.findByText("Dropdown").click();
+    });
+    cy.findByText("Save").click();
+
+    // confirm text box and filter are still there
+    cy.findByText("text text text");
+    cy.findByPlaceholderText("Text");
   });
 });

@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -76,6 +77,7 @@ const Fields = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Fields.getObjectStatePath(id)],
         ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+        entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
     )(({ id: fieldId }) => async (dispatch, getState) => {
@@ -85,6 +87,22 @@ const Fields = createEntity({
       return { id, values };
     }),
 
+    updateField(field, opts) {
+      return async dispatch => {
+        const result = await dispatch(
+          Fields.actions.update(
+            { id: field.id },
+            field,
+            notify(opts, field.display_name, t`updated`),
+          ),
+        );
+        // Field values needs to be fetched again once the field is updated metabase#16322
+        await dispatch(
+          Fields.actions.fetchFieldValues(field, { reload: true }),
+        );
+        return result;
+      };
+    },
     // Docstring from m.api.field:
     // Update the human-readable values for a `Field` whose semantic type is
     // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."

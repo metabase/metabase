@@ -120,6 +120,8 @@
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private minute-str (deferred-tru "Minute"))
+(def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
 
 (def ^:private dimension-options
@@ -131,8 +133,8 @@
                      :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(deferred-tru "Minute") "minute"]
-                   [(deferred-tru "Hour") "hour"]
+                  [[minute-str "minute"]
+                   [hour-str "hour"]
                    [day-str "day"]
                    [(deferred-tru "Week") "week"]
                    [(deferred-tru "Month") "month"]
@@ -146,6 +148,13 @@
                    [(deferred-tru "Week of Year") "week-of-year"]
                    [(deferred-tru "Month of Year") "month-of-year"]
                    [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql [:field nil {:temporal-unit param}]
+                     :type "type/Time"})
+                  [[minute-str "minute"]
+                   [hour-str "hour"]
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
@@ -189,6 +198,9 @@
 (def ^:private datetime-dimension-indexes
   (create-dim-index-seq "type/DateTime"))
 
+(def ^:private time-dimension-indexes
+  (create-dim-index-seq "type/Time"))
+
 (def ^:private numeric-dimension-indexes
   (create-dim-index-seq "type/Number"))
 
@@ -196,12 +208,15 @@
   (create-dim-index-seq "type/Coordinate"))
 
 (defn- dimension-index-for-type [dim-type pred]
-  (first (m/find-first (fn [[k v]]
+  (first (m/find-first (fn [[_k v]]
                          (and (= dim-type (:type v))
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
   (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
+
+(def ^:private time-default-index
+  (dimension-index-for-type "type/Time" #(= (str hour-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
   (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
@@ -212,16 +227,13 @@
 (defn- supports-numeric-binning? [driver]
   (and driver (driver/supports? driver :binning)))
 
-(defn- supports-date-binning?
-  "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type], :as field}]
-  (and (types/temporal-field? field)
-       (not (isa? base_type :type/Time))))
-
 (defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-                                       (supports-date-binning? field)
+                                       (types/field-is-type? :type/Time field)
+                                       [time-default-index time-dimension-indexes]
+
+                                       (types/temporal-field? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
@@ -376,7 +388,6 @@
   []
   []) ; return empty array
 
-
 (api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
@@ -395,19 +406,19 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (api/check-superuser)
-  ;; async so as not to block the UI
-  (sync.concurrent/submit-task
-    (fn []
-      (sync-field-values/update-field-values-for-table! (api/check-404 (Table id)))))
-  {:status :success})
+  (let [table (Table id)]
+    (api/write-check table)
+    ;; async so as not to block the UI
+    (sync.concurrent/submit-task
+      (fn []
+        (sync-field-values/update-field-values-for-table! table)))
+    {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/check-superuser)
-  (api/check-404 (Table id))
+  (api/write-check (Table id))
   (when-let [field-ids (db/select-ids Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
@@ -421,7 +432,6 @@
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
-  (api/check-superuser)
-  (-> id Table api/check-404 (table/custom-order-fields! field_order)))
+  (-> id Table api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
 
 describe("scenarios > alert > email_alert", () => {
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe("scenarios > alert > email_alert", () => {
 });
 
 function openAlertForQuestion(id = 1) {
-  cy.visit(`/question/${id}`);
+  visitQuestion(id);
   cy.icon("bell").click();
 
   cy.findByText("Set up an alert").click();

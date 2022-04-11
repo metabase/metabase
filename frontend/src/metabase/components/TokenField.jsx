@@ -454,6 +454,7 @@ export default class TokenField extends Component {
       valueStyle,
       optionsStyle,
       optionsClassName,
+      prefix,
     } = this.props;
     let {
       inputValue,
@@ -495,15 +496,21 @@ export default class TokenField extends Component {
       placeholder = null;
     }
 
+    const isControlledInput = !!this.onInputChange;
     const valuesList = (
       <ul
         className={cx(
           className,
-          "pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y",
+          "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
         )}
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
+        {!!prefix && (
+          <span className="text-medium mb1 py1 pr1" data-testid="input-prefix">
+            {prefix}
+          </span>
+        )}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
@@ -534,9 +541,10 @@ export default class TokenField extends Component {
             // set size to be small enough that it fits in a parameter.
             size={10}
             placeholder={placeholder}
-            value={inputValue}
+            value={isControlledInput ? inputValue : undefined}
+            defaultValue={isControlledInput ? undefined : inputValue}
             onKeyDown={this.onInputKeyDown}
-            onChange={this.onInputChange}
+            onChange={isControlledInput ? this.onInputChange : undefined}
             onFocus={this.onInputFocus}
             onBlur={this.onInputBlur}
             onPaste={this.onInputPaste}

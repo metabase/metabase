@@ -2,8 +2,9 @@
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
+import { t } from "ttag";
+
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
@@ -12,6 +13,7 @@ import Question from "metabase-lib/lib/Question";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
+import { openUrl } from "metabase/redux/app";
 import {
   createParameter,
   setParameterName as setParamName,
@@ -40,7 +42,6 @@ import {
   addFields,
   loadMetadataForQueries,
 } from "metabase/redux/metadata";
-import { push } from "react-router-redux";
 
 import {
   DashboardApi,
@@ -58,6 +59,7 @@ import {
   getDashboardComplete,
   getParameterValues,
   getDashboardParameterValuesSearchCache,
+  getLoadingDashCards,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -81,6 +83,7 @@ const dashboard = new schema.Entity("dashboard", {
 // action constants
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
+export const RESET = "metabase/dashboard/RESET";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 
@@ -139,11 +142,24 @@ export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
 
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
+export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
+const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
+
+export const SET_LOADING_DASHCARDS_COMPLETE =
+  "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
+
 export const initialize = createAction(INITIALIZE);
+export const reset = createAction(RESET);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
 export const setSidebar = createAction(SET_SIDEBAR);
 export const closeSidebar = createAction(CLOSE_SIDEBAR);
+
+export const setShowLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+);
 
 export const setSharing = isSharing => dispatch => {
   if (isSharing) {
@@ -210,6 +226,12 @@ function generateTemporaryDashcardId() {
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
   return dashcard.id < 1 && dashcard.id >= 0;
+}
+
+function isNewAdditionalSeriesCard(card, dashcard) {
+  return (
+    card.id !== dashcard.card_id && !dashcard.series.some(s => s.id === card.id)
+  );
 }
 
 export const addCardToDashboard = ({ dashId, cardId }) => async (
@@ -440,11 +462,46 @@ export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
-    for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
-      // we skip over virtual cards, i.e. dashcards that do not have backing cards in the backend
-      if (!isVirtualDashCard(dashcard)) {
-        dispatch(fetchCardData(card, dashcard, options));
-      }
+
+    const promises = getAllDashboardCards(dashboard)
+      .map(({ card, dashcard }) => {
+        if (!isVirtualDashCard(dashcard)) {
+          return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+            return dispatch(updateLoadingTitle());
+          });
+        }
+      })
+      .filter(p => !!p);
+
+    dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+
+    Promise.all(promises).then(() => {
+      dispatch(loadingComplete());
+    });
+  },
+);
+
+const loadingComplete = createThunkAction(
+  SET_LOADING_DASHCARDS_COMPLETE,
+  () => dispatch => {
+    dispatch(setShowLoadingCompleteFavicon(true));
+    if (!document.hidden) {
+      dispatch(setDocumentTitle(""));
+      setTimeout(() => {
+        dispatch(setShowLoadingCompleteFavicon(false));
+      }, 3000);
+    } else {
+      dispatch(setDocumentTitle(t`Your dashboard is ready`));
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          dispatch(setDocumentTitle(""));
+          setTimeout(() => {
+            dispatch(setShowLoadingCompleteFavicon(false));
+          }, 3000);
+        },
+        { once: true },
+      );
     }
   },
 );
@@ -603,10 +660,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         ),
       );
     } else {
-      // new cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = isNewDashcard(dashcard)
-        ? CardApi.query
-        : DashboardApi.cardQuery;
+      // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+      const endpoint =
+        isNewDashcard(dashcard) || isNewAdditionalSeriesCard(card, dashcard)
+          ? CardApi.query
+          : DashboardApi.cardQuery;
 
       result = await fetchDataOrError(
         maybeUsePivotEndpoint(endpoint, card)(
@@ -633,6 +691,16 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     };
   };
 });
+
+const updateLoadingTitle = createThunkAction(
+  SET_DOCUMENT_TITLE,
+  () => (dispatch, getState) => {
+    const loadingDashCards = getLoadingDashCards(getState());
+    const totalCards = loadingDashCards.dashcardIds.length;
+    const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
+    return `${loadingComplete}/${totalCards} loaded`;
+  },
+);
 
 export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
@@ -997,10 +1065,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       ? Urls.serializedQuestion(question.card())
       : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
 
-    open(url, {
-      blankOnMetaOrCtrlKey: true,
-      openInSameWindow: url => dispatch(push(url)),
-    });
+    dispatch(openUrl(url));
   },
 );
 

@@ -7,6 +7,7 @@ import {
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -23,7 +24,7 @@ const filter = {
 
 const questionQuery = {
   dataset_query: {
-    database: 1,
+    database: SAMPLE_DB_ID,
     native: {
       query:
         "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",

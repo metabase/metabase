@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
   compose,
@@ -73,12 +74,20 @@ const Tables = createEntity({
 
   // ACTION CREATORS
   objectActions: {
+    updateProperty(entityObject, name, value, opts) {
+      return Tables.actions.update(
+        entityObject,
+        { [name]: value },
+        notify(opts, `Table ${name}`, t`updated`),
+      );
+    },
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
+        entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
     )(({ id }, options = {}) => (dispatch, getState) =>
@@ -110,6 +119,7 @@ const Tables = createEntity({
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
+        entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
     )(entityObject => async (dispatch, getState) => {

@@ -193,49 +193,6 @@ describe("NativeQuery", () => {
         expect(q.canRun()).toBe(true);
       });
 
-      it("bad type", () => {
-        q = q.setDatasetQuery(
-          assocIn(
-            q.datasetQuery(),
-            ["native", "template-tags", "foo", "type"],
-            "type-that-does-not-exist",
-          ),
-        );
-        expect(q.canRun()).toBe(false);
-
-        q = q.setDatasetQuery(
-          assocIn(
-            q.datasetQuery(),
-            ["native", "template-tags", "foo", "type"],
-            "text",
-          ),
-        );
-        expect(q.canRun()).toBe(true);
-      });
-
-      it("dimension type without a widget-type", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            dimension: ["field", 123, null],
-          }),
-        );
-
-        expect(q.canRun()).toBe(false);
-      });
-
-      it("dimension type with a widget-type of none", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            "widget-type": "none",
-            dimension: ["field", 123, null],
-          }),
-        );
-
-        expect(q.canRun()).toBe(false);
-      });
-
       it("dimension type without a dimension", () => {
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
@@ -248,6 +205,7 @@ describe("NativeQuery", () => {
 
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
             type: "dimension",
             "widget-type": "category",
             dimension: ["field", 123, null],

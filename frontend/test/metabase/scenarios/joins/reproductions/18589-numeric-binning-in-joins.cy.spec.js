@@ -1,8 +1,9 @@
 import {
   restore,
   openOrdersTable,
-  getNotebookStep,
+  visualize,
   popover,
+  summarize,
 } from "__support__/e2e/cypress";
 
 describe("issue 18589", () => {
@@ -19,14 +20,12 @@ describe("issue 18589", () => {
     selectFromDropdown("Quantity");
     selectFromDropdown("Rating");
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
-    getNotebookStep("summarize").within(() => {
-      cy.icon("play").click();
-      cy.wait("@dataset");
-      cy.findByText("2,860,368");
-    });
+    visualize();
+
+    cy.findByText("2,860,368");
   });
 });
 

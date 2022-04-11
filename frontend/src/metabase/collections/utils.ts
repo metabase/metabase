@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import _ from "underscore";
+
+import { Collection, CollectionId } from "metabase-types/api";
 
 export type Item = {
   name: string;
@@ -12,20 +15,6 @@ export type Item = {
   copy?: boolean;
   setCollection?: boolean;
   model: string;
-};
-
-type CollectionId = "root" | number;
-
-export type Collection = {
-  id: CollectionId;
-  can_write: boolean;
-  name: string;
-  archived: boolean;
-  personal_owner_id?: number | unknown;
-  children?: Collection[];
-  originalName?: string;
-  effective_ancestors?: Collection[];
-  location?: string;
 };
 
 export function nonPersonalOrArchivedCollection(
@@ -57,29 +46,6 @@ export function currentUserPersonalCollections(
   return collectionList
     .filter(l => l.personal_owner_id === userID)
     .map(preparePersonalCollection);
-}
-
-export function getParentPath(
-  collections: Collection[],
-  targetId: CollectionId,
-): CollectionId[] | null {
-  if (collections.length === 0) {
-    return null; // not found!
-  }
-
-  for (const collection of collections) {
-    if (collection.id === targetId) {
-      return [collection.id]; // we found it!
-    }
-    if (collection.children) {
-      const path = getParentPath(collection.children, targetId);
-      if (path !== null) {
-        // we found it under this collection
-        return [collection.id, ...path];
-      }
-    }
-  }
-  return null; // didn't find it under any collection
 }
 
 function getNonRootParentId(collection: Collection) {
@@ -116,11 +82,13 @@ export function isItemPinned(item: Item) {
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
 export function canonicalCollectionId(
-  collectionId: string | null | undefined,
+  collectionId: string | number | null | undefined,
 ): number | null {
   if (collectionId === "root" || collectionId == null) {
     return null;
+  } else if (typeof collectionId === "number") {
+    return collectionId;
+  } else {
+    return parseInt(collectionId, 10);
   }
-
-  return parseInt(collectionId, 10);
 }

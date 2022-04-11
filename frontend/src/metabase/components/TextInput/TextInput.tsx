@@ -28,54 +28,60 @@ type TextInputProps = {
   invalid?: boolean;
 } & Omit<React.HTMLProps<HTMLInputElement>, "onChange">;
 
-export default forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
-  {
-    value = "",
-    className,
-    placeholder = t`Find...`,
-    onChange,
-    hasClearButton = false,
-    icon,
-    type = "text",
-    colorScheme = "default",
-    autoFocus = false,
-    padding = "md",
-    borderRadius = "md",
-    invalid,
-    ...rest
-  }: TextInputProps,
-  ref,
-) {
-  const handleClearClick = () => {
-    onChange("");
-  };
+const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
+  function TextInput(
+    {
+      value = "",
+      className,
+      placeholder = t`Find...`,
+      onChange,
+      hasClearButton = false,
+      icon,
+      type = "text",
+      colorScheme = "default",
+      autoFocus = false,
+      padding = "md",
+      borderRadius = "md",
+      invalid,
+      ...rest
+    }: TextInputProps,
+    ref,
+  ) {
+    const handleClearClick = () => {
+      onChange("");
+    };
 
-  const showClearButton = hasClearButton && value.length > 0;
+    const showClearButton = hasClearButton && value.length > 0;
 
-  return (
-    <TextInputRoot className={className}>
-      {icon && <IconWrapper>{icon}</IconWrapper>}
-      <Input
-        ref={ref}
-        colorScheme={colorScheme}
-        autoFocus={autoFocus}
-        hasClearButton={hasClearButton}
-        hasIcon={!!icon}
-        placeholder={placeholder}
-        value={value}
-        type={type}
-        onChange={e => onChange(e.target.value)}
-        padding={padding}
-        borderRadius={borderRadius}
-        invalid={invalid}
-        {...rest}
-      />
+    return (
+      <TextInputRoot className={className}>
+        {icon && <IconWrapper>{icon}</IconWrapper>}
+        <Input
+          ref={ref}
+          colorScheme={colorScheme}
+          autoFocus={autoFocus}
+          hasClearButton={hasClearButton}
+          hasIcon={!!icon}
+          placeholder={placeholder}
+          value={value}
+          type={type}
+          onChange={e => onChange(e.target.value)}
+          padding={padding}
+          borderRadius={borderRadius}
+          invalid={invalid}
+          {...rest}
+        />
 
-      {showClearButton && (
-        <ClearButton onClick={handleClearClick}>
-          <Icon name="close" size={12} />
-        </ClearButton>
-      )}
-    </TextInputRoot>
-  );
+        {showClearButton && (
+          <ClearButton onClick={handleClearClick}>
+            <Icon name="close" size={12} />
+          </ClearButton>
+        )}
+      </TextInputRoot>
+    );
+  },
+);
+
+export default Object.assign(TextInput, {
+  Input,
 });

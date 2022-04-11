@@ -32,6 +32,7 @@
    (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
    (s/optional-key :pk?)               s/Bool
    (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :nfc-path)          [s/Any]
    (s/optional-key :custom)            {s/Any s/Any}
    ;; for future backwards compatability, when adding things
    s/Keyword                           s/Any})
@@ -42,6 +43,10 @@
    :schema (s/maybe su/NonBlankString)
    :fields #{TableMetadataField}
    (s/optional-key :description)   (s/maybe su/NonBlankString)})
+
+(def NestedFCMetadata
+  "Schema for the expected output of `describe-nested-field-columns`."
+  (s/maybe #{TableMetadataField}))
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."

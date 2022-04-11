@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { renderWithProviders, fireEvent } from "__support__/ui";
 
 import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
@@ -20,7 +20,9 @@ describe("pie chart", () => {
       ["bar", 2],
       ["baz", 2],
     ];
-    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    const { getAllByText } = renderWithProviders(
+      <Visualization rawSeries={series(rows)} />,
+    );
     getAllByText("20%");
     getAllByText("40%");
   });
@@ -31,7 +33,9 @@ describe("pie chart", () => {
       ["bar", 0.499],
       ["baz", 0.001],
     ];
-    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    const { getAllByText } = renderWithProviders(
+      <Visualization rawSeries={series(rows)} />,
+    );
     getAllByText("50.0%");
     getAllByText("49.9%");
     getAllByText("0.1%");
@@ -44,7 +48,9 @@ describe("pie chart", () => {
       ["baz", 0.002],
       ["qux", 0.008],
     ];
-    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    const { getAllByText } = renderWithProviders(
+      <Visualization rawSeries={series(rows)} />,
+    );
     getAllByText("50%");
     getAllByText("49%");
     getAllByText("1%");
@@ -62,7 +68,9 @@ describe("pie chart", () => {
         data: { rows: [["foo", 1]], cols },
       },
     ];
-    const { getAllByText } = render(<Visualization rawSeries={series} />);
+    const { getAllByText } = renderWithProviders(
+      <Visualization rawSeries={series} />,
+    );
     getAllByText("100%"); // shouldn't multiply legend percent by `scale`
     getAllByText("123"); // should multiply the count in the center by `scale`
   });
@@ -85,7 +93,9 @@ describe("pie chart", () => {
         },
       },
     ];
-    const { getAllByText } = render(<Visualization rawSeries={series} />);
+    const { getAllByText } = renderWithProviders(
+      <Visualization rawSeries={series} />,
+    );
     getAllByText("50,1%");
   });
 
@@ -96,7 +106,7 @@ describe("pie chart", () => {
       ["baz", 0.002],
       ["qux", 0.008],
     ];
-    const { container, getAllByText, queryAllByText } = render(
+    const { container, getAllByText, queryAllByText } = renderWithProviders(
       <Visualization rawSeries={series(rows)} />,
     );
     const paths = container.querySelectorAll("path");
@@ -117,7 +127,7 @@ describe("pie chart", () => {
       ["bar", 0.49],
       ["baz", 0.002],
     ];
-    const { container, queryAllByText } = render(
+    const { container, queryAllByText } = renderWithProviders(
       <Visualization rawSeries={series(rows)} />,
     );
     const paths = container.querySelectorAll("path");

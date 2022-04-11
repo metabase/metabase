@@ -73,7 +73,9 @@ it("removes database", () => {
   const database = { id: databaseId, name };
   const deleteDatabase = jest.fn();
 
-  render(<Sidebar database={database} deleteDatabase={deleteDatabase} />);
+  render(
+    <Sidebar database={database} deleteDatabase={deleteDatabase} isAdmin />,
+  );
 
   const removeDBButton = screen.getByText("Remove this database");
 
@@ -98,19 +100,18 @@ it("removes database", () => {
   expect(deleteDatabase).toHaveBeenCalled();
 });
 
-it("hides syncing actions until the initial sync", () => {
+it("does not allow to remove databases for non-admins", () => {
+  const database = { id: 1, name: "DB Name" };
+  render(<Sidebar database={database} deleteDatabase={jest.fn()} />);
+  expect(screen.queryByText("Remove this database")).toBeNull();
+});
+
+it("shows loading indicator when a sync is in progress", () => {
   const databaseId = 1;
   const database = { id: databaseId, initial_sync_status: "incomplete" };
 
   render(<Sidebar database={database} />);
 
   const statusButton = screen.getByText("Syncing database…");
-  const syncButton = screen.queryByText("Sync database schema now");
-  const rescanButton = screen.queryByText("Re-scan field values now");
-  const discardButton = screen.queryByText("Discard saved field values");
-
   expect(statusButton).toBeInTheDocument();
-  expect(syncButton).not.toBeInTheDocument();
-  expect(rescanButton).not.toBeInTheDocument();
-  expect(discardButton).not.toBeInTheDocument();
 });

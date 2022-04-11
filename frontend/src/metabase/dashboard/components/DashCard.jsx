@@ -411,6 +411,7 @@ const RemoveButton = ({ onRemove }) => (
 
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
+    data-testid="add-series-button"
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}

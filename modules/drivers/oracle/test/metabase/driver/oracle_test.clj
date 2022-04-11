@@ -19,6 +19,7 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
             [metabase.sync :as sync]
+            metabase.sync.util
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
@@ -217,7 +218,9 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (with-temp-user [username]
+        (with-temp-user
+          #_:clj-kondo/ignore
+          [username]
           (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
@@ -291,7 +294,7 @@
                   :where  [:<= (hsql/raw "rownum") 100]})
                (#'sql.qp/mbql->honeysql
                 :oracle
-                (qp/query->preprocessed
+                (qp/preprocess
                  (mt/mbql-query venues
                    {:source-table $$venues
                     :order-by     [[:asc $id]]
@@ -386,3 +389,8 @@
         (mt/with-native-query-testing-context query
           (is (= [42M]
                  (mt/first-row (qp/process-query query)))))))))
+
+(deftest escape-alias-test
+  (testing "Oracle should strip double quotes and null characters from identifiers"
+    (is (= "ABC_D_E__FG_H"
+           (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))

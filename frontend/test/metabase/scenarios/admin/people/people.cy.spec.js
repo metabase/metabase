@@ -4,7 +4,7 @@ import {
   modal,
   popover,
   setupSMTP,
-  describeWithToken,
+  describeEE,
 } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -100,7 +100,7 @@ describe("scenarios > admin > people", () => {
       cy.contains("Email address already in use.");
     });
 
-    it.skip("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
+    it("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
       cy.viewport(1000, 600);
 
       cy.visit("/admin/people");
@@ -215,7 +215,7 @@ describe("scenarios > admin > people", () => {
       generateGroups(51);
 
       cy.visit("/admin/people/groups");
-      cy.scrollTo("bottom");
+      cy.get("main").scrollTo("bottom");
       cy.findByText("readonly");
     });
 
@@ -223,14 +223,24 @@ describe("scenarios > admin > people", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
 
+      const waitForUserRequests = () => {
+        cy.wait("@users");
+        cy.wait("@memberships");
+      };
+
       beforeEach(() => {
         generateUsers(NEW_USERS);
+
+        cy.intercept("GET", "/api/user*").as("users");
+        cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
       it("should allow paginating people forward and backward", () => {
         const PAGE_SIZE = 25;
 
         cy.visit("/admin/people");
+
+        waitForUserRequests();
 
         // Total
         cy.findByText(`${NEW_TOTAL_USERS} people found`);
@@ -241,6 +251,8 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
+
+        waitForUserRequests();
 
         // Page 2
         cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
@@ -283,7 +295,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-describeWithToken("scenarios > admin > people", () => {
+describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

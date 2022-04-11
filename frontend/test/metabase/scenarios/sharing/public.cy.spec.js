@@ -1,4 +1,10 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  visitQuestion,
+  visitDashboard,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -61,7 +67,7 @@ describe.skip("scenarios > public", () => {
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized dashboards", () => {
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByTestId("add-to-dashboard-button").click();
@@ -116,7 +122,7 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create public questions", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.icon("share").click();
 
@@ -140,7 +146,7 @@ describe.skip("scenarios > public", () => {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
       });
 
-      cy.visit(`/question/${questionId}`);
+      visitQuestion(questionId);
 
       cy.icon("share").click();
 
@@ -160,10 +166,9 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create public dashboards", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
 
       cy.icon("share").click();
-      cy.contains("Sharing and embedding").click();
 
       cy.contains("Enable sharing")
         .parent()
@@ -185,10 +190,9 @@ describe.skip("scenarios > public", () => {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
       });
 
-      cy.visit(`/dashboard/${dashboardId}`);
+      visitDashboard(dashboardId);
 
       cy.icon("share").click();
-      cy.contains("Sharing and embedding").click();
 
       cy.contains(".cursor-pointer", "Embed this dashboard")
         .should("not.be.disabled")

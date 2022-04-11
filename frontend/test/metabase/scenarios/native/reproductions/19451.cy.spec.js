@@ -27,12 +27,7 @@ describe("issue 19451", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(question).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-      cy.visit(`/question/${id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(question, { visitQuestion: true });
   });
 
   it("question field filter shows all tables from a selected database (metabase#19451)", () => {

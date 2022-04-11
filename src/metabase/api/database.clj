@@ -22,6 +22,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
@@ -183,14 +184,25 @@
     (cond-> dbs
       (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
+(defn- filter-databases-by-data-model-perms
+  [dbs]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+    (f dbs)
+    dbs))
+
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
-                           include-saved-questions-tables?]}]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database
-                                                      {:order-by [:%lower.name :%lower.engine]})))]
+                           include-saved-questions-tables?
+                           exclude-uneditable-data-model?
+                           exclude-uneditable-details?]}]
+  (let [dbs (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]}))
+        dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
     (cond-> (add-native-perms-info dbs)
-      include-tables?             add-tables
-      include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-tables?                add-tables
+      exclude-uneditable-data-model? filter-databases-by-data-model-perms
+      include-saved-questions-db?    (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
   "Schema for matching the include parameter of the GET / endpoint"
@@ -210,12 +222,21 @@
 
   * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
     use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead. "
-  [include_tables include_cards include saved]
-  {include_tables (s/maybe su/BooleanString)
-   include_cards  (s/maybe su/BooleanString)
-   include        FetchAllIncludeValues
-   saved          (s/maybe su/BooleanString)}
+    questions virtual DB). Prefer using `include` and `saved` instead.
+
+  * `exclude_uneditable_data_model` will only include DBs for which the current user has data model editing
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
+    Enterprise Edition code is available the advanced-permissions feature is enabled.
+
+  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
+    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
+  [include_tables include_cards include saved exclude_uneditable_data_model exclude_uneditable_details]
+  {include_tables                (s/maybe su/BooleanString)
+   include_cards                 (s/maybe su/BooleanString)
+   include                       FetchAllIncludeValues
+   saved                         (s/maybe su/BooleanString)
+   exclude_uneditable_data_model (s/maybe su/BooleanString)
+   exclude_uneditable_details    (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
@@ -231,9 +252,11 @@
                                           (if (seq include_cards)
                                             true
                                             include-tables?))
-        db-list-res                     (or (dbs-list :include-tables?                  include-tables?
-                                                      :include-saved-questions-db?      include-saved-questions-db?
-                                                      :include-saved-questions-tables?  include-saved-questions-tables?)
+        db-list-res                     (or (dbs-list :include-tables?                 include-tables?
+                                                      :include-saved-questions-db?     include-saved-questions-db?
+                                                      :include-saved-questions-tables? include-saved-questions-tables?
+                                                      :exclude-uneditable-data-model?  (Boolean/parseBoolean exclude_uneditable_data_model)
+                                                      :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -297,7 +320,15 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden?]
+(defn- filter-tables-by-data-model-perms
+  [tables]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+    (f tables)
+    tables))
+
+(defn- db-metadata [id include-hidden? exclude-uneditable?]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
@@ -311,15 +342,23 @@
                               :when (mi/can-read? table)]
                           (-> table
                               (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))))
+                              (update :metrics  (partial filter mi/can-read?))))))
+      (update :tables (fn [tables]
+                        (if exclude-uneditable?
+                          (filter-tables-by-data-model-perms tables)
+                          tables)))))
 
 (api/defendpoint GET "/:id/metadata"
-  "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
-   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
-   Returns DB, fields, and field values."
-  [id include_hidden]
-  {include_hidden (s/maybe su/BooleanString)}
-  (db-metadata id include_hidden))
+  "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
+  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
+  Passing exclude_uneditable=true will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present."
+  [id include_hidden exclude_uneditable]
+  {include_hidden     (s/maybe su/BooleanString)
+   exclude_uneditable (s/maybe su/BooleanString)}
+  (db-metadata id
+               (Boolean/parseBoolean include_hidden)
+               (Boolean/parseBoolean exclude_uneditable)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -421,8 +460,9 @@
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
-                                              :or   {invalid-response-handler invalid-connection-response}}]
+  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler log-exception]
+                                              :or   {invalid-response-handler invalid-connection-response
+                                                     log-exception            true}}]
   {:pre [(some? engine)]}
   (let [engine  (keyword engine)
         details (assoc details :engine engine)]
@@ -445,7 +485,8 @@
         :else
         (invalid-response-handler :db (tru "Unable to connect to database.")))
       (catch Throwable e
-        (log/error e (trs "Cannot connect to Database"))
+        (when log-exception
+          (log/error e (trs "Cannot connect to Database")))
         (invalid-response-handler :dbname (.getMessage e))))))
 
 ;; TODO - Just make `:ssl` a `feature`
@@ -465,21 +506,19 @@
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (if (and (supports-ssl? (keyword engine))
-           (true? (:ssl details)))
-    (let [error (test-database-connection engine details)]
-      (or error details))
-    (let [details (if (supports-ssl? (keyword engine))
-                    (assoc details :ssl true)
-                    details)]
-    ;; this loop tries connecting over ssl and non-ssl to establish a connection
-    ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-      (loop [details details]
-        (let [error (test-database-connection engine details)]
-          (if (and error
-                   (true? (:ssl details)))
-            (recur (assoc details :ssl false))
-            (or error details)))))))
+  (let [;; Try SSL first if SSL is supported and not already enabled
+        ;; If not successful or not applicable, details-with-ssl will be nil
+        details-with-ssl (assoc details :ssl true)
+        details-with-ssl (when (and (supports-ssl? (keyword engine))
+                                    (not (true? (:ssl details)))
+                                    (nil? (test-database-connection engine details-with-ssl :log-exception false)))
+                           details-with-ssl)]
+    (or
+      ;; Opportunistic SSL
+      details-with-ssl
+      ;; Try with original parameters
+      (test-database-connection engine details)
+      details)))
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
@@ -577,9 +616,8 @@
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (api/let-404 [existing-database (Database id)]
+  (let [existing-database (api/write-check (Database id))]
     (let [details    (driver.u/db-details-client->server engine details)
           details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
@@ -637,7 +675,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (api/write-check db)
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
@@ -664,9 +702,8 @@
 (api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this in a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -678,9 +715,8 @@
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this is a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-field-values/update-field-values! db)))
   {:status :ok})
@@ -704,8 +740,7 @@
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (api/check-superuser)
-  (delete-all-field-values-for-database! id)
+  (delete-all-field-values-for-database! (api/write-check (Database id)))
   {:status :ok})
 
 

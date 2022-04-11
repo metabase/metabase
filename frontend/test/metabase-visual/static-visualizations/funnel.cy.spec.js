@@ -3,8 +3,10 @@ import {
   setupSMTP,
   openEmailPage,
   sendSubscriptionsEmail,
+  visitDashboard,
 } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+
+import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
@@ -21,7 +23,7 @@ describe("static visualizations", () => {
       dashboardName,
       questions: [createFunnelBarQuestion()],
     }).then(({ dashboard }) => {
-      cy.visit(`/dashboard/${dashboard.id}`);
+      visitDashboard(dashboard.id);
 
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
@@ -41,7 +43,7 @@ function createFunnelBarQuestion() {
     },
     visualization_settings: {},
     display: "funnel",
-    database: 1,
+    database: SAMPLE_DB_ID,
   };
 
   return query;

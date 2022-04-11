@@ -7,6 +7,11 @@
             [ring.mock.request :as ring.mock]
             [schema.core :as s]))
 
+;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
+(use-fixtures :each (fn [thunk]
+                      (mt/disable-flaky-test-when-running-driver-tests-in-ci
+                        (thunk))))
+
 (deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
                               {"x-forwarded-proto" "http"}     false

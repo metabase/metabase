@@ -16,6 +16,7 @@ const propTypes = {
   syncDatabaseSchema: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
+  isAdmin: PropTypes.bool,
 };
 
 const DatabaseEditAppSidebar = ({
@@ -24,6 +25,7 @@ const DatabaseEditAppSidebar = ({
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  isAdmin,
 }) => {
   const discardSavedFieldValuesModal = useRef();
   const deleteDatabaseModal = useRef();
@@ -36,33 +38,29 @@ const DatabaseEditAppSidebar = ({
           <ol>
             {!isSyncCompleted(database) && (
               <li>
-                <Button disabled>{t`Syncing database…`}</Button>
+                <Button disabled borderless>{t`Syncing database…`}</Button>
               </li>
             )}
-            {isSyncCompleted(database) && (
-              <li>
-                <ActionButton
-                  actionFn={() => syncDatabaseSchema(database.id)}
-                  className="Button Button--syncDbSchema"
-                  normalText={t`Sync database schema now`}
-                  activeText={t`Starting…`}
-                  failedText={t`Failed to sync`}
-                  successText={t`Sync triggered!`}
-                />
-              </li>
-            )}
-            {isSyncCompleted(database) && (
-              <li className="mt2">
-                <ActionButton
-                  actionFn={() => rescanDatabaseFields(database.id)}
-                  className="Button Button--rescanFieldValues"
-                  normalText={t`Re-scan field values now`}
-                  activeText={t`Starting…`}
-                  failedText={t`Failed to start scan`}
-                  successText={t`Scan triggered!`}
-                />
-              </li>
-            )}
+            <li>
+              <ActionButton
+                actionFn={() => syncDatabaseSchema(database.id)}
+                className="Button Button--syncDbSchema"
+                normalText={t`Sync database schema now`}
+                activeText={t`Starting…`}
+                failedText={t`Failed to sync`}
+                successText={t`Sync triggered!`}
+              />
+            </li>
+            <li className="mt2">
+              <ActionButton
+                actionFn={() => rescanDatabaseFields(database.id)}
+                className="Button Button--rescanFieldValues"
+                normalText={t`Re-scan field values now`}
+                activeText={t`Starting…`}
+                failedText={t`Failed to start scan`}
+                successText={t`Scan triggered!`}
+              />
+            </li>
           </ol>
         </div>
 
@@ -87,19 +85,21 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            <li className="mt2">
-              <ModalWithTrigger
-                ref={deleteDatabaseModal}
-                triggerClasses="Button Button--deleteDatabase Button--danger"
-                triggerElement={t`Remove this database`}
-              >
-                <DeleteDatabaseModal
-                  database={database}
-                  onClose={() => deleteDatabaseModal.current.toggle()}
-                  onDelete={() => deleteDatabase(database.id, true)}
-                />
-              </ModalWithTrigger>
-            </li>
+            {isAdmin && (
+              <li className="mt2">
+                <ModalWithTrigger
+                  ref={deleteDatabaseModal}
+                  triggerClasses="Button Button--deleteDatabase Button--danger"
+                  triggerElement={t`Remove this database`}
+                >
+                  <DeleteDatabaseModal
+                    database={database}
+                    onClose={() => deleteDatabaseModal.current.toggle()}
+                    onDelete={() => deleteDatabase(database.id, true)}
+                  />
+                </ModalWithTrigger>
+              </li>
+            )}
           </ol>
         </div>
       </div>

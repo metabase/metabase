@@ -4,6 +4,7 @@ export const createMockAdminState = (
   opts?: Partial<AdminState>,
 ): AdminState => ({
   app: createMockAdminAppState(),
+  permissions: createMockPermissionsState(),
   ...opts,
 });
 
@@ -13,3 +14,13 @@ export const createMockAdminAppState = (
   isNoticeEnabled: false,
   ...opts,
 });
+
+export const createMockPermissionsState = (
+  opts?: Partial<AdminState["permissions"]>,
+): AdminState["permissions"] => {
+  return {
+    dataPermissions: {},
+    originalDataPermissions: {},
+    ...opts,
+  };
+};

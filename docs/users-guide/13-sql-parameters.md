@@ -262,7 +262,7 @@ More on [Dashboard filters][dashboard-filters].
 ## Further reading
 
 - [Create filter widgets for charts using SQL variables][sql-variables].
-- [Field Filters: create smart filter widgets for SQL questions][field-filters].
+- [Field Filters: create smart filter widgets for SQL questions][field-filter].
 - [Troubleshooting filters][troubleshooting-filters].
 - [Dashboard filters][dashboard-filters].
 

@@ -19,6 +19,12 @@ import {
   EDITOR_FK_SYMBOLS,
 } from "./config";
 
+const suggestionText = func => {
+  const { displayName, args } = func;
+  const suffix = args.length > 0 ? "(" : " ";
+  return displayName + suffix;
+};
+
 export function suggest({
   source,
   query,
@@ -59,7 +65,7 @@ export function suggest({
         .map(func => ({
           type: "functions",
           name: func.displayName,
-          text: func.displayName + "(",
+          text: suggestionText(func),
           index: targetOffset,
           icon: "function",
           order: 1,
@@ -73,7 +79,7 @@ export function suggest({
           .map(func => ({
             type: "aggregations",
             name: func.displayName,
-            text: func.displayName + "(",
+            text: suggestionText(func),
             index: targetOffset,
             icon: "function",
             order: 1,
@@ -151,11 +157,22 @@ export function suggest({
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
   // deduplicate suggestions and sort by type then name
-  return {
-    suggestions: _.chain(suggestions)
-      .uniq(suggestion => suggestion.text)
-      .sortBy("text")
-      .sortBy("order")
-      .value(),
-  };
+  suggestions = _.chain(suggestions)
+    .uniq(suggestion => suggestion.text)
+    .sortBy("text")
+    .sortBy("order")
+    .value();
+
+  // the only suggested function equals the prefix match?
+  if (suggestions.length === 1 && matchPrefix) {
+    const { icon } = suggestions[0];
+    if (icon === "function") {
+      const helpText = getHelpText(getMBQLName(matchPrefix));
+      if (helpText) {
+        return { helpText };
+      }
+    }
+  }
+
+  return { suggestions };
 }

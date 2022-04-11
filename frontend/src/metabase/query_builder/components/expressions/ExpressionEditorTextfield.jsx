@@ -138,7 +138,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         const extraTrim = openParen && alreadyOpenParen ? 1 : 0;
         const replacement = suggested.slice(0, suggested.length - extraTrim);
 
-        const updatedExpression = prefix + replacement.trim() + postfix;
+        const updatedExpression = prefix + replacement + postfix;
         this.handleExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
 
@@ -393,6 +393,13 @@ export default class ExpressionEditorTextfield extends React.Component {
       bindKey: null,
       exec: () => {
         this.chooseSuggestion();
+      },
+    },
+    {
+      name: "clearSuggestions",
+      bindKey: { win: "Esc", mac: "Esc" },
+      exec: () => {
+        this.clearSuggestions();
       },
     },
   ];

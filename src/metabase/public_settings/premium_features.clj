@@ -66,7 +66,8 @@
   (deref
    (future
      (try (some-> (token-status-url token)
-                  (http/get {:query-params {:users (active-user-count)}})
+                  (http/get {:query-params {:users     (active-user-count)
+                                            :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
                   :body
                   (json/parse-string keyword))
           ;; if there was an error fetching the token, log it and return a generic message about the
@@ -74,7 +75,7 @@
           ;; we do not want something complicated
           (catch clojure.lang.ExceptionInfo e
             (log/error e (trs "Error fetching token status:"))
-            (let [body (u/ignore-exceptions (some-> (ex-data e) :object :body (json/parse-string keyword)))]
+            (let [body (u/ignore-exceptions (some-> (ex-data e) :body (json/parse-string keyword)))]
               (or
                body
                {:valid         false

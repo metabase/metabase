@@ -1,7 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.core.hash :as hash]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
@@ -468,9 +466,9 @@
   table e.g.
 
     `table`.`field` -> `dataset.table`.`field`"
-  [{:keys [identifier-type components] :as identifier}]
+  [{:keys [identifier-type components], ::keys [do-not-qualify?], :as _identifier}]
   (cond
-    (::already-qualified? (meta identifier))
+    do-not-qualify?
     false
 
     ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
@@ -493,17 +491,16 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
   [_ identifier]
-  (if-not (should-qualify-identifier? identifier)
-    identifier
-    (-> identifier
-        (update :components (fn [[dataset-id table & more]]
-                              (cons (str (when-let [proj-id (project-id-for-current-query)]
-                                           (str proj-id \.))
-                                         dataset-id
-                                         \.
-                                         table)
-                                    more)))
-        (vary-meta assoc ::already-qualified? true))))
+  (letfn [(prefix-components [[dataset-id table & more]]
+            (cons (str (when-let [proj-id (project-id-for-current-query)]
+                         (str proj-id \.))
+                       dataset-id
+                       \.
+                       table)
+                  more))]
+    (cond-> identifier
+      (should-qualify-identifier? identifier) (update :components prefix-components)
+      true                                    (assoc ::do-not-qualify? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]
@@ -511,12 +508,8 @@
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
-      ;; if this Field is from a source table DO NOT qualify it at all.
-      (let [field-clause (cond-> field-clause
-                           (= source-table ::add/source)
-                           (mbql.u/update-field-options assoc ::add/source-table ::add/none))]
-        (-> (parent-method driver field-clause)
-            (with-temporal-type (temporal-type field-clause)))))))
+      (-> (parent-method driver field-clause)
+          (with-temporal-type (temporal-type field-clause))))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
@@ -525,37 +518,15 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
-(defn- short-string-hash
-  "Create a 8-character hash of string `s` to be used as a unique suffix for Field identifiers that could otherwise be
-  ambiguous. For example, `résumé` and `resume` are both valid *table* names, but after converting these to valid
-  *field* identifiers for use as field aliases, we'd end up with `resume_id` for `id` regardless of which table it
-  came from. By appending a unique hash to the generated identifier, we can distinguish the two."
-  [s]
-  (str/join (take 8 (codecs/bytes->hex (hash/md5 s)))))
-
-(defn- substring-first-n-characters
-  "Return substring of `s` with just the first `n` characters."
-  [s n]
-  (subs s 0 (min n (count s))))
-
-(defn- ->valid-field-identifier
-  "Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
-  numbers, and underscores, start with a letter or underscore, and be at most 128 characters long."
-  [s]
-  (let [replaced-str (-> (str/trim s)
-                         u/remove-diacritical-marks
-                         (str/replace #"[^\w\d_]" "_")
-                         (str/replace #"(^\d)" "_$1")
-                         (substring-first-n-characters 128))]
-    (if (= s replaced-str)
-      s
-      ;; if we've done any sort of transformations to the string, append a short hash to the string so it's unique
-      ;; when compared to other strings that may have normalized to the same thing.
-      (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
-
 (defmethod driver/escape-alias :bigquery-cloud-sdk
-  [_ column-alias]
-  (->valid-field-identifier column-alias))
+  [driver s]
+  ;; Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
+  ;; numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
+  (let [s (-> (str/trim s)
+              u/remove-diacritical-marks
+              (str/replace #"[^\w\d_]" "_")
+              (str/replace #"(^\d)" "_$1"))]
+    ((get-method driver/escape-alias :sql) driver s)))
 
 ;; See:
 ;;

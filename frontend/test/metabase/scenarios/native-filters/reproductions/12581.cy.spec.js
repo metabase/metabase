@@ -30,9 +30,7 @@ describe("issue 12581", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.visit(`/question/${body.id}`);
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should correctly display a revision state after a restore (metabase#12581)", () => {

@@ -162,7 +162,6 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [groups]: ../administration-guide/05-setting-permissions.html#groups
 [jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
 [permissions]: /learn/permissions/data-permissions.html
-[prepared-statement]: /glossary.html#prepared_statement
 [public-sharing]: ../administration-guide/12-public-links.html
 [row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
 [sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html

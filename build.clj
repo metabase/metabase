@@ -103,25 +103,7 @@
   {"Manifest-Version" "1.0"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.core"
-   "Liquibase-Package" (str/join ","
-                                 ["liquibase.change"
-                                  "liquibase.changelog"
-                                  "liquibase.database"
-                                  "liquibase.datatype"
-                                  "liquibase.diff"
-                                  "liquibase.executor"
-                                  "liquibase.ext"
-                                  "liquibase.lockservice"
-                                  "liquibase.logging"
-                                  "liquibase.parser"
-                                  "liquibase.precondition"
-                                  "liquibase.sdk"
-                                  "liquibase.serializer"
-                                  "liquibase.snapshot"
-                                  "liquibase.sqlgenerator"
-                                  "liquibase.structure"
-                                  "liquibase.structurecompare"])})
+   "Main-Class"       "metabase.core"})
 
 (defn manifest ^Manifest []
   (doto (Manifest.)

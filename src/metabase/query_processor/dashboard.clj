@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.driver.common.parameters.operators :as params.operators]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -51,7 +52,9 @@
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str matching-mapping))
+      (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
+                  card-id dashcard-id
+                  (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
       ;; if `request-param` specifies type, then validate that the type is allowed
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
@@ -64,6 +67,12 @@
       (merge
        {:type (:type matching-param)}
        request-param
+       ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
+       ;; vector so the parameter handling code doesn't explode.
+       (when (and (params.operators/operator? (:type matching-param))
+                  (seq (:value request-param))
+                  (not (sequential? (:value request-param))))
+         {:value [(:value request-param)]})
        {:id     param-id
         :target (:target matching-mapping)}))))
 
@@ -103,8 +112,20 @@
    request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
+        ;; ignore default values in request params as well. (#20516)
+        request-params            (for [param request-params]
+                                    (dissoc param :default))
         dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
-        dashboard-param-id->param (dashboard/dashboard->resolved-params dashboard)
+        dashboard-param-id->param (into {}
+                                        ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
+                                        ;; use these values ourselves -- the expectation is that the frontend will pass
+                                        ;; them in as an actual `:value` if it wants to use them. If we leave them
+                                        ;; around things get confused and it prevents us from actually doing the
+                                        ;; expected `1 = 1` substitution for Field filters. See comments in #20503 for
+                                        ;; more information.
+                                        (map (fn [[param-id param]]
+                                               [param-id (dissoc param :default)]))
+                                        (dashboard/dashboard->resolved-params dashboard))
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
@@ -144,6 +165,9 @@
                          options
                          {:parameters   resolved-params
                           :dashboard-id dashboard-id})]
+    (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
+                dashboard-id card-id dashcard-id
+                (u/pprint-to-str options))
     ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
     (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
       (m/mapply qp.card/run-query-for-card-async card-id export-format options))))

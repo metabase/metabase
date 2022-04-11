@@ -1,17 +1,21 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
@@ -20,7 +24,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
+                                          'metabase-enterprise.advanced-permissions.common))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -60,7 +65,7 @@
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
   (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
-      (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
+      (let [new-collection-name (collection/format-personal-collection-name first_name last_name :site)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
 
@@ -82,7 +87,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (clojure.string/lower-case query) "%"))
+(defn- wildcard-query [query] (str "%" (str/lower-case query) "%"))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
@@ -114,14 +119,15 @@
                                               [:= :core_user.id :permissions_group_membership.user_id])
         (some? group_id) (hh/merge-where [:= :group_id group_id])))
 
-
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
 
-  If `status` is `deactivated`, include deactivated users only.
-  If `status` is `all`, include all users (active and inactive).
-  Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
-  `status` and `included_deactivated` requires superuser permissions.
+   - If `status` is `deactivated`, include deactivated users only.
+   - If `status` is `all`, include all users (active and inactive).
+   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.
+   `status` and `include_deactivated` requires superuser permissions.
+   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
+   If both params are passed, `status` takes precedence.
 
   For users with segmented permissions, return only themselves.
 
@@ -135,24 +141,58 @@
    include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
     (api/check-superuser))
-  {:data   (cond-> (db/select
-                     (vec (cons User (user-visible-columns)))
-                     (cond-> (user-clauses status query group_id include_deactivated)
-                       true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                       (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
-                       (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
-             ;; For admins, also include the IDs of the  Users' Personal Collections
-             api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
-   :total  (db/count User (user-clauses status query group_id include_deactivated))
-   :limit  offset-paging/*limit*
-   :offset offset-paging/*offset*})
+  (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
+    {:data   (cond-> (db/select
+                       (vec (cons User (user-visible-columns)))
+                       (cond-> (user-clauses status query group_id include_deactivated)
+                            true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                            (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
+                            (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
+               ;; For admins, also include the IDs of the  Users' Personal Collections
+               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*}))
 
+
+(defn- maybe-add-general-permissions
+  "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  [user]
+  (if-not (and (premium-features/enable-advanced-permissions?)
+               (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))
+    user
+    ((resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions) user)))
+
+(defn- add-has-question-and-dashboard
+  "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
+  [user]
+  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
+                          :collection_id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+        perms-query {:where [:and
+                             [:= :archived false]
+                             coll-ids-filter]}]
+    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
+                                                 (db/exists? 'Dashboard (perms-query user))))))
+
+(defn- add-first-login
+  "Adds `first_login` key to the `User` with a timestamp value."
+  [{:keys [user_id] :as user}]
+  (let [ts (or
+            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id user_id
+                                       {:limit    1
+                                        :order-by [[:timestamp :desc]]}))
+            (t/offset-date-time))]
+    (assoc user :first_login ts)))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
+      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      add-has-question-and-dashboard
+      add-first-login
+      maybe-add-general-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
@@ -168,7 +208,7 @@
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email password group_ids login_attributes] :as body} :body}]
+  [:as {{:keys [first_name last_name email group_ids login_attributes] :as body} :body}]
   {first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email

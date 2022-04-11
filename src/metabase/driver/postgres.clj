@@ -15,8 +15,10 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.sync.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -31,6 +33,8 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -41,9 +45,13 @@
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
-  [_ hsql-form amount unit]
-  (hx/+ (->timestamp hsql-form)
-        (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
+  [driver hsql-form amount unit]
+  ;; Postgres doesn't support quarter in intervals (#20683)
+  (if (= unit :quarter)
+    (recur driver hsql-form (* 3 amount) :month)
+    (let [hsql-form (->timestamp hsql-form)]
+      (-> (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit))))
+          (hx/with-type-info (hx/type-info hsql-form))))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -91,6 +99,9 @@
     driver.common/default-user-details
     driver.common/default-password-details
     driver.common/cloud-ip-address-info
+    {:name "schema-filters"
+     :type :schema-filters
+     :display-name "Schemas"}
     driver.common/default-ssl-details
     {:name         "ssl-mode"
      :display-name (trs "SSL Mode")
@@ -165,10 +176,29 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+;; Describe the nested fields present in a table (currently and maybe forever just JSON),
+;; including if they have proper keyword and type stability.
+;; Not to be confused with existing nested field functionality for mongo,
+;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
+(defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
+  [driver database table]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)]
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/current-datetime-honeysql-form :postgres
+  [_driver]
+  (hx/with-database-type-info :%now "timestamptz"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
@@ -251,14 +281,42 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
+(defn- json-query [identifier nfc-field]
+  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
+    (let [field-type           (:effective_type nfc-field)
+          nfc-path             (:nfc_path nfc-field)
+          unwrapped-identifier (:form identifier)
+          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+          ;; Array and sub-JSON coerced to text
+          cast-type            (cond
+                                 (isa? field-type :type/Integer)
+                                 :type/Integer
+                                 (isa? field-type :type/Float)
+                                 :type/Float
+                                 (isa? field-type :type/Boolean)
+                                 :type/Boolean
+                                 :else
+                                 :type/Text)]
+      (hx/cast cast-type
+               (apply hsql/call [:json_extract_path_text
+                                 (hx/cast :json parent-identifier)
+                                 (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
+
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
-  (let [{database-type :database_type} (when (integer? id-or-name)
-                                         (qp.store/field id-or-name))
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
-    (if (= database-type "money")
+        identifier    (parent-method driver clause)
+        nfc-path      (:nfc_path stored-field)]
+    (cond
+      (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
+
+      (some? nfc-path)
+      (json-query identifier stored-field)
+
+      :else
       identifier)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
@@ -360,7 +418,7 @@
   (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
                           (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
         ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-key"))
+                          (secret/db-details-prop->secret-map db-details "ssl-key"))
         ssl-client-cert (when (:ssl-use-client-auth db-details)
                           (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
         ssl-key-pw      (when (:ssl-use-client-auth db-details)

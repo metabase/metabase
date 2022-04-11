@@ -1,4 +1,6 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -26,7 +28,7 @@ describe("visual tests > visualizations > line", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -42,7 +44,7 @@ describe("visual tests > visualizations > line", () => {
   it("with vertical legends", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": ORDERS_ID,
@@ -78,7 +80,7 @@ describe("visual tests > visualizations > line", () => {
   it("with vertical legends", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": ORDERS_ID,
@@ -128,7 +130,7 @@ describe("visual tests > visualizations > line", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -169,7 +171,7 @@ describe("visual tests > visualizations > line", () => {
             SELECT CAST('2010-10-03' AS DATE), 6, null
           `,
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -187,6 +189,48 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
+    cy.percySnapshot();
+  });
+
+  it("with timeline events", () => {
+    cy.createTimelineWithEvents({
+      timeline: { name: "Releases" },
+      events: [
+        { name: "v20", timestamp: "2017-10-30T00:00:00Z", icon: "cloud" },
+        { name: "v21", timestamp: "2018-08-08T00:00:00Z", icon: "mail" },
+        { name: "RC1", timestamp: "2019-05-10T00:00:00Z", icon: "bell" },
+        { name: "RC2", timestamp: "2019-05-20T00:00:00Z", icon: "star" },
+      ],
+    });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+        "graph.show_values": true,
+      },
+    });
+
+    cy.findByLabelText("star icon").realHover();
+    cy.findByText("RC1");
     cy.percySnapshot();
   });
 });

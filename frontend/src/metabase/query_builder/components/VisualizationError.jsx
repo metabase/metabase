@@ -8,7 +8,7 @@ import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
-import ErrorDetails from "metabase/components/ErrorDetails";
+import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 import {
   QueryError,
   QueryErrorIcon,

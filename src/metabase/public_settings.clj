@@ -6,8 +6,6 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
@@ -83,6 +81,17 @@
   :visibility :internal
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
+  :type       ::uuid-nonce)
+
+(defsetting site-uuid-for-premium-features-token-checks
+  "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
+  site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
+  same way as [[site-uuid]] but should only be used by the token check logic
+  in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
+  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  anonymous.)"
+  :visibility :internal
+  :setter     :none
   :type       ::uuid-nonce)
 
 (defn- normalize-site-url [^String s]
@@ -272,7 +281,7 @@
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
-  :default    "/app/assets/img/favicon.ico")
+  :default    "app/assets/img/favicon.ico")
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -343,15 +352,6 @@
     (assoc object :public_uuid nil)
     object))
 
-(defn- short-timezone-name [timezone-id]
-  (let [^java.time.ZoneId zone (if (seq timezone-id)
-                                 (t/zone-id timezone-id)
-                                 (t/zone-id))]
-    (.getDisplayName
-     zone
-     java.time.format.TextStyle/SHORT
-     (java.util.Locale/getDefault))))
-
 (defsetting available-locales
   "Available i18n locales"
   :visibility :public
@@ -363,12 +363,6 @@
   :visibility :public
   :setter     :none
   :getter     (comp sort t/available-zone-ids))
-
-(defsetting engines
-  "Available database engines"
-  :visibility :public
-  :setter     :none
-  :getter     driver.u/available-drivers-info)
 
 (defsetting has-sample-database?
   "Whether this instance has a Sample Database database"
@@ -387,12 +381,6 @@
   :type       :boolean
   :visibility :public
   :default    nil)
-
-(defsetting report-timezone-short
-  "Current report timezone abbreviation"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (short-timezone-name (driver/report-timezone))))
 
 (defsetting version
   "Metabase's version info"

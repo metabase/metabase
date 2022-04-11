@@ -29,7 +29,18 @@ const LegacyImage = props =>
       className={props.imageClassName}
     />
   ) : null;
-
+/**
+ * @typedef {Record<string, any>} EmptyStateProps
+ * @property {import("react").ReactNode} message
+ * @property {import("react").ReactNode} [title]
+ * @property {import("react").ReactNode} [action]
+ * @property {import("react-router").IndexLinkProps["to"]} [link]
+ * @property {import("react").ReactNode} [illustrationElement]
+ * @property {function} [onActionClick]
+ *
+ * @param {EmptyStateProps} props
+ * @returns {import("react").ReactElement}
+ */
 const EmptyState = ({
   title,
   message,

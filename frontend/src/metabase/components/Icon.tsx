@@ -7,6 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -28,11 +29,15 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   // special cases for certain icons
   // Icon-share has a taller viewbox than most so to optically center
   // the icon we need to translate it upwards
-  "> .icon.icon-share": {
+  & > .icon.icon-share {
     transform: translateY(-2px);
   }
   ${hover};
   transition: all 300ms ease-in-out;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 IconWrapper.defaultProps = {
@@ -96,6 +101,9 @@ class BaseIcon extends Component<IconProps> {
     }
     delete props.size, props.scale;
 
+    // avoid passing `uncheckedColor` to a svg tag
+    const { uncheckedColor, ...svgProps } = props;
+
     if (icon.img) {
       // avoid passing `role="img"` to an actual image file
       const { _role, ...rest } = props;
@@ -112,17 +120,17 @@ class BaseIcon extends Component<IconProps> {
       );
     } else if (icon.svg) {
       return (
-        <svg
-          {...props}
+        <StyledSVG
+          {...svgProps}
           dangerouslySetInnerHTML={{ __html: icon.svg }}
           ref={forwardedRef}
         />
       );
     } else if (icon.path) {
       return (
-        <svg {...props} ref={forwardedRef}>
+        <StyledSVG {...svgProps} ref={forwardedRef}>
           <path d={icon.path} />
-        </svg>
+        </StyledSVG>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
@@ -130,6 +138,10 @@ class BaseIcon extends Component<IconProps> {
     }
   }
 }
+
+const StyledSVG = styled("svg", {
+  shouldForwardProp: shouldForwardNonTransientProp,
+})``;
 
 const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
   function BaseIconWithRef(props, ref) {

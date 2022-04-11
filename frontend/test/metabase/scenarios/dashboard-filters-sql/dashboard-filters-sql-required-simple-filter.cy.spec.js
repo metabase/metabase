@@ -4,6 +4,7 @@ import {
   sidebar,
   editDashboard,
   saveDashboard,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 const questionDetails = {
@@ -61,7 +62,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
       cy.editDashboardCard(dashboardCard, mapFilterToCard);
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      visitDashboard(dashboard_id);
     });
   });
 

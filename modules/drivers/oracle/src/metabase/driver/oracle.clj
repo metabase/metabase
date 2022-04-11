@@ -8,6 +8,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.impl :as driver.impl]
             [metabase.driver.sql :as sql]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -25,7 +26,6 @@
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
-           metabase.util.honeysql_extensions.Identifier
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
 
@@ -202,26 +202,12 @@
   "Maximal identifier length for Oracle < 12.2"
   30)
 
-(defn- truncate-identifier
-  [identifier]
-  (->> identifier
-       hash
-       str
-       (map (fn [digit]
-              (-> digit
-                  int
-                  (+ 65)
-                  char)))
-       (apply str "identifier_")))
-
-(defmethod sql.qp/->honeysql [:oracle Identifier]
-  [_ identifier]
-  (let [field-identifier (last (:components identifier))]
-    (if (> (count field-identifier) legacy-max-identifier-length)
-      (update identifier :components (fn [components]
-                                       (concat (butlast components)
-                                               [(truncate-identifier field-identifier)])))
-      identifier)))
+(defmethod driver/escape-alias :oracle
+  [_driver s]
+  ;; Oracle identifiers are not allowed to contain double quote marks or the NULL character; just strip them out.
+  ;; (https://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements008.htm)
+  (let [s (str/replace s #"[\"\u0000]" "_")]
+    (driver.impl/truncate-alias s legacy-max-identifier-length)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]

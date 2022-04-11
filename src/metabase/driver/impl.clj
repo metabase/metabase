@@ -208,3 +208,59 @@
           (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
+
+
+;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------
+
+;; To truncate a string to a number of bytes we just iterate thru it character-by-character and keep a cumulative count
+;; of the total number of bytes up to the current character. Once we exceed `max-length-bytes` we return the substring
+;; from the character before we went past the limit.
+(defn- truncate-string-to-byte-count
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
+  ^String [^String s max-length-bytes]
+  {:pre [(not (neg? max-length-bytes))]}
+  (loop [i 0, cumulative-byte-count 0]
+    (cond
+      (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+      (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+      (>= i (count s))                           s
+      :else                                      (recur (inc i)
+                                                        (+
+                                                         cumulative-byte-count
+                                                         (count (.getBytes (str (.charAt s i)) "UTF-8")))))))
+
+(def default-alias-max-length-bytes
+  "Default length to truncate column and table identifiers to for the default implementation
+  of [[metabase.driver/escape-alias]]."
+  ;; Postgres' limit is 63 bytes -- see
+  ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS so we'll limit the
+  ;; identifiers we generate to 60 bytes so we have room to add `_2` and stuff without drama
+  60)
+
+(def ^:private truncated-alias-hash-suffix-length
+  "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
+  ;; 8 bytes for the CRC32 plus one for the underscore
+  9)
+
+(defn truncate-alias
+  "Truncate string `s` if it is longer than `max-length-bytes` (default [[default-alias-max-length-bytes]]) and append a
+  hex-encoded CRC-32 checksum of the original string. Truncated string is truncated to `max-length-bytes`
+  minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is exactly `max-length-bytes`. The
+  goal here is that two really long strings that only differ at the end will still have different resulting values.
+
+    (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
+    (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
+  (^String [s]
+   (truncate-alias s default-alias-max-length-bytes))
+
+  (^String [^String s max-length-bytes]
+   ;; we can't truncate to something SHORTER than the suffix length. This precondition is here mostly to make sure
+   ;; driver authors don't try to do something INSANE -- it shouldn't get hit during normal usage if a driver is
+   ;; implemented properly.
+   {:pre [(string? s) (integer? max-length-bytes) (> max-length-bytes truncated-alias-hash-suffix-length)]}
+   (if (<= (count (.getBytes s "UTF-8")) max-length-bytes)
+     s
+     (let [checksum  (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
+                                                   (.update (.getBytes s "UTF-8")))))
+           truncated (truncate-string-to-byte-count s (- max-length-bytes truncated-alias-hash-suffix-length))]
+       (str truncated \_ checksum)))))

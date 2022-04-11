@@ -4,6 +4,7 @@
             [metabase.api.pivots :as pivots]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]))
@@ -423,3 +424,42 @@
             (testing "should fail if embedding is enabled and the wrong key is used"
               (is (= "Message seems corrupt or manipulated."
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-dashcard-url dashcard))))))))))))
+
+(deftest handle-single-params-for-operator-filters-test
+  (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
+    (mt/dataset sample-dataset
+      (embed-test/with-embedding-enabled-and-new-secret-key
+        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                          :template-tags {"NAME"
+                                                                                          {:name         "NAME"
+                                                                                           :display-name "Name"
+                                                                                           :type         :dimension
+                                                                                           :dimension    [:field (mt/id :people :name) nil]
+                                                                                           :widget-type  :string/=
+                                                                                           :default      nil}}})
+                                                     :enable_embedding true
+                                                     :embedding_params {"NAME" "enabled"}}]
+          (testing "Card"
+            (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
+              (is (= [[1]]
+                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer")))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer&NAME=x")))))))
+          (testing "Dashcard"
+            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
+                                                                          :embedding_params {:name "enabled"}
+                                                                          :parameters       [{:name      "Name"
+                                                                                              :slug      "name"
+                                                                                              :id        "_name_"
+                                                                                              :type      :string/=
+                                                                                              :sectionId "string"}]}]
+
+                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
+                                                                            :dashboard_id       dashboard-id
+                                                                            :parameter_mappings [{:parameter_id "_name_"
+                                                                                                  :card_id      card-id
+                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+              (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
+                (is (= [[1]]
+                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer")))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer&name=x")))))))))))))

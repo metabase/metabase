@@ -29,6 +29,7 @@
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
             [metabase.query-processor.middleware.desugar :as desugar]
+            [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
@@ -69,10 +70,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (u/ignore-exceptions
-  (classloader/require '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-                       '[metabase-enterprise.sandbox.query-processor.middleware
-                         [column-level-perms-check :as ee.sandbox.columns]
-                         [row-level-restrictions :as ee.sandbox.rows]]))
+ (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+                      '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+                      '[metabase-enterprise.sandbox.query-processor.middleware
+                        [column-level-perms-check :as ee.sandbox.columns]
+                        [row-level-restrictions :as ee.sandbox.rows]]))
 
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
@@ -100,6 +102,7 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
+   #'escape-join-aliases/escape-join-aliases
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'cumulative-ags/rewrite-cumulative-aggregations
    #'pre-alias-ags/pre-alias-aggregations
@@ -108,6 +111,7 @@
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
+   (resolve 'ee.perms/apply-download-limit)
    #'check-features/check-features])
 
 (defn- preprocess*
@@ -135,6 +139,7 @@
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
    #'perms/check-query-permissions
+   (resolve 'ee.perms/check-download-permissions)
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
 
 (def ^:private post-processing-middleware
@@ -147,6 +152,7 @@
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
    #'limit/limit-result-rows
+   (resolve 'ee.perms/limit-download-result-rows)
    #'add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
    #'add-timezone-info/add-timezone-info
@@ -247,11 +253,6 @@
             (fn [query _rff _context]
               (preprocess* query)))]
     (qp query nil nil)))
-
-(defn ^:deprecated query->preprocessed
-  "DEPRECATED: Use [[preprocess]] instead."
-  [query]
-  (preprocess query))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on

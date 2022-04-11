@@ -2,6 +2,7 @@ import {
   restore,
   setupSMTP,
   mockSlackConfigured,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
@@ -13,7 +14,7 @@ describe("scenarios > alert", () => {
   });
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.icon("bell").click();
 
       cy.findByText(
@@ -24,7 +25,7 @@ describe("scenarios > alert", () => {
     it("should say to non-admins that admin must add email credentials", () => {
       cy.signInAsNormalUser();
 
-      cy.visit("/question/1");
+      visitQuestion(1);
       cy.icon("bell").click();
 
       cy.findByText(
@@ -42,7 +43,7 @@ describe("scenarios > alert", () => {
         cy.intercept("POST", "/api/card/2/query").as("questionLoaded");
 
         // Open the first alert screen and create an alert
-        cy.visit("/question/1");
+        visitQuestion(1);
         cy.icon("bell").click();
 
         cy.findByText("The wide world of alerts");
@@ -58,7 +59,7 @@ describe("scenarios > alert", () => {
         cy.wait("@savedAlert");
 
         // Open the second alert screen
-        cy.visit("/question/2");
+        visitQuestion(2);
         cy.wait("@questionLoaded");
 
         cy.icon("bell").click();

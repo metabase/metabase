@@ -109,7 +109,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
    */
   isEditable() {
-    return this.hasMetadata();
+    return !this.readOnly() && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -212,7 +212,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the table ID, if a table is selected.
    */
   sourceTableId(): TableId | null | undefined {
-    return this.query()["source-table"];
+    return this.query()?.["source-table"];
   }
 
   /**
@@ -1288,8 +1288,8 @@ export default class StructuredQuery extends AtomicQuery {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
         return new ExpressionDimension(
+          expressionName,
           null,
-          [expressionName],
           this._metadata,
           this,
         );
@@ -1437,7 +1437,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   @memoize
   sourceQuery(): StructuredQuery | null | undefined {
-    const sourceQuery = this.query()["source-query"];
+    const sourceQuery = this.query()?.["source-query"];
 
     if (sourceQuery) {
       return new NestedStructuredQuery(
@@ -1602,9 +1602,15 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    // source-table, if set
-    const tableId = this.sourceTableId();
+    const dbId = this.databaseId();
+    if (dbId) {
+      addDependency({
+        type: "schema",
+        id: dbId,
+      });
+    }
 
+    const tableId = this.sourceTableId();
     if (tableId) {
       addDependency({
         type: "table",

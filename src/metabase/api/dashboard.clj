@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
@@ -15,7 +16,6 @@
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.field :refer [Field]]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
@@ -39,17 +39,6 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
-(defn- hydrate-favorites
-  "Efficiently hydrate the `:favorite` status (whether the current User has favorited it) for a group of Dashboards."
-  [dashboards]
-  (let [favorite-dashboard-ids (when (seq dashboards)
-                                 (db/select-field :dashboard_id DashboardFavorite
-                                   :user_id      api/*current-user-id*
-                                   :dashboard_id [:in (set (map u/the-id dashboards))]))]
-    (for [dashboard dashboards]
-      (assoc dashboard
-        :favorite (contains? favorite-dashboard-ids (u/the-id dashboard))))))
-
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
@@ -57,8 +46,7 @@
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
-    (filter mi/can-read? <>)
-    (hydrate-favorites <>)))
+    (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -77,10 +65,9 @@
                    dashboard)))
           dashboards)))
 
-
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
    parameters          [su/Map]
    description         (s/maybe s/Str)
@@ -95,17 +82,16 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position}]
-    (let [dash (db/transaction
-                ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                ;; position, check that and fix up if needed
-                (api/maybe-reconcile-collection-position! dashboard-data)
-                ;; Ok, now save the Dashboard
-                (db/insert! Dashboard dashboard-data))]
-      ;; publish event after the txn so that lookup can succeed
-      (events/publish-event! :dashboard-create dash)
-      (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
-      (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+                        :collection_position collection_position}
+        dash           (db/transaction
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                        ;; position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (db/insert! Dashboard dashboard-data))]
+    (events/publish-event! :dashboard-create dash)
+    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
+    (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
@@ -228,7 +214,7 @@
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as dashboard} :body}]
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as _dashboard} :body}]
   {name                (s/maybe su/NonBlankString)
    description         (s/maybe s/Str)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -264,14 +250,13 @@
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
     (last-edit/with-last-edit-info dashboard :dashboard)))
 
-
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
   (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
             (api/column-will-change? :embedding_params dash-before-update dash-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (api/defendpoint PUT "/:id"
@@ -375,7 +360,7 @@
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
@@ -486,25 +471,6 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
-
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
-
-(api/defendpoint POST "/:id/favorite"
-  "Favorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (db/insert! DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:id/favorite"
-  "Unfavorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (api/let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*)]
-    (db/delete! DashboardFavorite, :id favorite-id))
-  api/generic-204-no-content)
-
-
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:dashboard-id/public_link"
@@ -513,7 +479,7 @@
   sharing must be enabled."
   [dashboard-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
   {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -525,7 +491,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (db/update! Dashboard dashboard-id
     :public_uuid       nil
@@ -537,7 +503,7 @@
   enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -545,7 +511,7 @@
   endpoints and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"

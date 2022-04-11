@@ -120,7 +120,9 @@
   (testing "`compile-filter:filters` shouldn't return extra semicolons if it encounters empty `:and` clauses (#12791)"
     ;; whatever is in the `:and` clause might get removed by the other functions that handle filter compilation; if
     ;; `compile-filter:filters` encounters an empty `:and`, don't generate an extra semicolon
-    (ga.test/with-some-fields [{:keys [event-action-field event-label-field]}]
+    (ga.test/with-some-fields
+      #_:clj-kondo/ignore
+      [{:keys [event-action-field event-label-field]}]
       (let [query {:filter [:and
                             [:=
                              [:field (u/the-id event-label-field) nil]
@@ -135,7 +137,9 @@
 
 (deftest regex-escape-test
   (testing "Regex escaping shouldn't escape dashes (#8626)"
-    (ga.test/with-some-fields [{:keys [table event-label-field]}]
+    (ga.test/with-some-fields
+      #_:clj-kondo/ignore
+      [{:keys [table event-label-field]}]
       (mt/with-everything-store
         (is (= "ga:eventLabel=~(?i)acon/manager---community-partnerships-and-population-programs"
                (-> (ga.qp/mbql->native

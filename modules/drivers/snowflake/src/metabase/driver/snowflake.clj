@@ -261,7 +261,7 @@
                     (try
                       (jdbc/reducible-query {:connection conn} sql)
                       (catch Throwable e
-                        (throw (ex-info (trs "Error executing query") {:sql sql} e)))))})))))
+                        (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))})))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]

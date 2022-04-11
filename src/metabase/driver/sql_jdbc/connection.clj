@@ -11,7 +11,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.mchange.v2.c3p0.DataSources
+           javax.sql.DataSource))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -87,6 +89,13 @@
                                                                                                          :sid
                                                                                                          :catalog))))})
 
+(defn- connection-pool-spec
+  "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
+  [{:keys [^DataSource datasource], :as spec} pool-properties]
+  (if datasource
+    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
+    (connection-pool/connection-pool-spec spec pool-properties)))
+
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
@@ -96,7 +105,7 @@
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool/connection-pool-spec spec properties)
+      (connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use
       (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 

@@ -1,13 +1,13 @@
 (ns metabase.driver.sparksql
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.helpers :as h]
             [medley.core :as m]
+            [metabase.connection-pool :as pool]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -76,27 +76,19 @@
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
-(defn- sparksql
-  "Create a database specification for a Spark SQL database."
-  [{:keys [host port db jdbc-flags]
-    :or   {host "localhost", port 10000, db "", jdbc-flags ""}
-    :as   opts}]
-  (merge
-   {:classname   "metabase.driver.FixedHiveDriver"
-    :subprotocol "hive2"
-    :subname     (str "//" host ":" port "/" db jdbc-flags)}
-   (dissoc opts :host :port :jdbc-flags)))
-
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
-  [_ details]
-  (-> details
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      (set/rename-keys {:dbname :db})
-      sparksql
-      (sql-jdbc.common/handle-additional-options details)))
+  [_driver {:keys [host port db jdbc-flags dbname]
+            :or   {host "localhost", port 10000, db "", jdbc-flags ""}
+            :as   opts}]
+  (let [port        (cond-> port
+                      (string? port) Integer/parseInt)
+        db          (or dbname db)
+        url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
+        properties  (pool/map->properties (dissoc opts :host :port :jdbc-flags))
+        data-source (reify javax.sql.DataSource
+                      (getConnection [_this]
+                        (fixed-hive-connection/fixed-hive-connection url properties)))]
+    {:datasource data-source}))
 
 (defn- dash-to-underscore [s]
   (when s
@@ -104,14 +96,14 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql
-  [_ {:keys [details] :as database}]
+  [_ database]
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
-      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["show tables"])]
+      (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
         {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
-         :schema (when (seq database)
-                   database)})))})
+         :schema (or (not-empty database)
+                     (not-empty table-namespace))})))})
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
@@ -121,7 +113,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
-  [driver {:keys [details] :as database} {table-name :name, schema :schema, :as table}]
+  [driver database {table-name :name, schema :schema}]
   {:name   table-name
    :schema schema
    :fields
@@ -141,7 +133,7 @@
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
-  [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
                                :remark (qputil/query->remark :sparksql outer-query)
                                :query  (if (seq params)
@@ -158,7 +150,7 @@
 ;; 3.  SparkSQL doesn't support making connections read-only
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
 (defmethod sql-jdbc.execute/connection-with-timezone :sparksql
-  [driver database ^String timezone-id]
+  [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)

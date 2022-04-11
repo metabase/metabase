@@ -7,8 +7,10 @@ import {
   formatValue,
   formatUrl,
   formatDateTimeWithUnit,
+  formatTime,
   formatTimeWithUnit,
   slugify,
+  getCurrencySymbol,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
@@ -522,6 +524,28 @@ describe("formatting", () => {
     });
   });
 
+  describe("formatTime", () => {
+    const FORMAT_TIME_TESTS = [
+      ["01:02:03.456+07:00", "1:02 AM"],
+      ["01:02", "1:02 AM"],
+      ["22:29:59.26816+01:00", "10:29 PM"],
+      ["22:29:59.412459+01:00", "10:29 PM"],
+      ["19:14:42.926221+01:00", "7:14 PM"],
+      ["19:14:42.13202+01:00", "7:14 PM"],
+      ["13:38:58.987352+01:00", "1:38 PM"],
+      ["13:38:58.001001+01:00", "1:38 PM"],
+      ["17:01:23+01:00", "5:01 PM"],
+    ];
+
+    test.each(FORMAT_TIME_TESTS)(
+      `parseTime(%p) to be %p`,
+      (value, resultStr) => {
+        const result = formatTime(value);
+        expect(result).toBe(resultStr);
+      },
+    );
+  });
+
   describe("formatTimeWithUnit", () => {
     it("should format hour-of day with default options", () => {
       expect(formatTimeWithUnit(8, "hour-of-day")).toEqual("8:00 AM");
@@ -580,6 +604,28 @@ describe("formatting", () => {
 
     it("should slugify diacritics", () => {
       expect(slugify("än umlaut")).toEqual("%C3%A4n_umlaut");
+    });
+  });
+
+  describe("getCurrencySymbol", () => {
+    const currencySymbols = [
+      ["USD", "$"],
+      ["EUR", "€"],
+      ["GBP", "£"],
+      ["JPY", "¥"],
+      ["CNY", "CN¥"],
+      ["CAD", "CA$"],
+      ["AUD", "AU$"],
+      ["NZD", "NZ$"],
+      ["HKD", "HK$"],
+      ["BTC", "₿"],
+      ["OOPS", "OOPS"],
+    ];
+
+    currencySymbols.forEach(([currency, symbol]) => {
+      it(`should get a ${symbol} for ${currency}`, () => {
+        expect(getCurrencySymbol(currency)).toEqual(symbol);
+      });
     });
   });
 });

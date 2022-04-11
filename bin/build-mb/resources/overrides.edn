@@ -39,6 +39,7 @@
  "jakarta.activation"         {"jakarta.activation-api" {:resource "EDL.txt"}}
  "jakarta.xml.bind"           {"jakarta.xml.bind-api" {:resource "EDL.txt"}}
  "javax.servlet.jsp"          {"jsp-api" {:resource "GPL2_0.txt"}}
+ "metabase"                   {"saml20-clj" {:resource "EPL_2.txt"}}
  "net.jcip"                   {"jcip-annotations" {:resource "CC_2_5.txt"}}
  "net.redhogs.cronparser"     {"cron-parser-core" {:resource "MIT.txt"}}
  "net.shibboleth.utilities"   {"java-support" {:resource "apache2_0.txt"}}

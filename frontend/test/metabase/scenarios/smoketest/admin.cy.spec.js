@@ -2,7 +2,8 @@ import {
   restore,
   sidebar,
   visualize,
-  openNotebookEditor,
+  startNewQuestion,
+  summarize,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -154,7 +155,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it.skip("should add a simple JOINed question as admin", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -188,7 +189,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it("should add a question with a default line visualization as admin", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -198,9 +199,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Pick your data").should("not.exist");
 
       // Summarize by date ordered
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       sidebar()
         .contains("Created At")
         .click();

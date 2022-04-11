@@ -58,6 +58,7 @@ export const fetchData = async ({
   getState,
   requestStatePath,
   existingStatePath,
+  queryKey,
   getData,
   reload = false,
   properties = null,
@@ -78,20 +79,20 @@ export const fetchData = async ({
   try {
     const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
-      dispatch(setRequestLoading(statePath));
+      dispatch(setRequestLoading(statePath, queryKey));
       const data = await getData();
 
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
       // before we notify components via `state.requests.fetches` that fetching the data is completed
-      setTimeout(() => dispatch(setRequestLoaded(statePath)));
+      setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
 
       return data;
     }
 
     return existingData;
   } catch (error) {
-    dispatch(setRequestError(statePath, error));
+    dispatch(setRequestError(statePath, queryKey, error));
     console.error("fetchData error", error);
     return existingData;
   }
@@ -103,6 +104,7 @@ export const updateData = async ({
   getState,
   requestStatePath,
   existingStatePath,
+  queryKey,
   // specify any request paths that need to be invalidated after this update
   dependentRequestStatePaths,
   putData,
@@ -112,9 +114,9 @@ export const updateData = async ({
     : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
-    dispatch(setRequestLoading(statePath));
+    dispatch(setRequestLoading(statePath, queryKey));
     const data = await putData();
-    dispatch(setRequestLoaded(statePath));
+    dispatch(setRequestLoaded(statePath, queryKey));
 
     (dependentRequestStatePaths || []).forEach(statePath =>
       dispatch(setRequestUnloaded(statePath)),
@@ -122,7 +124,7 @@ export const updateData = async ({
 
     return data;
   } catch (error) {
-    dispatch(setRequestError(statePath, error));
+    dispatch(setRequestError(statePath, queryKey, error));
     console.error(error);
     return existingData;
   }
@@ -222,7 +224,7 @@ export function withAction(actionType) {
 /**
  * Decorator that tracks the state of a request action
  */
-export function withRequestState(getRequestStatePath) {
+export function withRequestState(getRequestStatePath, getQueryKey) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
@@ -230,20 +232,21 @@ export function withRequestState(getRequestStatePath) {
       // thunk:
       async (dispatch, getState) => {
         const statePath = getRequestStatePath(...args);
+        const queryKey = getQueryKey && getQueryKey(...args);
         try {
-          dispatch(setRequestLoading(statePath));
+          dispatch(setRequestLoading(statePath, queryKey));
 
           const result = await thunkCreator(...args)(dispatch, getState);
 
           // Dispatch `setRequestLoaded` after clearing the call stack because
           // we want to the actual data to be updated before we notify
           // components that fetching the data is completed
-          setTimeout(() => dispatch(setRequestLoaded(statePath)));
+          setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
 
           return result;
         } catch (error) {
           console.error(`Request ${statePath.join(",")} failed:`, error);
-          dispatch(setRequestError(statePath, error));
+          dispatch(setRequestError(statePath, queryKey, error));
           throw error;
         }
       };
@@ -256,15 +259,20 @@ export function withRequestState(getRequestStatePath) {
 export function withCachedDataAndRequestState(
   getExistingStatePath,
   getRequestStatePath,
+  getQueryKey,
 ) {
   return compose(
-    withCachedData(getExistingStatePath, getRequestStatePath),
-    withRequestState(getRequestStatePath),
+    withCachedData(getExistingStatePath, getRequestStatePath, getQueryKey),
+    withRequestState(getRequestStatePath, getQueryKey),
   );
 }
 
 // NOTE: this should be used together with withRequestState, probably via withCachedDataAndRequestState
-function withCachedData(getExistingStatePath, getRequestStatePath) {
+function withCachedData(
+  getExistingStatePath,
+  getRequestStatePath,
+  getQueryKey,
+) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
@@ -276,8 +284,10 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
 
         const existingStatePath = getExistingStatePath(...args);
         const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+        const newQueryKey = getQueryKey && getQueryKey(...args);
         const existingData = getIn(getState(), existingStatePath);
-        const { loading, loaded } = getIn(getState(), requestStatePath) || {};
+        const { loading, loaded, queryKey } =
+          getIn(getState(), requestStatePath) || {};
 
         const hasRequestedProperties =
           properties &&
@@ -289,6 +299,8 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
           // we don't want to reload
           // the check is a workaround for EntityListLoader passing reload function to children
           reload !== true &&
+          // reload if the query used to load an entity has changed even if it's already loaded
+          newQueryKey === queryKey &&
           // and we have a an non-error request state or have a list of properties that all exist on the object
           (loading || loaded || hasRequestedProperties)
         ) {

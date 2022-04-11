@@ -1,12 +1,17 @@
 import {
   restore,
   popover,
+  summarize,
   visualize,
   openOrdersTable,
+  openPeopleTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
+  getBinningButtonForDimension,
+  filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -32,6 +37,111 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
+  it("should allow choosing a binning for a numeric custom column", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Product.Price] / 2",
+      name: "Half Price",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("Half Price")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("Half Price")
+      .click();
+    getBinningButtonForDimension({
+      name: "Half Price",
+    }).click();
+
+    popover()
+      .last()
+      .findByText("10 bins")
+      .click();
+
+    cy.findByText("Half Price: 10 bins").should("be.visible");
+  });
+
+  it("should allow choosing a temporal unit for a date/time custom column", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Product.Created At]",
+      name: "Product Date",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("Product Date")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("Product Date")
+      .click();
+    getBinningButtonForDimension({
+      name: "Product Date",
+    }).click();
+
+    popover()
+      .last()
+      .findByText("Month of Year")
+      .click();
+
+    cy.findByText("Product Date: Month of year").should("be.visible");
+  });
+
+  it("should allow choosing a binning for a coordinate custom column", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({
+      formula: "[Latitude]",
+      name: "UserLAT",
+    });
+    cy.button("Done").click();
+
+    cy.findByText("Summarize").click();
+    popover()
+      .findByText("Count of rows")
+      .click();
+
+    cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("UserLAT")
+      .click();
+
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("UserLAT")
+      .click();
+    getBinningButtonForDimension({
+      name: "UserLAT",
+    }).click();
+
+    popover()
+      .last()
+      .findByText("Bin every 10 degrees")
+      .click();
+
+    cy.findByText("UserLAT: 10°").should("be.visible");
+  });
+
   // flaky test (#19454)
   it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
@@ -42,9 +152,8 @@ describe("scenarios > question > custom column", () => {
 
     visualize();
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    summarize();
+
     cy.findByText("Group by")
       .parent()
       .findByText("Math")
@@ -82,7 +191,7 @@ describe("scenarios > question > custom column", () => {
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
 
     popover().within(() => {
       cy.findByText("Sum of ...").click();
@@ -150,36 +259,30 @@ describe("scenarios > question > custom column", () => {
 
     cy.signInAsAdmin();
 
-    cy.createQuestion({
-      name: "13857",
-      query: {
-        expressions: {
-          [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
-        },
-        "source-query": {
-          aggregation: [
-            [
-              "aggregation-options",
-              ["*", 1, 1],
-              { name: CE_NAME, "display-name": CE_NAME },
+    cy.createQuestion(
+      {
+        name: "13857",
+        query: {
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+          },
+          "source-query": {
+            aggregation: [
+              [
+                "aggregation-options",
+                ["*", 1, 1],
+                { name: CE_NAME, "display-name": CE_NAME },
+              ],
             ],
-          ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-          ],
-          "source-table": ORDERS_ID,
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
+          },
         },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
-      cy.visit(`/question/${QUESTION_ID}`);
-
-      cy.log("Reported failing v0.34.3 through v0.37.2");
-      cy.wait("@cardQuery").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-    });
+      { visitQuestion: true },
+    );
 
     cy.findByText(CC_NAME);
   });
@@ -188,119 +291,120 @@ describe("scenarios > question > custom column", () => {
     const CC_NAME = "OneisOne";
     cy.signInAsAdmin();
 
-    cy.createQuestion({
-      name: "14080",
-      query: {
-        "source-table": ORDERS_ID,
-        expressions: { [CC_NAME]: ["*", 1, 1] },
-        aggregation: [
-          [
-            "distinct",
+    cy.createQuestion(
+      {
+        name: "14080",
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { [CC_NAME]: ["*", 1, 1] },
+          aggregation: [
             [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.ID],
+              "distinct",
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
             ],
+            ["sum", ["expression", CC_NAME]],
           ],
-          ["sum", ["expression", CC_NAME]],
-        ],
-        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        display: "line",
       },
-      display: "line",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.intercept("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      { visitQuestion: true },
+    );
 
-      cy.visit(`/question/${QUESTION_ID}`);
-
-      cy.log("Regression since v0.37.1 - it works on v0.37.0");
-      cy.wait("@cardQuery").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-    });
+    cy.log("Regression since v0.37.1 - it works on v0.37.0");
 
     cy.contains(`Sum of ${CC_NAME}`);
     cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    cy.createQuestion({
-      name: "13634",
-      query: {
-        expressions: { "Foo Bar": ["+", 57910, 1] },
-        "source-query": {
-          aggregation: [["cum-count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-          ],
-          "source-table": ORDERS_ID,
+    cy.createQuestion(
+      {
+        name: "13634",
+        query: {
+          expressions: { "Foo Bar": ["+", 57910, 1] },
+          "source-query": {
+            aggregation: [["cum-count"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
+          },
         },
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("13634");
+      { visitQuestion: true },
+    );
 
-      cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
-      cy.findByText("Foo Bar");
-      cy.findAllByText("57911");
-    });
+    cy.findByText("13634");
+
+    cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
+    cy.findByText("Foo Bar");
+    cy.findAllByText("57911");
   });
 
   it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
-    cy.createQuestion({
-      name: "14193",
-      query: {
-        "source-query": {
-          "source-table": ORDERS_ID,
-          filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
-        },
-        expressions: {
-          [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+    cy.createQuestion(
+      {
+        name: "14193",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
+          },
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+          },
         },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
+    // Test displays collapsed filter - click on number 1 to expand and show the filter name
+    cy.icon("filter")
+      .parent()
+      .contains("1")
+      .click();
 
-      // Test displays collapsed filter - click on number 1 to expand and show the filter name
-      cy.icon("filter")
-        .parent()
-        .contains("1")
-        .click();
+    cy.findByText(/Subtotal is greater than 0/i)
+      .parent()
+      .find(".Icon-close")
+      .click();
 
-      cy.findByText(/Subtotal is greater than 0/i)
-        .parent()
-        .find(".Icon-close")
-        .click();
-
-      cy.findByText(CC_NAME);
-    });
+    cy.findByText(CC_NAME);
   });
 
   it("should handle identical custom column and table column names (metabase#14255)", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
-    cy.createQuestion({
-      name: "14255",
-      query: {
-        "source-table": PRODUCTS_ID,
-        expressions: {
-          [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+    cy.createQuestion(
+      {
+        name: "14255",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", CC_NAME]],
         },
-        aggregation: [["count"]],
-        breakout: [["expression", CC_NAME]],
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
 
-      cy.findByText(CC_NAME);
-      cy.findByText("Gizmo2");
-    });
+    cy.findByText(CC_NAME);
+    cy.findByText("Gizmo2");
   });
 
   it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
@@ -380,7 +484,7 @@ describe("scenarios > question > custom column", () => {
               ],
             },
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "table",
       },
@@ -391,7 +495,7 @@ describe("scenarios > question > custom column", () => {
     cy.contains("37.65");
   });
 
-  it.skip("should handle brackets in the name of the custom column (metabase#15316)", () => {
+  it("should handle brackets in the name of the custom column (metabase#15316)", () => {
     cy.createQuestion({
       name: "15316",
       query: {
@@ -401,19 +505,19 @@ describe("scenarios > question > custom column", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Sum of ...").click();
     popover()
       .findByText("MyCC [2021]")
       .click();
-    cy.get("[class*=NotebookCellItem]")
+    cy.findAllByTestId("notebook-cell-item")
       .contains("Sum of MyCC [2021]")
       .click();
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
+    cy.get(".ace_line").contains("Sum([MyCC \\[2021\\]]");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
@@ -444,7 +548,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.button("Done").click();
 
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .contains("MiscDate")
       .click();

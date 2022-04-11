@@ -29,7 +29,7 @@ export function HeadBreadcrumbs({
   ...props
 }) {
   return (
-    <Container {...props} variant={variant}>
+    <Container data-testid="head-crumbs-container" {...props} variant={variant}>
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
         const badgeInactiveColor =

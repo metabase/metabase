@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
@@ -42,7 +42,7 @@ export const BarSeries = ({
         }
 
         return (
-          <>
+          <Fragment key={seriesIndex}>
             {series.data.map((datum, index) => {
               const groupX = xAccessor(datum);
               const innerX = innerBarScale(seriesIndex) ?? 0;
@@ -66,7 +66,7 @@ export const BarSeries = ({
                 />
               );
             })}
-          </>
+          </Fragment>
         );
       })}
     </Group>

@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -24,6 +25,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  query->gtap                                                   |
@@ -138,7 +141,7 @@
                         :query    source-query}
           preprocessed (binding [api/*current-user-id* nil]
                          (classloader/require 'metabase.query-processor)
-                         ((resolve 'metabase.query-processor/query->preprocessed) query))]
+                         ((resolve 'metabase.query-processor/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
@@ -166,6 +169,8 @@
 ;; cache the original metadata for a little bit so we don't have to preprocess a query every time we apply sandboxing
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id]]
+                         [(mdb.connection/unique-identifier) table-id])}
    (fn [table-id]
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))

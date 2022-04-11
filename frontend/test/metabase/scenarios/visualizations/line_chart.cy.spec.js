@@ -1,4 +1,11 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -12,7 +19,7 @@ const testQuery = {
     aggregation: [["count"]],
     breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"]],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 describe("scenarios > visualizations > line chart", () => {
@@ -48,7 +55,7 @@ describe("scenarios > visualizations > line chart", () => {
           ],
           breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -68,7 +75,7 @@ describe("scenarios > visualizations > line chart", () => {
     visitQuestionAdhoc({
       display: "line",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
           "source-table": PRODUCTS_ID,
@@ -93,7 +100,7 @@ describe("scenarios > visualizations > line chart", () => {
   it("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [
@@ -137,7 +144,7 @@ describe("scenarios > visualizations > line chart", () => {
             "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as value\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as value\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
       visualization_settings: {
@@ -184,7 +191,7 @@ describe("scenarios > visualizations > line chart", () => {
           `,
           "template-tags": {},
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "line",
     });
@@ -225,7 +232,7 @@ describe("scenarios > visualizations > line chart", () => {
               firstCardId: question1Id,
               secondCardId: question2Id,
             });
-            cy.visit(`/dashboard/${dashboardId}`);
+            visitDashboard(dashboardId);
 
             // Rename both series
             renameSeries([
@@ -275,7 +282,7 @@ describe("scenarios > visualizations > line chart", () => {
               secondCardId: question2Id,
             });
 
-            cy.visit(`/dashboard/${dashboardId}`);
+            visitDashboard(dashboardId);
 
             renameSeries([
               ["16249_Q3", RENAMED_FIRST_SERIES],
@@ -390,7 +397,7 @@ describe("scenarios > visualizations > line chart", () => {
     beforeEach(() => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PRODUCTS_ID,
             aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],

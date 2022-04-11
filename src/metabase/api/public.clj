@@ -5,6 +5,7 @@
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
             [metabase.api.field :as field-api]
@@ -60,7 +61,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
 (defmulti ^:private transform-results
@@ -92,8 +93,8 @@
 (defn public-reducedf
   "Reducer function for public data"
   [orig-reducedf]
-  (fn [metadata final-metadata context]
-    (orig-reducedf metadata (transform-results final-metadata) context)))
+  (fn [final-metadata context]
+    (orig-reducedf (transform-results final-metadata) context)))
 
 (defn- run-query-for-card-with-id-async-run-fn
   "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
@@ -131,7 +132,7 @@
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
@@ -182,7 +183,7 @@
 (api/defendpoint GET "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
 
 ;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
@@ -221,7 +222,7 @@
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
@@ -311,7 +312,7 @@
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
@@ -325,7 +326,7 @@
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
   [uuid field-id]
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
@@ -353,7 +354,7 @@
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (db/select-one-id Card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
@@ -362,7 +363,7 @@
   [uuid field-id search-field-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
@@ -394,7 +395,7 @@
   Cards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
@@ -403,7 +404,7 @@
   Dashboards."
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
@@ -438,7 +439,7 @@
    sharing must be enabled."
   [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (public-dashcard-results-async
      :dashboard-id  dashboard-id
@@ -450,7 +451,7 @@
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the
-;; `api/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
+;; `validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
 ;; every single endpoint definition here? Wouldn't that be 100x better?!
 ;;
 ;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for

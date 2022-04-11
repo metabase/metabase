@@ -63,9 +63,12 @@
 
 (s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value :- s/Num, max-value :- s/Num, bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
-  (long (Math/ceil (/ (- max-value min-value)
-                      bin-width))))
+  [min-value :- s/Num
+   max-value :- s/Num
+   bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
+  (max (long (Math/ceil (/ (- max-value min-value)
+                           bin-width)))
+       1))
 
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
                                                (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { unescapeString } from "metabase/lib/expressions/index";
 import {
   /* ALL_ASTYPES */ ADD,
   FIELD,
@@ -60,7 +61,7 @@ function compileField(node: Node): Expr {
   assert(node.token?.text, "Empty field name");
   // Slice off the leading and trailing brackets
   const name = node.token.text.slice(1, node.token.text.length - 1);
-  return withNode(["dimension", name], node);
+  return withNode(["dimension", unescapeString(name)], node);
 }
 
 function compileIdentifier(node: Node): Expr {

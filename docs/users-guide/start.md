@@ -14,8 +14,9 @@
 - [Full list of expressions: aggregations and functions](expressions-list.md)
 - [How to visualize the answers to questions](05-visualizing-results.md)
 - [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
+- [Joining data](join.md)
 
-## Saving questions in Collections
+## Saving questions in collections
 
 - [Sharing and organizing your saved questions](06-sharing-answers.md)
 - [Collections](collections.md)

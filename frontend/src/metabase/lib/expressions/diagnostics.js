@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import {
+  MBQL_CLAUSES,
   getMBQLName,
   parseDimension,
   parseMetric,
@@ -17,6 +18,7 @@ import {
   useShorthands,
   adjustCase,
   adjustOptions,
+  transformNoArgFunction,
 } from "metabase/lib/expressions/recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
 
@@ -43,7 +45,9 @@ export function diagnose(source, startRule, query) {
     const token = tokens[i];
     if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
-      if (getMBQLName(functionName)) {
+      const fn = getMBQLName(functionName);
+      const clause = fn ? MBQL_CLAUSES[fn] : null;
+      if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
         if (next.op !== OPERATOR.OpenParenthesis) {
           return {
@@ -96,13 +100,13 @@ function prattCompiler(source, startRule, query) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
       return ["metric", metric.id];
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
+        throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
       return ["segment", segment.id];
     } else {
@@ -121,6 +125,7 @@ function prattCompiler(source, startRule, query) {
       passes: [
         adjustOptions,
         useShorthands,
+        transformNoArgFunction,
         adjustCase,
         expr => resolve(expr, startRule, resolveMBQLField),
       ],

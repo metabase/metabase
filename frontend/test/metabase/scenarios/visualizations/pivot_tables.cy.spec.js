@@ -3,8 +3,11 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -145,7 +148,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {},
@@ -178,7 +181,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           aggregation: [["count"]],
           breakout: [b1, b2, b3],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -412,7 +415,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
     });
@@ -430,7 +433,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
-    cy.icon("arrow_up").click();
+    cy.icon("arrow_up").realClick();
     cy.findByText("8 – 10");
     cy.findByText("158 – 160").should("not.exist");
   });
@@ -440,7 +443,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       dataset_query: {
         type: "native",
         native: { query: "select 1", "template-tags": {} },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {},
@@ -453,7 +456,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     it("should work with custom columns as values", () => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": ORDERS_ID,
             expressions: {
@@ -501,7 +504,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             aggregation: [["count"]],
             breakout: [["expression", "category_foo"]],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "pivot",
       });
@@ -542,7 +545,7 @@ describe("scenarios > visualizations > pivot tables", () => {
                 ],
               });
               cy.log("Open the dashboard");
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+              visitDashboard(DASHBOARD_ID);
             });
           },
         );
@@ -612,7 +615,8 @@ describe("scenarios > visualizations > pivot tables", () => {
             });
           },
         );
-        cy.visit(`/question/${QUESTION_ID}`);
+
+        visitQuestion(QUESTION_ID);
       });
     });
 
@@ -622,9 +626,6 @@ describe("scenarios > visualizations > pivot tables", () => {
           cy.visit("collection/root");
           cy.findByText(test.subject).click();
           cy.icon("share").click();
-          if (test.case === "dashboard") {
-            cy.findByText("Sharing and embedding").click();
-          }
         });
 
         it("should display pivot table in a public link", () => {
@@ -675,7 +676,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.request("POST", "/api/card", {
       name: "14989",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -690,7 +691,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.signIn("nodata");
-      cy.visit(`/question/${QUESTION_ID}`);
+      visitQuestion(QUESTION_ID);
     });
 
     cy.findByText("Grand totals");
@@ -721,7 +722,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
@@ -773,7 +774,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -828,7 +829,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           ],
           filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "pivot",
       visualization_settings: {
@@ -866,19 +867,14 @@ const testQuery = {
       ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
     ],
   },
-  database: 1,
+  database: SAMPLE_DB_ID,
 };
 
 function createAndVisitTestQuestion({ display = "pivot" } = {}) {
-  cy.request("POST", "/api/card", {
-    name: QUESTION_NAME,
-    dataset_query: testQuery,
-    display,
-    description: null,
-    visualization_settings: {},
-  }).then(({ body: { id: QUESTION_ID } }) => {
-    cy.visit(`/question/${QUESTION_ID}`);
-  });
+  const { query } = testQuery;
+  const questionDetails = { name: QUESTION_NAME, query, display };
+
+  cy.createQuestion(questionDetails, { visitQuestion: true });
 }
 
 function assertOnPivotSettings() {

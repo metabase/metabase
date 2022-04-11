@@ -22,6 +22,12 @@
   overflow: auto;
 }
 
+.tippy-box,
+.tippy-content {
+  max-height: inherit;
+  transition: transform 0s, visibility 0.3s, opacity 0.3s;
+}
+
 .tippy-box[data-theme~="tooltip"] {
   color: white;
   font-weight: bold;

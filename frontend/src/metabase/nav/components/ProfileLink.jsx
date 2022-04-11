@@ -1,10 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import _ from "underscore";
+
 import { capitalize } from "metabase/lib/formatting";
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { canAccessAdmin } from "metabase/nav/utils";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -22,7 +23,7 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
-    context: PropTypes.string.isRequired,
+    handleCloseNavbar: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -35,7 +36,9 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const admin = this.props.user.is_superuser;
+    const { user, handleCloseNavbar } = this.props;
+    const isAdmin = user.is_superuser;
+    const showAdminSettingsItem = canAccessAdmin(user);
 
     return [
       {
@@ -43,8 +46,9 @@ export default class ProfileLink extends Component {
         icon: null,
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
+        onClose: handleCloseNavbar,
       },
-      admin && {
+      showAdminSettingsItem && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
@@ -55,11 +59,16 @@ export default class ProfileLink extends Component {
         icon: null,
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
+        onClose: handleCloseNavbar,
       },
       {
         title: t`Help`,
         icon: null,
-        link: MetabaseSettings.docsUrl(),
+        link:
+          isAdmin && MetabaseSettings.isPaidPlan()
+            ? "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help"
+            : "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help",
+
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
@@ -90,9 +99,10 @@ export default class ProfileLink extends Component {
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
           triggerProps={{
+            color: color("text-medium"),
             hover: {
-              backgroundColor: darken(color("brand")),
-              color: "white",
+              backgroundColor: color("brand"),
+              color: color("text-white"),
             },
           }}
         />

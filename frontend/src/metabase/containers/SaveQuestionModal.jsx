@@ -1,19 +1,16 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import { CSSTransitionGroup } from "react-transition-group";
+import { t } from "ttag";
 
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
-
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { generateQueryDescription } from "metabase/lib/query/description";
-
 import validate from "metabase/lib/validate";
-
-import { t } from "ttag";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import "./SaveQuestionModal.css";
 
@@ -47,6 +44,12 @@ export default class SaveQuestionModal extends Component {
     //     .setCollectionId(details.collection_id)
     let { card, originalCard, onCreate, onSave } = this.props;
 
+    const collection_id = canonicalCollectionId(
+      details.saveType === "overwrite"
+        ? originalCard.collection_id
+        : details.collection_id,
+    );
+
     card = {
       ...card,
       name:
@@ -60,10 +63,7 @@ export default class SaveQuestionModal extends Component {
           : details.description
           ? details.description.trim()
           : null,
-      collection_id:
-        details.saveType === "overwrite"
-          ? originalCard.collection_id
-          : details.collection_id,
+      collection_id,
     };
 
     if (details.saveType === "create") {

@@ -240,9 +240,12 @@
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
   (mbql.match/replace m
-    [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (mbql.match/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
-                                            :default)]]))
+    [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
+    (let [temporal-unit (or (mbql.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+                            :default)]
+      (into [clause field] (mbql.match/replace args
+                             [:relative-datetime :current]
+                             [:relative-datetime 0 temporal-unit])))))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -623,23 +626,6 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
-
-;; TODO -- This seems like it would be easily confused with
-;; [[metabase.driver.sql.query-processor/source-query-alias]]. Joins are REQUIRED to have aliases anyway
-(def ^:private default-join-alias "source")
-
-(s/defn deduplicate-join-aliases :- mbql.s/Joins
-  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
-  one."
-  [joins :- [mbql.s/Join]]
-  (let [joins          (for [join joins]
-                         (update join :alias #(or % default-join-alias)))
-        unique-aliases (uniquify-names (map :alias joins))]
-    (mapv
-     (fn [join alias]
-       (assoc join :alias alias))
-     joins
-     unique-aliases)))
 
 (defn- remove-empty [x]
   (cond

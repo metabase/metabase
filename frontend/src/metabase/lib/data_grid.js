@@ -2,7 +2,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -141,7 +141,10 @@ export function multiLevelPivot(data, settings) {
   const columnIndex = addEmptyIndexItem(
     formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
   );
-  const valueColumns = valueColumnIndexes.map(index => columns[index]);
+  const valueColumns = valueColumnIndexes.map(index => [
+    columns[index],
+    columnSettings[index],
+  ]);
   const formattedColumnTree = addValueColumnNodes(
     formattedColumnTreeWithoutValues,
     valueColumns,
@@ -334,11 +337,13 @@ function formatValuesInTree(
 // We display the value column names if there are multiple
 // or if there are no columns pivoted to the top header.
 function addValueColumnNodes(nodes, valueColumns) {
-  const leafNodes = valueColumns.map(column => ({
-    value: column.display_name,
-    children: [],
-    isValueColumn: true,
-  }));
+  const leafNodes = valueColumns.map(([column, columnSettings]) => {
+    return {
+      value: columnSettings.column_title || formatColumn(column),
+      children: [],
+      isValueColumn: true,
+    };
+  });
   if (nodes.length === 0) {
     return leafNodes;
   }

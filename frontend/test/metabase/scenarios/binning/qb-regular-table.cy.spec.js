@@ -3,6 +3,7 @@ import {
   openTable,
   visualize,
   changeBinningForDimension,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -149,7 +150,7 @@ function chooseInitialBinningOption({
   mode = null,
 } = {}) {
   openTable({ table, mode });
-  cy.findByText("Summarize").click();
+  summarize({ mode });
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();

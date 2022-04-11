@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
@@ -9,6 +10,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.session :refer [Session]]
+            [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
@@ -232,14 +234,21 @@
   (when user-id
     (db/select-one current-user-fields, :id user-id)))
 
+(defn- user-local-settings [user-id]
+  (when user-id
+    (or (:settings (db/select-one [User :settings] :id user-id))
+        {})))
+
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
+            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
+            *user-local-values*            (delay (atom (or settings
+                                                            (user-local-settings metabase-user-id))))]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request
@@ -247,15 +256,16 @@
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
-  `*current-user-permissions-set*`.
+  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
+  [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
+  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
     (with-current-user-for-request request
@@ -265,7 +275,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]]
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user

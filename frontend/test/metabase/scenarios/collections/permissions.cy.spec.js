@@ -14,8 +14,12 @@ import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   popover,
-  sidebar,
+  appBar,
+  navigationSidebar,
+  modal,
   openNativeEditor,
+  visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -45,11 +49,11 @@ describe("collection permissions", () => {
               describe("create dashboard", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
-                  sidebar().within(() => {
+                  navigationSidebar().within(() => {
                     displaySidebarChildOf("First collection");
-                    displaySidebarChildOf("Second collection");
+                    cy.findByText("Second collection").click();
                   });
-                  cy.get(".Nav").within(() => {
+                  appBar().within(() => {
                     cy.icon("add").click();
                   });
                   cy.findByText("Dashboard").click();
@@ -87,15 +91,6 @@ describe("collection permissions", () => {
                     cy.findByText("Orders in a dashboard");
                     cy.findByText("Orders, Count");
                   });
-                  // Only pinned dashboards should show up on the home page...
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard");
-                  cy.findByText("Orders, Count").should("not.exist");
-                  // ...but not for the user without permissions to see the root collection
-                  cy.signOut();
-                  cy.signIn("none");
-                  cy.visit("/");
-                  cy.findByText("Orders in a dashboard").should("not.exist");
                 });
               });
 
@@ -193,7 +188,12 @@ describe("collection permissions", () => {
                       cy.findByText("Archived question");
                       cy.icon("close").click();
                     });
-                    cy.findByText("View archive").click();
+                    navigationSidebar().within(() => {
+                      cy.icon("ellipsis").click();
+                    });
+                    popover()
+                      .findByText("View archive")
+                      .click();
                     cy.location("pathname").should("eq", "/archive");
                     cy.findByText("Orders");
                   });
@@ -213,31 +213,49 @@ describe("collection permissions", () => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         collection => collection.slug === "third_collection",
                       );
+
+                      cy.intercept(
+                        "PUT",
+                        `/api/collection/${THIRD_COLLECTION_ID}`,
+                      ).as("editCollection");
+
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
+
                     cy.icon("pencil").click();
+
                     cy.findByText("Archive this collection").click();
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
+
+                    cy.wait("@editCollection");
+
                     cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Second collection");
-                    sidebar().within(() => {
+
+                    navigationSidebar().within(() => {
                       cy.findByText("First collection");
                       cy.findByText("Second collection");
                       cy.findByText("Third collection").should("not.exist");
                     });
+
                     // While we're here, we can test unarchiving the collection as well
                     cy.findByText("Archived collection");
                     cy.findByText("Undo").click();
+
+                    cy.wait("@editCollection");
+
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
+
                     // We're still in the parent collection
                     cy.get("@title").contains("Second collection");
+
                     // But unarchived collection is now visible in the sidebar
-                    sidebar().within(() => {
+                    navigationSidebar().within(() => {
                       cy.findByText("Third collection");
                     });
                   });
@@ -331,7 +349,7 @@ describe("collection permissions", () => {
               describe("managing question from the question's details sidebar action buttons (metabase#11719)", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
-                  cy.visit("/question/1");
+                  visitQuestion(1);
                   cy.findByTestId("saved-question-header-button").click();
                 });
 
@@ -406,8 +424,10 @@ describe("collection permissions", () => {
               describe("managing dashboard from the dashboard's edit menu", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
-                  cy.visit("/dashboard/1");
-                  cy.icon("ellipsis").click();
+                  visitDashboard(1);
+                  cy.get("main header").within(() => {
+                    cy.icon("ellipsis").click();
+                  });
                 });
 
                 it("should be able to change title and description", () => {
@@ -448,8 +468,10 @@ describe("collection permissions", () => {
                       cy.findByText("Move").click();
                     });
                     cy.location("pathname").should("eq", "/dashboard/1/move");
-                    cy.findByText("First collection").click();
-                    clickButton("Move");
+                    modal().within(() => {
+                      cy.findByText("First collection").click();
+                      clickButton("Move");
+                    });
                   });
 
                   it("should be able to move/undo move a dashboard", () => {
@@ -535,7 +557,7 @@ describe("collection permissions", () => {
 
             describe("managing question from the question's details sidebar", () => {
               beforeEach(() => {
-                cy.visit("/question/1");
+                visitQuestion(1);
               });
 
               it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
@@ -572,7 +594,7 @@ describe("collection permissions", () => {
               });
 
               it("should not offer a user the ability to update or clone the question", () => {
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.findByTestId("saved-question-header-button").click();
 
                 cy.findByTestId("edit-details-button").should("not.exist");
@@ -590,25 +612,42 @@ describe("collection permissions", () => {
 
             describe("managing dashboard from the dashboard's edit menu", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
-                cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.intercept("GET", "/api/collection/root").as("collections");
+                visitDashboard(1);
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
+
                 popover()
                   .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
-                cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.intercept("GET", "/api/collection/root").as("collections");
+                visitDashboard(1);
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
                 popover()
                   .findByText("Archive")
                   .should("not.exist");
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 const { first_name, last_name } = USERS[user];
-                cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                visitDashboard(1);
+                cy.wait("@collections");
+                cy.get("main header").within(() => {
+                  cy.icon("ellipsis")
+                    .should("be.visible")
+                    .click();
+                });
                 popover()
                   .findByText("Duplicate")
                   .click();
@@ -698,10 +737,9 @@ describe("collection permissions", () => {
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
-              it("should be able to revert the dashboard (metabase#15237)", () => {
-                cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
-                cy.findByText("Revision history").click();
+              it("should be able to revert a dashboard (metabase#15237)", () => {
+                visitDashboard(1);
+                openRevisionHistory();
                 clickRevert("created this");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
@@ -726,7 +764,7 @@ describe("collection permissions", () => {
 
                 cy.skipOn(user === "nodata");
 
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.wait("@cardQuery");
 
                 cy.findByTestId("revision-history-button").click();
@@ -745,7 +783,7 @@ describe("collection permissions", () => {
 
                 cy.skipOn(user === "nodata");
 
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.wait("@cardQuery");
 
                 cy.findByTestId("saved-question-header-button").click();
@@ -766,9 +804,8 @@ describe("collection permissions", () => {
             describe(`${user} user`, () => {
               it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
-                cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
-                cy.findByText("Revision history").click();
+                visitDashboard(1);
+                openRevisionHistory();
                 cy.findAllByRole("button", { name: "Revert" }).should(
                   "not.exist",
                 );
@@ -776,7 +813,7 @@ describe("collection permissions", () => {
 
               it("should not see question revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
-                cy.visit("/question/1");
+                visitQuestion(1);
                 cy.findByRole("button", { name: /Edited .*/ }).click();
 
                 cy.findAllByRole("button", { name: "Revert" }).should(
@@ -833,7 +870,7 @@ function pinItem(item) {
 
 function exposeChildrenFor(collectionName) {
   cy.findByText(collectionName)
-    .parent()
+    .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
@@ -850,7 +887,7 @@ function assertOnRequest(xhr_alias) {
 }
 
 function visitAndEditDashboard(id) {
-  cy.visit(`/dashboard/${id}`);
+  visitDashboard(id);
   cy.icon("pencil").click();
 }
 
@@ -860,6 +897,8 @@ function saveDashboard() {
 }
 
 function openRevisionHistory() {
-  cy.icon("ellipsis").click();
+  cy.get("main header").within(() => {
+    cy.icon("ellipsis").click();
+  });
   cy.findByText("Revision history").click();
 }

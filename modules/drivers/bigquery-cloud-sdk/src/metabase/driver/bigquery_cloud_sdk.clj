@@ -161,7 +161,7 @@
   nil)
 
 (defn- throw-invalid-query [e sql parameters]
-  (throw (ex-info (tru "Error executing query")
+  (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
            {:type error-type/invalid-query, :sql sql, :parameters parameters}
            e)))
 

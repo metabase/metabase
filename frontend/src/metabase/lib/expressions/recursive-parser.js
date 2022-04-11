@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
-import { getMBQLName, MBQL_CLAUSES } from "./index";
+import { getMBQLName, MBQL_CLAUSES, unescapeString } from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -70,7 +70,7 @@ function recursiveParse(source) {
 
   const field = name => {
     const ref = name[0] === "[" ? shrink(name) : name;
-    return ["dimension", ref];
+    return ["dimension", unescapeString(ref)];
   };
 
   // Primary ::= Literal |
@@ -303,11 +303,30 @@ export const adjustCase = tree =>
     return node;
   });
 
+// [ "dimension", "count "] becomes ["count"], since Count is a valid no-arg function
+export const transformNoArgFunction = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [operator, ...operands] = node;
+      if (operands.length === 1 && operator === "dimension") {
+        const text = operands[0];
+        const fn = getMBQLName(text.trim().toLowerCase());
+
+        // refering a function with no args?
+        if (fn && MBQL_CLAUSES[fn].args.length === 0) {
+          return [fn];
+        }
+      }
+    }
+    return node;
+  });
+
 const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);
 
 export const parse = pipe(
   recursiveParse,
   adjustOptions,
   useShorthands,
+  transformNoArgFunction,
   adjustCase,
 );

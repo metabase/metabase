@@ -1,7 +1,6 @@
 import _ from "underscore";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
@@ -35,40 +34,6 @@ export async function loadCard(cardId) {
   }
 }
 
-// TODO Atte Keinänen 5/31/17 Deprecated, we should migrate existing references to this method to `question.isCardDirty`
-// predicate function that dermines if a given card is "dirty" compared to the last known version of the card
-export function isCardDirty(card, originalCard) {
-  // The rules:
-  //   - if it's new, then it's dirty when
-  //       1) there is a database/table chosen or
-  //       2) when there is any content on the native query
-  //   - if it's saved, then it's dirty when
-  //       1) the current card doesn't match the last saved version
-
-  if (!card) {
-    return false;
-  } else if (!card.id) {
-    if (card.dataset_query.query && card.dataset_query.query["source-table"]) {
-      return true;
-    } else if (
-      card.dataset_query.native &&
-      !_.isEmpty(card.dataset_query.native.query)
-    ) {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    const origCardSerialized = originalCard
-      ? serializeCardForUrl(originalCard)
-      : null;
-    const newCardSerialized = card
-      ? serializeCardForUrl(_.omit(card, "original_card_id"))
-      : null;
-    return newCardSerialized !== origCardSerialized;
-  }
-}
-
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
   const dataset_query = Utils.copy(card.dataset_query);
@@ -94,13 +59,6 @@ export function serializeCardForUrl(card) {
 
 export function deserializeCardFromUrl(serialized) {
   return JSON.parse(b64hash_to_utf8(serialized));
-}
-
-export function urlForCardState(state, dirty) {
-  return Urls.question(
-    state.card,
-    state.serializedCard && dirty ? state.serializedCard : "",
-  );
 }
 
 export function cleanCopyCard(card) {

@@ -669,7 +669,7 @@
   [query-type, ag-clause :- mbql.s/Aggregation, druid-query]
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
-                                    [:aggregation-options ag & _] (recur ag)
+                                    [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
                                     _                             &match)]
     (if-not (isa? query-type ::ag-query)
       druid-query
@@ -996,7 +996,7 @@
                             (:name options)
 
                             [:aggregation-options wrapped-ag _]
-                            (recur wrapped-ag)
+                            #_:clj-kondo/ignore (recur wrapped-ag)
 
                             [(ag-type :guard keyword?) & _]
                             ag-type)]

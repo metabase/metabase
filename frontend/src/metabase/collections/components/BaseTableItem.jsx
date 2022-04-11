@@ -11,6 +11,8 @@ import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
+import { color } from "metabase/lib/colors";
+
 import {
   ItemCell,
   EntityIconCheckBox,
@@ -19,6 +21,9 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  bookmarks: PropTypes.arrayOf(PropTypes.object),
+  createBookmark: PropTypes.func,
+  deleteBookmark: PropTypes.func,
   item: PropTypes.object,
   draggable: PropTypes.bool,
   collection: PropTypes.object,
@@ -34,6 +39,9 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
   item,
   draggable = true,
   collection = {},
@@ -46,6 +54,7 @@ export function BaseTableItem({
   onMove,
   onDrop,
   onToggleSelected,
+  ...props
 }) {
   const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
 
@@ -73,6 +82,11 @@ export function BaseTableItem({
       height: 48,
     };
 
+    const icon = { name: item.getIcon().name };
+    if (item.model === "card") {
+      icon.color = color("bg-dark");
+    }
+
     // Table row can be wrapped with ItemDragSource,
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
@@ -92,7 +106,7 @@ export function BaseTableItem({
           <EntityIconCheckBox
             item={item}
             variant="list"
-            icon={item.getIcon()}
+            icon={icon}
             pinned={isPinned}
             selectable={canSelect}
             selected={isSelected}
@@ -120,6 +134,9 @@ export function BaseTableItem({
         </ItemCell>
         <ItemCell>
           <ActionMenu
+            createBookmark={createBookmark}
+            deleteBookmark={deleteBookmark}
+            bookmarks={bookmarks}
             item={item}
             collection={collection}
             onCopy={onCopy}
@@ -129,6 +146,9 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    bookmarks,
+    createBookmark,
+    deleteBookmark,
     onToggleSelected,
     item,
     isPinned,

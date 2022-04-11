@@ -52,6 +52,7 @@ const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
       </div>
       {/* OUTER CONTAINER BAR */}
       <div
+        data-testid="mini-bar"
         className="ml1"
         style={{
           position: "relative",

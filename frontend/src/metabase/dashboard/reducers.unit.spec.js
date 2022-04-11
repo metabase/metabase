@@ -21,16 +21,18 @@ describe("dashboard reducers", () => {
       dashcardData: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
-      isEditing: {},
+      isEditing: null,
       loadingDashCards: {
         dashcardIds: [],
         loadingIds: [],
         startTime: null,
+        isLoadingComplete: false,
       },
       parameterValues: {},
       parameterValuesSearchCache: {},
       sidebar: { props: {} },
       slowCards: {},
+      loadingControls: {},
     });
   });
 

@@ -1,4 +1,4 @@
-import { restore, describeWithToken } from "__support__/e2e/cypress";
+import { restore, describeEE } from "__support__/e2e/cypress";
 
 // Define colors that we use for whitelabeling
 // If rbg values exist, it's because we explicit test those
@@ -22,7 +22,7 @@ function changeThemeColor(location, colorhex) {
   cy.findByText("Done").click();
 }
 
-describeWithToken("formatting > whitelabel > color theme", () => {
+describeEE("formatting > whitelabel > color theme", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -112,7 +112,7 @@ describeWithToken("formatting > whitelabel > color theme", () => {
       console.log(xhr.response.body["application-colors"]);
     });
 
-    cy.scrollTo("top");
+    cy.get("main").scrollTo("top");
 
     cy.log("Admin panel should be yellow");
     cy.get(".Nav").should(

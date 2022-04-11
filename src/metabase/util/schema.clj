@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.types :as types]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-tru]]
             [metabase.util.password :as password]
             [schema.core :as s]
@@ -311,6 +312,11 @@
    Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
+
+(def TemporalString
+  "Schema for a string that can be parsed by date2/parse."
+  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (boolean (u.date/parse %))))
+    (deferred-tru "value must be a valid date string")))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."

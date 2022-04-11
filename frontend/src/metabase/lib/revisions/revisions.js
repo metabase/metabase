@@ -63,7 +63,7 @@ function getSeriesChangeDescription(prevCards, cards) {
     : t`removed series from a question`;
 }
 
-function getCollectionChangeDescription(prevCollectionId, collectionId) {
+export function getCollectionChangeDescription(prevCollectionId, collectionId) {
   const key = `collection-from-${prevCollectionId}-to-${collectionId}`;
   return [
     jt`moved this to ${(
@@ -71,6 +71,7 @@ function getCollectionChangeDescription(prevCollectionId, collectionId) {
         key={key}
         entityId={collectionId || "root"}
         entityType="collections"
+        fallback={t`Unknown`}
       />
     )}`,
   ];
@@ -245,7 +246,12 @@ export function getRevisionEventsForTimeline(
       // like "John added a description"
       if (isChangeEvent && isMultipleFieldsChange) {
         event.title = t`${username} edited this`;
-        event.description = <RevisionBatchedDescription changes={changes} />;
+        event.description = (
+          <RevisionBatchedDescription
+            changes={changes}
+            fallback={revision.description}
+          />
+        );
       } else {
         event.title = <RevisionTitle username={username} message={changes} />;
       }

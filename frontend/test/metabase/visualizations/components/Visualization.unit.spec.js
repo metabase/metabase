@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOM from "react-dom";
+import { renderWithProviders } from "__support__/ui";
 
 import {
   NumberColumn,
@@ -16,41 +16,47 @@ import Visualization from "metabase/visualizations/components/Visualization";
 describe("Visualization", () => {
   // eslint-disable-next-line no-unused-vars
   let element;
-  const qs = s => element.querySelector(s);
-  const qsa = s => [...element.querySelectorAll(s)];
 
   const renderViz = async series => {
-    ReactDOM.render(<Visualization rawSeries={series} />, element);
+    const utils = renderWithProviders(
+      <Visualization rawSeries={series} />,
+      element,
+    );
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
+    return utils;
+  };
+
+  const getBarColors = container => {
+    const bars = [...container.querySelectorAll(".bar")];
+    return bars.map(bar => bar.getAttribute("fill"));
   };
 
   beforeEach(() => {
     element = createFixture();
   });
+
   afterEach(() => {
-    ReactDOM.unmountComponentAtNode(element);
     cleanupFixture(element);
   });
 
   describe("scalar", () => {
     it("should render", async () => {
-      await renderViz([
+      const { container } = await renderViz([
         {
           card: { display: "scalar" },
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
-      expect(qs("h1").textContent).toEqual("1");
+      expect(container.querySelector("h1").textContent).toEqual("1");
     });
   });
 
   describe("bar", () => {
-    const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
     describe("single series", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -65,7 +71,7 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
         ]);
@@ -73,7 +79,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: multiple metrics", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -89,7 +95,7 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
           color("accent1"), // "sum"
@@ -99,7 +105,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: multiple breakouts", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -117,7 +123,7 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("accent1"), // "a"
           color("accent1"), // "a"
           color("accent2"), // "b"
@@ -127,7 +133,7 @@ describe("Visualization", () => {
     });
     describe("multiseries: dashcard", () => {
       it("should have correct colors", async () => {
-        await renderViz([
+        const { container } = await renderViz([
           {
             card: { name: "Card1", display: "bar" },
             data: {
@@ -155,7 +161,7 @@ describe("Visualization", () => {
             },
           },
         ]);
-        expect(getBarColors()).toEqual([
+        expect(getBarColors(container)).toEqual([
           color("brand"), // "count"
           color("brand"), // "count"
           color("accent2"), // "Card2"

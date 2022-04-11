@@ -121,7 +121,7 @@ Update a `Alert` with ID.
 
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query`
 
-Return an automagic dashboard for entity `entity` with id `ìd`.
+Return an automagic dashboard for entity `entity` with id `id`.
 
 ##### PARAMS:
 
@@ -150,7 +150,7 @@ Return an automagic dashboard analyzing cell in  automagic dashboard for entity 
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query`
 
 Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `ìd` defined by query `cell-querry`; compared with entity `comparison-entity` with id
+   with id `id` defined by query `cell-querry`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`.
 
 ##### PARAMS:
@@ -189,7 +189,7 @@ Return an automagic dashboard analyzing cell in question  with id `id` defined b
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query`
 
 Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
-   with id `ìd` defined by query `cell-querry` using rule `rule`; compared with entity
+   with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`.
 
 ##### PARAMS:
@@ -212,7 +212,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query`
 
-Return an automagic comparison dashboard for entity `entity` with id `ìd` compared with entity
+Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`.
 
 ##### PARAMS:
@@ -229,7 +229,7 @@ Return an automagic comparison dashboard for entity `entity` with id `ìd` compa
 
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule`
 
-Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule`.
+Return an automagic dashboard for entity `entity` with id `id` using rule `rule`.
 
 ##### PARAMS:
 
@@ -245,7 +245,7 @@ Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule
 
 ### `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query`
 
-Return an automagic comparison dashboard for entity `entity` with id `ìd` using rule `rule`;
+Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.
 
 ##### PARAMS:

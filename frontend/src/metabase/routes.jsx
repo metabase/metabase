@@ -72,6 +72,7 @@ import FieldDetailContainer from "metabase/reference/databases/FieldDetailContai
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
+import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
@@ -81,9 +82,10 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { canAccessAdmin } from "metabase/nav/utils";
 
+import HomePage from "metabase/home/homepage/containers/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import HomepageApp from "metabase/home/homepage/containers/HomepageApp";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -123,6 +125,16 @@ const UserIsNotAuthenticated = UserAuthWrapper({
   redirectAction: routerActions.replace,
 });
 
+const UserCanAccessSettings = UserAuthWrapper({
+  predicate: currentUser =>
+    currentUser?.is_superuser || canAccessAdmin(currentUser),
+  failureRedirectPath: "/unauthorized",
+  authSelector: state => state.currentUser,
+  allowRedirectBack: false,
+  wrapperDisplayName: "UserCanAccessSettings",
+  redirectAction: routerActions.replace,
+});
+
 const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -132,6 +144,10 @@ const IsAdmin = MetabaseIsSetup(
 
 const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
+);
+
+const CanAccessSettings = MetabaseIsSetup(
+  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
 );
 
 export const getRoutes = store => (
@@ -185,7 +201,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={HomepageApp}
+          component={HomePage}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
@@ -207,6 +223,7 @@ export const getRoutes = store => (
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          {getCollectionTimelineRoutes()}
         </Route>
 
         <Route path="activity" component={ActivityApp} />
@@ -234,6 +251,7 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
         <Route path="/model">
@@ -243,6 +261,7 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
           <Route path=":slug/metadata" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
         <Route path="browse" component={BrowseApp}>
@@ -336,7 +355,7 @@ export const getRoutes = store => (
       {getAccountRoutes(store, IsAuthenticated)}
 
       {/* ADMIN */}
-      {getAdminRoutes(store, IsAdmin)}
+      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}

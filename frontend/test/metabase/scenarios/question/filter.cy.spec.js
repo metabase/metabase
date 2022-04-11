@@ -8,8 +8,10 @@ import {
   popover,
   visitQuestionAdhoc,
   visualize,
+  filter,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -36,7 +38,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Join data").click();
     cy.findByText("Products").click();
     // add filter
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover().within(() => {
       // we've run into weird "name normalization" issue
       // where it displays "Product" locally, and "Products" in CI
@@ -60,46 +62,48 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.createQuestion({
-      name: "12872",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        filter: [
-          "and",
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, null],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-          [
-            "between",
-            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-            "2019-04-15",
-            "2019-04-15",
-          ],
-        ],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", PRODUCTS.ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    cy.createQuestion(
+      {
+        name: "12872",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          filter: [
+            "and",
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, null],
+              "2019-04-15",
+              "2019-04-15",
             ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-        ],
+            [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+              "2019-04-15",
+              "2019-04-15",
+            ],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+        },
+        display: "scalar",
       },
-      display: "scalar",
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("12872");
-      cy.log("At the moment of unfixed issue, it's showing '0'");
-      cy.get(".ScalarValue").contains("1");
-    });
+      { visitQuestion: true },
+    );
+
+    cy.findByText("12872");
+    cy.log("At the moment of unfixed issue, it's showing '0'");
+    cy.get(".ScalarValue").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -116,11 +120,11 @@ describe("scenarios > question > filter", () => {
 
     // Add filter as remapped Product ID (Product name)
     openOrdersTable();
-    cy.findByText("Filter").click();
+    filter();
     cy.get(".List-item-title")
       .contains("Product ID")
       .click();
-    cy.get(".scroll-y")
+    cy.findByTestId("sidebar-content")
       .contains("Aerodynamic Linen Coat")
       .click();
     cy.findByText("Add filter").click();
@@ -206,7 +210,7 @@ describe("scenarios > question > filter", () => {
 
   it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
-    cy.findByText("Filter").click();
+    filter();
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "c" });
 
@@ -229,7 +233,7 @@ describe("scenarios > question > filter", () => {
 
   it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
@@ -258,7 +262,7 @@ describe("scenarios > question > filter", () => {
             ],
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -309,7 +313,7 @@ describe("scenarios > question > filter", () => {
 
   it("should reject Enter when the filter expression is invalid", () => {
     openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Rating] > 2E{enter}" }); // there should numbers after 'E'
@@ -360,7 +364,9 @@ describe("scenarios > question > filter", () => {
 
     enterCustomColumnDetails({ formula: "[" });
 
-    popover().findByText("Body");
+    popover()
+      .last()
+      .findByText("Body");
 
     cy.get("@formula").type("p");
 
@@ -393,7 +399,7 @@ describe("scenarios > question > filter", () => {
 
   it("should filter using IsNull() and IsEmpty()", () => {
     openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "NOT IsNull([Rating])" });
@@ -480,7 +486,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -504,7 +510,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -520,22 +526,22 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
 
     // Via the GUI, create a filter with "include-current" option
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.get("input[type='text']").type("{selectall}{del}5");
     cy.contains("Include today").click();
-    cy.findByText("Add filter").click();
+    cy.button("Add filter").click();
 
     // Switch to custom expression
-    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByText("Created At Previous 30 Days").click();
+
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    cy.findByText("Done").click();
+    cy.button("Done").click();
 
     // Back to GUI and "Include today" should be still checked
-    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByText("Created At Previous 30 Days").click();
     cy.findByLabelText("Include today").should("be.checked");
   });
 
@@ -552,7 +558,7 @@ describe("scenarios > question > filter", () => {
             { "case-sensitive": false },
           ],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -571,7 +577,7 @@ describe("scenarios > question > filter", () => {
 
   it("should reject a number literal", () => {
     openProductsTable();
-    cy.findByText("Filter").click();
+    filter();
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "3.14159" });
@@ -583,7 +589,7 @@ describe("scenarios > question > filter", () => {
 
   it("should reject a string literal", () => {
     openProductsTable();
-    cy.findByText("Filter").click();
+    filter();
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: '"TheAnswer"' });
@@ -602,7 +608,7 @@ describe("scenarios > question > filter", () => {
           aggregation: [["count"]],
           breakout: [["field-id", PRODUCTS.CATEGORY]],
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
       display: "table",
     });
@@ -621,7 +627,7 @@ describe("scenarios > question > filter", () => {
 
   it("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Total] < [Subtotal]" });
@@ -632,7 +638,7 @@ describe("scenarios > question > filter", () => {
 
   it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input")
       .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
@@ -647,7 +653,7 @@ describe("scenarios > question > filter", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input")
       .type("0 < [ID]")
@@ -657,7 +663,7 @@ describe("scenarios > question > filter", () => {
 
   it("should allow switching focus with Tab", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input").type("[Tax] > 0");
 
@@ -670,7 +676,7 @@ describe("scenarios > question > filter", () => {
 
   it("should allow choosing a suggestion with Tab", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
@@ -694,10 +700,24 @@ describe("scenarios > question > filter", () => {
       .and("contains", "Button");
   });
 
+  it("should allow hiding the suggestion list with Escape", () => {
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+    cy.findByText("Tax");
+
+    // Esc closes the suggestion popover
+    cy.realPress("{esc}");
+    cy.findByText("Tax").should("not.exist");
+  });
+
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-query": {
             "source-table": 1,
@@ -713,9 +733,7 @@ describe("scenarios > question > filter", () => {
     });
 
     cy.get(".ScalarValue").contains("5");
-    cy.findAllByRole("button")
-      .contains("Filter")
-      .click();
+    filter();
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
@@ -729,7 +747,7 @@ describe("scenarios > question > filter", () => {
   it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
     cy.viewport(1280, 720);
     openPeopleTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
+    filter({ mode: "notebook" });
     popover()
       .findByText("State")
       .click({ force: true });
@@ -740,7 +758,7 @@ describe("scenarios > question > filter", () => {
   it("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
     visitQuestionAdhoc({
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [
@@ -781,11 +799,42 @@ describe("scenarios > question > filter", () => {
     }
   });
 
+  describe("currency filters", () => {
+    beforeEach(() => {
+      // set the currency on the Orders/Discount column to Euro
+      cy.visit("/admin/datamodel/database/1/table/2");
+      // this value isn't actually selected, it's just the default
+      cy.findByText("US Dollar").click();
+      cy.findByText("Euro").click();
+
+      openOrdersTable();
+    });
+
+    it("should show correct currency symbols in currency single field filter", () => {
+      cy.findByText("Discount (€)").click();
+      cy.findByText("Filter by this column").click();
+      cy.findByTestId("input-prefix").should("contain", "€");
+    });
+
+    it("should show correct currency symbols in currency between field filter", () => {
+      cy.findByText("Discount (€)").click();
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Equal to").click();
+      cy.findByText("Between").click();
+
+      cy.findAllByTestId("input-prefix").then(els => {
+        expect(els).to.have.lengthOf(2);
+        expect(els[0].innerText).to.equal("€");
+        expect(els[1].innerText).to.equal("€");
+      });
+    });
+  });
+
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
       visitQuestionAdhoc({
         dataset_query: {
-          database: 1,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": PRODUCTS_ID,
             filter: [
@@ -801,7 +850,7 @@ describe("scenarios > question > filter", () => {
 
     it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Filter").click();
+      filter({ mode: "notebook" });
       cy.findByText("Custom Expression").click();
       cy.get(".ace_text-input")
         .type("[Total] < [Product → Price]")
@@ -824,7 +873,7 @@ describe("scenarios > question > filter", () => {
 
     it("removing first filter in a sequence shouldn't result in an empty page (metabase#16198-3)", () => {
       openOrdersTable({ mode: "notebook" });
-      cy.findByText("Filter").click();
+      filter({ mode: "notebook" });
       popover()
         .findByText("Total")
         .click({ force: true });
@@ -908,9 +957,7 @@ describe("scenarios > question > filter", () => {
       });
 
       it("from the simple question (metabase#16386-2)", () => {
-        cy.findAllByRole("button")
-          .contains("Filter")
-          .click();
+        filter();
 
         cy.findByTestId("sidebar-right").within(() => {
           cy.findByText("boolean").click();
@@ -923,7 +970,7 @@ describe("scenarios > question > filter", () => {
       it("from the custom question (metabase#16386-3)", () => {
         cy.icon("notebook").click();
 
-        cy.findByText("Filter").click();
+        filter({ mode: "notebook" });
 
         popover().within(() => {
           cy.findByText("boolean").click();
@@ -954,6 +1001,6 @@ describe("scenarios > question > filter", () => {
 
 function openExpressionEditorFromFreshlyLoadedPage() {
   openReviewsTable({ mode: "notebook" });
-  cy.findByText("Filter").click();
+  filter({ mode: "notebook" });
   cy.findByText("Custom Expression").click();
 }

@@ -3,6 +3,8 @@ import {
   snapshot,
   visualize,
   changeBinningForDimension,
+  summarize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 const questionDetails = {
@@ -32,12 +34,12 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via simple question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.findByText("Summarize").click();
-      cy.wait("@dataset");
+      visualize();
+      cy.findByTextEnsureVisible("LONGITUDE");
+      summarize();
     });
 
     it("should work for time series", () => {
@@ -93,12 +95,10 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via custom question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
 
-      cy.findByText("Summarize").click();
       cy.findByText("Pick the metric you want to see").click();
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
@@ -162,10 +162,11 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
+      visualize();
+      cy.findByTextEnsureVisible("LONGITUDE");
     });
 
     it("should work for time series", () => {

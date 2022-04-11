@@ -4,6 +4,7 @@
             [metabase.api.activity :as activity]
             [metabase.api.alert :as alert]
             [metabase.api.automagic-dashboards :as magic]
+            [metabase.api.bookmark :as bookmark]
             [metabase.api.card :as card]
             [metabase.api.collection :as collection]
             [metabase.api.dashboard :as dashboard]
@@ -35,6 +36,8 @@
             [metabase.api.task :as task]
             [metabase.api.testing :as testing]
             [metabase.api.tiles :as tiles]
+            [metabase.api.timeline :as timeline]
+            [metabase.api.timeline-event :as timeline-event]
             [metabase.api.transform :as transform]
             [metabase.api.user :as user]
             [metabase.api.util :as util]
@@ -61,6 +64,7 @@
   (context "/alert"                [] (+auth alert/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
+  (context "/bookmark"             [] (+auth bookmark/routes))
   (context "/collection"           [] (+auth collection/routes))
   (context "/dashboard"            [] (+auth dashboard/routes))
   (context "/database"             [] (+auth database/routes))
@@ -93,6 +97,8 @@
                                         testing/routes
                                         (fn [_ respond _] (respond nil))))
   (context "/tiles"                [] (+auth tiles/routes))
+  (context "/timeline"             [] (+auth timeline/routes))
+  (context "/timeline-event"       [] (+auth timeline-event/routes))
   (context "/transform"            [] (+auth transform/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

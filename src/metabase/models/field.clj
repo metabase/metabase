@@ -9,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
@@ -115,7 +116,13 @@
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
 
-(def ^:private ^{:arglists '([table-id])} perms-objects-set*
+(defn- perms-objects-set*
+  [db-id schema table-id read-or-write]
+  #{(case read-or-write
+      :read  (perms/data-perms-path db-id schema table-id)
+      :write (perms/data-model-write-perms-path db-id schema table-id))})
+
+(def ^:private ^{:arglists '([table-id read-or-write])} cached-perms-object-set
   "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
@@ -128,21 +135,21 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
-   (fn [table-id]
-     (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-       #{(perms/data-perms-path database-id schema table-id)}))
+   (fn [table-id read-or-write]
+     (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+       (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
 (defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
    same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
-  [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
+  [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
-    #{(perms/data-perms-path db-id schema table-id)}
+    (perms-objects-set* db-id schema table-id read-or-write)
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (perms-objects-set* table-id)))
+    (cached-perms-object-set table-id read-or-write)))
 
 (defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
@@ -172,7 +179,8 @@
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword
                                        :fingerprint       :json-for-fingerprints
-                                       :settings          :json})
+                                       :settings          :json
+                                       :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
 
@@ -180,7 +188,7 @@
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -207,6 +215,25 @@
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
                           (db/select model :field_id [:in field-ids])))))
+
+(defn nfc-field->parent-identifier
+  "Take a nested field column field corresponding to something like an inner key within a JSON column,
+  and then get the parent column's identifier from its own identifier and the nfc path stored in the field.
+
+  Suppose you have the child with corresponding identifier
+
+  (metabase.util.honeysql-extensions/identifier :field \"blah -> boop\")
+
+  Ultimately, this is just a way to get the parent identifier
+
+  (metabase.util.honeysql-extensions/identifier :field \"blah\")"
+  [field-identifier field]
+  (let [nfc-path          (:nfc_path field)
+        parent-components (-> (:components field-identifier)
+                              (vec)
+                              (pop)
+                              (conj (first nfc-path)))]
+    (apply hx/identifier (cons :field parent-components))))
 
 (defn with-values
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."

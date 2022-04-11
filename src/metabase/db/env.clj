@@ -48,33 +48,37 @@
 (defn- get-db-file
   "Takes a filename and converts it to H2-compatible filename."
   [db-file-name]
-  ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which means without
-  ;; MVCC we "will experience dead-locks". MVCC is the default for everyone using the MVStore engine anyway so this
-  ;; only affects people still with legacy PageStore databases
-  ;;
-  ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
-  (let [options ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
-    ;; H2 wants file path to always be absolute
-    (str "file:"
-         (.getAbsolutePath (io/file db-file-name))
-         options)))
+  ;; H2 wants file path to always be absolute
+  (str "file:" (.getAbsolutePath (io/file db-file-name))))
 
 (defn- env->db-file
   [{:keys [mb-db-in-memory mb-db-file]}]
-  ;; see https://h2database.com/html/features.html for explanation of options
   (if mb-db-in-memory
     ;; In-memory (i.e. test) DB
-    ;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
-    "mem:metabase;DB_CLOSE_DELAY=-1"
+    "mem:metabase"
     ;; File-based DB
     (get-db-file mb-db-file)))
+
+(def ^:private h2-connection-properties
+  ;; see https://h2database.com/html/features.html for explanation of options
+  {;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
+   :DB_CLOSE_DELAY -1
+   ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which means without
+   ;; MVCC we "will experience dead-locks". MVCC is the default for everyone using the MVStore engine anyway so this
+   ;; only affects people still with legacy PageStore databases
+   :MVCC           true
+   ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+   :DEFRAG_ALWAYS  true
+   ;; LOCK_TIMEOUT=60000 = wait up to one minute to acquire table lock instead of default of 1 second
+   :LOCK_TIMEOUT   60000})
 
 (defn- broken-out-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
   [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user], :as env-vars}]
   (if (= db-type :h2)
-    {:db (env->db-file env-vars)}
+    (assoc h2-connection-properties
+           :db (env->db-file env-vars))
     {:host     mb-db-host
      :port     mb-db-port
      :db       mb-db-dbname

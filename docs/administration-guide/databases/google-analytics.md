@@ -6,29 +6,66 @@ This page provides information on how to create and manage a connection to a [Go
 
 You will need to have a [Google Cloud Platform][google-cloud] account and create the [project][google-cloud-create-project] you would like to use in Metabase. Consult the Google Cloud Platform documentation on how to [create and manage a project][google-cloud-management] if you do not have one.
 
-## Google Cloud Platform: creating OAuth client ID
+## Google Cloud Platform: creating a service account and JSON file
 
-To get the Client ID and Client Secret you will need, follow Google's Cloud Platform Help on [how to create an OAuth client ID][google-cloud-oauth]. For application type, select "Desktop App" (this avoids a `redirect_uri_mismatch` when requesting Auth Codes).
+You'll first need a [service account](https://cloud.google.com/iam/docs/service-accounts) JSON file that Metabase can
+use to access your Google Analytics dataset. Service accounts are intended for non-human users (such as applications
+like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
+
+To create the service account JSON file, follow Google's documentation on [setting up a service
+account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your Google Analytics dataset.
+Here's the basic flow:
+
+1. **Create service account**. From your Google Cloud Platform project console, open the main sidebar menu on the
+   left, go to the **IAM & Admin** section, and select **Service account**. The console will list existing service
+   accounts, if any. At the top of the screen, click on **+ CREATE SERVICE ACCOUNT**.
+
+2. **Fill out the service account details**. Name the service account, and add a description (the service account ID
+   will populate once you add a name). Then click the **Create** button.
+
+3. The **Service account permissions (optional)** section is not required. Click **Continue**.
+
+4. **Create key**. Once you have assigned roles to the service account, click on the **Create Key** button, and select
+   **JSON** for the **key type**. The JSON file will download to your computer.
+
+> **You can only download the key once**. If you delete the key, you'll need to create another service account with
+> the same roles.
+
+### Adding the service account to your Google Analytics account
+
+The newly created service account will have an email address that looks similar to:
+
+```
+my_service_account_name@my_project_id.iam.gserviceaccount.com
+```
+
+You must add this service account user to your Google Analytics account in order to use it. Add it by following the
+instructions [here][google-analytics-add-user]. Only Read and Analyze permissions are needed for Metabase.
 
 ### Enabling Google Analytics API
 
 To enable the Google Analytics API, go to <https://console.cloud.google.com/apis/api/analytics.googleapis.com/overview> in the Google Cloud Platform console. Double-check that the previously created project is selected and click on "Enable". For further documentation please refer to [Enable and disable APIs][google-enable-disable-apis].
 
-##### Adding the API scopes
-
-Refer to Google's Analytics API documentation to set up the required [scopes][google-oauth-scopes].
-
 ## Metabase: adding a Google Analytics dataset
 
 In your Metabase, click on **Settings** and select "Admin" to bring up the **Admin Panel**. In the **Databases** section, click on the **Add database** button, then select "Google Analytics" from the "Database type" dropdown and fill in the configuration settings:
 
-- **Display name** is the title of your database in Metabase.
+### Settings
 
-- To get the **Google Analytics Account ID**, go to [Google Analytics][google-analytics] and click the **Admin** cog.  In the admin tab, go to the **Account Settings** section: you will find the account ID below the "Basic Settings" heading.
+#### Display name
 
-- Paste the **Client ID** and **Client Secret** you created when setting up the OAuth client ID above. These credentials must be correctly associated to scopes allowing interaction with the Google Analytics API.
+**Name** is the title of your database in Metabase.
 
-- Once you've provided **Client ID** and **Client Secret** with valid scopes, a **Click here to get an auth code** link will appear over the **Auth Code** text box. Authorize the connection with your Google login credentials to see the Auth Code, then copy and paste the code into this box.
+#### Account ID
+
+To get the **Google Analytics Account ID**, go to [Google Analytics][google-analytics] and click the **Admin** cog. In
+the admin tab, go to the **Account Settings** section: you will find the account ID below the "Basic Settings"
+heading.
+
+#### Service account JSON file
+
+Upload the service account JSON file you created when following the steps above. The JSON file contains the
+credentials your Metabase application will need to read and query your dataset.
 
 ### Advanced settings
 
@@ -47,6 +84,7 @@ When you're done, click the **Save** button. A modal dialog will inform you that
 Give Metabase some time to sync with your Google Analytics dataset, then exit the **Admin Panel**, click on **Browse Data**, find your Google Analytics database, and start exploring. Once Metabase is finished syncing, you will see the names of your Properties & Apps in the data browser.
 
 [google-analytics]: https://cloud.google.com/analytics
+[google-analytics-add-user]: https://support.google.com/analytics/answer/1009702
 [google-cloud]: https://cloud.google.com/
 [google-cloud-create-project]: https://cloud.google.com/resource-manager/docs/creating-managing-projects#creating_a_project
 [google-cloud-management]: https://cloud.google.com/resource-manager/docs/creating-managing-projects

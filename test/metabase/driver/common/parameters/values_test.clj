@@ -542,3 +542,13 @@
                                   :id      "5791ff38"
                                   :default "Bar"
                                   :target  [:variable [:template-tag "filter"]]}]})))))))
+
+(deftest value->number-test
+  (testing `values/value->number
+    (testing "should handle a vector"
+      (testing "of strings"
+        (is (= 1
+               (#'values/value->number ["1"]))))
+      (testing "of numbers (#20845)"
+        (is (= 1
+               (#'values/value->number [1])))))))

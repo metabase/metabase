@@ -1,4 +1,4 @@
-import "brace/mode/java";
+import "ace-builds/src-noconflict/mode-java";
 
 class ExpressionHighlight extends window.ace.acequire(
   "ace/mode/text_highlight_rules",

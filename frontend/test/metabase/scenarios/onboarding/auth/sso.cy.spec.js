@@ -1,5 +1,5 @@
 import {
-  describeWithToken,
+  describeEE,
   restore,
   mockCurrentUserProperty,
 } from "__support__/e2e/cypress";
@@ -63,7 +63,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  describeWithToken("EE", () => {
+  describeEE("EE", () => {
     beforeEach(() => {
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {

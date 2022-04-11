@@ -8,6 +8,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
 import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
@@ -320,6 +321,8 @@ export const loadMetadataForQueries = queries => dispatch =>
             : Tables.actions.fetchMetadata)({ id });
         } else if (type === "field") {
           return Fields.actions.fetch({ id });
+        } else if (type === "schema") {
+          return Schemas.actions.fetchList({ dbId: id });
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }

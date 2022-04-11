@@ -13,6 +13,7 @@ const StandardForm = ({ onClose, submitTitle, submitFullWidth, ...props }) => (
           <FormField key={formField.name} name={formField.name} />
         ))}
         <FormFooter
+          isModal={props.isModal}
           footerExtraButtons={props.footerExtraButtons}
           onCancel={onClose}
           submitTitle={

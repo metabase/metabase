@@ -4,6 +4,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.permission-graph :as pg]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
@@ -68,11 +69,10 @@
       (map :members results))))
 
 (defn- ordered-groups
-  "Return a sequence of ordered `PermissionsGroups`, excluding the `MetaBot` group."
+  "Return a sequence of ordered `PermissionsGroups`."
   [limit offset]
   (db/select PermissionsGroup
-             (cond-> {:where    [:not= :id (u/the-id (group/metabot))]
-                      :order-by [:%lower.name]}
+             (cond-> {:order-by [:%lower.name]}
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset))))
 
@@ -87,7 +87,7 @@
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (-> (ordered-groups offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))
 

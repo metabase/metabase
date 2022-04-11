@@ -1,7 +1,6 @@
 (ns metabase.integrations.slack-test
   (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
-            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
@@ -84,7 +83,9 @@
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
-        (let [expected-result (concat (mock-conversations) (mock-conversations))]
+        (let [expected-result (map
+                               (comp #(str \# %) :name)
+                               (concat (mock-conversations) (mock-conversations)))]
           (tu/with-temporary-setting-values [slack-token "test-token"
                                              slack-app-token nil]
             (is (= expected-result
@@ -135,40 +136,30 @@
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
-        (tu/with-temporary-setting-values [slack-app-token "test-token"]
-          (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))
-        (tu/with-temporary-setting-values [slack-token "test-token"]
-          (is (= (concat (mock-users) (mock-users))
-                 (slack/users-list))))))))
-
-(defn- mock-files-channel []
-  (let [channel-name (slack/slack-files-channel)]
-    (-> (mock-conversations)
-        first
-        (assoc
-         :name channel-name, :name_normalized channel-name,
-         :purpose {:value "Metabase file upload location", :creator "", :last_set 0}))))
+        (let [expected-result (map
+                              (comp #(str \@ %) :name)
+                              (concat (mock-users) (mock-users)))]
+          (tu/with-temporary-setting-values [slack-token     nil
+                                             slack-app-token "test-token"]
+            (is (= expected-result
+                   (slack/users-list)))
+            (tu/with-temporary-setting-values [slack-app-token nil
+                                               slack-token     "test-token"]
+              (is (= expected-result
+                     (slack/users-list))))))))))
 
 (deftest files-channel-test
-  ;; clear out any cached valid values of `files-channel`
-  (memoize/memo-clear! @#'slack/files-channel)
   (testing "files-channel"
-    (test-invalid-auth-token conversations-endpoint slack/files-channel)
-
-    (testing "Should be able to fetch the files-channel (if it exists)"
-      (http-fake/with-fake-routes {conversations-endpoint (fn [request]
-                                                            (-> (mock-conversations-response-body request)
-                                                                (update :channels conj (mock-files-channel))
-                                                                mock-200-response))}
-        (tu/with-temporary-setting-values [slack-token "test-token"
-                                           slack-app-token nil]
-          (is (= (mock-files-channel)
-                 (slack/files-channel))))
-        (tu/with-temporary-setting-values [slack-app-token "test-token"
-                                           slack-token nil]
-          (is (= (mock-files-channel)
-                 (slack/files-channel))))))))
+    (testing "Should be able to get the files-channel from the cache (if it exists)"
+      (tu/with-temporary-setting-values [slack-files-channel "general"
+                                         slack-cached-channels-and-usernames ["#general" "#random" "#off-topic" "#cooking" "@john" "@james" "@jordan"]]
+        (is (= "general" (slack/files-channel))))
+      (tu/with-temporary-setting-values [slack-files-channel "not_in_the_cache"
+                                         slack-cached-channels-and-usernames ["#general"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Slack channel named.*is missing.*"
+             (slack/files-channel)))))))
 
 (deftest upload-file!-test
   (testing "upload-file!"
@@ -213,8 +204,8 @@
 
 (deftest slack-token-error-test
   (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
-    (tu/with-temporary-setting-values [slack-app-token "test-token"
-                                       slack-token-valid? true]
+    (tu/with-temporary-setting-values [slack-app-token    "test-token"
+                                       #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
                                      (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
@@ -245,3 +236,7 @@
               (is (= false (slack/valid-token? "abc")))
               (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
               (is (slack/slack-token-valid?)))))))))
+
+(deftest slack-cache-updated-at-nil
+  (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
+    (is (= (var-get #'slack/zoned-time-epoch) (slack/slack-channels-and-usernames-last-updated)))))

@@ -26,7 +26,7 @@
 
 ;; Add an `:h2` quote style that uppercases the identifier
 (let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
-  (alter-var-root #'honeysql.format/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
+  (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
@@ -83,8 +83,11 @@
        (for [component components]
          (hformat/quote-identifier component, :split false)))))
   pretty/PrettyPrintable
-  (pretty [_]
-    (cons `identifier (cons identifier-type components))))
+  (pretty [this]
+    (if (= (set (keys this)) #{:identifier-type :components})
+      (cons `identifier (cons identifier-type components))
+      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g. #metabase..Identifier {...}
+      (list (symbol (str \# `Identifier)) (into {} this)))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (alter-meta! #'->Identifier    assoc :private true)
@@ -218,7 +221,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type  str/lower-case)
+  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info

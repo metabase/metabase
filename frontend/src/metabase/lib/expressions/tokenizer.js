@@ -209,6 +209,9 @@ export function tokenize(expression) {
             case "v":
               value += "\x0b";
               break;
+            case '"':
+              value += '"';
+              break;
             default:
               value += seq;
               break;

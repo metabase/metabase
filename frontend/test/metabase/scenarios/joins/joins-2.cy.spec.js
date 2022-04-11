@@ -3,10 +3,15 @@ import {
   openOrdersTable,
   popover,
   visualize,
-  openNotebookEditor,
+  startNewQuestion,
   enterCustomColumnDetails,
   visitQuestionAdhoc,
+  summarize,
+  filter,
+  visitQuestion,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -31,8 +36,7 @@ describe("scenarios > question > joined questions", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
 
       // start a custom question with orders
-      cy.visit("/question/new");
-      cy.contains("Custom question").click();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
@@ -76,8 +80,7 @@ describe("scenarios > question > joined questions", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
 
       cy.log("Start a custom question with Orders");
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -93,10 +96,8 @@ describe("scenarios > question > joined questions", () => {
 
       visualize();
 
-      cy.contains("Showing first 2,000");
-
       cy.log("Attempt to filter on the joined table");
-      cy.contains("Filter").click();
+      filter();
       cy.contains("Email").click();
       cy.contains("People – Email");
       cy.findByPlaceholderText("Search by Email")
@@ -130,8 +131,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       // start a custom question with question a
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("question a").click();
 
@@ -209,7 +209,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       cy.log("It shouldn't use FK for a column title");
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Pick a column to group by").click();
 
       // NOTE: Since there is no better way to "get" the element we need, below is a representation of the current DOM structure.
@@ -292,7 +292,7 @@ describe("scenarios > question > joined questions", () => {
       });
 
       // Join two previously saved questions
-      openNotebookEditor();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
 
       cy.findByText("12928_Q1").click();
@@ -361,60 +361,47 @@ describe("scenarios > question > joined questions", () => {
             "source-table": PRODUCTS_ID,
           },
         }).then(({ body: { id: joinedQuestionId } }) => {
-          // listen on the final card query which means the data for this question loaded
-          cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
-            "cardQuery",
-          );
-
           // Assert phase begins here
-          cy.visit(`/question/${joinedQuestionId}`);
-          cy.findByText("13744_joined");
+          visitQuestion(joinedQuestionId);
 
           cy.log("Reported failing on v0.34.3 - v0.37.0.2");
           cy.log("Reported error log: 'No aggregation at index: 0'");
-          // assert directly on XHR instead of relying on UI
-          cy.wait("@cardQuery").then(xhr => {
-            expect(xhr.response.body.error).not.to.exist;
-          });
+
+          cy.findByText("13744_joined");
           cy.findAllByText("Gizmo");
         });
       });
     });
 
     it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-      cy.createQuestion({
-        name: "14649_min",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "aggregation-options",
-                ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { name: "Revenue", "display-name": "Revenue" },
+      cy.createQuestion(
+        {
+          name: "14649_min",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                [
+                  "aggregation-options",
+                  ["sum", ["field", ORDERS.SUBTOTAL, null]],
+                  { name: "Revenue", "display-name": "Revenue" },
+                ],
               ],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
+            aggregation: [
+              ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
             ],
           },
-          aggregation: [
-            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-          ],
+
+          display: "scalar",
         },
+        { visitQuestion: true },
+      );
 
-        display: "scalar",
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
-        cy.visit(`/question/${QUESTION_ID}`);
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).to.not.exist;
-        });
-
-        cy.findByText("49.54");
-      });
+      cy.findByText("49.54");
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
@@ -444,7 +431,7 @@ describe("scenarios > question > joined questions", () => {
               ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
         display: "line",
       });
@@ -474,7 +461,7 @@ describe("scenarios > question > joined questions", () => {
             "source-table": ORDERS_ID,
             filter: ["=", ["field-id", ORDERS.USER_ID], 1],
           },
-          database: 1,
+          database: SAMPLE_DB_ID,
         },
       });
 
@@ -484,7 +471,7 @@ describe("scenarios > question > joined questions", () => {
 
     it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
       cy.visit("/question/1/notebook");
-      cy.findByText("Summarize").click();
+      summarize({ mode: "notebook" });
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText("Created At")
@@ -558,8 +545,7 @@ function joinTwoSavedQuestions() {
       },
     }).then(() => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      cy.visit(`/question/new`);
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Saved Questions").click();

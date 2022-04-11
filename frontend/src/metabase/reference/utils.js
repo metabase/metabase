@@ -105,7 +105,7 @@ export const getQuestion = ({
 };
 
 export const getQuestionUrl = getQuestionArgs =>
-  Urls.question(null, getQuestion(getQuestionArgs));
+  Urls.question(null, { hash: getQuestion(getQuestionArgs) });
 
 export const typeToLinkClass = {
   dashboard: "text-green",

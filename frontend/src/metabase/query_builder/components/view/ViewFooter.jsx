@@ -13,6 +13,7 @@ import ButtonBar from "metabase/components/ButtonBar";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
@@ -53,6 +54,7 @@ const ViewFooter = ({
   questionAlerts,
   visualizationSettings,
   isAdmin,
+  canManageSubscriptions,
   isPreviewing,
   isResultDirty,
   isVisualized,
@@ -64,10 +66,15 @@ const ViewFooter = ({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
+  isShowingTimelineSidebar,
+  onOpenTimelines,
+  onCloseTimelines,
 }) => {
   if (!result || isObjectDetail) {
     return null;
   }
+
+  const hasDataPermission = question.query().isEditable();
 
   return (
     <ViewFooterRoot
@@ -100,26 +107,30 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          <VizTypeButton
-            key="viz-type"
-            question={question}
-            result={result}
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-            }
-          />,
-          <VizSettingsButton
-            key="viz-settings"
-            ml={1}
-            mr={[3, 0]}
-            active={isShowingChartSettingsSidebar}
-            onClick={
-              isShowingChartSettingsSidebar
-                ? onCloseChartSettings
-                : onOpenChartSettings
-            }
-          />,
+          hasDataPermission && (
+            <VizTypeButton
+              key="viz-type"
+              question={question}
+              result={result}
+              active={isShowingChartTypeSidebar}
+              onClick={
+                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+              }
+            />
+          ),
+          hasDataPermission && (
+            <VizSettingsButton
+              key="viz-settings"
+              ml={1}
+              mr={[3, 0]}
+              active={isShowingChartSettingsSidebar}
+              onClick={
+                isShowingChartSettingsSidebar
+                  ? onCloseChartSettings
+                  : onOpenChartSettings
+              }
+            />
+          ),
         ]}
         center={
           isVisualized && (
@@ -168,6 +179,7 @@ const ViewFooter = ({
             <QuestionAlertWidget
               key="alerts"
               className="mx1 hide sm-show"
+              canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
               onCreateAlert={() =>
@@ -179,11 +191,21 @@ const ViewFooter = ({
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <QuestionEmbedWidgetTrigger
+              key="embeds"
               onClick={() =>
                 question.isSaved()
                   ? onOpenModal("embed")
                   : onOpenModal("save-question-before-embed")
               }
+            />
+          ),
+          QuestionTimelineWidget.shouldRender({ question }) && (
+            <QuestionTimelineWidget
+              key="timelines"
+              className="mx1 hide sm-show"
+              isShowingTimelineSidebar={isShowingTimelineSidebar}
+              onOpenTimelines={onOpenTimelines}
+              onCloseTimelines={onCloseTimelines}
             />
           ),
         ]}

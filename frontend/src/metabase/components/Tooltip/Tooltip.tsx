@@ -4,6 +4,7 @@ import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 
 const TippyComponent = Tippy.default;
 
@@ -90,6 +91,7 @@ function Tooltip({
         delay={delay}
         placement={placement}
         offset={offset}
+        zIndex={DEFAULT_Z_INDEX}
         {...targetProps}
       />
     );

@@ -363,6 +363,51 @@
                :breakout     [$venue_id->venues.price]
                :order-by     [[:asc $venue_id->venues.price]]}))))))
 
+(deftest topologically-sort-joins-test
+  (let [parent        {:alias     "Parent"
+                       :condition [:=
+                                   [:field 2 nil]
+                                   [:field 1 {:join-alias "Parent"}]]}
+        child-1       {:alias     "Child 1"
+                       :condition [:=
+                                   [:field 1 {:join-alias "Parent"}]
+                                   [:field 1 {:join-alias "Child 1"}]]}
+        child-2       {:alias     "Child 2"
+                       :condition [:=
+                                   [:field 1 {:join-alias "Parent"}]
+                                   [:field 1 {:join-alias "Child 2"}]]}
+        child-1-child {:alias     "Child 1 Child"
+                       :condition [:=
+                                   [:field 1 {:join-alias "Child 1"}]
+                                   [:field 1 {:join-alias "Child 1 Child"}]]}]
+    (testing "Join dependencies"
+      (is (= #{}
+             (#'add-implicit-joins/join-dependencies parent)))
+      (is (= #{"Parent"}
+             (#'add-implicit-joins/join-dependencies child-1)
+             (#'add-implicit-joins/join-dependencies child-2)))
+      (is (= #{"Child 1"}
+             (#'add-implicit-joins/join-dependencies child-1-child))))
+    (testing "Sort by dependency order"
+      (let [alias->join (u/key-by :alias [parent child-1 child-2 child-1-child])]
+        (doseq [[original expected] {["Parent" "Child 1" "Child 2"]                 ["Parent" "Child 1" "Child 2"]
+                                     ["Child 1" "Parent" "Child 2"]                 ["Parent" "Child 1" "Child 2"]
+                                     ["Child 1" "Child 2" "Parent"]                 ["Parent" "Child 1" "Child 2"]
+                                     ;; should preserve order if there are no dependencies.
+                                     ["Child 1" "Child 2"]                          ["Child 1" "Child 2"]
+                                     ["Child 2" "Child 1"]                          ["Child 2" "Child 1"]
+                                     ["Parent" "Child 2" "Child 1"]                 ["Parent" "Child 2" "Child 1"]
+                                     ["Child 2" "Parent" "Child 1"]                 ["Parent" "Child 2" "Child 1"]
+                                     ["Child 2" "Child 1" "Parent"]                 ["Parent" "Child 2" "Child 1"]
+                                     ;; should handle dependencies of dependencies
+                                     ["Parent" "Child 1" "Child 2" "Child 1 Child"] ["Parent" "Child 1" "Child 2" "Child 1 Child"]
+                                     ["Parent" "Child 1" "Child 1 Child" "Child 2"] ["Parent" "Child 1" "Child 1 Child" "Child 2"]
+                                     ["Parent" "Child 1 Child" "Child 1" "Child 2"] ["Parent" "Child 1" "Child 1 Child" "Child 2"]
+                                     ["Child 1 Child" "Parent" "Child 1" "Child 2"] ["Parent" "Child 1" "Child 1 Child" "Child 2"]}]
+          (testing (format "Sort %s" original)
+            (is (= expected
+                   (mapv :alias (#'add-implicit-joins/topologically-sort-joins (mapv alias->join original)))))))))))
+
 (deftest mix-implicit-and-explicit-joins-test
   (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"
     (is (= (mt/mbql-query checkins
@@ -468,3 +513,85 @@
                                             {:source-field %product_id, ::namespaced true}]]})
                       add-implicit-joins
                       (m/dissoc-in [:query :source-metadata])))))))
+
+(deftest resolve-implicit-joins-in-join-conditions-test
+  (testing "Should be able to resolve implicit joins inside a join `:condition`"
+    (mt/dataset sample-dataset
+      (is (query= (mt/mbql-query orders
+                    {:source-query {:source-table $$orders
+                                    :fields       [$product_id]}
+                     :joins        [{:source-table $$products
+                                     :alias        "PRODUCTS__via__PRODUCT_ID"
+                                     :condition    [:=
+                                                    $product_id
+                                                    [:field
+                                                     %products.id
+                                                     {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                     :fields       :none
+                                     :strategy     :left-join
+                                     :fk-field-id  %product_id}
+                                    {:source-table $$products
+                                     :alias        "Products"
+                                     :condition    [:=
+                                                    [:field
+                                                     %products.category
+                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                      :source-field %product_id}]
+                                                    &Products.products.category]
+                                     :fields       :none}]})
+                  (add-implicit-joins
+                   (mt/mbql-query orders
+                     {:source-query {:source-table $$orders
+                                     :fields       [$product_id]}
+                      :joins        [{:source-table $$products
+                                      :alias        "Products"
+                                      :condition    [:=
+                                                     $product_id->products.category
+                                                     &Products.products.category]
+                                      :fields       :none}]})))))))
+
+(deftest use-source-query-implicit-joins-for-join-conditions-test
+  (testing "Implicit join inside a join `:condition` should use implicit join from source query if available (#20519)"
+    (mt/dataset sample-dataset
+      (is (query= (mt/mbql-query orders
+                    {:source-query {:source-table $$orders
+                                    :joins        [{:source-table $$products
+                                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                    :condition    [:=
+                                                                   $product_id
+                                                                   [:field
+                                                                    %products.id
+                                                                    {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                    :fields       :none
+                                                    :strategy     :left-join
+                                                    :fk-field-id  %product_id}]
+                                    :breakout     [[:field
+                                                    %products.category
+                                                    {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                     :source-field %product_id}]]
+                                    :aggregation  [[:count]]}
+                     :joins        [{:source-table $$products
+                                     :alias        "Products"
+                                     :condition    [:=
+                                                    [:field
+                                                     %products.category
+                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                      :source-field %product_id}]
+                                                    &Products.products.category]
+                                     :fields       :none}]
+                     :fields       [[:field
+                                     %products.category
+                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                      :source-field %product_id}]]})
+                  (add-implicit-joins
+                   (mt/mbql-query orders
+                     {:source-query {:source-table $$orders
+                                     :breakout     [$product_id->products.category]
+                                     :aggregation  [[:count]]}
+                      :joins        [{:source-table $$products
+                                      :alias        "Products"
+                                      :condition    [:=
+                                                     $product_id->products.category
+                                                     &Products.products.category]
+                                      :fields       :none}]
+                      :fields       [$product_id->products.category]})))))))

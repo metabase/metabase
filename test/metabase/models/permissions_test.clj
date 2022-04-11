@@ -14,45 +14,65 @@
 
 ;;; ----------------------------------------------- valid-path? -----------------------------------------------
 
+(def ^:private valid-paths
+  ["/db/1/"
+   "/db/1/native/"
+   "/db/1/schema/"
+   "/db/1/schema/public/"
+   "/db/1/schema/PUBLIC/"
+   "/db/1/schema//"
+   "/db/1/schema/1234/"
+   "/db/1/schema/public/table/1/"
+   "/db/1/schema/PUBLIC/table/1/"
+   "/db/1/schema//table/1/"
+   "/db/1/schema/public/table/1/"
+   "/db/1/schema/PUBLIC/table/1/"
+   "/db/1/schema//table/1/"
+   "/db/1/schema/1234/table/1/"
+   "/db/1/schema/PUBLIC/table/1/query/"
+   "/db/1/schema/PUBLIC/table/1/query/segmented/"
+   ;; block permissions
+   "/block/db/1/"
+   "/block/db/1000/"
+   ;; download permissions
+   "/download/db/1/"
+   "/download/limited/db/1/"
+   "/download/db/1/native/"
+   "/download/limited/db/1/native/"
+   "/download/db/1/schema/PUBLIC/"
+   "/download/limited/db/1/schema/PUBLIC/"
+   "/download/db/1/schema/PUBLIC/table/1/"
+   "/download/limited/db/1/schema/PUBLIC/table/1/"
+   ;; data model permissions
+   "/data-model/db/1/"
+   "/data-model/db/1/schema/PUBLIC/"
+   "/data-model/db/1/schema/PUBLIC/table/1/"
+   ;; db details permissions
+   "/details/db/1/"
+   ;; full admin (everything) root permissions
+   "/"])
+
+(def ^:private valid-paths-with-slashes
+  [;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+   "/db/16/schema/COMPANY-NET\\\\john.doe/"
+   ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
+   "/db/16/schema/COMPANY-NET\\/john.doe/"
+   ;; my\schema should get escaped to my\\schema
+   "/db/1/schema/my\\\\schema/table/1/"
+   ;; my\\schema should get escaped to my\\\\schema
+   "/db/1/schema/my\\\\\\\\schema/table/1/"
+   ;; my/schema should get escaped to my\/schema
+   "/db/1/schema/my\\/schema/table/1/"])
+
 (deftest valid-path-test
   (testing "valid paths"
-    (doseq [path
-            ["/db/1/"
-             "/db/1/native/"
-             "/db/1/schema/"
-             "/db/1/schema/public/"
-             "/db/1/schema/PUBLIC/"
-             "/db/1/schema//"
-             "/db/1/schema/1234/"
-             "/db/1/schema/public/table/1/"
-             "/db/1/schema/PUBLIC/table/1/"
-             "/db/1/schema//table/1/"
-             "/db/1/schema/public/table/1/"
-             "/db/1/schema/PUBLIC/table/1/"
-             "/db/1/schema//table/1/"
-             "/db/1/schema/1234/table/1/"
-             "/db/1/schema/PUBLIC/table/1/query/"
-             "/db/1/schema/PUBLIC/table/1/query/segmented/"
-             ;; block permissions
-             "/block/db/1/"
-             "/block/db/1000/"
-             ;; full admin (everything) root permissions
-             "/"]]
+    (doseq [path valid-paths]
       (testing (pr-str path)
         (is (= true
                (perms/valid-path? path)))))
 
     (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
-      (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
-                    "/db/16/schema/COMPANY-NET\\\\john.doe/"
-                    ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
-                    "/db/16/schema/COMPANY-NET\\/john.doe/"
-                    ;; my\schema should get escaped to my\\schema
-                    "/db/1/schema/my\\\\schema/table/1/"
-                    ;; my\\schema should get escaped to my\\\\schema
-                    "/db/1/schema/my\\\\\\\\schema/table/1/"
-                    ;; my/schema should get escaped to my\/schema
-                    "/db/1/schema/my\\/schema/table/1/"]]
+      (doseq [path valid-paths-with-slashes]
         (testing (pr-str path)
           (is (= true
                  (perms/valid-path? path)))))))
@@ -156,7 +176,14 @@
               "/block/db/1/schema/PUBLIC/"
               "/block/db/1/schema/PUBLIC/table/"
               "/block/db/1/schema/PUBLIC/table/2/"
-              "/block/collection/1/"]}]
+              "/block/collection/1/"]
+
+             "invalid download permissions"
+             ["/download/"
+              "/download/limited/"
+              "/download/db/1/schema/PUBLIC/table/1/query/"
+              "/download/db/1/schema/PUBLIC/table/1/query/segmented/"]}]
+
       (testing reason
         (doseq [path paths]
           (testing (str "\n" (pr-str path))
@@ -165,17 +192,53 @@
 
 (deftest valid-path-backslashes-test
   (testing "Only even numbers of backslashes should be valid (backslash must be escaped by another backslash)"
-    (doseq [[num-backslashes expected schema-name] [[0 true "PUBLIC"]
-                                                    [0 true  "my_schema"]
-                                                    [2 false "my\\schema"]
-                                                    [4 true  "my\\\\schema"]
-                                                    [6 false "my\\\\\\schema"]
-                                                    [8 true  "my\\\\\\\\schema"]]]
+    (doseq [[_num-backslashes expected schema-name] [[0 true "PUBLIC"]
+                                                     [0 true  "my_schema"]
+                                                     [2 false "my\\schema"]
+                                                     [4 true  "my\\\\schema"]
+                                                     [6 false "my\\\\\\schema"]
+                                                     [8 true  "my\\\\\\\\schema"]]]
       (doseq [path [(format "/db/1/schema/%s/table/2/" schema-name)
                     (format "/db/1/schema/%s/table/2/query/" schema-name)]]
         (testing (str "\n" (pr-str path))
           (is (= expected
                  (perms/valid-path? path))))))))
+
+(deftest valid-path-format-test
+  (testing "known valid paths"
+    (doseq [path (concat valid-paths valid-paths-with-slashes)]
+      (testing (pr-str path)
+        (is (= true
+               (perms/valid-path-format? path))))))
+
+  (testing "unknown paths with valid path format"
+    (doseq [path ["/asdf/"
+                  "/asdf/ghjk/"
+                  "/asdf-ghjk/"
+                  "/adsf//"
+                  "/asdf/1/ghkl/"
+                  "/asdf\\/ghkl/"
+                  "/asdf\\\\ghkl/"]]
+      (testing (pr-str path)
+        (is (= true
+               (perms/valid-path-format? path))))))
+
+  (testing "invalid paths"
+    (doseq [path
+            [""
+             "/asdf"
+             "asdf/"
+             "123"
+             nil
+             {}
+             []
+             true
+             false
+             (keyword "/asdf/")
+             1234]]
+      (testing (pr-str path)
+        (is (= false
+               (perms/valid-path-format? path)))))))
 
 
 ;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
@@ -426,6 +489,26 @@
              (perms/set-has-partial-permissions? perms path))))))
 
 
+;;; -------------------------------------- set-has-general-permission-of-type? ---------------------------------------
+
+(deftest set-has-general-permission-of-type?-test
+  (doseq [[expected inputs]
+          {true
+           [[#{"/"}                       :subscription]
+            [#{"/"}                       :monitoring]
+            [#{"/"}                       :setting]
+            [#{"/general/subscription/"}  :subscription]
+            [#{"/general/monitoring/"}    :monitoring]
+            [#{"/general/setting/"}       :setting]]
+           false
+           [[#{"/general/subscription/"}  :monitoring]
+            [#{"/general/subscription/"}  :setting]
+            [#{"/general/monitoring/"}    :subscription]]}
+          [perms path] inputs]
+    (testing (pr-str (list 'set-has-general-permission-of-type? perms path))
+      (is (= expected
+             (perms/set-has-general-permission-of-type? perms path))))))
+
 ;;; --------------------------------------- set-has-full-permissions-for-set? ----------------------------------------
 
 (deftest set-has-full-permissions-for-set?-test
@@ -447,18 +530,7 @@
           [perms paths] inputs]
     (testing (pr-str (list 'set-has-full-permissions-for-set? perms paths))
       (is (= expected
-             (perms/set-has-full-permissions-for-set? perms paths)))))
-
-  (testing "If either set is invalid, it should throw an exception"
-    (doseq [[perms paths] [[#{"/" "/toucans/"}           #{"/db/1/"}]
-                           [#{"/db/1/" "//"}             #{"/db/1/"}]
-                           [#{"/db/1/table/2/" "/db/1/"} #{"/db/1/"}]
-                           [#{"/db/1/"}                  #{"/db/1/native/schema/"}]
-                           [#{"/db/1/"}                  #{"/db/1/schema/public/" "/kanye/"}]
-                           [#{"/db/1/"}                  #{"/ocean/" "/db/1/schema/public/table/1/"}]]]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (perms/set-has-full-permissions-for-set? perms paths))))))
+             (perms/set-has-full-permissions-for-set? perms paths))))))
 
 
 ;;; -------------------------------------- set-has-partial-permissions-for-set? --------------------------------------
@@ -546,7 +618,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- test-data-graph [group]
-  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))
+  (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))
 
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
@@ -559,7 +631,7 @@
       (testing "after"
         ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are
         ;; retained (#3888)
-        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas "PUBLIC" (mt/id :categories)] :all)
+        (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas "PUBLIC" (mt/id :categories)] :all)
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
@@ -569,21 +641,11 @@
                     Database         [database]
                     Table            [table    {:db_id (u/the-id database)}]]
       ;; try to grant idential permissions to the table twice
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
-      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})
       ;; now fetch the perms that have been granted
       (is (= {"" {(u/the-id table) :all}}
-             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :schemas]))))))
-
-(deftest metabot-graph-test
-  (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
-                "only have Collection permissions")
-    ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
-    (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
-      (mt/with-temp* [Database    [db]
-                      Permissions [perms {:group_id (u/the-id (group/metabot)), :object (perms/data-perms-path db)}]]
-        (is (= false
-               (contains? (:groups (perms/data-perms-graph)) (u/the-id (group/metabot)))))))))
+             (get-in (perms/data-perms-graph) [:groups (u/the-id group) (u/the-id database) :data :schemas]))))))
 
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
@@ -598,7 +660,7 @@
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :schemas]
+      (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas]
                                       {"PUBLIC"
                                        {(mt/id :venues)
                                         {:read :all, :query :segmented}}})
@@ -609,9 +671,13 @@
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
-      (let [{:keys [group_id]} (db/select-one Permissions {:object "/"})]
-        (is (= {db-id {:native  :write
-                       :schemas :all}}
+      (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
+        (is (= {db-id {:data       {:native  :write
+                                    :schemas :all}
+                       :download   {:native  :full
+                                    :schemas :full}
+                       :data-model {:schemas :all}
+                       :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
                    (select-keys [db-id]))))))))
@@ -620,7 +686,7 @@
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
       (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id]]
+      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
         (letfn [(perms []
                   (get-in (perms/data-perms-graph) ks))
                 (set-perms! [new-perms]
@@ -696,7 +762,9 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions :group_id group-id))]
+              (db/select-field :object Permissions {:where [:and
+                                                            [:like :object "/collection/%"]
+                                                            [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
@@ -723,3 +791,20 @@
         (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/"}
                (perms)))))))
+
+(deftest grant-revoke-general-permissions-test
+  (mt/with-temp PermissionsGroup [{group-id :id}]
+    (letfn [(perms []
+              (db/select-field :object Permissions
+                               {:where [:and [:= :group_id group-id]
+                                             [:like :object "/general/%"]]}))]
+      (is (= nil (perms)))
+      (doseq [[perm-type perm-path] [[:subscription "/general/subscription/"]
+                                     [:monitoring "/general/monitoring/"]
+                                     [:setting "/general/setting/"]]]
+        (testing (format "Able to grant `%s` permission" (name perm-type))
+          (perms/grant-general-permissions! group-id perm-type)
+          (is (= (perms)  #{perm-path})))
+        (testing (format "Able to revoke `%s` permission" (name perm-type))
+          (perms/revoke-general-permissions! group-id perm-type)
+          (is (not (= (perms) #{perm-path}))))))))

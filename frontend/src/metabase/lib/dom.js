@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { isCypressActive } from "metabase/env";
+import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = () =>
@@ -299,6 +300,11 @@ export function open(
   }
 }
 
+export function openInBlankWindow(url) {
+  const siteUrl = MetabaseSettings.get("site-url");
+  clickLink(url.startsWith("/") ? siteUrl + url : url, true);
+}
+
 function clickLink(url, blank = false) {
   const a = document.createElement("a");
   a.style.display = "none";
@@ -431,5 +437,15 @@ export function isEventOverElement(event, element) {
 
 export function isReducedMotionPreferred() {
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  return mediaQuery && mediaQuery.matches;
+}
+
+export function getMainElement() {
+  const [main] = document.getElementsByTagName("main");
+  return main;
+}
+
+export function isSmallScreen() {
+  const mediaQuery = window.matchMedia("(max-width: 40em)");
   return mediaQuery && mediaQuery.matches;
 }

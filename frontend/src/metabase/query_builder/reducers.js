@@ -1,6 +1,7 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   RESET_QB,
@@ -39,6 +40,8 @@ import {
   CANCEL_DATASET_CHANGES,
   SET_RESULTS_METADATA,
   SET_METADATA_DIFF,
+  ZOOM_IN_ROW,
+  RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -52,6 +55,15 @@ import {
   onCloseQuestionDetails,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
+  onOpenTimelines,
+  onCloseTimelines,
+  SHOW_TIMELINES,
+  HIDE_TIMELINES,
+  SELECT_TIMELINE_EVENTS,
+  DESELECT_TIMELINE_EVENTS,
+  SET_DOCUMENT_TITLE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -65,6 +77,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
@@ -74,12 +87,19 @@ const DEFAULT_UI_CONTROLS = {
   datasetEditorTab: "query", // "query" / "metadata"
 };
 
+const DEFAULT_LOADING_CONTROLS = {
+  showLoadCompleteFavicon: false,
+  documentTitle: "",
+  timeoutId: "",
+};
+
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -113,12 +133,14 @@ export const uiControls = handleActions(
     },
 
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...DEFAULT_UI_CONTROLS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        ...payload.uiControls,
-      }),
+      next: (state, { payload }) => {
+        return {
+          ...state,
+          ...DEFAULT_UI_CONTROLS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          ...payload.uiControls,
+        };
+      },
     },
 
     [TOGGLE_DATA_REFERENCE]: {
@@ -265,12 +287,53 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: "closed",
     }),
+    [onOpenTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingTimelineSidebar: true,
+    }),
+    [onCloseTimelines]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
     [onCloseSidebars]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
   },
   DEFAULT_UI_CONTROLS,
+);
+
+export const loadingControls = handleActions(
+  {
+    [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
+      ...state,
+      documentTitle: payload,
+    }),
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
+      ...state,
+      showLoadCompleteFavicon: payload,
+    }),
+    [SET_DOCUMENT_TITLE_TIMEOUT_ID]: (state, { payload }) => ({
+      ...state,
+      timeoutId: payload,
+    }),
+  },
+  DEFAULT_LOADING_CONTROLS,
+);
+
+export const zoomedRowObjectId = handleActions(
+  {
+    [INITIALIZE_QB]: {
+      next: (state, { payload }) => payload?.objectId ?? null,
+    },
+    [ZOOM_IN_ROW]: {
+      next: (state, { payload }) => payload.objectId,
+    },
+    [RESET_ROW_ZOOM]: { next: () => null },
+    [RESET_QB]: { next: () => null },
+  },
+  null,
 );
 
 // the card that is actively being worked on
@@ -465,4 +528,41 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const visibleTimelineIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SHOW_TIMELINES]: {
+      next: (state, { payload: timelines }) => [
+        ...state,
+        ...timelines.map(t => t.id),
+      ],
+    },
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.map(t => t.id)),
+    },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
+);
+
+export const selectedTimelineEventIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [SELECT_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [DESELECT_TIMELINE_EVENTS]: {
+      next: () => [],
+    },
+    [HIDE_TIMELINES]: {
+      next: (state, { payload: timelines }) =>
+        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
+    },
+    [onCloseTimelines]: { next: () => [] },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
 );

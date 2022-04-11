@@ -10,7 +10,7 @@ import { isCypressActive } from "metabase/env";
 
 // After adding throttling for resize re-renders, our Cypress tests became flaky
 // due to queried DOM elements are getting detached after re-renders
-const throttleDuration = isCypressActive ? 0 : 500;
+const throttleDuration = isCypressActive ? 0 : 300;
 
 export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {

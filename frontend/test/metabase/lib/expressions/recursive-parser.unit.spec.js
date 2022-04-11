@@ -5,6 +5,7 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
   const process = (source, type) => resolve(parse(source), type, mockResolve);
   const filter = expr => process(expr, "boolean");
+  const aggregation = expr => process(expr, "aggregation");
 
   // handy references
   const X = ["segment", "X"];
@@ -28,6 +29,11 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   it("should parse field references", () => {
     expect(process("[Rating]")).toEqual(["dimension", "Rating"]);
     expect(process("Discount")).toEqual(["dimension", "Discount"]);
+  });
+
+  it("should parse bracketed field references (with escaping)", () => {
+    expect(process("[Sale \\[2022\\]]")).toEqual(["dimension", "Sale [2022]"]);
+    expect(process("[Crazy\\test]")).toEqual(["dimension", "Crazy\\test"]);
   });
 
   it("should parse unary expressions", () => {
@@ -147,6 +153,11 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   it("should honor boolean precedence", () => {
     expect(process("NOT A OR X")).toEqual(["or", ["not", A], X]);
     expect(process("A and not X")).toEqual(["and", A, ["not", X]]);
+  });
+
+  it("should detect aggregation functions with no argument", () => {
+    expect(aggregation("COUNT/2")).toEqual(["/", ["count"], 2]);
+    expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
   });
 
   it("should resolve segments", () => {

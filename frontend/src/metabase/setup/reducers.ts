@@ -5,7 +5,6 @@ import {
   SET_USER,
   SET_DATABASE,
   SET_TRACKING,
-  LOAD_USER_DEFAULTS,
   SET_INVITE,
 } from "./actions";
 import { WELCOME_STEP } from "./constants";

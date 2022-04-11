@@ -6,6 +6,7 @@ import {
   saveDashboard,
   setFilter,
   checkFilterLabelAndValue,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -15,7 +16,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
 
     editDashboard();
     setFilter("ID");

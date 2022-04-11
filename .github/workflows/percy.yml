@@ -16,7 +16,7 @@ on:
 jobs:
   build:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 60
+    timeout-minutes: 25
     strategy:
       matrix:
         edition: [oss]
@@ -24,7 +24,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -32,41 +32,21 @@ jobs:
 
       - run: ./bin/build
 
-      - name: Mark with the commit hash
-        run: git rev-parse --short HEAD > COMMIT-ID
-      - name: Calculate SHA256 checksum
-        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
-      - name: Upload JARs as artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: metabase-${{ matrix.edition }}-uberjar
-          path: |
-            ./target/uberjar/metabase.jar
-            ./COMMIT-ID
-            ./SHA256.sum
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
 
   percy:
-    runs-on: ubuntu-20.04
     timeout-minutes: 30
+    runs-on: buildjet-4vcpu-ubuntu-2004
     needs: build
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-
-      - name: Get Cypress cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/Cypress
-          key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
-      - name: Ensure that Cypress is ready
-        run: |
-          yarn cypress install
-          yarn cypress cache path
-          yarn cypress cache list
-          yarn cypress verify
+      - name: Prepare cypress environment
+        uses: ./.github/actions/prepare-cypress
 
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
@@ -77,7 +57,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

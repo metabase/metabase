@@ -3,6 +3,8 @@ import {
   changeBinningForDimension,
   getDimensionByName,
   getRemoveDimensionButton,
+  summarize,
+  visitQuestion,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > summarize sidebar", () => {
@@ -12,8 +14,8 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.visit("/question/1");
-    cy.findByText("Summarize").click();
+    visitQuestion(1);
+    summarize();
   });
 
   it("removing all aggregations should show add aggregation button with label", () => {
@@ -34,9 +36,8 @@ describe("scenarios > question > summarize sidebar", () => {
       .should("have.attr", "aria-selected", "true");
 
     cy.button("Done").click();
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+
+    summarize();
 
     // Removed from the unpinned list
     cy.findByTestId("unpinned-dimensions").within(() => {
@@ -65,9 +66,8 @@ describe("scenarios > question > summarize sidebar", () => {
     getDimensionByName({ name: "State" }).click();
 
     cy.button("Done").click();
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+
+    summarize();
 
     cy.findByTestId("pinned-dimensions").within(() => {
       getDimensionByName({ name: "People → State" }).should(

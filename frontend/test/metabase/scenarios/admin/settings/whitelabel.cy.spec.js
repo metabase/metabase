@@ -1,7 +1,8 @@
 import {
   restore,
   openOrdersTable,
-  describeWithToken,
+  describeEE,
+  summarize,
 } from "__support__/e2e/cypress";
 
 // Define colors that we use for whitelabeling
@@ -40,7 +41,7 @@ function checkLogo() {
   );
 }
 
-describeWithToken("formatting > whitelabel", () => {
+describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -156,9 +157,7 @@ describeWithToken("formatting > whitelabel", () => {
       // *** Test should pass when issue #470 is resolved
       cy.signInAsNormalUser();
       openOrdersTable();
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      summarize();
       cy.findByText("Price").click();
       cy.findByText("Done").click();
 

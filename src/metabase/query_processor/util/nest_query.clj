@@ -33,9 +33,9 @@
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
                  (binding [api/*current-user-id* nil]
-                   ((resolve 'metabase.query-processor/query->preprocessed) {:database (u/the-id (qp.store/database))
-                                                                             :type     :query
-                                                                             :query    source}))
+                   ((resolve 'metabase.query-processor/preprocess) {:database (u/the-id (qp.store/database))
+                                                                    :type     :query
+                                                                    :query    source}))
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)

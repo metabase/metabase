@@ -10,6 +10,7 @@ import {
   InfoIcon,
   InputContainer,
   FieldContainer,
+  InfoLabel,
 } from "./FormField.styled";
 import { FormFieldDecription } from "./FormFieldDescription";
 
@@ -56,6 +57,8 @@ function FormField(props) {
       (formField && formField.descriptionPosition) ||
       "top",
     info = formField && formField.info,
+    infoLabel = formField && formField.infoLabel,
+    infoLabelTooltip = formField && formField.infoLabelTooltip,
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
@@ -100,7 +103,12 @@ function FormField(props) {
             )}
             {info && (
               <Tooltip tooltip={info}>
-                <InfoIcon />
+                <InfoIcon name="info" size={12} />
+              </Tooltip>
+            )}
+            {infoLabel && (
+              <Tooltip tooltip={infoLabelTooltip} maxWidth="100%">
+                <InfoLabel>{infoLabel}</InfoLabel>
               </Tooltip>
             )}
           </FieldRow>

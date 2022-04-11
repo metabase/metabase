@@ -215,7 +215,15 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))))
+                  (map #(dissoc % :is_qbnewb :last_login)))))))
+
+  (testing "GET /api/user?include_deactivated=false should return only active users"
+    (is (= (->> [{:email "crowberto@metabase.com"}
+                 {:email "lucky@metabase.com"}
+                 {:email "rasta@metabase.com"}])
+           (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
+                (filter mt/test-user?)
+                (map #(select-keys % [:email])))))))
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
@@ -245,11 +253,12 @@
                    :common_name             "Rasta Toucan"
                    :group_ids               [(u/the-id (group/all-users))]
                    :personal_collection_id  true
+                   :is_installer (= 1 (mt/user->id :rasta))
                    :has_invited_second_user (= 1 (mt/user->id :rasta))})
-                 (dissoc :is_qbnewb :last_login))
+                 (dissoc :is_qbnewb :last_login :has_question_and_dashboard))
              (-> (mt/user-http-request :rasta :get 200 "user/current")
                  mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :last_login)))))))
+                 (dissoc :is_qbnewb :first_login :last_login :has_question_and_dashboard)))))))
 
 (deftest get-user-test
   (testing "GET /api/user/:id"

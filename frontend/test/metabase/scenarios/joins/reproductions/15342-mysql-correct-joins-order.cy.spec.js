@@ -1,4 +1,9 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visualize,
+  startNewQuestion,
+} from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -11,8 +16,7 @@ describe.skip("issue 15342", () => {
   });
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText(MYSQL_DB_NAME).click();
     cy.findByText("People").click();
 

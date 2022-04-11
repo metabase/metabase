@@ -245,7 +245,7 @@
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
-  [permissions-set :- #{perms/Path}]
+  [permissions-set]
   (if (contains? permissions-set "/")
     :all
     (set
@@ -634,7 +634,6 @@
       :id                (first (location-path->ids (:location collection)))
       :personal_owner_id [:not= nil]))))
 
-
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
@@ -936,19 +935,36 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn format-personal-collection-name
-  "Constructs the personal collection name from user name."
-  [first-name last-name]
-  (tru "{0} {1}''s Personal Collection" first-name last-name))
+(s/defn format-personal-collection-name :- su/NonBlankString
+  "Constructs the personal collection name from user name.
+  When displaying to users we'll tranlsate it to user's locale,
+  but to keeps things consistent in the database, we'll store the name in site's locale.
 
-(s/defn ^:private user->personal-collection-name :- su/NonBlankString
+  Practically, use `user-or-site` = `:site` when insert or update the name in database,
+  and `:user` when we need the name for displaying purposes"
+  [first-name last-name user-or-site]
+  {:pre [(#{:user :site} user-or-site)]}
+  (if (= :user user-or-site)
+    (tru "{0} {1}''s Personal Collection" first-name last-name)
+    (trs "{0} {1}''s Personal Collection" first-name last-name)))
+
+(s/defn user->personal-collection-name :- su/NonBlankString
   "Come up with a nice name for the Personal Collection for `user-or-id`."
-  [user-or-id]
-  ;; TODO - we currently enforce a unique constraint on Collection names... what are we going to do if two Users have
-  ;; the same first & last name! This will *ruin* their lives :(
+  [user-or-id user-or-site]
   (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
                                                          :id (u/the-id user-or-id))]
-    (format-personal-collection-name first-name last-name)))
+    (format-personal-collection-name first-name last-name user-or-site)))
+
+(defn personal-collection-with-ui-details
+  "For Personal collection, we make sure the collection's name and slug is translated to user's locale
+  This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
+  [{:keys [personal_owner_id] :as collection}]
+  (if-not personal_owner_id
+    collection
+    (let [collection-name (user->personal-collection-name personal_owner_id :user)]
+      (assoc collection
+             :name collection-name
+             :slug (u/slugify collection-name)))))
 
 (s/defn user->existing-personal-collection :- (s/maybe CollectionInstance)
   "For a `user-or-id`, return their personal Collection, if it already exists.
@@ -963,7 +979,7 @@
   (or (user->existing-personal-collection user-or-id)
       (try
         (db/insert! Collection
-          :name              (user->personal-collection-name user-or-id)
+          :name              (user->personal-collection-name user-or-id :site)
           :personal_owner_id (u/the-id user-or-id)
           ;; a nice slate blue color
           :color             "#31698A")

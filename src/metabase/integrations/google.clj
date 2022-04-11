@@ -24,7 +24,7 @@
   (deferred-tru "Client ID for Google Sign-In. If this is set, Google Sign-In is considered to be enabled.")
   :visibility :public
   :setter (fn [client-id]
-            (if client-id
+            (if (seq client-id)
               (let [trimmed-client-id (str/trim client-id)]
                 (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
                   (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")

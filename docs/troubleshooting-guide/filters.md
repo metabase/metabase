@@ -57,8 +57,8 @@ If a filter that used to work no longer seems to, or seems to eliminate all of t
 3. Modify the question to match the current database schema.
 
 [field-filter]: /learn/sql-questions/field-filters.html
-[filter-widget-gloss]: /glossary.html#filter_widget
-[linked-filter-gloss]: /glossary.html#linked_filter
+[filter-widget-gloss]: /glossary/filter_widget
+[linked-filter-gloss]: /glossary/linked_filter
 [sql-variable]: /learn/sql-questions/sql-variables.html
 [sync-scan]: ./sync-fingerprint-scan.html
 [troubleshoot-linked-filters]: ./linked-filters.html

@@ -99,24 +99,24 @@ export const getXTicksDimensions = (
 };
 
 export const getXTickProps = (
-  props: TickRendererProps,
+  { x, y, formattedValue, ...props }: TickRendererProps,
   tickFontSize: number,
   truncateToWidth: number,
   shouldRotate?: boolean,
-): TickRendererProps => {
+): Omit<TickRendererProps, "formattedValue"> => {
   const value =
     truncateToWidth != null
-      ? truncateText(props.formattedValue || "", truncateToWidth, tickFontSize)
-      : props.formattedValue;
+      ? truncateText(formattedValue || "", truncateToWidth, tickFontSize)
+      : formattedValue;
 
   const textBaseline = Math.floor(tickFontSize / 2);
   const transform = shouldRotate
-    ? `rotate(-45, ${props.x} ${props.y}) translate(${textBaseline}, 0)`
+    ? `rotate(-45, ${x} ${y}) translate(${textBaseline}, 0)`
     : undefined;
 
   const textAnchor = shouldRotate ? "end" : "middle";
 
-  return { ...props, transform, children: value, textAnchor };
+  return { x, y, ...props, transform, children: value, textAnchor };
 };
 
 export const getDistinctXValuesCount = (series: Series[]) =>

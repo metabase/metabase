@@ -11,8 +11,8 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
+                                     PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -281,18 +281,17 @@
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
-(deftest filter-by-fav-test
-  (testing "Filter by `fav`"
+(deftest filter-by-bookmarked-test
+  (testing "Filter by `bookmarked`"
     (mt/with-temp* [Card         [card-1 {:name "Card 1"}]
                     Card         [card-2 {:name "Card 2"}]
                     Card         [card-3 {:name "Card 3"}]
-                    CardFavorite [_ {:card_id (u/the-id card-1), :owner_id (mt/user->id :rasta)}]
-                    CardFavorite [_ {:card_id (u/the-id card-2), :owner_id (mt/user->id :crowberto)}]]
+                    CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
+                    CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1", :favorite true}]
-               (for [card (mt/user-http-request :rasta :get 200 "card", :f :fav)]
-                 (select-keys card [:name :favorite]))))))))
-
+        (is (= [{:name "Card 1"}]
+               (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
+                 (select-keys card [:name]))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
@@ -666,10 +665,10 @@
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]
-                          Revision [_ {:model "Card"
+                          Revision [_ {:model    "Card"
                                        :model_id (:id card)
-                                       :user_id user-id
-                                       :object (revision/serialize-instance card (:id card) card)}]]
+                                       :user_id  user-id
+                                       :object   (revision/serialize-instance card (:id card) card)}]]
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps
@@ -678,12 +677,12 @@
           (letfn [(clean [mr] (-> mr
                                   (update :user #(select-keys % [:id]))
                                   (select-keys [:status :text :user])))]
-            (mt/with-temp* [ModerationReview [review {:moderated_item_id (:id card)
+            (mt/with-temp* [ModerationReview [review {:moderated_item_id   (:id card)
                                                       :moderated_item_type "card"
-                                                      :moderator_id (mt/user->id :rasta)
-                                                      :most_recent true
-                                                      :status "verified"
-                                                      :text "lookin good"}]]
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :most_recent         true
+                                                      :status              "verified"
+                                                      :text                "lookin good"}]]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -1225,52 +1224,125 @@
   (is (= "Not found."
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   FAVORITING                                                   |
+;;; |                                                  Timelines                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Helper Functions
-(defn- fave? [card]
-  (db/exists? CardFavorite, :card_id (u/the-id card), :owner_id (mt/user->id :rasta)))
+(defn- timelines-request
+  [card include-events?]
+  (if include-events?
+    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines") :include "events")
+    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines"))))
 
-(defn- fave! [card]
-  (mt/user-http-request :rasta :post 200 (format "card/%d/favorite" (u/the-id card))))
+(defn- timelines-range-request
+  [card {:keys [start end]}]
+  (apply mt/user-http-request (concat [:rasta :get 200
+                                       (str "card/" (u/the-id card) "/timelines")
+                                       :include "events"]
+                                      (when start [:start start])
+                                      (when end [:end end]))))
 
-(defn- unfave! [card]
-  (mt/user-http-request :rasta :delete 204 (format "card/%d/favorite" (u/the-id card))))
+(defn- timeline-names [timelines]
+  (->> timelines (map :name) set))
 
-;; ## GET /api/card/:id/favorite
-(deftest can-we-see-if-a-card-is-a-favorite--
-  (is (= false
-         (mt/with-temp Card [card]
-           (with-cards-in-readable-collection card
-             (fave? card))))))
+(defn- event-names [timelines]
+  (->> timelines (mapcat :events) (map :name) set))
 
-(deftest favorite-test
-  (testing "Can we favorite a Card?"
-    (testing "POST /api/card/:id/favorite"
-      (mt/with-temp Card [card]
-        (with-cards-in-readable-collection card
-          (is (= false
-                 (fave? card)))
-          (fave! card)
-          (is (= true
-                 (fave? card))))))))
+(deftest timelines-test
+  (testing "GET /api/card/:id/timelines"
+    (mt/with-temp* [Collection [coll-a {:name "Collection A"}]
+                    Collection [coll-b {:name "Collection B"}]
+                    Collection [coll-c {:name "Collection C"}]
+                    Card [card-a {:name          "Card A"
+                                  :collection_id (u/the-id coll-a)}]
+                    Card [card-b {:name          "Card B"
+                                  :collection_id (u/the-id coll-b)}]
+                    Card [card-c {:name          "Card C"
+                                  :collection_id (u/the-id coll-c)}]
+                    Timeline [tl-a {:name          "Timeline A"
+                                    :collection_id (u/the-id coll-a)}]
+                    Timeline [tl-b {:name          "Timeline B"
+                                    :collection_id (u/the-id coll-b)}]
+                    Timeline [tl-b-old {:name          "Timeline B-old"
+                                        :collection_id (u/the-id coll-b)
+                                        :archived      true}]
+                    Timeline [tl-c {:name          "Timeline C"
+                                    :collection_id (u/the-id coll-c)}]
+                    TimelineEvent [event-aa {:name        "event-aa"
+                                             :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [event-ab {:name        "event-ab"
+                                             :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [event-ba {:name        "event-ba"
+                                             :timeline_id (u/the-id tl-b)}]
+                    TimelineEvent [event-bb {:name        "event-bb"
+                                             :timeline_id (u/the-id tl-b)
+                                             :archived    true}]]
+      (testing "Timelines in the collection of the card are returned"
+        (is (= #{"Timeline A"}
+               (timeline-names (timelines-request card-a false)))))
+      (testing "Timelines in the collection have a hydrated `:collection` key"
+        (is (= #{(u/the-id coll-a)}
+               (->> (timelines-request card-a false)
+                    (map #(get-in % [:collection :id]))
+                    set))))
+      (testing "check that `:can_write` key is hydrated"
+        (is (every?
+             #(contains? % :can_write)
+             (map :collection (timelines-request card-a false)))))
+      (testing "Only un-archived timelines in the collection of the card are returned"
+        (is (= #{"Timeline B"}
+               (timeline-names (timelines-request card-b false)))))
+      (testing "Timelines have events when `include=events` is passed"
+        (is (= #{"event-aa" "event-ab"}
+               (event-names (timelines-request card-a true)))))
+      (testing "Timelines have only un-archived events when `include=events` is passed"
+        (is (= #{"event-ba"}
+               (event-names (timelines-request card-b true)))))
+      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
+        (is (= '()
+               (->> (timelines-request card-c true) first :events)))))))
 
-(deftest unfavorite-test
-  (testing "Can we unfavorite a Card?"
-    (testing "DELETE /api/card/:id/favorite"
-      (mt/with-temp Card [card]
-        (with-cards-in-readable-collection card
-          (is (= false
-                 (fave? card)))
-          (fave! card)
-          (is (= true
-                 (fave? card)))
-          (unfave! card)
-          (is (= false
-                 (fave? card))))))))
+(deftest timelines-range-test
+  (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
+    (mt/with-temp* [Collection [collection {:name "Collection"}]
+                    Card [card {:name          "Card A"
+                                :collection_id (u/the-id collection)}]
+                    Timeline [tl-a {:name          "Timeline A"
+                                    :collection_id (u/the-id collection)}]
+                    ;; the temp defaults set {:time_matters true}
+                    TimelineEvent [event-a {:name        "event-a"
+                                            :timeline_id (u/the-id tl-a)
+                                            :timestamp   #t "2020-01-01T10:00:00.0Z"}]
+                    TimelineEvent [event-b {:name        "event-b"
+                                            :timeline_id (u/the-id tl-a)
+                                            :timestamp   #t "2021-01-01T10:00:00.0Z"}]
+                    TimelineEvent [event-c {:name        "event-c"
+                                            :timeline_id (u/the-id tl-a)
+                                            :timestamp   #t "2022-01-01T10:00:00.0Z"}]
+                    TimelineEvent [event-d {:name        "event-d"
+                                            :timeline_id (u/the-id tl-a)
+                                            :timestamp   #t "2023-01-01T10:00:00.0Z"}]]
+      (testing "Events are properly filtered when given only `start=` parameter"
+        (is (= #{"event-c" "event-d"}
+               (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
+      (testing "Events are properly filtered when given only `end=` parameter"
+        (is (= #{"event-a" "event-b" "event-c"}
+               (event-names (timelines-range-request card {:end "2022-01-01T10:00:00.0Z"})))))
+      (testing "Events are properly filtered when given `start=` and `end=` parameters"
+        (is (= #{"event-b" "event-c"}
+               (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
+                                                           :end   "2022-12-01T10:00:00.0Z"})))))
+      (mt/with-temp TimelineEvent [event-a2 {:name         "event-a2"
+                                             :timeline_id  (u/the-id tl-a)
+                                             :timestamp    #t "2020-01-01T10:00:00.0Z"
+                                             :time_matters false}]
+        (testing "Events are properly filtered considering the `time_matters` state."
+          ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
+          ;; time_matters = false effectively means "We care only about the DATE of this event", so
+          ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
+          (is (= #{"event-a2"}
+                 (event-names (timelines-range-request card {:start "2020-01-01T11:00:00.0Z"
+                                                             :end   "2020-12-01T10:00:00.0Z"})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |

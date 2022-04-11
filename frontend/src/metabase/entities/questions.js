@@ -1,31 +1,19 @@
-import { assocIn } from "icepick";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import {
+import Collections, {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import { POST, DELETE } from "metabase/lib/api";
-
 import forms from "./questions/forms";
-
-const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-
-  api: {
-    favorite: POST("/api/card/:id/favorite"),
-    unfavorite: DELETE("/api/card/:id/favorite"),
-  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>
@@ -39,12 +27,24 @@ const Questions = createEntity({
         ),
       ),
 
-    setCollection: ({ id, model }, collection, opts) =>
-      Questions.actions.update(
-        { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, model === "dataset" ? "model" : "question", "moved"),
-      ),
+    setCollection: ({ id, model }, collection, opts) => {
+      return async dispatch => {
+        const result = await dispatch(
+          Questions.actions.update(
+            { id },
+            {
+              collection_id: canonicalCollectionId(collection && collection.id),
+            },
+            undo(opts, model === "dataset" ? "model" : "question", "moved"),
+          ),
+        );
+        dispatch(
+          Collections.actions.fetchList({ tree: true }, { reload: true }),
+        );
+
+        return result;
+      };
+    },
 
     setPinned: ({ id }, pinned, opts) =>
       Questions.actions.update(
@@ -55,16 +55,6 @@ const Questions = createEntity({
         },
         opts,
       ),
-
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Questions.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Questions.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
   },
 
   objectSelectors: {
@@ -77,11 +67,6 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    }
     return state;
   },
 
@@ -119,7 +104,6 @@ function getIcon(question) {
   );
   return {
     name: visualization?.iconName ?? "beaker",
-    color: color("bg-dark"),
   };
 }
 

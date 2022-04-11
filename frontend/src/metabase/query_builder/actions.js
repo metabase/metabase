@@ -1,33 +1,31 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 /*global ace*/
-
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { getIn, assocIn, updateIn, merge } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
-import { setErrorPage } from "metabase/redux/app";
+import { openUrl, setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
-  loadCard,
-  startNewCard,
-  deserializeCardFromUrl,
-  serializeCardForUrl,
   cleanCopyCard,
-  urlForCardState,
+  deserializeCardFromUrl,
+  loadCard,
+  serializeCardForUrl,
+  startNewCard,
 } from "metabase/lib/card";
-import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
@@ -43,30 +41,35 @@ import { normalize } from "cljs/metabase.mbql.js";
 
 import {
   getCard,
-  getQuestion,
-  getOriginalQuestion,
-  getOriginalCard,
-  getIsEditing,
-  getTransformedSeries,
-  getRawSeries,
-  getResultsMetadata,
-  getFirstQueryResult,
-  getIsPreviewing,
-  getTableForeignKeys,
-  getQueryBuilderMode,
-  getPreviousQueryBuilderMode,
   getDatasetEditorTab,
-  getIsShowingTemplateTagsEditor,
+  getFirstQueryResult,
+  getIsEditing,
+  getIsPreviewing,
   getIsRunning,
+  getIsShowingTemplateTagsEditor,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
-  getSnippetCollectionId,
+  getNextRowPKValue,
+  getOriginalCard,
+  getOriginalQuestion,
+  getPreviousQueryBuilderMode,
+  getPreviousRowPKValue,
+  getQueryBuilderMode,
   getQueryResults,
+  getQuestion,
+  getRawSeries,
+  getResultsMetadata,
+  getSnippetCollectionId,
+  getTableForeignKeys,
+  getFetchedTimelines,
+  getTransformedSeries,
+  getZoomedObjectId,
   isBasedOnExistingQuestion,
+  getTimeoutId,
 } from "./selectors";
 import { trackNewQuestionSaved } from "./analytics";
 
-import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
+import { CardApi, DashboardApi, MetabaseApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -84,9 +87,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import {
-  getQueryBuilderModeFromLocation,
-  getPathNameFromQueryBuilderMode,
+  getCurrentQueryParams,
   getNextTemplateTagVisibilityState,
+  getPathNameFromQueryBuilderMode,
+  getQueryBuilderModeFromLocation,
+  getURLForCardState,
 } from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -96,6 +101,26 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
+
+export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
+const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
+
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
+const showLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  () => true,
+);
+const hideLoadingCompleteFavicon = createAction(
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  () => false,
+);
+
+const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
+const LOAD_START_UI_CONTROLS = "metabase/qb/LOAD_START_UI_CONTROLS";
+export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
+  "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
+const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
 
 export const setQueryBuilderMode = (
   queryBuilderMode,
@@ -143,6 +168,9 @@ export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
 
+export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
+export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
+
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
@@ -154,6 +182,24 @@ export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
     dispatch(cancelQuery());
+
+    const zoomedObjectId = getZoomedObjectId(getState());
+    if (zoomedObjectId) {
+      const { locationBeforeTransitions = {} } = getState().routing;
+      const { state, query } = locationBeforeTransitions;
+      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
+
+      if (
+        previouslyZoomedObjectId &&
+        zoomedObjectId !== previouslyZoomedObjectId
+      ) {
+        dispatch(zoomInRow({ objectId: previouslyZoomedObjectId }));
+      } else {
+        dispatch(resetRowZoom());
+      }
+      return;
+    }
+
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
@@ -245,6 +291,7 @@ export const updateUrl = createThunkAction(
       preserveParameters = true,
       queryBuilderMode,
       datasetEditorTab,
+      objectId,
     } = {},
   ) => (dispatch, getState) => {
     let question;
@@ -282,10 +329,12 @@ export const updateUrl = createThunkAction(
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
+      objectId,
     };
 
     const { currentState } = getState().qb;
-    const url = urlForCardState(newState, dirty);
+    const queryParams = preserveParameters ? getCurrentQueryParams() : {};
+    const url = getURLForCardState(newState, dirty, queryParams, objectId);
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
@@ -294,7 +343,7 @@ export const updateUrl = createThunkAction(
         queryBuilderMode,
         datasetEditorTab,
       }),
-      search: preserveParameters ? window.location.search : "",
+      search: urlParsed.search,
       hash: urlParsed.hash,
       state: newState,
     };
@@ -366,8 +415,9 @@ async function verifyMatchingDashcardAndParameters({
 }
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = (location, params, queryParams) => {
+export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
+    const queryParams = location.query;
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
@@ -627,12 +677,15 @@ export const initializeQB = (location, params, queryParams) => {
       metadata,
     );
 
+    const objectId = params?.objectId || queryParams?.objectId;
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
       parameterValues,
+      objectId,
     });
 
     // if we have loaded up a card that we can run then lets kick that off as well
@@ -653,6 +706,7 @@ export const initializeQB = (location, params, queryParams) => {
         updateUrl(card, {
           replaceState: true,
           preserveParameters,
+          objectId,
         }),
       );
     }
@@ -967,9 +1021,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
-        const url = Urls.question(null, card);
+        const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
-          open(url);
+          dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
@@ -1243,6 +1297,7 @@ export const runQuestionQuery = ({
   overrideWithCard,
 } = {}) => {
   return async (dispatch, getState) => {
+    dispatch(loadStartUIControls());
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -1296,6 +1351,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
+        // clearTimeout(timeoutId);
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -1309,6 +1365,17 @@ export const runQuestionQuery = ({
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
 };
+
+const loadStartUIControls = createThunkAction(
+  LOAD_START_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    dispatch(setDocumentTitle(t`Doing Science...`));
+    const timeoutId = setTimeout(() => {
+      dispatch(setDocumentTitle(t`Still Here...`));
+    }, 10000);
+    dispatch(setDocumentTitleTimeoutId(timeoutId));
+  },
+);
 
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
@@ -1350,8 +1417,36 @@ export const queryCompleted = (question, queryResults) => {
     }
 
     dispatch.action(QUERY_COMPLETED, { card, queryResults });
+    dispatch(loadCompleteUIControls());
   };
 };
+
+const loadCompleteUIControls = createThunkAction(
+  LOAD_COMPLETE_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    const timeoutId = getTimeoutId(getState());
+    clearTimeout(timeoutId);
+    dispatch(showLoadingCompleteFavicon());
+    if (document.hidden) {
+      dispatch(setDocumentTitle(t`Your question is ready!`));
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          dispatch(setDocumentTitle(""));
+          setTimeout(() => {
+            dispatch(hideLoadingCompleteFavicon());
+          }, 3000);
+        },
+        { once: true },
+      );
+    } else {
+      dispatch(setDocumentTitle(""));
+      setTimeout(() => {
+        dispatch(hideLoadingCompleteFavicon());
+      }, 3000);
+    }
+  },
+);
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
@@ -1401,6 +1496,18 @@ export const cancelQuery = () => (dispatch, getState) => {
     }
     return { type: CANCEL_QUERY };
   }
+};
+
+export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
+export const zoomInRow = ({ objectId }) => dispatch => {
+  dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
+  dispatch(updateUrl(null, { objectId, replaceState: false }));
+};
+
+export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
+export const resetRowZoom = () => dispatch => {
+  dispatch({ type: RESET_ROW_ZOOM });
+  dispatch(updateUrl());
 };
 
 // We use this for two things:
@@ -1506,55 +1613,21 @@ export const loadObjectDetailFKReferences = createThunkAction(
 export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
-export const VIEW_NEXT_OBJECT_DETAIL = "metabase/qb/VIEW_NEXT_OBJECT_DETAIL";
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const filter = question.query().filters()[0];
-
-    const newFilter = ["=", filter[1], parseInt(filter[2]) + 1];
-
-    dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
-
-    dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
-    );
-
-    dispatch(runQuestionQuery());
+    const objectId = getNextRowPKValue(getState());
+    if (objectId != null) {
+      dispatch(zoomInRow({ objectId }));
+    }
   };
 };
 
-export const VIEW_PREVIOUS_OBJECT_DETAIL =
-  "metabase/qb/VIEW_PREVIOUS_OBJECT_DETAIL";
-
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const filter = question.query().filters()[0];
-
-    if (filter[2] === 1) {
-      return false;
+    const objectId = getPreviousRowPKValue(getState());
+    if (objectId != null) {
+      dispatch(zoomInRow({ objectId }));
     }
-
-    const newFilter = ["=", filter[1], parseInt(filter[2]) - 1];
-
-    dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
-
-    dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
-    );
-
-    dispatch(runQuestionQuery());
   };
 };
 
@@ -1649,4 +1722,28 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(updateQuestion(nextQuestion));
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
+};
+
+export const SHOW_TIMELINES = "metabase/qb/SHOW_TIMELINES";
+export const showTimelines = createAction(SHOW_TIMELINES);
+
+export const HIDE_TIMELINES = "metabase/qb/HIDE_TIMELINES";
+export const hideTimelines = createAction(HIDE_TIMELINES);
+
+export const SELECT_TIMELINE_EVENTS = "metabase/qb/SELECT_TIMELINE_EVENTS";
+export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
+
+export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
+export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
+
+export const showTimelinesForCollection = collectionId => (
+  dispatch,
+  getState,
+) => {
+  const fetchedTimelines = getFetchedTimelines(getState());
+  const collectionTimelines = collectionId
+    ? fetchedTimelines.filter(t => t.collection_id === collectionId)
+    : fetchedTimelines.filter(t => t.collection_id == null);
+
+  dispatch(showTimelines(collectionTimelines));
 };

@@ -664,7 +664,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
         });
       });
       describe("displayName()", () => {
@@ -675,12 +675,12 @@ describe("Dimension", () => {
 
       describe("column()", () => {
         expect(dimension.column()).toEqual({
-          id: ["expression", "Hello World"],
+          id: ["expression", "Hello World", null],
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Text",
-          semantic_type: null,
-          field_ref: ["expression", "Hello World"],
+          semantic_type: "type/Text",
+          field_ref: ["expression", "Hello World", null],
         });
       });
 
@@ -707,6 +707,18 @@ describe("Dimension", () => {
             expect(field.name).toEqual("Foo");
           });
         });
+      });
+    });
+
+    describe("dimensions()", () => {
+      it("should return subdimensions according to the field type", () => {
+        const question = new Question(nestedQuestionCard, metadata);
+        const dimension = Dimension.parseMBQL(
+          ["expression", 42],
+          metadata,
+          question.query(),
+        );
+        expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
     });
   });
@@ -781,7 +793,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "aggregation" clause', () => {
-          expect(dimension.mbql()).toEqual(["aggregation", 1]);
+          expect(dimension.mbql()).toEqual(["aggregation", 1, null]);
         });
       });
 
@@ -962,6 +974,12 @@ describe("Dimension", () => {
         describe("isDimensionType", () => {
           it("should evaluate to true", () => {
             expect(dimension.isDimensionType()).toBe(true);
+          });
+        });
+
+        describe("isValidDimensionType", () => {
+          it("should evaluate to true", () => {
+            expect(dimension.isValidDimensionType()).toBe(true);
           });
         });
 
@@ -1169,6 +1187,72 @@ describe("Dimension", () => {
         describe("icon", () => {
           it("should return the icon associated with the underlying field", () => {
             expect(dimension.icon()).toEqual("string");
+          });
+        });
+      });
+    });
+
+    describe("broken dimension tag", () => {
+      const templateTagClause = ["template-tag", "foo"];
+      const query = new NativeQuery(PRODUCTS.question(), {
+        database: SAMPLE_DATABASE.id,
+        type: "native",
+        native: {
+          query: "select * from PRODUCTS where {{foo}}",
+          "template-tags": {
+            foo: {
+              id: "5928ca74-ca36-8706-7bed-0143d7646b6a",
+              name: "foo",
+              "display-name": "Foo",
+              type: "dimension",
+              "widget-type": "category",
+              // this should be defined
+              dimension: null,
+            },
+          },
+        },
+      });
+
+      const brokenDimension = Dimension.parseMBQL(
+        templateTagClause,
+        metadata,
+        query,
+      );
+
+      describe("instance methods", () => {
+        describe("isDimensionType", () => {
+          it("should evaluate to true", () => {
+            expect(brokenDimension.isDimensionType()).toBe(true);
+          });
+        });
+
+        describe("isValidDimensionType", () => {
+          it("should return false", () => {
+            expect(brokenDimension.isValidDimensionType()).toBe(false);
+          });
+        });
+
+        describe("isVariableType", () => {
+          it("should evaluate to false", () => {
+            expect(brokenDimension.isVariableType()).toBe(false);
+          });
+        });
+
+        describe("field", () => {
+          it("should evaluate to null", () => {
+            expect(brokenDimension.field()).toBeNull();
+          });
+        });
+
+        describe("name", () => {
+          it("should evaluate to the tag's name instead of the field's", () => {
+            expect(brokenDimension.name()).toEqual("foo");
+          });
+        });
+
+        describe("icon", () => {
+          it("should use a fallback icon", () => {
+            expect(brokenDimension.icon()).toEqual("label");
           });
         });
       });

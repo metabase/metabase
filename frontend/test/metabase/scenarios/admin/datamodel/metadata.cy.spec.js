@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openReviewsTable,
   popover,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -85,23 +86,24 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion({
-      name: "14124",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-        ],
+    cy.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      { visitQuestion: true },
+    );
 
-      cy.findByText("Created At: Hour of day");
+    cy.findByText("Created At: Hour of day");
 
-      cy.log("Reported failing in v0.37.2");
-      cy.findByText(/^3:00 AM$/);
-    });
+    cy.log("Reported failing in v0.37.2");
+    cy.findByText(/^3:00 AM$/);
   });
 
   it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
@@ -115,7 +117,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     openReviewsTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.get(".List-section-header")
@@ -126,7 +128,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .should("have.length", 1);
   });
 
-  it.skip("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
+  it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
       `/admin/datamodel/database/1/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
     );
@@ -136,7 +138,15 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .findByText("Search box")
       .click();
 
-    cy.reload();
+    openOptionsForSection("Display values");
+    popover()
+      .findByText("Custom mapping")
+      .should("not.exist");
+
+    openOptionsForSection("Filtering on this field");
+    popover()
+      .findByText("A list of all values")
+      .click();
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");

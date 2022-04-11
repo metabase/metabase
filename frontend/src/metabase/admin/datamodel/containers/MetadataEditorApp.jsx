@@ -48,7 +48,7 @@ const mapDispatchToProps = {
       : push(`/admin/datamodel/database/${id}`),
   selectTable: ({ id, db_id }) =>
     push(`/admin/datamodel/database/${db_id}/table/${id}`),
-  updateField: field => Fields.actions.update(field),
+  updateField: field => Fields.actions.updateField(field),
   onRetireMetric: ({ id, ...rest }) =>
     Metrics.actions.setArchived({ id }, true, rest),
 };

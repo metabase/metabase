@@ -1,6 +1,6 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
    (:clj
     [(:require
@@ -421,7 +421,7 @@
 
 (def string-expressions
   "String functions"
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
 
 (declare StringExpression)
 
@@ -523,13 +523,6 @@
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern s/Str)
 
-(def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce))
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  (s/recursive #'StringExpression*))
-
 (defclause ^{:requires-features #{:expressions}} +
   x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
@@ -569,6 +562,12 @@
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
+
+(declare StringExpression*)
+
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  (s/recursive #'StringExpression*))
 
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
@@ -727,6 +726,10 @@
 
 (def ^:private ArithmeticExpression*
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
+
+(def ^:private StringExpression*
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
+
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -1441,14 +1444,14 @@
    s/Bool
 
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
-   ;; pre-processed query without attempting to convert it to native.
+   ;; you should set this yourself. This is only used by the [[metabase.query-processor/preprocess]] function to get
+   ;; the fully pre-processed query without attempting to convert it to native.
    (s/optional-key :disable-mbql->native?)
    s/Bool
 
-   ;; Userland queries are ones ran as a result of an API call, Pulse, MetaBot query, or the like. Special handling is
-   ;; done in the `process-userland-query` middleware for such queries -- results are returned in a slightly different
-   ;; format, and QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
+   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
+   ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
+   ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
    (s/optional-key :userland-query?)
    (s/maybe s/Bool)
 

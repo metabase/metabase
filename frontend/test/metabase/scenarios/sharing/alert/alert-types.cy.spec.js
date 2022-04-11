@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -49,7 +49,7 @@ describe("scenarios > alert > types", () => {
   describe("rows based alerts", () => {
     rawTestCases.forEach(({ questionType, questionId }) => {
       it(`should be supported for ${questionType}`, () => {
-        cy.visit(`/question/${questionId}`);
+        visitQuestion(questionId);
 
         openAlertModal();
 
@@ -65,7 +65,7 @@ describe("scenarios > alert > types", () => {
   describe("goal based alerts", () => {
     it("should work for timeseries questions with a set goal", () => {
       // Set goal on timeseries question
-      cy.visit(`/question/${timeSeriesQuestionId}`);
+      visitQuestion(timeSeriesQuestionId);
 
       cy.findByText("Settings").click();
       cy.findByText("Line options");

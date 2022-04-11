@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+
 Cypress.Commands.add("createQuestion", (questionDetails, customOptions) => {
   const { name, query } = questionDetails;
 
@@ -38,6 +40,9 @@ Cypress.Commands.add(
  * @param {object} customOptions
  * @param {boolean} customOptions.loadMetadata - Whether to visit the question in order to load its metadata.
  * @param {boolean} customOptions.visitQuestion - Whether to visit the question after the creation or not.
+ * @param {boolean} customOptions.wrapId - Whether to wrap a question id, to make it available outside of this scope.
+ * @param {string} customOptions.idAlias - Alias a question id in order to use it later with `cy.get("@" + alias).
+ * @param {string} customOptions.interceptAlias - We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
  */
 function question(
   type,
@@ -47,13 +52,19 @@ function question(
     dataset = false,
     native,
     query,
-    database = 1,
+    database = SAMPLE_DB_ID,
     display = "table",
     visualization_settings = {},
     collection_id,
     collection_position,
   } = {},
-  { loadMetadata = false, visitQuestion = false } = {},
+  {
+    loadMetadata = false,
+    visitQuestion = false,
+    wrapId = false,
+    idAlias = "questionId",
+    interceptAlias = "cardQuery",
+  } = {},
 ) {
   cy.request("POST", "/api/card", {
     name,
@@ -68,6 +79,18 @@ function question(
     collection_id,
     collection_position,
   }).then(({ body }) => {
+    /**
+     * Optionally, if you need question's id later in the test, outside the scope of this function,
+     * you can use it like this:
+     *
+     * `cy.get("@questionId").then(id=> {
+     *   doSomethingWith(id);
+     * })
+     */
+    if (wrapId) {
+      cy.wrap(body.id).as(idAlias);
+    }
+
     if (dataset) {
       cy.request("PUT", `/api/card/${body.id}`, { dataset });
     }
@@ -75,13 +98,16 @@ function question(
     if (loadMetadata || visitQuestion) {
       dataset
         ? cy.intercept("POST", `/api/dataset`).as("dataset")
-        : cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+        : // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+          cy
+            .intercept("POST", `/api/card/**/${body.id}/query`)
+            .as(interceptAlias);
 
       const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);
 
       // Wait for `result_metadata` to load
-      dataset ? cy.wait("@dataset") : cy.wait("@cardQuery");
+      dataset ? cy.wait("@dataset") : cy.wait("@" + interceptAlias);
     }
   });
 }

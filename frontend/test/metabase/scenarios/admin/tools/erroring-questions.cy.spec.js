@@ -1,4 +1,4 @@
-import { restore, describeWithToken } from "__support__/e2e/cypress";
+import { restore, describeEE } from "__support__/e2e/cypress";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -20,7 +20,7 @@ const brokenQuestionDetails = {
   display: "scalar",
 };
 
-describeWithToken("admin > tools > erroring questions ", () => {
+describeEE("admin > tools > erroring questions ", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

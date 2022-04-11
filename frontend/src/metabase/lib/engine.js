@@ -30,7 +30,7 @@ export function getEngineNativeAceMode(engine) {
 }
 
 export function getEngineLogo(engine) {
-  const path = `/app/assets/img/drivers`;
+  const path = `app/assets/img/drivers`;
 
   switch (engine) {
     case "bigquery":
@@ -78,9 +78,9 @@ export function getEngineSupportsFirewall(engine) {
 export function formatJsonQuery(query, engine) {
   if (engine === "googleanalytics") {
     return formatGAQuery(query);
-  } else {
-    return JSON.stringify(query);
   }
+
+  return JSON.stringify(query, null, 2);
 }
 
 export function formatNativeQuery(query, engine) {

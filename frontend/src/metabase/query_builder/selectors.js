@@ -1,12 +1,12 @@
 /*eslint no-use-before-define: "error"*/
 
+import d3 from "d3";
 import { createSelector } from "reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -14,7 +14,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-
+import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
@@ -22,11 +22,23 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
+import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { parseTimestamp } from "metabase/lib/time";
+import { getTimelineName } from "metabase/lib/timelines";
+import {
+  getXValues,
+  isTimeseries,
+} from "metabase/visualizations/lib/renderer_utils";
+import Mode from "metabase-lib/lib/Mode";
+import ObjectMode from "metabase/modes/components/modes/ObjectMode";
+
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 export const getUiControls = state => state.qb.uiControls;
+const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -36,6 +48,25 @@ export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
 export const getIsShowingRawTable = state =>
   getUiControls(state).isShowingRawTable;
+
+const SIDEBARS = [
+  "isShowingQuestionDetailsSidebar",
+  "isShowingChartTypeSidebar",
+  "isShowingChartSettingsSidebar",
+  "isShowingTimelineSidebar",
+
+  "isShowingSummarySidebar",
+  "isShowingFilterSidebar",
+
+  "isShowingDataReference",
+  "isShowingTemplateTagsEditor",
+  "isShowingSnippetSidebar",
+];
+
+export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
+  SIDEBARS.some(sidebar => uiControls[sidebar]),
+);
+
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 
@@ -47,7 +78,18 @@ export const getParameterValues = state => state.qb.parameterValues;
 
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
+export const getEntities = state => state.entities;
+export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getSelectedTimelineEventIds = state =>
+  state.qb.selectedTimelineEventIds;
+
 const getRawQueryResults = state => state.qb.queryResults;
+
+export const getIsBookmarked = (state, props) =>
+  props.bookmarks.some(
+    bookmark =>
+      bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
+  );
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],
@@ -85,6 +127,33 @@ export const getQueryResults = createSelector(
 
 export const getFirstQueryResult = createSelector([getQueryResults], results =>
   Array.isArray(results) ? results[0] : null,
+);
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult],
+  result => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+    return cols.findIndex(isPK);
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
 );
 
 // get instance settings, used for determining whether to display certain actions
@@ -258,6 +327,7 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
+    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -269,6 +339,23 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
+    }
+
+    // sort query.joins[int].fields
+    if (query.query.joins) {
+      query = updateIn(query, ["query", "joins"], joins =>
+        joins.map(joinedTable => {
+          if (!joinedTable.fields || joinedTable.fields === "all") {
+            return joinedTable;
+          }
+
+          const joinedTableFields = [...joinedTable.fields];
+          joinedTableFields.sort((a, b) =>
+            JSON.stringify(b).localeCompare(JSON.stringify(a)),
+          );
+          return { ...joinedTable, fields: joinedTableFields };
+        }),
+      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
@@ -329,14 +416,83 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
+export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
+
+const getZoomedObjectRowIndex = createSelector(
+  [getPKRowIndexMap, getZoomedObjectId],
+  (PKRowIndexMap, objectId) => {
+    if (!PKRowIndexMap) {
+      return;
+    }
+    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+  },
+);
+
+export const getPreviousRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex - 1][PKColumnIndex];
+  },
+);
+
+export const getNextRowPKValue = createSelector(
+  [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
+  (result, PKColumnIndex, rowIndex) => {
+    if (!result) {
+      return;
+    }
+    const { rows } = result.data;
+    return rows[rowIndex + 1][PKColumnIndex];
+  },
+);
+
+export const getCanZoomPreviousRow = createSelector(
+  [getZoomedObjectRowIndex],
+  rowIndex => rowIndex !== 0,
+);
+
+export const getCanZoomNextRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    const rowCount = queryResults[0].data.rows.length;
+    return rowIndex !== rowCount - 1;
+  },
+);
+
+export const getZoomRow = createSelector(
+  [getQueryResults, getZoomedObjectRowIndex],
+  (queryResults, rowIndex) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return;
+    }
+    return queryResults[0].data.rows[rowIndex];
+  },
+);
+
+const isZoomingRow = createSelector(
+  [getZoomedObjectId],
+  index => index != null,
+);
+
 export const getMode = createSelector(
-  [getLastRunQuestion],
-  question => question && question.mode(),
+  [getLastRunQuestion, isZoomingRow],
+  (question, isZoomingRow) =>
+    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults],
-  (mode, results) => {
+  [getMode, getQueryResults, isZoomingRow],
+  (mode, results, isZoomingSingleRow) => {
+    if (isZoomingSingleRow) {
+      return true;
+    }
     // It handles filtering by a manually set PK column that is not unique
     const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
     return mode?.name() === "object" && !hasMultipleRows;
@@ -482,6 +638,81 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+const getIsTimeseries = createSelector(
+  [getVisualizationSettings],
+  settings => settings && isTimeseries(settings),
+);
+
+export const getTimeseriesXValues = createSelector(
+  [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
+  (isTimeseries, series, settings) =>
+    isTimeseries && series && settings && getXValues({ series, settings }),
+);
+
+export const getTimeseriesXDomain = createSelector(
+  [getIsTimeseries, getTimeseriesXValues],
+  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+);
+
+export const getFetchedTimelines = createSelector([getEntities], entities => {
+  const entityQuery = { include: "events" };
+  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+});
+
+export const getTransformedTimelines = createSelector(
+  [getFetchedTimelines],
+  timelines => {
+    return _.chain(timelines)
+      .map(timeline =>
+        updateIn(timeline, ["events"], (events = []) =>
+          _.chain(events)
+            .map(event => updateIn(event, ["timestamp"], parseTimestamp))
+            .filter(event => !event.archived)
+            .value(),
+        ),
+      )
+      .sortBy(getTimelineName)
+      .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
+      .value();
+  },
+);
+
+export const getFilteredTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXDomain],
+  (timelines, xDomain) => {
+    return timelines
+      .map(timeline =>
+        updateIn(timeline, ["events"], events =>
+          xDomain
+            ? events.filter(event => isEventWithinDomain(event, xDomain))
+            : events,
+        ),
+      )
+      .filter(timeline => timeline.events.length > 0);
+  },
+);
+
+export const getVisibleTimelines = createSelector(
+  [getFilteredTimelines, getVisibleTimelineIds],
+  (timelines, timelineIds) => {
+    return timelines.filter(t => timelineIds.includes(t.id));
+  },
+);
+
+export const getVisibleTimelineEvents = createSelector(
+  [getVisibleTimelines],
+  timelines =>
+    _.chain(timelines)
+      .map(timeline => timeline.events)
+      .flatten()
+      .sortBy(event => event.timestamp)
+      .value(),
+);
+
 function getOffsetForQueryAndPosition(queryText, { row, column }) {
   const queryLines = queryText.split("\n");
   return (
@@ -590,4 +821,22 @@ export const isBasedOnExistingQuestion = createSelector(
   originalQuestion => {
     return originalQuestion != null;
   },
+);
+
+export const getDocumentTitle = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls?.documentTitle,
+);
+
+export const getPageFavicon = createSelector(
+  [getLoadingControls],
+  loadingControls =>
+    loadingControls?.showLoadCompleteFavicon
+      ? LOAD_COMPLETE_FAVICON
+      : undefined,
+);
+
+export const getTimeoutId = createSelector(
+  [getLoadingControls],
+  loadingControls => loadingControls.timeoutId,
 );

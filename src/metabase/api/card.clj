@@ -8,13 +8,15 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as dataset-api]
+            [metabase.api.timeline :as timeline-api]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
             [metabase.models.card :as card :refer [Card]]
-            [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
@@ -24,6 +26,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
+            [metabase.models.timeline :as timeline]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
@@ -32,6 +35,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -40,20 +44,6 @@
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.util.UUID
            metabase.models.card.CardInstance))
-
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn hydrate-favorites
-  "Efficiently add `favorite` status for a large collection of `Cards`."
-  {:batched-hydrate :favorite}
-  [cards]
-  (when (seq cards)
-    (let [favorite-card-ids (db/select-field :card_id CardFavorite
-                              :owner_id api/*current-user-id*
-                              :card_id  [:in (map :id cards)])]
-      (for [card cards]
-        (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
-
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -72,11 +62,11 @@
   [_]
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;; return all Cards favorited by the current user.
-(defmethod cards-for-filter-option* :fav
+;; return all Cards bookmarked by the current user.
+(defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardFavorite :card_id]
-                                                                    :owner_id api/*current-user-id*)
+  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardBookmark :card_id]
+                                                                    :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
                 card)]
@@ -127,8 +117,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
-      (hydrate :creator :collection :favorite)))
-
+      (hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 
@@ -138,7 +127,7 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
@@ -172,6 +161,22 @@
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+
+(api/defendpoint GET "/:id/timelines"
+  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
+  [id include start end]
+  {include (s/maybe timeline-api/Include)
+   start   (s/maybe su/TemporalString)
+   end     (s/maybe su/TemporalString)}
+  (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
+    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
+    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
+    ;; the read-checks are particularly fast on multiple items
+    (timeline/timelines-for-collection collection_id
+                                       {:timeline/events? (= include "events")
+                                        :events/start     (when start (u.date/parse start))
+                                        :events/end       (when end (u.date/parse end))})))
+
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
@@ -330,7 +335,7 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (api/check-embedding-enabled)
+    (validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (defn- publish-card-update!
@@ -569,25 +574,6 @@
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
-
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
-
-(api/defendpoint POST "/:card-id/favorite"
-  "Favorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (db/insert! CardFavorite :card_id card-id, :owner_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:card-id/favorite"
-  "Unfavorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (api/let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id api/*current-user-id*)]
-    (db/delete! CardFavorite, :id id))
-  api/generic-204-no-content)
-
-
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- update-collection-positions!
@@ -713,7 +699,7 @@
   be enabled."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
              (u/prog1 (str (UUID/randomUUID))
@@ -725,7 +711,7 @@
   "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
     :public_uuid       nil
@@ -736,7 +722,7 @@
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
-  (api/check-public-sharing-enabled)
+  (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
@@ -744,7 +730,7 @@
   and a signed JWT."
   []
   (api/check-superuser)
-  (api/check-embedding-enabled)
+  (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"

@@ -70,7 +70,7 @@
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
                        :effective_type :type/Integer)
-                (dissoc :description :parent_id :visibility_type))
+                (dissoc :description :parent_id :nfc_path :visibility_type))
 
             (not has-source-metadata?)
             (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
@@ -446,7 +446,7 @@
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
-                        :id :settings :fingerprint))
+                        :id :settings :fingerprint :nfc_path))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
@@ -1299,3 +1299,27 @@
               (is (= [["2016-04-01T00:00:00Z" 175]]
                      (mt/formatted-rows [str int]
                        (qp/process-query query)))))))))))
+
+(deftest really-really-long-identifiers-test
+  (testing "Should correctly handle really really long table and column names (#20627)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+      (mt/dataset sample-dataset
+        (let [table-alias "Products with a very long name - Product ID with a very long name"
+              query       (mt/mbql-query orders
+                            {:source-query {:source-table $$orders
+                                            :joins        [{:source-table $$products
+                                                            :alias        table-alias
+                                                            :condition    [:=
+                                                                           $product_id
+                                                                           [:field %products.id {:join-alias table-alias}]]
+                                                            :fields       :all}]
+                                            :breakout     [[:field %products.category {:join-alias table-alias}]]
+                                            :aggregation  [[:count]]}
+                             :filter       [:> *count/Integer 0]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Doohickey" 3976]
+                    ["Gadget"    4939]
+                    ["Gizmo"     4784]
+                    ["Widget"    5061]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))

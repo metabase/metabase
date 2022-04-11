@@ -4,6 +4,7 @@ import {
   modal,
   openOrdersTable,
   visualize,
+  summarize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -29,7 +30,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Summarize").click();
+    summarize({ mode: "notebook" });
     cy.findByText("Common Metrics").click();
     cy.findByText("Revenue").click();
 

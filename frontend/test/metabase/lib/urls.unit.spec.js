@@ -13,24 +13,28 @@ describe("urls", () => {
   describe("question", () => {
     describe("with a query", () => {
       it("returns the correct url", () => {
-        expect(question({}, "", { foo: "bar" })).toEqual("/question?foo=bar");
-        expect(question({}, "hash", { foo: "bar" })).toEqual(
+        expect(question({}, { query: { foo: "bar" } })).toEqual(
+          "/question?foo=bar",
+        );
+        expect(question({}, { hash: "hash", query: { foo: "bar" } })).toEqual(
           "/question?foo=bar#hash",
         );
-        expect(question(null, "hash", { foo: "bar" })).toEqual(
+        expect(question(null, { hash: "hash", query: { foo: "bar" } })).toEqual(
           "/question?foo=bar#hash",
         );
-        expect(question(null, "", { foo: "bar" })).toEqual("/question?foo=bar");
-        expect(question(null, "", { foo: "bar+bar" })).toEqual(
+        expect(question(null, { query: { foo: "bar" } })).toEqual(
+          "/question?foo=bar",
+        );
+        expect(question(null, { query: { foo: "bar+bar" } })).toEqual(
           "/question?foo=bar%2Bbar",
         );
-        expect(question(null, "", { foo: ["bar", "baz"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz"] } })).toEqual(
           "/question?foo=bar&foo=baz",
         );
-        expect(question(null, "", { foo: ["bar", "baz+bay"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz+bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%2Bbay",
         );
-        expect(question(null, "", { foo: ["bar", "baz&bay"] })).toEqual(
+        expect(question(null, { query: { foo: ["bar", "baz&bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%26bay",
         );
       });
@@ -67,17 +71,48 @@ describe("urls", () => {
       });
     });
 
+    describe("with object ID", () => {
+      it("should append object ID to path", () => {
+        const url = question({ id: 1 }, { objectId: 5 });
+        expect(url).toBe("/question/1/5");
+      });
+
+      it("should support query params", () => {
+        const url = question({ id: 1 }, { query: "?a=b", objectId: 5 });
+        expect(url).toBe("/question/1/5?a=b");
+      });
+
+      it("should support hash", () => {
+        const url = question({ id: 1 }, { hash: "abc", objectId: 5 });
+        expect(url).toBe("/question/1/5#abc");
+      });
+
+      it("should support both hash and query params", () => {
+        const url = question(
+          { id: 1, name: "foo" },
+          { hash: "abc", query: "a=b", objectId: 5 },
+        );
+        expect(url).toBe("/question/1-foo/5?a=b#abc");
+      });
+    });
+
     describe("model", () => {
       it("returns /model URLS", () => {
         expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
           "/model/1-foo",
         );
+
         expect(
           question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
         ).toEqual("/model/42-foo");
+
         expect(
           question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
         ).toEqual("/model/42-foo");
+
+        expect(
+          question({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
+        ).toEqual("/model/1-foo/4");
       });
     });
   });

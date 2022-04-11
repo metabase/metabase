@@ -25,12 +25,7 @@ describe("issue 14302", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-
-      cy.visit(`/question/${body.id}`);
-      cy.wait("@cardQuery");
-    });
+    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {

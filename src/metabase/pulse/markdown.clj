@@ -7,6 +7,7 @@
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList OrderedListItem
             Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak]
+           com.vladsch.flexmark.ext.autolink.AutolinkExtension
            [com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory]
            [com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus]
            com.vladsch.flexmark.parser.Parser
@@ -20,7 +21,9 @@
 
 (def ^:private parser
   "An instance of a Flexmark parser"
-  (delay (.build (Parser/builder))))
+  (let [options (.. (MutableDataSet.)
+                    (set Parser/EXTENSIONS [(AutolinkExtension/create)]))]
+    (.build (Parser/builder options))))
 
 (def ^:private node-to-tag-mapping
   "Mappings from Flexmark AST nodes to keyword tags"
@@ -260,13 +263,15 @@
       :link-ref
       (if-let [resolved-uri (resolve-uri (-> attrs :reference :attrs :url))]
         (str "<" resolved-uri "|" joined-content ">")
-        joined-content)
+        ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
+        ;; restore them. This is a known discrepency between flexmark-java and Markdown rendering on the frontend.
+        (str "[" joined-content "]"))
 
       :auto-link
       (str "<" (:href attrs) ">")
 
       :mail-link
-      (str "<" (:address attrs) ">")
+      (str "<mailto:" (:address attrs) "|" (:address attrs) ">")
 
       ;; list items might have nested lists or other elements, which should have their indentation level increased
       (:unordered-list-item :ordered-list-item)
@@ -306,6 +311,16 @@
 
       joined-content)))
 
+(defn- empty-link-ref?
+  "Returns true if this node was parsed as a link ref, but has no references. This probably means the original text
+  was just a pair of square brackets, and not an actual link ref. This is a known discrepency between flexmark-java
+  and Markdown rendering on the frontend."
+  [^Node node]
+  (and (instance? LinkRef node)
+       (-> (.getDocument node)
+           (.get Parser/REFERENCES)
+           empty?)))
+
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"
   (let [options    (.. (MutableDataSet.)
@@ -313,14 +328,17 @@
                        (toImmutable))
         lr-factory (reify LinkResolverFactory
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
-                      (reify LinkResolver
-                        (resolveLink [_this _node _context link]
-                          (if-let [url (resolve-uri (.getUrl link))]
-                            (.. link
-                                (withStatus LinkStatus/VALID)
-                                (withUrl url))
-                            link)))))]
-    (delay (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory)))))
+                       (reify LinkResolver
+                         (resolveLink [_this node _context link]
+                           (if-let [url (cond
+                                          (instance? MailLink node) (.getUrl link)
+                                          (empty-link-ref? node) nil
+                                          :else (resolve-uri (.getUrl link)))]
+                             (.. link
+                                 (withStatus LinkStatus/VALID)
+                                 (withUrl url))
+                             link)))))]
+    (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
@@ -329,12 +347,12 @@
 
 (defmethod process-markdown :mrkdwn
   [markdown _]
-  (-> (.parse ^Parser @parser ^String markdown)
+  (-> (.parse ^Parser parser ^String markdown)
       to-clojure
       ast->mrkdwn
       str/trim))
 
 (defmethod process-markdown :html
   [markdown _]
-  (let [ast (.parse ^Parser @parser ^String markdown)]
-    (.render ^HtmlRenderer @renderer ^Document ast)))
+  (let [ast (.parse ^Parser parser ^String markdown)]
+    (.render ^HtmlRenderer renderer ^Document ast)))

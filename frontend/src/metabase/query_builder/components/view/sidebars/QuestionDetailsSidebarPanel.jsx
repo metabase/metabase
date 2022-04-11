@@ -18,9 +18,16 @@ import DatasetManagementSection from "./DatasetManagementSection";
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
+  isBookmarked: PropTypes.bool.isRequired,
+  toggleBookmark: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
+function QuestionDetailsSidebarPanel({
+  question,
+  onOpenModal,
+  isBookmarked,
+  toggleBookmark,
+}) {
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const description = question.description();
@@ -38,6 +45,8 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
           question={question}
           canWrite={canWrite}
           onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
         />
         <ClampedDescription
           visibleLines={8}

@@ -2,19 +2,18 @@ import {
   restore,
   modal,
   popover,
-  describeWithToken,
+  describeEE,
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
-describeWithToken("scenarios > question > snippets", () => {
+describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
   it("can create a snippet", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
+    openNativeEditor();
     cy.icon("snippet").click();
     cy.contains("Create a snippet").click();
     modal().within(() => {
@@ -66,8 +65,7 @@ describeWithToken("scenarios > question > snippets", () => {
     });
 
     // Grant access
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
+    openNativeEditor();
     cy.icon("snippet").click();
 
     cy.findByTestId("sidebar-right")
@@ -111,15 +109,14 @@ describeWithToken("scenarios > question > snippets", () => {
   });
 
   it("should let you create a snippet folder and move a snippet into it", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
     // create snippet via API
     cy.request("POST", "/api/native-query-snippet", {
       content: "snippet 1",
       name: "snippet 1",
       collection_id: null,
     });
+
+    openNativeEditor();
 
     // create folder
     cy.icon("snippet").click();
@@ -154,7 +151,7 @@ describeWithToken("scenarios > question > snippets", () => {
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    cy.queryByText("snippet 1").should("not.exist");
+    cy.findByText("snippet 1").should("not.exist");
     cy.findByText("my favorite snippets").click();
     cy.findByText("snippet 1");
   });

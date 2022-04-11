@@ -13,24 +13,21 @@ export type UnsavedCard = {
   display: string;
   visualization_settings: VisualizationSettings;
   parameters?: Array<Parameter>;
-  original_card_id?: CardId;
-};
-
-export type Card = {
-  id: CardId;
-  name?: string;
-  description?: string;
-  dataset?: boolean;
-  dataset_query: DatasetQuery;
-  display: string;
-  visualization_settings: VisualizationSettings;
-  parameters?: Array<Parameter>;
-  can_write: boolean;
-  public_uuid: string;
 
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: CardId;
 };
+
+export type SavedCard = UnsavedCard & {
+  id: CardId;
+  name?: string;
+  description?: string;
+  dataset?: boolean;
+  can_write: boolean;
+  public_uuid: string;
+};
+
+export type Card = SavedCard | UnsavedCard;
 
 export type StructuredDatasetQuery = {
   type: "query";

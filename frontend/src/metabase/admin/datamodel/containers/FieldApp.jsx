@@ -69,7 +69,7 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
   fetchTableMetadata: Tables.actions.fetchMetadataAndForeignTables,
   fetchFieldValues: Fields.actions.fetchFieldValues,
-  updateField: Fields.actions.update,
+  updateField: Fields.actions.updateField,
   updateFieldValues: Fields.actions.updateFieldValues,
   updateFieldDimension: Fields.actions.updateFieldDimension,
   deleteFieldDimension: Fields.actions.deleteFieldDimension,

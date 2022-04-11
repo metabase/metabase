@@ -6,14 +6,15 @@ import { t } from "ttag";
 import CollectionPermissionsPage from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
 import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import GroupsPermissionsPage from "./pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-import DataPermissionsPage from "./pages/DataPermissionsPage/DataPermissionsPage";
+import DataPermissionsPage from "./pages/DataPermissionsPage";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
+  PLUGIN_GENERAL_PERMISSIONS,
 } from "metabase/plugins";
 
 const getRoutes = () => (
-  <Route title={t`Permissions`} path="permissions">
+  <Route title={t`Permissions`}>
     <IndexRedirect to="data" />
 
     <Route path="data" component={DataPermissionsPage}>
@@ -37,6 +38,8 @@ const getRoutes = () => (
     <Route path="collections" component={CollectionPermissionsPage}>
       <Route path=":collectionId" />
     </Route>
+
+    {PLUGIN_GENERAL_PERMISSIONS.getRoutes()}
   </Route>
 );
 

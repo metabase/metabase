@@ -32,12 +32,18 @@ export default class DebouncedFrame extends React.Component {
     };
   }
 
-  setSize = (width, height) => {
+  updateSize = () => {
     this._transition = false;
-    this.setState({ width, height }, this._updateTransitionStyle);
+
+    const { width, height } = this.props;
+    if (width !== this.state.width || height !== this.state.height) {
+      this.setState({ width, height }, this._updateTransitionStyle);
+    } else {
+      this._updateTransitionStyle();
+    }
   };
 
-  setSizeDebounced = _.debounce(this.setSize, DEBOUNCE_PERIOD);
+  updateSizeDebounced = _.debounce(this.updateSize, DEBOUNCE_PERIOD);
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (!nextProps.enabled) {
@@ -45,15 +51,15 @@ export default class DebouncedFrame extends React.Component {
       return;
     }
     if (
-      this.props.width !== nextProps.width ||
-      this.props.height !== nextProps.height
+      this.state.width !== nextProps.width ||
+      this.state.height !== nextProps.height
     ) {
       if (this.state.width == null || this.state.height == null) {
-        this.setSize(nextProps.width, nextProps.height);
+        this.updateSizeDebounced();
       } else {
-        this.setSizeDebounced(nextProps.width, nextProps.height);
         this._transition = true;
         this._updateTransitionStyle();
+        this.updateSizeDebounced();
       }
     }
   }

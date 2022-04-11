@@ -29,7 +29,7 @@ describe("scenarios > auth > password", () => {
       cy.findByText("All done!");
       cy.findByText("Sign in with your new password").click();
 
-      cy.findByText("Start here");
+      cy.findByText(admin.first_name, { exact: false });
     });
   });
 });

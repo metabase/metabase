@@ -95,7 +95,7 @@
 (defn- section-endpoints
   "Builds a list of endpoints and their parameters. Relies on docstring generation in /api/common/internal.clj."
   [ep-data]
-  (str/join "\n\n" (map :doc ep-data)))
+  (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
 ;;;; Generate API sections
 

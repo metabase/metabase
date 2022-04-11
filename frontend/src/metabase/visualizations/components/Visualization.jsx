@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
@@ -43,6 +44,7 @@ import { memoize } from "metabase-lib/lib/utils";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 @ExplicitSize({ selector: ".CardVisualization" })
+@connect()
 export default class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
@@ -79,7 +81,12 @@ export default class Visualization extends React.PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !Utils.equals(newProps.settings, this.props.settings)
+      !Utils.equals(newProps.settings, this.props.settings) ||
+      !Utils.equals(newProps.timelineEvents, this.props.timelineEvents) ||
+      !Utils.equals(
+        newProps.selectedTimelineEventIds,
+        this.props.selectedTimelineEventIds,
+      )
     ) {
       this.transform(newProps);
     }
@@ -248,12 +255,15 @@ export default class Visualization extends React.PureComponent {
       return;
     }
 
-    if (
-      performDefaultAction(this.getClickActions(clicked), {
+    const didPerformDefaultAction = performDefaultAction(
+      this.getClickActions(clicked),
+      {
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
-      })
-    ) {
+      },
+    );
+
+    if (didPerformDefaultAction) {
       return;
     }
 

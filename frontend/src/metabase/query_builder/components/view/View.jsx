@@ -1,47 +1,52 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { t } from "ttag";
-
-import cx from "classnames";
+import { Motion, spring } from "react-motion";
+import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
-import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Subhead from "metabase/components/type/Subhead";
+import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
+import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import AggregationPopover from "../AggregationPopover";
+import BreakoutPopover from "../BreakoutPopover";
+import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
 import TagEditorSidebar from "../template_tags/TagEditorSidebar";
 import SnippetSidebar from "../template_tags/SnippetSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
-
-import AggregationPopover from "../AggregationPopover";
-import BreakoutPopover from "../BreakoutPopover";
-
 import QueryModals from "../QueryModals";
-import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
-import NewQuestionHeader from "./NewQuestionHeader";
-import ViewFooter from "./ViewFooter";
-import ViewSidebar from "./ViewSidebar";
-import QuestionDataSelector from "./QuestionDataSelector";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 
-import { Motion, spring } from "react-motion";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-
-import DatasetEditor from "../DatasetEditor";
-
+import { ViewSubHeader } from "./ViewHeader";
+import NewQuestionHeader from "./NewQuestionHeader";
+import ViewFooter from "./ViewFooter";
+import ViewSidebar from "./ViewSidebar";
+import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
+
+import {
+  QueryBuilderViewRoot,
+  QueryBuilderContentContainer,
+  QueryBuilderMain,
+  QueryBuilderViewHeaderContainer,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
+  StyledDebouncedFrame,
+  StyledSyncedParametersList,
+} from "./View.styled";
 
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
@@ -62,6 +67,7 @@ export default class View extends React.Component {
       aggregationPopoverTarget: e.target,
     });
   };
+
   handleEditSeries = (e, index) => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -69,10 +75,12 @@ export default class View extends React.Component {
       aggregationIndex: index,
     });
   };
+
   handleRemoveSeries = (e, index) => {
     const { query } = this.props;
     query.removeAggregation(index).update(null, { run: true });
   };
+
   handleEditBreakout = (e, index) => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -80,76 +88,215 @@ export default class View extends React.Component {
       breakoutIndex: index,
     });
   };
+
   handleClosePopover = () => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
     });
   };
 
-  render() {
+  onChangeAggregation = aggregation => {
+    const { query } = this.props;
+    const { aggregationIndex } = this.state;
+    if (aggregationIndex != null) {
+      query
+        .updateAggregation(aggregationIndex, aggregation)
+        .update(null, { run: true });
+    } else {
+      query.aggregate(aggregation).update(null, { run: true });
+    }
+    this.handleClosePopover();
+  };
+
+  onChangeBreakout = breakout => {
+    const { query } = this.props;
+    const { breakoutIndex } = this.state;
+    if (breakoutIndex != null) {
+      query.updateBreakout(breakoutIndex, breakout).update(null, { run: true });
+    } else {
+      query.breakout(breakout).update(null, { run: true });
+    }
+    this.handleClosePopover();
+  };
+
+  getLeftSidebar = () => {
     const {
       question,
-      query,
-      card,
-      isDirty,
-      isResultDirty,
-      isLiveResizable,
-      runQuestionQuery,
-      databases,
-      isShowingTemplateTagsEditor,
-      isShowingDataReference,
-      isShowingNewbModal,
-      isShowingChartTypeSidebar,
       isShowingChartSettingsSidebar,
+      isShowingChartTypeSidebar,
+      isShowingQuestionDetailsSidebar,
+      onOpenModal,
+      onCloseChartSettings,
+      onCloseChartType,
+      isBookmarked,
+      toggleBookmark,
+    } = this.props;
+
+    if (isShowingChartSettingsSidebar) {
+      return (
+        <ChartSettingsSidebar {...this.props} onClose={onCloseChartSettings} />
+      );
+    }
+
+    if (isShowingChartTypeSidebar) {
+      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+    }
+
+    if (isShowingQuestionDetailsSidebar) {
+      return (
+        <QuestionDetailsSidebar
+          question={question}
+          onOpenModal={onOpenModal}
+          isBookmarked={isBookmarked}
+          toggleBookmark={toggleBookmark}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  getRightSidebarForStructuredQuery = () => {
+    const {
+      question,
+      timelines,
+      isResultDirty,
       isShowingSummarySidebar,
       isShowingFilterSidebar,
-      isShowingSnippetSidebar,
-      isShowingQuestionDetailsSidebar,
-      queryBuilderMode,
-      mode,
-      fitClassNames,
-      height,
+      isShowingTimelineSidebar,
+      runQuestionQuery,
+      visibleTimelineIds,
+      selectedTimelineEventIds,
+      xDomain,
+      showTimelines,
+      hideTimelines,
+      selectTimelineEvents,
+      deselectTimelineEvents,
       onOpenModal,
+      onCloseSummary,
+      onCloseFilter,
+      onCloseTimelines,
     } = this.props;
-    const {
-      aggregationIndex,
-      aggregationPopoverTarget,
-      breakoutIndex,
-      breakoutPopoverTarget,
-    } = this.state;
 
-    // if we don't have a card at all or no databases then we are initializing, so keep it simple
-    if (!card || !databases) {
-      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
+    if (isShowingSummarySidebar) {
+      return (
+        <SummarizeSidebar
+          question={question}
+          onClose={onCloseSummary}
+          isResultDirty={isResultDirty}
+          runQuestionQuery={runQuestionQuery}
+        />
+      );
     }
+
+    if (isShowingFilterSidebar) {
+      return <FilterSidebar question={question} onClose={onCloseFilter} />;
+    }
+
+    if (isShowingTimelineSidebar) {
+      return (
+        <TimelineSidebar
+          question={question}
+          timelines={timelines}
+          visibleTimelineIds={visibleTimelineIds}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          xDomain={xDomain}
+          onShowTimelines={showTimelines}
+          onHideTimelines={hideTimelines}
+          onSelectTimelineEvents={selectTimelineEvents}
+          onDeselectTimelineEvents={deselectTimelineEvents}
+          onOpenModal={onOpenModal}
+          onClose={onCloseTimelines}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  getRightSidebarForNativeQuery = () => {
+    const {
+      isShowingTemplateTagsEditor,
+      isShowingDataReference,
+      isShowingSnippetSidebar,
+      toggleTemplateTagsEditor,
+      toggleDataReference,
+      toggleSnippetSidebar,
+    } = this.props;
+
+    if (isShowingTemplateTagsEditor) {
+      return (
+        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+      );
+    }
+
+    if (isShowingDataReference) {
+      return <DataReference {...this.props} onClose={toggleDataReference} />;
+    }
+
+    if (isShowingSnippetSidebar) {
+      return <SnippetSidebar {...this.props} onClose={toggleSnippetSidebar} />;
+    }
+
+    return null;
+  };
+
+  getRightSidebar = () => {
+    const { question } = this.props;
+    const isStructured = question.isStructured();
+    return isStructured
+      ? this.getRightSidebarForStructuredQuery()
+      : this.getRightSidebarForNativeQuery();
+  };
+
+  renderHeader = () => {
+    const { query } = this.props;
+    const isStructured = query instanceof StructuredQuery;
+
+    const isNewQuestion =
+      isStructured && !query.sourceTableId() && !query.sourceQuery();
+
+    return (
+      <Motion
+        defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
+        style={isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }}
+      >
+        {({ opacity }) => (
+          <QueryBuilderViewHeaderContainer>
+            <BorderedViewTitleHeader {...this.props} style={{ opacity }} />
+            {opacity < 1 && (
+              <NewQuestionHeader
+                className="spread"
+                style={{ opacity: 1 - opacity }}
+              />
+            )}
+          </QueryBuilderViewHeaderContainer>
+        )}
+      </Motion>
+    );
+  };
+
+  renderMain = ({ leftSidebar, rightSidebar }) => {
+    const {
+      query,
+      card,
+      mode,
+      parameters,
+      isDirty,
+      isLiveResizable,
+      isPreviewable,
+      isPreviewing,
+      height,
+      setParameterValue,
+      setIsPreviewing,
+    } = this.props;
+
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
-    const isNewQuestion =
-      query instanceof StructuredQuery &&
-      !query.sourceTableId() &&
-      !query.sourceQuery();
-
-    if (isNewQuestion && queryBuilderMode === "view") {
-      return (
-        <div className={fitClassNames}>
-          <div className="p4 mx2">
-            <QuestionDataSelector
-              query={query}
-              triggerElement={
-                <Subhead className="mb2">{t`Pick your data`}</Subhead>
-              }
-            />
-          </div>
-        </div>
-      );
-    }
-
-    if (card.dataset && queryBuilderMode === "dataset") {
-      return <DatasetEditor {...this.props} />;
-    }
+    const validationError = _.first(query.validate?.());
 
     const topQuery = isStructured && query.topLevelQuery();
 
@@ -161,203 +308,175 @@ export default class View extends React.Component {
     const onEditBreakout =
       topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
 
-    const leftSideBar = isShowingChartSettingsSidebar ? (
-      <ChartSettingsSidebar
-        {...this.props}
-        onClose={this.props.onCloseChartSettings}
-      />
-    ) : isShowingChartTypeSidebar ? (
-      <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
-    ) : isShowingQuestionDetailsSidebar ? (
-      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
-    ) : null;
+    const isSidebarOpen = leftSidebar || rightSidebar;
 
-    const rightSideBar =
-      isStructured && isShowingSummarySidebar ? (
-        <SummarizeSidebar
-          question={question}
-          onClose={this.props.onCloseSummary}
-          isResultDirty={isResultDirty}
-          runQuestionQuery={runQuestionQuery}
-        />
-      ) : isStructured && isShowingFilterSidebar ? (
-        <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
-      ) : isNative && isShowingTemplateTagsEditor ? (
-        <TagEditorSidebar
-          {...this.props}
-          onClose={this.props.toggleTemplateTagsEditor}
-        />
-      ) : isNative && isShowingDataReference ? (
-        <DataReference
-          {...this.props}
-          onClose={this.props.toggleDataReference}
-        />
-      ) : isNative && isShowingSnippetSidebar ? (
-        <SnippetSidebar
-          {...this.props}
-          onClose={this.props.toggleSnippetSidebar}
-        />
-      ) : null;
+    return (
+      <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
+        {isNative ? (
+          <NativeQueryEditorContainer>
+            <NativeQueryEditor
+              {...this.props}
+              viewHeight={height}
+              isOpen={!card.dataset_query.native.query || isDirty}
+              datasetQuery={card && card.dataset_query}
+            />
+          </NativeQueryEditorContainer>
+        ) : (
+          <StyledSyncedParametersList
+            parameters={parameters}
+            setParameterValue={setParameterValue}
+            commitImmediately
+          />
+        )}
 
-    const isSidebarOpen = leftSideBar || rightSideBar;
+        <ViewSubHeader
+          isPreviewable={isPreviewable}
+          isPreviewing={isPreviewing}
+          setIsPreviewing={setIsPreviewing}
+        />
+
+        {validationError ? (
+          <QueryValidationError error={validationError} />
+        ) : (
+          <StyledDebouncedFrame enabled={!isLiveResizable}>
+            <QueryVisualization
+              {...this.props}
+              noHeader
+              className="spread"
+              onAddSeries={onAddSeries}
+              onEditSeries={onEditSeries}
+              onRemoveSeries={onRemoveSeries}
+              onEditBreakout={onEditBreakout}
+              mode={queryMode}
+            />
+          </StyledDebouncedFrame>
+        )}
+
+        {ModeFooter && (
+          <ModeFooter {...this.props} className="flex-no-shrink" />
+        )}
+
+        <ViewFooter {...this.props} className="flex-no-shrink" />
+      </QueryBuilderMain>
+    );
+  };
+
+  renderAggregationPopover = () => {
+    const { query } = this.props;
+    const { aggregationPopoverTarget, aggregationIndex } = this.state;
+    return (
+      <Popover
+        isOpen={!!aggregationPopoverTarget}
+        target={aggregationPopoverTarget}
+        onClose={this.handleClosePopover}
+      >
+        <AggregationPopover
+          query={query}
+          aggregation={
+            aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
+          }
+          onChangeAggregation={this.onChangeAggregation}
+          onClose={this.handleClosePopover}
+        />
+      </Popover>
+    );
+  };
+
+  renderBreakoutPopover = () => {
+    const { query } = this.props;
+    const { breakoutPopoverTarget, breakoutIndex } = this.state;
+    return (
+      <Popover
+        isOpen={!!breakoutPopoverTarget}
+        onClose={this.handleClosePopover}
+        target={breakoutPopoverTarget}
+      >
+        <BreakoutPopover
+          query={query}
+          breakout={breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0}
+          onChangeBreakout={this.onChangeBreakout}
+          onClose={this.handleClosePopover}
+        />
+      </Popover>
+    );
+  };
+
+  render() {
+    const {
+      question,
+      query,
+      card,
+      databases,
+      isShowingNewbModal,
+      isShowingTimelineSidebar,
+      queryBuilderMode,
+      fitClassNames,
+      closeQbNewbModal,
+    } = this.props;
+
+    // if we don't have a card at all or no databases then we are initializing, so keep it simple
+    if (!card || !databases) {
+      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
+    }
+
+    const isStructured = query instanceof StructuredQuery;
+
+    const isNewQuestion =
+      isStructured && !query.sourceTableId() && !query.sourceQuery();
+
+    if (isNewQuestion && queryBuilderMode === "view") {
+      return <NewQuestionView query={query} fitClassNames={fitClassNames} />;
+    }
+
+    if (card.dataset && queryBuilderMode === "dataset") {
+      return <DatasetEditor {...this.props} />;
+    }
 
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
 
+    const leftSidebar = this.getLeftSidebar();
+    const rightSidebar = this.getRightSidebar();
+    const rightSidebarWidth = isShowingTimelineSidebar
+      ? SIDEBAR_SIZES.TIMELINE
+      : SIDEBAR_SIZES.NORMAL;
+
     return (
       <div className={fitClassNames}>
-        <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
-          <Motion
-            defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
-            style={
-              isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
-            }
-          >
-            {({ opacity }) => (
-              <div className="flex-no-shrink z3 bg-white relative">
-                <ViewTitleHeader
-                  {...this.props}
-                  style={{ opacity }}
-                  py={1}
-                  className="border-bottom"
-                />
-                {opacity < 1 && (
-                  <NewQuestionHeader
-                    className="spread"
-                    style={{ opacity: 1 - opacity }}
-                  />
-                )}
-              </div>
-            )}
-          </Motion>
-
-          <div className="flex flex-full relative">
-            {query instanceof StructuredQuery && (
+        <QueryBuilderViewRoot className="QueryBuilder">
+          {this.renderHeader()}
+          <QueryBuilderContentContainer>
+            {isStructured && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
               />
             )}
-
-            <ViewSidebar side="left" isOpen={!!leftSideBar}>
-              {leftSideBar}
+            <ViewSidebar side="left" isOpen={!!leftSidebar}>
+              {leftSidebar}
             </ViewSidebar>
-
-            <div
-              className={cx("flex-full flex flex-column flex-basis-none", {
-                "hide sm-show": isSidebarOpen,
-              })}
+            {this.renderMain({ leftSidebar, rightSidebar })}
+            <ViewSidebar
+              side="right"
+              isOpen={!!rightSidebar}
+              width={rightSidebarWidth}
             >
-              {isNative ? (
-                <div className="z2 hide sm-show border-bottom mb2">
-                  <NativeQueryEditor
-                    {...this.props}
-                    viewHeight={height}
-                    isOpen={!card.dataset_query.native.query || isDirty}
-                    datasetQuery={card && card.dataset_query}
-                  />
-                </div>
-              ) : (
-                <SyncedParametersList
-                  className="mt2 ml3"
-                  parameters={this.props.parameters}
-                  setParameterValue={this.props.setParameterValue}
-                  commitImmediately
-                />
-              )}
-
-              <ViewSubHeader {...this.props} />
-
-              <DebouncedFrame
-                className="flex-full"
-                style={{ flexGrow: 1 }}
-                enabled={!isLiveResizable}
-              >
-                <QueryVisualization
-                  {...this.props}
-                  onAddSeries={onAddSeries}
-                  onEditSeries={onEditSeries}
-                  onRemoveSeries={onRemoveSeries}
-                  onEditBreakout={onEditBreakout}
-                  noHeader
-                  className="spread"
-                />
-              </DebouncedFrame>
-
-              {ModeFooter && (
-                <ModeFooter {...this.props} className="flex-no-shrink" />
-              )}
-
-              <ViewFooter {...this.props} className="flex-no-shrink" />
-            </div>
-
-            <ViewSidebar side="right" isOpen={!!rightSideBar}>
-              {rightSideBar}
+              {rightSidebar}
             </ViewSidebar>
-          </div>
-        </div>
+          </QueryBuilderContentContainer>
+        </QueryBuilderViewRoot>
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
-            question={this.props.question}
-            onClose={() => this.props.closeQbNewbModal()}
+            question={question}
+            onClose={() => closeQbNewbModal()}
           />
         )}
 
         <QueryModals {...this.props} />
 
-        {isStructured && (
-          <Popover
-            isOpen={!!aggregationPopoverTarget}
-            target={aggregationPopoverTarget}
-            onClose={this.handleClosePopover}
-          >
-            <AggregationPopover
-              query={query}
-              aggregation={
-                aggregationIndex >= 0
-                  ? query.aggregations()[aggregationIndex]
-                  : 0
-              }
-              onChangeAggregation={aggregation => {
-                if (aggregationIndex != null) {
-                  query
-                    .updateAggregation(aggregationIndex, aggregation)
-                    .update(null, { run: true });
-                } else {
-                  query.aggregate(aggregation).update(null, { run: true });
-                }
-                this.handleClosePopover();
-              }}
-              onClose={this.handleClosePopover}
-            />
-          </Popover>
-        )}
-        {isStructured && (
-          <Popover
-            isOpen={!!breakoutPopoverTarget}
-            onClose={this.handleClosePopover}
-            target={breakoutPopoverTarget}
-          >
-            <BreakoutPopover
-              query={query}
-              breakout={
-                breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0
-              }
-              onChangeBreakout={breakout => {
-                if (breakoutIndex != null) {
-                  query
-                    .updateBreakout(breakoutIndex, breakout)
-                    .update(null, { run: true });
-                } else {
-                  query.breakout(breakout).update(null, { run: true });
-                }
-                this.handleClosePopover();
-              }}
-              onClose={this.handleClosePopover}
-            />
-          </Popover>
-        )}
+        {isStructured && this.renderAggregationPopover()}
+        {isStructured && this.renderBreakoutPopover()}
       </div>
     );
   }

@@ -43,6 +43,9 @@ export function getFieldTargetId(field) {
     const type = typeof field[1];
     return type === "number" || type === "string" ? field[1] : field;
   }
+  if (isExpressionField(field) && _.isString(field[1])) {
+    return field[1];
+  }
   console.warn("Unknown field type:", field);
 }
 

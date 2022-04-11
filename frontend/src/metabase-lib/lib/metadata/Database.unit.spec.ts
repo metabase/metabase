@@ -260,4 +260,24 @@ describe("Database", () => {
       expect(database1.savedQuestionsDatabase()).toBe(database2);
     });
   });
+
+  describe("canWrite", () => {
+    it("should be true for a db with write permissions", () => {
+      const database = new Database({
+        id: 1,
+        native_permissions: "write",
+      });
+
+      expect(database.canWrite()).toBe(true);
+    });
+
+    it("should be false for a db without write permissions", () => {
+      const database = new Database({
+        id: 1,
+        native_permissions: "none",
+      });
+
+      expect(database.canWrite()).toBe(false);
+    });
+  });
 });

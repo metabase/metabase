@@ -1,9 +1,11 @@
 import {
-  describeWithToken,
-  modal,
+  describeEE,
   restore,
   setupSMTP,
   sidebar,
+  visitQuestion,
+  visitDashboard,
+  modal,
 } from "__support__/e2e/cypress";
 
 const allowedDomain = "metabase.test";
@@ -13,7 +15,7 @@ const deniedEmail = `mailer@${deniedDomain}`;
 const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
-describeWithToken("scenarios > sharing > approved domains (EE)", () => {
+describeEE("scenarios > sharing > approved domains (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -22,7 +24,7 @@ describeWithToken("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a question alert", () => {
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     cy.icon("bell").click();
     cy.findByText("Set up an alert").click();
@@ -35,28 +37,9 @@ describeWithToken("scenarios > sharing > approved domains (EE)", () => {
     cy.findByText(alertError);
   });
 
-  it("should validate approved email domains for a question alert in the audit app", () => {
-    cy.visit("/question/1");
-    cy.icon("bell").click();
-    cy.findByText("Set up an alert").click();
-    cy.button("Done").click();
-    cy.findByText("Your alert is all set up.");
-
-    cy.visit("/admin/audit/subscriptions/alerts");
-    cy.findByText("1").click();
-
-    modal().within(() => {
-      addEmailRecipient(deniedEmail);
-
-      cy.button("Update").should("be.disabled");
-      cy.findByText(alertError);
-    });
-  });
-
   it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
-    cy.visit("/dashboard/1");
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    visitDashboard(1);
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     sidebar().within(() => {
@@ -70,9 +53,8 @@ describeWithToken("scenarios > sharing > approved domains (EE)", () => {
   });
 
   it("should validate approved email domains for a dashboard subscription in the audit app", () => {
-    cy.visit("/dashboard/1");
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    visitDashboard(1);
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     sidebar().within(() => {

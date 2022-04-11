@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 
 import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 
@@ -26,7 +26,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = render(
+    const { getAllByText } = renderWithProviders(
       <Visualization rawSeries={series({ rows, insights })} />,
     );
     getAllByText("120");
@@ -46,7 +46,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = render(
+    const { getAllByText } = renderWithProviders(
       <Visualization rawSeries={series({ rows, insights })} />,
     );
     getAllByText("80");
@@ -66,7 +66,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = render(
+    const { getAllByText } = renderWithProviders(
       <Visualization rawSeries={series({ rows, insights })} />,
     );
     getAllByText("100");
@@ -87,7 +87,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = render(
+    const { getAllByText } = renderWithProviders(
       <Visualization rawSeries={series({ rows, insights })} />,
     );
     getAllByText("8,000%");

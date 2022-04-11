@@ -3,7 +3,9 @@
   about Fields in a Table, and for fetching the DB metadata itself. This metadata is used by the logic in other
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
   comparing the differences in the two sets of Metadata."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :as table]
             [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -64,7 +66,7 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
  (db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-             :parent_id :id :description :database_position]
+             :parent_id :id :description :database_position :nfc_path]
      :table_id  (u/the-id table)
      :active    true
      {:order-by table/field-order-rule}))
@@ -75,7 +77,6 @@
   [table :- i/TableInstance]
   (-> table table->fields fields->our-metadata))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FETCHING METADATA FROM CONNECTED DB                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -84,4 +85,6 @@
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of `describe-table`."
   [database :- i/DatabaseInstance table :- i/TableInstance]
-  (:fields (fetch-metadata/table-metadata database table)))
+  (cond-> (:fields (fetch-metadata/table-metadata database table))
+    (driver/database-supports? (:engine database) :nested-field-columns database)
+    (set/union (fetch-metadata/nfc-metadata database table))))

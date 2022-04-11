@@ -20,7 +20,8 @@
    (format-string format-settings nil))
 
   ([format-settings semantic-type]
-   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings semantic-type)]
+   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
+                                                                                  :effective_type :type/Temporal})]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
@@ -241,8 +242,9 @@
 (defn parse-cell-content
   "Parses an XLSX sheet and returns the raw data in each row"
   [sheet]
-  (for [row (spreadsheet/into-seq sheet)]
-    (map spreadsheet/read-cell row)))
+  (mapv (fn [row]
+          (mapv spreadsheet/read-cell row))
+        (spreadsheet/into-seq sheet)))
 
 (defn parse-xlsx-results
   "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
@@ -293,7 +295,7 @@
                                 [[1.23]]
                                 parse-format-strings))))
     (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-           (second (xlsx-export [{:id 0, :name "Col"}]
+           (second (xlsx-export [{:id 0, :name "Col", :effective_type :type/Temporal}]
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                            {::mb.viz/date-style "YYYY/M/D",
                                                             ::mb.viz/date-separator ".",
@@ -397,6 +399,12 @@
   (testing "ints"
     (is (= [1.0]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[1]])))))
+  (testing "bigints"
+    (is (= [1.0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[1N]])))))
+  (testing "bigdecimals"
+    (is (= [1.23]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[1.23M]])))))
   (testing "numbers that round to ints"
     (is (= [2.00001]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[2.00001]])))))
@@ -434,7 +442,15 @@
       (is (= ["GB"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
       (is (= ["Portugal"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))))
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]]))))))
+  (testing "NaN and infinity values (#21343)"
+    ;; These values apparently are represented as error codes, which are parsed here into keywords
+    (is (= [:NUM]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##NaN]]))))
+    (is (= [:DIV0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##Inf]]))))
+    (is (= [:DIV0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[##-Inf]]))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
@@ -499,3 +515,19 @@
       (i/finish! results-writer {:row_count 0})
       ;; No additional files should exist in the temp directory
       (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
+
+(deftest dont-format-non-temporal-columns-as-temporal-columns-test
+  (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
+    (mt/dataset sample-dataset
+      (is (= [["CREATED_AT"]
+              [1.0]
+              [2.0]]
+             (xlsx-export [{:id             0
+                            :semantic_type  :type/CreationTimestamp
+                            :unit           :month-of-year
+                            :name           "CREATED_AT"
+                            :effective_type :type/Integer
+                            :base_type      :type/Integer}]
+                          {}
+                          [[1]
+                           [2]]))))))

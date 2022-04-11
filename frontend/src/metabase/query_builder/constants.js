@@ -14,4 +14,11 @@ export const MODAL_TYPES = {
   EMBED: "embed",
   TURN_INTO_DATASET: "turn-into-dataset",
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
+  NEW_EVENT: "new-event",
+  EDIT_EVENT: "edit-event",
+};
+
+export const SIDEBAR_SIZES = {
+  NORMAL: 355,
+  TIMELINE: 300,
 };

@@ -1,32 +1,35 @@
-name: E2E Tests
+name: E2E Tests for PR
 
 on:
-  push:
-    branches:
-      - 'master'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".circleci/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
 
   build:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss]
+        edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-
-    - name: Java/AOT prep
-      run: |
-        source "./bin/prep.sh"
-        prep_deps
 
     - run: ./bin/build version
     - run: ./bin/build translations
@@ -35,22 +38,12 @@ jobs:
     - run: ./bin/build drivers
     - run: ./bin/build uberjar
 
-    - name: Mark with the commit hash
-      run:  git rev-parse --short HEAD > COMMIT-ID
-    - name: Calculate SHA256 checksum
-      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
-    - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: metabase-${{ matrix.edition }}-uberjar
-        path: |
-          ./target/uberjar/metabase.jar
-          ./COMMIT-ID
-          ./SHA256.sum
+    - name: Prepare uberjar artifact
+      uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 20
+    runs-on: buildjet-4vcpu-ubuntu-2004
+    timeout-minutes: 30
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -58,22 +51,20 @@ jobs:
       DISPLAY: ""
       QA_DB_ENABLED: true
       ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss]
+        java-version: [11]
+        edition: [oss, ee]
         folder:
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
           - "moderation"
-          - "native"
-          - "smoketest"
+          - "permissions"
     services:
       maildev:
-        image: maildev/maildev
+        image: maildev/maildev:1.1.0
         ports:
           - "80:80"
           - "25:25"
@@ -102,23 +93,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-
-    - name: Get Cypress cache
-      uses: actions/cache@v2
+    - name: Prepare JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v3
       with:
-        path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
-    - name: Ensure that Cypress executable is ready
-      run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
+    - name: Run Snowplow micro
+      uses: ./.github/actions/run-snowplow-micro
 
     - uses: actions/download-artifact@v2
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
@@ -129,14 +115,17 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
-      name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       env:
         TERM: xterm
+
     - name: Upload Cypress recording upon failure
       uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
-        path: ./cypress
+        path: |
+          ./cypress
+          ./logs/test.log
         if-no-files-found: ignore

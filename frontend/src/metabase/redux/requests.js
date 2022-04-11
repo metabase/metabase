@@ -3,15 +3,15 @@ import { updateIn, assoc } from "icepick";
 
 export const setRequestLoading = createAction(
   "metabase/requests/SET_REQUEST_LOADING",
-  statePath => ({ statePath }),
+  (statePath, queryKey) => ({ statePath, queryKey }),
 );
 export const setRequestLoaded = createAction(
   "metabase/requests/SET_REQUEST_LOADED",
-  statePath => ({ statePath }),
+  (statePath, queryKey) => ({ statePath, queryKey }),
 );
 export const setRequestError = createAction(
   "metabase/requests/SET_REQUEST_ERROR",
-  (statePath, error) => ({ statePath, error }),
+  (statePath, queryKey, error) => ({ statePath, queryKey, error }),
 );
 export const setRequestUnloaded = createAction(
   "metabase/requests/SET_REQUEST_UNLOADED",
@@ -29,16 +29,18 @@ const initialRequestState = {
 const requestStateReducer = handleActions(
   {
     [setRequestLoading]: {
-      next: state => ({
+      next: (state, { payload: { queryKey } }) => ({
         ...state,
+        queryKey,
         loading: true,
         loaded: false,
         error: null,
       }),
     },
     [setRequestLoaded]: {
-      next: state => ({
+      next: (state, { payload: { queryKey } }) => ({
         ...state,
+        queryKey,
         loading: false,
         loaded: true,
         error: null,
@@ -46,8 +48,9 @@ const requestStateReducer = handleActions(
       }),
     },
     [setRequestError]: {
-      next: (state, { payload: { error } }) => ({
+      next: (state, { payload: { queryKey, error } }) => ({
         ...state,
+        queryKey,
         loading: false,
         loaded: false,
         error: error,

@@ -1,13 +1,11 @@
 import React, {
-  ChangeEvent,
-  FocusEvent,
   forwardRef,
-  Fragment,
-  HTMLAttributes,
   isValidElement,
-  ReactNode,
+  ReactElement,
   Ref,
+  useRef,
 } from "react";
+import Tooltip from "metabase/components/Tooltip";
 import {
   CheckBoxContainer,
   CheckBoxIcon,
@@ -16,33 +14,34 @@ import {
   CheckBoxLabel,
   CheckBoxRoot,
 } from "./CheckBox.styled";
+import { CheckBoxProps, CheckboxTooltipProps } from "./types";
+import { isEllipsisActive } from "./utils";
+import {
+  DEFAULT_CHECKED_COLOR,
+  DEFAULT_ICON_PADDING,
+  DEFAULT_SIZE,
+  DEFAULT_UNCHECKED_COLOR,
+} from "./constants";
 
-const DEFAULT_SIZE = 16;
-const DEFAULT_ICON_PADDING = 4;
-const DEFAULT_CHECKED_COLOR = "brand";
-const DEFAULT_UNCHECKED_COLOR = "text-light";
-
-export interface CheckBoxProps
-  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
-  label?: ReactNode;
-  checked?: boolean;
-  indeterminate?: boolean;
-  disabled?: boolean;
-  size?: number;
-  checkedColor?: string;
-  uncheckedColor?: string;
-  autoFocus?: boolean;
-  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+function CheckboxTooltip({
+  hasTooltip,
+  tooltipLabel,
+  children,
+}: CheckboxTooltipProps): ReactElement {
+  return hasTooltip ? (
+    <Tooltip tooltip={tooltipLabel}>{children}</Tooltip>
+  ) : (
+    <>{children}</>
+  );
 }
 
-const CheckBox = forwardRef(function Checkbox(
+const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
   {
     label,
+    labelEllipsis = false,
     checked,
     indeterminate,
-    disabled,
+    disabled = false,
     size = DEFAULT_SIZE,
     checkedColor = DEFAULT_CHECKED_COLOR,
     uncheckedColor = DEFAULT_UNCHECKED_COLOR,
@@ -54,41 +53,54 @@ const CheckBox = forwardRef(function Checkbox(
   }: CheckBoxProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
+  const isControlledCheckBoxInput = !!onChange;
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const hasLabelEllipsis =
+    labelRef.current && isEllipsisActive(labelRef.current);
+
   return (
     <CheckBoxRoot ref={ref} {...props}>
-      <CheckBoxInput
-        type="checkbox"
-        checked={checked}
-        size={size}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        onChange={onChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />
-      <CheckBoxContainer disabled={disabled}>
-        <CheckBoxIconContainer
-          checked={checked}
+      <CheckboxTooltip
+        hasTooltip={!!(labelEllipsis && hasLabelEllipsis)}
+        tooltipLabel={label}
+      >
+        <CheckBoxInput
+          type="checkbox"
+          checked={isControlledCheckBoxInput ? !!checked : undefined}
+          defaultChecked={isControlledCheckBoxInput ? undefined : !!checked}
           size={size}
-          checkedColor={checkedColor}
-          uncheckedColor={uncheckedColor}
-        >
-          {(checked || indeterminate) && (
-            <CheckBoxIcon
-              name={indeterminate ? "dash" : "check"}
-              checked={checked}
-              size={size - DEFAULT_ICON_PADDING}
-              uncheckedColor={uncheckedColor}
-            />
-          )}
-        </CheckBoxIconContainer>
-        {label && (
-          <Fragment>
-            {isValidElement(label) && label}
-            {!isValidElement(label) && <CheckBoxLabel>{label}</CheckBoxLabel>}
-          </Fragment>
-        )}
-      </CheckBoxContainer>
+          disabled={disabled}
+          autoFocus={autoFocus}
+          onChange={isControlledCheckBoxInput ? onChange : undefined}
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />
+        <CheckBoxContainer disabled={disabled}>
+          <CheckBoxIconContainer
+            checked={checked}
+            size={size}
+            checkedColor={checkedColor}
+            uncheckedColor={uncheckedColor}
+          >
+            {(checked || indeterminate) && (
+              <CheckBoxIcon
+                name={indeterminate ? "dash" : "check"}
+                checked={!!checked}
+                size={size - DEFAULT_ICON_PADDING}
+                uncheckedColor={uncheckedColor}
+              />
+            )}
+          </CheckBoxIconContainer>
+          {label &&
+            (isValidElement(label) ? (
+              label
+            ) : (
+              <CheckBoxLabel labelEllipsis={labelEllipsis} ref={labelRef}>
+                {label}
+              </CheckBoxLabel>
+            ))}
+        </CheckBoxContainer>
+      </CheckboxTooltip>
     </CheckBoxRoot>
   );
 });

@@ -1,14 +1,15 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -36,13 +37,25 @@
   (when-not (str/blank? channel-name)
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
 
+(defsetting slack-cached-channels-and-usernames
+  "A cache shared between instances for storing an instance's slack channels and users."
+  :visibility :internal
+  :type :json)
+
+(def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
+
+(defsetting slack-channels-and-usernames-last-updated
+  "The updated-at time for the [[slack-cached-channels-and-usernames]] setting."
+  :visibility :internal
+  :cache?     false
+  :type       :timestamp
+  :default    zoned-time-epoch)
+
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
-
-(def ^:private ^String slack-api-base-url "https://slack.com/api")
 
 (defn slack-configured?
   "Is Slack integration configured?"
@@ -76,7 +89,7 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
-      (when (not (false? (slack-token-valid?))) (messages/send-slack-token-error-emails!))
+      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
       (slack-token-valid? false))
     (if invalid-token?
       (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
@@ -96,7 +109,7 @@
                   (slack-app-token)
                   (slack-token))]
     (when token
-      (let [url     (str slack-api-base-url "/" (name endpoint))
+      (let [url     (str "https://slack.com/api/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
@@ -135,84 +148,111 @@
   "Make a GET request to a Slack API list `endpoint`, returning a sequence of objects returned by the top level
   `results-key` in the response. If additional pages of results exist, fetches those lazily, up to a total of
   `max-list-results`."
-  [endpoint results-key params]
+  [endpoint response->data params]
   ;; use default limit (page size) of 1000 instead of 100 so we don't end up making a hundred API requests for orgs
   ;; with a huge number of channels or users.
   (let [default-params {:limit 1000}
-        response       (m/mapply GET endpoint (merge default-params params))]
+        response       (m/mapply GET endpoint (merge default-params params))
+        data           (response->data response)]
     (when (seq response)
       (take
        max-list-results
        (concat
-        (get response results-key)
+        data
         (when-let [next-cursor (next-cursor response)]
           (lazy-seq
-           (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
+           (paged-list-request endpoint response->data (assoc params :cursor next-cursor)))))))))
 
 (defn conversations-list
-  "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
-  default only fetches channels."
+  "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
+  By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
+  only fetch the first [[max-list-results]] items."
   [& {:as query-parameters}]
   (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
-    (paged-list-request "conversations.list" :channels params)))
+    (paged-list-request "conversations.list"
+                        ;; response -> channel names
+                        #(->> %
+                              :channels
+                              (map (fn [channel]
+                                     (str \# (:name channel)))))
+                        params)))
 
-(defn channel-with-name
-  "Return a Slack channel with `channel-name` (as a map) if it exists."
+(defn channel-exists?
+  "Returns true if the channel it exists."
   [channel-name]
-  (some (fn [channel]
-          (when (= (:name channel) channel-name)
-            channel))
-        (conversations-list)))
+  (and channel-name
+       (contains?
+        (set (slack-cached-channels-and-usernames))
+        (str \# channel-name))))
 
 (s/defn valid-token?
-  "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
+  "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
   [token :- su/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
-      (boolean (take 1 (conversations-list :limit 1, :token token))))
+      (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
     (catch Throwable e
       (if (slack-token-error-codes (:error-code (ex-data e)))
         false
         (throw e)))))
 
 (defn users-list
-  "Calls Slack API `users.list` endpoint and returns the list of available users."
+  "Calls Slack API `users.list` endpoint and returns the list of available users with their @ prefix. Note the call
+  to [[paged-list-request]] will only fetch the first [[max-list-results]] items."
   [& {:as query-parameters}]
-  (->> (paged-list-request "users.list" :members query-parameters)
-       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
+  (->> (paged-list-request "users.list"
+                           ;; response -> user names
+                           #(->> %
+                                 :members
+                                 (map (fn [member]
+                                        (str \@ (:name member)))))
+                           query-parameters)
+       ;; remove deleted users and bots. At the time of this writing there's no way to do this in the Slack API
        ;; itself so we need to do it after the fact.
-       (filter (complement :deleted))
-       (filter (complement :is_bot))))
+       (remove :deleted)
+       (remove :is_bot)))
 
-(def ^:private ^{:arglists '([channel-name])} files-channel*
-  ;; If the channel has successfully been created we can cache the information about it from the API response. We need
-  ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
-  ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
-  ;; https://github.com/metabase/metabase/issues/8967
-  ;;
-  ;; Of course, if `files-channel*` *fails* (because the channel is not created), this won't get cached; this is what
-  ;; we want -- to remind people to create it
-  ;;
-  ;; The memoized function is paramterized by the channel name so that if the name is changed, the cached channel details
-  ;; will be refetched.
-  (memoize/ttl
-   (fn [channel-name]
-     (or (when channel-name (channel-with-name channel-name))
-         (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                            " "
-                            (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                            " "
-                            (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-           (log/error (u/format-color 'red message))
-           (throw (ex-info message {:status-code 400})))))
-   :ttl/threshold (u/hours->ms 6)))
+(defonce ^:private refresh-lock (Object.))
+
+(defn- needs-refresh? []
+  (u.date/older-than?
+   (slack-channels-and-usernames-last-updated)
+   (t/minutes 10)))
+
+(defn refresh-channels-and-usernames!
+  "Refreshes users and conversations in slack-cache. finds both in parallel, sets
+  [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
+  []
+  (when (slack-configured?)
+    (log/info "Refreshing slack channels and usernames.")
+    (let [users (future (vec (users-list)))
+          conversations (future (vec (conversations-list)))]
+      (slack-cached-channels-and-usernames (concat @conversations @users))
+      (slack-channels-and-usernames-last-updated (t/zoned-date-time)))))
+
+(defn refresh-channels-and-usernames-when-needed!
+  "Refreshes users and conversations in slack-cache on a per-instance lock."
+  []
+  (when (needs-refresh?)
+    (locking refresh-lock
+      (when (needs-refresh?)
+        (refresh-channels-and-usernames!)))))
 
 (defn files-channel
-  "Calls Slack api `channels.info` to check whether a channel exists with the expected name from the
-  [[slack-files-channel]] setting. If it does, returns the channel details as a map. If it doesn't, throws an error
-  that advices an admin to create it."
+  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
+  [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
+  throws an error that advices an admin to create it."
   []
-  (files-channel* (slack-files-channel)))
+  (let [channel-name (slack-files-channel)]
+    (if (channel-exists? channel-name)
+      channel-name
+      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                         " "
+                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                         " "
+                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
+        (log/error (u/format-color 'red message))
+        (throw (ex-info message {:status-code 400}))))))
 
 (def ^:private NonEmptyByteArray
   (s/constrained

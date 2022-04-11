@@ -53,8 +53,8 @@ If you are having problems with a regular [filter widget][filter-widget-gloss], 
 
 1. Check that Metabase's data model for your database includes the foreign key relationship.
 
-[filter-widget-gloss]: /glossary.html#filter_widget
-[foreign-key-gloss]: /glossary.html#foreign_key
+[filter-widget-gloss]: /glossary/filter_widget
+[foreign-key-gloss]: /glossary/foreign_key
 [join-types]: /learn/sql-questions/sql-join-types.html
 [learn-linking]: /learn/dashboards/linking-filters.html
-[linked-filter-gloss]: /glossary.html#linked_filter
+[linked-filter-gloss]: /glossary/linked_filter

@@ -1,6 +1,6 @@
 import {
-  describeWithoutToken,
-  describeWithToken,
+  describeOSS,
+  describeEE,
   restore,
   setupMetabaseCloud,
 } from "__support__/e2e/cypress";
@@ -21,30 +21,42 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeWithoutToken("scenarios > admin > troubleshooting > help", () => {
+describeOSS("scenarios > admin > troubleshooting > help", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should hide the support link when running Metabase OSS", () => {
+  it("should link `Get Help` to help", () => {
     cy.visit("/admin/troubleshooting/help");
 
     cy.findByText("Metabase Admin");
-    cy.findByText("Contact support").should("not.exist");
+    cy.findByText("Get Help")
+      .parents("a")
+      .should("have.prop", "href")
+      .and(
+        "equal",
+        "https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help",
+      );
   });
 });
 
-describeWithToken("scenarios > admin > troubleshooting > help (EE)", () => {
+describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should add the support link when running Metabase EE", () => {
+  it("should link `Get Help` to help-premium", () => {
     cy.visit("/admin/troubleshooting/help");
 
     cy.findByText("Metabase Admin");
-    cy.findByText("Contact support");
+    cy.findByText("Get Help")
+      .parents("a")
+      .should("have.prop", "href")
+      .and(
+        "equal",
+        "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help",
+      );
   });
 });

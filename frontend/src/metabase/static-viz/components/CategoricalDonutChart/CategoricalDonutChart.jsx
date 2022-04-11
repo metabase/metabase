@@ -5,6 +5,7 @@ import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
 import { formatNumber } from "../../lib/numbers";
+import { DIMENSION_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
   data: PropTypes.array,
@@ -37,7 +38,12 @@ const layout = {
   labelFontSize: 14,
 };
 
-const CategoricalDonutChart = ({ data, colors, accessors, settings }) => {
+const CategoricalDonutChart = ({
+  data,
+  colors,
+  accessors = DIMENSION_ACCESSORS,
+  settings,
+}) => {
   const innerWidth = layout.width - layout.margin * 2;
   const innerHeight = layout.height - layout.margin * 2;
   const outerRadius = Math.min(innerWidth, innerHeight) / 2;

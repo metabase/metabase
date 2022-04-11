@@ -42,7 +42,7 @@
        (vswap! rows conj row)
        result))))
 
-(defn- default-reducedf [_metadata reduced-result context]
+(defn- default-reducedf [reduced-result context]
   (context/resultf reduced-result context))
 
 (defn default-reducef
@@ -51,7 +51,6 @@
   [[metabase.query-processor.reducible-test/write-rows-to-file-test]] for an example of a custom implementation."
   [rff context metadata reducible-rows]
   {:pre [(fn? rff)]}
-  ;; TODO -- how to pass updated metadata to reducedf?
   (let [rf (rff metadata)]
     (assert (fn? rf))
     (when-let [reduced-rows (try
@@ -61,7 +60,7 @@
                                                          {:type error-type/qp}
                                                          e)
                                                 context)))]
-      (context/reducedf metadata reduced-rows context))))
+      (context/reducedf reduced-rows context))))
 
 (defn- default-runf [query rf context]
   (try

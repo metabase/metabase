@@ -5,6 +5,8 @@ import {
   editDashboard,
   saveDashboard,
   setFilter,
+  visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
@@ -24,14 +26,10 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         const questionDetails = getQuestionDetails(sqlFilter);
 
         cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { id, card_id, dashboard_id } }) => {
-            cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-            cy.visit(`/question/${card_id}`);
+          ({ body: { card_id, dashboard_id } }) => {
+            visitQuestion(card_id);
 
-            // Wait for `result_metadata` to load
-            cy.wait("@cardQuery");
-
-            cy.visit(`/dashboard/${dashboard_id}`);
+            visitDashboard(dashboard_id);
           },
         );
 

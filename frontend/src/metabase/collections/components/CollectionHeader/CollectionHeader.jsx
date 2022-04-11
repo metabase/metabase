@@ -11,6 +11,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 import NewCollectionItemMenu from "metabase/collections/components/NewCollectionItemMenu";
+import { color } from "metabase/lib/colors";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
@@ -19,14 +20,12 @@ import {
   DescriptionHeading,
   MenuContainer,
   TitleContent,
-  ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
-function Title({ collection, handleToggleMobileSidebar }) {
+function Title({ collection }) {
   return (
     <div>
       <TitleContent>
-        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
         <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
           collection={collection}
           mr={1}
@@ -69,6 +68,21 @@ function PermissionsLink({
   ) : null;
 }
 
+function TimelinesLink({ collection }) {
+  const title = t`Events`;
+  const link = Urls.timelinesInCollection(collection);
+
+  return (
+    <Tooltip tooltip={title}>
+      <Link to={link}>
+        <IconWrapper>
+          <Icon name="calendar" size={20} />
+        </IconWrapper>
+      </Link>
+    </Tooltip>
+  );
+}
+
 function EditMenu({
   collection,
   hasWritePermission,
@@ -90,13 +104,31 @@ function EditMenu({
   ) : null;
 }
 
+function Bookmark({ isBookmarked, onClickBookmark }) {
+  const title = t`Bookmarks`;
+  const iconColor = isBookmarked ? color("brand") : "";
+
+  return (
+    <Tooltip tooltip={title}>
+      <IconWrapper onClick={onClickBookmark}>
+        <Icon name="bookmark" color={iconColor} size={20} />
+      </IconWrapper>
+    </Tooltip>
+  );
+}
+
 function Menu(props) {
-  const { hasWritePermission } = props;
+  const { collectionId, hasWritePermission } = props;
+
+  const shouldBeBookmarkable = collectionId !== "root";
+
   return (
     <MenuContainer data-testid="collection-menu">
       {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
+      <TimelinesLink {...props} />
+      {shouldBeBookmarkable && <Bookmark {...props} />}
     </MenuContainer>
   );
 }

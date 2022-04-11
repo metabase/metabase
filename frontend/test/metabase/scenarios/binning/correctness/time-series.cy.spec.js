@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   getBinningButtonForDimension,
+  summarize,
 } from "__support__/e2e/cypress";
 
 import { TIME_OPTIONS } from "./constants";
@@ -18,6 +19,11 @@ const questionDetails = {
   },
 };
 
+/**
+ * The list of issues this spec covers:
+ *  - metabase#11183
+ *  -
+ */
 describe("scenarios > binning > correctness > time series", () => {
   beforeEach(() => {
     restore();
@@ -27,9 +33,7 @@ describe("scenarios > binning > correctness > time series", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByTestId("qb-header-action-panel")
-      .contains("Summarize")
-      .click();
+    summarize();
 
     openPopoverFromDefaultBucketSize("Created At", "by month");
   });
@@ -54,7 +58,6 @@ describe("scenarios > binning > correctness > time series", () => {
         }).should("have.text", selected);
 
         cy.findByText("Done").click();
-        cy.findByTestId("sidebar-right").should("not.be.visible");
 
         getTitle(titleRegex);
 

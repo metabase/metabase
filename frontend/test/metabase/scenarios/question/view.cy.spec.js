@@ -2,7 +2,9 @@ import {
   restore,
   openOrdersTable,
   popover,
-  getAddDimensionButton,
+  filter,
+  visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -14,66 +16,10 @@ describe("scenarios > question > view", () => {
     cy.signInAsAdmin();
   });
 
-  describe("summarize sidebar", () => {
-    it("should summarize by category and show a bar chart", () => {
-      openOrdersTable();
-
-      cy.contains("Summarize").click();
-      cy.contains("Category").click();
-      cy.contains("Done").click();
-      cy.contains("Count by Product → Category");
-    });
-
-    it("should show orders by year and product category", () => {
-      openOrdersTable();
-      cy.contains("Showing first 2,000 rows");
-      cy.contains("Summarize").click();
-
-      // alias @sidebar so we can more easily click dimensions
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
-
-      cy.get("@sidebar")
-        .contains("Created At")
-        .click();
-      cy.findByText("Done").click();
-
-      cy.contains("Count by Created At: Month");
-
-      // Go back into sidebar
-      cy.contains("Summarize").click();
-
-      // change grouping from month to year
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
-      cy.get("@sidebar")
-        .contains("by month")
-        .click();
-      cy.get(".PopoverBody")
-        .contains("Year")
-        .click();
-
-      cy.contains("Count by Created At: Year");
-
-      getAddDimensionButton({ name: "Category" }).click();
-
-      cy.contains("Done").click();
-
-      // check for title, legend, and x axis labels
-      cy.contains("Count by Created At: Year and Product → Category");
-      ["2016", "2017", "2018", "2019", "2020"].forEach(l => cy.contains(l));
-      ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(l => cy.contains(l));
-    });
-  });
-
   describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
+      filter();
       cy.contains("Vendor").click({ force: true });
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
@@ -87,7 +33,7 @@ describe("scenarios > question > view", () => {
     // flaky test (#19454)
     it.skip("should show info popover for dimension in the filter list", () => {
       openOrdersTable();
-      cy.contains("Filter").click();
+      filter();
 
       cy.contains("Name").trigger("mouseenter");
       popover().contains("Name");
@@ -143,7 +89,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show filters by search for Vendor", () => {
-      cy.visit("/question/4");
+      visitQuestion(4);
 
       cy.findAllByText("VENDOR")
         .first()
@@ -156,7 +102,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      cy.visit("/question/4");
+      visitQuestion(4);
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
@@ -187,7 +133,7 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      cy.visit("/dashboard/2");
+      visitDashboard(2);
       cy.findByText("Question").click();
 
       // Filter by category and vendor
