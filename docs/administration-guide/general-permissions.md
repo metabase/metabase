@@ -15,7 +15,7 @@ General settings access defines which groups can set permissions on all of the s
 Monitoring access sets permissions on the following Admin tabs:
 
 - [Tools](../enterprise-guide/tools.md)
-- [Auditing](../enterprise-guide/auditing.md)
+- [Auditing](../enterprise-guide/audit.md)
 - [Troubleshooting](../troubleshooting-guide/index.md)
 
 ## Subscriptions and alerts
