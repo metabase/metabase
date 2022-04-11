@@ -358,6 +358,25 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Launches").should("be.visible");
     });
 
+    it("should move a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Our analytics events", default: true },
+        events: [{ name: "RC1" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Our analytics events");
+      cy.findByText("Move timeline").click();
+
+      getModal().within(() => {
+        cy.findByText("First collection").click();
+        cy.button("Move").click();
+        cy.wait("@updateTimeline");
+      });
+
+      cy.findByText("First collection events").should("be.visible");
+    });
+
     it("should archive a timeline and undo", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },

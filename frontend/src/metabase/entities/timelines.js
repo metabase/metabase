@@ -5,6 +5,7 @@ import { TimelineSchema } from "metabase/schema";
 import { TimelineApi, TimelineEventApi } from "metabase/services";
 import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline } from "metabase/lib/timelines";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import TimelineEvents from "./timeline-events";
 import forms from "./timelines/forms";
 
@@ -34,6 +35,14 @@ const Timelines = createEntity({
   },
 
   objectActions: {
+    setCollection: ({ id }, collection, opts) => {
+      return Timelines.actions.update(
+        { id },
+        { collection_id: canonicalCollectionId(collection && collection.id) },
+        undo(opts, t`timeline`, t`moved`),
+      );
+    },
+
     setArchived: ({ id }, archived, opts) =>
       Timelines.actions.update(
         { id },

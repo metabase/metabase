@@ -25,12 +25,13 @@ const timelineProps = {
 const timelinesProps = {
   query: (state: State, props: TimelineDetailsModalProps) => ({
     collectionId: Urls.extractCollectionId(props.params.slug),
+    include: "events",
   }),
   LoadingAndErrorWrapper,
 };
 
 const mapStateToProps = (state: State, props: TimelineDetailsModalProps) => ({
-  isOnlyTimeline: props.timelines.length === 1,
+  isOnlyTimeline: props.timelines.length <= 1,
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

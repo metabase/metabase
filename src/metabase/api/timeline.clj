@@ -90,7 +90,7 @@
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (Timeline id) :creator)))
+    (hydrate (Timeline id) :creator [:collection :can_write])))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
