@@ -44,7 +44,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Test Dash");
   });
 
-  it.skip("should create new dashboard and navigate to it from the root collection (metabase#20638)", () => {
+  it("should create new dashboard and navigate to it from the root collection (metabase#20638)", () => {
     cy.visit("/collection/root");
     openNewCollectionItemFlowFor("dashboard");
 
