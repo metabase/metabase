@@ -22,6 +22,10 @@
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
 
+(def refreshable-states
+  "States of `persisted_info` records which can be refreshed."
+  #{"persisted" "error"})
+
 (defn- refresh-tables!'
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
@@ -29,7 +33,8 @@
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
   (let [database      (Database database-id)
         ;; todo: what states are acceptable here? certainly "error". What about "refreshing"?
-        persisted     (db/select PersistedInfo :database_id database-id, :state "persisted")
+        persisted     (db/select PersistedInfo
+                                 :database_id database-id, :state [:in refreshable-states])
         start-time    (t/zoned-date-time)
         refresh-stats (reduce (fn [stats p]
                                 (try
