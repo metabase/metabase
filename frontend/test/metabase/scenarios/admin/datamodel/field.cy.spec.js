@@ -3,6 +3,7 @@ import {
   withDatabase,
   visitAlias,
   popover,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -131,8 +132,7 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.findByText("Saved!");
 
       // check that it appears in QB
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("sqlite").click();
       cy.findByText("Number With Nulls").click();
       cy.findByText("nothin");

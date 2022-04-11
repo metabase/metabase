@@ -15,6 +15,7 @@ const propTypes = {
   items: PropTypes.array.isRequired,
   user: PropTypes.object.isRequired,
   children: PropTypes.node,
+  canManageSubscriptions: PropTypes.bool,
   onHelp: PropTypes.func,
   onUnsubscribe: PropTypes.func,
   onArchive: PropTypes.func,
@@ -24,6 +25,7 @@ const NotificationList = ({
   items,
   user,
   children,
+  canManageSubscriptions,
   onHelp,
   onUnsubscribe,
   onArchive,
@@ -46,6 +48,7 @@ const NotificationList = ({
           item={item}
           type={type}
           user={user}
+          isEditable={canManageSubscriptions}
           onUnsubscribe={onUnsubscribe}
           onArchive={onArchive}
         />
