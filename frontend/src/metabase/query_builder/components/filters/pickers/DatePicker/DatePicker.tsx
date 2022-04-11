@@ -59,7 +59,7 @@ const hasTime = (value: unknown) =>
 function getDateTimeField(filter: any, bucketing?: string | null) {
   const field = filter[1];
   const dimension = FieldDimension.parseMBQLOrWarn(
-    field[0] !== "field" ? getRelativeDatetimeField(filter) : field,
+    field?.[0] !== "field" ? getRelativeDatetimeField(filter) : field,
   );
   if (dimension) {
     if (bucketing) {
