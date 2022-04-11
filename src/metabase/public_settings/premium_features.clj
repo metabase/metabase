@@ -266,16 +266,19 @@
          other-args]))))
 
 (defn- parse-defenterprise-args
-  [[fn-name & more]]
-  (let [[docstr more]           (u/optional string? more)
+  [defenterprise-args]
+  (let [[docstr more]           (u/optional string? defenterprise-args)
         [ee-ns more]            (u/optional symbol? more)
         [options [args & body]] (parse-defenterprise-options more)]
-    {:fn-name fn-name
-     :ee-ns   ee-ns
+    {:ee-ns   ee-ns
      :docstr  docstr
      :options options
      :args    args
      :body    body}))
+
+(defmacro defenterprise-oss
+  "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
+  [])
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
@@ -301,9 +304,11 @@
   A keyword representing the fallback mechanism which should be used if the instance does not have the premium feature
   defined by the :feature option. Valid options are `:error`, which causes an exception to be thrown, or `:oss`, which
   causes the CE implementation of the function to be called. (Default: `:error`)"
-  {:arglists '([fn-name ee-ns? docstr? args body])}
-  [& defenterprise-args]
-  (let [{:keys [fn-name ee-ns docstr args body]} (parse-defenterprise-args defenterprise-args)]))
+  [fn-name & defenterprise-args]
+  {:pre [(symbol? fn-name)]}
+  (let [{:keys [ee-ns docstr options args body]} (parse-defenterprise-args defenterprise-args)]
+    (if (ee-ns?)
+      ())))
 
 (comment
   (defenterprise my-enterprise-function
