@@ -11,7 +11,7 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isFK } from "metabase/lib/schema_metadata";
+import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
 import { memoize } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
@@ -109,17 +109,7 @@ export default class TableInteractive extends Component {
     document.body.appendChild(this._div);
 
     this._measure();
-
-    if (!this.props.isPivoted) {
-      const pkIndex = this.props.data.cols.findIndex(col => isID(col));
-      this.setState({
-        IDColumnIndex: pkIndex === -1 ? null : pkIndex,
-        IDColumn: this.props.data.cols[pkIndex],
-      });
-      if (pkIndex !== -1) {
-        document.addEventListener("keydown", this.onKeyDown);
-      }
-    }
+    this._findIDColumn(this.props.data);
   }
 
   componentWillUnmount() {
@@ -148,6 +138,22 @@ export default class TableInteractive extends Component {
     const newColSettings = this._getColumnSettings(newProps);
     if (!_.isEqual(oldColSettings, newColSettings)) {
       this.remeasureColumnWidths();
+    }
+
+    if (!newProps.isPivoted && isDataChange) {
+      this._findIDColumn(nextData);
+    }
+  }
+
+  _findIDColumn(data) {
+    const pkIndex = data.cols.findIndex(col => isPK(col));
+    console.log({ pkIndex });
+    this.setState({
+      IDColumnIndex: pkIndex === -1 ? null : pkIndex,
+      IDColumn: data.cols[pkIndex],
+    });
+    if (pkIndex !== -1) {
+      document.addEventListener("keydown", this.onKeyDown);
     }
   }
 
@@ -795,6 +801,17 @@ export default class TableInteractive extends Component {
     const { settings } = this.props;
     const { columnWidths } = this.state;
     const columnWidthsSetting = settings["table.column_widths"] || [];
+
+    if (this.state.IDColumn && index === 0) {
+      return SIDEBAR_WIDTH;
+    }
+
+    // if we have an ID column, we've added a column of empty cells and need to shift
+    // these indexes accordingly
+    if (this.state.IDColumn) {
+      index -= 1;
+    }
+
     return (
       columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH
     );
@@ -837,6 +854,7 @@ export default class TableInteractive extends Component {
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
+    const gutterColumn = this.state.IDColumn ? 1 : 0;
 
     return (
       <ScrollSync>
@@ -873,25 +891,25 @@ export default class TableInteractive extends Component {
                   position: "absolute",
                   top: 0,
                   left: 0,
-                  paddingLeft: this.state.IDColumn ? SIDEBAR_WIDTH : 0,
-                  marginRight: getScrollBarSize(),
                   height: headerHeight,
                   overflow: "hidden",
+                  width: width,
+                  paddingRight: getScrollBarSize(),
                 }}
                 className="TableInteractive-header scroll-hide-all"
                 width={width || 0}
                 height={headerHeight}
                 rowCount={1}
                 rowHeight={headerHeight}
-                // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
-                columnCount={cols.length + 1}
-                columnWidth={props =>
-                  props.index < cols.length ? this.getColumnWidth(props) : 50
-                }
+                columnCount={cols.length + gutterColumn}
+                columnWidth={this.getColumnWidth}
                 cellRenderer={props =>
-                  props.columnIndex < cols.length
-                    ? this.tableHeaderRenderer(props)
-                    : null
+                  gutterColumn && props.columnIndex === 0
+                    ? () => undefined // we need a phantom cell to properly offset columns
+                    : this.tableHeaderRenderer({
+                        ...props,
+                        columnIndex: props.columnIndex - gutterColumn,
+                      })
                 }
                 onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                 scrollLeft={scrollLeft}
@@ -903,16 +921,23 @@ export default class TableInteractive extends Component {
                 style={{
                   position: "absolute",
                   top: headerHeight,
+                  width: width,
                   left: 0,
-                  paddingLeft: this.state.IDColumn ? SIDEBAR_WIDTH : 0,
                 }}
                 width={width}
                 height={height - headerHeight}
-                columnCount={cols.length}
+                columnCount={cols.length + gutterColumn}
                 columnWidth={this.getColumnWidth}
                 rowCount={rows.length}
                 rowHeight={ROW_HEIGHT}
-                cellRenderer={this.cellRenderer}
+                cellRenderer={props =>
+                  gutterColumn && props.columnIndex === 0
+                    ? () => null // we need a phantom cell to properly offset columns
+                    : this.cellRenderer({
+                        ...props,
+                        columnIndex: props.columnIndex - gutterColumn,
+                      })
+                }
                 scrollTop={scrollTop}
                 onScroll={({ scrollLeft, scrollTop }) => {
                   this.props.onActionDismissal();
