@@ -121,7 +121,7 @@ jobs:
         TERM: xterm
 
     - name: Upload Cypress recording upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2.3.1
       if: failure()
       with:
         name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
