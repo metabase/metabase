@@ -1,17 +1,12 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import BarChart from "metabase/visualizations/visualizations/BarChart.jsx";
+import BarChart from "metabase/visualizations/visualizations/BarChart";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { assocIn } from "icepick";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-
 export default class FunnelBar extends Component {
-  props: VisualizationProps;
-
   render() {
     return (
       <BarChart

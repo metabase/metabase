@@ -1,11 +1,12 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 const MIN_POPOVER_WIDTH = 300;
 
@@ -60,7 +61,7 @@ export default (PickerComponent, NameComponent, type) =>
           triggerElement={
             <SelectButton style={style}>
               {value !== undefined && value !== "" ? (
-                <NameComponent collectionId={value} />
+                <NameComponent id={value} />
               ) : (
                 placeholder
               )}

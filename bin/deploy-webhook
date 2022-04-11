@@ -1,3 +1,0 @@
-#!/bin/bash
-
-curl -H "Content-Type: application/json" -X POST -d '{"docker_tag":"latest"}' $1

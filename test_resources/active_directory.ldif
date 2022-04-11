@@ -1,0 +1,56 @@
+dn: dc=metabase,dc=com
+objectClass: top
+objectClass: organization
+objectClass: dcObject
+dc: metabase
+o: Metabase Corporation
+
+dn: ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: People
+
+dn: cn=John Smith,ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: John Smith
+sn: Smith
+givenName: John
+uid: jsmith1
+mail: John.Smith@metabase.com
+userPassword: strongpassword
+memberOf: cn=Accounting,ou=Groups,dc=metabase,dc=com
+
+dn: cn=Sally Brown,ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Sally Brown
+sn: Brown
+givenName: Sally
+uid: sbrown20
+mail: sally.brown@metabase.com
+userPassword: 1234
+memberOf: cn=Accounting,ou=Groups,dc=metabase,dc=com
+memberOf: cn=Engineering,ou=Groups,dc=metabase,dc=com
+
+dn: ou=Groups,dc=metabase,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=Accounting,ou=Groups,dc=metabase,dc=com
+objectClass: top
+objectClass: groupOfNames
+cn: Accounting
+member: cn=John Smith,ou=People,dc=metabase,dc=com
+member: cn=Sally Brown,ou=People,dc=metabase,dc=com
+
+dn: cn=Engineering,ou=Groups,dc=metabase,dc=com
+objectClass: top
+objectClass: groupOfNames
+cn: Accounting
+member: cn=Sally Brown,ou=People,dc=metabase,dc=com

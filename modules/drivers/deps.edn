@@ -1,0 +1,15 @@
+{:deps
+ {metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
+  metabase/druid              {:local/root "druid"}
+  metabase/googleanalytics    {:local/root "googleanalytics"}
+  metabase/mongo              {:local/root "mongo"}
+  metabase/oracle             {:local/root "oracle"}
+  metabase/presto             {:local/root "presto"}
+  metabase/presto-common      {:local/root "presto-common"}
+  metabase/presto-jdbc        {:local/root "presto-jdbc"}
+  metabase/redshift           {:local/root "redshift"}
+  metabase/snowflake          {:local/root "snowflake"}
+  metabase/sparksql           {:local/root "sparksql"}
+  metabase/sqlite             {:local/root "sqlite"}
+  metabase/sqlserver          {:local/root "sqlserver"}
+  metabase/vertica            {:local/root "vertica"}}}

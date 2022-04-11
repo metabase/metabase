@@ -1,71 +1,38 @@
-import type { Field as FieldReference } from "metabase/meta/types/Query";
-import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
-import type { Value } from "metabase/meta/types/Dataset";
-
-// gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
-export function getFieldTargetId(field: FieldReference): ?FieldId {
-  if (isRegularField(field)) {
-    // $FlowFixMe
-    return field;
-  } else if (isLocalField(field)) {
-    // $FlowFixMe
-    return field[1];
-  } else if (isForeignKeyField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[2]);
-  } else if (isDatetimeField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isBinningStrategy(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isFieldLiteral(field)) {
-    return field;
-  }
-  console.warn("Unknown field type: ", field);
-}
-
-export function isRegularField(field: FieldReference): boolean {
-  return typeof field === "number";
-}
-
-export function isLocalField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "field-id";
-}
-
-export function isForeignKeyField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "fk->";
-}
-
-export function isDatetimeField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "datetime-field";
-}
-
-export function isBinningStrategy(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "binning-strategy";
-}
-
-export function isFieldLiteral(field: FieldReference): boolean {
-  return (
-    Array.isArray(field) && field.length === 3 && field[0] === "field-literal"
-  );
-}
-
-export function isExpressionField(field: FieldReference): boolean {
-  return (
-    Array.isArray(field) && field.length === 2 && field[0] === "expression"
-  );
-}
-
-export function isAggregateField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "aggregation";
-}
-
 import _ from "underscore";
+
+import { add, update, remove, clear } from "./util";
+
+// returns canonical list of Fields, with nulls removed
+export function getFields(fields) {
+  return (fields || []).filter(b => b != null);
+}
+
+// turns a list of Fields into the canonical FieldClause
+export function getFieldClause(fields) {
+  fields = getFields(fields);
+  if (fields.length === 0) {
+    return undefined;
+  } else {
+    return fields;
+  }
+}
+
+export function addField(fields, newField) {
+  return getFieldClause(add(getFields(fields), newField));
+}
+export function updateField(fields, index, updatedField) {
+  return getFieldClause(update(getFields(fields), index, updatedField));
+}
+export function removeField(fields, index) {
+  return getFieldClause(remove(getFields(fields), index));
+}
+export function clearFields(fields) {
+  return getFieldClause(clear());
+}
 
 // Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417
-export function getFieldValues(field: ?Field): FieldValues {
+export function getFieldValues(field) {
   const values = field && field.values;
   if (Array.isArray(values)) {
     if (values.length === 0 || Array.isArray(values[0])) {
@@ -93,16 +60,13 @@ export function getFieldValues(field: ?Field): FieldValues {
 }
 
 // merge field values and remappings
-export function getRemappings(field: ?Field) {
+export function getRemappings(field) {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
   return [...fieldValues, ...remappings];
 }
 
-export function getHumanReadableValue(
-  value: Value,
-  fieldValues?: FieldValues = [],
-) {
+export function getHumanReadableValue(value, fieldValues = []) {
   const fieldValue = _.findWhere(fieldValues, { [0]: value });
   return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);
 }

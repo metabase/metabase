@@ -1,17 +1,22 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.api.activity :as activity-api]
-            [metabase.models
-             [activity :refer [Activity]]
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [view-log :refer [ViewLog]]]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu :refer [match-$]]
-            [metabase.util.date :as du]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [metabase.models.activity :refer [Activity]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as models]
+            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.view-log :refer [ViewLog]]
+            [metabase.query-processor.util :as qputil]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
+            [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; GET /
 
@@ -19,89 +24,61 @@
 ;;  1. ordered by timestamp DESC
 ;;  2. :user and :model_exists are hydrated
 
-;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(tt/expect-with-temp [Activity [activity1 {:topic     "install"
-                                           :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-09T12:13:14.888Z")}]
-                      Activity [activity2 {:topic     "dashboard-create"
-                                           :user_id   (user->id :crowberto)
-                                           :model     "dashboard"
-                                           :model_id  1234
-                                           :details   {:description  "Because I can!"
-                                                       :name         "Bwahahaha"}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T18:53:01.632Z")}]
-                      Activity [activity3 {:topic     "user-joined"
-                                           :user_id   (user->id :rasta)
-                                           :model     "user"
-                                           :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T05:33:43.641Z")}]]
-  [(match-$ (Activity (:id activity2))
-     {:id           $
-      :topic        "dashboard-create"
-      :user_id      $
-      :user         (match-$ (fetch-user :crowberto)
-                      {:id           (user->id :crowberto)
-                       :email        $
-                       :date_joined  $
-                       :first_name   $
-                       :last_name    $
-                       :last_login   $
-                       :is_superuser $
-                       :is_qbnewb    $
-                       :common_name  $})
-      :model        $
-      :model_id     $
-      :model_exists false
-      :database_id  nil
-      :database     nil
-      :table_id     nil
-      :table        nil
-      :custom_id    nil
-      :details      $})
-   (match-$ (Activity (:id activity3))
-     {:id           $
-      :topic        "user-joined"
-      :user_id      $
-      :user         (match-$ (fetch-user :rasta)
-                      {:id           (user->id :rasta)
-                       :email        $
-                       :date_joined  $
-                       :first_name   $
-                       :last_name    $
-                       :last_login   $
-                       :is_superuser $
-                       :is_qbnewb    $
-                       :common_name  $})
-      :model        $
-      :model_id     $
-      :model_exists false
-      :database_id  nil
-      :database     nil
-      :table_id     nil
-      :table        nil
-      :custom_id    nil
-      :details      $})
-   (match-$ (Activity (:id activity1))
-     {:id           $
-      :topic        "install"
-      :user_id      nil
-      :user         nil
-      :model        $
-      :model_id     $
-      :model_exists false
-      :database_id  nil
-      :database     nil
-      :table_id     nil
-      :table        nil
-      :custom_id    nil
-      :details      $})]
-  ;; clear any other activities from the DB just in case; not sure this step is needed any more
-  (do (db/delete! Activity :id [:not-in #{(:id activity1)
-                                                  (:id activity2)
-                                                  (:id activity3)}])
-      (for [activity ((user->client :crowberto) :get 200 "activity")]
-        (dissoc activity :timestamp))))
+(def ^:private activity-defaults
+  {:model_exists false
+   :database_id  nil
+   :database     nil
+   :table_id     nil
+   :table        nil
+   :custom_id    nil})
 
+(defn- activity-user-info [user-kw]
+  (merge
+   {:id (mt/user->id user-kw)}
+   (select-keys
+    (mt/fetch-user user-kw)
+    [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name :locale])))
+
+;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
+(deftest activity-list-test
+  (testing "GET /api/activity"
+    (mt/with-temp* [Activity [activity1 {:topic     "install"
+                                         :details   {}
+                                         :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
+                    Activity [activity2 {:topic     "dashboard-create"
+                                         :user_id   (mt/user->id :crowberto)
+                                         :model     "dashboard"
+                                         :model_id  1234
+                                         :details   {:description "Because I can!"
+                                                     :name        "Bwahahaha"}
+                                         :timestamp #t "2015-09-10T18:53:01.632Z[UTC]"}]
+                    Activity [activity3 {:topic     "user-joined"
+                                         :user_id   (mt/user->id :rasta)
+                                         :model     "user"
+                                         :details   {}
+                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
+      (letfn [(fetch-activity [activity]
+                (merge
+                 activity-defaults
+                 (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
+        (is (= [(merge
+                 (fetch-activity activity2)
+                 {:topic "dashboard-create"
+                  :user  (activity-user-info :crowberto)})
+                (merge
+                 (fetch-activity activity3)
+                 {:topic "user-joined"
+                  :user  (activity-user-info :rasta)})
+                (merge
+                 (fetch-activity activity1)
+                 {:topic   "install"
+                  :user_id nil
+                  :user    nil})]
+               ;; remove other activities from the API response just in case -- we're not interested in those
+               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
+                 (for [activity (mt/user-http-request :crowberto :get 200 "activity")
+                       :when    (contains? these-activity-ids (u/the-id activity))]
+                   (dissoc activity :timestamp)))))))))
 
 ;;; GET /recent_views
 
@@ -111,65 +88,101 @@
 ;;  3. `:model_object` is hydrated in each result
 ;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
 
-(defn- create-view! [user model model-id]
-  (db/insert! ViewLog
-    :user_id  user
-    :model    model
-    :model_id model-id
-    :timestamp (du/new-sql-timestamp))
-  ;; we sleep a bit to ensure no events have the same timestamp
-  ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
-  ;; otherwise our records are out of order and this test fails :(
-  (Thread/sleep 1000))
+(defn- create-views!
+  "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
+  [views]
+  (let [start-time (t/offset-date-time)
+        views (->> (map (fn [[user model model-id] seconds-ago]
+                          (case model
+                            "card" {:executor_id user :card_id model-id
+                                    :context :question
+                                    :hash (qputil/query-hash {})
+                                    :running_time 1
+                                    :result_rows 1
+                                    :native false
+                                    :started_at (t/plus start-time (t/seconds (- seconds-ago)))}
+                            {:user_id user, :model model, :model_id model-id
+                             :timestamp (t/plus start-time (t/seconds (- seconds-ago)))}))
+                        (reverse views)
+                        (range))
+                   (group-by #(if (:card_id %) :card :other)))]
+    (db/insert-many! ViewLog (:other views))
+    (db/insert-many! QueryExecution (:card views))))
 
-(tt/expect-with-temp [Card      [card1 {:name                   "rand-name"
-                                        :creator_id             (user->id :crowberto)
+(deftest recent-views-test
+  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Card      [archived  {:name                   "archived-card"
+                                        :creator_id             (mt/user->id :crowberto)
                                         :display                "table"
-                                        :dataset_query          {}
+                                        :archived               true
                                         :visualization_settings {}}]
-                      Dashboard [dash1 {:name        "rand-name"
-                                        :description "rand-name"
-                                        :creator_id  (user->id :crowberto)}]
-                      Card      [card2 {:name                   "rand-name"
-                                        :creator_id             (user->id :crowberto)
-                                        :display                "table"
-                                        :dataset_query          {}
-                                        :visualization_settings {}}]]
-  [{:cnt          1
-    :user_id      (user->id :crowberto)
-    :model        "card"
-    :model_id     (:id card1)
-    :model_object {:id            (:id card1)
-                   :name          (:name card1)
-                   :collection_id nil
-                   :description   (:description card1)
-                   :display       (name (:display card1))}}
-   {:cnt          1
-    :user_id      (user->id :crowberto)
-    :model        "dashboard"
-    :model_id     (:id dash1)
-    :model_object {:id            (:id dash1)
-                   :name          (:name dash1)
-                   :collection_id nil
-                   :description   (:description dash1)}}
-   {:cnt          1
-    :user_id      (user->id :crowberto)
-    :model        "card"
-    :model_id     (:id card2)
-    :model_object {:id            (:id card2)
-                   :name          (:name card2)
-                   :collection_id nil
-                   :description   (:description card2)
-                   :display       (name (:display card2))}}]
-  (do
-    (create-view! (user->id :crowberto) "card"      (:id card2))
-    (create-view! (user->id :crowberto) "dashboard" (:id dash1))
-    (create-view! (user->id :crowberto) "card"      (:id card1))
-    (create-view! (user->id :crowberto) "card"      36478)
-    (create-view! (user->id :rasta)     "card"      (:id card1))
-    (for [recent-view ((user->client :crowberto) :get 200 "activity/recent_views")]
-      (dissoc recent-view :max_ts))))
+                  Dashboard [dash1 {:name        "rand-name"
+                                    :description "rand-name"
+                                    :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table1 {:name "rand-name"}]
+                  Table     [hidden-table {:name            "hidden table"
+                                           :visibility_type "hidden"}]
+                  Card      [dataset {:name                   "rand-name"
+                                      :dataset                true
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :visualization_settings {}}]]
+    (mt/with-model-cleanup [ViewLog QueryExecution]
+      (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
+                      [(mt/user->id :crowberto) "dashboard" (:id dash1)]
+                      [(mt/user->id :crowberto) "card"      (:id card1)]
+                      [(mt/user->id :crowberto) "card"      36478]
+                      [(mt/user->id :crowberto) "table"     (:id table1)]
+                      ;; most recent for crowberto are archived card and hidden table
+                      [(mt/user->id :crowberto) "card"      (:id archived)]
+                      [(mt/user->id :crowberto) "table"     (:id hidden-table)]
+                      [(mt/user->id :rasta)     "card"      (:id card1)]])
+      (is (= [["table" (:id table1)]
+              ["card" (:id card1)]
+              ["dashboard" (:id dash1)]
+              ["dataset" (:id dataset)]]
+             (for [recent-view (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+               ((juxt :model :model_id) recent-view)))))))
 
+(deftest popular-items-test
+  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Card      [archived  {:name                   "archived-card"
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :display                "table"
+                                        :archived               true
+                                        :visualization_settings {}}]
+                  Dashboard [dash1 {:name        "rand-name"
+                                    :description "rand-name"
+                                    :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table1 {:name "rand-name"}]
+                  Table     [hidden-table {:name            "hidden table"
+                                           :visibility_type "hidden"}]
+                  Card      [dataset {:name                   "rand-name"
+                                      :dataset                true
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :visualization_settings {}}]]
+    (mt/with-model-cleanup [ViewLog QueryExecution]
+      (create-views! (concat
+                      ;; one item with many views is considered more popular
+                      (repeat 10 [(mt/user->id :rasta) "card" (:id dataset)])
+                      [[(mt/user->id :rasta) "dashboard" (:id dash1)]
+                       [(mt/user->id :rasta) "card"      (:id card1)]
+                       [(mt/user->id :rasta) "table"     (:id table1)]
+                       [(mt/user->id :rasta) "card"      (:id card1)]]))
+      (is (= [["dataset" (:id dataset)]
+              ["card" (:id card1)]
+              ["table" (:id table1)]
+              ["dashboard" (:id dash1)]]
+             ;; all views are from :rasta, but :crowberto can still see popular items
+             (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+               ((juxt :model :model_id) popular-item)))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
@@ -188,26 +201,56 @@
    {:model "user",      :model_id  90, :topic :user-joined,         :details {}}
    {:model nil,         :model_id nil, :topic :install,             :details {}}])
 
-(expect
-  {"dashboard" #{41 43 42}
-   "card"      #{113 108 109 111 112 114}
-   "user"      #{90}}
-  (#'activity-api/activities->referenced-objects fake-activities))
+(deftest activities->referenced-objects-test
+  (is (= {"dashboard" #{41 43 42}
+          "card"      #{113 108 109 111 112 114}
+          "user"      #{90}}
+         (#'activity-api/activities->referenced-objects fake-activities))))
 
+(deftest referenced-objects->existing-objects-test
+  (mt/with-temp Dashboard [{dashboard-id :id}]
+    (is (= {"dashboard" #{dashboard-id}}
+           (#'activity-api/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+                                                                 "card"      #{0}})))))
+(deftest add-model-exists-info-test
+  (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]
+                  Card      [{dataset-id :id} {:dataset true}]]
+    (is (= [{:model "dashboard", :model_id dashboard-id, :model_exists true}
+            {:model "card", :model_id 0, :model_exists false}
+            {:model "dataset", :model_id dataset-id, :model_exists true}
+            {:model        "dashboard"
+             :model_id     0
+             :model_exists false
+             :topic        :dashboard-remove-cards
+             :details      {:dashcards [{:card_id card-id, :exists true}
+                                        {:card_id 0, :exists false}
+                                        {:card_id dataset-id, :exists true}]}}]
+           (#'activity-api/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+                                                  {:model "card", :model_id 0}
+                                                  {:model "card", :model_id dataset-id}
+                                                  {:model    "dashboard"
+                                                   :model_id 0
+                                                   :topic    :dashboard-remove-cards
+                                                   :details  {:dashcards [{:card_id card-id}
+                                                                          {:card_id 0}
+                                                                          {:card_id dataset-id}]}}])))))
 
-(tt/expect-with-temp [Dashboard [{dashboard-id :id}]]
-  {"dashboard" #{dashboard-id}, "card" nil}
-  (#'activity-api/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
-                                                        "card"      #{0}}))
-
-
-(tt/expect-with-temp [Dashboard [{dashboard-id :id}]
-                      Card      [{card-id :id}]]
-  [{:model "dashboard", :model_id dashboard-id, :model_exists true}
-   {:model "card",      :model_id 0,            :model_exists false}
-   {:model "dashboard", :model_id 0,            :model_exists false, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id, :exists true}
-                                                                                                                           {:card_id 0,       :exists false}]}}]
-  (#'activity-api/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
-                                         {:model "card",      :model_id 0}
-                                         {:model "dashboard", :model_id 0, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id}
-                                                                                                                                 {:card_id 0}]}}]))
+(deftest activity-visibility-test
+  (mt/with-temp Activity [activity {:topic     "user-joined"
+                                    :details   {}
+                                    :timestamp (java.time.ZonedDateTime/now)}]
+    (letfn [(activity-topics [user]
+              (into #{} (map :topic)
+                    (mt/user-http-request user :get 200 "activity")))]
+      (testing "Only admins should get to see user-joined activities"
+        (testing "admin should see `:user-joined` activities"
+          (testing "Sanity check: admin should be able to read the activity"
+            (mt/with-test-user :crowberto
+              (is (models/can-read? activity))))
+          (is (contains? (activity-topics :crowberto) "user-joined")))
+        (testing "non-admin should *not* see `:user-joined` activities"
+          (testing "Sanity check: non-admin should *not* be able to read the activity"
+            (mt/with-test-user :rasta
+              (is (not (models/can-read? activity)))))
+          (is (not (contains? (activity-topics :rasta) "user-joined"))))))))

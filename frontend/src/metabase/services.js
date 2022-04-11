@@ -1,24 +1,108 @@
-/* @flow */
+import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import Question from "metabase-lib/lib/Question";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
-// $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
-
-import type { Data, Options } from "metabase/lib/api";
-
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { DatabaseCandidates } from "metabase/meta/types/Auto";
-import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
 
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
 };
+
+export const BookmarkApi = {
+  card: {
+    create: POST("/api/bookmark/card/:id"),
+    delete: DELETE("/api/bookmark/card/:id"),
+  },
+  collection: {
+    create: POST("/api/bookmark/collection/:id"),
+    delete: DELETE("/api/bookmark/collection/:id"),
+  },
+  dashboard: {
+    create: POST("/api/bookmark/dashboard/:id"),
+    delete: DELETE("/api/bookmark/dashboard/:id"),
+  },
+};
+
+// only available with token loaded
+export const GTAPApi = {
+  list: GET("/api/mt/gtap"),
+  create: POST("/api/mt/gtap"),
+  update: PUT("/api/mt/gtap/:id"),
+  attributes: GET("/api/mt/user/attributes"),
+};
+
+export const StoreApi = {
+  tokenStatus: GET("/api/premium-features/token/status"),
+};
+
+// Pivot tables need extra data beyond what's described in the MBQL query itself.
+// To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
+// Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
+// If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
+export function maybeUsePivotEndpoint(api, card, metadata) {
+  function canonicalFieldRef(ref) {
+    // Field refs between the query and setting might differ slightly.
+    // This function trims binned dimensions to just the field-id
+    const dimension = FieldDimension.parseMBQL(ref);
+    if (!dimension) {
+      return ref;
+    }
+    return dimension.withoutOptions("binning").mbql();
+  }
+
+  const question = new Question(card, metadata);
+
+  function wrap(api) {
+    return (params, ...rest) => {
+      const setting = question.setting("pivot_table.column_split");
+      const breakout =
+        (question.isStructured() && question.query().breakouts()) || [];
+      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
+        setting,
+        fieldRefs =>
+          fieldRefs
+            .map(field_ref =>
+              breakout.findIndex(b =>
+                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
+              ),
+            )
+            .filter(index => index !== -1),
+      );
+      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+    };
+  }
+  if (
+    card.display !== "pivot" ||
+    !question.isStructured() ||
+    // if we have metadata for the db, check if it supports pivots
+    (question.database() && !question.database().supportsPivots())
+  ) {
+    return api;
+  }
+
+  const mapping = [
+    [CardApi.query, CardApi.query_pivot],
+    [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
+    [PublicApi.cardQuery, PublicApi.cardQueryPivot],
+    [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
+    [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
+    [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
+  ];
+  for (const [from, to] of mapping) {
+    if (api === from) {
+      return wrap(to);
+    }
+  }
+  return api;
+}
 
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
@@ -33,10 +117,11 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
-  // isfavorite:                  GET("/api/card/:cardId/favorite"),
-  favorite: POST("/api/card/:cardId/favorite"),
-  unfavorite: DELETE("/api/card/:cardId/favorite"),
-
+  query_pivot: POST("/api/card/pivot/:cardId/query"),
+  bookmark: {
+    create: POST("/api/card/:id/bookmark"),
+    delete: DELETE("/api/card/:id/bookmark"),
+  },
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
@@ -60,11 +145,24 @@ export const DashboardApi = {
   reposition_cards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
+  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
+  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
+  validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
 
   listPublic: GET("/api/dashboard/public"),
   listEmbeddable: GET("/api/dashboard/embeddable"),
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
+
+  cardQuery: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
+  cardQueryPivot: POST(
+    "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
+  exportCardQuery: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
+  ),
 };
 
 export const CollectionsApi = {
@@ -78,28 +176,35 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
+
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
+  cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
-  dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQuery: GET(
+    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
+  dashboardCardQueryPivot: GET(
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
 };
 
 export const EmbedApi = {
   card: GET(embedBase + "/card/:token"),
   cardQuery: GET(embedBase + "/card/:token/query"),
+  cardQueryPivot: GET(embedBase + "/pivot/card/:token/query"),
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
+  dashboardCardQueryPivot: GET(
+    embedBase + "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+  ),
 };
 
-type $AutoApi = {
-  dashboard: ({ subPath: string }) => DashboardWithCards,
-  db_candidates: ({ id: DatabaseId }) => DatabaseCandidates,
-};
-
-export const AutoApi: $AutoApi = {
+export const AutoApi = {
   dashboard: GET("/api/automagic-dashboards/:subPath", {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
@@ -114,6 +219,7 @@ export const EmailApi = {
 };
 
 export const SlackApi = {
+  getManifest: GET("/api/slack/manifest"),
   updateSettings: PUT("/api/slack/settings"),
 };
 
@@ -121,21 +227,32 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const TimelineApi = {
+  list: GET("/api/timeline"),
+  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  get: GET("/api/timeline/:id"),
+  create: POST("/api/timeline"),
+  update: PUT("/api/timeline/:id"),
+};
+
+export const TimelineEventApi = {
+  list: GET("/api/timeline-event"),
+  get: GET("/api/timeline-event/:id"),
+  create: POST("/api/timeline-event"),
+  update: PUT("/api/timeline-event/:id"),
+};
+
 export const MetabaseApi = {
-  db_list: GET("/api/database"),
-  db_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=true",
-  ),
-  db_real_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=false",
-  ),
+  db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
-  db_add_sample_dataset: POST("/api/database/sample_dataset"),
+  db_add_sample_database: POST("/api/database/sample_database"),
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
+  db_schemas: GET("/api/database/:dbId/schemas"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -145,6 +262,7 @@ export const MetabaseApi = {
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
   table_update: PUT("/api/table/:id"),
@@ -156,10 +274,25 @@ export const MetabaseApi = {
     async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
-        let GA = await getGAMetadata();
-        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-        table.metrics.push(...GA.metrics);
-        table.segments.push(...GA.segments);
+        const GA = await getGAMetadata();
+        table.fields = table.fields.map(field => ({
+          ...field,
+          ...GA.fields[field.name],
+        }));
+        table.metrics.push(
+          ...GA.metrics.map(metric => ({
+            ...metric,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
+        table.segments.push(
+          ...GA.segments.map(segment => ({
+            ...segment,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
       }
 
       if (table && table.fields) {
@@ -195,7 +328,20 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
+  dataset_pivot: POST("/api/dataset/pivot"),
   dataset_duration: POST("/api/dataset/duration"),
+  native: POST("/api/dataset/native"),
+
+  // to support audit app  allow the endpoint to be provided in the query
+  datasetEndpoint: POST("/api/:endpoint", {
+    // this prevents the `endpoint` parameter from being URL encoded
+    raw: { endpoint: true },
+  }),
+};
+
+export const ModerationReviewApi = {
+  create: POST("/api/moderation-review"),
+  update: PUT("/api/moderation-review/:id"),
 };
 
 export const PulseApi = {
@@ -203,19 +349,19 @@ export const PulseApi = {
   create: POST("/api/pulse"),
   get: GET("/api/pulse/:pulseId"),
   update: PUT("/api/pulse/:id"),
-  delete: DELETE("/api/pulse/:pulseId"),
   test: POST("/api/pulse/test"),
   form_input: GET("/api/pulse/form_input"),
   preview_card: GET("/api/pulse/preview_card_info/:id"),
+  unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
 export const AlertApi = {
   list: GET("/api/alert"),
   list_for_question: GET("/api/alert/question/:questionId"),
+  get: GET("/api/alert/:id"),
   create: POST("/api/alert"),
   update: PUT("/api/alert/:id"),
-  delete: DELETE("/api/alert/:id"),
-  unsubscribe: PUT("/api/alert/:id/unsubscribe"),
+  unsubscribe: DELETE("/api/alert/:id/subscription"),
 };
 
 export const SegmentApi = {
@@ -231,7 +377,6 @@ export const MetricApi = {
   create: POST("/api/metric"),
   get: GET("/api/metric/:metricId"),
   update: PUT("/api/metric/:id"),
-  update_important_fields: PUT("/api/metric/:metricId/important_fields"),
   delete: DELETE("/api/metric/:metricId"),
 };
 
@@ -275,14 +420,11 @@ export const PermissionsApi = {
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
-export const GettingStartedApi = {
-  get: GET("/api/getting_started"),
-};
-
 export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
+  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {
@@ -292,7 +434,7 @@ export const UserApi = {
   // get:                         GET("/api/user/:userId"),
   update: PUT("/api/user/:id"),
   update_password: PUT("/api/user/:id/password"),
-  update_qbnewb: PUT("/api/user/:id/qbnewb"),
+  update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
@@ -302,9 +444,13 @@ export const UtilApi = {
   password_check: POST("/api/util/password_check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
+  bug_report_details: GET("/api/util/bug_report_details"),
+  // this one does not need an HTTP verb because it's opened as an external link
+  connection_pool_details_url: "/api/util/diagnostic_info/connection_pool_info",
 };
 
 export const GeoJSONApi = {
+  load: GET("/api/geojson"),
   get: GET("/api/geojson/:id"),
 };
 
@@ -313,32 +459,32 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("api/task"),
+  get: GET("/api/task"),
+  getJobsInfo: GET("/api/task/info"),
 };
 
-export function setPublicQuestionEndpoints(uuid: string) {
+export function setPublicQuestionEndpoints(uuid) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }
-export function setPublicDashboardEndpoints(uuid: string) {
-  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+export function setPublicDashboardEndpoints() {
+  setParamsEndpoints("/api/public");
 }
-export function setEmbedQuestionEndpoints(token: string) {
+export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/card/:token", { token });
   }
 }
-export function setEmbedDashboardEndpoints(token: string) {
+export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/dashboard/:token", { token });
+    setParamsEndpoints("/api/embed");
   }
 }
 
-function GET_with(url: string, params: Data) {
-  return (data: Data, options?: Options) =>
-    GET(url)({ ...params, ...data }, options);
+function GET_with(url, params) {
+  return (data, options) => GET(url)({ ...params, ...data }, options);
 }
 
-export function setFieldEndpoints(prefix: string, params: Data) {
+function setFieldEndpoints(prefix, params) {
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -353,4 +499,11 @@ export function setFieldEndpoints(prefix: string, params: Data) {
   );
 }
 
-global.services = exports;
+function setParamsEndpoints(prefix) {
+  DashboardApi.parameterValues = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/values",
+  );
+  DashboardApi.parameterSearch = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/search/:query",
+  );
+}

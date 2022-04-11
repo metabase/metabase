@@ -1,6 +1,6 @@
 (ns metabase.models.revision.diff
   (:require [clojure.core.match :refer [match]]
-            [clojure.string :as s]))
+            [clojure.string :as str]))
 
 (defn- diff-string* [k v1 v2]
   (match [k v1 v2]
@@ -46,4 +46,4 @@
       (some-> (filter identity (for [k ks]
                                  (diff-string* k (k before) (k after))))
               build-sentence
-              (s/replace-first #" it " (format " this %s " t))))))
+              (str/replace-first #" it " (format " this %s " t))))))

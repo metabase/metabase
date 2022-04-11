@@ -1,0 +1,42 @@
+info:
+  name: Secret Test Driver
+  version: 0.0.0-SNAPSHOT
+  description: Test driver for secrets
+driver:
+  name: secret-test-driver
+  display-name: Secret Test Driver
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - name: host
+      display-name: Host
+      placeholder: localhost
+    - name: password
+      display-name: Password
+      type: secret
+      secret-kind: password
+      placeholder: foo
+      required: false
+    - name: ssl
+      display-name: SSL enabled?
+      type: boolean
+    - name: use-keystore
+      type: boolean
+      display-name: Use Keystore?
+      visible-if:
+        ssl: true
+    - name: keystore-password
+      display-name: Keystore Password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        use-keystore: true
+    - name: keystore
+      display-name: Keystore
+      type: secret
+      secret-kind: keystore
+      required: false
+      treat-before-posting: base64
+      visible-if:
+        use-keystore: true

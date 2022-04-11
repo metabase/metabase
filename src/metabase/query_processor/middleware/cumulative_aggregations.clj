@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations."
-  (:require [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+  (:require [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [schema.core :as s]))
+
+;;;; Pre-processing
 
 (defn- diff-indecies
   "Given two sequential collections, return indecies that are different between the two."
@@ -24,34 +25,57 @@
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
-(defn- add-rows
+(defn rewrite-cumulative-aggregations
+  "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
+  information about the indecies of the replaced aggregations under the `::replaced-indecies` key."
+  [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
+  (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
+    query
+    (let [query'            (replace-cumulative-ags query)
+          ;; figure out which indexes are being changed in the results. Since breakouts always get included in
+          ;; results first we need to offset the indexes to change by the number of breakouts
+          replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
+                                                        (-> query' :query :aggregation))]
+                                   (+ (count breakouts) i)))]
+      (cond-> query'
+        (seq replaced-indecies) (assoc ::replaced-indecies replaced-indecies)))))
+
+
+;;;; Post-processing
+
+(defn- add-values-from-last-row
   "Update values in `row` by adding values from `last-row` for a set of specified indexes.
 
-    (add-rows #{0} [100 200] [50 60]) ; -> [150 60]"
+    (add-values-from-last-row #{0} [100 200] [50 60]) ; -> [150 60]"
   [[index & more] last-row row]
-  (if-not index
-    row
-    (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
+  (cond
+   (not index)
+   row
 
-(defn- sum-rows
-  "Sum the values in `rows` at `indexes-to-sum`.
+   (not last-row)
+   row
 
-    (sum-rows #{0} [[1] [2] [3]]) ; -> [[1] [3] [6]]"
-  [indexes-to-sum rows]
-  (reductions (partial add-rows indexes-to-sum) rows))
+   :else
+   (recur more last-row (update (vec row) index (partial (fnil + 0 0) (nth last-row index))))))
 
-(defn handle-cumulative-aggregations
-  "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
-  clauses respectively and summation is performed on results in Clojure-land."
-  [qp]
-  (fn [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
-    (if (mbql.u/match aggregations #{:cum-count :cum-sum})
-      (let [new-query        (replace-cumulative-ags query)
-            ;; figure out which indexes are being changed in the results. Since breakouts always get included in
-            ;; results first we need to offset the indexes to change by the number of breakouts
-            replaced-indexes (set (for [i (diff-indecies (->     query :query :aggregation)
-                                                         (-> new-query :query :aggregation))]
-                                    (+ (count breakouts) i)))
-            results          (qp new-query)]
-        (update results :rows (partial sum-rows replaced-indexes)))
-      (qp query))))
+(defn- cumulative-ags-xform [replaced-indecies rf]
+  {:pre [(fn? rf)]}
+  (let [last-row (volatile! nil)]
+    (fn
+      ([] (rf))
+
+      ([result] (rf result))
+
+      ([result row]
+       (let [row' (add-values-from-last-row replaced-indecies @last-row row)]
+         (vreset! last-row row')
+         (rf result row'))))))
+
+(defn sum-cumulative-aggregation-columns
+  "Post-processing middleware. Sum the cumulative count aggregations that were rewritten
+  by [[rewrite-cumulative-aggregations]] in Clojure-land."
+  [{::keys [replaced-indecies]} rff]
+  (if (seq replaced-indecies)
+    (fn sum-cumulative-aggregation-columns-rff* [metadata]
+      (cumulative-ags-xform replaced-indecies (rff metadata)))
+    rff))

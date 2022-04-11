@@ -66,22 +66,6 @@ if [ "$SPARKPOST_SMTP_USERNAME" ]; then
     export MB_EMAIL_SMTP_PASSWORD="$SPARKPOST_SMTP_PASSWORD"
 fi
 
-# AWS Elastic Beanstalk w/ RDS
-if [ ! -z "$RDS_HOSTNAME" ]; then
-    # EEK: this is a bit fragile.  if user picks a non-standard port for their db we are screwed :(
-    if [ "$RDS_PORT" == "3306" ]; then
-        export MB_DB_TYPE=mysql
-    else
-        export MB_DB_TYPE=postgres
-    fi
-
-    export MB_DB_DBNAME=$RDS_DB_NAME
-    export MB_DB_USER=$RDS_USERNAME
-    export MB_DB_PASS=$RDS_PASSWORD
-    export MB_DB_HOST=$RDS_HOSTNAME
-    export MB_DB_PORT=$RDS_PORT
-fi
-
 # Determine whether we're on Heroku on a free, hobby, 1x dyno or 2x dyno
 #
 # We set $HEROKU in the Procfile, so we know we're on Heroku when started from the
@@ -117,7 +101,6 @@ fi
 JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions" # Don't barf if we see an option we don't understand (e.g. Java 9 option on Java 7/8)
 JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"         # don't try to start AWT. Not sure this does anything but better safe than wasting memory
 JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"            # Use UTF-8
-JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"      # Enable access to java.xml.bind module (Java 9)
 
 echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
 

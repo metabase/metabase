@@ -2,6 +2,7 @@ import React from "react";
 import ProgressBar from "metabase/components/ProgressBar";
 
 export const component = ProgressBar;
+export const category = "feedback";
 
 export const description = `
 Progress bar.

@@ -18,7 +18,7 @@ export function deterministicAssign(
   getPreferred,
   secondaryTiers,
 ) {
-  let unassigned = new Set(keys.slice().sort()); // sort the keys for extra determinism
+  const unassigned = new Set(keys.slice().sort()); // sort the keys for extra determinism
 
   let all;
   let used;

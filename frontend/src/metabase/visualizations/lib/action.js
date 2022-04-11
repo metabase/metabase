@@ -1,48 +1,35 @@
-/* @flow */
-
-import { open } from "metabase/lib/dom";
-
+/* eslint-disable react/prop-types */
 import _ from "underscore";
 
-import type { ClickAction } from "metabase/meta/types/Visualization";
+import { openUrl } from "metabase/redux/app";
 
-type PerformActionProps = {
-  dispatch: Function,
-  onChangeCardAndRun: Function,
-};
-
-export function performAction(
-  action: ClickAction,
-  { dispatch, onChangeCardAndRun }: PerformActionProps,
-) {
+export function performAction(action, { dispatch, onChangeCardAndRun }) {
+  let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();
     if (reduxAction) {
       dispatch(reduxAction);
-      return true;
+      didPerform = true;
     }
   }
   if (action.url) {
     const url = action.url();
     if (url) {
-      open(url);
-      return true;
+      dispatch(openUrl(url));
+      didPerform = true;
     }
   }
   if (action.question) {
     const question = action.question();
     if (question) {
       onChangeCardAndRun({ nextCard: question.card() });
-      return true;
+      didPerform = true;
     }
   }
-  return false;
+  return didPerform;
 }
 
-export function performDefaultAction(
-  actions: ClickAction[],
-  props: PerformActionProps,
-) {
+export function performDefaultAction(actions, props) {
   if (!actions) {
     return false;
   }

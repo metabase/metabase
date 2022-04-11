@@ -1,0 +1,4 @@
+Usage of files in this directory and its subdirectories, and of Metabase Enterprise Edition features, is subject to
+the Metabase Commercial License (https://www.metabase.com/license/commercial/), and conditional on having a
+valid license from Metabase. Access to files in this directory and its subdirectories does not constitute
+permission to use this code or Metabase Enterprise Edition features.

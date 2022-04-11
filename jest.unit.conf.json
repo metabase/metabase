@@ -4,26 +4,42 @@
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
-  "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/legacy-karma",
-    "<rootDir>/frontend/test/legacy-selenium",
-    "integ.spec.js"
-  ],
+  "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"],
+  "testMatch": ["<rootDir>/**/*.unit.spec.js", "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   "modulePaths": [
     "<rootDir>/frontend/test",
-    "<rootDir>/frontend/src"
+    "<rootDir>/frontend/src",
+    "<rootDir>/enterprise/frontend/src"
   ],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
-    "<rootDir>/frontend/test/metabase-bootstrap.js"
+    "<rootDir>/frontend/test/metabase-bootstrap.js",
+    "<rootDir>/frontend/test/register-visualizations.js"
   ],
+  "setupFilesAfterEnv": ["@testing-library/jest-dom/extend-expect"],
   "globals": {
     "ace": {},
     "ga": {},
     "document": {}
   },
-  "coverageDirectory": "./",
-  "coverageReporters": ["text", "json-summary"],
-  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
-  "coveragePathIgnorePatterns": ["/node_modules/", "/frontend/src/metabase/visualizations/lib/errors.js"]
+  "coverageDirectory": "./coverage",
+  "coverageReporters": ["text", "html", "lcov"],
+  "collectCoverageFrom": [
+    "frontend/src/**/*.{js,jsx,ts,tsx}",
+    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
+  ],
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "/frontend/src/metabase/visualizations/lib/errors.js",
+    "/frontend/src/cljs/",
+    "/frontend/src/metabase/internal/",
+    "/frontend/test/",
+    ".styled.{jsx,tsx}",
+    ".info.js"
+  ],
+  "testEnvironment": "jsdom",
+  "watchPlugins": [
+    "jest-watch-typeahead/filename",
+    "jest-watch-typeahead/testname"
+  ]
 }

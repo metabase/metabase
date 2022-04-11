@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
@@ -8,15 +9,16 @@ const LegacyChoropleth = ({
   series,
   geoJson,
   projection,
+  projectionFrame,
   getColor,
   onHoverFeature,
   onClickFeature,
 }) => {
-  let geo = d3.geo.path().projection(projection);
+  const geo = d3.geo.path().projection(projection);
 
-  let translate = projection.translate();
-  let width = translate[0] * 2;
-  let height = translate[1] * 2;
+  const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
+  const width = maxX - minX;
+  const height = maxY - minY;
 
   return (
     <div className="absolute top bottom left right flex layout-centered">
@@ -28,9 +30,13 @@ const LegacyChoropleth = ({
       >
         {() => (
           // eslint-disable-line react/display-name
-          <svg className="flex-full m1" viewBox={`0 0 ${width} ${height}`}>
+          <svg
+            className="flex-full m1"
+            viewBox={`${minX} ${minY} ${width} ${height}`}
+          >
             {geoJson.features.map((feature, index) => (
               <path
+                key={index}
                 d={geo(feature, index)}
                 stroke="white"
                 strokeWidth={1}

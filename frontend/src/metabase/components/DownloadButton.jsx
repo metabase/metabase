@@ -1,25 +1,82 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Text from "metabase/components/Text";
+import Label from "metabase/components/type/Label";
+import { FormButton } from "./DownloadButton.styled";
 
 function colorForType(type) {
   switch (type) {
     case "csv":
-      return colors["accent7"];
+      return color("accent7");
     case "xlsx":
-      return colors["accent1"];
+      return color("accent1");
     case "json":
-      return colors["bg-dark"];
+      return color("bg-dark");
     default:
-      return colors["brand"];
+      return color("brand");
   }
 }
+
+const retrieveFilename = ({ res, type }) => {
+  const contentDisposition = res.headers.get("Content-Disposition") || "";
+  const match = contentDisposition.match(/filename="(?<fileName>.+)"/);
+  const fileName =
+    match?.groups?.fileName ||
+    `query_result_${new Date().toISOString()}.${type}`;
+
+  return fileName;
+};
+
+const handleSubmit = async (
+  e,
+  {
+    method,
+    url,
+    type,
+    onDownloadStart,
+    onDownloadResolved,
+    onDownloadRejected,
+  },
+) => {
+  e.preventDefault();
+
+  onDownloadStart();
+
+  const formData = new URLSearchParams(new FormData(e.target));
+
+  const options = { method };
+  if (method === `POST`) {
+    options.body = formData;
+  } else if (method === `GET`) {
+    options.query = formData.toString();
+  }
+
+  fetch(method === `POST` ? url : url + "?" + options.query, options)
+    .then(async res => {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      // retrieves the filename from the response header and parses it into query_result[DATE TIME].extension
+      const fileName = retrieveFilename({ res, type });
+
+      // create a pseudo-link to trigger the download
+      const link = document.createElement(`a`);
+      link.href = url;
+      link.setAttribute(`download`, fileName);
+      document.body.appendChild(link);
+      link.click();
+      URL.revokeObjectURL(url);
+      link.remove();
+
+      onDownloadResolved();
+    })
+    .catch(() => onDownloadRejected());
+};
 
 const DownloadButton = ({
   children,
@@ -27,16 +84,27 @@ const DownloadButton = ({
   url,
   params,
   extensions,
+  onDownloadStart,
+  onDownloadResolved,
+  onDownloadRejected,
   ...props
 }) => (
-  <Box>
-    <form method={method} action={url}>
+  <div>
+    <form
+      onSubmit={e =>
+        handleSubmit(e, {
+          method,
+          url,
+          type: children,
+          onDownloadStart,
+          onDownloadResolved,
+          onDownloadRejected,
+        })
+      }
+    >
       {params && extractQueryParams(params).map(getInput)}
-      <Flex
-        is="button"
+      <FormButton
         className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
-        align="center"
-        px={1}
         onClick={e => {
           if (window.OSX) {
             // prevent form from being submitted normally
@@ -48,14 +116,14 @@ const DownloadButton = ({
         {...props}
       >
         <Icon name={children} size={32} mr={1} color={colorForType(children)} />
-        <Text className="text-bold">.{children}</Text>
-      </Flex>
+        <Label my={0}>.{children}</Label>
+      </FormButton>
     </form>
-  </Box>
+  </div>
 );
 
 const getInput = ([name, value]) => (
-  <input type="hidden" name={name} value={value} />
+  <input key={name} type="hidden" name={name} value={value} />
 );
 
 DownloadButton.propTypes = {
@@ -63,6 +131,9 @@ DownloadButton.propTypes = {
   method: PropTypes.string,
   params: PropTypes.object,
   extensions: PropTypes.array,
+  onDownloadStart: PropTypes.func,
+  onDownloadResolved: PropTypes.func,
+  onDownloadRejected: PropTypes.func,
 };
 
 DownloadButton.defaultProps = {

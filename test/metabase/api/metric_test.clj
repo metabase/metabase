@@ -1,24 +1,23 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
-  (:require [expectations :refer :all]
-            [metabase
-             [http-client :as http]
-             [middleware :as middleware]]
-            [metabase.models
-             [database :refer [Database]]
-             [metric :as metric :refer [Metric]]
-             [revision :refer [Revision]]
-             [table :refer [Table]]]
-            [metabase.test
-             [data :as data :refer :all]
-             [util :as tu]]
-            [metabase.test.data.users :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]))
+  (:require [clojure.test :refer :all]
+            [metabase.http-client :as http]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.revision :refer [Revision]]
+            [metabase.models.table :refer [Table]]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;; ## Helper Fns
 
-(def ^:private ^:const metric-defaults
+(def ^:private metric-defaults
   {:description             nil
    :show_in_getting_started false
    :caveats                 nil
@@ -30,16 +29,9 @@
    :definition              nil})
 
 (defn- user-details [user]
-  (tu/match-$ user
-    {:id           $
-     :email        $
-     :date_joined  $
-     :first_name   $
-     :last_name    $
-     :last_login   $
-     :is_superuser $
-     :is_qbnewb    $
-     :common_name  $}))
+  (select-keys
+   user
+   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :common_name :locale]))
 
 (defn- metric-response [{:keys [created_at updated_at], :as metric}]
   (-> (into {} metric)
@@ -48,269 +40,272 @@
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))))
 
+(deftest auth-tests
+  (testing "AUTHENTICATION"
+    ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
+    ;; authentication test on every single individual endpoint
+    (is (= (get middleware.u/response-unauthentic :body)
+           (http/client :get 401 "metric")))
 
-;; ## /api/metric/* AUTHENTICATION Tests
-;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
-;; authentication test on every single individual endpoint
+    (is (= (get middleware.u/response-unauthentic :body)
+           (http/client :put 401 "metric/13")))))
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "metric"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "metric/13"))
+(deftest create-test
+  (testing "POST /api/metric"
+    (testing "test security. Requires superuser perms"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request
+              :rasta :post 403 "metric" {:name       "abc"
+                                         :table_id   123
+                                         :definition {}}))))
 
+    (testing "test validations"
+      (is (= {:errors {:name "value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :post 400 "metric" {})))
 
-;; ## POST /api/metric
+      (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+             (mt/user-http-request
+              :crowberto :post 400 "metric" {:name "abc"})))
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :post 403 "metric" {:name       "abc"
+      (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+             (mt/user-http-request
+              :crowberto :post 400 "metric" {:name     "abc"
+                                             :table_id "foobar"})))
+
+      (is (= {:errors {:definition "value must be a map."}}
+             (mt/user-http-request
+              :crowberto :post 400 "metric" {:name     "abc"
+                                             :table_id 123})))
+
+      (is (= {:errors {:definition "value must be a map."}}
+             (mt/user-http-request
+              :crowberto :post 400 "metric" {:name       "abc"
                                              :table_id   123
-                                             :definition {}}))
+                                             :definition "foobar"}))))
 
-;; test validations
-(expect {:errors {:name "value must be a non-blank string."}}
-  ((user->client :crowberto) :post 400 "metric" {}))
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{:keys [id]} {:db_id database-id}]]
+      (is (= (merge metric-defaults
+                    {:name        "A Metric"
+                     :description "I did it!"
+                     :creator_id  (mt/user->id :crowberto)
+                     :creator     (user-details (mt/fetch-user :crowberto))
+                     :definition  {:database 21
+                                   :query    {:filter ["abc"]}}})
+             (metric-response (mt/user-http-request
+                               :crowberto :post 200 "metric" {:name                    "A Metric"
+                                                              :description             "I did it!"
+                                                              :show_in_getting_started false
+                                                              :caveats                 nil
+                                                              :points_of_interest      nil
+                                                              :how_is_this_calculated  nil
+                                                              :table_id                id
+                                                              :definition              {:database 21
+                                                                                        :query    {:filter ["abc"]}}})))))))
 
-(expect {:errors {:table_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "metric" {:name "abc"}))
+(deftest update-test
+  (testing "PUT /api/metric"
+    (testing "test security. Requires superuser perms"
+      (mt/with-temp Metric [metric]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request
+                :rasta :put 403 (str "metric/" (u/the-id metric))
+                {:name             "abc"
+                 :definition       {}
+                 :revision_message "something different"})))))
 
-(expect {:errors {:table_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                 :table_id "foobar"}))
+    (testing "test validations"
+      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :put 400 "metric/1" {})))
 
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                 :table_id 123}))
+      (is (= {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :put 400 "metric/1" {:revision_message "Wow", :name ""})))
 
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :post 400 "metric" {:name       "abc"
-                                                 :table_id   123
-                                                 :definition "foobar"}))
+      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :put 400 "metric/1" {:name             "abc"
+                                              :revision_message ""})))
 
-(expect
-  (merge metric-defaults
-         {:name        "A Metric"
-          :description "I did it!"
-          :creator_id  (user->id :crowberto)
-          :creator     (user-details (fetch-user :crowberto))
-          :definition  {:database 21
-                        :query    {:filter ["abc"]}}})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{:keys [id]} {:db_id database-id}]]
-    (metric-response ((user->client :crowberto) :post 200 "metric" {:name                    "A Metric"
-                                                                    :description             "I did it!"
-                                                                    :show_in_getting_started false
-                                                                    :caveats                 nil
-                                                                    :points_of_interest      nil
-                                                                    :how_is_this_calculated  nil
-                                                                    :table_id                id
-                                                                    :definition              {:database 21
-                                                                                              :query    {:filter ["abc"]}}}))))
+      (is (= {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
+             (mt/user-http-request
+              :crowberto :put 400 "metric/1" {:name             "abc"
+                                              :revision_message "123"
+                                              :definition       "foobar"}))))
 
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Metric   [{:keys [id]} {:table_id table-id}]]
+      (is (= (merge metric-defaults
+                    {:name       "Costa Rica"
+                     :creator_id (mt/user->id :rasta)
+                     :creator    (user-details (mt/fetch-user :rasta))
+                     :definition {:database 2
+                                  :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}})
+             (metric-response
+              (mt/user-http-request
+               :crowberto :put 200 (format "metric/%d" id)
+               {:id                      id
+                :name                    "Costa Rica"
+                :description             nil
+                :show_in_getting_started false
+                :caveats                 nil
+                :points_of_interest      nil
+                :how_is_this_calculated  nil
+                :table_id                456
+                :revision_message        "I got me some revisions"
+                :definition              {:database 2
+                                          :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}})))))))
 
-;; ## PUT /api/metric
+(deftest archive-test
+  (testing "Can we archive a Metric with the PUT endpoint?"
+    (mt/with-temp Metric [{:keys [id]}]
+      (is (some? (mt/user-http-request
+                  :crowberto :put 200 (str "metric/" id)
+                  {:archived true, :revision_message "Archive the Metric"})))
+      (is (= true
+             (db/select-one-field :archived Metric :id id))))))
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 "metric/1" {:name             "abc"
-                                              :definition       {}
-                                              :revision_message "something different"}))
+(deftest unarchive-test
+  (testing "Can we unarchive a Metric with the PUT endpoint?"
+    (mt/with-temp Metric [{:keys [id]} {:archived true}]
+      (is (some? (mt/user-http-request
+                  :crowberto :put 200 (str "metric/" id)
+                  {:archived false, :revision_message "Unarchive the Metric"})))
+      (is (= false (db/select-one-field :archived Metric :id id))))))
 
-;; test validations
-(expect
-  {:errors {:name "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "metric/1" {}))
-
-(expect
-  {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name "abc"}))
-
-(expect
-  {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                  :revision_message ""}))
-
-(expect
-  {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                  :revision_message "123"}))
-
-(expect
-  {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                  :revision_message "123"
-                                                  :definition       "foobar"}))
-
-(expect
-  (merge metric-defaults
-         {:name       "Costa Rica"
-          :creator_id (user->id :rasta)
-          :creator    (user-details (fetch-user :rasta))
-          :definition {:database 2
-                       :query    {:filter ["not" "the toucans you're looking for"]}}})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]} {:table_id table-id}]]
-    (metric-response ((user->client :crowberto) :put 200 (format "metric/%d" id) {:id                      id
-                                                                                  :name                    "Costa Rica"
-                                                                                  :description             nil
-                                                                                  :show_in_getting_started false
-                                                                                  :caveats                 nil
-                                                                                  :points_of_interest      nil
-                                                                                  :how_is_this_calculated  nil
-                                                                                  :table_id                456
-                                                                                  :revision_message        "I got me some revisions"
-                                                                                  :definition              {:database 2
-                                                                                                            :query    {:filter ["not" "the toucans you're looking for"]}}}))))
-
-
-;; ## DELETE /api/metric/:id
-
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :delete 403 "metric/1" :revision_message "yeeeehaw!"))
+(deftest delete-test
+  (testing "DELETE /api/metric/:id"
+    (testing "test security. Requires superuser perms"
+      (mt/with-temp Metric [{:keys [id]}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request
+                :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
 
 
-;; test validations
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :delete 400 "metric/1" {:name "abc"}))
+    (testing "test validations"
+      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :delete 400 "metric/1" {:name "abc"})))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :delete 400 "metric/1" :revision_message ""))
+      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+             (mt/user-http-request
+              :crowberto :delete 400 "metric/1" :revision_message ""))))))
 
-(expect
-  [{:success true}
-   (merge metric-defaults
-          {:name        "Toucans in the rainforest"
-           :description "Lookin' for a blueberry"
-           :creator_id  (user->id :rasta)
-           :creator     (user-details (fetch-user :rasta))
-           :archived    true})]
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]}   {:table_id table-id}]]
-    [((user->client :crowberto) :delete 200 (format "metric/%d" id) :revision_message "carryon")
-     (metric-response (metric/retrieve-metric id))]))
+(deftest fetch-archived-test
+  (testing "should still be able to fetch the archived Metric"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Metric   [{:keys [id]}   {:table_id table-id}]]
+      (mt/user-http-request
+       :crowberto :delete 204 (format "metric/%d" id) :revision_message "carryon")
+      (is (= (merge
+              metric-defaults
+              {:name        "Toucans in the rainforest"
+               :description "Lookin' for a blueberry"
+               :creator_id  (mt/user->id :rasta)
+               :creator     (user-details (mt/fetch-user :rasta))
+               :archived    true})
+             (-> (metric-response
+                  (mt/user-http-request
+                   :crowberto :get 200 (format "metric/%d" id)))
+                 (dissoc :query_description)))))))
 
+(deftest fetch-metric-test
+  (testing "GET /api/metric/:id"
+    (testing "test security. Requires perms for the Table it references"
+      (mt/with-temp* [Database [db]
+                      Table    [table  {:db_id (u/the-id db)}]
+                      Metric   [metric {:table_id (u/the-id table)}]]
+        (perms/revoke-data-perms! (group/all-users) db)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
 
-;; ## GET /api/metric/:id
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Metric   [{:keys [id]}   {:creator_id (mt/user->id :crowberto)
+                                              :table_id   table-id}]]
+      (is (= (merge
+              metric-defaults
+              {:name        "Toucans in the rainforest"
+               :description "Lookin' for a blueberry"
+               :creator_id  (mt/user->id :crowberto)
+               :creator     (user-details (mt/fetch-user :crowberto))})
+             (-> (metric-response (mt/user-http-request :rasta :get 200 (format "metric/%d" id)))
+                 (dissoc :query_description)))))))
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "metric/1"))
+(deftest metric-revisions-test
+  (testing "GET /api/metric/:id/revisions"
+    (testing "test security. Requires read perms for Table it references"
+      (mt/with-temp* [Database [db]
+                      Table    [table  {:db_id (u/the-id db)}]
+                      Metric   [metric {:table_id (u/the-id table)}]]
+        (perms/revoke-data-perms! (group/all-users) db)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
 
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Metric   [{:keys [id]}   {:creator_id              (mt/user->id :crowberto)
+                                              :table_id                table-id
+                                              :name                    "One Metric to rule them all, one metric to define them"
+                                              :description             "One metric to bring them all, and in the DataModel bind them"
+                                              :show_in_getting_started false
+                                              :caveats                 nil
+                                              :points_of_interest      nil
+                                              :how_is_this_calculated  nil
+                                              :definition              {:database 123
+                                                                        :query    {:filter [:= [:field 10 nil] 20]}}}]
+                    Revision [_              {:model       "Metric"
+                                              :model_id    id
+                                              :object      {:name       "b"
+                                                            :definition {:filter [:and [:> 1 25]]}}
+                                              :is_creation true}]
+                    Revision [_              {:model    "Metric"
+                                              :model_id id
+                                              :user_id  (mt/user->id :crowberto)
+                                              :object   {:name       "c"
+                                                         :definition {:filter [:and [:> 1 25]]}}
+                                              :message  "updated"}]]
+      (is (= [{:is_reversion false
+               :is_creation  false
+               :message      "updated"
+               :user         (-> (user-details (mt/fetch-user :crowberto))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:name {:before "b" :after "c"}}
+               :description  "renamed this Metric from \"b\" to \"c\"."}
+              {:is_reversion false
+               :is_creation  true
+               :message      nil
+               :user         (-> (user-details (mt/fetch-user :rasta))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:name       {:after "b"}
+                              :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+               :description  nil}]
+             (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
+               (dissoc revision :timestamp :id)))))))
 
-(expect
-  (merge metric-defaults
-         {:name        "Toucans in the rainforest"
-          :description "Lookin' for a blueberry"
-          :creator_id  (user->id :crowberto)
-          :creator     (user-details (fetch-user :crowberto))})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
-                                            :table_id    table-id}]]
-    (metric-response ((user->client :crowberto) :get 200 (format "metric/%d" id)))))
+(deftest revert-metric-test
+  (testing "POST /api/metric/:id/revert"
+    (testing "test security. Requires superuser perms"
+      (mt/with-temp Metric [{:keys [id]}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request
+                :rasta :post 403 (format "metric/%d/revert" id)
+                {:revision_id 56})))))
 
+    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "metric/1/revert" {})))
 
-;; ## GET /api/metric/:id/revisions
+    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "metric/1/revert" {:revision_id "foobar"})))))
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "metric/1/revisions"))
-
-
-(expect
-  [{:is_reversion false
-    :is_creation  false
-    :message      "updated"
-    :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:name {:before "b" :after "c"}}
-    :description  "renamed this Metric from \"b\" to \"c\"."}
-   {:is_reversion false
-    :is_creation  true
-    :message      nil
-    :user         (-> (user-details (fetch-user :rasta))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:name       {:after "b"}
-                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
-    :description  nil}]
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]}   {:creator_id              (user->id :crowberto)
-                                            :table_id                table-id
-                                            :name                    "One Metric to rule them all, one metric to define them"
-                                            :description             "One metric to bring them all, and in the DataModel bind them"
-                                            :show_in_getting_started false
-                                            :caveats                 nil
-                                            :points_of_interest      nil
-                                            :how_is_this_calculated  nil
-                                            :definition              {:database 123
-                                                                      :query    {:filter [:= [:field-id 10] 20]}}}]
-                  Revision [_              {:model       "Metric"
-                                            :model_id    id
-                                            :object      {:name "b"
-                                                          :definition {:filter [:and [:> 1 25]]}}
-                                            :is_creation true}]
-                  Revision [_              {:model    "Metric"
-                                            :model_id id
-                                            :user_id  (user->id :crowberto)
-                                            :object   {:name "c"
-                                                       :definition {:filter [:and [:> 1 25]]}}
-                                            :message  "updated"}]]
-    (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
-             (dissoc revision :timestamp :id)))))
-
-
-;; ## POST /api/metric/:id/revert
-
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :post 403 "metric/1/revert" {:revision_id 56}))
-
-
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "metric/1/revert" {}))
-
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "metric/1/revert" {:revision_id "foobar"}))
-
-
-(expect
-  [ ;; the api response
-   {:is_reversion true
-    :is_creation  false
-    :message      nil
-    :user         (dissoc (user-details (fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-    :diff         {:name {:before "Changed Metric Name"
-                          :after  "One Metric to rule them all, one metric to define them"}}
-    :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-   ;; full list of final revisions, first one should be same as the revision returned by the endpoint
-   [{:is_reversion true
-     :is_creation  false
-     :message      nil
-     :user         (dissoc (user-details (fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-     :diff         {:name {:before "Changed Metric Name"
-                           :after  "One Metric to rule them all, one metric to define them"}}
-     :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-    {:is_reversion false
-     :is_creation  false
-     :message      "updated"
-     :user         (dissoc (user-details (fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-     :diff         {:name {:after  "Changed Metric Name"
-                           :before "One Metric to rule them all, one metric to define them"}}
-     :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
-    {:is_reversion false
-     :is_creation  true
-     :message      nil
-     :user         (dissoc (user-details (fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-     :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
-                    :description {:after "One metric to bring them all, and in the DataModel bind them"}
-                    :definition  {:after {:database 123
-                                          :query    {:filter ["=" ["field-id" 10] 20]}}}}
-     :description  nil}]]
-  (tt/with-temp* [Database [{database-id :id}]
+(deftest metric-revisions-test-2
+  (mt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
-                  Metric   [{:keys [id]}      {:creator_id              (user->id :crowberto)
+                  Metric   [{:keys [id]}      {:creator_id              (mt/user->id :crowberto)
                                                :table_id                table-id
                                                :name                    "One Metric to rule them all, one metric to define them"
                                                :description             "One metric to bring them all, and in the DataModel bind them"
@@ -318,7 +313,7 @@
                                                :caveats                 nil
                                                :points_of_interest      nil
                                                :how_is_this_calculated  nil
-                                               :definition              {:creator_id              (user->id :crowberto)
+                                               :definition              {:creator_id              (mt/user->id :crowberto)
                                                                          :table_id                table-id
                                                                          :name                    "Reverted Metric Name"
                                                                          :description             nil
@@ -327,10 +322,10 @@
                                                                          :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
-                                                                                                   :query    {:filter [:= [:field-id 10] 20]}}}}]
+                                                                                                   :query    {:filter [:= [:field 10 nil] 20]}}}}]
                   Revision [{revision-id :id} {:model       "Metric"
                                                :model_id    id
-                                               :object      {:creator_id              (user->id :crowberto)
+                                               :object      {:creator_id              (mt/user->id :crowberto)
                                                              :table_id                table-id
                                                              :name                    "One Metric to rule them all, one metric to define them"
                                                              :description             "One metric to bring them all, and in the DataModel bind them"
@@ -339,12 +334,12 @@
                                                              :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
-                                                                                       :query    {:filter [:= [:field-id 10] 20]}}}
+                                                                                       :query    {:filter [:= [:field 10 nil] 20]}}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Metric"
                                                :model_id id
-                                               :user_id  (user->id :crowberto)
-                                               :object   {:creator_id              (user->id :crowberto)
+                                               :user_id  (mt/user->id :crowberto)
+                                               :object   {:creator_id              (mt/user->id :crowberto)
                                                           :table_id                table-id
                                                           :name                    "Changed Metric Name"
                                                           :description             "One metric to bring them all, and in the DataModel bind them"
@@ -353,25 +348,63 @@
                                                           :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
-                                                                                    :query    {:filter [:= [:field-id 10] 20]}}}
+                                                                                    :query    {:filter [:= [:field 10 nil] 20]}}}
                                                :message  "updated"}]]
-    [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
-     (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
-              (dissoc revision :timestamp :id)))]))
+    (testing "API response"
+      (is (= {:is_reversion true
+              :is_creation  false
+              :message      nil
+              :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+              :diff         {:name {:before "Changed Metric Name"
+                                    :after  "One Metric to rule them all, one metric to define them"}}
+              :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
+             (dissoc (mt/user-http-request
+                      :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
+    (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+      (is (= [{:is_reversion true
+               :is_creation  false
+               :message      nil
+               :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+               :diff         {:name {:before "Changed Metric Name"
+                                     :after  "One Metric to rule them all, one metric to define them"}}
+               :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
+              {:is_reversion false
+               :is_creation  false
+               :message      "updated"
+               :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+               :diff         {:name {:after  "Changed Metric Name"
+                                     :before "One Metric to rule them all, one metric to define them"}}
+               :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
+              {:is_reversion false
+               :is_creation  true
+               :message      nil
+               :user         (dissoc (user-details (mt/fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+               :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
+                              :description {:after "One metric to bring them all, and in the DataModel bind them"}
+                              :definition  {:after {:database 123
+                                                    :query    {:filter ["=" ["field" 10 nil] 20]}}}}
+               :description  nil}]
+             (for [revision (mt/user-http-request
+                             :crowberto :get 200 (format "metric/%d/revisions" id))]
+               (dissoc revision :timestamp :id)))))))
 
+(deftest list-metrics-test
+  (testing "GET /api/metric/"
+    (mt/with-temp* [Metric [metric-1 {:name "Metric A"}]
+                    Metric [metric-2 {:name "Metric B"}]
+                    ;; inactive metrics shouldn't show up
+                    Metric [_        {:archived true}]]
+      (is (= (mt/derecordize (hydrate [(assoc metric-1 :database_id (data/id))
+                                       (assoc metric-2 :database_id (data/id))]
+                                      :creator))
+             (map #(dissoc % :query_description) (mt/user-http-request
+                                                  :rasta :get 200 "metric/"))))))
 
-;;; GET /api/metric/
+  (is (= []
+         (mt/user-http-request :rasta :get 200 "metric/"))))
 
-(tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
-                      Metric [metric-2 {:name "Metric B"}]
-                      Metric [_        {:archived true}]] ; inactive metrics shouldn't show up
-  (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
-                        (assoc metric-2 :database_id (data/id))]
-                       :creator))
-  ((user->client :rasta) :get 200 "metric/"))
-
-;; Test related/recommended entities
-(expect
-  #{:table :metrics :segments}
-  (tt/with-temp* [Metric [{metric-id :id}]]
-    (-> ((user->client :crowberto) :get 200 (format "metric/%s/related" metric-id)) keys set)))
+(deftest metric-related-entities-test
+  (testing "Test related/recommended entities"
+    (mt/with-temp Metric [{metric-id :id}]
+      (is (= #{:table :metrics :segments}
+             (-> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id)) keys set))))))

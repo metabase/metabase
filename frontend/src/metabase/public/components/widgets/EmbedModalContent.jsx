@@ -1,10 +1,8 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
-
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
@@ -16,7 +14,7 @@ import {
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   getSiteUrl,
@@ -26,53 +24,7 @@ import {
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
-
-import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-export type Pane = "preview" | "code";
-export type EmbedType = null | "simple" | "application";
-
-export type DisplayOptions = {
-  theme: ?string,
-  bordered: boolean,
-  titled: boolean,
-};
-
-type Props = {
-  className?: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  resourceParameters: Parameter[],
-
-  isAdmin: boolean,
-  siteUrl: string,
-  secretKey: string,
-
-  // Flow doesn't understand these are provided by @connect?
-  // isPublicSharingEnabled: bool,
-  // isApplicationEmbeddingEnabled: bool,
-
-  getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
-
-  onUpdateEnableEmbedding: (enable_embedding: boolean) => Promise<void>,
-  onUpdateEmbeddingParams: (embedding_params: EmbeddingParams) => Promise<void>,
-  onCreatePublicLink: () => Promise<void>,
-  onDisablePublicLink: () => Promise<void>,
-  onClose: () => void,
-};
-
-type State = {
-  pane: Pane,
-  embedType: EmbedType,
-  embeddingParams: EmbeddingParams,
-  displayOptions: DisplayOptions,
-  parameterValues: { [id: ParameterId]: string },
-};
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -84,10 +36,7 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps)
 export default class EmbedModalContent extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       pane: "preview",
@@ -134,19 +83,30 @@ export default class EmbedModalContent extends Component {
     this.setState({ embeddingParams: resource.embedding_params || {} });
   };
 
-  getPreviewParams() {
+  getPreviewParameters(resourceParameters, embeddingParams) {
+    const lockedParameters = resourceParameters.filter(
+      parameter => embeddingParams[parameter.slug] === "locked",
+    );
+
+    return lockedParameters;
+  }
+
+  getPreviewParamsBySlug() {
     const { resourceParameters } = this.props;
     const { embeddingParams, parameterValues } = this.state;
-    const params = {};
-    for (const parameter of resourceParameters) {
-      if (embeddingParams[parameter.slug] === "locked") {
-        params[parameter.slug] =
-          parameter.id in parameterValues
-            ? parameterValues[parameter.id]
-            : null;
-      }
-    }
-    return params;
+
+    const lockedParameters = this.getPreviewParameters(
+      resourceParameters,
+      embeddingParams,
+    );
+
+    const parameterSlugValuePairs = lockedParameters.map(parameter => {
+      const value =
+        parameter.id in parameterValues ? parameterValues[parameter.id] : null;
+      return [parameter.slug, value];
+    });
+
+    return Object.fromEntries(parameterSlugValuePairs);
   }
 
   render() {
@@ -166,10 +126,10 @@ export default class EmbedModalContent extends Component {
       displayOptions,
     } = this.state;
 
-    const params = this.getPreviewParams();
-
-    const previewParameters = resourceParameters.filter(
-      p => embeddingParams[p.slug] === "locked",
+    const previewParametersBySlug = this.getPreviewParamsBySlug();
+    const previewParameters = this.getPreviewParameters(
+      resourceParameters,
+      embeddingParams,
     );
 
     return (
@@ -179,7 +139,7 @@ export default class EmbedModalContent extends Component {
           style={{
             boxShadow:
               embedType === "application"
-                ? `0px 8px 15px -9px ${colors["text-dark"]}`
+                ? `0px 8px 15px -9px ${color("text-dark")}`
                 : undefined,
           }}
         >
@@ -194,7 +154,10 @@ export default class EmbedModalContent extends Component {
             name="close"
             size={24}
             onClick={() => {
-              MetabaseAnalytics.trackEvent("Sharing Modal", "Modal Closed");
+              MetabaseAnalytics.trackStructEvent(
+                "Sharing Modal",
+                "Modal Closed",
+              );
               onClose();
             }}
           />
@@ -204,7 +167,6 @@ export default class EmbedModalContent extends Component {
             {/* Center only using margins because  */}
             <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
               <SharingPane
-                // $FlowFixMe: Flow doesn't understand these are provided by @connect?
                 {...this.props}
                 publicUrl={getUnsignedPreviewUrl(
                   siteUrl,
@@ -232,7 +194,7 @@ export default class EmbedModalContent extends Component {
               token={getSignedToken(
                 resourceType,
                 resource.id,
-                params,
+                previewParametersBySlug,
                 secretKey,
                 embeddingParams,
               )}
@@ -240,14 +202,14 @@ export default class EmbedModalContent extends Component {
                 siteUrl,
                 resourceType,
                 resource.id,
-                params,
+                previewParametersBySlug,
                 displayOptions,
                 secretKey,
                 embeddingParams,
               )}
               siteUrl={siteUrl}
               secretKey={secretKey}
-              params={params}
+              params={previewParametersBySlug}
               displayOptions={displayOptions}
               previewParameters={previewParameters}
               parameterValues={parameterValues}
@@ -279,13 +241,7 @@ export default class EmbedModalContent extends Component {
   }
 }
 
-export const EmbedTitle = ({
-  type,
-  onClick,
-}: {
-  type: ?string,
-  onClick: () => any,
-}) => (
+export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>
     <span className="text-brand-hover">{t`Sharing`}</span>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}

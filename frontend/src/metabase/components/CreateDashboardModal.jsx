@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -6,11 +7,11 @@ import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collections from "metabase/entities/collections";
-import DashboardForm from "metabase/containers/DashboardForm";
+import Collection from "metabase/entities/collections";
+import Dashboard from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => ({
-  initialCollectionId: Collections.selectors.getInitialCollectionId(
+  initialCollectionId: Collection.selectors.getInitialCollectionId(
     state,
     props,
   ),
@@ -24,21 +25,29 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class CreateDashboardModal extends Component {
   static propTypes = {
+    onSaved: PropTypes.func,
     onClose: PropTypes.func,
   };
 
+  onSaved = dashboard => {
+    const { onClose, onChangeLocation } = this.props;
+    if (onClose) {
+      onClose();
+    }
+
+    const url = Urls.dashboard(dashboard, { editMode: true });
+    onChangeLocation(url);
+  };
+
   render() {
-    const { initialCollectionId, onClose, onChangeLocation } = this.props;
+    const { initialCollectionId, onSaved, onClose } = this.props;
     return (
-      <DashboardForm
+      <Dashboard.ModalForm
+        form={Dashboard.forms.create}
+        overwriteOnInitialValuesChange
         dashboard={{ collection_id: initialCollectionId }}
         onClose={onClose}
-        onSaved={dashboard => {
-          onChangeLocation(Urls.dashboard(dashboard.id));
-          if (onClose) {
-            onClose();
-          }
-        }}
+        onSaved={typeof onSaved === "function" ? onSaved : this.onSaved}
       />
     );
   }

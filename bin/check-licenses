@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+
+const { execSync } = require("child_process");
+const { readFileSync } = require("fs");
+const _ = require("underscore");
+
+const DEV_MODE = false;
+
+function normalizeLicense(license) {
+  return license
+    .toLowerCase()
+    .trim()
+    .replace(/^the\s+/, "");
+}
+
+const LICENSE_ALLOWLIST = new Set(
+  [
+    "Apache 2",
+    "Apache 2.0",
+    "Apache License 2.0",
+    "Apache License",
+    "Apache License, Version 2.0",
+    "Apache Software License - Version 2.0",
+    "Apache Software License, Version 2.0",
+    "Apache v2",
+    "Apache*",
+    "Apache-2.0",
+    "Apache 2.0 License",
+    "Artistic-2.0",
+    "BSD 3-Clause License",
+    "BSD License",
+    "BSD licence",
+    "BSD",
+    "BSD*",
+    "0BSD",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSD 3-clause",
+    "BSD style",
+    "Bouncy Castle Licence",
+    "CC0 1.0 Universal",
+    "CC0-1.0",
+    "CC-BY-4.0",
+    "CC-BY-3.0",
+    "CDDL + GPLv2 with classpath exception", // this means CDDL or GPLv2 w/ classpath exception
+    "CDDL 1.1",
+    "CDDL License",
+    "CDDL/GPLv2+CE", // this means CDDL or GPLv2 w/ classpath exception
+    "COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0",
+    "Common Development and Distribution License (CDDL) v1.0",
+    "Common Public License Version 1.0",
+    "Common Public License Version",
+    "Eclipse Public License - v 1.0",
+    "Eclipse Public License 1.0",
+    "Eclipse Public License",
+    "GNU Lesser General Public License 3.0",
+    "GNU Lesser General Public License, Version 2.1",
+    "ISC",
+    "ISC/BSD License",
+    "LGPL-2.1",
+    "Lesser GPL",
+    "MIT (http://mootools.net/license.txt)",
+    "MIT License",
+    "MIT Licensed. http://www.opensource.org/licenses/mit-license.php",
+    "MIT",
+    "MIT*",
+    "MIT AND BSD-3-Clause",
+    "MIT AND Zlib",
+    "MPL 2.0",
+    "New BSD License", // same as 3-clause
+    "Public Domain",
+    "Revised BSD",
+    // "The MIT License (MIT)",
+    "Unlicense",
+    "WTFPL",
+  ].map(normalizeLicense),
+);
+
+const PACKAGE_ALLOWLIST = new Set([
+  "com.amazon.redshift/redshift-jdbc42-no-awssdk@1.2.45.1069", // Apache 2.0?
+  "amalloy/ring-gzip-middleware@0.1.4", // MIT https://github.com/clj-commons/ring-gzip-middleware/blob/master/LICENSE
+  "caniuse-db@1.0.30000789", // CC-BY-4.0: https://github.com/Fyrd/caniuse
+  "colorize@0.1.1", // Eclipse Public License: https://github.com/ibdknox/colorize
+  "com.google.re2j/re2j@1.1", // Go License https://github.com/google/re2j/blob/master/LICENSE
+  "com.unboundid/unboundid-ldapsdk@4.0.4", // dual licensed LGPL/GPL: https://ldap.com/unboundid-ldap-sdk-for-java/
+  "cycle@1.0.3", // Public domain: https://github.com/dscape/cycle/blob/master/cycle.js
+  "expectations@2.2.0-beta2", // BSD 3-Clause: https://github.com/clojure-expectations/expectations
+  "hiccup@1.0.5", // Eclipse Public License: https://github.com/weavejester/hiccup
+  "isnumeric@0.2.0", // MIT: https://github.com/leecrossley/isNumeric
+  "javax.servlet.jsp/jsp-api@2.1", // CDDL/GPL dual license: https://javaee.github.io/javaee-jsp-api/LICENSE
+  "jdk.tools@1.8", // build tools
+  "net.jcip/jcip-annotations@1.0", // Public Domain: https://mvnrepository.com/artifact/net.jcip/jcip-annotations
+  "org.gnu.gettext/libintl@0.18.3", // LGPL: https://www.gnu.org/software/gettext/manual/html_node/Licenses.html
+  "org.json/json@20090211", // JSON License: https://www.json.org/license.html
+  "pako@1.0.6", // build tool only
+  "slingshot@0.10.2", // Eclipse Public License: https://github.com/scgilardi/slingshot
+  "sntp@1.0.9", // BSD-3-Clause: https://github.com/hueniverse/sntp/blob/master/LICENSE
+  "spdx-expression-parse@1.0.4", // build tool only
+  "spdx-license-ids@1.2.2", // build tool only
+  "stencil@0.5.0", // Eclipse Public License: https://github.com/davidsantiago/stencil/blob/0.5.0/LICENSE
+]);
+
+function parseLicenses(license) {
+  license = license.replace(/^\((.*)\)$/g, "$1"); // trim parens
+  if (/\bor\b/i.test(license) && !/\band\b/i.test(license)) {
+    return license.split(/\bor\b/gi).map(normalizeLicense);
+  } else {
+    return [normalizeLicense(license)];
+  }
+}
+
+function getJavaScriptPackageLicences() {
+  return (DEV_MODE
+    ? readFileSync("licenses.json", "utf-8")
+    : execSync("yarn licenses list --json", { encoding: "utf-8" })
+  )
+    .split("\n")
+    .slice(-2, -1) // 2nd to last row
+    .map(line => JSON.parse(line))[0]
+    .data.body.map(row => ({
+      name: row[0],
+      version: row[1],
+      license: row[2],
+      licenses: parseLicenses(row[2]),
+      type: "javascript",
+    }));
+}
+
+function getClojurePackageLicenses() {
+  return (
+    (DEV_MODE
+      ? readFileSync("licenses.csv", "utf-8")
+      : execSync("lein with-profiles +include-all-drivers,-dev licenses :csv", {
+          encoding: "utf-8",
+        })
+    )
+      // rudimentary csv parsing
+      .split("\n")
+      .filter(line => /^".*"$/.test(line))
+      .map(line => line.replace(/^"(.*)"$/g, "$1").split(/","/g))
+      .map(row => ({
+        name: row[0],
+        version: row[1],
+        license: row[2],
+        licenses: parseLicenses(row[2]),
+        type: "clojure",
+      }))
+  );
+}
+
+function checkLicences(packages) {
+  return packages.filter(
+    ({ name, version, licenses }) =>
+      // check if any of the licenses are allowed
+      !_.any(licenses, license => LICENSE_ALLOWLIST.has(license)) &&
+      // check package allowlist
+      !PACKAGE_ALLOWLIST.has(`${name}@${version}`),
+  );
+}
+
+const unknownJavaScriptLicenses = checkLicences(getJavaScriptPackageLicences());
+const unknownClojureLicenses = checkLicences(getClojurePackageLicenses());
+
+const unknownPackageLogs = [];
+const unknownLicenseCounts = new Map();
+
+for (const { name, version, license, type } of [
+  ...unknownJavaScriptLicenses,
+  ...unknownClojureLicenses,
+]) {
+  unknownPackageLogs.push(`[${license}] ${name}@${version} (${type})`);
+  unknownLicenseCounts.set(
+    license,
+    (unknownLicenseCounts.get(license) || 0) + 1,
+  );
+}
+
+console.log("Packages\n========\n");
+console.log(unknownPackageLogs.sort().join("\n"));
+
+console.log("\nLicenses\n========\n");
+console.log(
+  _.sortBy(Array.from(unknownLicenseCounts), 1)
+    .reverse()
+    .map(([license, count]) => `[${count}] ${license}`)
+    .join("\n"),
+);
+
+process.exit(unknownLicenseCounts.size === 0 ? 0 : 1);

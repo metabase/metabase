@@ -1,0 +1,20 @@
+{
+    "hosts": [
+        "127.0.0.1",
+	"localhost"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "CN": "server.local",
+    "names": [
+        {
+            "C":  "US",
+            "L":  "Seattle",
+            "O":  "Someone",
+            "OU": "WWW",
+            "ST": "Washington"
+        }
+    ]
+}

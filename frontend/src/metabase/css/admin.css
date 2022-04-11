@@ -1,56 +1,15 @@
 :root {
   --admin-nav-bg-color: var(--color-bg-dark);
   --admin-nav-bg-color-tint: var(--color-bg-dark);
-  --admin-nav-item-text-color: color(var(--color-text-white) alpha(-37%));
+  --admin-nav-item-text-color: color-mod(var(--color-text-white) alpha(-37%));
   --admin-nav-item-text-active-color: var(--color-text-white);
   --page-header-padding: 2.375rem;
 }
 
-.AdminNav {
-  background: var(--color-admin-navbar);
-  color: var(--color-text-white);
-  font-size: 0.85rem;
-}
-
-.AdminNav .NavItem {
-  color: color(var(--color-text-white) alpha(-37%));
-}
-
-.AdminNav .NavItem:hover,
-.AdminNav .NavItem.is--selected {
-  color: var(--color-text-white);
-}
-
-/* TODO: this feels itchy. should refactor .NavItem.is--selected to be less cascadey */
-.AdminNav .NavItem:hover:after,
-.AdminNav .NavItem.is--selected:after {
-  display: none;
-}
-
-.AdminNav .NavDropdown.open .NavDropdown-button,
-.AdminNav .NavDropdown .NavDropdown-content-layer {
-  background-color: var(--color-bg-dark);
-}
-
-.AdminNav .Dropdown-item:hover {
-  background-color: var(--color-bg-dark);
-}
-
 /* utility to get a simple common hover state for admin items */
-.HoverItem:hover,
-.AdminHoverItem:hover {
+.HoverItem:hover {
   background-color: var(--color-bg-medium);
   transition: background 0.2s linear;
-}
-
-.AdminNav .Dropdown-chevron {
-  color: var(--color-text-white);
-}
-
-.Actions {
-  background-color: color(var(--color-bg-light) alpha(-54%));
-  border: 1px solid var(--color-border);
-  padding: 2em;
 }
 
 .Actions-group {
@@ -107,7 +66,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: color(var(--color-brand) alpha(-96%));
+  background-color: color-mod(var(--color-brand) alpha(-96%));
 }
 
 .ContentTable tr:hover .Table-actions {
@@ -171,6 +130,11 @@
   box-shadow: 0 1px 2px var(--color-shadow);
 }
 
+.AdminList-item.disabled {
+  color: var(--color-text-medium);
+  pointer-events: none;
+}
+
 .AdminList-section {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
@@ -178,6 +142,7 @@
   color: var(--color-text-light);
   font-weight: 700;
   font-size: smaller;
+  padding-right: 15px; /* set so that table visibility icons align */
 }
 
 .AdminInput {
@@ -194,12 +159,16 @@
 
 .AdminSelect {
   display: inline-block;
-  padding: 0.6em;
+  padding: 0.6em 0.9em;
   border: 1px solid var(--color-border);
+  background-color: var(--color-bg-white);
   border-radius: var(--default-border-radius);
-  font-size: 14px;
   font-weight: 700;
-  min-width: 90px;
+  min-width: 104px;
+}
+
+.AdminSelect:hover {
+  border-color: color-mod(var(--color-border) blackness(10%));
 }
 
 .AdminSelectBorderless {
@@ -217,6 +186,18 @@
 }
 .AdminSelect--borderless .AdminSelect-chevron {
   margin-left: 0;
+}
+
+.AdminSelect-chevron {
+  opacity: 0.75;
+}
+
+.AdminSelect:hover .AdminSelect-chevron {
+  opacity: 1;
+}
+
+.MetadataTable {
+  min-width: 800px;
 }
 
 .MetadataTable-title {
@@ -254,13 +235,13 @@
   color: white !important;
 }
 
-.TableEditor-field-special-type,
+.TableEditor-field-semantic-type,
 .TableEditor-field-target {
   margin-top: 3px;
   /*color: var(--color-accent1);*/
 }
 
-.TableEditor-field-special-type .ColumnarSelector-row:hover,
+.TableEditor-field-semantic-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
   background-color: var(--color-brand) !important;
   color: white !important;
@@ -290,8 +271,6 @@
 .AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
-
-  white-space: nowrap;
   text-align: left;
 }
 
@@ -316,4 +295,12 @@
 
 .AdminLink:hover {
   opacity: 1;
+}
+
+.ColumnSortHelper {
+  box-shadow: 0 7px 20px var(--color-shadow);
+}
+
+#formField-details-password .Form-input {
+  margin-bottom: 2em;
 }

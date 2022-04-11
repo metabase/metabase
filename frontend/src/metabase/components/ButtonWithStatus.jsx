@@ -1,9 +1,10 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
-let defaultTitleForState = {
+const defaultTitleForState = {
   default: t`Save`,
   inProgress: t`Saving...`,
   completed: t`Saved!`,
@@ -17,13 +18,6 @@ let defaultTitleForState = {
  * When the button is clicked, `inProgress` text is shown, and when the promise resolves, `completed` text is shown.
  */
 export default class ButtonWithStatus extends Component {
-  props: {
-    onClickOperation: any => Promise<void>,
-    titleForState?: string[],
-    disabled?: boolean,
-    className?: string,
-  };
-
   state = {
     progressState: "default",
   };

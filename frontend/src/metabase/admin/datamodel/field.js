@@ -1,6 +1,6 @@
 import { createThunkAction } from "metabase/lib/redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { MetabaseApi } from "metabase/services";
 
 export const RESCAN_FIELD_VALUES = "metabase/admin/fields/RESCAN_FIELD_VALUES";
@@ -12,8 +12,8 @@ export const rescanFieldValues = createThunkAction(
   function(fieldId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.field_rescan_values({ fieldId });
-        MetabaseAnalytics.trackEvent(
+        const call = await MetabaseApi.field_rescan_values({ fieldId });
+        MetabaseAnalytics.trackStructEvent(
           "Data Model",
           "Manual Re-scan Field Values",
         );
@@ -30,8 +30,8 @@ export const discardFieldValues = createThunkAction(
   function(fieldId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.field_discard_values({ fieldId });
-        MetabaseAnalytics.trackEvent(
+        const call = await MetabaseApi.field_discard_values({ fieldId });
+        MetabaseAnalytics.trackStructEvent(
           "Data Model",
           "Manual Discard Field Values",
         );

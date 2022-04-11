@@ -1,41 +1,20 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
-import AddClauseButton from "./AddClauseButton.jsx";
-import Expressions from "./expressions/Expressions.jsx";
-import ExpressionWidget from "./expressions/ExpressionWidget.jsx";
-import LimitWidget from "./LimitWidget.jsx";
-import SortWidget from "./SortWidget.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import { t } from "ttag";
+import AddClauseButton from "./AddClauseButton";
+import Expressions from "./expressions/Expressions";
+import ExpressionWidget from "./expressions/ExpressionWidget";
+import LimitWidget from "./LimitWidget";
+import SortWidget from "./SortWidget";
+import Popover from "metabase/components/Popover";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
-
-type Props = {
-  query: StructuredQuery,
-  setDatasetQuery: (
-    datasetQuery: DatasetQuery,
-    options: { run: boolean },
-  ) => void,
-  features: GuiQueryEditorFeatures,
-};
-
-type State = {
-  isOpen: boolean,
-  editExpression: any,
-};
-
-export default class ExtendedOptions extends Component {
-  props: Props;
-  state: State = {
-    isOpen: false,
+export class ExtendedOptionsPopover extends Component {
+  state = {
     editExpression: null,
   };
 
@@ -44,19 +23,23 @@ export default class ExtendedOptions extends Component {
     datasetQuery: PropTypes.object.isRequired,
     tableMetadata: PropTypes.object,
     setDatasetQuery: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
   };
 
   static defaultProps = {
-    expressions: {},
+    features: {
+      sort: true,
+      limit: true,
+    },
   };
 
   setExpression(name, expression, previousName) {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query
       .updateExpression(name, expression, previousName)
       .update(setDatasetQuery);
     this.setState({ editExpression: null });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Set Expression",
       !_.isEmpty(previousName),
@@ -64,26 +47,24 @@ export default class ExtendedOptions extends Component {
   }
 
   removeExpression(name) {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query.removeExpression(name).update(setDatasetQuery);
     this.setState({ editExpression: null });
 
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Remove Expression");
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Remove Expression");
   }
 
   setLimit = limit => {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query.updateLimit(limit).update(setDatasetQuery);
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
-    this.setState({ isOpen: false });
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Set Limit", limit);
+    if (this.props.onClose) {
+      this.props.onClose();
+    }
   };
 
   renderSort() {
     const { query, setDatasetQuery } = this.props;
-
-    if (!this.props.features.limit) {
-      return;
-    }
 
     let sortList, addSortButton;
 
@@ -110,8 +91,7 @@ export default class ExtendedOptions extends Component {
           <AddClauseButton
             text={t`Pick a field to sort by`}
             onClick={() => {
-              // $FlowFixMe: shouldn't be adding a sort with null field
-              query.addSort(["asc", null]).update(setDatasetQuery);
+              query.sort(["asc", null]).update(setDatasetQuery);
             }}
           />
         );
@@ -129,6 +109,33 @@ export default class ExtendedOptions extends Component {
     }
   }
 
+  renderLimit() {
+    const { query } = this.props;
+    return (
+      <div>
+        <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
+        <LimitWidget limit={query.limit()} onChange={this.setLimit} />
+      </div>
+    );
+  }
+
+  renderExpressions() {
+    const { query } = this.props;
+    return (
+      <Expressions
+        query={query}
+        onAddExpression={() => this.setState({ editExpression: true })}
+        onEditExpression={name => {
+          this.setState({ editExpression: name });
+          MetabaseAnalytics.trackStructEvent(
+            "QueryBuilder",
+            "Show Edit Custom Field",
+          );
+        }}
+      />
+    );
+  }
+
   renderExpressionWidget() {
     // if we aren't editing any expression then there is nothing to do
     if (!this.state.editExpression || !this.props.tableMetadata) {
@@ -144,60 +151,52 @@ export default class ExtendedOptions extends Component {
       : "";
 
     return (
-      <Popover onClose={() => this.setState({ editExpression: null })}>
-        <ExpressionWidget
-          name={name}
-          expression={expression}
-          tableMetadata={query.table()}
-          onSetExpression={(newName, newExpression) =>
-            this.setExpression(newName, newExpression, name)
-          }
-          onRemoveExpression={name => this.removeExpression(name)}
-          onCancel={() => this.setState({ editExpression: null })}
-        />
-      </Popover>
+      <ExpressionWidget
+        query={query}
+        name={name}
+        expression={expression}
+        onChangeExpression={(newName, newExpression) =>
+          this.setExpression(newName, newExpression, name)
+        }
+        onRemoveExpression={name => this.removeExpression(name)}
+        onClose={() => this.setState({ editExpression: null })}
+      />
     );
   }
 
   renderPopover() {
-    if (!this.state.isOpen) {
-      return null;
-    }
-
     const { features, query } = this.props;
 
+    const sortEnabled = features.sort;
+    const expressionsEnabled =
+      query.table() && _.contains(query.table().db.features, "expressions");
+    const limitEnabled = features.limit;
+
     return (
-      <Popover onClose={() => this.setState({ isOpen: false })}>
-        <div className="p3">
-          {this.renderSort()}
-
-          {_.contains(query.table().db.features, "expressions") ? (
-            <Expressions
-              expressions={query.expressions()}
-              tableMetadata={query.table()}
-              onAddExpression={() =>
-                this.setState({ isOpen: false, editExpression: true })
-              }
-              onEditExpression={name => {
-                this.setState({ isOpen: false, editExpression: name });
-                MetabaseAnalytics.trackEvent(
-                  "QueryBuilder",
-                  "Show Edit Custom Field",
-                );
-              }}
-            />
-          ) : null}
-
-          {features.limit && (
-            <div>
-              <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
-              <LimitWidget limit={query.limit()} onChange={this.setLimit} />
-            </div>
-          )}
-        </div>
-      </Popover>
+      <div className="p3">
+        {sortEnabled && this.renderSort()}
+        {expressionsEnabled && this.renderExpressions()}
+        {limitEnabled && this.renderLimit()}
+      </div>
     );
   }
+
+  render() {
+    return this.renderExpressionWidget() || this.renderPopover();
+  }
+}
+
+export default class ExtendedOptions extends React.Component {
+  state = {
+    isOpen: false,
+  };
+
+  static defaultProps = {
+    features: {
+      sort: true,
+      limit: true,
+    },
+  };
 
   render() {
     const { features } = this.props;
@@ -219,8 +218,12 @@ export default class ExtendedOptions extends Component {
         >
           …
         </span>
-        {this.renderPopover()}
-        {this.renderExpressionWidget()}
+        <Popover
+          isOpen={this.state.isOpen}
+          onClose={() => this.setState({ isOpen: false })}
+        >
+          <ExtendedOptionsPopover {...this.props} />
+        </Popover>
       </div>
     );
   }

@@ -1,31 +1,9 @@
-/* @flow */
+import { parseTimestamp } from "metabase/lib/time";
 
-import type { DateSeparator } from "metabase/lib/formatting";
-
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-
-export type DateStyle =
-  | "M/D/YYYY"
-  | "D/M/YYYY"
-  | "YYYY/M/D"
-  | "MMMM D, YYYY"
-  | "MMMM D, YYYY"
-  | "D MMMM, YYYY"
-  | "dddd, MMMM D, YYYY";
-
-export type TimeStyle = "h:mm A" | "k:mm";
-
-export type MomentFormat = string; // moment.js format strings
-export type DateFormat = MomentFormat;
-export type TimeFormat = MomentFormat;
-
-export type TimeEnabled = null | "minutes" | "seconds" | "milliseconds";
-
-const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
+const DEFAULT_DATE_FORMATS = {
   year: "YYYY",
   quarter: "[Q]Q - YYYY",
   "minute-of-hour": "m",
-  "hour-of-day": "h A",
   "day-of-week": "dddd",
   "day-of-month": "D",
   "day-of-year": "DDD",
@@ -35,9 +13,7 @@ const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
 };
 
 // a "date style" is essentially a "day" format with overrides for larger units
-const DATE_STYLE_TO_FORMAT: {
-  [style: DateStyle]: { [unit: DatetimeUnit]: MomentFormat },
-} = {
+const DATE_STYLE_TO_FORMAT = {
   "M/D/YYYY": {
     month: "M/YYYY",
   },
@@ -60,13 +36,9 @@ const DATE_STYLE_TO_FORMAT: {
   },
 };
 
-export const DEFAULT_DATE_STYLE: DateStyle = "MMMM D, YYYY";
+export const DEFAULT_DATE_STYLE = "MMMM D, YYYY";
 
-export function getDateFormatFromStyle(
-  style: DateStyle,
-  unit: ?DatetimeUnit,
-  separator?: DateSeparator,
-): DateFormat {
+export function getDateFormatFromStyle(style, unit, separator) {
   const replaceSeparators = format =>
     separator && format ? format.replace(/\//g, separator) : format;
 
@@ -86,36 +58,52 @@ export function getDateFormatFromStyle(
   return replaceSeparators(style);
 }
 
-const UNITS_WITH_HOUR: DatetimeUnit[] = ["default", "minute", "hour"];
-const UNITS_WITH_DAY: DatetimeUnit[] = [
-  "default",
-  "minute",
-  "hour",
-  "day",
-  "week",
-];
+const UNITS_WITH_HOUR = ["default", "minute", "hour", "hour-of-day"];
+const UNITS_WITH_DAY = ["default", "minute", "hour", "day", "week"];
 
 const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 
-export const hasHour = (unit: ?DatetimeUnit) =>
-  unit == null || UNITS_WITH_HOUR_SET.has(unit);
-export const hasDay = (unit: ?DatetimeUnit) =>
-  unit == null || UNITS_WITH_DAY_SET.has(unit);
+export const hasHour = unit => unit == null || UNITS_WITH_HOUR_SET.has(unit);
+export const hasDay = unit => unit == null || UNITS_WITH_DAY_SET.has(unit);
 
-export const DEFAULT_TIME_STYLE: TimeStyle = "h:mm A";
+export const DEFAULT_TIME_STYLE = "h:mm A";
 
-export function getTimeFormatFromStyle(
-  style: TimeStyle,
-  unit: DatetimeUnit,
-  timeEnabled: ?TimeEnabled,
-): TimeFormat {
-  let format = style;
+export function getTimeFormatFromStyle(style, unit, timeEnabled) {
+  const format = style;
   if (!timeEnabled || timeEnabled === "milliseconds") {
     return format.replace(/mm/, "mm:ss.SSS");
   } else if (timeEnabled === "seconds") {
     return format.replace(/mm/, "mm:ss");
   } else {
     return format;
+  }
+}
+
+export function formatDateTimeForParameter(value, unit) {
+  const m = parseTimestamp(value, unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  if (unit === "month") {
+    return m.format("YYYY-MM");
+  } else if (unit === "quarter") {
+    return m.format("[Q]Q-YYYY");
+  } else if (unit === "day") {
+    return m.format("YYYY-MM-DD");
+  } else if (unit) {
+    const start = m.clone().startOf(unit);
+    const end = m.clone().endOf(unit);
+
+    if (!start.isValid() || !end.isValid()) {
+      return String(value);
+    }
+
+    const isSameDay = start.isSame(end, "day");
+
+    return isSameDay
+      ? start.format("YYYY-MM-DD")
+      : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
   }
 }

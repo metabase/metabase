@@ -1,12 +1,15 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import _ from "underscore";
-import { t } from "c-3po";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import ActivityItem from "./ActivityItem.jsx";
-import ActivityStory from "./ActivityStory.jsx";
+import _ from "underscore";
+import { t } from "ttag";
+
+import { color } from "metabase/lib/colors";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ActivityItem from "./ActivityItem";
+import ActivityStory from "./ActivityStory";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -16,12 +19,12 @@ export default class Activity extends Component {
     this.state = { error: null, userColors: {} };
 
     this.colorClasses = [
-      "bg-brand",
-      "bg-purple",
-      "bg-error",
-      "bg-green",
-      "bg-gold",
-      "bg-medium",
+      color("brand"),
+      color("accent1"),
+      color("accent2"),
+      color("accent3"),
+      color("accent4"),
+      color("accent5"),
     ];
   }
 
@@ -39,10 +42,10 @@ export default class Activity extends Component {
     }
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
-    let { activity, user } = nextProps;
-    let { userColors } = this.state;
+    const { activity, user } = nextProps;
+    const { userColors } = this.state;
 
     const colors = [1, 2, 3, 4, 5];
     const maxColorUsed = _.isEmpty(userColors)
@@ -52,7 +55,7 @@ export default class Activity extends Component {
       maxColorUsed && maxColorUsed < colors.length ? maxColorUsed : 0;
 
     if (user && activity) {
-      for (let item of activity) {
+      for (const item of activity) {
         if (!(item.user_id in userColors)) {
           // assign the user a color
           if (item.user_id === user.id) {
@@ -81,7 +84,7 @@ export default class Activity extends Component {
     } else if (user) {
       return user.first_name;
     } else {
-      return "Metabase";
+      return t`Metabase`;
     }
   }
 
@@ -100,7 +103,7 @@ export default class Activity extends Component {
             <span>
               {t`created an alert about - `}
               <Link
-                to={Urls.modelToUrl(item.model, item.model_id)}
+                to={Urls.modelToUrl(item)}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Database -> " + item.topic
                 }
@@ -125,7 +128,7 @@ export default class Activity extends Component {
             <span>
               {t`deleted an alert about - `}
               <Link
-                to={Urls.modelToUrl(item.model, item.model_id)}
+                to={Urls.modelToUrl(item)}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Database -> " + item.topic
                 }
@@ -149,7 +152,9 @@ export default class Activity extends Component {
         if (item.table) {
           description.summary = (
             <span>
-              {t`saved a question about `}
+              {item.model === "dataset"
+                ? t`saved a model based on `
+                : t`saved a question about `}
               <Link
                 to={Urls.tableRowsQuery(item.database_id, item.table_id)}
                 data-metabase-event={
@@ -162,11 +167,13 @@ export default class Activity extends Component {
             </span>
           );
         } else {
-          description.summary = t`saved a question`;
+          description.summary =
+            item.model === "dataset" ? t`saved a model` : t`saved a question`;
         }
         break;
       case "card-delete":
-        description.summary = t`deleted a question`;
+        description.summary =
+          item.model === "dataset" ? t`deleted a model` : t`deleted a question`;
         break;
       case "dashboard-create":
         description.summary = t`created a dashboard`;
@@ -180,7 +187,10 @@ export default class Activity extends Component {
             <span>
               {t`added a question to the dashboard - `}
               <Link
-                to={Urls.dashboard(item.model_id)}
+                to={Urls.dashboard({
+                  id: item.model_id,
+                  name: item.details.name,
+                })}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Dashboard -> " + item.topic
                 }
@@ -205,7 +215,10 @@ export default class Activity extends Component {
             <span>
               {t`removed a question from the dashboard - `}
               <Link
-                to={Urls.dashboard(item.model_id)}
+                to={Urls.dashboard({
+                  id: item.model_id,
+                  name: item.details.name,
+                })}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Dashboard -> " + item.topic
                 }
@@ -238,9 +251,9 @@ export default class Activity extends Component {
               {t`received the latest data from`}{" "}
               <span className="text-dark">
                 {/* NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
-                  * capture the name/description/engine of a Database properly in the details and so it was
-                  * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
-                  */}
+                 * capture the name/description/engine of a Database properly in the details and so it was
+                 * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
+                 */}
                 {(item.database && item.database.name) || t`Unknown`}
               </span>
             </span>
@@ -445,18 +458,14 @@ export default class Activity extends Component {
       case "card-create":
       case "card-update":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "card-delete":
         description.body = item.details.name;
         break;
       case "dashboard-create":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "dashboard-delete":
         description.body = item.details.name;
@@ -465,9 +474,7 @@ export default class Activity extends Component {
       case "dashboard-remove-cards":
         description.body = item.details.dashcards[0].name;
         if (item.details.dashcards[0].exists) {
-          description.bodyLink = Urls.question(
-            item.details.dashcards[0].card_id,
-          );
+          description.bodyLink = Urls.question(item.details.dashcards[0]);
         }
         break;
       case "metric-create":
@@ -481,9 +488,7 @@ export default class Activity extends Component {
         break;
       case "pulse-create":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "pulse-delete":
         description.body = item.details.name;
@@ -503,7 +508,7 @@ export default class Activity extends Component {
   }
 
   initialsCssClasses(user) {
-    let { userColors } = this.state;
+    const { userColors } = this.state;
 
     if (user) {
       const userColorIndex = userColors[user.id];
@@ -514,8 +519,8 @@ export default class Activity extends Component {
   }
 
   render() {
-    let { activity, user } = this.props;
-    let { error } = this.state;
+    const { activity, user } = this.props;
+    const { error } = this.state;
 
     return (
       <LoadingAndErrorWrapper loading={!activity} error={error}>
@@ -523,7 +528,7 @@ export default class Activity extends Component {
           <div className="full flex flex-column">
             <div className="">
               {activity.length === 0 ? (
-                <div className="flex flex-column layout-centered mt4">
+                <div className="flex flex-column layout-centered my4">
                   <span className="QuestionCircle">!</span>
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}

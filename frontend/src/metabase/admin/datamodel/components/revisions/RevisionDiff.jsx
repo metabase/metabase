@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import TextDiff from "./TextDiff.jsx";
-import QueryDiff from "./QueryDiff.jsx";
+import TextDiff from "./TextDiff";
+import QueryDiff from "./QueryDiff";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 export default class RevisionDiff extends Component {
   static propTypes = {
@@ -14,7 +14,10 @@ export default class RevisionDiff extends Component {
   };
 
   render() {
-    let { diff: { before, after }, tableMetadata } = this.props;
+    const {
+      diff: { before, after },
+      tableMetadata,
+    } = this.props;
 
     let icon;
     if (before != null && after != null) {

@@ -1,16 +1,51 @@
-import React from "react";
-
-import cx from "classnames";
-
+import React, { forwardRef } from "react";
+import PropTypes from "prop-types";
 import { formDomOnlyProps } from "metabase/lib/redux";
+import Input from "metabase/core/components/Input";
 
-const FormInputWidget = ({ type = "text", placeholder, field, offset }) => (
-  <input
-    className={cx("Form-input full", { "Form-offset": offset })}
-    type={type}
-    placeholder={placeholder}
-    {...formDomOnlyProps(field)}
-  />
-);
+// Important: do NOT use this as an input of type="file"
+// For file inputs, See component FormTextFileWidget.tsx
+
+const propTypes = {
+  type: PropTypes.string,
+  placeholder: PropTypes.string,
+  field: PropTypes.object,
+  readOnly: PropTypes.bool,
+  autoFocus: PropTypes.bool,
+  helperText: PropTypes.node,
+  tabIndex: PropTypes.string,
+};
+
+const FormInputWidget = forwardRef(function FormInputWidget(
+  {
+    type = "text",
+    placeholder,
+    field,
+    readOnly,
+    autoFocus,
+    helperText,
+    tabIndex,
+  },
+  ref,
+) {
+  return (
+    <Input
+      {...formDomOnlyProps(field)}
+      type={type}
+      placeholder={placeholder}
+      aria-labelledby={`${field.name}-label`}
+      readOnly={readOnly}
+      autoFocus={autoFocus}
+      error={field.visited && !field.active && field.error != null}
+      rightIcon={helperText && "info"}
+      rightIconTooltip={helperText}
+      tabIndex={tabIndex}
+      fullWidth
+      ref={ref}
+    />
+  );
+});
+
+FormInputWidget.propTypes = propTypes;
 
 export default FormInputWidget;

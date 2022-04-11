@@ -16,15 +16,7 @@ indent_style = tab
 
 [*.clj]
 indent_size = 2
+max_line_length = 120
 
-[*.css]
-indent_size = 2
-
-[*.html]
-indent_size = 2
-
-[*.js]
-indent_size = 2
-
-[*.jsx]
+[*.{html,css,mustache,js,jsx,ts,tsx,json}]
 indent_size = 2

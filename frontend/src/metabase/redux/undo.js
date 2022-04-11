@@ -1,9 +1,7 @@
-/* @flow weak */
-
 import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -13,7 +11,7 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
-    let id = nextUndoId++;
+    const id = nextUndoId++;
     setTimeout(() => dispatch(dismissUndo(id, false)), 5000);
     return { ...undo, id, _domId: id };
   };
@@ -23,7 +21,7 @@ export const dismissUndo = createAction(
   DISMISS_UNDO,
   (undoId, track = true) => {
     if (track) {
-      MetabaseAnalytics.trackEvent("Undo", "Dismiss Undo");
+      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
     }
     return undoId;
   },
@@ -31,8 +29,8 @@ export const dismissUndo = createAction(
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    MetabaseAnalytics.trackEvent("Undo", "Perform Undo");
-    let undo = _.findWhere(getState().undo, { id: undoId });
+    MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
+    const undo = _.findWhere(getState().undo, { id: undoId });
     if (undo) {
       undo.actions.map(action => dispatch(action));
       dispatch(dismissUndo(undoId, false));
@@ -56,7 +54,7 @@ export default function(state = [], { type, payload, error }) {
       count: payload.count || 1,
     };
 
-    let previous = state[state.length - 1];
+    const previous = state[state.length - 1];
     // if last undo was same verb then merge them
     if (previous && undo.verb != null && undo.verb === previous.verb) {
       return state.slice(0, -1).concat({

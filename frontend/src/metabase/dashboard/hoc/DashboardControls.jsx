@@ -1,57 +1,37 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 import screenfull from "screenfull";
 
-import type { LocationDescriptor } from "metabase/meta/types";
-
-type Props = {
-  dashboardId: string,
-  fetchDashboard: (dashboardId: string) => Promise<any>,
-  fetchDashboardCardData: () => void,
-
-  location: LocationDescriptor,
-  replace: (location: LocationDescriptor) => void,
-};
-
-type State = {
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  refreshPeriod: ?number,
-  refreshElapsed: ?number,
-};
-
-const TICK_PERIOD = 0.25; // seconds
+const TICK_PERIOD = 1; // seconds
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
  */
-export default (ComposedComponent: ReactClass<any>) =>
+export default ComposedComponent =>
   connect(null, { replace })(
     class extends Component {
-      static displayName = "DashboardControls[" +
+      static displayName =
+        "DashboardControls[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      props: Props;
-      state: State = {
+      state = {
         isFullscreen: false,
         isNightMode: false,
 
         refreshPeriod: null,
-        refreshElapsed: null,
+
+        hideParameters: null,
       };
 
-      _interval: ?number;
-
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         if (screenfull.enabled) {
           document.addEventListener(
             screenfull.raw.fullscreenchange,
@@ -80,7 +60,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       loadDashboardParams = () => {
         const { location } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         this.setRefreshPeriod(
           Number.isNaN(options.refresh) || options.refresh === 0
             ? null
@@ -88,12 +68,13 @@ export default (ComposedComponent: ReactClass<any>) =>
         );
         this.setNightMode(options.theme === "night" || options.night); // DEPRECATED: options.night
         this.setFullscreen(options.fullscreen);
+        this.setHideParameters(options.hide_parameters);
       };
 
       updateDashboardParams = () => {
         const { location, replace } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         const setValue = (name, value) => {
           if (value) {
             options[name] = value;
@@ -107,10 +88,12 @@ export default (ComposedComponent: ReactClass<any>) =>
 
         delete options.night; // DEPRECATED: options.night
 
-        // Delete the "add card to dashboard" parameter if it's present because we don't
-        // want to add the card again on page refresh. The `add` parameter is already handled in
-        // DashboardApp before this method is called.
+        // Delete the "add card to dashboard" and "editing mode" parameters
+        // if they are present because we do not want to add the card again on
+        // page refresh. The parameters are already handled in DashboardApp
+        // before this method is called.
         delete options.add;
+        delete options.edit;
 
         let hash = stringifyHashOptions(options);
         hash = hash ? "#" + hash : "";
@@ -131,17 +114,16 @@ export default (ComposedComponent: ReactClass<any>) =>
             this._tickRefreshClock,
             TICK_PERIOD * 1000,
           );
-          this.setState({ refreshPeriod, refreshElapsed: 0 });
-          MetabaseAnalytics.trackEvent(
+          this.setState({ refreshPeriod });
+          this.setRefreshElapsed(0);
+          MetabaseAnalytics.trackStructEvent(
             "Dashboard",
             "Set Refresh",
             refreshPeriod,
           );
         } else {
-          this.setState({
-            refreshPeriod: null,
-            refreshElapsed: null,
-          });
+          this.setState({ refreshPeriod: null });
+          this.setRefreshElapsed(null);
         }
       };
 
@@ -150,38 +132,47 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.setState({ isNightMode });
       };
 
-      setFullscreen = (isFullscreen, browserFullscreen = true) => {
+      setFullscreen = async (isFullscreen, browserFullscreen = true) => {
         isFullscreen = !!isFullscreen;
         if (isFullscreen !== this.state.isFullscreen) {
           if (screenfull.enabled && browserFullscreen) {
             if (isFullscreen) {
-              screenfull.request();
+              try {
+                // Some browsers block this unless it was initiated by user
+                // interaction. If it fails, we catch the error since we still
+                // want to set the "isFullscreen" option in state.
+                await screenfull.request();
+              } catch (e) {
+                console.warn(`Couldn't enable browser fullscreen: ${e}`);
+              }
             } else {
-              screenfull.exit();
+              await screenfull.exit();
             }
           }
           this.setState({ isFullscreen });
         }
       };
 
+      setHideParameters = parameters => {
+        this.setState({ hideParameters: parameters });
+      };
+
       _tickRefreshClock = async () => {
-        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
-        if (
-          this.state.refreshPeriod &&
-          refreshElapsed >= this.state.refreshPeriod
-        ) {
-          this.setState({ refreshElapsed: 0 });
+        this._refreshElapsed = (this._refreshElapsed || 0) + TICK_PERIOD;
+        const { refreshPeriod } = this.state;
+        if (refreshPeriod && this._refreshElapsed >= refreshPeriod) {
+          this._refreshElapsed = 0;
           await this.props.fetchDashboard(
             this.props.dashboardId,
             this.props.location.query,
+            true,
           );
           this.props.fetchDashboardCardData({
             reload: true,
             clear: false,
           });
-        } else {
-          this.setState({ refreshElapsed });
         }
+        this.setRefreshElapsed(this._refreshElapsed);
       };
 
       _clearRefreshInterval() {
@@ -195,10 +186,13 @@ export default (ComposedComponent: ReactClass<any>) =>
         // when _showNav is called for the first time
         if (window.document) {
           const nav = window.document.querySelector(".Nav");
-          if (show && nav) {
+          const appBar = window.document.querySelector("#root > header");
+          if (show && nav && appBar) {
             nav.classList.remove("hide");
-          } else if (!show && nav) {
+            appBar.classList.remove("hide");
+          } else if (!show && nav && appBar) {
             nav.classList.add("hide");
+            appBar.classList.add("hide");
           }
         }
       }
@@ -207,11 +201,22 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.setState({ isFullscreen: !!screenfull.isFullscreen });
       };
 
+      setRefreshElapsedHook = hook => {
+        this._refreshElapsedHook = hook;
+      };
+
+      setRefreshElapsed = elapsed => {
+        if (this._refreshElapsedHook) {
+          this._refreshElapsedHook(elapsed);
+        }
+      };
+
       render() {
         return (
           <ComposedComponent
             {...this.props}
             {...this.state}
+            setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
             updateDashboardParams={this.updateDashboardParams}
             onNightModeChange={this.setNightMode}

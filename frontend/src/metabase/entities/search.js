@@ -1,14 +1,11 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
+import { entityTypeForObject } from "metabase/lib/schema";
 
-import {
-  ObjectUnionSchema,
-  ENTITIES_SCHEMA_MAP,
-  entityTypeForObject,
-} from "metabase/schema";
+import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
 
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
 
@@ -22,20 +19,47 @@ export default createEntity({
   api: {
     list: async (query = {}) => {
       if (query.collection) {
-        const { collection, archived, model, ...unsupported } = query;
+        const {
+          collection,
+          archived,
+          models,
+          namespace,
+          pinned_state,
+          limit,
+          offset,
+          sort_column,
+          sort_direction,
+          ...unsupported
+        } = query;
         if (Object.keys(unsupported).length > 0) {
           throw new Error(
             "search with `collection` filter does not support these filters: " +
               Object.keys(unsupported).join(", "),
           );
         }
-        return (await collectionList({ collection, archived, model })).map(
-          item => ({
-            collection_id: canonicalCollectionId(collection),
-            archived: archived || false,
-            ...item,
-          }),
-        );
+
+        const { data, ...rest } = await collectionList({
+          collection,
+          archived,
+          models,
+          namespace,
+          pinned_state,
+          limit,
+          offset,
+          sort_column,
+          sort_direction,
+        });
+
+        return {
+          ...rest,
+          data: data
+            ? data.map(item => ({
+                collection_id: canonicalCollectionId(collection),
+                archived: archived || false,
+                ...item,
+              }))
+            : [],
+        };
       } else {
         return searchList(query);
       }

@@ -99,6 +99,11 @@
   color: var(--color-text-medium);
 }
 
+.Dashboard--night :local(.parameter.noPopover) input:focus,
+.Theme--night :local(.parameter.noPopover) input:focus {
+  color: var(--color-text-white);
+}
+
 :local(.input) {
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Icon from "metabase/components/Icon";
@@ -25,7 +26,7 @@ const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
   >
     <div className="p1 border-bottom relative">
       <div className="px1 flex align-center relative">
-        <span className="h4 flex-full text-dark">{title}</span>
+        <span className="h4 flex-auto text-dark text-wrap">{title}</span>
         {onEdit && <ActionIcon icon="gear" onClick={onEdit} />}
         {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
         {onRemove && <ActionIcon icon="close" onClick={onRemove} />}

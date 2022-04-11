@@ -1,38 +1,35 @@
 :root {
   --title-color: var(--color-text-medium);
-  --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
   --blue-color: var(--color-brand);
-  --icon-width: calc(48px + 1rem);
 }
 
 :local(.detail) {
   composes: flex align-center from "style";
   composes: relative from "style";
-  margin-left: var(--icon-width);
 }
 
 :local(.detailBody) {
-  composes: flex-full from "style";
-  max-width: 550px;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  composes: pb4 from "style";
+  max-width: 900px;
 }
 
 :local(.detailTitle) {
   composes: text-bold inline-block from "style";
   color: var(--title-color);
-  font-size: 18px;
 }
 
 :local(.detailSubtitle) {
-  composes: text-dark mt2 text-paragraph from "style";
+  composes: text-dark text-paragraph from "style";
   white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 24px;
+  padding-top: 6px;
 }
 
 :local(.detailSubtitleLight) {
-  composes: mt2 text-paragraph from "style";
-  color: var(--subtitle-color);
+  composes: text-light from "style";
+  padding-top: 6px;
 }
 
 :local(.detailTextarea) {
@@ -41,4 +38,5 @@
   font-size: 16px;
   width: 100%;
   min-height: 100px;
+  border-color: var(--color-text-light);
 }

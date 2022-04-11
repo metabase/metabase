@@ -1,8 +1,8 @@
 import querystring from "querystring";
 
 export function parseHashOptions(hash) {
-  let options = querystring.parse(hash.replace(/^#/, ""));
-  for (let name in options) {
+  const options = querystring.parse(hash.replace(/^#/, ""));
+  for (const name in options) {
     if (options[name] === "") {
       options[name] = true;
     } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
@@ -25,4 +25,9 @@ export function updateQueryString(location, optionsUpdater) {
     hash: location.hash,
     search: queryString ? `?${queryString}` : null,
   };
+}
+
+export function isMac() {
+  const { platform = "" } = navigator;
+  return Boolean(platform.match(/^Mac/));
 }

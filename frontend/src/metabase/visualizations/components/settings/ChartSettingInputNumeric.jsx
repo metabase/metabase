@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import cx from "classnames";
@@ -10,7 +11,7 @@ export default class ChartSettingInputNumeric extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       value: String(nextProps.value == null ? "" : nextProps.value),
     });
@@ -28,14 +29,14 @@ export default class ChartSettingInputNumeric extends Component {
         })}
         value={this.state.value}
         onChange={e => {
-          let num = parseFloat(e.target.value);
+          const num = parseFloat(e.target.value);
           if (!isNaN(num) && num !== this.props.value) {
             onChange(num);
           }
           this.setState({ value: e.target.value });
         }}
         onBlur={e => {
-          let num = parseFloat(e.target.value);
+          const num = parseFloat(e.target.value);
           if (isNaN(num)) {
             onChange(undefined);
           } else {

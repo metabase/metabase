@@ -1,0 +1,14 @@
+{:paths
+ ["src" "resources-ee"]
+
+ :deps
+ {com.vertica.jdbc/vertica-jdbc {:mvn/version "10.0.1-0"}}
+
+ :aliases
+ {:oss
+  ;; JDBC driver isn't GPL-compatible
+  {:replace-deps  {}
+   :replace-paths ["src" "resources"]}
+
+  :ee
+  {}}}

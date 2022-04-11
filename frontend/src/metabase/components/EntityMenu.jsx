@@ -1,29 +1,19 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
-import cx from "classnames";
+
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Card from "metabase/components/Card";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import Popover from "metabase/components/Popover";
 
-type EntityMenuOption = {
-  icon: string,
-  title: string,
-  action?: () => void,
-  link?: string,
-};
+import { Container } from "./EntityMenu.styled";
 
-type Props = {
-  items: Array<EntityMenuOption>,
-  triggerIcon: string,
-  className?: string,
-  tooltip?: string,
-};
+const MENU_SHIFT_Y = 10;
 
 class EntityMenu extends Component {
-  props: Props;
-
   state = {
     open: false,
     freezeMenu: false,
@@ -39,38 +29,49 @@ class EntityMenu extends Component {
     this.setState({ open, menuItemContent: null });
   };
 
-  setFreezeMenu = (freezeMenu: boolean) => {
+  setFreezeMenu = freezeMenu => {
     this.setState({ freezeMenu });
   };
 
-  replaceMenuWithItemContent = (menuItemContent: any) => {
+  replaceMenuWithItemContent = menuItemContent => {
     this.setState({ menuItemContent });
   };
 
   render() {
-    const { items, triggerIcon, className, tooltip } = this.props;
+    const preferReducedMotion = isReducedMotionPreferred();
+
+    const {
+      items,
+      triggerIcon,
+      triggerProps,
+      className,
+      tooltip,
+      trigger,
+    } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <div className={cx("relative", className)}>
+      <Container className={className} open={open}>
         <EntityMenuTrigger
+          trigger={trigger}
           icon={triggerIcon}
           onClick={this.toggleMenu}
           open={open}
           tooltip={tooltip}
+          triggerProps={triggerProps}
         />
         <Popover
           isOpen={open}
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["right"]}
+          horizontalAttachments={["left", "right"]}
           targetOffsetY={0}
         >
           {/* Note: @kdoh 10/12/17
-            * React Motion has a flow type problem with children see
-            * https://github.com/chenglou/react-motion/issues/375
-            * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
-            */}
+           * React Motion has a flow type problem with children see
+           * https://github.com/chenglou/react-motion/issues/375
+           * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
+           */}
           <Motion
             defaultStyle={{
               opacity: 0,
@@ -78,67 +79,84 @@ class EntityMenu extends Component {
             }}
             style={{
               opacity: open ? spring(1) : spring(0),
-              translateY: open ? spring(10) : spring(0),
+              translateY: open ? spring(MENU_SHIFT_Y) : spring(0),
             }}
           >
-            {({ opacity, translateY }) => (
-              <div
-                style={{
-                  opacity: opacity,
-                  transform: `translateY(${translateY}px)`,
-                }}
-              >
-                <Card>
-                  {menuItemContent || (
-                    <ol className="py1" style={{ minWidth: 210 }}>
-                      {items.map(item => {
-                        if (item.content) {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                action={() =>
-                                  this.replaceMenuWithItemContent(
-                                    item.content(
-                                      this.toggleMenu,
-                                      this.setFreezeMenu,
-                                    ),
-                                  )
-                                }
-                              />
-                            </li>
-                          );
-                        } else {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                externalLink={item.externalLink}
-                                action={
-                                  item.action &&
-                                  (() => {
-                                    item.action();
+            {({ opacity, translateY }) => {
+              const motionOpacity = preferReducedMotion
+                ? opacity > 0.5
+                  ? 1
+                  : 0
+                : opacity;
+              const motionY = preferReducedMotion
+                ? translateY > MENU_SHIFT_Y / 2
+                  ? MENU_SHIFT_Y
+                  : 0
+                : translateY;
+              return (
+                <div
+                  style={{
+                    opacity: motionOpacity,
+                    transform: `translateY(${motionY}px)`,
+                  }}
+                >
+                  <Card>
+                    {menuItemContent || (
+                      <ol className="py1" style={{ minWidth: 210 }}>
+                        {items.map(item => {
+                          if (!item) {
+                            return null;
+                          } else if (item.content) {
+                            return (
+                              <li key={item.title}>
+                                <EntityMenuItem
+                                  icon={item.icon}
+                                  title={item.title}
+                                  action={() =>
+                                    this.replaceMenuWithItemContent(
+                                      item.content(
+                                        this.toggleMenu,
+                                        this.setFreezeMenu,
+                                      ),
+                                    )
+                                  }
+                                />
+                              </li>
+                            );
+                          } else {
+                            return (
+                              <li key={item.title}>
+                                <EntityMenuItem
+                                  icon={item.icon}
+                                  title={item.title}
+                                  externalLink={item.externalLink}
+                                  action={
+                                    item.action &&
+                                    (() => {
+                                      item.action();
+                                      this.toggleMenu();
+                                    })
+                                  }
+                                  event={item.event && item.event}
+                                  link={item.link}
+                                  onClose={() => {
                                     this.toggleMenu();
-                                  })
-                                }
-                                event={item.event && item.event}
-                                link={item.link}
-                                onClose={() => this.toggleMenu()}
-                              />
-                            </li>
-                          );
-                        }
-                      })}
-                    </ol>
-                  )}
-                </Card>
-              </div>
-            )}
+                                    item?.onClose?.();
+                                  }}
+                                />
+                              </li>
+                            );
+                          }
+                        })}
+                      </ol>
+                    )}
+                  </Card>
+                </div>
+              );
+            }}
           </Motion>
         </Popover>
-      </div>
+      </Container>
     );
   }
 }

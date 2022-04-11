@@ -1,0 +1,136 @@
+{:config-paths ["macros"]
+ :linters {:unresolved-symbol
+           {:exclude [schema= re=
+                      (metabase.util/prog1 [<>])
+                      (metabase.mbql.util/match-one)
+                      (metabase.mbql.util/match)
+                      (metabase.mbql.util.match/match)
+                      (metabase.mbql.util.match/match-one)
+                      (metabase.mbql.util.match/replace)
+                      (metabase.mbql.util/replace)
+                      (metabase.mbql.util/replace-in)
+                      (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
+                      (metabase.util.regex/rx [opt])
+                      (metabase.async.streaming-response/streaming-response)
+                      (clojure.core.logic/fresh)
+                      (clojure.core.logic/matcha)
+                      (clojure.core.logic/run)
+                      (metabase.test/with-temporary-setting-values)
+                      (clojure.test/is [query= sql=])
+                      (toucan.util.test/with-temp*)
+                      (metabase.test/with-temp*)
+                      (taoensso.nippy/extend-freeze)
+                      (taoensso.nippy/extend-thaw)
+                      (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
+                      (clojure.tools.macro/macrolet)]}
+           :refer-all {:exclude [clojure.test
+                                 monger.operators]}
+           :unexpected-recur {:level :off}
+           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver/supports?
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver/current-db-time
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.common/current-db-time-native-query
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/current-db-time-date-formatters
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/read-column
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/first-successful-parse
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/ThreadSafeSimpleDateFormat
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/create-db-time-formatters
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.common/current-db-time
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*field-options*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*source-query*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/field->identifier
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/field->alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/prefix-field-alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table
+                                      {:namespaces ["metabase.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/*table-alias*
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.public-settings.premium-features/enable-enhancements?
+                                      {:namespaces ["metabase\\.models.*"]}
+                                      metabase.driver.sql.query-processor.deprecated/escape-alias
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.driver.sql-jdbc.sync.interface/syncable-schemas
+                                      {:namespaces ["metabase\\.driver.*"]}
+                                      schema.core/either
+                                      {:namespaces ["metabase.*"]}
+                                      schema.core/both
+                                      {:namespaces ["metabase.*"]}}}
+           :unresolved-var {:exclude [colorize.core]}}
+ :lint-as {metabase.api.common/let-404 clojure.core/let
+           metabase.db.data-migrations/defmigration clojure.core/def
+           metabase.query-processor.error-type/deferror clojure.core/def
+           metabase.models.setting/defsetting clj-kondo.lint-as/def-catch-all
+           metabase.mbql.schema.macros/defclause clj-kondo.lint-as/def-catch-all
+           metabase.public-settings.premium-features/define-premium-feature clojure.core/def
+           metabase.sync.util/sum-for clojure.core/for
+           metabase.sync.util/with-emoji-progress-bar clojure.core/let
+           metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info clojure.core/fn
+           metabase.util.files/with-open-path-to-resource clojure.core/let
+           metabase.util.ssh/with-ssh-tunnel clojure.core/let
+           metabase.db.liquibase/with-liquibase clojure.core/let
+           metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
+           metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           metabase.test/defdataset clojure.core/def
+           metabase.test/with-temp-file clojure.core/let
+           metabase.test/with-open-channels clojure.core/let
+           metabase.test.data.interface/defdataset clojure.core/def
+           metabase.test.data.interface/defdataset-edn clojure.core/def
+           metabase.driver.mongo.util/with-mongo-connection clojure.core/let
+           metabase.driver.mongo.query-processor/mongo-let clojure.core/let
+           toucan.db/with-call-counting clojure.core/fn
+
+           potemkin.types/defprotocol+ clojure.core/defprotocol
+           potemkin/defprotocol+ clojure.core/defprotocol
+           potemkin.types/defrecord+ clojure.core/defrecord
+           potemkin/defrecord+ clojure.core/defrecord
+           potemkin.types/deftype+ clojure.core/deftype
+           potemkin/deftype+ clojure.core/deftype
+           clojurewerkz.quartzite.jobs/defjob clojure.core/defn
+           honeysql.util/defalias clojure.core/def
+           honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
+           clojure.core.logic/defne clj-kondo.lint-as/def-catch-all
+           monger.operators/defoperator clojure.core/def}
+ :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
+                          metabase.test/dataset             hooks.metabase.test.data/dataset
+                          metabase.test.data/$ids           hooks.metabase.test.data/$ids
+                          metabase.test/$ids                hooks.metabase.test.data/$ids
+                          metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
+                          metabase.test/mbql-query          hooks.metabase.test.data/$ids
+                          metabase.test/data-query          hooks.metabase.test.data/$ids
+                          metabase.test/query hooks.metabase.test.data/$ids
+                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
+                          metabase.test.data/run-mbql-query      hooks.metabase.test.data/$ids
+                          metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
+                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint
+
+                          metabase.test/with-temp hooks.toucan.util.test/with-temp}
+           :macroexpand {metabase.query-processor.streaming/streaming-response
+                         metabase.query-processor.streaming/streaming-response
+                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
+                         toucan.models/defmodel toucan.models/defmodel
+                         clojurewerkz.quartzite.jobs/build macros.quartz/build-job
+                         clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
+                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule}}
+ :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}

@@ -1,7 +1,11 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Button from "metabase/core/components/Button";
+
+import { SketchPicker } from "react-color";
 
 import { normal } from "metabase/lib/colors";
 
@@ -18,7 +22,17 @@ const ColorSquare = ({ color, size }) => (
   />
 );
 
+const ColorPickerFancyContent = ({ children }) => <div>{children}</div>;
+const ColorPickerContent = ({ children }) => (
+  <div className="p1">{children}</div>
+);
+
 class ColorPicker extends Component {
+  constructor(props) {
+    super(props);
+
+    this.colorPopover = React.createRef();
+  }
   static defaultProps = {
     size: DEFAULT_COLOR_SQUARE_SIZE,
     triggerSize: DEFAULT_COLOR_SQUARE_SIZE,
@@ -34,12 +48,12 @@ class ColorPicker extends Component {
   };
 
   render() {
-    const { onChange, padding, size, triggerSize, value } = this.props;
+    const { onChange, padding, size, triggerSize, value, fancy } = this.props;
     const colors = this.props.colors || Object.values(normal).slice(0, 9);
     return (
       <div className="inline-block">
         <PopoverWithTrigger
-          ref="colorPopover"
+          ref={this.colorPopover}
           triggerElement={
             <div
               className="bordered rounded flex align-center"
@@ -49,28 +63,47 @@ class ColorPicker extends Component {
             </div>
           }
         >
-          <div className="p1">
-            <ol
-              className="flex flex-wrap"
-              style={{
-                maxWidth: 120,
-              }}
-            >
-              {colors.map((color, index) => (
-                <li
-                  className="cursor-pointer"
-                  style={{ padding }}
-                  key={index}
-                  onClick={() => {
-                    onChange(color);
-                    this.refs.colorPopover.close();
+          {fancy ? (
+            <ColorPickerFancyContent>
+              {/* HACK to hide SketchPicker's border/shadow */}
+              <div className="rounded overflow-hidden">
+                <SketchPicker
+                  color={value}
+                  onChangeComplete={color => {
+                    onChange(color.hex);
                   }}
-                >
-                  <ColorSquare color={color} size={size} />
-                </li>
-              ))}
-            </ol>
-          </div>
+                />
+              </div>
+              <div className="p1 border-top">
+                <Button onClick={() => this.colorPopover.current.close()}>
+                  Done
+                </Button>
+              </div>
+            </ColorPickerFancyContent>
+          ) : (
+            <ColorPickerContent>
+              <ol
+                className="flex flex-wrap"
+                style={{
+                  maxWidth: 120,
+                }}
+              >
+                {colors.map((color, index) => (
+                  <li
+                    className="cursor-pointer"
+                    style={{ padding }}
+                    key={index}
+                    onClick={() => {
+                      onChange(color);
+                      this.colorPopover.current.close();
+                    }}
+                  >
+                    <ColorSquare color={color} size={size} />
+                  </li>
+                ))}
+              </ol>
+            </ColorPickerContent>
+          )}
         </PopoverWithTrigger>
       </div>
     );

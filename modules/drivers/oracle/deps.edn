@@ -1,0 +1,14 @@
+{:paths
+ ["src" "resources-ee"]
+
+ :deps
+ {com.oracle.ojdbc/ojdbc8 {:mvn/version "19.3.0.0"}}
+
+ :aliases
+ {:oss
+  ;; JDBC driver isn't GPL-compatible
+  {:replace-deps  {}
+   :replace-paths ["src" "resources"]}
+
+  :ee
+  {}}}

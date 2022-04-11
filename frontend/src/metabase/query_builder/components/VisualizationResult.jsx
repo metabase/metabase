@@ -1,29 +1,26 @@
-/* eslint "react/prop-types": "warn" */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
+import cx from "classnames";
+import _ from "underscore";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase/meta/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
-type Props = {
-  question: Question,
-  isObjectDetail: boolean,
-  result: any,
-  results: any[],
-  isDirty: boolean,
-  lastRunDatasetQuery: DatasetQuery,
-  navigateToNewCardInsideQB: any => void,
-  rawSeries: any,
-};
+const ALLOWED_VISUALIZATION_PROPS = [
+  // Table Interactive
+  "hasMetadataPopovers",
+  "tableHeaderHeight",
+  "scrollToColumn",
+  "renderTableHeaderWrapper",
+  "mode",
+];
 
 export default class VisualizationResult extends Component {
-  props: Props;
   state = {
     showCreateAlertModal: false,
   };
@@ -40,10 +37,13 @@ export default class VisualizationResult extends Component {
     const {
       question,
       isDirty,
+      queryBuilderMode,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
-      ...props
+      timelineEvents,
+      selectedTimelineEventIds,
+      className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -53,28 +53,27 @@ export default class VisualizationResult extends Component {
 
       // successful query but there were 0 rows returned with the result
       return (
-        <div className="flex flex-full">
+        <div className={cx(className, "flex")}>
           <ErrorMessage
             type="noRows"
-            title="No results!"
+            title={t`No results!`}
             message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
             action={
               <div>
-                {supportsRowsPresentAlert &&
-                  !isDirty && (
-                    <p>
-                      {jt`You can also ${(
-                        <a className="link" onClick={this.showCreateAlertModal}>
-                          {t`get an alert`}
-                        </a>
-                      )} when there are some results.`}
-                    </p>
-                  )}
+                {supportsRowsPresentAlert && !isDirty && (
+                  <p>
+                    {jt`You can also ${(
+                      <a className="link" onClick={this.showCreateAlertModal}>
+                        {t`get an alert`}
+                      </a>
+                    )} when there are some results.`}
+                  </p>
+                )}
                 <button
                   className="Button"
                   onClick={() => window.history.back()}
                 >
-                  {t`Back to last run`}
+                  {t`Back to previous results`}
                 </button>
               </div>
             }
@@ -90,14 +89,33 @@ export default class VisualizationResult extends Component {
         </div>
       );
     } else {
+      const vizSpecificProps = _.pick(
+        this.props,
+        ...ALLOWED_VISUALIZATION_PROPS,
+      );
       return (
         <Visualization
+          className={className}
           rawSeries={rawSeries}
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
-          card={question.card()}
-          // Table:
-          {...props}
+          isQueryBuilder={true}
+          queryBuilderMode={queryBuilderMode}
+          showTitle={false}
+          metadata={question.metadata()}
+          timelineEvents={timelineEvents}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          handleVisualizationClick={this.props.handleVisualizationClick}
+          onOpenTimelines={this.props.onOpenTimelines}
+          onSelectTimelineEvents={this.props.selectTimelineEvents}
+          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onUpdateWarnings={this.props.onUpdateWarnings}
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
+          query={this.props.query}
+          {...vizSpecificProps}
         />
       );
     }

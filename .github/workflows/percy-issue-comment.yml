@@ -1,0 +1,105 @@
+# Triggers Percy job by "@metabase-bot run visual tests" comment in a PR
+name: PercyIssueComment
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pr_info:
+    if: github.event.comment.body == '@metabase-bot run visual tests'
+    runs-on: ubuntu-20.04
+    outputs:
+      pull_request_number: ${{ fromJson(steps.fetch_pr.outputs.data).head.number }}
+      branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
+      commit_sha: ${{ fromJson(steps.fetch_pr.outputs.data).head.sha }}
+    steps:
+      - id: is_organization_member
+        uses: JamesSingleton/is-organization-member@1.0.0
+        with:
+          organization: metabase
+          username: ${{ github.event.issue.user.login }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          result=${{ steps.is_organization_member.outputs.result }}
+          if [ $result == false ]; then
+              echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
+              exit 1
+          fi
+      - name: Fetch issue
+        uses: octokit/request-action@v2.x
+        id: fetch_issue
+        with:
+          route: GET ${{ github.event.issue.url }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fetch PR
+        uses: octokit/request-action@v2.x
+        id: fetch_pr
+        with:
+          route: GET ${{ fromJson(steps.fetch_issue.outputs.data).pull_request.url }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    runs-on: ubuntu-20.04
+    needs: pr_info
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        edition: [oss]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.pr_info.outputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - run: ./bin/build
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+
+  percy:
+    timeout-minutes: 30
+    runs-on: buildjet-4vcpu-ubuntu-2004
+    needs: [build, pr_info]
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.pr_info.outputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Prepare cypress environment
+        uses: ./.github/actions/prepare-cypress
+
+      - uses: actions/download-artifact@v2
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-oss-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+      - name: Percy Test
+        run: yarn run test-visual-no-build
+        env:
+          PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+          PERCY_COMMIT: ${{ needs.pr_info.outputs.commit_sha }}
+          PERCY_BRANCH: ${{ needs.pr_info.outputs.branch_name }}
+          PERCY_PULL_REQUEST: ${{ needs.pr_info.outputs.pull_request_number }}

@@ -1,13 +1,13 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
+
+import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
-import Tooltip from "metabase/components/Tooltip";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import moment from "moment";
@@ -16,22 +16,11 @@ import cx from "classnames";
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
-type Props = {
-  value: ?string,
-  onChange: (value: ?string) => void,
-  calendar?: boolean,
-  hideTimeSelectors?: boolean,
-};
-
-type State = {
-  showCalendar: boolean,
-};
+const TIME_SELECTOR_DEFAULT_HOUR = 12;
+const TIME_SELECTOR_DEFAULT_MINUTE = 30;
 
 export default class SpecificDatePicker extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -44,8 +33,8 @@ export default class SpecificDatePicker extends Component {
     onChange: PropTypes.func.isRequired,
   };
 
-  onChange = (date: ?string, hours: ?number, minutes: ?number) => {
-    let m = moment(date);
+  onChange = (date, hours, minutes) => {
+    const m = moment(date);
     if (!m.isValid()) {
       this.props.onChange(null);
     }
@@ -68,7 +57,7 @@ export default class SpecificDatePicker extends Component {
   };
 
   render() {
-    const { value, calendar, hideTimeSelectors } = this.props;
+    const { value, calendar, hideTimeSelectors, className } = this.props;
     const { showCalendar } = this.state;
 
     let date, hours, minutes;
@@ -81,52 +70,42 @@ export default class SpecificDatePicker extends Component {
       date = moment(value, DATE_FORMAT, true);
     }
 
+    const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
+
     return (
-      <div>
-        <div className="flex align-center mb1">
-          <div
-            className={cx("border-top border-bottom full border-left", {
-              "border-right": !calendar,
-            })}
-          >
-            <InputBlurChange
-              placeholder={moment().format("MM/DD/YYYY")}
-              className="borderless full p2 h3"
-              style={{
-                outline: "none",
-              }}
-              value={date ? date.format("MM/DD/YYYY") : ""}
-              onBlurChange={({ target: { value } }) => {
-                let date = moment(value, "MM/DD/YYYY");
-                if (date.isValid()) {
-                  this.onChange(date, hours, minutes);
-                } else {
-                  this.onChange(null);
-                }
-              }}
-              ref="value"
-            />
-          </div>
+      <div className={className}>
+        <div className="mb2 full bordered rounded flex align-center">
+          <InputBlurChange
+            placeholder={moment().format(dateFormat)}
+            className="borderless full p1 h3"
+            style={{
+              outline: "none",
+            }}
+            value={date ? date.format(dateFormat) : ""}
+            onBlurChange={({ target: { value } }) => {
+              const date = moment(value, dateFormat);
+              if (date.isValid()) {
+                this.onChange(date, hours, minutes);
+              } else {
+                this.onChange(null);
+              }
+            }}
+          />
+
           {calendar && (
-            <div className="border-right border-bottom border-top p2">
-              <Tooltip
-                tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
-                children={
-                  <Icon
-                    className="text-purple-hover cursor-pointer"
-                    name="calendar"
-                    onClick={() =>
-                      this.setState({ showCalendar: !this.state.showCalendar })
-                    }
-                  />
-                }
-              />
-            </div>
+            <Icon
+              className="mr1 text-purple-hover cursor-pointer"
+              name="calendar"
+              onClick={() =>
+                this.setState({ showCalendar: !this.state.showCalendar })
+              }
+              tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
+            />
           )}
         </div>
 
         {calendar && (
-          <ExpandingContent open={showCalendar}>
+          <ExpandingContent isOpen={showCalendar}>
             <Calendar
               selected={date}
               initial={date || moment()}
@@ -141,10 +120,16 @@ export default class SpecificDatePicker extends Component {
             {hours == null || minutes == null ? (
               <div
                 className="text-purple-hover cursor-pointer flex align-center"
-                onClick={() => this.onChange(date, 12, 30)}
+                onClick={() =>
+                  this.onChange(
+                    date,
+                    TIME_SELECTOR_DEFAULT_HOUR,
+                    TIME_SELECTOR_DEFAULT_MINUTE,
+                  )
+                }
               >
                 <Icon className="mr1" name="clock" />
-                Add a time
+                {t`Add a time`}
               </div>
             ) : (
               <HoursMinutesInput

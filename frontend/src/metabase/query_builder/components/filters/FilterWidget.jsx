@@ -1,35 +1,14 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import FilterPopover from "./FilterPopover.jsx";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import FilterPopover from "./FilterPopover";
 import Filter from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { Filter as FilterType } from "metabase/meta/types/Query";
-import type { FilterRenderer } from "metabase/query_builder/components/Filter";
-
-type Props = {
-  query: StructuredQuery,
-  filter: FilterType,
-  index: number,
-  updateFilter?: (index: number, field: FilterType) => void,
-  removeFilter?: (index: number) => void,
-  maxDisplayValues?: number,
-};
-type State = {
-  isOpen: boolean,
-};
-
-export const filterWidgetFilterRenderer: FilterRenderer = ({
-  field,
-  operator,
-  values,
-}) => (
+export const filterWidgetFilterRenderer = ({ field, operator, values }) => (
   <div className="flex flex-column justify-center">
     <div
       className="flex align-center"
@@ -65,14 +44,11 @@ export const filterWidgetFilterRenderer: FilterRenderer = ({
 );
 
 export default class FilterWidget extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
-      isOpen: this.props.filter[0] == undefined,
+      isOpen: this.props.filter[0] == null,
     };
   }
 
@@ -106,7 +82,6 @@ export default class FilterWidget extends Component {
       return (
         <Popover
           id="FilterPopover"
-          ref="filterPopover"
           className="FilterPopover"
           isInitiallyOpen={this.props.filter[1] === null}
           onClose={this.close}
@@ -116,7 +91,7 @@ export default class FilterWidget extends Component {
           <FilterPopover
             query={query}
             filter={filter}
-            onCommitFilter={filter =>
+            onChangeFilter={filter =>
               this.props.updateFilter &&
               this.props.updateFilter(this.props.index, filter)
             }

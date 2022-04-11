@@ -1,12 +1,13 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import ChartSettingSelect from "./ChartSettingSelect.jsx";
+import ChartSettingSelect from "./ChartSettingSelect";
 
 import { keyForColumn } from "metabase/lib/dataset";
 
@@ -30,6 +31,7 @@ const ChartSettingFieldPicker = ({
   return (
     <div className={cx(className, "flex align-center")}>
       <ChartSettingSelect
+        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}
@@ -52,12 +54,11 @@ const ChartSettingFieldPicker = ({
         />
       )}
       <Icon
+        data-testid={`remove-${value}`}
         name="close"
         className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
           "disabled hidden": !onRemove,
         })}
-        width={12}
-        height={12}
         onClick={onRemove}
       />
     </div>

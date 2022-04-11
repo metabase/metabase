@@ -1,0 +1,1796 @@
+;; major international airports around the world.
+;;
+;; Adapted from https://raw.githubusercontent.com/datasets/airport-codes/master/data/airport-codes.csv and
+;; https://ourairports.com/help/data-dictionary.html
+;;
+;; continent (INTEGER id, TEXT name, TEXT iso-code)
+;; 6 rows
+;;
+;; country (INTEGER id, TEXT name, TEXT iso-code, INTEGER continent-id)
+;; 147 rows
+;;
+;; region (INTEGER id, TEXT name, TEXT iso-code, INTEGER country-id)
+;; This is a subdivision of the country such as state.
+;; 415 rows
+;;
+;; municipality (INTEGER id, TEXT name, INTEGER region-id)
+;; This is the municipality the airport serves -- usually, but not always, a city
+;; 577 rows
+;;
+;; airport (INTEGER id, TEXT name, TEXT code, DOUBLE latitude, DOUBLE longitude, INTEGER elevation-ft, INTEGER municipality-id)
+;; 601 rows
+[["continent"
+  [{:field-name "name", :base-type :type/Text}
+   {:field-name "iso-code", :base-type :type/Text}]
+  [[       "Africa" "AF"]               ;   1
+   [         "Asia" "AS"]               ;   2
+   [       "Europe" "EU"]               ;   3
+   ["North America" "NA"]               ;   4
+   [      "Oceania" "OC"]               ;   5
+   ["South America" "SA"]               ;   6
+   ]]
+
+ ["country"
+  [{:field-name "name", :base-type :type/Text}
+   {:field-name "iso-code", :base-type :type/Text}
+   {:field-name "continent-id", :base-type :type/Integer, :fk "continent"}]
+  [[               "Albania" "AL" 3]    ;   1
+   [               "Algeria" "DZ" 1]    ;   2
+   [                "Angola" "AO" 1]    ;   3
+   [             "Argentina" "AR" 6]    ;   4
+   [               "Armenia" "AM" 2]    ;   5
+   [             "Australia" "AU" 5]    ;   6
+   [               "Austria" "AT" 3]    ;   7
+   [            "Azerbaijan" "AZ" 2]    ;   8
+   [               "Bahamas" "BS" 4]    ;   9
+   [               "Bahrain" "BH" 2]    ;  10
+   [            "Bangladesh" "BD" 2]    ;  11
+   [               "Belarus" "BY" 3]    ;  12
+   [               "Belgium" "BE" 3]    ;  13
+   [                "Belize" "BZ" 4]    ;  14
+   [               "Bolivia" "BO" 6]    ;  15
+   ["Bosnia and Herzegovina" "BA" 3]    ;  16
+   [              "Botswana" "BW" 1]    ;  17
+   [                "Brazil" "BR" 6]    ;  18
+   [                "Brunei" "BN" 2]    ;  19
+   [              "Bulgaria" "BG" 3]    ;  20
+   [          "Burkina Faso" "BF" 1]    ;  21
+   [                 "Burma" "MM" 2]    ;  22
+   [              "Cambodia" "KH" 2]    ;  23
+   [                "Canada" "CA" 4]    ;  24
+   [            "Cape Verde" "CV" 1]    ;  25
+   [        "Cayman Islands" "KY" 4]    ;  26
+   [                  "Chad" "TD" 1]    ;  27
+   [                 "Chile" "CL" 6]    ;  28
+   [                 "China" "CN" 2]    ;  29
+   [              "Colombia" "CO" 6]    ;  30
+   [      "Congo (Kinshasa)" "CD" 1]    ;  31
+   [          "Cook Islands" "CK" 5]    ;  32
+   [            "Costa Rica" "CR" 4]    ;  33
+   [               "Croatia" "HR" 3]    ;  34
+   [                  "Cuba" "CU" 4]    ;  35
+   [                "Cyprus" "CY" 2]    ;  36
+   [        "Czech Republic" "CZ" 3]    ;  37
+   [               "Denmark" "DK" 3]    ;  38
+   [    "Dominican Republic" "DO" 4]    ;  39
+   [               "Ecuador" "EC" 6]    ;  40
+   [                 "Egypt" "EG" 1]    ;  41
+   [           "El Salvador" "SV" 4]    ;  42
+   [               "Estonia" "EE" 3]    ;  43
+   [              "Ethiopia" "ET" 1]    ;  44
+   [               "Finland" "FI" 3]    ;  45
+   [                "France" "FR" 3]    ;  46
+   [      "French Polynesia" "PF" 5]    ;  47
+   [               "Georgia" "GE" 2]    ;  48
+   [               "Germany" "DE" 3]    ;  49
+   [                 "Ghana" "GH" 1]    ;  50
+   [                "Greece" "GR" 3]    ;  51
+   [            "Guadeloupe" "GP" 4]    ;  52
+   [                  "Guam" "GU" 5]    ;  53
+   [             "Guatemala" "GT" 4]    ;  54
+   [             "Hong Kong" "HK" 2]    ;  55
+   [               "Hungary" "HU" 3]    ;  56
+   [               "Iceland" "IS" 3]    ;  57
+   [                 "India" "IN" 2]    ;  58
+   [             "Indonesia" "ID" 2]    ;  59
+   [                  "Iran" "IR" 2]    ;  60
+   [                  "Iraq" "IQ" 2]    ;  61
+   [               "Ireland" "IE" 3]    ;  62
+   [                "Israel" "IL" 2]    ;  63
+   [                 "Italy" "IT" 3]    ;  64
+   [               "Jamaica" "JM" 4]    ;  65
+   [                 "Japan" "JP" 2]    ;  66
+   [                "Jordan" "JO" 2]    ;  67
+   [            "Kazakhstan" "KZ" 2]    ;  68
+   [                 "Kenya" "KE" 1]    ;  69
+   [                "Kosovo" "XK" 3]    ;  70
+   [                "Kuwait" "KW" 2]    ;  71
+   [            "Kyrgyzstan" "KG" 2]    ;  72
+   [                "Latvia" "LV" 3]    ;  73
+   [               "Lebanon" "LB" 2]    ;  74
+   [               "Liberia" "LR" 1]    ;  75
+   [                 "Libya" "LY" 1]    ;  76
+   [             "Lithuania" "LT" 3]    ;  77
+   [            "Luxembourg" "LU" 3]    ;  78
+   [                 "Macau" "MO" 2]    ;  79
+   [            "Madagascar" "MG" 1]    ;  80
+   [              "Malaysia" "MY" 2]    ;  81
+   [              "Maldives" "MV" 2]    ;  82
+   [                  "Mali" "ML" 1]    ;  83
+   [                 "Malta" "MT" 3]    ;  84
+   [            "Mauritania" "MR" 1]    ;  85
+   [             "Mauritius" "MU" 1]    ;  86
+   [                "Mexico" "MX" 4]    ;  87
+   [              "Mongolia" "MN" 2]    ;  88
+   [            "Montenegro" "ME" 3]    ;  89
+   [               "Morocco" "MA" 1]    ;  90
+   [            "Mozambique" "MZ" 1]    ;  91
+   [               "Namibia" "NA" 1]    ;  92
+   [                 "Nepal" "NP" 2]    ;  93
+   [           "Netherlands" "NL" 3]    ;  94
+   [           "New Zealand" "NZ" 5]    ;  95
+   [                 "Niger" "NE" 1]    ;  96
+   [               "Nigeria" "NG" 1]    ;  97
+   [       "North Macedonia" "MK" 3]    ;  98
+   [                "Norway" "NO" 3]    ;  99
+   [                  "Oman" "OM" 2]    ; 100
+   [              "Pakistan" "PK" 2]    ; 101
+   [                "Panama" "PA" 4]    ; 102
+   [      "Papua New Guinea" "PG" 5]    ; 103
+   [                  "Perú" "PE" 6]    ; 104
+   [           "Philippines" "PH" 2]    ; 105
+   [                "Poland" "PL" 3]    ; 106
+   [              "Portugal" "PT" 3]    ; 107
+   [           "Puerto Rico" "PR" 4]    ; 108
+   [                 "Qatar" "QA" 2]    ; 109
+   [               "Romania" "RO" 3]    ; 110
+   [                "Russia" "RU" 3]    ; 111
+   [                "Rwanda" "RW" 1]    ; 112
+   [          "Saudi Arabia" "SA" 2]    ; 113
+   [               "Senegal" "SN" 1]    ; 114
+   [                "Serbia" "RS" 3]    ; 115
+   [            "Seychelles" "SC" 1]    ; 116
+   [          "Sierra Leone" "SL" 1]    ; 117
+   [             "Singapore" "SG" 2]    ; 118
+   [          "Sint Maarten" "SX" 4]    ; 119
+   [              "Slovakia" "SK" 3]    ; 120
+   [              "Slovenia" "SI" 3]    ; 121
+   [          "South Africa" "ZA" 1]    ; 122
+   [           "South Korea" "KR" 2]    ; 123
+   [           "South Sudan" "SS" 1]    ; 124
+   [                 "Spain" "ES" 3]    ; 125
+   [             "Sri Lanka" "LK" 2]    ; 126
+   [                 "Sudan" "SD" 1]    ; 127
+   [                "Sweden" "SE" 3]    ; 128
+   [           "Switzerland" "CH" 3]    ; 129
+   [                 "Syria" "SY" 2]    ; 130
+   [                "Taiwan" "TW" 2]    ; 131
+   [              "Tanzania" "TZ" 1]    ; 132
+   [              "Thailand" "TH" 2]    ; 133
+   [               "Tunisia" "TN" 1]    ; 134
+   [                "Turkey" "TR" 2]    ; 135
+   [          "Turkmenistan" "TM" 2]    ; 136
+   [                "Uganda" "UG" 1]    ; 137
+   [               "Ukraine" "UA" 3]    ; 138
+   [  "United Arab Emirates" "AE" 2]    ; 139
+   [        "United Kingdom" "GB" 3]    ; 140
+   [         "United States" "US" 4]    ; 141
+   [               "Uruguay" "UY" 6]    ; 142
+   [            "Uzbekistan" "UZ" 2]    ; 143
+   [             "Venezuela" "VE" 6]    ; 144
+   [               "Vietnam" "VN" 2]    ; 145
+   [                "Zambia" "ZM" 1]    ; 146
+   [              "Zimbabwe" "ZW" 1]    ; 147
+   ]]
+
+ ["region"
+  [{:field-name "name", :base-type :type/Text}
+   {:field-name "iso-code", :base-type :type/Text}
+   {:field-name "country-id", :base-type :type/Integer, :fk "country"}]
+  [[                                       nil  "UG-102" 137] ;   1
+   [                                       nil    "FR-B"  46] ;   2
+   [                                       nil    "FR-N"  46] ;   3
+   [                                       nil    "FR-V"  46] ;   4
+   [                                       nil    "FR-U"  46] ;   5
+   [                                       nil    "FR-F"  46] ;   6
+   [                                       nil    "FR-J"  46] ;   7
+   [                                       nil    "FR-A"  46] ;   8
+   [                            "(unassigned)"  "CA-U-A"  24] ;   9
+   [                            "(unassigned)"  "CN-U-A"  29] ;  10
+   [                            "(unassigned)"  "ZA-U-A" 122] ;  11
+   [                            "(unassigned)"  "GB-U-A" 140] ;  12
+   [                            "(unassigned)"  "KY-U-A"  26] ;  13
+   [                            "(unassigned)"  "CK-U-A"  32] ;  14
+   [                            "(unassigned)"  "PF-U-A"  47] ;  15
+   [                            "(unassigned)"  "GU-U-A"  53] ;  16
+   [                            "(unassigned)"  "PH-U-A" 105] ;  17
+   [                            "(unassigned)"  "GP-U-A"  52] ;  18
+   [                            "(unassigned)"  "PR-U-A" 108] ;  19
+   [                            "(unassigned)"  "SX-U-A" 119] ;  20
+   [                            "(unassigned)"  "US-U-A" 141] ;  21
+   [                            "(unassigned)"  "HK-U-A"  55] ;  22
+   [                            "(unassigned)"  "MO-U-A"  79] ;  23
+   [                       "Abu Dhabi Emirate"   "AE-AZ" 139] ;  24
+   [                 "Abuja Capital Territory"   "NG-FC"  97] ;  25
+   [                  "Ad Dawhah Municipality"   "QA-DA" 109] ;  26
+   [                          "Adana Province"   "TR-01" 135] ;  27
+   [                             "Addis Ababa"   "ET-AA"  44] ;  28
+   [                                    "Ahal"    "TM-A" 136] ;  29
+   [                        "Aichi Prefecture"   "JP-23"  66] ;  30
+   [                                "Akershus"   "NO-02"  99] ;  31
+   [                           "Akmola Region"  "KZ-AKM"  68] ;  32
+   [                               "Akwa Ibom"   "NG-AK"  97] ;  33
+   [                  "Al Batinah Governorate"   "OM-BA" 100] ;  34
+   [               "Al Farwaniyah Governorate"   "KW-FA"  71] ;  35
+   [                       "Al Madinah Region"   "SA-03" 113] ;  36
+   [                    "Al Wusta Governorate"   "OM-WU" 100] ;  37
+   [                                 "Alabama"   "US-AL" 141] ;  38
+   [                                  "Alaska"   "US-AK" 141] ;  39
+   [                                 "Alberta"   "CA-AB"  24] ;  40
+   [                      "Aleppo Governorate"   "SY-HL" 130] ;  41
+   [                           "Almaty Region"  "KZ-ALM"  68] ;  42
+   [                       "Amman Governorate"   "JO-AM"  67] ;  43
+   [                             "Amur Oblast"  "RU-AMU" 111] ;  44
+   [                               "Andalucía"   "ES-AN" 125] ;  45
+   [                         "Ankara Province"   "TR-06" 135] ;  46
+   [                        "Antalya Province"   "TR-07" 135] ;  47
+   [                            "Antananarivo"    "MG-T"  80] ;  48
+   [                              "Anzoategui"    "VE-B" 144] ;  49
+   [                                  "Apulia"   "IT-75"  64] ;  50
+   [                                 "Arizona"   "US-AZ" 141] ;  51
+   [                                "Arkansas"   "US-AR" 141] ;  52
+   [                    "Ash Sharqiyah Region"   "SA-04" 113] ;  53
+   [                                  "Attica"   "GR-A1"  51] ;  54
+   [                         "Auckland Region"  "NZ-AUK"  95] ;  55
+   [            "Australian Capital Territory"  "AU-ACT"   6] ;  56
+   [             "Autonomous Region of Azores"   "PT-20" 107] ;  57
+   [                       "Baden-Württemberg"   "DE-BW"  49] ;  58
+   [                     "Baghdad Governorate"   "IQ-BG"  61] ;  59
+   [                                 "Bagmati"   "NP-BA"  93] ;  60
+   [                                   "Bahia"   "BR-BA"  18] ;  61
+   [                         "Baja California"  "MX-BCN"  87] ;  62
+   [                     "Baja California Sur"  "MX-BCS"  87] ;  63
+   [                             "Baku (city)"   "AZ-BA"   8] ;  64
+   [                                "Baleares"   "ES-PM" 125] ;  65
+   [                                    "Bali"   "ID-BA"  59] ;  66
+   [                        "Bangkok Province"   "TH-10" 133] ;  67
+   [                                  "Banten"   "ID-BT"  59] ;  68
+   [                      "Barlavento Islands"    "CV-B"  25] ;  69
+   [                       "Basra Governorate"   "IQ-BA"  61] ;  70
+   [                                 "Bavaria"   "DE-BY"  49] ;  71
+   [                    "Beijing Municipality"   "CN-11"  29] ;  72
+   [                         "Belize District"   "BZ-BZ"  14] ;  73
+   [                          "Beograd (city)"   "RS-00" 115] ;  74
+   [                                  "Berlin"   "DE-BE"  49] ;  75
+   [                      "Boumerdès Province"   "DZ-35"   2] ;  76
+   [                             "Brandenburg"   "DE-BR"  49] ;  77
+   [                              "Bratislava"   "SK-BL" 120] ;  78
+   [                                  "Bremen"   "DE-HB"  49] ;  79
+   [                        "British Columbia"   "CA-BC"  24] ;  80
+   [                   "Brunei-Muara District"   "BN-BM"  19] ;  81
+   [                 "Brussels-Capital Region"  "BE-BRU"  13] ;  82
+   [                               "Bucureşti"    "RO-B" 110] ;  83
+   [                   "Buenos Aires Province"    "AR-B"   4] ;  84
+   [                         "Burgas Province"   "BG-02"  20] ;  85
+   [                      "Busan Gwang'yeogsi"   "KR-26" 123] ;  86
+   [                        "Cagayan Province"  "PH-CAG" 105] ;  87
+   [                       "Cairo Governorate"    "EG-C"  41] ;  88
+   [                              "California"   "US-CA" 141] ;  89
+   [                                "Campania"   "IT-72"  64] ;  90
+   [                          "Canary Islands"   "ES-CN" 125] ;  91
+   [                    "Canelones Department"   "UY-CA" 142] ;  92
+   [                       "Canterbury Region"  "NZ-CAN"  95] ;  93
+   [                        "Canton of Geneva"   "CH-GE" 129] ;  94
+   [                        "Canton of Zurich"   "CH-ZH" 129] ;  95
+   [                          "Capital Region"   "DK-84"  38] ;  96
+   [                     "Casablanca Province"  "MA-CAS"  90] ;  97
+   [                               "Catalonia"   "ES-CT" 125] ;  98
+   [                           "Cebu Province"  "PH-CEB" 105] ;  99
+   [                        "Central District"    "IL-M"  63] ; 100
+   [                 "Central Equatoria State"   "SS-17" 124] ; 101
+   [                          "Chari-Baguirmi"   "TD-CB"  27] ; 102
+   [                        "Chechen Republic"   "RU-CE" 111] ; 103
+   [                     "Chiang Mai Province"   "TH-50" 133] ; 104
+   [                        "Chiba Prefecture"   "JP-12"  66] ; 105
+   [                  "Chongqing Municipality"   "CN-50"  29] ; 106
+   [                        "Chungcheongbugdo"   "KR-43" 123] ; 107
+   [                             "Chuy Region"    "KG-C"  72] ; 108
+   [                        "Ciudad de México"  "MX-DIF"  87] ; 109
+   [                     "Ciudad de la Habana"   "CU-03"  35] ; 110
+   [                          "Coast Province"  "KE-300"  69] ; 111
+   [                                "Colorado"   "US-CO" 141] ; 112
+   [                             "Connecticut"   "US-CT" 141] ; 113
+   [                       "Cotopaxi Province"    "EC-X"  40] ; 114
+   [                            "County Clare"   "IE-CE"  62] ; 115
+   [                             "County Cork"    "IE-C"  62] ; 116
+   [                           "County Dublin"    "IE-D"  62] ; 117
+   [                                  "Crimea"   "UA-43" 138] ; 118
+   [                 "Cundinamarca Department"  "CO-CUN"  30] ; 119
+   [                            "Cuzco Region"  "PE-CUS" 104] ; 120
+   [                    "Da Nang Municipality"   "VN-60" 145] ; 121
+   [                            "Dakar Region"   "SN-DK" 114] ; 122
+   [                    "Damascus Governorate"   "SY-DI" 130] ; 123
+   [                    "Dar-es-Salaam Region"   "TZ-02" 132] ; 124
+   [                          "Davao Province"  "PH-DAV" 105] ; 125
+   [                                "Delaware"   "US-DE" 141] ; 126
+   [                                   "Delhi"   "IN-DL"  58] ; 127
+   [                          "Dhaka Division"    "BD-3"  11] ; 128
+   [                    "District of Columbia"   "US-DC" 141] ; 129
+   [                        "Distrito Federal"   "BR-DF"  18] ; 130
+   [                       "Distrito Nacional"   "DO-01"  39] ; 131
+   [                           "Dubai Emirate"   "AE-DU" 139] ; 132
+   [                "East Azarbaijan Province"   "IR-01"  60] ; 133
+   [                         "East Kalimantan"   "ID-KI"  59] ; 134
+   [                          "Emilia-Romagna"   "IT-45"  64] ; 135
+   [                                 "England"  "GB-ENG" 140] ; 136
+   [                        "Erzurum Province"   "TR-25" 135] ; 137
+   [                           "Faro District"   "PT-08" 107] ; 138
+   [                           "Fars Province"   "IR-14"  60] ; 139
+   [          "Federacija Bosna i Hercegovina"  "BA-BIH"  16] ; 140
+   [                                 "Florida"   "US-FL" 141] ; 141
+   [                         "Fujian Province"   "CN-35"  29] ; 142
+   [                      "Fukuoka Prefecture"   "JP-40"  66] ; 143
+   [                                 "Galicia"   "ES-GA" 125] ; 144
+   [                                 "Gauteng"   "ZA-GT" 122] ; 145
+   [                      "Gaziantep Province"   "TR-27" 135] ; 146
+   [                                 "Georgia"   "US-GA" 141] ; 147
+   [                                     "Goa"   "IN-GA"  58] ; 148
+   [                              "Grand Port"   "MU-GP"  86] ; 149
+   [                    "Greater Accra Region"   "GH-AA"  50] ; 150
+   [                          "Greater Poland"   "PL-WP" 106] ; 151
+   [                              "Guanacaste"    "CR-G"  33] ; 152
+   [                      "Guangdong Province"   "CN-44"  29] ; 153
+   [               "Guangxi Autonomous Region"   "CN-45"  29] ; 154
+   [                               "Guatemala"   "GT-GU"  54] ; 155
+   [                                "Guerrero"  "MX-GRO"  87] ; 156
+   [                        "Guizhou Province"   "CN-52"  29] ; 157
+   [                              "Gyeonggido"   "KR-41" 123] ; 158
+   [                         "Ha Tay Province"   "VN-15" 145] ; 159
+   [                        "Ha Tinh Province"   "VN-23" 145] ; 160
+   [                         "Hainan Province"   "CN-46"  29] ; 161
+   [                                 "Hainaut"  "BE-WHT"  13] ; 162
+   [                                 "Hamburg"   "DE-HH"  49] ; 163
+   [            "Harare Metropolitan Province"   "ZW-HA" 147] ; 164
+   [                            "Harju County"   "EE-37"  43] ; 165
+   [                                  "Hawaii"   "US-HI" 141] ; 166
+   [                          "Hebei Province"   "CN-13"  29] ; 167
+   [                   "Heilongjiang Province"   "CN-23"  29] ; 168
+   [                          "Henan Province"   "CN-41"  29] ; 169
+   [                                   "Hesse"   "DE-HE"  49] ; 170
+   [                     "Hokkaidō Prefecture"   "JP-01"  66] ; 171
+   [                               "Hordaland"   "NO-12"  99] ; 172
+   [                          "Hubei Province"   "CN-42"  29] ; 173
+   [                          "Hunan Province"   "CN-43"  29] ; 174
+   [                           "Icel Province"   "TR-33" 135] ; 175
+   [                                   "Idaho"   "US-ID" 141] ; 176
+   [                                "Illinois"   "US-IL" 141] ; 177
+   [                    "Incheon Gwang'yeogsi"   "KR-28" 123] ; 178
+   [                                 "Indiana"   "US-IN" 141] ; 179
+   [        "Inner Mongolia Autonomous Region"   "CN-15"  29] ; 180
+   [                                    "Iowa"   "US-IA" 141] ; 181
+   [                               "Irakleion"   "GR-91"  51] ; 182
+   [                        "Isparta Province"   "TR-32" 135] ; 183
+   [                                 "Jalisco"  "MX-JAL"  87] ; 184
+   [                              "Jawa Timur"   "ID-JI"  59] ; 185
+   [                                  "Jejudo"   "KR-49" 123] ; 186
+   [                             "Jeonrabugdo"   "KR-45" 123] ; 187
+   [                             "Jeonranamdo"   "KR-46" 123] ; 188
+   [                        "Jiangsu Province"   "CN-32"  29] ; 189
+   [                                 "Kadiogo"  "BF-KAD"  21] ; 190
+   [                    "Kagoshima Prefecture"   "JP-46"  66] ; 191
+   [                                 "Kandaal"    "KH-8"  23] ; 192
+   [                                    "Kano"   "NG-KN"  97] ; 193
+   [                                  "Kansas"   "US-KS" 141] ; 194
+   [                "Kaohsiung (municipality)"  "TW-KHH" 131] ; 195
+   [                        "Karaganda Region"  "KZ-KAR"  68] ; 196
+   [                               "Karnataka"   "IN-KA"  58] ; 197
+   [                 "Kaskazini Unguja Region"   "TZ-07" 132] ; 198
+   [                                "Kentucky"   "US-KY" 141] ; 199
+   [                                  "Kerala"   "IN-KL"  58] ; 200
+   [                         "Khabarovsk Krai"  "RU-KHA" nil] ; 201
+   [                                 "Kharkiv"   "UA-63" 138] ; 202
+   [                          "Khartoum State"   "SD-03" 127] ; 203
+   [                           "Khomas Region"   "NA-KH"  92] ; 204
+   [                                    "Kiev"   "UA-32" 138] ; 205
+   [                         "Kigali Province"   "RW-01" 112] ; 206
+   [                                "Kingston"   "JM-01"  65] ; 207
+   [                           "Kinmen County" "TW-X-KM" 131] ; 208
+   [                       "Kinshasa Province"   "CD-KN"  31] ; 209
+   [                        "Koulikoro Region"    "ML-2"  83] ; 210
+   [                          "Krasnodar Krai"  "RU-KDA" 111] ; 211
+   [                        "Krasnoyarsk Krai"  "RU-KYA" 111] ; 212
+   [                           "Kwazulu-Natal"   "ZA-NL" 122] ; 213
+   [                  "La Altagracia Province"   "DO-11"  39] ; 214
+   [                                  "La Paz"   "SV-PA"  42] ; 215
+   [                                   "Lagos"   "NG-LA"  97] ; 216
+   [                       "Larnarca District"   "CY-04"  36] ; 217
+   [                     "Latakia Governorate"   "SY-LA" 130] ; 218
+   [                                   "Lazio"   "IT-62"  64] ; 219
+   [                           "Lesser Poland"   "PL-MA" 106] ; 220
+   [                       "Liaoning Province"   "CN-21"  29] ; 221
+   [                                 "Liguria"   "IT-42"  64] ; 222
+   [                             "Lima Region"  "PE-LIM" 104] ; 223
+   [                          "Lipetsk Oblast"  "RU-LIP" 111] ; 224
+   [                         "Lisbon District"   "PT-11" 107] ; 225
+   [                                   "Liège"  "BE-WLG"  13] ; 226
+   [                               "Ljubljana"  "SI-061" 121] ; 227
+   [                                "Lombardy"   "IT-25"  64] ; 228
+   [                               "Louisiana"   "US-LA" 141] ; 229
+   [                            "Lower Saxony"   "DE-NI"  49] ; 230
+   [                           "Lower Silesia"   "PL-DS" 106] ; 231
+   [                         "Luanda Province"  "AO-LUA"   3] ; 232
+   [                                    "Luqa"   "MT-25"  84] ; 233
+   [                         "Lusaka Province"   "ZM-09" 146] ; 234
+   [                              "Luxembourg"    "LU-L"  78] ; 235
+   [                                  "Madrid"    "ES-M" 125] ; 236
+   [                             "Maharashtra"   "IN-MM"  58] ; 237
+   [                                   "Maine"   "US-ME" 141] ; 238
+   [                           "Makkah Region"   "SA-02" 113] ; 239
+   [                            "Malé Capital"  "MV-MLE"  82] ; 240
+   [                       "Mandalay Division"   "MM-04"  22] ; 241
+   [                                "Manitoba"   "CA-MB"  24] ; 242
+   [                           "Maputo (city)"  "MZ-MPM"  91] ; 243
+   [                          "Margibi County"   "LR-MG"  75] ; 244
+   [                                "Maryland"   "US-MD" 141] ; 245
+   [                                 "Masovia"   "PL-MZ" 106] ; 246
+   [                      "Masqat Governorate"   "OM-MA" 100] ; 247
+   [                           "Massachusetts"   "US-MA" 141] ; 248
+   [                                "Matanzas"   "CU-04"  35] ; 249
+   [                                "Michigan"   "US-MI" 141] ; 250
+   [                            "Minas Gerais"   "BR-MG"  18] ; 251
+   [                               "Minnesota"   "US-MN" 141] ; 252
+   [                           "Minsk Voblast"   "BY-MI"  12] ; 253
+   [               "Misamis Oriental Province"  "PH-MSR" 105] ; 254
+   [                             "Mississippi"   "US-MS" 141] ; 255
+   [                                "Missouri"   "US-MO" 141] ; 256
+   [                                 "Montana"   "US-MT" 141] ; 257
+   [                           "Moscow Oblast"  "RU-MOS" 111] ; 258
+   [               "Mount Lebanon Governorate"   "LB-JL"  74] ; 259
+   [                    "Muharraq Governorate"   "BH-15"  10] ; 260
+   [                         "Murmansk Oblast"  "RU-MUR" 111] ; 261
+   [                          "Muğla Province"   "TR-48" 135] ; 262
+   [                        "Nairobi Province"  "KE-110"  69] ; 263
+   ["National Capital District (Port Moresby)"  "PG-NCD" 103] ; 264
+   [                                "Nebraska"   "US-NE" 141] ; 265
+   [                                  "Nevada"   "US-NV" 141] ; 266
+   [                           "New Hampshire"   "US-NH" 141] ; 267
+   [                              "New Jersey"   "US-NJ" 141] ; 268
+   [                              "New Mexico"   "US-NM" 141] ; 269
+   [                          "New Providence"   "BS-NP"   9] ; 270
+   [                         "New South Wales"  "AU-NSW"   6] ; 271
+   [                                "New York"   "US-NY" 141] ; 272
+   [               "Newfoundland and Labrador"   "CA-NL"  24] ; 273
+   [                 "Niamey Capital District"    "NE-8"  96] ; 274
+   [                           "Noord-Brabant"   "NL-NB"  94] ; 275
+   [                           "Noord-Holland"   "NL-NH"  94] ; 276
+   [                          "Nord-Trøndelag"   "NO-17"  99] ; 277
+   [                                "Nordland"   "NO-18"  99] ; 278
+   [                         "Norrbottena län"   "SE-BD" 128] ; 279
+   [                          "North Carolina"   "US-NC" 141] ; 280
+   [                           "North Jutland"   "DK-81"  38] ; 281
+   [                  "North Rhine-Westphalia"   "DE-NW"  49] ; 282
+   [                        "Northern Ireland"  "GB-NIR" 140] ; 283
+   [                       "Northern Province"    "SL-N" 117] ; 284
+   [                       "Nouakchott Region"  "MR-NKC"  85] ; 285
+   [                             "Nova Scotia"   "CA-NS"  24] ; 286
+   [                      "Novosibirsk Oblast"  "RU-NVS" nil] ; 287
+   [                              "Nuevo León"  "MX-NLE"  87] ; 288
+   [                                  "Odessa"   "UA-51" 138] ; 289
+   [                                    "Ohio"   "US-OH" 141] ; 290
+   [                      "Okinawa Prefecture"   "JP-47"  66] ; 291
+   [                                "Oklahoma"   "US-OK" 141] ; 292
+   [                                 "Ontario"   "CA-ON"  24] ; 293
+   [                         "Oporto District"   "PT-13" 107] ; 294
+   [                                  "Oregon"   "US-OR" 141] ; 295
+   [                       "Pampanga Province"  "PH-PAM" 105] ; 296
+   [                         "Panamá Province"    "PA-8" 102] ; 297
+   [                         "Paphos District"   "CY-06"  36] ; 298
+   [                                   "Papua"   "ID-PA"  59] ; 299
+   [                                  "Paraná"   "BR-PR"  18] ; 300
+   [                                    "Pará"   "BR-PA"  18] ; 301
+   [                            "Pennsylvania"   "US-PA" 141] ; 302
+   [                                    "Pest"   "HU-PE"  56] ; 303
+   [                         "Phuket Province"   "TH-83" 133] ; 304
+   [                      "Pichincha Province"    "EC-P"  40] ; 305
+   [                                "Piedmont"   "IT-21"  64] ; 306
+   [                  "Podgorica Municipality"   "ME-16"  89] ; 307
+   [                           "Pointe La Rue"   "SC-20" 116] ; 308
+   [                               "Pomerania"   "PL-PM" 106] ; 309
+   [                   "Prague (capital city)"   "CZ-PR"  37] ; 310
+   [                       "Pristina District"   "XK-01"  70] ; 311
+   [                                  "Punjab"   "PK-PB" 101] ; 312
+   [                                  "Punjab"   "IN-PB"  58] ; 313
+   [                        "Qena Governorate"   "EG-KN"  41] ; 314
+   [                                  "Quebec"   "CA-QC"  24] ; 315
+   [                              "Queensland"  "AU-QLD"   6] ; 316
+   [                            "Quintana Roo"  "MX-ROO"  87] ; 317
+   [                "Razavi Khorasan Province"   "IR-30"  60] ; 318
+   [                     "Red Sea Governorate"   "EG-BA"  41] ; 319
+   [               "Republic of Bashkortostan"   "RU-BA" 111] ; 320
+   [                   "Republic of Tatarstan"   "RU-TA" 111] ; 321
+   [                    "Rhineland-Palatinate"   "DE-RP"  49] ; 322
+   [                            "Rhode Island"   "US-RI" 141] ; 323
+   [                             "Riga (city)"  "LV-RIX"  73] ; 324
+   [                     "Rio Grande do Norte"   "BR-RN"  18] ; 325
+   [                          "Rio de Janeiro"   "BR-RJ"  18] ; 326
+   [                           "Riyadh Region"   "SA-01" 113] ; 327
+   [                                "Rogaland"   "NO-11"  99] ; 328
+   [                           "Rostov Oblast"  "RU-ROS" 111] ; 329
+   [                 "Saint Petersburg (city)"  "RU-SPE" 111] ; 330
+   [                           "Samara Oblast"  "RU-SAM" 111] ; 331
+   [                          "Santa Catarina"   "BR-SC"  18] ; 332
+   [                   "Santa Cruz Department"    "BO-S"  15] ; 333
+   [            "Santiago Metropolitan Region"   "CL-RM"  28] ; 334
+   [                                "Sardinia"   "IT-88"  64] ; 335
+   [                                  "Saxony"   "DE-SN"  49] ; 336
+   [                                "Scotland"  "GB-SCT" 140] ; 337
+   [                       "Seoul Teugbyeolsi"   "KR-11" 123] ; 338
+   [                        "Shaanxi Province"   "CN-61"  29] ; 339
+   [                       "Shandong Province"   "CN-37"  29] ; 340
+   [                   "Shanghai Municipality"   "CN-31"  29] ; 341
+   [                         "Shanxi Province"   "CN-14"  29] ; 342
+   [                         "Sharjah Emirate"   "AE-SH" 139] ; 343
+   [                     "Shizuoka Prefecture"   "JP-22"  66] ; 344
+   [                        "Sichuan Province"   "CN-51"  29] ; 345
+   [                                  "Sicily"   "IT-82"  64] ; 346
+   [                               "Siem Reab"   "KH-17"  23] ; 347
+   [                                 "Silesia"   "PL-SL" 106] ; 348
+   [                               "Skåne län"    "SE-M" 128] ; 349
+   [                          "Sofia Province"   "BG-23"  20] ; 350
+   [                                  "Sonora"  "MX-SON"  87] ; 351
+   [                      "Sousse Governorate"   "TN-51" 134] ; 352
+   [                         "South Australia"   "AU-SA"   6] ; 353
+   [                          "South Carolina"   "US-SC" 141] ; 354
+   [                           "South Denmark"   "DK-83"  38] ; 355
+   [                              "South East"   "SG-04" 118] ; 356
+   [                     "South-East District"   "BW-SE"  17] ; 357
+   [         "Southeastern Statistical Region"  "MK-004"  98] ; 358
+   [                       "Southern District"    "IL-D"  63] ; 359
+   [                        "Southern Finland"   "FI-ES"  45] ; 360
+   [                      "Southern Peninsula"    "IS-2"  57] ; 361
+   [                       "Southern Province"    "LK-3" 126] ; 362
+   [                          "Stockholms län"   "SE-AB" 128] ; 363
+   [                        "Sulawesi Selatan"   "ID-SN"  59] ; 364
+   [                          "Sumatera Utara"   "ID-SU"  59] ; 365
+   [                       "Sverdlovsk Oblast"  "RU-SVE" nil] ; 366
+   [                               "São Paulo"   "BR-SP"  18] ; 367
+   [                              "Tamil Nadu"   "IN-TN"  58] ; 368
+   [                          "Taoyuan County"  "TW-TAO" 131] ; 369
+   [                                 "Tbilisi"   "GE-TB"  48] ; 370
+   [                         "Tehran Province"   "IR-07"  60] ; 371
+   [                               "Telangana"   "IN-TG"  58] ; 372
+   [                               "Tennessee"   "US-TN" 141] ; 373
+   [                                   "Texas"   "US-TX" 141] ; 374
+   [                            "Thessaloniki"   "GR-54"  51] ; 375
+   [                    "Tianjin Municipality"   "CN-12"  29] ; 376
+   [                           "Tirana County"   "AL-11"   1] ; 377
+   [                                "Toshkent"   "UZ-TO" 143] ; 378
+   [                        "Trabzon Province"   "TR-61" 135] ; 379
+   [                        "Tripoli District"   "LY-TB"  76] ; 380
+   [                                   "Troms"   "NO-19"  99] ; 381
+   [                       "Tunis Governorate"   "TN-11" 134] ; 382
+   [                                 "Tuscany"   "IT-52"  64] ; 383
+   [                        "Tōkyō Prefecture"   "JP-13"  66] ; 384
+   [                              "Ulanbaatar"    "MN-1"  88] ; 385
+   [                                    "Utah"   "US-UT" 141] ; 386
+   [                                "Valencia"    "ES-V" 125] ; 387
+   [                                  "Vargas"    "VE-X" 144] ; 388
+   [                          "Varna Province"   "BG-03"  20] ; 389
+   [                                  "Veneto"   "IT-34"  64] ; 390
+   [                                "Victoria"  "AU-VIC"   6] ; 391
+   [                                  "Vienna"    "AT-9"   7] ; 392
+   [                          "Vilnius County"   "LT-VL"  77] ; 393
+   [                                "Virginia"   "US-VA" 141] ; 394
+   [                    "Västra Götalands län"    "SE-Q" 128] ; 395
+   [                                   "Wales"  "GB-WLS" 140] ; 396
+   [                              "Washington"   "US-WA" 141] ; 397
+   [                       "Wellington Region"  "NZ-WGN"  95] ; 398
+   [                             "West Bengal"   "IN-WB"  58] ; 399
+   [                              "West Papua"   "ID-PB"  59] ; 400
+   [                           "West Virginia"   "US-WV" 141] ; 401
+   [                       "Western Australia"   "AU-WA"   6] ; 402
+   [                            "Western Cape"   "ZA-WC" 122] ; 403
+   [                        "Western Province"    "LK-1" 126] ; 404
+   [        "Wilayah Persekutuan Kuala Lumpur"   "MY-14"  81] ; 405
+   [                               "Wisconsin"   "US-WI" 141] ; 406
+   [              "Xinjiang Autonomous Region"   "CN-65"  29] ; 407
+   [                         "Yangon Division"   "MM-06"  22] ; 408
+   [              "Yerevan (capital district)"   "AM-ER"   5] ; 409
+   [                         "Yunnan Province"   "CN-53"  29] ; 410
+   [                           "Zagreb (city)"   "HR-21"  34] ; 411
+   [                       "Zhejiang Province"   "CN-33"  29] ; 412
+   [                       "İstanbul Province"   "TR-34" 135] ; 413
+   [                          "İzmir Province"   "TR-35" 135] ; 414
+   [                        "Ōsaka Prefecture"   "JP-27"  66] ; 415
+   ]]
+
+ ["municipality"
+  [{:field-name "name", :base-type :type/Text}
+   {:field-name "region-id", :base-type :type/Integer, :fk "region"}]
+  [[                                    nil   9] ;   1
+   [                                    nil  10] ;   2
+   [                                    nil  21] ;   3
+   [                                    nil  53] ;   4
+   [                                    nil 158] ;   5
+   [                                    nil 291] ;   6
+   [                                    nil 362] ;   7
+   [                                    nil 365] ;   8
+   [                              "Aalborg" 281] ;   9
+   [                             "Aberdeen" 337] ;  10
+   [                              "Abilene" 374] ;  11
+   [                            "Abu Dhabi"  24] ;  12
+   [                                "Abuja"  25] ;  13
+   [                             "Acapulco" 156] ;  14
+   [                                "Accra" 150] ;  15
+   [                            "Ad Dammam"  53] ;  16
+   [                                "Adana"  27] ;  17
+   [                          "Addis Ababa"  28] ;  18
+   [                             "Adelaide" 353] ;  19
+   [                             "Akrotiri"  12] ;  20
+   [                          "Al Masna'ah"  34] ;  21
+   [                           "Alamogordo" 269] ;  22
+   [                          "Albuquerque" 269] ;  23
+   [                               "Aleppo"  41] ;  24
+   [                              "Algiers"  76] ;  25
+   [                             "Alicante" 387] ;  26
+   [                               "Almaty"  42] ;  27
+   [                                "Altus" 292] ;  28
+   [                             "Amarillo" 374] ;  29
+   [                                "Amman"  43] ;  30
+   [                             "Amritsar" 313] ;  31
+   [                            "Amsterdam" 276] ;  32
+   [                            "Anchorage"  39] ;  33
+   [                    "Angeles/Mabalacat" 296] ;  34
+   [                               "Ankara"  46] ;  35
+   [                              "Antalya"  47] ;  36
+   [                         "Antananarivo"  48] ;  37
+   [                            "Asheville" 280] ;  38
+   [                             "Ashgabat"  29] ;  39
+   [                               "Astana"  32] ;  40
+   [                               "Athens"  54] ;  41
+   [                              "Atlanta" 147] ;  42
+   [                             "Auckland"  55] ;  43
+   [                              "Augusta" 147] ;  44
+   [                               "Austin" 374] ;  45
+   [                               "Avarua"  14] ;  46
+   [                                "Avord"   6] ;  47
+   [                          "Baden-Baden"  58] ;  48
+   [                              "Baghdad"  59] ;  49
+   [                                 "Baku"  64] ;  50
+   [                            "Baltimore" 245] ;  51
+   [                               "Bamako" 210] ;  52
+   [                  "Bandar Seri Begawan"  81] ;  53
+   [                            "Bangalore" 197] ;  54
+   [                              "Bangkok"  67] ;  55
+   [                               "Bangor" 238] ;  56
+   [                            "Barcelona"  49] ;  57
+   [                            "Barcelona"  98] ;  58
+   [                                 "Bari"  50] ;  59
+   [                               "Basrah"  70] ;  60
+   [                              "Beijing"  72] ;  61
+   [                              "Beijing" 167] ;  62
+   [                               "Beirut" 259] ;  63
+   [                              "Belfast" 283] ;  64
+   [                             "Belgrade"  74] ;  65
+   [                          "Belize City"  73] ;  66
+   [                           "Belleville" 177] ;  67
+   [                       "Belo Horizonte" 251] ;  68
+   [                            "Belogorsk"  44] ;  69
+   [                                "Belém" 301] ;  70
+   [                              "Bergamo" 228] ;  71
+   [                               "Bergen" 172] ;  72
+   [                               "Berlin"  75] ;  73
+   [                               "Berlin"  77] ;  74
+   [                             "Billings" 257] ;  75
+   [                              "Billund" 355] ;  76
+   [                           "Birmingham"  38] ;  77
+   [                           "Birmingham" 136] ;  78
+   [                              "Bishkek" 108] ;  79
+   [                   "Bloomington/Normal" 177] ;  80
+   [                               "Bodrum" 262] ;  81
+   [                                 "Bodø" 278] ;  82
+   [                               "Bogota" 119] ;  83
+   [                                "Boise" 176] ;  84
+   [                              "Bologna" 135] ;  85
+   [                    "Bordeaux/Mérignac"   2] ;  86
+   [                         "Bossier City" 229] ;  87
+   [                               "Boston" 248] ;  88
+   [                          "Bournemouth" 136] ;  89
+   [                             "Brasília" 130] ;  90
+   [                           "Bratislava"  78] ;  91
+   [                               "Bremen"  79] ;  92
+   [                             "Brisbane" 316] ;  93
+   [                              "Bristol" 136] ;  94
+   [            "Bristol/Johnson/Kingsport" 373] ;  95
+   [                         "Brize Norton" 136] ;  96
+   [                             "Brussels"  82] ;  97
+   [                             "Brussels" 162] ;  98
+   [                            "Bucharest"  83] ;  99
+   [                             "Budapest" 303] ; 100
+   [                         "Buenos Aires"  84] ; 101
+   [                              "Buffalo" 272] ; 102
+   [                               "Burgas"  85] ; 103
+   [                                "Busan"  86] ; 104
+   [                        "Bâle/Mulhouse"   8] ; 105
+   [                  "Cagayan de Oro City" 254] ; 106
+   [                             "Cagliari" 335] ; 107
+   [                                "Cairo"  88] ; 108
+   [                              "Calgary"  40] ; 109
+   [                              "Calicut" 200] ; 110
+   [                         "Camp Springs" 245] ; 111
+   [                             "Canberra"  56] ; 112
+   [                               "Cancún" 317] ; 113
+   [                            "Cape Town" 403] ; 114
+   [                              "Caracas" 388] ; 115
+   [                              "Cardiff" 396] ; 116
+   [                           "Casablanca"  97] ; 117
+   [                              "Catania" 346] ; 118
+   [                         "Cedar Rapids" 181] ; 119
+   [                             "Changsha" 174] ; 120
+   [                           "Charleston" 354] ; 121
+   [                           "Charleston" 401] ; 122
+   [                            "Charlotte" 280] ; 123
+   [                          "Chattanooga" 373] ; 124
+   [                              "Chengdu" 345] ; 125
+   [                              "Chennai" 368] ; 126
+   [                             "Cheongju" 107] ; 127
+   [                           "Chiang Mai" 104] ; 128
+   [                              "Chicago" 177] ; 129
+   [                     "Chicago/Rockford" 177] ; 130
+   [                  "Chitose / Tomakomai" 171] ; 131
+   [                            "Chongqing" 106] ; 132
+   [                         "Christchurch"  93] ; 133
+   [                           "Cincinnati" 199] ; 134
+   [                            "Cleveland" 290] ; 135
+   [                               "Clovis" 269] ; 136
+   [                              "Cologne" 282] ; 137
+   [                              "Colombo" 404] ; 138
+   [                     "Colorado Springs" 112] ; 139
+   [                             "Columbia" 354] ; 140
+   [                             "Columbus" 255] ; 141
+   [                             "Columbus" 290] ; 142
+   [                           "Copenhagen"  96] ; 143
+   [                                 "Cork" 116] ; 144
+   [                       "Corpus Christi" 374] ; 145
+   [                             "Curitiba" 300] ; 146
+   [                                "Cusco" 120] ; 147
+   [                              "Da Nang" 121] ; 148
+   [                                "Dakar" 122] ; 149
+   [                              "Dalaman" 262] ; 150
+   [                               "Dalian" 221] ; 151
+   [                               "Dallas" 374] ; 152
+   [                    "Dallas-Fort Worth" 374] ; 153
+   [                             "Damascus" 123] ; 154
+   [                        "Dar es Salaam" 124] ; 155
+   [                           "Davao City" 125] ; 156
+   [                               "Dayton" 290] ; 157
+   [                        "Daytona Beach" 141] ; 158
+   [                              "Del Rio" 374] ; 159
+   [                 "Denpasar-Bali Island"  66] ; 160
+   [                               "Denver" 112] ; 161
+   [                           "Des Moines" 181] ; 162
+   [                              "Detroit" 250] ; 163
+   [                                "Dhaka" 128] ; 164
+   [                                 "Doha"  26] ; 165
+   [                            "Doncaster" 136] ; 166
+   [                             "Dortmund" 282] ; 167
+   [                                "Dover" 126] ; 168
+   [                              "Dresden" 336] ; 169
+   [                                "Dubai" 132] ; 170
+   [                               "Dublin" 117] ; 171
+   [                              "Dubuque" 181] ; 172
+   [                               "Duluth" 252] ; 173
+   [                                 "Duqm"  37] ; 174
+   [                               "Durban" 213] ; 175
+   [                           "Düsseldorf" 282] ; 176
+   [                            "Edinburgh" 337] ; 177
+   [                             "Edmonton"  40] ; 178
+   [                              "Edwards"  89] ; 179
+   [                                "Eilat" 359] ; 180
+   [                            "Eindhoven" 275] ; 181
+   [                              "Enfidha" 352] ; 182
+   [                                 "Enid" 292] ; 183
+   [                                 "Erie" 302] ; 184
+   [                              "Erzurum" 137] ; 185
+   [                             "Espargos"  69] ; 186
+   [                               "Exeter" 136] ; 187
+   [                            "Fairbanks"  39] ; 188
+   [                            "Fairfield"  89] ; 189
+   [                             "Fairford" 136] ; 190
+   [                                 "Faro" 138] ; 191
+   [                        "Florianópolis" 332] ; 192
+   [                      "Fort Lauderdale" 141] ; 193
+   [                           "Fort Myers" 141] ; 194
+   [                           "Fort Smith"  52] ; 195
+   [                           "Fort Wayne" 179] ; 196
+   [                           "Fort Worth" 374] ; 197
+   [                    "Frankfurt am Main" 170] ; 198
+   [                             "Freetown" 284] ; 199
+   [                              "Fukuoka" 143] ; 200
+   [                                "Fussa" 384] ; 201
+   [                               "Fuzhou" 142] ; 202
+   [                             "Gaborone" 357] ; 203
+   [                            "Gaziantep" 146] ; 204
+   [                               "Gdańsk" 309] ; 205
+   [                               "Geneva"  94] ; 206
+   [                               "Genova" 222] ; 207
+   [                               "George" 403] ; 208
+   [                           "Georgetown"  13] ; 209
+   [                              "Glasgow" 337] ; 210
+   [                             "Glendale"  51] ; 211
+   [                            "Goldsboro" 280] ; 212
+   [                           "Gothenburg" 395] ; 213
+   [                  "Gran Canaria Island"  91] ; 214
+   [                            "Green Bay" 406] ; 215
+   [                           "Greensboro" 280] ; 216
+   [                           "Greenville" 354] ; 217
+   [                               "Grozny" 103] ; 218
+   [                          "Guadalajara" 184] ; 219
+   [                            "Guangzhou" 153] ; 220
+   [                       "Guatemala City" 155] ; 221
+   [                          "Guilin City" 154] ; 222
+   [                              "Guiyang" 157] ; 223
+   [                             "Gulfport" 255] ; 224
+   [  "Hagåtña, Guam International Airport"  16] ; 225
+   [                               "Haikou" 161] ; 226
+   [                              "Halifax" 286] ; 227
+   [                              "Hamburg" 163] ; 228
+   [                              "Hampton" 394] ; 229
+   [                             "Hangzhou" 412] ; 230
+   [                             "Hannover" 230] ; 231
+   [                                "Hanoi" 159] ; 232
+   [                               "Harare" 164] ; 233
+   [                               "Harbin" 168] ; 234
+   [                             "Hartford" 113] ; 235
+   [                               "Havana" 110] ; 236
+   [                             "Helsinki" 360] ; 237
+   [                            "Heraklion" 182] ; 238
+   [                           "Hermosillo" 351] ; 239
+   [                              "Hibbing" 252] ; 240
+   [                     "Ho Chi Minh City" 160] ; 241
+   [                               "Hohhot" 180] ; 242
+   [                            "Hong Kong"  22] ; 243
+   [                             "Honolulu" 166] ; 244
+   [                              "Houston" 374] ; 245
+   [                           "Huntington" 401] ; 246
+   [                           "Huntsville"  38] ; 247
+   [                             "Hurghada" 319] ; 248
+   [                            "Hyderabad" 372] ; 249
+   [                         "Indianapolis" 179] ; 250
+   [                            "Islamabad" 312] ; 251
+   [                              "Isparta" 183] ; 252
+   [                             "Istanbul" 413] ; 253
+   [                              "Jackson" 255] ; 254
+   [                         "Jacksonville" 141] ; 255
+   [                              "Jakarta"  68] ; 256
+   [                "Jayapura-Papua Island" 299] ; 257
+   [                            "Jebel Ali" 132] ; 258
+   [                               "Jeddah" 239] ; 259
+   [                            "Jeju City" 186] ; 260
+   [                                "Jinan" 340] ; 261
+   [                         "Johannesburg"  11] ; 262
+   [                         "Johannesburg" 145] ; 263
+   [                               "Joplin" 256] ; 264
+   [                                 "Juba" 101] ; 265
+   [                            "Kagoshima" 191] ; 266
+   [                              "Kampala"   1] ; 267
+   [                                 "Kano" 193] ; 268
+   [                          "Kansas City" 256] ; 269
+   [                       "Kaohsiung City" 195] ; 270
+   [                            "Karaganda" 196] ; 271
+   [                            "Kathmandu"  60] ; 272
+   [                             "Katowice" 348] ; 273
+   [                                "Kazan" 321] ; 274
+   [                           "Khabarovsk" 201] ; 275
+   [                              "Kharkiv" 202] ; 276
+   [                             "Khartoum" 203] ; 277
+   [                                 "Kiev" 205] ; 278
+   [                               "Kigali" 206] ; 279
+   [                             "Kingston" 207] ; 280
+   [                             "Kinshasa" 209] ; 281
+   [                          "Knob Noster" 256] ; 282
+   [                            "Knoxville" 373] ; 283
+   [                                "Kochi" 200] ; 284
+   [                              "Kolkata" 399] ; 285
+   [                               "Kraków" 220] ; 286
+   [                          "Krasnoyarsk" 212] ; 287
+   [                         "Kuala Lumpur" 405] ; 288
+   [                              "Kunming" 410] ; 289
+   [                               "Kunsan" 187] ; 290
+   [                          "Kuwait City"  35] ; 291
+   [                            "Lafayette" 229] ; 292
+   [                                "Lagos" 216] ; 293
+   [                           "Lakenheath" 136] ; 294
+   [                               "Lal-lo"  87] ; 295
+   [                       "Lapu-Lapu City"  99] ; 296
+   [                             "Larnarca" 217] ; 297
+   [                            "Las Vegas" 266] ; 298
+   [                            "Latacunga" 114] ; 299
+   [                              "Latakia" 218] ; 300
+   [                                "Leeds" 136] ; 301
+   [                              "Leipzig" 336] ; 302
+   [                            "Lexington" 199] ; 303
+   [                              "Liberia" 152] ; 304
+   [                                 "Lima" 223] ; 305
+   [                              "Lipetsk" 224] ; 306
+   [                               "Lisbon" 225] ; 307
+   [                          "Little Rock"  52] ; 308
+   [                            "Liverpool" 136] ; 309
+   [                                "Liège" 226] ; 310
+   [                            "Ljubljana" 227] ; 311
+   [                               "Lompoc"  89] ; 312
+   [                               "London" 136] ; 313
+   [                          "Los Angeles"  89] ; 314
+   [                           "Louisville" 199] ; 315
+   [                               "Luanda" 232] ; 316
+   [                              "Lubbock" 374] ; 317
+   [                                "Luleå" 279] ; 318
+   [                               "Lusaka" 234] ; 319
+   [                           "Luxembourg" 235] ; 320
+   [                                "Luxor" 314] ; 321
+   [                                 "Lyon"   4] ; 322
+   [                                "Macau"  23] ; 323
+   [                              "Madison" 406] ; 324
+   [                               "Madrid" 236] ; 325
+   [                          "Mahe Island" 308] ; 326
+   [                 "Makinohara / Shimada" 344] ; 327
+   [                                "Malmö" 349] ; 328
+   [                                 "Malé" 240] ; 329
+   [                               "Manama" 260] ; 330
+   [                           "Manchester" 136] ; 331
+   [                           "Manchester" 267] ; 332
+   [                             "Mandalay" 241] ; 333
+   [                               "Manila"  17] ; 334
+   [                               "Maputo" 243] ; 335
+   [                             "Marietta" 147] ; 336
+   [                            "Marseille"   5] ; 337
+   [                           "Marysville"  89] ; 338
+   [                              "Mashhad" 318] ; 339
+   [                               "Medina"  36] ; 340
+   [                            "Melbourne" 391] ; 341
+   [                              "Memphis" 373] ; 342
+   [                          "Mexico City" 109] ; 343
+   [                                "Miami" 141] ; 344
+   [                                "Milan" 228] ; 345
+   [                           "Mildenhall" 136] ; 346
+   [                            "Milwaukee" 406] ; 347
+   [                          "Minneapolis" 252] ; 348
+   [                                "Minsk" 253] ; 349
+   [                               "Mobile"  38] ; 350
+   [                               "Moline" 177] ; 351
+   [                              "Mombasa" 111] ; 352
+   [                               "Monroe" 229] ; 353
+   [                             "Monrovia" 244] ; 354
+   [                            "Monterrey" 288] ; 355
+   [                           "Montevideo"  92] ; 356
+   [                           "Montgomery"  38] ; 357
+   [                             "Montréal" 315] ; 358
+   [                               "Moscow" 258] ; 359
+   [                        "Mountain Home" 176] ; 360
+   [                               "Mumbai" 237] ; 361
+   [                               "Munich"  71] ; 362
+   [                               "Muscat" 247] ; 363
+   [                               "Málaga"  45] ; 364
+   [                              "Münster" 282] ; 365
+   [                            "N'Djamena" 102] ; 366
+   [                                 "Naha" 291] ; 367
+   [                              "Nairobi" 263] ; 368
+   [                              "Nanjing" 189] ; 369
+   [                              "Nanning" 154] ; 370
+   [                            "Nashville" 373] ; 371
+   [                               "Nassau" 270] ; 372
+   [                                "Natal" 325] ; 373
+   [                            "New Delhi" 127] ; 374
+   [                          "New Orleans" 229] ; 375
+   [                             "New York" 272] ; 376
+   [                               "Newark" 268] ; 377
+   [                            "Newcastle" 136] ; 378
+   [                         "Newport News" 394] ; 379
+   [                               "Niamey" 274] ; 380
+   [                                 "Nice"   5] ; 381
+   [                               "Ningbo" 412] ; 382
+   [                              "Norfolk" 394] ; 383
+   [                              "Norwich" 136] ; 384
+   [                           "Nottingham" 136] ; 385
+   [                           "Nouakchott" 285] ; 386
+   [                          "Novosibirsk" 287] ; 387
+   [                            "Nuremberg"  71] ; 388
+   [                               "Nápoli"  90] ; 389
+   [                              "Oakland"  89] ; 390
+   [                               "Odessa" 289] ; 391
+   [                        "Oklahoma City" 292] ; 392
+   [                           "Olenegorsk" 261] ; 393
+   [                                "Omaha" 265] ; 394
+   [                              "Ontario"  89] ; 395
+   [                              "Orlando" 141] ; 396
+   [                                "Osaka" 415] ; 397
+   [                                 "Oslo"  31] ; 398
+   [                               "Ottawa" 293] ; 399
+   [                          "Ouagadougou" 190] ; 400
+   [                              "Palermo" 346] ; 401
+   [                    "Palma De Mallorca"  65] ; 402
+   [                          "Panama City" 141] ; 403
+   [                              "Papeete"  15] ; 404
+   [                               "Paphos" 298] ; 405
+   [                                "Paris"   7] ; 406
+   [                               "Peoria" 177] ; 407
+   [                                "Perth" 402] ; 408
+   [                                 "Peru" 179] ; 409
+   [                         "Philadelphia" 302] ; 410
+   [                           "Phnom Penh" 192] ; 411
+   [                              "Phoenix"  51] ; 412
+   [                               "Phuket" 304] ; 413
+   [                                 "Pisa" 383] ; 414
+   [                      "Piseo-ri (Muan)" 188] ; 415
+   [                           "Pittsburgh" 302] ; 416
+   [                            "Podgorica" 307] ; 417
+   [                       "Pointe-à-Pitre"  18] ; 418
+   [                        "Ponta Delgada"  57] ; 419
+   [                           "Port Louis" 149] ; 420
+   [                         "Port Moresby" 264] ; 421
+   [                             "Portland" 238] ; 422
+   [                             "Portland" 295] ; 423
+   [                                "Porto" 294] ; 424
+   [                               "Poznań" 151] ; 425
+   [                               "Prague" 310] ; 426
+   [                     "Praia da Vitória"  57] ; 427
+   [                            "Prishtina" 311] ; 428
+   [                           "Providence" 323] ; 429
+   [                      "Puerto Vallarta" 184] ; 430
+   [                           "Punta Cana" 214] ; 431
+   [                                "Quito" 305] ; 432
+   [                       "Raleigh/Durham" 280] ; 433
+   [                             "Ramstein" 322] ; 434
+   [                                 "Reno" 266] ; 435
+   [                            "Reykjavík" 361] ; 436
+   [                             "Richmond" 394] ; 437
+   [                                 "Riga" 324] ; 438
+   [                       "Rio De Janeiro" 326] ; 439
+   [                               "Riyadh" 327] ; 440
+   [                              "Roanoke" 394] ; 441
+   [                            "Rochester" 252] ; 442
+   [                            "Rochester" 272] ; 443
+   [                                 "Rome" 219] ; 444
+   [                        "Rostov-on-Don" 329] ; 445
+   [                           "Sacramento"  89] ; 446
+   [                              "Saginaw" 250] ; 447
+   [                         "Saint Martin"  20] ; 448
+   [                       "Salt Lake City" 386] ; 449
+   [                             "Salvador"  61] ; 450
+   [                               "Samara" 331] ; 451
+   [                            "Samarinda" 134] ; 452
+   [                          "San Antonio" 374] ; 453
+   [                            "San Diego"  89] ; 454
+   [                        "San Francisco"  89] ; 455
+   [                             "San Jose"  89] ; 456
+   [                    "San José del Cabo"  63] ; 457
+   [                             "San Juan"  19] ; 458
+   [        "San Salvador (San Luis Talpa)" 215] ; 459
+   [                            "Santa Ana"  89] ; 460
+   [                           "Santa Cruz" 333] ; 461
+   [                             "Santiago" 334] ; 462
+   [               "Santiago de Compostela" 144] ; 463
+   [                        "Santo Domingo" 131] ; 464
+   [                                "Sanya" 161] ; 465
+   [                             "Sarajevo" 140] ; 466
+   [                   "Sarasota/Bradenton" 141] ; 467
+   [                             "Savannah" 147] ; 468
+   [                              "Seattle" 397] ; 469
+   [                                "Seoul" 178] ; 470
+   [                                "Seoul" 338] ; 471
+   [                              "Shang-I" 208] ; 472
+   [                             "Shanghai" 341] ; 473
+   [                              "Shannon" 115] ; 474
+   [                              "Sharjah" 343] ; 475
+   [                             "Shenyang" 221] ; 476
+   [                             "Shenzhen" 153] ; 477
+   [                               "Shiraz" 139] ; 478
+   [                              "Sialkot" 312] ; 479
+   [                            "Siem Reap" 347] ; 480
+   [                           "Simferopol" 118] ; 481
+   [                            "Singapore" 356] ; 482
+   [                           "Sioux City" 181] ; 483
+   [                               "Skopje" 358] ; 484
+   [                                "Sochi" 211] ; 485
+   [                                "Sofia" 350] ; 486
+   [                  "Sorong-Papua Island" 400] ; 487
+   [                           "South Bend" 179] ; 488
+   [                          "Southampton" 136] ; 489
+   [                              "Spokane" 397] ; 490
+   [                          "Springfield" 177] ; 491
+   [                          "Springfield" 256] ; 492
+   [                             "St Louis" 256] ; 493
+   [                           "St. John's" 273] ; 494
+   [                       "St. Petersburg" 330] ; 495
+   ["Sta Cruz de la Palma, La Palma Island"  91] ; 496
+   [                            "Stavanger" 328] ; 497
+   [                            "Stockholm" 363] ; 498
+   [                            "Stuttgart"  58] ; 499
+   [                               "Sumter" 354] ; 500
+   [                             "Surabaya" 185] ; 501
+   [                               "Sydney" 271] ; 502
+   [                             "Syracuse" 272] ; 503
+   [                            "São Paulo" 367] ; 504
+   [                               "Tabriz" 133] ; 505
+   [                               "Tacoma" 397] ; 506
+   [                               "Taipei" 369] ; 507
+   [                              "Taiyuan" 342] ; 508
+   [                          "Tallahassee" 141] ; 509
+   [                              "Tallinn" 165] ; 510
+   [                                "Tampa" 141] ; 511
+   [                               "Tarsus" 175] ; 512
+   [                             "Tashkent" 378] ; 513
+   [                              "Tbilisi" 370] ; 514
+   [                               "Tehran" 371] ; 515
+   [                             "Tel Aviv" 100] ; 516
+   [                      "Tenerife Island"  91] ; 517
+   [                         "Thessaloniki" 375] ; 518
+   [                   "Thiruvananthapuram" 200] ; 519
+   [                              "Tianjin" 376] ; 520
+   [                              "Tijuana"  62] ; 521
+   [                               "Tirana" 377] ; 522
+   [                              "Tocumen" 297] ; 523
+   [                             "Tokoname"  30] ; 524
+   [                                "Tokyo" 105] ; 525
+   [                                "Tokyo" 384] ; 526
+   [                               "Toledo" 290] ; 527
+   [                               "Torino" 306] ; 528
+   [                              "Toronto" 293] ; 529
+   [                     "Toulouse/Blagnac"   3] ; 530
+   [                              "Trabzon" 379] ; 531
+   [                              "Treviso" 390] ; 532
+   [                              "Tripoli" 380] ; 533
+   [                               "Tromsø" 381] ; 534
+   [                            "Trondheim" 277] ; 535
+   [                               "Tucson"  51] ; 536
+   [                                "Tulsa" 292] ; 537
+   [                                "Tunis" 382] ; 538
+   [                                  "Ufa" 320] ; 539
+   [         "Ujung Pandang-Celebes Island" 364] ; 540
+   [                           "Ulan Bator" 385] ; 541
+   [                       "Universal City" 374] ; 542
+   [                                  "Uyo"  33] ; 543
+   [                             "Valletta" 233] ; 544
+   [                           "Valparaiso" 141] ; 545
+   [                            "Vancouver"  80] ; 546
+   [                             "Varadero" 249] ; 547
+   [                                "Varna" 389] ; 548
+   [                        "Vasco da Gama" 148] ; 549
+   [                               "Venice" 390] ; 550
+   [                               "Verona" 390] ; 551
+   [                             "Victoria"  80] ; 552
+   [                               "Vienna" 392] ; 553
+   [                              "Vilnius" 393] ; 554
+   [                        "Warner Robins" 147] ; 555
+   [                               "Warsaw" 246] ; 556
+   [                           "Washington" 129] ; 557
+   [                           "Wellington" 398] ; 558
+   [                              "Wenzhou" 412] ; 559
+   [                      "West Palm Beach" 141] ; 560
+   [                              "Wichita" 194] ; 561
+   [                        "Wichita Falls" 374] ; 562
+   [                             "Windhoek" 204] ; 563
+   [                             "Winnipeg" 242] ; 564
+   [                              "Wrocław" 231] ; 565
+   [                                "Wuhan" 173] ; 566
+   [                                "Xi'an" 339] ; 567
+   [                               "Xiamen" 142] ; 568
+   [                               "Yangon" 408] ; 569
+   [                        "Yekaterinburg" 366] ; 570
+   [                              "Yerevan" 409] ; 571
+   [                               "Zagreb" 411] ; 572
+   [                             "Zanzibar" 198] ; 573
+   [                            "Zhengzhou" 169] ; 574
+   [                               "Zurich"  95] ; 575
+   [                               "Ürümqi" 407] ; 576
+   [                                "İzmir" 414] ; 577
+   ]]
+
+ ["airport"
+  [{:field-name "name", :base-type :type/Text}
+   {:field-name "code", :base-type :type/Text}
+   {:field-name "latitude", :base-type :type/Float}
+   {:field-name "longitude", :base-type :type/Float}
+   {:field-name "municipality-id", :base-type :type/Integer, :fk "municipality"}]
+  [[                                                  "Aalborg Airport" "AAL"       57.0927589138        9.84924316406   9] ;   1
+   [                         "Abeid Amani Karume International Airport" "ZNZ"            -6.22202            39.224899 573] ;   2
+   [                                            "Aberdeen Dyce Airport" "ABZ"  57.201900482177734   -2.197779893875122  10] ;   3
+   [                                  "Abraham Lincoln Capital Airport" "SPI"         39.84410095         -89.67790222 491] ;   4
+   [                                  "Abu Dhabi International Airport" "AUH"  24.433000564575195   54.651100158691406  12] ;   5
+   [                                                    "Adana Airport" "ADA"       36.9822006226   35.280399322499996  17] ;   6
+   [                           "Addis Ababa Bole International Airport" "ADD"       8.97789001465   38.799301147499996  18] ;   7
+   [                                   "Adelaide International Airport" "ADL"             -34.945           138.531006  19] ;   8
+   [                             "Adnan Menderes International Airport" "ADB"       38.2924003601         27.156999588 577] ;   9
+   [                             "Adolfo Suárez Madrid–Barajas Airport" "MAD"           40.471926             -3.56264 325] ;  10
+   [                                              "Afonso Pena Airport" "CWB"      -25.5284996033       -49.1758003235 146] ;  11
+   [                                  "Akwa Ibom International Airport" "QUO"              4.8725                8.093 543] ;  12
+   [                                 "Al Maktoum International Airport" "DWC"           24.896356            55.161389 258] ;  13
+   [                                "Albuquerque International Sunport" "ABQ"           35.040199          -106.609001  23] ;  14
+   [                   "Alejandro Velasco Astete International Airport" "CUZ" -13.535699844400002       -71.9387969971 147] ;  15
+   [                                     "Aleppo International Airport" "ALP"   36.18069839477539    37.22439956665039  24] ;  16
+   [                                   "Alicante International Airport" "ALC"   38.28219985961914  -0.5581560134887695  26] ;  17
+   [                                                   "Almaty Airport" "ALA"   43.35210037231445    77.04049682617188  27] ;  18
+   [                                             "Altus Air Force Base" "LTS"        34.667098999       -99.2667007446  28] ;  19
+   [                                       "Amsterdam Airport Schiphol" "AMS"           52.308601              4.76389  32] ;  20
+   [                             "Amílcar Cabral International Airport" "SID"             16.7414             -22.9494 186] ;  21
+   [                                    "Antalya International Airport" "AYT"           36.898701            30.800501  36] ;  22
+   [                         "Antonio B. Won Pat International Airport" "GUM"       13.4834003448        144.796005249 225] ;  23
+   [                                       "Asheville Regional Airport" "AVL"   35.43619918823242   -82.54180145263672  38] ;  24
+   [                                   "Ashgabat International Airport" "ASB"           37.986801               58.361  39] ;  25
+   [                                     "Astana International Airport" "TSE"   51.02220153808594    71.46690368652344  40] ;  26
+   [                                    "Atatürk International Airport" "ISL"           40.976898              28.8146 253] ;  27
+   [                                   "Auckland International Airport" "AKL" -37.008098602299995        174.792007446  43] ;  28
+   [                                   "Augusta Regional At Bush Field" "AGS"   33.36989974975586    -81.9645004272461  44] ;  29
+   [                           "Austin Bergstrom International Airport" "AUS"  30.194499969482422    -97.6698989868164  45] ;  30
+   [                            "Austin Straubel International Airport" "GRB"   44.48509979248047   -88.12960052490234 215] ;  31
+   [                                    "Baghdad International Airport" "BGW"  33.262500762900004        44.2346000671  49] ;  32
+   [                                    "Bahrain International Airport" "BAH"   26.27079963684082    50.63359832763672 330] ;  33
+   [                                      "Baita International Airport" "HET"           40.851398           111.823997 242] ;  34
+   [     "Baltimore/Washington International Thurgood Marshall Airport" "BWI"             39.1754           -76.668297  51] ;  35
+   [                       "Bandaranaike International Colombo Airport" "CMB"   7.180759906768799    79.88410186767578 138] ;  36
+   [                                     "Bangor International Airport" "BGR"   44.80739974975586    -68.8281021118164  56] ;  37
+   [                                  "Barcelona International Airport" "BCN"             41.2971              2.07846  58] ;  38
+   [                                       "Bari Karol Wojtyła Airport" "BRI"           41.138901            16.760599  59] ;  39
+   [                                         "Barksdale Air Force Base" "BAD"       32.5018005371       -93.6626968384  87] ;  40
+   [                                     "Basrah International Airport" "BSR"  30.549100875854492    47.66210174560547  60] ;  41
+   [                            "Bassel Al-Assad International Airport" "LTK"  35.401100158691406   35.948699951171875 300] ;  42
+   [                                             "Beale Air Force Base" "BAB"        39.136100769        -121.43699646 338] ;  43
+   [                            "Beijing Capital International Airport" "PEK"  40.080101013183594   116.58499908447266  61] ;  44
+   [                             "Beijing Daxing International Airport" "PKX"           39.509945            116.41092  62] ;  45
+   [                                          "Beijing Nanyuan Airport" "NAY"  39.782798767089844   116.38800048828125  61] ;  46
+   [                        "Beirut Rafic Hariri International Airport" "BEY"  33.820899963378906   35.488399505615234  63] ;  47
+   [                                    "Belfast International Airport" "BFS"       54.6575012207  -6.2158298492399995  64] ;  48
+   [                                    "Belgrade Nikola Tesla Airport" "BEG"       44.8184013367        20.3090991974  65] ;  49
+   [                                 "Ben Gurion International Airport" "TLV"   32.01139831542969    34.88669967651367 516] ;  50
+   [                                          "Bergen Airport Flesland" "BGO"         60.29339981          5.218140125  72] ;  51
+   [                                        "Berlin-Schönefeld Airport" "SXF"           52.380001              13.5225  74] ;  52
+   [                                             "Berlin-Tegel Airport" "TXL"             52.5597              13.2877  73] ;  53
+   [              "Bill & Hillary Clinton National Airport/Adams Field" "LIT"  34.729400634799994       -92.2242965698 308] ;  54
+   [                             "Billings Logan International Airport" "BIL"  45.807701110839844  -108.54299926757812  75] ;  55
+   [                                                  "Billund Airport" "BLL"       55.7402992249        9.15178012848  76] ;  56
+   [                                 "Birmingham International Airport" "BHX"  52.453899383499994       -1.74802994728  78] ;  57
+   [                   "Birmingham-Shuttlesworth International Airport" "BHM"         33.56290054         -86.75350189  77] ;  58
+   [                              "Blaise Diagne International Airport" "DSS"               14.67           -17.073333 149] ;  59
+   [                                               "Blue Grass Airport" "LEX"    38.0364990234375   -84.60590362548828 303] ;  60
+   [                                                     "Bodø Airport" "BOO"   67.26920318603516   14.365300178527832  82] ;  61
+   [                   "Boeing Field King County International Airport" "BFI"  47.529998779296875    -122.302001953125 469] ;  62
+   [                                   "Boise Air Terminal/Gowen Field" "BOI"             43.5644             -116.223  84] ;  63
+   [                                "Bologna Guglielmo Marconi Airport" "BLQ"             44.5354              11.2887  85] ;  64
+   [                                        "Bordeaux-Mérignac Airport" "BOD"  44.828300476100004      -0.715556025505  86] ;  65
+   [                                   "Boryspil International Airport" "KBP"  50.345001220703125   30.894699096679688 278] ;  66
+   [                                              "Bournemouth Airport" "BOH"  50.779998779296875  -1.8424999713897705  89] ;  67
+   [                                    "Bradley International Airport" "BDL"       41.9388999939   -72.68319702149999 235] ;  68
+   [                                                   "Bremen Airport" "BRE"       53.0475006104        8.78666973114  92] ;  69
+   [                                   "Brisbane International Airport" "BNE" -27.384199142456055   153.11700439453125  93] ;  70
+   [                                                  "Bristol Airport" "BRS"           51.382702             -2.71909  94] ;  71
+   [                                     "Brunei International Airport" "BWN"   4.944200038909912    114.9280014038086  53] ;  72
+   [                                                 "Brussels Airport" "BRU"  50.901401519800004        4.48443984985  97] ;  73
+   [                                 "Brussels South Charleroi Airport" "CRL"           50.459202              4.45382  98] ;  74
+   [                      "Budapest Liszt Ferenc International Airport" "BUD"            47.42976            19.261093 100] ;  75
+   [                            "Buffalo Niagara International Airport" "BUF"         42.94049835         -78.73220062 102] ;  76
+   [                                                   "Burgas Airport" "BOJ"   42.56959915161133   27.515199661254883 103] ;  77
+   [                                           "Cagliari Elmas Airport" "CAG"           39.251499              9.05428 107] ;  78
+   [                                      "Cairo International Airport" "CAI"   30.12190055847168    31.40559959411621 108] ;  79
+   [                                    "Calgary International Airport" "YYC"        51.113899231       -114.019996643 109] ;  80
+   [                                    "Calicut International Airport" "CCJ"       11.1367998123    75.95529937740001 110] ;  81
+   [                                   "Canberra International Airport" "CBR"  -35.30690002441406   149.19500732421875 112] ;  82
+   [                                     "Cancún International Airport" "CUN"  21.036500930800003       -86.8770980835 113] ;  83
+   [                                            "Cannon Air Force Base" "CVS"       34.3828010559       -103.321998596 136] ;  84
+   [                                  "Cape Town International Airport" "CPT"      -33.9648017883        18.6016998291 114] ;  85
+   [                                    "Cardiff International Airport" "CWL"   51.39670181274414   -3.343329906463623 116] ;  86
+   [              "Carrasco International /General C L Berisso Airport" "MVD"          -34.838402             -56.0308 356] ;  87
+   [                                     "Catania-Fontanarossa Airport" "CTA"           37.466801              15.0664 118] ;  88
+   [          "Central Illinois Regional Airport at Bloomington-Normal" "BMI"         40.47710037         -88.91590118  80] ;  89
+   [                          "Changsha Huanghua International Airport" "CSX"  28.189199447599997        113.220001221 120] ;  90
+   [                          "Charles de Gaulle International Airport" "CDG"           49.012798                 2.55 406] ;  91
+   [                  "Charleston Air Force Base-International Airport" "CHS"         32.89860153         -80.04049683 121] ;  92
+   [                          "Charlotte Douglas International Airport" "CLT"    35.2140007019043   -80.94309997558594 123] ;  93
+   [                          "Chengdu Shuangliu International Airport" "CTU"  30.578500747680664    103.9469985961914 125] ;  94
+   [                                    "Chennai International Airport" "MAA"  12.990005493164062    80.16929626464844 126] ;  95
+   [    "Cheongju International Airport/Cheongju Air Base (K-59/G-513)" "CJJ"           36.717008           127.498741 127] ;  96
+   [                        "Chhatrapati Shivaji International Airport" "BOM"       19.0886993408        72.8678970337 361] ;  97
+   [                                 "Chiang Mai International Airport" "CNX"  18.766799926799997         98.962600708 128] ;  98
+   [                             "Chicago Midway International Airport" "MDW"           41.785999           -87.752403 129] ;  99
+   [                             "Chicago O'Hare International Airport" "ORD"             41.9786             -87.9048 129] ; 100
+   [                           "Chicago Rockford International Airport" "RFD"   42.19540023803711   -89.09719848632812 130] ; 101
+   [                             "Chinggis Khaan International Airport" "ULN"           47.843102           106.766998 541] ; 102
+   [                         "Chongqing Jiangbei International Airport" "CKG"  29.719200134277344   106.64199829101562 132] ; 103
+   [                               "Christchurch International Airport" "CHC"  -43.48939895629883   172.53199768066406 133] ; 104
+   [                             "Chubu Centrair International Airport" "NGO"       34.8583984375   136.80499267578125 524] ; 105
+   [                     "Ciampino–G. B. Pastine International Airport" "CIA"             41.7994              12.5949 444] ; 106
+   [               "Cincinnati Northern Kentucky International Airport" "CVG"       39.0488014221       -84.6678009033 134] ; 107
+   [                       "City of Colorado Springs Municipal Airport" "COS"           38.805801          -104.700996 139] ; 108
+   [                          "Cleveland Hopkins International Airport" "CLE"       41.4117012024       -81.8498001099 135] ; 109
+   [                                     "Cochin International Airport" "COK"              10.152            76.401901 284] ; 110
+   [                                             "Cologne Bonn Airport" "CGN"       50.8658981323         7.1427397728 137] ; 111
+   [                                    "Columbia Metropolitan Airport" "CAE"   33.93880081176758   -81.11949920654297 140] ; 112
+   [                                          "Columbus Air Force Base" "CBM"       33.6437988281   -88.44380187990001 141] ; 113
+   [             "Comodoro Arturo Merino Benítez International Airport" "SCL" -33.393001556396484   -70.78579711914062 462] ; 114
+   [                                                "Congonhas Airport" "CGH" -23.626110076904297   -46.65638732910156 504] ; 115
+   [                                       "Copenhagen Kastrup Airport" "CPH"     55.617900848389      12.656000137329 143] ; 116
+   [                                       "Copernicus Wrocław Airport" "WRO"       51.1026992798         16.885799408 565] ; 117
+   [                                                     "Cork Airport" "ORK"   51.84130096435547   -8.491109848022461 144] ; 118
+   [                             "Corpus Christi International Airport" "CRP"   27.77039909362793    -97.5011978149414 145] ; 119
+   [                                   "Cotopaxi International Airport" "LTX"           -0.906833           -78.615799 299] ; 120
+   [                                                             "Cyll"    ""           53.310365          -110.072021   1] ; 121
+   [                                                      "DLF Airport" "DLF"           29.359501          -100.778002 159] ; 122
+   [                                    "Da Nang International Airport" "DAD"  16.043899536132812    108.1989974975586 148] ; 123
+   [                                                  "Dabolim Airport" "GOI"       15.3808002472        73.8313980103 549] ; 124
+   [                                    "Dalaman International Airport" "DLM"       36.7131004333        28.7924995422 150] ; 125
+   [                          "Dallas Fort Worth International Airport" "DFW"           32.896801           -97.038002 153] ; 126
+   [                                                "Dallas Love Field" "DAL"           32.847099           -96.851799 152] ; 127
+   [                                   "Damascus International Airport" "DAM"    33.4114990234375    36.51559829711914 154] ; 128
+   [                                 "Dane County Regional Truax Field" "MSN"   43.13990020751953    -89.3375015258789 324] ; 129
+   [                            "Daniel K Inouye International Airport" "HNL"            21.32062          -157.924228 244] ; 130
+   [                       "Daniel Oduber Quiros International Airport" "LIR"             10.5933           -85.544403 304] ; 131
+   [                              "Daytona Beach International Airport" "DAB"           29.179899           -81.058098 158] ; 132
+   [                                     "Denver International Airport" "DEN"     39.861698150635       -104.672996521 161] ; 133
+   [            "Deputado Luiz Eduardo Magalhães International Airport" "SSA"      -12.9086112976       -38.3224983215 450] ; 134
+   [                                 "Des Moines International Airport" "DSM"  41.534000396728516   -93.66310119628906 162] ; 135
+   [                                   "Destin-Ft Walton Beach Airport" "VPS"             30.4832           -86.525398 545] ; 136
+   [                        "Detroit Metropolitan Wayne County Airport" "DTW"  42.212398529052734   -83.35340118408203 163] ; 137
+   [                               "Diori Hamani International Airport" "NIM"             13.4815              2.18361 380] ; 138
+   [                         "Diosdado Macapagal International Airport" "CRK"              15.186           120.559998  34] ; 139
+   [                                         "Dobbins Air Reserve Base" "MGE"         33.91540146         -84.51629639 336] ; 140
+   [                                    "Dominique Edward Osok Airport" "SOQ"              -0.894              131.287 487] ; 141
+   [                                 "Domodedovo International Airport" "DME"   55.40879821777344    37.90629959106445 359] ; 142
+   [              "Don Miguel Hidalgo Y Costilla International Airport" "GDL"  20.521799087524414  -103.31099700927734 219] ; 143
+   [                                 "Don Mueang International Airport" "DMK"       13.9125995636        100.607002258  55] ; 144
+   [                                                 "Dortmund Airport" "DTM"   51.51829910279999        7.61223983765 167] ; 145
+   [                                             "Dover Air Force Base" "DOV"         39.12950134         -75.46600342 168] ; 146
+   [                                                  "Dresden Airport" "DRS"    51.1328010559082   13.767200469970703 169] ; 147
+   [                                      "Dubai International Airport" "DXB"       25.2527999878        55.3643989563 170] ; 148
+   [                                                   "Dublin Airport" "DUB"           53.421299             -6.27007 171] ; 149
+   [                                         "Dubuque Regional Airport" "DBQ"         42.40200043         -90.70950317 172] ; 150
+   [                                     "Duluth International Airport" "DLH"       46.8420982361   -92.19360351559999 173] ; 151
+   [                                       "Duqm International Airport" "DQM"           19.501944            57.634167 174] ; 152
+   [                                             "Dyess Air Force Base" "DYS"       32.4207992554        -99.854598999  11] ; 153
+   [                                               "Düsseldorf Airport" "DUS"           51.289501              6.76678 176] ; 154
+   [                                            "East Midlands Airport" "EMA"       52.8311004639       -1.32806003094 385] ; 155
+   [                                                "Edinburgh Airport" "EDI"   55.95000076293945   -3.372499942779541 177] ; 156
+   [                                   "Edmonton International Airport" "YEG"  53.309700012200004       -113.580001831 178] ; 157
+   [                                           "Edwards Air Force Base" "EDW"           34.905399          -117.884003 179] ; 158
+   [                                                "Eindhoven Airport" "EIN"       51.4500999451        5.37452983856 181] ; 159
+   [                                  "El Dorado International Airport" "BOG"             4.70159             -74.1469  83] ; 160
+   [                      "Eleftherios Venizelos International Airport" "ATH"       37.9364013672        23.9444999695  41] ; 161
+   [                         "Enfidha - Hammamet International Airport" "NBE"           36.075833            10.438611 182] ; 162
+   [                                    "Entebbe International Airport" "EBB"            0.042386            32.443501 267] ; 163
+   [                                                  "Eppley Airfield" "OMA"             41.3032           -95.894096 394] ; 164
+   [                               "Erie International Tom Ridge Field" "ERI"       42.0831270134       -80.1738667488 184] ; 165
+   [                                    "Erzurum International Airport" "ERZ"       39.9565010071    41.17020034789999 185] ; 166
+   [                                   "Esenboğa International Airport" "ESB"  40.128101348899996         32.995098114  35] ; 167
+   [                      "EuroAirport Basel-Mulhouse-Freiburg Airport" "BSL"               47.59            7.5291667 105] ; 168
+   [                                     "Exeter International Airport" "EXT"   50.73440170288086  -3.4138898849487305 187] ; 169
+   [                                      "Faa'a International Airport" "PPT"          -17.553699          -149.606995 404] ; 170
+   [                                  "Fairbanks International Airport" "FAI"         64.81510162         -147.8560028 188] ; 171
+   [                                         "Fairchild Air Force Base" "SKA"       47.6151008606        -117.65599823 490] ; 172
+   [                                       "Falcone–Borsellino Airport" "PMO"           38.175999               13.091 401] ; 173
+   [                                                     "Faro Airport" "FAO"       37.0144004822       -7.96590995789 191] ; 174
+   [                  "Fort Lauderdale Hollywood International Airport" "FLL"           26.072599           -80.152702 193] ; 175
+   [                                      "Fort Smith Regional Airport" "FSM"   35.33660125732422   -94.36740112304688 195] ; 176
+   [                                 "Fort Wayne International Airport" "FWA"         40.97850037         -85.19509888 196] ; 177
+   [                                      "Fort Worth Alliance Airport" "AFW"       32.9875984192   -97.31880187990001 197] ; 178
+   [                         "Fort Worth Meacham International Airport" "FTW"           32.819801           -97.362396 197] ; 179
+   [                           "Francisco Bangoy International Airport" "DVO"     7.1255202293396   125.64600372314453 156] ; 180
+   [                                 "Francisco de Sá Carneiro Airport" "OPO"       41.2481002808       -8.68138980865 424] ; 181
+   [                                        "Frankfurt am Main Airport" "FRA"           50.033333             8.570556 198] ; 182
+   [                                                  "Fukuoka Airport" "FUK"  33.585899353027344    130.4510040283203 200] ; 183
+   [                             "Fuzhou Changle International Airport" "FOC"  25.935100555419922   119.66300201416016 202] ; 184
+   [                                  "Gaziantep International Airport" "GZT"       36.9472007751        37.4786987305 204] ; 185
+   [                                       "Gdańsk Lech Wałęsa Airport" "GDN"  54.377601623535156    18.46619987487793 205] ; 186
+   [              "General Abelardo L. Rodríguez International Airport" "TIJ"  32.541099548339844  -116.97000122070312 521] ; 187
+   [              "General Edward Lawrence Logan International Airport" "BOS"         42.36429977         -71.00520325  88] ; 188
+   [                  "General Ignacio P. Garcia International Airport" "HMO"  29.095899581900003       -111.047996521 239] ; 189
+   [            "General José Antonio Anzoategui International Airport" "BLA"           10.111111           -64.692222  57] ; 190
+   [                     "General Juan N Alvarez International Airport" "ACA"  16.757099151611328   -99.75399780273438  14] ; 191
+   [                   "General Mariano Escobedo International Airport" "MTY"       25.7784996033       -100.107002258 355] ; 192
+   [                           "General Mitchell International Airport" "MKE"  42.947200775146484   -87.89659881591797 347] ; 193
+   [            "General Wayne A. Downing Peoria International Airport" "PIA"  40.664199829100006       -89.6932983398 407] ; 194
+   [                            "Geneva Cointrin International Airport" "GVA"   46.23809814453125    6.108950138092041 206] ; 195
+   [                                 "Genoa Cristoforo Colombo Airport" "GOA"             44.4133               8.8375 207] ; 196
+   [                                                   "George Airport" "GRJ"            -34.0056            22.378902 208] ; 197
+   [                                 "George Best Belfast City Airport" "BHD"  54.618099212646484   -5.872499942779541  64] ; 198
+   [                     "George Bush Intercontinental Houston Airport" "IAH"  29.984399795532227   -95.34140014648438 245] ; 199
+   [                                     "Gimhae International Airport" "PUS"       35.1795005798         128.93800354 104] ; 200
+   [                                      "Gimpo International Airport" "GMP"             37.5583              126.791 471] ; 201
+   [                                    "Glasgow International Airport" "GLA"       55.8718986511       -4.43306016922 210] ; 202
+   [                                    "Gothenburg-Landvetter Airport" "GOT"     57.662799835205      12.279800415039 213] ; 203
+   [                   "Governador Aluízio Alves International Airport" "NAT"           -5.768056           -35.376111 373] ; 204
+   [                                             "Gran Canaria Airport" "LPA"  27.931900024414062   -15.38659954071045 214] ; 205
+   [                          "Greater Rochester International Airport" "ROC"  43.118900299072266   -77.67240142822266 443] ; 206
+   [                     "Greenville Spartanburg International Airport" "GSP"       34.8956985474       -82.2189025879 217] ; 207
+   [                                         "Grissom Air Reserve Base" "GUS"  40.648101806599996       -86.1520996094 409] ; 208
+   [                                             "Grozny North Airport" "GRV"           43.388302            45.698601 218] ; 209
+   [                           "Guangzhou Baiyun International Airport" "CAN"   23.39240074157715   113.29900360107422 220] ; 210
+   ["Guarulhos - Governador André Franco Montoro International Airport" "GRU" -23.435556411743164   -46.47305679321289 504] ; 211
+   [                          "Guilin Liangjiang International Airport" "KWL"   25.21809959411621   110.03900146484375 222] ; 212
+   [                            "Gulfport Biloxi International Airport" "GPT"   30.40730094909668   -89.07009887695312 224] ; 213
+   [                              "Haikou Meilan International Airport" "HAK"  19.934900283813477   110.45899963378906 226] ; 214
+   [                        "Halifax / Stanfield International Airport" "YHZ"       44.8807983398       -63.5085983276 227] ; 215
+   [                                      "Hamad International Airport" "DOH"           25.273056            51.608056 165] ; 216
+   [                                                  "Hamburg Airport" "HAM"     53.630401611328      9.9882297515869 228] ; 217
+   [                          "Hangzhou Xiaoshan International Airport" "HGH"   30.22949981689453   120.43399810791016 230] ; 218
+   [                                                 "Hannover Airport" "HAJ"        52.461101532    9.685079574580001 231] ; 219
+   [                 "Hartsfield Jackson Atlanta International Airport" "ATL"             33.6367           -84.428101  42] ; 220
+   [                                 "Hasanuddin International Airport" "UPG"  -5.061629772186279   119.55400085449219 540] ; 221
+   [                           "Hazrat Shahjalal International Airport" "DAC"           23.843347            90.397783 164] ; 222
+   [                                          "Helsinki Vantaa Airport" "HEL"     60.317199707031      24.963300704956 237] ; 223
+   [                               "Henri Coandă International Airport" "OTP"          44.5711111               26.085  99] ; 224
+   [                "Heraklion International Nikos Kazantzakis Airport" "HER"       35.3396987915   25.180299758900002 238] ; 225
+   [                               "Hercílio Luz International Airport" "FLN" -27.670278549194336    -48.5525016784668 192] ; 226
+   [                              "Heydar Aliyev International Airport" "GYD"  40.467498779296875    50.04669952392578  50] ; 227
+   [                                          "Holloman Air Force Base" "HMN"       32.8525009155       -106.107002258  22] ; 228
+   [                                  "Hong Kong International Airport" "HKG"           22.308901           113.915001 243] ; 229
+   [                               "Hosea Kutako International Airport" "WDH"            -22.4799              17.4709 563] ; 230
+   [                                        "Houari Boumediene Airport" "ALG"  36.691001892089844    3.215409994125366  25] ; 231
+   [                "Humberto Delgado Airport (Lisbon Portela Airport)" "LIS"             38.7813             -9.13592 307] ; 232
+   [                      "Huntsville International Carl T Jones Field" "HSV"     34.637199401855     -86.775100708008 247] ; 233
+   [                                   "Hurghada International Airport" "HRG"  27.178300857543945   33.799400329589844 248] ; 234
+   [                              "Il Caravaggio International Airport" "BGY"           45.673901              9.70417  71] ; 235
+   [                              "Imam Khomeini International Airport" "IKA"  35.416099548339844   51.152198791503906 515] ; 236
+   [                                    "Incheon International Airport" "ICN"   37.46910095214844   126.45099639892578 470] ; 237
+   [                               "Indianapolis International Airport" "IND"             39.7173           -86.294403 250] ; 238
+   [                              "Indira Gandhi International Airport" "DEL"             28.5665            77.103104 374] ; 239
+   [                                                 "Istanbul Airport" "IST"           41.275278            28.751944 253] ; 240
+   [                                                    "Ivato Airport" "TNR"            -18.7969            47.478802  37] ; 241
+   [                 "Jackson-Medgar Wiley Evers International Airport" "JAN"       32.3111991882       -90.0758972168 254] ; 242
+   [                               "Jacksonville International Airport" "JAX"   30.49410057067871   -81.68789672851562 255] ; 243
+   [                         "James M Cox Dayton International Airport" "DAY"  39.902400970458984   -84.21939849853516 157] ; 244
+   [                                       "Jeju International Airport" "CJU"   33.51129913330078   126.49299621582031 260] ; 245
+   [                             "John F Kennedy International Airport" "JFK"         40.63980103         -73.77890015 376] ; 246
+   [                        "John Glenn Columbus International Airport" "CMH"           39.998001           -82.891899 142] ; 247
+   [                         "John Wayne Airport-Orange County Airport" "SNA"         33.67570114         -117.8679962 460] ; 248
+   [                                               "Joint Base Andrews" "ADW"           38.810799           -76.866997 111] ; 249
+   [                              "Jomo Kenyatta International Airport" "NBO"      -1.31923997402        36.9277992249 368] ; 250
+   [                                          "Joplin Regional Airport" "JLN"  37.151798248291016   -94.49829864501953 264] ; 251
+   [                               "Jorge Chávez International Airport" "LIM"            -12.0219           -77.114305 305] ; 252
+   [                                 "José Martí International Airport" "HAV"  22.989200592041016   -82.40910339355469 236] ; 253
+   [                                            "João Paulo II Airport" "PDL"       37.7411994934       -25.6979007721 419] ; 254
+   [                       "Juan Gualberto Gomez International Airport" "VRA"  23.034400939941406     -81.435302734375 547] ; 255
+   [                                     "Juanda International Airport" "SUB" -7.3798298835754395   112.78700256347656 501] ; 256
+   [                                       "Juba International Airport" "JUB"       4.87201023102        31.6011009216 265] ; 257
+   [                             "Julius Nyerere International Airport" "DAR"            -6.87811            39.202599 155] ; 258
+   [                                                  "Kadena Air Base" "DNA"             26.3556           127.767998   6] ; 259
+   [                                                "Kagoshima Airport" "KOJ"   31.80340003967285     130.718994140625 266] ; 260
+   [                                     "Kansai International Airport" "KIX"   34.42729949951172   135.24400329589844 397] ; 261
+   [                                "Kansas City International Airport" "MCI"             39.2976           -94.713898 269] ; 262
+   [                                  "Kaohsiung International Airport" "KHH"   22.57710075378418    120.3499984741211 270] ; 263
+   [                                    "Karlsruhe Baden-Baden Airport" "FKB"       48.7793998718        8.08049964905  48] ; 264
+   [                                   "Katowice International Airport" "KTW"             50.4743                19.08 273] ; 265
+   [                                      "Kazan International Airport" "KZN"     55.606201171875      49.278701782227 274] ; 266
+   [                                   "Keflavik International Airport" "KEF"     63.985000610352     -22.605600357056 436] ; 267
+   [                                 "Kempegowda International Airport" "BLR"             13.1979            77.706299  54] ; 268
+   [                      "Kenneth Kaunda International Airport Lusaka" "LUN"      -15.3308000565        28.4526004791 319] ; 269
+   [                                          "Khabarovsk-Novy Airport" "KHV"      48.52799987793      135.18800354004 275] ; 270
+   [                                    "Kharkiv International Airport" "HRK"  49.924800872802734   36.290000915527344 276] ; 271
+   [                                   "Khartoum International Airport" "KRT"  15.589500427246094   32.553199768066406 277] ; 272
+   [                                     "Kigali International Airport" "KGL"            -1.96863              30.1395 279] ; 273
+   [                                          "King Abdulaziz Air Base" "DHA"  26.265399932900003   50.152000427199994   4] ; 274
+   [                             "King Abdulaziz International Airport" "JED"             21.6796            39.156502 259] ; 275
+   [                                  "King Fahd International Airport" "DMM"  26.471200942993164    49.79790115356445  16] ; 276
+   [                                "King Khaled International Airport" "RUH"  24.957599639892578    46.69879913330078 440] ; 277
+   [                                 "King Shaka International Airport" "DUR"      -29.6144444444        31.1197222222 175] ; 278
+   [                                                   "Kinmen Airport" "KNH"             24.4279           118.359001 472] ; 279
+   [                                                 "Koltsovo Airport" "SVX"     56.743099212646      60.802700042725 570] ; 280
+   [                                     "Kotoka International Airport" "ACC"   5.605189800262451 -0.16678600013256073  15] ; 281
+   [                        "Kraków John Paul II International Airport" "KRK"           50.077702              19.7848 286] ; 282
+   [                               "Kuala Lumpur International Airport" "KUL"      2.745579957962      101.70999908447 288] ; 283
+   [                                  "Kualanamu International Airport" "KNO"            3.642222            98.885278   8] ; 284
+   [                          "Kunming Changshui International Airport" "KMG"          25.1019444          102.9291667 289] ; 285
+   [                                                  "Kunsan Air Base" "KUV"   35.90380096435547   126.61599731445312 290] ; 286
+   [                                   "Kurumoch International Airport" "KUF"     53.504901885986       50.16429901123 451] ; 287
+   [                                     "Kuwait International Airport" "KWI"  29.226600646972656    47.96889877319336 291] ; 288
+   [                                                "La Aurora Airport" "GUA"             14.5833           -90.527496 221] ; 289
+   [                                               "La Guardia Airport" "LGA"         40.77719879         -73.87259674 376] ; 290
+   [                                                 "La Palma Airport" "SPC"           28.626499             -17.7556 496] ; 291
+   [                                       "Lafayette Regional Airport" "LFT"         30.20529938         -91.98760223 292] ; 292
+   [                                             "Laguindingan Airport" "CGY"            8.612203           124.456496 106] ; 293
+   [                                                    "Lajes Airport" "TER"           38.761799           -27.090799 427] ; 294
+   [                                           "Langley Air Force Base" "LFI"        37.082901001        -76.360496521 229] ; 295
+   [                                    "Larnaca International Airport" "LCA"  34.875099182128906   33.624900817871094 297] ; 296
+   [                               "Las Américas International Airport" "SDQ"      18.42970085144     -69.668899536133 464] ; 297
+   [                                           "Leeds Bradford Airport" "LBA"   53.86589813232422  -1.6605700254440308 301] ; 298
+   [                                            "Leipzig/Halle Airport" "LEJ"           51.423889            12.236389 302] ; 299
+   [                                     "Lennart Meri Tallinn Airport" "TLL"   59.41329956049999   24.832799911499997 510] ; 300
+   [                              "Leonardo da Vinci–Fiumicino Airport" "FCO"          41.8002778           12.2388889 444] ; 301
+   [                          "Lester B. Pearson International Airport" "YYZ"       43.6772003174   -79.63059997559999 529] ; 302
+   [                   "Licenciado Benito Juarez International Airport" "MEX"             19.4363           -99.072098 343] ; 303
+   [              "Licenciado Gustavo Díaz Ordaz International Airport" "PVR"  20.680099487304688  -105.25399780273438 430] ; 304
+   [                                    "Liverpool John Lennon Airport" "LPL"   53.33359909057617   -2.849720001220703 309] ; 305
+   [                                                    "Liège Airport" "LGG"   50.63740158081055    5.443220138549805 310] ; 306
+   [                                    "Ljubljana Jože Pučnik Airport" "LJU"           46.223701              14.4576 311] ; 307
+   [                                           "London Gatwick Airport" "LGW"           51.148102            -0.190278 313] ; 308
+   [                                          "London Heathrow Airport" "LHR"             51.4706            -0.461941 313] ; 309
+   [                                             "London Luton Airport" "LTN"  51.874698638916016 -0.36833301186561584 313] ; 310
+   [                                          "London Stansted Airport" "STN"       51.8849983215       0.234999999404 313] ; 311
+   [                                              "Longdongbao Airport" "KWE"   26.53849983215332    106.8010025024414 223] ; 312
+   [                                "Los Angeles International Airport" "LAX"         33.94250107         -118.4079971 314] ; 313
+   [                                  "Los Cabos International Airport" "SJD"   23.15180015563965  -109.72100067138672 457] ; 314
+   [                "Louis Armstrong New Orleans International Airport" "MSY"   29.99340057373047   -90.25800323486328 375] ; 315
+   [                        "Louisville International Standiford Field" "SDF"             38.1744              -85.736 315] ; 316
+   [                                                     "Lovell Field" "CHA"  35.035301208496094   -85.20379638671875 124] ; 317
+   [                      "Lubbock Preston Smith International Airport" "LBB"           33.663601          -101.822998 317] ; 318
+   [                           "Luis Munoz Marin International Airport" "SJU"       18.4393997192       -66.0018005371 458] ; 319
+   [                                              "Luke Air Force Base" "LUF"  33.534999847399995       -112.383003235 211] ; 320
+   [                                                    "Luleå Airport" "LLA"     65.543800354004      22.121999740601 318] ; 321
+   [                                      "Lungi International Airport" "FNA"             8.61644             -13.1955 199] ; 322
+   [                          "Luxembourg-Findel International Airport" "LUX"          49.6233333            6.2044444 320] ; 323
+   [                                      "Luxor International Airport" "LXR"              25.671              32.7066 321] ; 324
+   [                            "Lynden Pindling International Airport" "NAS"              25.039           -77.466202 372] ; 325
+   [                                       "Lyon Saint-Exupéry Airport" "LYS"           45.725556             5.081111 322] ; 326
+   [                      "Léopold Sédar Senghor International Airport" "DKR"  14.739700317382812   -17.49020004272461 149] ; 327
+   [                                           "M. R. Štefánik Airport" "BTS"   48.17020034790039    17.21269989013672  91] ; 328
+   [                                        "MBS International Airport" "MBS"  43.532901763916016   -84.07959747314453 447] ; 329
+   [                                          "Mac Dill Air Force Base" "MCF"         27.84930038         -82.52120209 511] ; 330
+   [                                      "Macau International Airport" "MFM"           22.149599           113.592003 323] ; 331
+   [                                "Mactan Cebu International Airport" "CEB"     10.307499885559      123.97899627686 296] ; 332
+   [                               "Mallam Aminu International Airport" "KAN"             12.0476              8.52462 268] ; 333
+   [                                             "Malmö Sturup Airport" "MMX"        55.536305364   13.376197814900001 328] ; 334
+   [                                   "Malpensa International Airport" "MXP"             45.6306              8.72811 345] ; 335
+   [                                      "Malta International Airport" "MLA"           35.857498              14.4775 544] ; 336
+   [                                       "Malé International Airport" "MLE"   4.191830158233643    73.52909851074219 329] ; 337
+   [                                      "Manas International Airport" "FRU"       43.0612983704        74.4776000977  79] ; 338
+   [                                               "Manchester Airport" "MAN"   53.35369873046875  -2.2749500274658203 331] ; 339
+   [                               "Manchester-Boston Regional Airport" "MHT"           42.932598           -71.435699 332] ; 340
+   [                                   "Mandalay International Airport" "MDL"  21.702199935913086    95.97789764404297 333] ; 341
+   [                                                   "Maputo Airport" "MPM"          -25.920799            32.572601 335] ; 342
+   [                             "Mariscal Sucre International Airport" "UIO"     -0.129166666667             -78.3575 432] ; 343
+   [                                       "Marseille Provence Airport" "MRS"        43.439271922        5.22142410278 337] ; 344
+   [                                    "Mashhad International Airport" "MHD"  36.235198974609375    59.64099884033203 339] ; 345
+   [                          "Mattala Rajapaksa International Airport" "HRI"            6.284467            81.124128   7] ; 346
+   [                                   "McCarran International Airport" "LAS"         36.08010101         -115.1520004 298] ; 347
+   [                                           "McChord Air Force Base" "TCM"       47.1376991272       -122.475997925 506] ; 348
+   [                                             "McGhee Tyson Airport" "TYS"         35.81100082          -83.9940033 283] ; 349
+   [                                   "Mehrabad International Airport" "THR"   35.68920135498047    51.31340026855469 515] ; 350
+   [                                  "Melbourne International Airport" "MEL"          -37.673302           144.843002 341] ; 351
+   [                                    "Memphis International Airport" "MEM"   35.04240036010742   -89.97669982910156 342] ; 352
+   [                       "Metropolitan Oakland International Airport" "OAK"           37.721298          -122.221001 390] ; 353
+   [                                      "Miami International Airport" "MIA"   25.79319953918457   -80.29060363769531 344] ; 354
+   [                                            "Milano Linate Airport" "LIN"           45.445099              9.27674 345] ; 355
+   [                               "Milas Bodrum International Airport" "BJV"   37.25059890749999        27.6643009186  81] ; 356
+   [                         "Ministro Pistarini International Airport" "EZE"            -34.8222             -58.5358 101] ; 357
+   [       "Minneapolis-St Paul International/Wold-Chamberlain Airport" "MSP"              44.882           -93.221802 348] ; 358
+   [                                           "Minsk National Airport" "MSQ"     53.882499694824      28.030700683594 349] ; 359
+   [                                          "Mobile Regional Airport" "MOB"     30.691200256348     -88.242797851562 350] ; 360
+   [                               "Modibo Keita International Airport" "BKO"             12.5335             -7.94994  52] ; 361
+   [                                                   "Modlin Airport" "WMI"           52.451099              20.6518 556] ; 362
+   [                                 "Mohammed V International Airport" "CMN"   33.36750030517578   -7.589970111846924 117] ; 363
+   [                                "Mombasa Moi International Airport" "MBA"  -4.034830093383789   39.594200134277344 352] ; 364
+   [                                          "Monroe Regional Airport" "MLU"   32.51089859008789    -92.0376968383789 353] ; 365
+   [              "Monseñor Óscar Arnulfo Romero International Airport" "SAL"             13.4409           -89.055702 459] ; 366
+   [                     "Montgomery Regional (Dannelly Field) Airport" "MGM"         32.30059814         -86.39399719 357] ; 367
+   [          "Montreal / Pierre Elliott Trudeau International Airport" "YUL"       45.4706001282       -73.7407989502 358] ; 368
+   [                                     "Mountain Home Air Force Base" "MUO"           43.043598          -115.872002 360] ; 369
+   [                                        "Mt. Fuji Shizuoka Airport" "FSZ"       34.7960434679         138.18775177 327] ; 370
+   [                                       "Muan International Airport" "MWX"           34.991406           126.382814 415] ; 371
+   [                                                   "Munich Airport" "MUC"           48.353802              11.7861 362] ; 372
+   [                           "Murtala Muhammed International Airport" "LOS"  6.5773701667785645    3.321160078048706 293] ; 373
+   [                                     "Muscat International Airport" "MCT"  23.593299865722656   58.284400939941406 363] ; 374
+   [                                                   "Málaga Airport" "AGP"   36.67490005493164   -4.499110221862793 364] ; 375
+   [                                        "Münster Osnabrück Airport" "FMO"        52.134601593        7.68483018875 365] ; 376
+   [                                  "N'Djamena International Airport" "NDJ"             12.1337               15.034 366] ; 377
+   [                                                     "Naha Airport" "OKA"       26.1958007812        127.646003723 367] ; 378
+   [                                            "Nanjing Lukou Airport" "NKG"  31.742000579833984   118.86199951171875 369] ; 379
+   [                                             "Nanning Wuxu Airport" "NNG"  22.608299255371094    108.1719970703125 370] ; 380
+   [                                     "Naples International Airport" "NAP"           40.886002              14.2908 389] ; 381
+   [                                     "Narita International Airport" "NRT"       35.7647018433        140.386001587 525] ; 382
+   [                                  "Nashville International Airport" "BNA"    36.1245002746582    -86.6781997680664 371] ; 383
+   [                                     "Ndjili International Airport" "FIH"            -4.38575              15.4446 281] ; 384
+   [                "Netaji Subhash Chandra Bose International Airport" "CCU"  22.654699325561523    88.44670104980469 285] ; 385
+   [                                              "New Chitose Airport" "CTS"   42.77519989013672   141.69200134277344 131] ; 386
+   [                              "New Islamabad International Airport" "ISB"           33.560713            72.851613 251] ; 387
+   [                             "Newark Liberty International Airport" "EWR"  40.692501068115234     -74.168701171875 377] ; 388
+   [                                                "Newcastle Airport" "NCL"  55.037498474121094  -1.6916699409484863 378] ; 389
+   [                  "Newport News Williamsburg International Airport" "PHF"         37.13190079         -76.49299622 379] ; 390
+   [                          "Ngurah Rai (Bali) International Airport" "DPS"    -8.7481698989868      115.16699981689 160] ; 391
+   [                                         "Nice-Côte d'Azur Airport" "NCE"       43.6584014893    7.215869903560001 381] ; 392
+   [                               "Ningbo Lishe International Airport" "NGB"   29.82670021057129   121.46199798583984 382] ; 393
+   [                               "Ninoy Aquino International Airport" "MNL"             14.5086           121.019997 334] ; 394
+   [                             "Nnamdi Azikiwe International Airport" "ABV"   9.006790161132812    7.263169765472412  13] ; 395
+   [                                    "Noi Bai International Airport" "HAN"  21.221200942993164   105.80699920654297 232] ; 396
+   [                                    "Norfolk International Airport" "ORF"   36.89459991455078   -76.20120239257812 383] ; 397
+   [                              "Norman Manley International Airport" "KIN"  17.935699462890625    -76.7874984741211 280] ; 398
+   [                  "Norman Y. Mineta San Jose International Airport" "SJC"           37.362598          -121.929001 456] ; 399
+   [                                    "Norwich International Airport" "NWI"       52.6758003235        1.28278005123 384] ; 400
+   [                       "Nouakchott–Oumtounsy International Airport" "NKC"               18.31          -15.9697222 386] ; 401
+   [                                                "Nuremberg Airport" "NUE"           49.498699            11.078056 388] ; 402
+   [                                   "OR Tambo International Airport" "JNB"            -26.1392               28.246 263] ; 403
+   [                                     "Odessa International Airport" "ODS"   46.42679977416992    30.67650032043457 391] ; 404
+   [                                    "Ontario International Airport" "ONT"  34.055999755859375  -117.60099792480469 395] ; 405
+   [                                    "Orlando International Airport" "MCO"  28.429399490356445   -81.30899810791016 396] ; 406
+   [                            "Orlando Sanford International Airport" "SFB"  28.777599334716797   -81.23750305175781 396] ; 407
+   [                                      "Osaka International Airport" "ITM"  34.785499572753906   135.43800354003906 397] ; 408
+   [                                                    "Osan Air Base" "OSN"           37.090599           127.029999   5] ; 409
+   [                                          "Oslo Gardermoen Airport" "OSL"     60.193901062012      11.100399971008 398] ; 410
+   [                   "Ottawa Macdonald-Cartier International Airport" "YOW"    45.3224983215332   -75.66919708251953 399] ; 411
+   [                                              "Ouagadougou Airport" "OUA"             12.3532             -1.51242 400] ; 412
+   [                                       "Ovda International Airport" "VDA"   29.94029998779297    34.93579864501953 180] ; 413
+   [                               "Owen Roberts International Airport" "GCM"  19.292800903299998       -81.3576965332 209] ; 414
+   [                                 "Palm Beach International Airport" "PBI"   26.68320083618164   -80.09559631347656 560] ; 415
+   [                                        "Palma De Mallorca Airport" "PMI"        39.551700592        2.73881006241 402] ; 416
+   [                                     "Paphos International Airport" "PFO"   34.71799850463867    32.48569869995117 405] ; 417
+   [                                               "Paris-Orly Airport" "ORY"          48.7233333            2.3794444 406] ; 418
+   [                                      "Perth International Airport" "PER"  -31.94029998779297   115.96700286865234 408] ; 419
+   [                               "Philadelphia International Airport" "PHL"   39.87189865112305   -75.24109649658203 410] ; 420
+   [                       "Philip S. W. Goldson International Airport" "BZE"  17.539100646972656   -88.30819702148438  66] ; 421
+   [                                 "Phnom Penh International Airport" "PNH"  11.546600341796875   104.84400177001953 411] ; 422
+   [                         "Phoenix Sky Harbor International Airport" "PHX"   33.43429946899414  -112.01200103759766 412] ; 423
+   [                                     "Phuket International Airport" "HKT"              8.1132            98.316902 413] ; 424
+   [                             "Piedmont Triad International Airport" "GSO"  36.097801208496094   -79.93730163574219 216] ; 425
+   [                                       "Pisa International Airport" "PSA"           43.683899              10.3927 414] ; 426
+   [                                 "Pittsburgh International Airport" "PIT"         40.49150085         -80.23290253 416] ; 427
+   [                                     "Platov International Airport" "ROV"           47.493888            39.924722 445] ; 428
+   [                                                "Podgorica Airport" "TGD"           42.359402              19.2519 417] ; 429
+   [                                         "Pointe-à-Pitre Le Raizet" "PTP"           16.265301           -61.531799 418] ; 430
+   [                      "Port Moresby Jacksons International Airport" "POM"  -9.443380355834961   147.22000122070312 421] ; 431
+   [                                   "Portland International Airport" "PDX"         45.58869934         -122.5979996 423] ; 432
+   [                           "Portland International Jetport Airport" "PWM"         43.64619827         -70.30930328 422] ; 433
+   [                                            "Poznań-Ławica Airport" "POZ"  52.421001434299995        16.8262996674 425] ; 434
+   [           "Presidente Juscelino Kubistschek International Airport" "BSB"  -15.86916732788086  -47.920833587646484  90] ; 435
+   [                            "Prince Mohammad Bin Abdulaziz Airport" "MED"             24.5534            39.705101 340] ; 436
+   [                           "Princess Juliana International Airport" "SXM"  18.041000366200002       -63.1088981628 448] ; 437
+   [                                   "Priština International Airport" "PRN"             42.5728            21.035801 428] ; 438
+   [                                                  "Pulkovo Airport" "LED"   59.80030059814453   30.262500762939453 495] ; 439
+   [                                 "Punta Cana International Airport" "PUJ"  18.567399978599997   -68.36340332030001 431] ; 440
+   [                                  "Quad City International Airport" "MLI"   41.44850158691406   -90.50749969482422 351] ; 441
+   [                                      "Quatro de Fevereiro Airport" "LAD"            -8.85837              13.2312 316] ; 442
+   [                                 "Queen Alia International Airport" "AMM"       31.7226009369        35.9931983948  30] ; 443
+   [                                                     "RAF Akrotiri" "AKT"           34.590401              32.9879  20] ; 444
+   [                                                 "RAF Brize Norton" "BZZ"               51.75             -1.58362  96] ; 445
+   [                                                     "RAF Fairford" "FFD"       51.6822013855  -1.7900300025900002 190] ; 446
+   [                                                   "RAF Lakenheath" "LKZ"  52.409301757799994        0.56099998951 294] ; 447
+   [                                                   "RAF Mildenhall" "MHZ"  52.361900329589844  0.48640599846839905 346] ; 448
+   [                               "Rajiv Gandhi International Airport" "HYD"       17.2313175201        78.4298553467 249] ; 449
+   [                             "Raleigh Durham International Airport" "RDU"  35.877601623535156    -78.7874984741211 433] ; 450
+   [                                                "Ramstein Air Base" "RMS"    49.4369010925293    7.600279808044434 434] ; 451
+   [                                          "Randolph Air Force Base" "RND"         29.52969933         -98.27890015 542] ; 452
+   [                                           "Range Regional Airport" "HIB"         47.38660049         -92.83899689 240] ; 453
+   [                                  "Rarotonga International Airport" "RAR"      -21.2026996613       -159.805999756  46] ; 454
+   [                                 "Reno Tahoe International Airport" "RNO"   39.49909973144531  -119.76799774169922 435] ; 455
+   [                                   "Richmond International Airport" "RIC"   37.50519943237305    -77.3197021484375 437] ; 456
+   [                      "Rick Husband Amarillo International Airport" "AMA"           35.219398          -101.706001  29] ; 457
+   [                               "Rickenbacker International Airport" "LCK"           39.813801           -82.927803 142] ; 458
+   [                                       "Riga International Airport" "RIX"   56.92359924316406   23.971099853515625 438] ; 459
+   [                     "Rio Galeão – Tom Jobim International Airport" "GIG"      -22.8099994659       -43.2505569458 439] ; 460
+   [                              "Roanoke–Blacksburg Regional Airport" "ROA"             37.3255           -79.975403 441] ; 461
+   [                      "Robert Gabriel Mugabe International Airport" "HRE"          -17.931801              31.0928 233] ; 462
+   [                                    "Roberts International Airport" "ROB"             6.23379             -10.3623 354] ; 463
+   [                           "Robin Hood Doncaster Sheffield Airport" "DSA"       53.4805378105       -1.01065635681 166] ; 464
+   [                                            "Robins Air Force Base" "WRB"       32.6400985718       -83.5919036865 555] ; 465
+   [                                  "Rochester International Airport" "RST"   43.90829849243164                -92.5 442] ; 466
+   [                        "Ronald Reagan Washington National Airport" "DCA"             38.8521           -77.037697 557] ; 467
+   [                                                   "Rustaq Airport" "MNH"           23.640556              57.4875  21] ; 468
+   [                              "Sabiha Gökçen International Airport" "SAW"        40.898601532        29.3092002869 253] ; 469
+   [                                 "Sacramento International Airport" "SMF"   38.69540023803711  -121.59100341796875 446] ; 470
+   [                             "Salt Lake City International Airport" "SLC"   40.78839874267578  -111.97799682617188 449] ; 471
+   [                                "San Antonio International Airport" "SAT"  29.533700942993164   -98.46980285644531 453] ; 472
+   [                                  "San Diego International Airport" "SAN"       32.7336006165       -117.190002441 454] ; 473
+   [                              "San Francisco International Airport" "SFO"   37.61899948120117             -122.375 455] ; 474
+   [                                   "Santiago de Compostela Airport" "SCQ"   42.89630126953125   -8.415140151977539 463] ; 475
+   [                              "Sanya Phoenix International Airport" "SYX"  18.302900314331055   109.41200256347656 465] ; 476
+   [                                   "Sarajevo International Airport" "SJJ"   43.82460021972656   18.331499099731445 466] ; 477
+   [                         "Sarasota Bradenton International Airport" "SRQ"   27.39539909362793   -82.55439758300781 467] ; 478
+   [                                                "Sary-Arka Airport" "KGF"  49.670799255371094    73.33439636230469 271] ; 479
+   [                       "Savannah Hilton Head International Airport" "SAV"         32.12760162         -81.20210266 468] ; 480
+   [                                     "Scott AFB/Midamerica Airport" "BLV"             38.5452           -89.835197  67] ; 481
+   [                             "Seattle Tacoma International Airport" "SEA"           47.449001          -122.308998 469] ; 482
+   [                                    "Sentani International Airport" "DJJ"       -2.5769500733       140.5160064698 257] ; 483
+   [                                 "Seychelles International Airport" "SEZ"            -4.67434            55.521801 326] ; 484
+   [                                   "Seymour Johnson Air Force Base" "GSB"         35.33940125         -77.96060181 212] ; 485
+   [                          "Shanghai Hongqiao International Airport" "SHA"  31.197900772094727   121.33599853515625 473] ; 486
+   [                            "Shanghai Pudong International Airport" "PVG"  31.143400192260742   121.80500030517578 473] ; 487
+   [                                                  "Shannon Airport" "SNN"              52.702             -8.92482 474] ; 488
+   [                                    "Sharjah International Airport" "SHJ"   25.32859992980957     55.5172004699707 475] ; 489
+   [                                              "Shaw Air Force Base" "SSC"         33.97269821         -80.47059631 500] ; 490
+   [                            "Shenzhen Bao'an International Airport" "SZX"  22.639299392700195   113.81099700927734 477] ; 491
+   [          "Sheppard Air Force Base-Wichita Falls Municipal Airport" "SPS"             33.9888           -98.491898 562] ; 492
+   [                               "Sheremetyevo International Airport" "SVO"           55.972599              37.4146 359] ; 493
+   [                    "Shiraz Shahid Dastghaib International Airport" "SYZ"  29.539199829101562    52.58980178833008 478] ; 494
+   [                                                  "Sialkot Airport" "SKT"       32.5355567932        74.3638916016 479] ; 495
+   [                                  "Siem Reap International Airport" "REP"  13.410699844400002         103.81300354 480] ; 496
+   [                                 "Simferopol International Airport" "SIP"   45.05220031738281   33.975101470947266 481] ; 497
+   [                              "Simón Bolívar International Airport" "CCS"           10.601194           -66.991222 115] ; 498
+   [                                         "Singapore Changi Airport" "SIN"             1.35019           103.994003 482] ; 499
+   [                                 "Sioux Gateway Col. Bud Day Field" "SUX"         42.40259933         -96.38439941 483] ; 500
+   [                  "Sir Seewoosagur Ramgoolam International Airport" "MRU"          -20.430201            57.683601 420] ; 501
+   [                          "Sir Seretse Khama International Airport" "GBE"          -24.555201              25.9182 203] ; 502
+   [                               "Skopje Alexander the Great Airport" "SKP"           41.961601            21.621401 484] ; 503
+   [                                      "Sochi International Airport" "AER"           43.449902              39.9566 485] ; 504
+   [                             "Soekarno-Hatta International Airport" "CGK"       -6.1255698204         106.65599823 256] ; 505
+   [                                                    "Sofia Airport" "SOF"  42.696693420410156   23.411436080932617 486] ; 506
+   [                                      "South Bend Regional Airport" "SBN"   41.70869827270508   -86.31729888916016 488] ; 507
+   [                                              "Southampton Airport" "SOU"   50.95029830932617  -1.3567999601364136 489] ; 508
+   [                          "Southwest Florida International Airport" "RSW"   26.53619956970215   -81.75520324707031 194] ; 509
+   [                                       "Spirit of St Louis Airport" "SUS"     38.662101745605     -90.652000427246 493] ; 510
+   [                                    "Spokane International Airport" "GEG"   47.61989974975586  -117.53399658203125 490] ; 511
+   [                             "Springfield Branson National Airport" "SGF"         37.24570084         -93.38860321 492] ; 512
+   [                      "Sri Guru Ram Dass Jee International Airport" "ATQ"       31.7096004486        74.7973022461  31] ; 513
+   [                           "St Louis Lambert International Airport" "STL"           38.748697           -90.370003 493] ; 514
+   [                                 "St. John's International Airport" "YYT"        47.618598938       -52.7518997192 494] ; 515
+   [                                           "Stavanger Airport Sola" "SVG"        58.876701354         5.6377801895 497] ; 516
+   [                                        "Stockholm-Arlanda Airport" "ARN"     59.651901245117      17.918600082397 498] ; 517
+   [                                                "Stuttgart Airport" "STR"  48.689899444599995        9.22196006775 499] ; 518
+   [                                             "Suvarnabhumi Airport" "BKK"  13.681099891662598   100.74700164794922  55] ; 519
+   [                     "Sydney Kingsford Smith International Airport" "SYD"  -33.94609832763672     151.177001953125 502] ; 520
+   [                           "Syracuse Hancock International Airport" "SYR"   43.11119842529297    -76.1063003540039 503] ; 521
+   [                           "Süleyman Demirel International Airport" "ISE"       37.8554000854   30.368400573699997 252] ; 522
+   [                                     "Tabriz International Airport" "TBZ"    38.1338996887207    46.23500061035156 505] ; 523
+   [                                                  "Taiping Airport" "HRB"    45.6234016418457               126.25 234] ; 524
+   [                             "Taiwan Taoyuan International Airport" "TPE"             25.0777           121.233002 507] ; 525
+   [                                             "Taiyuan Wusu Airport" "TYN"   37.74689865112305   112.62799835205078 508] ; 526
+   [                                     "Tallahassee Regional Airport" "TLH"  30.396499633789062   -84.35030364990234 509] ; 527
+   [                                      "Tampa International Airport" "TPA"  27.975500106811523        -82.533203125 511] ; 528
+   [                               "Tan Son Nhat International Airport" "SGN"       10.8187999725        106.652000427 241] ; 529
+   [                             "Tancredo Neves International Airport" "CNF"  -19.62444305419922   -43.97194290161133  68] ; 530
+   [                                                  "Taoxian Airport" "SHE"  41.639801025390625   123.48300170898438 476] ; 531
+   [                                   "Tashkent International Airport" "TAS"        41.257900238        69.2811965942 513] ; 532
+   [                                    "Tbilisi International Airport" "TBS"       41.6692008972          44.95470047 514] ; 533
+   [                      "Ted Stevens Anchorage International Airport" "ANC"  61.174400329589844  -149.99600219726562  33] ; 534
+   [                                           "Tenerife Norte Airport" "TFN"       28.4827003479       -16.3414993286 517] ; 535
+   [                                           "Tenerife South Airport" "TFS"        28.044500351       -16.5725002289 517] ; 536
+   [                                         "The Eastern Iowa Airport" "CID"  41.884700775146484   -91.71080017089844 119] ; 537
+   [                             "Theodore Francis Green State Airport" "PVD"           41.732601           -71.420403 429] ; 538
+   [                     "Thessaloniki Macedonia International Airport" "SKG"   40.51969909667969    22.97089958190918 518] ; 539
+   [                             "Tianjin Binhai International Airport" "TSN"  39.124401092499994        117.346000671 520] ; 540
+   [                                            "Tinker Air Force Base" "TIK"     35.414699554443     -97.386596679688 392] ; 541
+   [                       "Tirana International Airport Mother Teresa" "TIA"       41.4146995544        19.7206001282 522] ; 542
+   [                                    "Tocumen International Airport" "PTY"        9.0713596344       -79.3834991455 523] ; 543
+   [                               "Tokyo Haneda International Airport" "HND"           35.552299           139.779999 526] ; 544
+   [                                           "Toledo Express Airport" "TOL"         41.58679962         -83.80780029 527] ; 545
+   [                                               "Tolmachevo Airport" "OVB"     55.012599945068      82.650703430176 387] ; 546
+   [                                         "Toulouse-Blagnac Airport" "TLS"           43.629101              1.36382 530] ; 547
+   [                                    "Trabzon International Airport" "TZX"   40.99509811401367    39.78969955444336 531] ; 548
+   [                                            "Travis Air Force Base" "SUU"     38.262699127197     -121.92700195312 189] ; 549
+   [                                      "Treviso-Sant'Angelo Airport" "TSF"           45.648399              12.1944 532] ; 550
+   [                                "Tri-Cities Regional TN/VA Airport" "TRI"           36.475201           -82.407401  95] ; 551
+   [                               "Tri-State/Milton J. Ferguson Field" "HTS"         38.36669922         -82.55799866 246] ; 552
+   [                                  "Tribhuvan International Airport" "KTM"             27.6966              85.3591 272] ; 553
+   [                                    "Tripoli International Airport" "TIP"       32.6635017395        13.1590003967 533] ; 554
+   [                                 "Trivandrum International Airport" "TRV"       8.48211956024        76.9200973511 519] ; 555
+   [                                                   "Tromsø Airport" "TOS"   69.68329620361328   18.918899536132812 534] ; 556
+   [                                         "Trondheim Airport Værnes" "TRD"          63.4578018           10.9239998 535] ; 557
+   [                                     "Tucson International Airport" "TUS"    32.1161003112793  -110.94100189208984 536] ; 558
+   [                                      "Tulsa International Airport" "TUL"   36.19839859008789   -95.88809967041016 537] ; 559
+   [                             "Tunis Carthage International Airport" "TUN"   36.85100173950195    10.22719955444336 538] ; 560
+   [                                                    "Turin Airport" "TRN"           45.200802              7.64963 528] ; 561
+   [                                           "Tyndall Air Force Base" "PAM"       30.0695991516   -85.57540130619999 403] ; 562
+   [                                        "Ufa International Airport" "UFA"     54.557498931885      55.874401092529 539] ; 563
+   [            "Val de Cans/Júlio Cezar Ribeiro International Airport" "BEL" -1.3792500495900002       -48.4762992859  70] ; 564
+   [                                             "Vance Air Force Base" "END"  36.339199066199996       -97.9164962769 183] ; 565
+   [                                  "Vancouver International Airport" "YVR"        49.193901062       -123.183998108 546] ; 566
+   [                                        "Vandenberg Air Force Base" "VBG"       34.7373008728       -120.583999634 312] ; 567
+   [                                                    "Varna Airport" "VAR"           43.232101              27.8251 548] ; 568
+   [                                        "Venice Marco Polo Airport" "VCE"           45.505299              12.3519 550] ; 569
+   [                                       "Verona Villafranca Airport" "VRN"           45.395699              10.8885 551] ; 570
+   [                                   "Victoria International Airport" "YYJ"        48.646900177       -123.426002502 552] ; 571
+   [                                     "Vienna International Airport" "VIE"     48.110298156738      16.569700241089 553] ; 572
+   [                                    "Vilnius International Airport" "VNO"           54.634102            25.285801 554] ; 573
+   [                                  "Viru Viru International Airport" "VVI"            -17.6448           -63.135399 461] ; 574
+   [                                    "Vnukovo International Airport" "VKO"       55.5914993286        37.2615013123 359] ; 575
+   [                                      "Václav Havel Airport Prague" "PRG"             50.1008                14.26 426] ; 576
+   [                                            "Warsaw Chopin Airport" "WAW"       52.1656990051   20.967100143399996 556] ; 577
+   [                          "Washington Dulles International Airport" "IAD"         38.94449997         -77.45580292 557] ; 578
+   [                                 "Wellington International Airport" "WLG"      -41.3272018433        174.804992676 558] ; 579
+   [                            "Wenzhou Longwan International Airport" "WNZ"           27.912201           120.851997 559] ; 580
+   [                                          "Whiteman Air Force Base" "SZL"      38.73030090332     -93.547897338867 282] ; 581
+   [                              "Wichita Eisenhower National Airport" "ICT"           37.649899           -97.433098 561] ; 582
+   [                                        "Will Rogers World Airport" "OKC"   35.39310073852539   -97.60070037841797 392] ; 583
+   [                                          "William P Hobby Airport" "HOU"         29.64539909         -95.27890015 245] ; 584
+   [      "Winnipeg / James Armstrong Richardson International Airport" "YWG"  49.909999847399995       -97.2398986816 564] ; 585
+   [                                  "Wright-Patterson Air Force Base" "FFO"       39.8260993958       -84.0483016968 157] ; 586
+   [                               "Wuhan Tianhe International Airport" "WUH"             30.7838              114.208 566] ; 587
+   [                             "Xi'an Xianyang International Airport" "XIY"           34.447102           108.751999 567] ; 588
+   [                               "Xiamen Gaoqi International Airport" "XMN"   24.54400062561035   118.12799835205078 568] ; 589
+   [                                     "Yangon International Airport" "RGN"  16.907300949099998        96.1332015991 569] ; 590
+   [                                                 "Yaoqiang Airport" "TNA"  36.857200622558594   117.21600341796875 261] ; 591
+   [                                                   "Yeager Airport" "CRW"   38.37310028076172   -81.59320068359375 122] ; 592
+   [                                              "Yemelyanovo Airport" "KJA"           56.172901            92.493301 287] ; 593
+   [                                                  "Yokota Air Base" "OKO"   35.74850082397461   139.34800720214844 201] ; 594
+   [                                                   "Zagreb Airport" "ZAG"       45.7429008484        16.0687999725 572] ; 595
+   [                         "Zhengzhou Xinzheng International Airport" "CGO"  34.519699096699995        113.841003418 574] ; 596
+   [                                               "Zhoushuizi Airport" "DLC"    38.9656982421875   121.53900146484375 151] ; 597
+   [                                  "Zhukovsky International Airport" "ZIA"           55.553299            38.150002 359] ; 598
+   [                                  "Zvartnots International Airport" "EVN"       40.1473007202        44.3959007263 571] ; 599
+   [                                                   "Zürich Airport" "ZRH"           47.464699              8.54917 575] ; 600
+   [                              "Ürümqi Diwopu International Airport" "URC"  43.907100677490234    87.47419738769531 576] ; 601
+   ]]]

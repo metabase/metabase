@@ -1,0 +1,8 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {com.facebook.presto/presto-jdbc {:mvn/version "0.269"}}
+
+ :metabase.driver/parents
+ #{:presto-common}}

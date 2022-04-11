@@ -1,7 +1,9 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import TokenField from "metabase/components/TokenField";
 
 export const component = TokenField;
+export const category = "pickers";
 
 export const description = `
 Token field picker with searching

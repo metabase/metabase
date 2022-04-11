@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      { "patterns": ["metabase-enterprise", "metabase-enterprise/*"] }
+    ]
+  }
+}

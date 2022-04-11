@@ -1,10 +1,9 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import CodeSample from "./CodeSample";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,
@@ -19,30 +18,7 @@ import "ace/mode-ruby";
 import "ace/mode-html";
 import "ace/mode-jsx";
 
-import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-type Props = {
-  className: string,
-  embedType: EmbedType,
-  iframeUrl: string,
-  token: string,
-  siteUrl: string,
-  secretKey: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  params: EmbeddingParams,
-  displayOptions: DisplayOptions,
-};
-
 export default class EmbedCodePane extends Component {
-  props: Props;
-
-  _embedSample: ?CodeSample;
-
   render() {
     const {
       className,
@@ -99,7 +75,7 @@ export default class EmbedCodePane extends Component {
 
         <div className="text-centered my2">
           <h4>{jt`More ${(
-            <ExternalLink href="https://github.com/metabase/embedding_reference_apps">
+            <ExternalLink href="https://github.com/metabase/embedding-reference-apps">
               {t`examples on GitHub`}
             </ExternalLink>
           )}`}</h4>

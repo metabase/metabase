@@ -5,7 +5,7 @@
 
 import { init } from "./app";
 
-import { getRoutes } from "./routes-embed.jsx";
+import { getRoutes } from "./routes-embed";
 import reducers from "./reducers-public";
 
 import { IFRAMED } from "metabase/lib/dom";

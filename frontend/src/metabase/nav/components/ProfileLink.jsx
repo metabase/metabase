@@ -1,15 +1,15 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
-
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
+
 import { capitalize } from "metabase/lib/formatting";
+import { color } from "metabase/lib/colors";
+import { canAccessAdmin } from "metabase/nav/utils";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
-import Logs from "metabase/components/Logs";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -23,7 +23,7 @@ export default class ProfileLink extends Component {
 
   static propTypes = {
     user: PropTypes.object.isRequired,
-    context: PropTypes.string.isRequired,
+    handleCloseNavbar: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -36,39 +36,39 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const admin = this.props.user.is_superuser;
-    const adminContext = this.props.context === "admin";
+    const { user, handleCloseNavbar } = this.props;
+    const isAdmin = user.is_superuser;
+    const showAdminSettingsItem = canAccessAdmin(user);
+
     return [
       {
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
+        onClose: handleCloseNavbar,
       },
-      ...(admin && [
-        {
-          title: adminContext ? t`Exit admin` : t`Admin`,
-          icon: null,
-          link: adminContext ? "/" : "/admin",
-          event: `Navbar;Profile Dropdown;${
-            adminContext ? "Exit Admin" : "Enter Admin"
-          }`,
-        },
-      ]),
-      ...(admin && [
-        {
-          title: t`Logs`,
-          icon: null,
-          action: () => this.openModal("logs"),
-          event: `Navbar;Profile Dropdown;Debugging ${tag}`,
-        },
-      ]),
+      showAdminSettingsItem && {
+        title: t`Admin settings`,
+        icon: null,
+        link: "/admin",
+        event: `Navbar;Profile Dropdown;Enter Admin`,
+      },
+      {
+        title: t`Activity`,
+        icon: null,
+        link: "/activity",
+        event: `Navbar;Profile Dropdown;Activity ${tag}`,
+        onClose: handleCloseNavbar,
+      },
       {
         title: t`Help`,
         icon: null,
-        // HACK - for some reason if you use // react router treats the link
-        // as a non local route
-        link: `//metabase.com/docs/${tag}`,
+        link:
+          isAdmin && MetabaseSettings.isPaidPlan()
+            ? "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help"
+            : "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help",
+
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
@@ -84,28 +84,38 @@ export default class ProfileLink extends Component {
         link: "auth/logout",
         event: `Navbar;Profile Dropdown;Logout`,
       },
-    ];
+    ].filter(Boolean);
   };
 
   render() {
     const { modalOpen } = this.state;
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
+    // don't show trademark if application name is whitelabeled
+    const showTrademark = t`Metabase` === "Metabase";
     return (
-      <Box>
+      <div>
         <EntityMenu
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
+          triggerProps={{
+            color: color("text-medium"),
+            hover: {
+              backgroundColor: color("brand"),
+              color: color("text-white"),
+            },
+          }}
         />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">
               <div className="text-brand pb2">
-                <LogoIcon width={48} height={48} />
+                <LogoIcon height={48} />
               </div>
-              <h2 style={{ fontSize: "1.75em" }} className="text-dark">
-                {t`Thanks for using`} Metabase!
-              </h2>
+              <h2
+                style={{ fontSize: "1.75em" }}
+                className="text-dark"
+              >{t`Thanks for using Metabase!`}</h2>
               <div className="pt2">
                 <h3 className="text-dark mb1">
                   {t`You're on version`} {tag}
@@ -124,23 +134,21 @@ export default class ProfileLink extends Component {
                 )}
               </div>
             </div>
-            <div
-              style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-medium border-top"
-            >
-              <span className="block">
-                <span className="text-bold">Metabase</span>{" "}
-                {t`is a Trademark of`} Metabase, Inc
-              </span>
-              <span>{t`and is built with care in San Francisco, CA`}</span>
-            </div>
-          </Modal>
-        ) : modalOpen === "logs" ? (
-          <Modal wide onClose={this.closeModal}>
-            <Logs onClose={this.closeModal} />
+            {showTrademark && (
+              <div
+                style={{ borderWidth: "2px" }}
+                className="p2 h5 text-centered text-medium border-top"
+              >
+                <span className="block">
+                  <span className="text-bold">Metabase</span>{" "}
+                  {t`is a Trademark of`} Metabase, Inc
+                </span>
+                <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
+              </div>
+            )}
           </Modal>
         ) : null}
-      </Box>
+      </div>
     );
   }
 }

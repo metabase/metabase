@@ -1,39 +1,16 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
-type Props = {
-  actionFn: (...args: any[]) => Promise<any>,
-  className?: string,
-  children?: any,
-  normalText?: string,
-  activeText?: string,
-  failedText?: string,
-  successText?: string,
-  forceActiveStyle?: boolean,
-};
-
-type State = {
-  active: boolean,
-  result: null | "success" | "failed",
-};
-
 export default class ActionButton extends Component {
-  props: Props;
-  state: State;
-
-  timeout: ?any;
-  actionPromise: ?{ cancel: () => void };
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -48,6 +25,8 @@ export default class ActionButton extends Component {
 
   static defaultProps = {
     className: "Button",
+    successClassName: "Button--success",
+    failedClassName: "Button--danger",
     normalText: t`Save`,
     activeText: t`Saving...`,
     failedText: t`Save failed`,
@@ -75,7 +54,7 @@ export default class ActionButton extends Component {
     );
   };
 
-  onClick = (event: MouseEvent) => {
+  onClick = event => {
     event.preventDefault();
 
     // set state to active
@@ -120,11 +99,14 @@ export default class ActionButton extends Component {
       // eslint-disable-next-line no-unused-vars
       actionFn,
       className,
+      successClassName,
+      failedClassName,
       forceActiveStyle,
       children,
       ...props
     } = this.props;
     const { active, result } = this.state;
+    const isActionDisabled = active || result === "success";
 
     return (
       <Button
@@ -133,9 +115,10 @@ export default class ActionButton extends Component {
           forceActiveStyle
             ? cx("Button", "Button--waiting")
             : cx(className, {
-                "Button--waiting pointer-events-none": active,
-                "Button--success pointer-events-none": result === "success",
-                "Button--danger": result === "failed",
+                "Button--waiting": active,
+                [successClassName]: result === "success",
+                [failedClassName]: result === "failed",
+                "pointer-events-none": isActionDisabled,
               })
         }
         onClick={this.onClick}

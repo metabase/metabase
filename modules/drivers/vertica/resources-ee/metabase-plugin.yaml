@@ -1,0 +1,29 @@
+info:
+  name: Metabase Vertica Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Vertica databases.
+driver:
+  name: vertica
+  display-name: Vertica
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 5433
+    - dbname
+    - user
+    - password
+    - cloud-ip-address-info
+    - ssh-tunnel
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - placeholder: 'ConnectionLoadBalance=1'
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.vertica
+  - step: register-jdbc-driver
+    class: com.vertica.jdbc.Driver

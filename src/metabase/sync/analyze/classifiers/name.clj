@@ -1,14 +1,11 @@
 (ns metabase.sync.analyze.classifiers.name
-  "Classifier that infers the special type of a Field based on its name and base type."
+  "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.models.database :refer [Database]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -24,9 +21,9 @@
 (def ^:private any-type         #{:type/*})
 
 
-(def ^:private pattern+base-types+special-type
-  "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
-   Fields whose name matches the pattern and one of the base types should be given the special type.
+(def ^:private pattern+base-types+semantic-type
+  "Tuples of `[name-pattern set-of-valid-base-types semantic-type]`.
+   Fields whose name matches the pattern and one of the base types should be given the semantic type.
    Be mindful that patterns are tried top to bottom when matching derived types (eg. Date should be
    before DateTime).
 
@@ -60,17 +57,12 @@
    [#"^postal(?:_?)code$"          int-or-text-type :type/ZipCode]
    [#"^role$"                      int-or-text-type :type/Category]
    [#"^sex$"                       int-or-text-type :type/Category]
-   [#"^state$"                     text-type        :type/State]
-   [#"_state$"                     text-type        :type/State]
    [#"^status$"                    int-or-text-type :type/Category]
    [#"^type$"                      int-or-text-type :type/Category]
    [#"^url$"                       text-type        :type/URL]
    [#"^zip(?:_?)code$"             int-or-text-type :type/ZipCode]
    [#"discount"                    number-type      :type/Discount]
    [#"income"                      number-type      :type/Income]
-   [#"amount"                      number-type      :type/Income]
-   [#"^total"                      number-type      :type/Income]
-   [#"_total$"                     number-type      :type/Income]
    [#"quantity"                    int-type         :type/Quantity]
    [#"count$"                      int-type         :type/Quantity]
    [#"number"                      int-type         :type/Quantity]
@@ -81,6 +73,18 @@
    [#"create"                      date-type        :type/CreationDate]
    [#"create"                      time-type        :type/CreationTime]
    [#"create"                      timestamp-type   :type/CreationTimestamp]
+   [#"start"                       date-type        :type/CreationDate]
+   [#"start"                       time-type        :type/CreationTime]
+   [#"start"                       timestamp-type   :type/CreationTimestamp]
+   [#"cancel"                      date-type        :type/CancelationDate]
+   [#"cancel"                      time-type        :type/CancelationTime]
+   [#"cancel"                      timestamp-type   :type/CancelationTimestamp]
+   [#"delet(?:e|i)"                date-type        :type/DeletionDate]
+   [#"delet(?:e|i)"                time-type        :type/DeletionTime]
+   [#"delet(?:e|i)"                timestamp-type   :type/DeletionTimestamp]
+   [#"update"                      date-type        :type/UpdatedDate]
+   [#"update"                      time-type        :type/UpdatedTime]
+   [#"update"                      timestamp-type   :type/UpdatedTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
    [#"share"                       float-type       :type/Share]
@@ -107,45 +111,46 @@
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
-  (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+  (doseq [[name-pattern base-types semantic-type] pattern+base-types+semantic-type]
     (assert (instance? java.util.regex.Pattern name-pattern))
-    (assert (every? (u/rpartial isa? :type/*) base-types))
-    (assert (isa? special-type :type/*))))
+    (assert (every? #(isa? % :type/*) base-types))
+    (assert (or (isa? semantic-type :Semantic/*)
+                (isa? semantic-type :Relation/*)))))
 
-
-(s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
-  "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
+(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
+  "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (let [field-name (str/lower-case field-name)]
-    (some (fn [[name-pattern valid-base-types special-type]]
+    (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)
                        (re-find name-pattern field-name))
-              special-type))
-          pattern+base-types+special-type)))
+              semantic-type))
+          pattern+base-types+semantic-type)))
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
-  {:name                          su/NonBlankString
-   :base_type                     s/Keyword
-   (s/optional-key :special_type) (s/maybe s/Keyword)
-   s/Any                          s/Any})
+  {:name                           s/Str ; Some DBs such as MSSQL can return columns with blank name
+   :base_type                      s/Keyword
+   (s/optional-key :semantic_type) (s/maybe s/Keyword)
+   s/Any                           s/Any})
 
-(s/defn infer-special-type :- (s/maybe s/Keyword)
-  "Classifer that infers the special type of a FIELD based on its name and base type."
+(s/defn infer-semantic-type :- (s/maybe s/Keyword)
+  "Classifer that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
-  (when (not-any? (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
-    (special-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
+  (when-not (or (some (partial isa? (:semantic_type field-or-column)) [:type/PK :type/FK])
+                (str/blank? (:name field-or-column)))
+    (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
-(s/defn infer-and-assoc-special-type  :- (s/maybe FieldOrColumn)
-  "Returns `field-or-column` with a computed special type based on the name and base type of the `field-or-column`"
+(s/defn infer-and-assoc-semantic-type  :- (s/maybe FieldOrColumn)
+  "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn, _ :- (s/maybe i/Fingerprint)]
-  (when-let [inferred-special-type (infer-special-type field-or-column)]
-    (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
+  (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
+    (log/debug (format "Based on the name of %s, we're giving it a semantic type of %s."
                        (sync-util/name-for-logging field-or-column)
-                       inferred-special-type))
-    (assoc field-or-column :special_type inferred-special-type)))
+                       inferred-semantic-type))
+    (assoc field-or-column :semantic_type inferred-semantic-type)))
 
 (defn- prefix-or-postfix
   [s]
@@ -170,7 +175,7 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
-  "Classifer that infers the special type of a TABLE based on its name."
+  "Classifer that infers the semantic type of a TABLE based on its name."
   [table :- i/TableInstance]
   (let [table-name (-> table :name str/lower-case)]
     (assoc table :entity_type (or (some (fn [[pattern type]]

@@ -1,0 +1,58 @@
+import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
+import TextInput from "metabase/components/TextInput";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+`;
+
+export const QuestionListContainer = styled.ul`
+  margin: 0;
+  padding: 0;
+  width: 100%;
+`;
+
+export const LoadMoreButton = styled.button`
+  align-items: center;
+  color: ${color("brand")};
+  cursor: pointer;
+  display: flex;
+  font-family: var(--default-font-family);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0.25rem 1.5rem;
+`;
+
+export const LoadMoreRow = styled.li`
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+`;
+
+export const SearchContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 0;
+  border-bottom: 1px solid ${color("border")};
+`;
+
+export const SearchInput = styled(TextInput)`
+  width: 100%;
+`;
+
+export const EmptyStateContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+`;

@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 
@@ -11,32 +10,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/lib/Question";
 
 // type annotations
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { Card } from "metabase/meta/types/Card";
-
-type ChildProps = {
-  loading: boolean,
-  error: ?any,
-  question: ?Question,
-};
-
-type Props = {
-  questionId: ?number,
-  children?: (props: ChildProps) => React$Element<any>,
-  // provided by redux
-  loadMetadataForCard: (card: Card) => Promise<void>,
-  metadata: Metadata,
-};
-
-type State = {
-  // the question should be of type Question if it is set
-  question: ?Question,
-  // keep a reference to the card as well to help with re-creating question
-  // objects if the underlying metadata changes
-  card: ?Card,
-  loading: boolean,
-  error: ?any,
-};
 
 /*
  * SavedQuestionLaoder
@@ -67,9 +40,7 @@ type State = {
  * without the redux store.
  */
 export class SavedQuestionLoader extends React.Component {
-  props: Props;
-
-  state: State = {
+  state = {
     // this will store the loaded question
     question: null,
     card: null,
@@ -77,12 +48,12 @@ export class SavedQuestionLoader extends React.Component {
     error: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // load the specified question when the component mounts
     this._loadQuestion(this.props.questionId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // if the questionId changes (this will most likely be the result of a
     // url change) then we need to load this new question
     if (nextProps.questionId !== this.props.questionId) {
@@ -93,7 +64,7 @@ export class SavedQuestionLoader extends React.Component {
     // update the question with that metadata
     if (nextProps.metadata !== this.props.metadata && this.state.card) {
       this.setState({
-        question: new Question(nextProps.metadata, this.state.card),
+        question: new Question(this.state.card, nextProps.metadata),
       });
     }
   }
@@ -107,7 +78,7 @@ export class SavedQuestionLoader extends React.Component {
    *    be used
    * 4. Set the component state to the new Question
    */
-  async _loadQuestion(questionId: ?number) {
+  async _loadQuestion(questionId) {
     if (questionId == null) {
       this.setState({
         loading: false,
@@ -132,7 +103,7 @@ export class SavedQuestionLoader extends React.Component {
       // so we can use metabase-lib methods to retrieve information and modify
       // the question
       //
-      const question = new Question(this.props.metadata, card);
+      const question = new Question(card, this.props.metadata);
 
       // finally, set state to store the Question object so it can be passed
       // to the component using the loader, keep a reference to the card
@@ -162,6 +133,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(
-  SavedQuestionLoader,
-);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SavedQuestionLoader);

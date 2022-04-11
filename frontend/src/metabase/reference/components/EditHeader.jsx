@@ -1,11 +1,10 @@
 import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./EditHeader.css";
 
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
+import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
 
 const EditHeader = ({
   hasRevisionHistory,
@@ -15,7 +14,7 @@ const EditHeader = ({
   onSubmit,
   revisionMessageFormField,
 }) => (
-  <div className={cx("EditHeader wrapper p1", S.editHeader)}>
+  <div className={cx("EditHeader wrapper py1 px3", S.editHeader)}>
     <div>{t`You are editing this page`}</div>
     <div className={S.editHeaderButtons}>
       <button
@@ -81,4 +80,4 @@ EditHeader.propTypes = {
   revisionMessageFormField: PropTypes.object,
 };
 
-export default pure(EditHeader);
+export default React.memo(EditHeader);

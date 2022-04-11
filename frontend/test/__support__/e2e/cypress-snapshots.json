@@ -1,0 +1,8 @@
+{
+  "testFiles": "**/*.cy.snap.js",
+  "pluginsFile": "frontend/test/__support__/e2e/cypress-plugins.js",
+  "integrationFolder": "frontend/test/snapshot-creators",
+  "supportFile": "frontend/test/__support__/e2e/cypress.js",
+  "modifyObstructiveCode": false,
+  "videoUploadOnPasses": false
+}

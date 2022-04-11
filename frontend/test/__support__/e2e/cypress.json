@@ -1,0 +1,16 @@
+{
+  "testFiles": "**/*.cy.spec.js",
+  "pluginsFile": "frontend/test/__support__/e2e/cypress-plugins.js",
+  "integrationFolder": "frontend/test",
+  "supportFile": "frontend/test/__support__/e2e/cypress.js",
+  "videoUploadOnPasses": false,
+  "chromeWebSecurity": false,
+  "modifyObstructiveCode": false,
+  "projectId": "KetpiS",
+  "viewportHeight": 800,
+  "viewportWidth": 1280,
+  "retries": {
+    "runMode": 2,
+    "openMode": 0
+  }
+}

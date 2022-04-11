@@ -1,53 +1,71 @@
-import React, { Component } from "react";
+/* eslint-disable react/prop-types */
+import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
+import { t } from "ttag";
+
+import Button from "metabase/core/components/Button";
 
 import cx from "classnames";
 
-export default class RunButton extends Component {
-  static propTypes = {
-    isRunnable: PropTypes.bool.isRequired,
-    isRunning: PropTypes.bool.isRequired,
-    isDirty: PropTypes.bool.isRequired,
-    onRun: PropTypes.func.isRequired,
-    onCancel: PropTypes.func,
-  };
+const propTypes = {
+  className: PropTypes.string,
+  isRunning: PropTypes.bool.isRequired,
+  isDirty: PropTypes.bool.isRequired,
+  isPreviewing: PropTypes.bool,
+  onRun: PropTypes.func.isRequired,
+  onCancel: PropTypes.func,
+};
 
-  render() {
-    let { isRunnable, isRunning, isDirty, onRun, onCancel } = this.props;
-    let buttonText = null;
-    if (isRunning) {
-      buttonText = (
-        <div className="flex align-center">
-          <Icon className="sm-mr1" name="close" />
-          <span className="hide sm-show">{t`Cancel`}</span>
-        </div>
-      );
-    } else if (isRunnable && isDirty) {
-      buttonText = t`Get Answer`;
-    } else if (isRunnable && !isDirty) {
-      buttonText = (
-        <div className="flex align-center">
-          <Icon className="sm-mr1" name="refresh" />
-          <span className="hide sm-show">{t`Refresh`}</span>
-        </div>
-      );
+const RunButton = forwardRef(function RunButton(
+  {
+    isRunning,
+    isDirty,
+    isPreviewing,
+    onRun,
+    onCancel,
+    className,
+    compact,
+    circular,
+    hidden,
+    ...props
+  },
+  ref,
+) {
+  let buttonText = null;
+  let buttonIcon = null;
+  if (isRunning) {
+    buttonIcon = "close";
+    if (!compact) {
+      buttonText = t`Cancel`;
     }
-    let actionFn = isRunning ? onCancel : onRun;
-    let classes = cx(
-      "Button Button--medium circular RunButton ml-auto mr-auto block",
-      {
-        "RunButton--hidden": !buttonText,
-        "Button--primary": isDirty,
-        "text-medium": !isDirty,
-        "text-brand-hover": !isDirty,
-      },
-    );
-    return (
-      <button className={classes} onClick={() => actionFn()}>
-        {buttonText}
-      </button>
-    );
+  } else if (isDirty) {
+    if (compact) {
+      buttonIcon = "play";
+    } else {
+      buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
+    }
+  } else {
+    buttonIcon = "refresh";
   }
-}
+  return (
+    <Button
+      {...props}
+      icon={buttonIcon}
+      primary={isDirty}
+      iconSize={16}
+      className={cx(className, "RunButton", {
+        "RunButton--hidden": hidden,
+        "RunButton--compact": circular && !props.borderless && compact,
+        circular: circular,
+      })}
+      onClick={isRunning ? onCancel : onRun}
+      ref={ref}
+    >
+      {buttonText}
+    </Button>
+  );
+});
+
+RunButton.propTypes = propTypes;
+
+export default RunButton;

@@ -1,49 +1,153 @@
-# Running the Metabase Jar File
+# Running the Metabase JAR file
 
-To run the Metabase jar file you need to have Java installed on your system. Currently Metabase requires Java 8 or higher and will work on either the OpenJDK or Oracle JRE.
+To run Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-### Download Metabase
+- [Quick start](#quick-start)
+- [Local installation](#local-installation)
+- [Production installation](#production-installation)
 
-If you haven't done so already the first thing you need to do is [Download Metabase](http://www.metabase.com/start/jar.html).  Simply save the .jar file to a folder on your system where you wish to run Metabase.
+## Quick start
 
+> The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-### Verify Java is installed
+If you have Java installed:
 
-Before you can launch the application you must verify that you have Java installed.  To check that you have a working java runtime, go to a terminal and type:
+1. [Download Metabase](https://metabase.com/start/jar.html).
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
+   ```
+   java -jar metabase.jar
+   ```
 
-    java -version
+Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit [localhost:3000](http://localhost:3000/setup).
 
-You should see output such as:
+## Local installation
 
-    java version "1.8.0_31"
-    Java(TM) SE Runtime Environment (build 1.8.0_31-b13)
-    Java HotSpot(TM) 64-Bit Server VM (build 25.31-b07, mixed mode)
+If you just want to try Metabase out, play around with Metabase, or just use Metabase on your local machine, Metabase ships with a default application database that you can use. **This setup is not meant for production**. If you intend to run Metabase for real at your organization, see [Production installation](#production-installation).
 
-If you did not see the output above and instead saw either an error or your Java version is less than 1.8, then you need to install the Java Runtime (JRE).
+The below instructions are the same as the quick start above, just with a little more context around each step.
 
-[OpenJDK Downloads](http://openjdk.java.net/install/)
-[Oracle's Java Downloads](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+### 1. Install Java JRE
 
+You may already have Java installed. To check the version, open a terminal and run:
 
-### Launching Metabase
+```
+java -version
+```
 
-Now that you have a working Java Runtime, you can now run the jar from a terminal with:
+If Java isn't installed, you'll need to install it before you can run Metabase. We recommend the latest LTS version of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported too.
 
-    java -jar metabase.jar
+### 2. Download Metabase
 
-It's that simple.  This will start the Metabase application using all of the default settings.  You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.  Once Metabase is fully started you'll see a confirmation such as:
+[Download the Metabase JAR](https://www.metabase.com/start/oss/jar.html).
 
-    2015-10-14 22:17:50,960 [INFO ] metabase.core :: Metabase Initialization COMPLETE
-    2015-10-14 22:17:51,004 [INFO ] metabase.core :: Launching Embedded Jetty Webserver with config:
-    {:port 3000, :host "localhost"}
-    2015-10-14 22:17:51,024 [INFO ] org.eclipse.jetty.server.Server :: jetty-9.2.z-SNAPSHOT
-    2015-10-14 22:17:51,049 [INFO ] org.eclipse.jetty.server.ServerConnector :: Started ServerConnector@30aba609{HTTP/1.1}{localhost:3000}
-    2015-10-14 22:17:51,050 [INFO ] org.eclipse.jetty.server.Server :: Started @35910ms
+### 3. Create a new directory and move the Metabase JAR into it
 
-At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
+When you run Metabase, Metabase will create some new files, so it's important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
 
-You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar
+On posix systems, the commands would look something like this:
 
-Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal use, so if you want to run Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  See below for details on how to do that.
+Assuming you downloaded to `/Users/person/Downloads`:
+
+```
+mkdir ~/metabase
+```
+
+then
+
+```
+mv /Users/person/Downloads/metabase.jar ~/metabase
+```
+
+### 4. Change into your new Metabase directory and run the jar
+
+Change into the directory you created in step 2:
+
+```
+cd ~/metabase
+```
+
+Now that you have Java working you can run the JAR from a terminal with:
+
+```
+java -jar metabase.jar
+```
+
+Metabase will start using the default settings. You should see some log entries starting to run in your terminal window showing you the application progress as it starts up. Once Metabase is fully started you'll see a confirmation such as:
+
+```
+...
+06-19 10:29:34 INFO metabase.task :: Initializing task CheckForNewVersions
+06-19 10:29:34 INFO metabase.task :: Initializing task SendAnonymousUsageStats
+06-19 10:29:34 INFO metabase.task :: Initializing task SendAbandomentEmails
+06-19 10:29:34 INFO metabase.task :: Initializing task SendPulses
+06-19 10:29:34 INFO metabase.task :: Initializing task SendFollowUpEmails
+06-19 10:29:34 INFO metabase.task :: Initializing task TaskHistoryCleanup
+06-19 10:29:34 INFO metabase.core :: Metabase Initialization COMPLETE
+```
+
+At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at [http://localhost:3000](http://localhost:3000)
+
+You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](./environment-variables.md) before running the jar.
+
+Note that in the default configuration Metabase will use a local H2 database for storing all its own application data. This default is meant for simple evaluation or personal use. If you want to run Metabase in production we recommend you [migrate away from H2](./migrating-from-h2.md).
+
+## Production installation
+
+The steps are similar to those steps above with two important differences: if you want to run Metabase in production, you'll want to:
+
+- Use a [production application database](#production-application-database) to store your Metabase application data. 
+- Run [Metabase as a service](#running-the-metabase-jar-as-a-service).
+
+If you'd prefer to use Docker, check out [running Metabase on Docker](running-metabase-on-docker.md).
+
+### Production application database
+
+Here are some [databases we support](migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
+
+For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create an empty database:
+
+```
+createdb metabaseappdb
+```
+
+You can call your app db whatever you want. And there's no need to create any tables in that database; Metabase will do that for you. You'll just need to set environment variables for Metabase to use on startup so Metabase knows how to connect to this database. 
+
+You'll create a directory for your Metabase like in the steps listed above for the [Local installation](#local-installation), but when it's time to run the `java -jar` command to start up the JAR, you'll prefix the command with some environment variables to tell Metabase how to connect to the `metabaseappdb` you created:
+
+```
+export MB_DB_TYPE=postgres
+export MB_DB_DBNAME=metabaseappdb
+export MB_DB_PORT=5432
+export MB_DB_USER=username
+export MB_DB_PASS=password
+export MB_DB_HOST=localhost
+java -jar metabase.jar
+```
+
+The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`. If you're running Metabase as a service, you'll put these environment variables in a separate configuration file.
+
+### Running the Metabase JAR as a service
+
+If you need to run the JAR in production, you should run Metabase as a service. Running Metabase as a service will:
+
+- Make sure Metabase runs automatically (and stay running).
+- Allow you to run Metabase with an unprivileged user (which is good for security).
+
+The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
+
+## Migrating to a production installation
+
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](migrating-from-h2.md).
+
+## Troubleshooting
+
+If you run into any problems during installation, check out our [troubleshooting page](../troubleshooting-guide/running.md).
+
+## Upgrading Metabase
+
+See [Upgrading Metabase](upgrading-metabase.md).
+
+## Continue to setup
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).

@@ -1,83 +1,135 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
+import Modal from "metabase/components/Modal";
+import SyncingModal from "metabase/containers/SyncingModal";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
-import Databases from "metabase/entities/databases";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Database from "metabase/entities/databases";
 
-import { getDeletes, getDeletionError } from "../selectors";
-import { deleteDatabase, addSampleDataset } from "../database";
+import {
+  getDeletes,
+  getDeletionError,
+  getIsAddingSampleDatabase,
+  getAddSampleDatabaseError,
+} from "../selectors";
+import {
+  deleteDatabase,
+  addSampleDatabase,
+  closeSyncingModal,
+} from "../database";
+
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, databases = []) => {
+  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
+};
 
 const mapStateToProps = (state, props) => ({
-  hasSampleDataset: Databases.selectors.getHasSampleDataset(state),
+  isAdmin: getUserIsAdmin(state),
+  hasSampleDatabase: Database.selectors.getHasSampleDatabase(state),
+  isAddingSampleDatabase: getIsAddingSampleDatabase(state),
+  addSampleDatabaseError: getAddSampleDatabaseError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
+  showSyncingModal: MetabaseSettings.get("show-database-syncing-modal"),
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
 });
 
+const query = {
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+};
+
 const mapDispatchToProps = {
-  fetchDatabases: Databases.actions.fetchList,
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
-  addSampleDataset: addSampleDataset,
+  addSampleDatabase: addSampleDatabase,
+  closeSyncingModal,
 };
-
-@entityListLoader({ entityType: "databases" })
+@Database.loadList({
+  reloadInterval: getReloadInterval,
+  query,
+})
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
-  static propTypes = {
-    databases: PropTypes.array,
-    hasSampleDataset: PropTypes.bool,
-    engines: PropTypes.object,
-    deletes: PropTypes.array,
-    deletionError: PropTypes.object,
-  };
+  constructor(props) {
+    super(props);
 
-  componentWillReceiveProps(newProps) {
-    if (!this.props.created && newProps.created) {
-      this.refs.createdDatabaseModal.open();
+    props.databases.map(database => {
+      this["deleteDatabaseModal_" + database.id] = React.createRef();
+    });
+
+    this.state = {
+      isSyncingModalOpened: (props.created && props.showSyncingModal) || false,
+    };
+  }
+
+  componentDidMount() {
+    if (this.state.isSyncingModalOpened) {
+      this.props.closeSyncingModal();
     }
   }
 
+  onSyncingModalClose = () => {
+    this.setState({ isSyncingModalOpened: false });
+  };
+
+  static propTypes = {
+    databases: PropTypes.array,
+    hasSampleDatabase: PropTypes.bool,
+    engines: PropTypes.object,
+    deletes: PropTypes.array,
+    deletionError: PropTypes.object,
+    created: PropTypes.string,
+    showSyncingModal: PropTypes.bool,
+    closeSyncingModal: PropTypes.func,
+  };
+
   render() {
-    let {
+    const {
       databases,
-      hasSampleDataset,
-      created,
+      hasSampleDatabase,
+      isAddingSampleDatabase,
+      addSampleDatabaseError,
       engines,
       deletionError,
+      isAdmin,
     } = this.props;
+    const { isSyncingModalOpened } = this.state;
+
+    const error = deletionError || addSampleDatabaseError;
 
     return (
       <div className="wrapper">
         <section className="PageHeader px2 clearfix">
-          <Link
-            to="/admin/databases/create"
-            className="Button Button--primary float-right"
-          >{t`Add database`}</Link>
+          {isAdmin && (
+            <Link
+              to="/admin/databases/create"
+              className="Button Button--primary float-right"
+            >{t`Add database`}</Link>
+          )}
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
-        {deletionError && (
+        {error && (
           <section>
-            <FormMessage formError={deletionError} />
+            <FormMessage formError={error} />
           </section>
         )}
         <section>
@@ -86,7 +138,6 @@ export default class DatabaseList extends Component {
               <tr>
                 <th>{t`Name`}</th>
                 <th>{t`Engine`}</th>
-                <th />
               </tr>
             </thead>
             <tbody>
@@ -101,41 +152,23 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <Link
-                            to={"/admin/databases/" + database.id}
-                            className="text-bold link"
-                          >
-                            {database.name}
-                          </Link>
+                          <TableCellContent>
+                            {!isSyncCompleted(database) && (
+                              <TableCellSpinner size={16} borderWidth={2} />
+                            )}
+                            <Link
+                              to={"/admin/databases/" + database.id}
+                              className="text-bold link"
+                            >
+                              {database.name}
+                            </Link>
+                          </TableCellContent>
                         </td>
                         <td>
                           {engines && engines[database.engine]
                             ? engines[database.engine]["driver-name"]
                             : database.engine}
                         </td>
-                        {isDeleting ? (
-                          <td className="text-right">{t`Deleting...`}</td>
-                        ) : (
-                          <td className="Table-actions">
-                            <ModalWithTrigger
-                              ref={"deleteDatabaseModal_" + database.id}
-                              triggerClasses="Button Button--danger"
-                              triggerElement={t`Delete`}
-                            >
-                              <DeleteDatabaseModal
-                                database={database}
-                                onClose={() =>
-                                  this.refs[
-                                    "deleteDatabaseModal_" + database.id
-                                  ].close()
-                                }
-                                onDelete={() =>
-                                  this.props.deleteDatabase(database.id)
-                                }
-                              />
-                            </ModalWithTrigger>
-                          </td>
-                        )}
                       </tr>
                     );
                   }),
@@ -150,28 +183,36 @@ export default class DatabaseList extends Component {
               )}
             </tbody>
           </table>
-          {!hasSampleDataset ? (
+          {!hasSampleDatabase ? (
             <div className="pt4">
               <span
                 className={cx("p2 text-italic", {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                <a
-                  className="text-light text-brand-hover no-decoration"
-                  onClick={() => this.props.addSampleDataset()}
-                >{t`Bring the sample dataset back`}</a>
+                {isAddingSampleDatabase ? (
+                  <span className="text-light no-decoration">
+                    {t`Restoring the sample database...`}
+                  </span>
+                ) : (
+                  <a
+                    className="text-light text-brand-hover no-decoration"
+                    onClick={() => this.props.addSampleDatabase(query)}
+                  >
+                    {t`Bring the sample database back`}
+                  </a>
+                )}
               </span>
             </div>
           ) : null}
         </section>
-        <ModalWithTrigger ref="createdDatabaseModal" isInitiallyOpen={created}>
-          <CreatedDatabaseModal
-            databaseId={parseInt(created)}
-            onDone={() => this.refs.createdDatabaseModal.toggle()}
-            onClose={() => this.refs.createdDatabaseModal.toggle()}
-          />
-        </ModalWithTrigger>
+        <Modal
+          small
+          isOpen={isSyncingModalOpened}
+          onClose={this.onSyncingModalClose}
+        >
+          <SyncingModal onClose={this.onSyncingModalClose} />
+        </Modal>
       </div>
     );
   }

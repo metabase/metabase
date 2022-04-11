@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -22,7 +23,8 @@ export default ({
   defaultSingleSuggestion = false,
 }) => ComposedComponent =>
   class extends Component {
-    static displayName = "Typeahead[" +
+    static displayName =
+      "Typeahead[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
@@ -62,7 +64,7 @@ export default ({
       }
     };
 
-    componentWillReceiveProps({ options, value }) {
+    UNSAFE_componentWillReceiveProps({ options, value }) {
       const filtered = value
         ? options.filter(optionFilter.bind(null, value))
         : [];
@@ -83,7 +85,7 @@ export default ({
     }
 
     setSelectedIndex(newIndex) {
-      let index = Math.max(
+      const index = Math.max(
         Math.min(newIndex, this.state.suggestions.length - 1),
         0,
       );

@@ -1,0 +1,74 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "New question creation",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "question",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "new_question_saved"
+      ],
+      "maxLength": 1024
+    },
+    "type": {
+      "description": "String identifying the type of the question when it is saved",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "native_query",
+        "custom_query",
+        "simple_question"
+      ],
+      "maxLength": 1024
+    },
+    "method": {
+      "description": "String indicating whether or not the question was created based off of an existing question",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "from_scratch",
+        "existing_question"
+      ],
+      "maxLength": 1024
+    },
+    "visualization_type": {
+      "description": "String describing the type of visualization used for the question",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "question_id": {
+      "description": "Unique identifier for the question within the Metabase instance",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "database_id": {
+      "description": "Unique identifier(s) for the database connection(s) used to create the question",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": [
+    "event",
+    "question_id"
+  ],
+  "additionalProperties": true
+}

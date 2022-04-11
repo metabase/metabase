@@ -1,0 +1,21 @@
+name: Prepare front-end environment
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14.x
+        cache: 'yarn'
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --frozen-lockfile --prefer-offline
+      shell: bash

@@ -1,23 +1,19 @@
 (ns metabase.models.permissions-group-membership
   (:require [metabase.models.permissions-group :as group]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
-(defn- check-not-metabot-group
-  "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
-  [group-id]
-  (when (= group-id (:id (group/metabot)))
-    (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
-             {:status-code 400}))))
+(def fail-to-remove-last-admin-msg
+  "Exception message when try to remove the last admin."
+  (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
-(def ^:dynamic ^Boolean *allow-changing-all-users-group-members*
-  "Should we allow people to be added to or removed from the All Users permissions group?
-   By default, this is `false`, but enable it when adding or deleting users."
+(defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
+  default, this is `false`, but enable it when adding or deleting users."}
+  *allow-changing-all-users-group-members*
   false)
 
 (defn- check-not-all-users-group
@@ -25,18 +21,17 @@
   [group-id]
   (when (= group-id (:id (group/all-users)))
     (when-not *allow-changing-all-users-group-members*
-      (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
+      (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                {:status-code 400})))))
 
 (defn- check-not-last-admin []
   (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
-    (throw (ui18n/ex-info (tru "You cannot remove the last member of the ''Admin'' group!")
-             {:status-code 400}))))
+    (throw (ex-info (str fail-to-remove-last-admin-msg)
+                    {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]
-  (check-not-metabot-group group_id)
   (check-not-all-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (group/admin)))
@@ -48,12 +43,12 @@
 
 (defn- pre-insert [{:keys [group_id], :as membership}]
   (u/prog1 membership
-    (check-not-metabot-group group_id)
     (check-not-all-users-group group_id)))
 
 (defn- post-insert [{:keys [group_id user_id], :as membership}]
   (u/prog1 membership
-    ;; If we're adding a user to the admin group, set athe `:is_superuser` flag for the user to whom membership was granted
+    ;; If we're adding a user to the admin group, set the `:is_superuser` flag for the user to whom membership was
+    ;; granted
     (when (= group_id (:id (group/admin)))
       (db/update! 'User user_id
         :is_superuser true))))

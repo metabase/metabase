@@ -33,7 +33,7 @@ export function delay(duration) {
 }
 
 export function defer() {
-  let deferrred = {};
+  const deferrred = {};
   deferrred.promise = new Promise((resolve, reject) => {
     deferrred.resolve = resolve;
     deferrred.reject = reject;

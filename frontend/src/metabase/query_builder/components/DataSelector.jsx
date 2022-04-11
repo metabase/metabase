@@ -1,62 +1,111 @@
-import React, { Component } from "react";
+/* eslint-disable react/prop-types */
+import React, { Component, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-import { isQueryable } from "metabase/lib/table";
-import { titleize, humanize } from "metabase/lib/formatting";
-
-import { fetchTableMetadata } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-
 import _ from "underscore";
 
+import {
+  isVirtualCardId,
+  getQuestionVirtualTableId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase/lib/saved-questions";
+
+import EmptyState from "metabase/components/EmptyState";
+import ListSearchField from "metabase/components/ListSearchField";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import AccordionList from "metabase/core/components/AccordionList";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import MetabaseSettings from "metabase/lib/settings";
+import { getSchemaName } from "metabase/lib/schema";
+import { isSyncCompleted } from "metabase/lib/syncing";
+
+import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
+import Tables from "metabase/entities/tables";
+import Search from "metabase/entities/search";
+
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
+import {
+  SearchResults,
+  convertSearchResultToTableLikeItem,
+} from "./data-search";
+import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
+
+import {
+  DataBucketList,
+  DataBucketListItem,
+  PickerSpinner,
+  RawDataBackButton,
+  CollectionDatasetSelectList,
+  CollectionDatasetAllDataLink,
+  EmptyStateContainer,
+} from "./DataSelector.styled";
+import "./DataSelector.css";
+
+const MIN_SEARCH_LENGTH = 2;
+
+export const DATA_BUCKET = {
+  DATASETS: "datasets",
+  RAW_DATA: "raw-data",
+  SAVED_QUESTIONS: "saved-questions",
+};
+
+// chooses a data source bucket (datasets / raw data (tables) / saved questions)
+const DATA_BUCKET_STEP = "BUCKET";
 // chooses a database
 const DATABASE_STEP = "DATABASE";
-// chooses a database and a schema inside that database
-const DATABASE_SCHEMA_STEP = "DATABASE_SCHEMA";
 // chooses a schema (given that a database has already been selected)
 const SCHEMA_STEP = "SCHEMA";
-// chooses a database and a schema and provides additional "Segments" option for jumping to SEGMENT_STEP
-const SCHEMA_AND_SEGMENTS_STEP = "SCHEMA_AND_SEGMENTS";
 // chooses a table (database has already been selected)
 const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
-// shows either table or segment list depending on which one is selected
-const SEGMENT_OR_TABLE_STEP = "SEGMENT_OR_TABLE_STEP";
 
-export const SchemaTableAndSegmentDataSelector = props => (
+// allows to choose one of collection's dataset (requires collectionId prop)
+// is used while adding a question with the "+" button on collection page
+const COLLECTION_DATASET_STEP = "COLLECTION_DATASET";
+
+export const DataSourceSelector = props => (
   <DataSelector
-    steps={[SCHEMA_AND_SEGMENTS_STEP, SEGMENT_OR_TABLE_STEP]}
-    getTriggerElementContent={SchemaAndSegmentTriggerContent}
+    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+    combineDatabaseSchemaSteps
+    getTriggerElementContent={TableTriggerContent}
     {...props}
   />
 );
-export const SchemaAndSegmentTriggerContent = ({
-  selectedTable,
-  selectedSegment,
+
+export const CollectionDatasetOrDataSourceSelector = ({
+  hasCollectionDatasetsStep,
+  ...props
 }) => {
-  if (selectedTable) {
-    return (
-      <span className="text-grey no-decoration">
-        {selectedTable.display_name || selectedTable.name}
-      </span>
-    );
-  } else if (selectedSegment) {
-    return (
-      <span className="text-grey no-decoration">{selectedSegment.name}</span>
-    );
-  } else {
-    return (
-      <span className="text-medium no-decoration">{t`Pick a segment or table`}</span>
-    );
-  }
+  const [collectionDatasetsShown, setCollectionDatasetsShown] = useState(
+    !!hasCollectionDatasetsStep,
+  );
+
+  const steps = collectionDatasetsShown
+    ? [COLLECTION_DATASET_STEP]
+    : [DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP];
+
+  return (
+    <DataSelector
+      steps={steps}
+      combineDatabaseSchemaSteps
+      getTriggerElementContent={TableTriggerContent}
+      {...props}
+      onCloseCollectionDatasets={() => {
+        setCollectionDatasetsShown(false);
+      }}
+    />
+  );
 };
 
 export const DatabaseDataSelector = props => (
@@ -66,23 +115,51 @@ export const DatabaseDataSelector = props => (
     {...props}
   />
 );
-export const DatabaseTriggerContent = ({ selectedDatabase }) =>
-  selectedDatabase ? (
-    <span className="text-grey no-decoration">{selectedDatabase.name}</span>
-  ) : (
-    <span className="text-medium no-decoration">{t`Select a database`}</span>
-  );
+
+export const DatabaseSchemaAndTableDataSelector = props => (
+  <DataSelector
+    steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+    combineDatabaseSchemaSteps
+    getTriggerElementContent={TableTriggerContent}
+    {...props}
+  />
+);
+
+export const SchemaAndTableDataSelector = props => (
+  <DataSelector
+    steps={[SCHEMA_STEP, TABLE_STEP]}
+    getTriggerElementContent={TableTriggerContent}
+    {...props}
+  />
+);
 
 export const SchemaTableAndFieldDataSelector = props => (
   <DataSelector
     steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
     getTriggerElementContent={FieldTriggerContent}
-    triggerIconSize={12}
-    renderAsSelect={true}
     {...props}
   />
 );
-export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
+
+const DatabaseTriggerContent = ({ selectedDatabase }) =>
+  selectedDatabase ? (
+    <span className="text-wrap text-grey no-decoration">
+      {selectedDatabase.name}
+    </span>
+  ) : (
+    <span className="text-medium no-decoration">{t`Select a database`}</span>
+  );
+
+const TableTriggerContent = ({ selectedTable }) =>
+  selectedTable ? (
+    <span className="text-wrap text-grey no-decoration">
+      {selectedTable.display_name || selectedTable.name}
+    </span>
+  ) : (
+    <span className="text-medium no-decoration">{t`Select a table`}</span>
+  );
+
+const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   if (!selectedField || !selectedField.table) {
     return (
       <span className="flex-full text-medium no-decoration">{t`Select...`}</span>
@@ -90,11 +167,11 @@ export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   } else {
     const hasMultipleSchemas =
       selectedDatabase &&
-      _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
+      _.uniq(selectedDatabase.tables, t => t.schema_name).length > 1;
     return (
       <div className="flex-full cursor-pointer">
         <div className="h6 text-bold text-uppercase text-light">
-          {hasMultipleSchemas && selectedField.table.schema + " > "}
+          {hasMultipleSchemas && selectedField.table.schema_name + " > "}
           {selectedField.table.display_name}
         </div>
         <div className="h4 text-bold text-default">
@@ -105,304 +182,642 @@ export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }
 };
 
-export const DatabaseSchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[DATABASE_SCHEMA_STEP, TABLE_STEP]}
-    getTriggerElementContent={TableTriggerContent}
-    {...props}
-  />
-);
-export const SchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[SCHEMA_STEP, TABLE_STEP]}
-    getTriggerElementContent={TableTriggerContent}
-    {...props}
-  />
-);
-export const TableTriggerContent = ({ selectedTable }) =>
-  selectedTable ? (
-    <span className="text-grey no-decoration">
-      {selectedTable.display_name || selectedTable.name}
-    </span>
-  ) : (
-    <span className="text-medium no-decoration">{t`Select a table`}</span>
-  );
+@Search.loadList({
+  // If there is at least one dataset,
+  // we want to display a slightly different data picker view
+  // (see DATA_BUCKET step)
+  query: {
+    models: "dataset",
+    limit: 1,
+  },
+  loadingAndErrorWrapper: false,
+})
+@connect(
+  (state, ownProps) => ({
+    metadata: getMetadata(state),
+    databases:
+      ownProps.databases ||
+      Databases.selectors.getList(state, {
+        entityQuery: ownProps.databaseQuery,
+      }) ||
+      [],
+    hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
+      entityQuery: { include: "tables", saved: true },
+    }),
+    hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
+      entityQuery: { saved: true },
+    }),
+    hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
+      entityQuery: { include: "tables" },
+    }),
+    hasDataAccess: getHasDataAccess(state),
+  }),
+  {
+    fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
+    fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
+    fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
+    fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
+  },
+)
+class DataSelector extends Component {
+  render() {
+    return <UnconnectedDataSelector {...this.props} />;
+  }
+}
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
-export default class DataSelector extends Component {
+export class UnconnectedDataSelector extends Component {
   constructor(props) {
     super();
 
+    const state = {
+      selectedDataBucketId: props.selectedDataBucketId,
+      selectedDatabaseId: props.selectedDatabaseId,
+      selectedSchemaId: props.selectedSchemaId,
+      selectedTableId: props.selectedTableId,
+      selectedFieldId: props.selectedFieldId,
+      searchText: "",
+      isSavedQuestionPickerShown: false,
+    };
+    const computedState = this._getComputedState(props, state);
     this.state = {
-      ...this.getStepsAndSelectedEntities(props),
       activeStep: null,
       isLoading: false,
+      isError: false,
+      ...state,
+      ...computedState,
     };
+    this.popover = React.createRef();
   }
 
-  getStepsAndSelectedEntities = props => {
-    let selectedSchema, selectedTable;
-    let selectedDatabaseId = props.selectedDatabaseId;
-    // augment databases with schemas
-    const databases =
-      props.databases &&
-      props.databases.map(database => {
-        let schemas = {};
-        for (let table of database.tables.filter(isQueryable)) {
-          let name = table.schema || "";
-          schemas[name] = schemas[name] || {
-            name: titleize(humanize(name)),
-            database: database,
-            tables: [],
-          };
-          schemas[name].tables.push(table);
-          if (props.selectedTableId && table.id === props.selectedTableId) {
-            selectedSchema = schemas[name];
-            selectedDatabaseId = selectedSchema.database.id;
-            selectedTable = table;
-          }
-        }
-        schemas = Object.values(schemas);
-        // Hide the schema name if there is only one schema
-        if (schemas.length === 1) {
-          schemas[0].name = "";
-        }
-        return {
-          ...database,
-          schemas: schemas.sort((a, b) => a.name.localeCompare(b.name)),
-        };
-      });
-
-    const selectedDatabase = selectedDatabaseId
-      ? databases.find(db => db.id === selectedDatabaseId)
-      : null;
-    const hasMultipleSchemas =
-      selectedDatabase &&
-      _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
-
-    // remove the schema step if a database is already selected and the database does not have more than one schema.
-    let steps = [...props.steps];
-    if (
-      selectedDatabase &&
-      !hasMultipleSchemas &&
-      steps.includes(SCHEMA_STEP)
-    ) {
-      steps.splice(props.steps.indexOf(SCHEMA_STEP), 1);
-      selectedSchema = selectedDatabase.schemas[0];
-    }
-
-    // if a db is selected but schema isn't, default to the first schema
-    selectedSchema =
-      selectedSchema || (selectedDatabase && selectedDatabase.schemas[0]);
-
-    const selectedSegmentId = props.selectedSegmentId;
-    const selectedSegment = selectedSegmentId
-      ? props.segments.find(segment => segment.id === selectedSegmentId)
-      : null;
-    const selectedField = props.selectedFieldId
-      ? props.metadata.fields[props.selectedFieldId]
-      : null;
-
-    return {
-      databases,
-      selectedDatabase,
-      selectedSchema,
-      selectedTable,
-      selectedSegment,
-      selectedField,
-      steps,
-    };
-  };
-
   static propTypes = {
+    selectedDataBucketId: PropTypes.number,
     selectedDatabaseId: PropTypes.number,
+    selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
     selectedFieldId: PropTypes.number,
-    selectedSegmentId: PropTypes.number,
     databases: PropTypes.array.isRequired,
-    segments: PropTypes.array,
-    disabledTableIds: PropTypes.array,
-    disabledSegmentIds: PropTypes.array,
     setDatabaseFn: PropTypes.func,
     setFieldFn: PropTypes.func,
     setSourceTableFn: PropTypes.func,
-    setSourceSegmentFn: PropTypes.func,
+    hideSingleSchema: PropTypes.bool,
+    hideSingleDatabase: PropTypes.bool,
+    useOnlyAvailableDatabase: PropTypes.bool,
+    useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     renderAsSelect: PropTypes.bool,
+    tableFilter: PropTypes.func,
+    hasTableSearch: PropTypes.bool,
+    canChangeDatabase: PropTypes.bool,
+    containerClassName: PropTypes.string,
+
+    // from search entity list loader
+    allError: PropTypes.bool,
+    allFetched: PropTypes.bool,
+    allLoaded: PropTypes.bool,
+    allLoading: PropTypes.bool,
+    loaded: PropTypes.bool,
+    loading: PropTypes.bool,
+    fetched: PropTypes.bool,
+    fetch: PropTypes.func,
+    create: PropTypes.func,
+    update: PropTypes.func,
+    delete: PropTypes.func,
+    reload: PropTypes.func,
+    list: PropTypes.arrayOf(PropTypes.object),
+    search: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
     isInitiallyOpen: false,
     renderAsSelect: false,
+    useOnlyAvailableDatabase: true,
+    useOnlyAvailableSchema: true,
+    hideSingleSchema: true,
+    hideSingleDatabase: false,
+    hasTableSearch: false,
+    canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
-  componentWillMount() {
-    const useOnlyAvailableDatabase =
-      !this.props.selectedDatabaseId &&
-      this.props.databases.length === 1 &&
-      !this.props.segments;
-    if (useOnlyAvailableDatabase) {
-      setTimeout(() => this.onChangeDatabase(0));
-    }
+  // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
+  // from props (`metadata`, `databases`, etc) and state (`selectedDatabaseId`, etc)
+  //
+  // NOTE: this is complicated because we allow you to:
+  // 1. pass in databases/schemas/tables/fields as props
+  // 2. pull them from the currently selected "parent" metadata object
+  // 3. pull them out of metadata
+  //
+  // We also want to recompute the selected objects from their selected ID
+  // each time rather than storing the object itself in case new metadata is
+  // asynchronously loaded
+  //
+  _getComputedState(props, state) {
+    const { metadata, tableFilter } = props;
+    const {
+      selectedDatabaseId,
+      selectedSchemaId,
+      selectedTableId,
+      selectedFieldId,
+    } = state;
 
-    this.hydrateActiveStep();
-  }
+    let { databases, schemas, tables, fields } = props;
+    let selectedDatabase = null,
+      selectedSchema = null,
+      selectedTable = null,
+      selectedField = null;
 
-  componentWillReceiveProps(nextProps) {
-    const newStateProps = this.getStepsAndSelectedEntities(nextProps);
+    const getDatabase = id =>
+      _.findWhere(databases, { id }) || metadata.database(id);
+    const getSchema = id => _.findWhere(schemas, { id }) || metadata.schema(id);
+    const getTable = id => _.findWhere(tables, { id }) || metadata.table(id);
+    const getField = id => _.findWhere(fields, { id }) || metadata.field(id);
 
-    // only update non-empty properties
-    this.setState(_.pick(newStateProps, propValue => !!propValue));
-  }
-
-  hydrateActiveStep() {
-    if (this.props.selectedFieldId) {
-      this.switchToStep(FIELD_STEP);
-    } else if (this.props.selectedSegmentId) {
-      this.switchToStep(SEGMENT_OR_TABLE_STEP);
-    } else if (this.props.selectedTableId) {
-      if (this.props.segments) {
-        this.switchToStep(SEGMENT_OR_TABLE_STEP);
-      } else {
-        this.switchToStep(TABLE_STEP);
+    function setSelectedDatabase(database) {
+      selectedDatabase = database;
+      if (!schemas && database) {
+        schemas = database.schemas;
       }
-    } else {
-      let firstStep = this.state.steps[0];
-      this.switchToStep(firstStep);
+      if (!tables && Array.isArray(schemas) && schemas.length === 1) {
+        tables = schemas[0].tables;
+      }
+    }
+    function setSelectedSchema(schema) {
+      selectedSchema = schema;
+      if (!tables && schema) {
+        tables = schema.tables;
+      }
+    }
+    function setSelectedTable(table) {
+      selectedTable = table;
+      if (!fields && table) {
+        fields = table.fields;
+      }
+    }
+    function setSelectedField(field) {
+      selectedField = field;
+    }
+
+    if (selectedDatabaseId != null) {
+      setSelectedDatabase(getDatabase(selectedDatabaseId));
+    }
+    if (selectedSchemaId != null && selectedDatabaseId) {
+      setSelectedSchema(getSchema(selectedSchemaId));
+    }
+    if (selectedTableId != null) {
+      setSelectedTable(getTable(selectedTableId));
+    }
+    if (selectedFieldId != null) {
+      setSelectedField(getField(selectedFieldId));
+    }
+    // now do it in in reverse to propagate it back up
+    if (!selectedTable && selectedField) {
+      setSelectedTable(selectedField.table);
+    }
+    if (!selectedSchema && selectedTable) {
+      setSelectedSchema(selectedTable.schema);
+    }
+    if (!selectedDatabase && selectedSchema) {
+      setSelectedDatabase(selectedSchema.database);
+    }
+
+    if (tables && tableFilter) {
+      tables = tables.filter(tableFilter);
+    }
+
+    return {
+      databases: databases || [],
+      selectedDatabase: selectedDatabase,
+      schemas: schemas || [],
+      selectedSchema: selectedSchema,
+      tables: tables || [],
+      selectedTable: selectedTable,
+      fields: fields || [],
+      selectedField: selectedField,
+    };
+  }
+
+  // Like setState, but automatically adds computed state so we don't have to recalculate
+  // repeatedly. Also returns a promise resolves after state is updated
+  setStateWithComputedState(newState, newProps = this.props) {
+    return new Promise(resolve => {
+      const computedState = this._getComputedState(newProps, {
+        ...this.state,
+        ...newState,
+      });
+      this.setState({ ...newState, ...computedState }, resolve);
+    });
+  }
+
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    const newState = {};
+    for (const propName of [
+      "selectedDatabaseId",
+      "selectedSchemaId",
+      "selectedTableId",
+      "selectedFieldId",
+    ]) {
+      if (
+        nextProps[propName] !== this.props[propName] &&
+        this.state[propName] !== nextProps[propName]
+      ) {
+        newState[propName] = nextProps[propName];
+      }
+    }
+    if (Object.keys(newState).length > 0) {
+      this.setStateWithComputedState(newState, nextProps);
+    } else if (nextProps.metadata !== this.props.metadata) {
+      this.setStateWithComputedState({}, nextProps);
     }
   }
 
-  nextStep = (stateChange = {}) => {
-    let activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
-    if (activeStepIndex + 1 >= this.state.steps.length) {
-      this.setState(stateChange);
-      this.refs.popover.toggle();
+  async componentDidMount() {
+    const { activeStep } = this.state;
+    if (!this.isLoadingDatasets() && !activeStep) {
+      await this.hydrateActiveStep();
+    }
+
+    if (this.props.selectedTableId) {
+      await this.props.fetchFields(this.props.selectedTableId);
+      if (this.isSavedQuestionSelected()) {
+        this.showSavedQuestionPicker();
+      }
+    }
+  }
+
+  async componentDidUpdate(prevProps) {
+    const { loading } = this.props;
+    const loadedDatasets = prevProps.loading && !loading;
+
+    // Once datasets are queried with the search endpoint,
+    // this would hide the initial loading and view.
+    // If there is at least one dataset, DATA_BUCKER_STEP will be shown,
+    // otherwise, the picker will jump to the next step and present the regular picker
+    if (loadedDatasets) {
+      await this.hydrateActiveStep();
+    }
+
+    // this logic cleans up invalid states, e.x. if a selectedSchema's database
+    // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
+    const {
+      activeStep,
+      selectedDatabase,
+      selectedSchema,
+      selectedTable,
+      selectedField,
+    } = this.state;
+    const invalidSchema =
+      selectedDatabase &&
+      selectedSchema &&
+      selectedSchema.database.id !== selectedDatabase.id &&
+      selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
+
+    const onStepMissingSchemaAndTable =
+      !selectedSchema &&
+      !selectedTable &&
+      (activeStep === TABLE_STEP || activeStep === FIELD_STEP);
+
+    const onStepMissingTable = !selectedTable && activeStep === FIELD_STEP;
+
+    const invalidTable =
+      selectedSchema &&
+      selectedTable &&
+      !isVirtualCardId(selectedTable.id) &&
+      selectedTable.schema.id !== selectedSchema.id;
+    const invalidField =
+      selectedTable &&
+      selectedField &&
+      selectedField.table.id !== selectedTable.id;
+
+    if (invalidSchema || onStepMissingSchemaAndTable) {
+      await this.switchToStep(SCHEMA_STEP, {
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      });
+    } else if (invalidTable || onStepMissingTable) {
+      await this.switchToStep(TABLE_STEP, {
+        selectedTableId: null,
+        selectedFieldId: null,
+      });
+    } else if (invalidField) {
+      await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    }
+  }
+
+  isLoadingDatasets = () => this.props.loading;
+
+  hasDatasets = () => {
+    const { search, loaded } = this.props;
+    return loaded && search?.length > 0;
+  };
+
+  hasUsableDatasets = () => {
+    // As datasets are actually saved questions, nested queries must be enabled
+    return this.hasDatasets() && MetabaseSettings.get("enable-nested-queries");
+  };
+
+  getDatabases = () => {
+    const { databases } = this.state;
+
+    // When there is at least one dataset,
+    // "Saved Questions" are presented in a different picker step
+    // So it should be excluded from a regular databases list
+    const shouldRemoveSavedQuestionDatabaseFromList =
+      !MetabaseSettings.get("enable-nested-queries") || this.hasDatasets();
+
+    return shouldRemoveSavedQuestionDatabaseFromList
+      ? databases.filter(db => !db.is_saved_questions)
+      : databases;
+  };
+
+  async hydrateActiveStep() {
+    const { steps } = this.props;
+    if (this.isSavedQuestionSelected()) {
+      await this.switchToStep(DATABASE_STEP);
+    } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
+      await this.switchToStep(FIELD_STEP);
+    } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
+      await this.switchToStep(TABLE_STEP);
+    } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
+      await this.switchToStep(SCHEMA_STEP);
+    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
+      await this.switchToStep(steps[1]);
     } else {
-      const nextStep = this.state.steps[activeStepIndex + 1];
-      this.switchToStep(nextStep, stateChange);
+      await this.switchToStep(steps[0]);
+    }
+  }
+
+  // for steps where there's a single option sometimes we want to automatically select it
+  // if `useOnlyAvailable*` prop is provided
+  skipSteps() {
+    const { activeStep } = this.state;
+    if (
+      activeStep === DATABASE_STEP &&
+      this.props.useOnlyAvailableDatabase &&
+      this.props.selectedDatabaseId == null
+    ) {
+      const databases = this.getDatabases();
+      if (databases && databases.length === 1) {
+        this.onChangeDatabase(databases[0]);
+      }
+    }
+    if (
+      activeStep === SCHEMA_STEP &&
+      this.props.useOnlyAvailableSchema &&
+      this.props.selectedSchemaId == null
+    ) {
+      const { schemas } = this.state;
+      if (schemas && schemas.length === 1) {
+        this.onChangeSchema(schemas[0]);
+      }
+    }
+  }
+
+  getNextStep() {
+    const { steps } = this.props;
+    const index = steps.indexOf(this.state.activeStep);
+    return index < steps.length - 1 ? steps[index + 1] : null;
+  }
+
+  getPreviousStep() {
+    const { steps } = this.props;
+    const { activeStep } = this.state;
+    if (this.isLoadingDatasets() || activeStep === null) {
+      return null;
+    }
+
+    let index = steps.indexOf(activeStep);
+    if (index === -1) {
+      console.error(`Step ${activeStep} not found in ${steps}.`);
+      return null;
+    }
+
+    // move to previous step
+    index -= 1;
+
+    // possibly skip another step backwards
+    if (
+      steps[index] === SCHEMA_STEP &&
+      this.props.useOnlyAvailableSchema &&
+      this.state.schemas.length === 1
+    ) {
+      index -= 1;
+    }
+
+    // data bucket step doesn't make a lot of sense when there're no datasets
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
+      return null;
+    }
+
+    // can't go back to a previous step
+    if (index < 0) {
+      return null;
+    }
+    return steps[index];
+  }
+
+  nextStep = async (stateChange = {}, skipSteps = true) => {
+    const nextStep = this.getNextStep();
+    if (!nextStep) {
+      await this.setStateWithComputedState(stateChange);
+      this.popover.current && this.popover.current.toggle();
+    } else {
+      await this.switchToStep(nextStep, stateChange, skipSteps);
     }
   };
 
-  switchToStep = async (stepName, stateChange = {}) => {
-    const updatedState = {
-      ...this.state,
-      ...stateChange,
-      activeStep: stepName,
-    };
+  previousStep = () => {
+    const previousStep = this.getPreviousStep();
+    if (previousStep) {
+      const clearedState = this.getClearedStateForStep(previousStep);
+      this.switchToStep(previousStep, clearedState, false);
+    }
+  };
 
+  getClearedStateForStep(step) {
+    if (step === DATA_BUCKET_STEP) {
+      return {
+        selectedDataBucketId: null,
+        selectedDatabaseId: null,
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === DATABASE_STEP) {
+      return {
+        selectedDatabaseId: null,
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === SCHEMA_STEP) {
+      return {
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === TABLE_STEP) {
+      return {
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === FIELD_STEP) {
+      return {
+        selectedFieldId: null,
+      };
+    }
+    return {};
+  }
+
+  async loadStepData(stepName) {
     const loadersForSteps = {
-      [FIELD_STEP]: () =>
-        updatedState.selectedTable &&
-        this.props.fetchTableMetadata(updatedState.selectedTable.id),
+      // NOTE: make sure to return the action's resulting promise
+      [DATABASE_STEP]: () => {
+        return this.props.fetchDatabases(this.props.databaseQuery);
+      },
+      [SCHEMA_STEP]: () => {
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchSchemas(this.state.selectedDatabaseId),
+        ]);
+      },
+      [TABLE_STEP]: () => {
+        if (this.state.selectedSchemaId != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchemaId);
+        }
+      },
+      [FIELD_STEP]: () => {
+        if (this.state.selectedTableId != null) {
+          return this.props.fetchFields(this.state.selectedTableId);
+        }
+      },
     };
 
     if (loadersForSteps[stepName]) {
-      this.setState({ ...updatedState, isLoading: true });
-      await loadersForSteps[stepName]();
+      try {
+        await this.setStateWithComputedState({
+          isLoading: true,
+          isError: false,
+        });
+        await loadersForSteps[stepName]();
+        await this.setStateWithComputedState({
+          isLoading: false,
+          isError: false,
+        });
+      } catch (e) {
+        await this.setStateWithComputedState({
+          isLoading: false,
+          isError: true,
+        });
+      }
     }
+  }
 
-    this.setState({
-      ...updatedState,
-      isLoading: false,
+  hasPreloadedStepData(stepName) {
+    const {
+      hasFetchedDatabasesWithTables,
+      hasFetchedDatabasesWithTablesSaved,
+      hasFetchedDatabasesWithSaved,
+    } = this.props;
+    if (stepName === DATABASE_STEP) {
+      return hasFetchedDatabasesWithTablesSaved || hasFetchedDatabasesWithSaved;
+    } else if (stepName === SCHEMA_STEP || stepName === TABLE_STEP) {
+      return (
+        hasFetchedDatabasesWithTablesSaved ||
+        (hasFetchedDatabasesWithTables &&
+          !this.state.selectedDatabase.is_saved_questions)
+      );
+    } else if (stepName === FIELD_STEP) {
+      return this.state.fields.length > 0;
+    }
+  }
+
+  switchToStep = async (stepName, stateChange = {}, skipSteps = true) => {
+    await this.setStateWithComputedState({
+      ...stateChange,
+      activeStep: stepName,
     });
+    if (!this.hasPreloadedStepData(stepName)) {
+      await this.loadStepData(stepName);
+    }
+    if (skipSteps) {
+      await this.skipSteps();
+    }
   };
 
-  hasPreviousStep = () => {
-    return !!this.state.steps[
-      this.state.steps.indexOf(this.state.activeStep) - 1
-    ];
-  };
+  showSavedQuestionPicker = () =>
+    this.setState({ isSavedQuestionPickerShown: true });
 
-  hasAdjacentStep = () => {
-    return !!this.state.steps[
-      this.state.steps.indexOf(this.state.activeStep) + 1
-    ];
-  };
-
-  onBack = () => {
-    if (!this.hasPreviousStep()) {
+  onChangeDataBucket = selectedDataBucketId => {
+    const { databases } = this.props;
+    if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
+      this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
-    const previousStep = this.state.steps[
-      this.state.steps.indexOf(this.state.activeStep) - 1
-    ];
-    this.switchToStep(previousStep);
-  };
-
-  onChangeDatabase = (index, schemaInSameStep) => {
-    let database = this.state.databases[index];
-    let schema =
-      database && (database.schemas.length > 1 ? null : database.schemas[0]);
-    if (database && database.tables.length === 0) {
-      schema = {
-        database: database,
-        name: "",
-        tables: [],
-      };
-    }
-    const stateChange = {
-      selectedDatabase: database,
-      selectedSchema: schema,
-    };
-
-    this.props.setDatabaseFn && this.props.setDatabaseFn(database.id);
-
-    if (schemaInSameStep) {
-      if (database.schemas.length > 1) {
-        this.setState(stateChange);
-      } else {
-        this.nextStep(stateChange);
-      }
-    } else {
-      this.nextStep(stateChange);
+    this.switchToStep(
+      DATABASE_STEP,
+      {
+        selectedDataBucketId,
+      },
+      false,
+    );
+    const database = databases.find(db => db.is_saved_questions);
+    if (database) {
+      this.onChangeDatabase(database);
     }
   };
 
-  onChangeSchema = schema => {
-    this.nextStep({ selectedSchema: schema });
-  };
-
-  onChangeTable = item => {
-    if (item.table != null) {
-      this.props.setSourceTableFn && this.props.setSourceTableFn(item.table.id);
-      this.nextStep({ selectedTable: item.table });
+  onChangeDatabase = async database => {
+    if (database.is_saved_questions) {
+      this.showSavedQuestionPicker();
+      return;
     }
-  };
 
-  onChangeField = item => {
-    if (item.field != null) {
-      this.props.setFieldFn && this.props.setFieldFn(item.field.id);
-      this.nextStep({ selectedField: item.field });
+    if (this.props.setDatabaseFn) {
+      this.props.setDatabaseFn(database && database.id);
     }
-  };
-
-  onChangeSegment = item => {
-    if (item.segment != null) {
-      this.props.setSourceSegmentFn &&
-        this.props.setSourceSegmentFn(item.segment.id);
-      this.nextStep({ selectedTable: null, selectedSegment: item.segment });
+    if (this.state.selectedDatabaseId != null) {
+      // If we already had a database selected, we need to go back and clear
+      // data before advancing to the next step.
+      await this.previousStep();
     }
+    await this.nextStep({ selectedDatabaseId: database && database.id });
   };
 
-  onShowSegmentSection = () => {
-    // Jumping to the next step SEGMENT_OR_TABLE_STEP without a db/schema
-    // indicates that we want to show the segment section
-    this.nextStep({ selectedDatabase: null, selectedSchema: null });
+  onChangeSchema = async schema => {
+    // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
+    await this.nextStep({ selectedSchemaId: schema && schema.id });
   };
 
-  getTriggerElement() {
+  onChangeTable = async table => {
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table && table.id);
+    }
+    await this.nextStep({ selectedTableId: table && table.id });
+  };
+
+  onChangeField = async field => {
+    if (this.props.setFieldFn) {
+      this.props.setFieldFn(field && field.id);
+    }
+    await this.nextStep({ selectedFieldId: field && field.id });
+  };
+
+  getTriggerElement = triggerProps => {
     const {
       className,
       style,
       triggerIconSize,
+      triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
-    const {
-      selectedDatabase,
-      selectedSegment,
-      selectedTable,
-      selectedField,
-    } = this.state;
+
+    if (triggerElement) {
+      return triggerElement;
+    }
+
+    const { selectedDatabase, selectedTable, selectedField } = this.state;
 
     return (
       <span
@@ -411,162 +826,408 @@ export default class DataSelector extends Component {
       >
         {React.createElement(getTriggerElementContent, {
           selectedDatabase,
-          selectedSegment,
           selectedTable,
           selectedField,
+          ...triggerProps,
         })}
-        <Icon className="ml1" name="chevrondown" size={triggerIconSize || 8} />
+        {!this.props.readOnly && hasTriggerExpandControl && (
+          <Icon
+            className="ml1"
+            name="chevrondown"
+            size={triggerIconSize || 8}
+          />
+        )}
       </span>
     );
+  };
+
+  getTriggerClasses() {
+    if (this.props.triggerClasses) {
+      return this.props.triggerClasses;
+    }
+    return this.props.renderAsSelect
+      ? "border-medium bg-white block no-decoration"
+      : "flex align-center";
   }
 
-  renderActiveStep() {
-    const {
-      segments,
-      skipDatabaseSelection,
-      disabledTableIds,
-      disabledSegmentIds,
-    } = this.props;
-    const {
-      databases,
-      isLoading,
-      selectedDatabase,
-      selectedSchema,
-      selectedTable,
-      selectedField,
-      selectedSegment,
-    } = this.state;
+  handleSavedQuestionPickerClose = () => {
+    const { selectedDataBucketId } = this.state;
+    if (
+      selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.hasUsableDatasets()
+    ) {
+      this.previousStep();
+    }
+    this.setState({ isSavedQuestionPickerShown: false });
+  };
 
-    const hasAdjacentStep = this.hasAdjacentStep();
+  renderActiveStep() {
+    const { combineDatabaseSchemaSteps } = this.props;
+
+    const props = {
+      ...this.state,
+      databases: this.getDatabases(),
+
+      onChangeDataBucket: this.onChangeDataBucket,
+      onChangeDatabase: this.onChangeDatabase,
+      onChangeSchema: this.onChangeSchema,
+      onChangeTable: this.onChangeTable,
+      onChangeField: this.onChangeField,
+
+      // misc
+      isLoading: this.state.isLoading,
+      hasNextStep: !!this.getNextStep(),
+      onBack: this.getPreviousStep() ? this.previousStep : null,
+      hasFiltering: true,
+      hasInitialFocus: !this.showTableSearch(),
+    };
 
     switch (this.state.activeStep) {
-      case DATABASE_STEP:
+      case COLLECTION_DATASET_STEP:
         return (
-          <DatabasePicker
-            databases={databases}
-            selectedDatabase={selectedDatabase}
-            onChangeDatabase={this.onChangeDatabase}
-            hasAdjacentStep={hasAdjacentStep}
+          <CollectionDatasetPicker
+            {...props}
+            collectionId={this.props.collectionId}
+            handleCollectionDatasetSelect={this.handleCollectionDatasetSelect}
+            onSeeAllData={this.handleCollectionDatasetsPickerClose}
           />
         );
-      case DATABASE_SCHEMA_STEP:
-        return (
+      case DATA_BUCKET_STEP:
+        return <DataBucketPicker {...props} />;
+      case DATABASE_STEP:
+        return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
-            skipDatabaseSelection={skipDatabaseSelection}
-            databases={databases}
-            selectedDatabase={selectedDatabase}
-            selectedSchema={selectedSchema}
-            onChangeSchema={this.onChangeSchema}
-            onChangeDatabase={this.onChangeDatabase}
-            hasAdjacentStep={hasAdjacentStep}
+            {...props}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
+        ) : (
+          <DatabasePicker {...props} />
         );
       case SCHEMA_STEP:
-        return (
-          <SchemaPicker
-            selectedDatabase={selectedDatabase}
-            selectedSchema={selectedSchema}
-            onChangeSchema={this.onChangeSchema}
-            hasAdjacentStep={hasAdjacentStep}
+        return combineDatabaseSchemaSteps ? (
+          <DatabaseSchemaPicker
+            {...props}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
-        );
-      case SCHEMA_AND_SEGMENTS_STEP:
-        return (
-          <SegmentAndDatabasePicker
-            databases={databases}
-            selectedSchema={selectedSchema}
-            onChangeSchema={this.onChangeSchema}
-            onShowSegmentSection={this.onShowSegmentSection}
-            onChangeDatabase={this.onChangeDatabase}
-            hasAdjacentStep={hasAdjacentStep}
-          />
+        ) : (
+          <SchemaPicker {...props} />
         );
       case TABLE_STEP:
-        return (
-          <TablePicker
-            selectedDatabase={selectedDatabase}
-            selectedSchema={selectedSchema}
-            selectedTable={selectedTable}
-            databases={databases}
-            segments={segments}
-            disabledTableIds={disabledTableIds}
-            onChangeTable={this.onChangeTable}
-            onBack={this.hasPreviousStep() && this.onBack}
-            hasAdjacentStep={hasAdjacentStep}
-          />
-        );
+        return <TablePicker {...props} />;
       case FIELD_STEP:
-        return (
-          <FieldPicker
-            isLoading={isLoading}
-            selectedTable={selectedTable}
-            selectedField={selectedField}
-            onChangeField={this.onChangeField}
-            onBack={this.onBack}
-          />
-        );
-      case SEGMENT_OR_TABLE_STEP:
-        if (selectedDatabase && selectedSchema) {
-          return (
-            <TablePicker
-              selectedDatabase={selectedDatabase}
-              selectedSchema={selectedSchema}
-              selectedTable={selectedTable}
-              databases={databases}
-              segments={segments}
-              disabledTableIds={disabledTableIds}
-              onChangeTable={this.onChangeTable}
-              hasPreviousStep={this.hasPreviousStep}
-              onBack={this.onBack}
-            />
-          );
-        } else {
-          return (
-            <SegmentPicker
-              segments={segments}
-              selectedSegment={selectedSegment}
-              disabledSegmentIds={disabledSegmentIds}
-              onBack={this.onBack}
-              onChangeSegment={this.onChangeSegment}
-            />
-          );
-        }
+        return <FieldPicker {...props} />;
     }
 
     return null;
   }
 
+  isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
+
+  handleSavedQuestionSelect = async table => {
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table.id);
+    }
+    this.popover.current.toggle();
+    this.handleClose();
+  };
+
+  showTableSearch = () => {
+    const { hasTableSearch, steps } = this.props;
+    const { activeStep } = this.state;
+    const hasTableStep = steps.includes(TABLE_STEP);
+    const isAllowedToShowOnActiveStep = [
+      DATA_BUCKET_STEP,
+      SCHEMA_STEP,
+      DATABASE_STEP,
+    ].includes(activeStep);
+
+    return hasTableSearch && hasTableStep && isAllowedToShowOnActiveStep;
+  };
+
+  handleSearchTextChange = searchText =>
+    this.setState({
+      searchText,
+    });
+
+  handleCollectionDatasetSelect = async dataset => {
+    const tableId = getQuestionVirtualTableId(dataset);
+    await this.props.fetchFields(tableId);
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(tableId);
+    }
+    this.popover.current.toggle();
+    this.props.onCloseCollectionDatasets();
+    this.switchToStep(TABLE_STEP);
+  };
+
+  handleCollectionDatasetsPickerClose = () => {
+    this.props.onCloseCollectionDatasets();
+    this.switchToStep(
+      this.hasUsableDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP,
+    );
+  };
+
+  handleSearchItemSelect = async item => {
+    const table = convertSearchResultToTableLikeItem(item);
+    await this.props.fetchFields(table.id);
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table.id);
+    }
+    this.popover.current.toggle();
+    this.handleClose();
+  };
+
+  handleClose = () => {
+    const { onClose } = this.props;
+    this.setState({ searchText: "" });
+    if (typeof onProps === "function") {
+      onClose();
+    }
+  };
+
+  getSearchInputPlaceholder = () => {
+    const {
+      activeStep,
+      selectedDataBucketId,
+      isSavedQuestionPickerShown,
+    } = this.state;
+    if (activeStep === DATA_BUCKET_STEP) {
+      return t`Search for some data…`;
+    }
+    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      return t`Search for a model…`;
+    }
+    return isSavedQuestionPickerShown
+      ? t`Search for a question…`
+      : t`Search for a table…`;
+  };
+
+  getSearchModels = () => {
+    const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
+    if (!MetabaseSettings.get("enable-nested-queries")) {
+      return ["table"];
+    }
+    if (!this.hasUsableDatasets()) {
+      return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
+    }
+    if (!selectedDataBucketId) {
+      return ["card", "dataset", "table"];
+    }
+    return {
+      [DATA_BUCKET.DATASETS]: ["dataset"],
+      [DATA_BUCKET.RAW_DATA]: ["table"],
+      [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
+    }[selectedDataBucketId];
+  };
+
+  hasDataAccess = () => {
+    const { hasDataAccess, databases } = this.props;
+    return hasDataAccess || databases?.length > 0;
+  };
+
   render() {
-    const triggerClasses = this.props.renderAsSelect
-      ? "border-med bg-white block no-decoration"
-      : "flex align-center";
+    const {
+      searchText,
+      isSavedQuestionPickerShown,
+      selectedDataBucketId,
+      selectedTable,
+    } = this.state;
+    const { canChangeDatabase, selectedDatabaseId } = this.props;
+
+    const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
+
+    const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
+
+    const isPickerOpen =
+      isSavedQuestionPickerShown ||
+      selectedDataBucketId === DATA_BUCKET.DATASETS;
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        ref="popover"
+        autoWidth
+        ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
-        triggerElement={this.getTriggerElement()}
-        triggerClasses={triggerClasses}
-        horizontalAttachments={["center", "left", "right"]}
+        containerClassName={this.props.containerClassName}
+        triggerElement={this.getTriggerElement}
+        triggerClasses={this.getTriggerClasses()}
+        hasArrow={this.props.hasArrow}
+        tetherOptions={this.props.tetherOptions}
         sizeToFit
+        isOpen={this.props.isOpen}
+        onClose={this.handleClose}
       >
-        {this.renderActiveStep()}
+        {this.isLoadingDatasets() ? (
+          <LoadingAndErrorWrapper loading />
+        ) : this.hasDataAccess() ? (
+          <>
+            {this.showTableSearch() && (
+              <ListSearchField
+                hasClearButton
+                className="bg-white m1"
+                onChange={this.handleSearchTextChange}
+                value={searchText}
+                placeholder={this.getSearchInputPlaceholder()}
+                autoFocus
+              />
+            )}
+            {isSearchActive && (
+              <SearchResults
+                searchModels={this.getSearchModels()}
+                searchQuery={searchText.trim()}
+                databaseId={currentDatabaseId}
+                onSelect={this.handleSearchItemSelect}
+              />
+            )}
+            {!isSearchActive &&
+              (isPickerOpen ? (
+                <SavedQuestionPicker
+                  collectionName={
+                    selectedTable &&
+                    selectedTable.schema &&
+                    getSchemaName(selectedTable.schema.id)
+                  }
+                  isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
+                  tableId={selectedTable && selectedTable.id}
+                  databaseId={currentDatabaseId}
+                  onSelect={this.handleSavedQuestionSelect}
+                  onBack={this.handleSavedQuestionPickerClose}
+                />
+              ) : (
+                this.renderActiveStep()
+              ))}
+          </>
+        ) : (
+          <EmptyStateContainer>
+            <EmptyState
+              message={t`To pick some data, you'll need to add some first`}
+              icon="database"
+            />
+          </EmptyStateContainer>
+        )}
       </PopoverWithTrigger>
     );
   }
 }
 
+const CollectionDatasetPicker = ({
+  collectionId,
+  handleCollectionDatasetSelect,
+  onSeeAllData,
+}) => {
+  return (
+    <Search.ListLoader
+      query={{
+        collection: collectionId,
+        models: ["dataset"],
+      }}
+      loadingAndErrorWrapper={false}
+    >
+      {({ list: datasets }) => (
+        <CollectionDatasetList
+          datasets={datasets}
+          onSelect={handleCollectionDatasetSelect}
+          onSeeAllData={onSeeAllData}
+        />
+      )}
+    </Search.ListLoader>
+  );
+};
+
+function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
+  useEffect(() => {
+    if (datasets?.length === 0) {
+      onSeeAllData();
+    } else if (datasets?.length === 1) {
+      onSelect(datasets[0]);
+    }
+  }, [datasets, onSelect, onSeeAllData]);
+
+  // If there are no datasets, in a collection, we just switch to the normal picker
+  // If there is exactly one dataset, we select it and close the picker
+  // The loading indicator is still shown for both cases to prevent flickering
+  // Example: spinner > one dataset shown > it gets selected > the selector closes, everything flickers
+  if (!datasets || datasets.length === 0 || datasets.length === 1) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <CollectionDatasetSelectList>
+      {datasets.map(dataset => {
+        return (
+          <CollectionDatasetSelectList.Item
+            key={dataset.id}
+            name={dataset.name}
+            onSelect={() => onSelect(dataset)}
+            size="small"
+            icon={{ name: "model", size: 16 }}
+            rightIcon={PLUGIN_MODERATION.getStatusIcon(
+              dataset.moderated_status,
+            )}
+          />
+        );
+      })}
+      <CollectionDatasetAllDataLink
+        key="all-data"
+        onSelect={onSeeAllData}
+        as={props => <li {...props} />}
+      >
+        <CollectionDatasetAllDataLink.Content>
+          {t`All data`}
+          <Icon key="icon" name="chevronright" size={12} />
+        </CollectionDatasetAllDataLink.Content>
+      </CollectionDatasetAllDataLink>
+    </CollectionDatasetSelectList>
+  );
+}
+
+const DataBucketPicker = ({ onChangeDataBucket }) => {
+  const BUCKETS = [
+    {
+      id: DATA_BUCKET.DATASETS,
+      icon: "model",
+      name: t`Models`,
+      description: t`The best starting place for new questions.`,
+    },
+    {
+      id: DATA_BUCKET.RAW_DATA,
+      icon: "database",
+      name: t`Raw Data`,
+      description: t`Unaltered tables in connected databases.`,
+    },
+    {
+      id: DATA_BUCKET.SAVED_QUESTIONS,
+      name: t`Saved Questions`,
+      icon: "folder",
+      description: t`Use any question’s results to start a new question.`,
+    },
+  ];
+
+  return (
+    <DataBucketList>
+      {BUCKETS.map(bucket => (
+        <DataBucketListItem
+          {...bucket}
+          key={bucket.id}
+          onSelect={onChangeDataBucket}
+        />
+      ))}
+    </DataBucketList>
+  );
+};
+
 const DatabasePicker = ({
   databases,
   selectedDatabase,
   onChangeDatabase,
-  hasAdjacentStep,
+  hasNextStep,
+  onBack,
+  hasInitialFocus,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
 
-  let sections = [
+  const sections = [
     {
       items: databases.map((database, index) => ({
         name: database.name,
@@ -576,135 +1237,118 @@ const DatabasePicker = ({
     },
   ];
 
+  if (onBack) {
+    sections.unshift({ name: <RawDataBackButton /> });
+  }
+
   return (
-    <AccordianList
+    <AccordionList
       id="DatabasePicker"
       key="databasePicker"
       className="text-brand"
+      hasInitialFocus={hasInitialFocus}
       sections={sections}
-      onChange={db => onChangeDatabase(db.index)}
+      onChange={item => onChangeDatabase(item.database)}
+      onChangeSection={(_section, sectionIndex) => {
+        const isNavigationSection = onBack && sectionIndex === 0;
+        if (isNavigationSection) {
+          onBack();
+        }
+        return false;
+      }}
       itemIsSelected={item =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
         <Icon className="Icon text-default" name="database" size={18} />
       )}
-      showItemArrows={hasAdjacentStep}
+      showItemArrows={hasNextStep}
     />
   );
 };
 
-const SegmentAndDatabasePicker = ({
-  databases,
-  selectedSchema,
+const SchemaPicker = ({
+  schemas,
+  selectedSchemaId,
   onChangeSchema,
-  onShowSegmentSection,
-  onChangeDatabase,
-  hasAdjacentStep,
+  hasNextStep,
+  hasFiltering,
+  hasInitialFocus,
 }) => {
-  const segmentItem = [{ name: "Segments", items: [], icon: "segment" }];
-
-  const sections = segmentItem.concat(
-    databases.map(database => {
-      return {
-        name: database.name,
-        items: database.schemas.length > 1 ? database.schemas : [],
-      };
-    }),
-  );
-
-  // FIXME: this seems a bit brittle and hard to follow
-  let openSection =
-    selectedSchema &&
-    _.findIndex(databases, db => _.find(db.schemas, selectedSchema)) +
-      segmentItem.length;
-  if (
-    openSection >= 0 &&
-    databases[openSection - segmentItem.length] &&
-    databases[openSection - segmentItem.length].schemas.length === 1
-  ) {
-    openSection = -1;
-  }
-
-  return (
-    <AccordianList
-      id="SegmentAndDatabasePicker"
-      key="segmentAndDatabasePicker"
-      className="text-brand"
-      sections={sections}
-      onChange={onChangeSchema}
-      onChangeSection={index => {
-        index === 0
-          ? onShowSegmentSection()
-          : onChangeDatabase(index - segmentItem.length, true);
-      }}
-      itemIsSelected={schema => selectedSchema === schema}
-      renderSectionIcon={section => (
-        <Icon
-          className="Icon text-default"
-          name={section.icon || "database"}
-          size={18}
-        />
-      )}
-      renderItemIcon={() => <Icon name="folder" size={16} />}
-      initiallyOpenSection={openSection}
-      showItemArrows={hasAdjacentStep}
-      alwaysTogglable={true}
-    />
-  );
-};
-
-export const SchemaPicker = ({
-  selectedDatabase,
-  selectedSchema,
-  onChangeSchema,
-  hasAdjacentStep,
-}) => {
-  let sections = [
+  const sections = [
     {
-      items: selectedDatabase.schemas,
+      items: schemas.map(schema => ({
+        name: schema.displayName(),
+        schema: schema,
+      })),
     },
   ];
   return (
     <div style={{ width: 300 }}>
-      <AccordianList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
+      <AccordionList
+        id="SchemaPicker"
+        key="schemaPicker"
         className="text-brand"
+        hasInitialFocus={hasInitialFocus}
         sections={sections}
-        searchable
-        onChange={onChangeSchema}
-        itemIsSelected={schema => schema === selectedSchema}
+        searchable={hasFiltering}
+        onChange={item => onChangeSchema(item.schema)}
+        itemIsSelected={item => item && item.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
-        showItemArrows={hasAdjacentStep}
+        showItemArrows={hasNextStep}
       />
     </div>
   );
 };
 
-export const DatabaseSchemaPicker = ({
-  skipDatabaseSelection,
+const DatabaseSchemaPicker = ({
   databases,
   selectedDatabase,
   selectedSchema,
   onChangeSchema,
   onChangeDatabase,
-  hasAdjacentStep,
+  hasNextStep,
+  isLoading,
+  hasBackButton,
+  onBack,
+  hasInitialFocus,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
 
   const sections = databases.map(database => ({
-    name: database.name,
-    items: database.schemas.length > 1 ? database.schemas : [],
+    name: database.is_saved_questions ? t`Saved Questions` : database.name,
+    items:
+      !database.is_saved_questions && database.schemas.length > 1
+        ? database.schemas.map(schema => ({
+            schema,
+            name: schema.displayName(),
+          }))
+        : [],
     className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
+    loading:
+      selectedDatabase &&
+      selectedDatabase.id === database.id &&
+      database.schemas.length === 0 &&
+      isLoading,
+    active: database.is_saved_questions || isSyncCompleted(database),
   }));
 
-  let openSection =
-    selectedSchema &&
-    _.findIndex(databases, db => _.find(db.schemas, selectedSchema));
+  if (hasBackButton) {
+    sections.unshift({
+      name: <RawDataBackButton />,
+      active: true,
+    });
+  }
+
+  let openSection = selectedSchema
+    ? databases.findIndex(db => db.id === selectedSchema.database.id)
+    : selectedDatabase
+    ? databases.findIndex(db => db.id === selectedDatabase.id)
+    : -1;
+
   if (
     openSection >= 0 &&
     databases[openSection] &&
@@ -714,35 +1358,57 @@ export const DatabaseSchemaPicker = ({
   }
 
   return (
-    <div className="scroll-y">
-      <AccordianList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
-        className="text-brand"
-        sections={sections}
-        onChange={onChangeSchema}
-        onChangeSection={dbId => onChangeDatabase(dbId, true)}
-        itemIsSelected={schema => schema === selectedSchema}
-        renderSectionIcon={item => (
+    <AccordionList
+      id="DatabaseSchemaPicker"
+      key="databaseSchemaPicker"
+      className="text-brand"
+      hasInitialFocus={hasInitialFocus}
+      sections={sections}
+      onChange={item => onChangeSchema(item.schema)}
+      onChangeSection={(_section, sectionIndex) => {
+        const isNavigationSection = hasBackButton && sectionIndex === 0;
+        if (isNavigationSection) {
+          onBack();
+          return false;
+        }
+        // the "go back" button is also a section,
+        // so need to take its index in mind
+        const database = hasBackButton
+          ? databases[sectionIndex - 1]
+          : databases[sectionIndex];
+        onChangeDatabase(database);
+        return true;
+      }}
+      itemIsSelected={schema => schema === selectedSchema}
+      renderSectionIcon={item =>
+        item.icon && (
           <Icon className="Icon text-default" name={item.icon} size={18} />
-        )}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        initiallyOpenSection={openSection}
-        alwaysTogglable={true}
-        showItemArrows={hasAdjacentStep}
-      />
-    </div>
+        )
+      }
+      renderSectionExtra={item =>
+        !item.active && <PickerSpinner size={16} borderWidth={2} />
+      }
+      renderItemIcon={() => <Icon name="folder" size={16} />}
+      initiallyOpenSection={openSection}
+      alwaysTogglable={true}
+      showItemArrows={hasNextStep}
+    />
   );
 };
 
-export const TablePicker = ({
+const TablePicker = ({
+  schemas,
+  tables,
   selectedDatabase,
   selectedSchema,
   selectedTable,
-  disabledTableIds,
   onChangeTable,
-  hasAdjacentStep,
+  hasNextStep,
   onBack,
+  isLoading,
+  hasFiltering,
+  minTablesToShowSearch = 10,
+  hasInitialFocus,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
@@ -753,7 +1419,7 @@ export const TablePicker = ({
   }
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
-  let header = (
+  const header = (
     <div className="flex flex-wrap align-center">
       <span
         className={cx("flex align-center", {
@@ -762,15 +1428,71 @@ export const TablePicker = ({
         onClick={onBack}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className="ml1">{selectedDatabase.name}</span>
+        <span className="ml1 text-wrap">{selectedDatabase.name}</span>
       </span>
-      {selectedSchema.name && (
-        <span className="ml1 text-slate">- {selectedSchema.name}</span>
+      {selectedSchema && selectedSchema.name && schemas.length > 1 && (
+        <span className="ml1 text-wrap text-slate">
+          - {selectedSchema.displayName()}
+        </span>
       )}
     </div>
   );
 
-  if (selectedSchema.tables.length === 0) {
+  if (tables.length > 0 || isLoading) {
+    const sections = [
+      {
+        name: header,
+        items: tables.filter(Boolean).map(table => ({
+          name: table.displayName(),
+          table: table,
+          database: selectedDatabase,
+        })),
+        loading: tables.length === 0 && isLoading,
+      },
+    ];
+    return (
+      <div
+        style={{ width: 300, overflowY: "auto" }}
+        data-testid="data-selector"
+      >
+        <AccordionList
+          id="TablePicker"
+          key="tablePicker"
+          className="text-brand"
+          hasInitialFocus={hasInitialFocus}
+          sections={sections}
+          maxHeight={Infinity}
+          width={"100%"}
+          searchable={hasFiltering && tables.length >= minTablesToShowSearch}
+          onChange={item => onChangeTable(item.table)}
+          itemIsSelected={item =>
+            item.table && selectedTable
+              ? item.table.id === selectedTable.id
+              : false
+          }
+          itemIsClickable={item => item.table && isSyncCompleted(item.table)}
+          renderItemIcon={item =>
+            item.table ? <Icon name="table2" size={18} /> : null
+          }
+          showItemArrows={hasNextStep}
+        />
+        {isSavedQuestionList && (
+          <div className="bg-light p2 text-centered border-top">
+            {t`Is a question missing?`}
+            <ExternalLink
+              href={MetabaseSettings.docsUrl(
+                "users-guide/referencing-saved-questions-in-queries",
+              )}
+              target="_blank"
+              className="block link"
+            >
+              {t`Learn more about nested queries`}
+            </ExternalLink>
+          </div>
+        )}
+      </div>
+    );
+  } else {
     // this is a database with no tables!
     return (
       <section
@@ -785,70 +1507,21 @@ export const TablePicker = ({
         <div className="p4 text-centered">{t`No tables found in this database.`}</div>
       </section>
     );
-  } else {
-    let sections = [
-      {
-        name: header,
-        items: selectedSchema.tables.map(table => ({
-          name: table.display_name,
-          disabled: disabledTableIds && disabledTableIds.includes(table.id),
-          table: table,
-          database: selectedDatabase,
-        })),
-      },
-    ];
-    return (
-      <div style={{ width: 300 }} className="scroll-y">
-        <AccordianList
-          id="TablePicker"
-          key="tablePicker"
-          className="text-brand"
-          sections={sections}
-          searchable
-          onChange={onChangeTable}
-          itemIsSelected={item =>
-            item.table && selectedTable
-              ? item.table.id === selectedTable.id
-              : false
-          }
-          itemIsClickable={item => item.table && !item.disabled}
-          renderItemIcon={item =>
-            item.table ? <Icon name="table2" size={18} /> : null
-          }
-          showItemArrows={hasAdjacentStep}
-        />
-        {isSavedQuestionList && (
-          <div className="bg-light p2 text-centered border-top">
-            {t`Is a question missing?`}
-            <a
-              href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
-              className="block link"
-            >{t`Learn more about nested queries`}</a>
-          </div>
-        )}
-      </div>
-    );
   }
 };
 
-@connect(state => ({ metadata: getMetadata(state) }))
-export class FieldPicker extends Component {
+class FieldPicker extends Component {
   render() {
     const {
       isLoading,
+      fields,
       selectedTable,
       selectedField,
       onChangeField,
-      metadata,
       onBack,
+      hasFiltering,
+      hasInitialFocus,
     } = this.props;
-    // In case DataSelector props get reseted
-    if (!selectedTable) {
-      if (onBack) {
-        onBack();
-      }
-      return null;
-    }
 
     const header = (
       <span className="flex align-center">
@@ -857,7 +1530,9 @@ export class FieldPicker extends Component {
           onClick={onBack}
         >
           <Icon name="chevronleft" size={18} />
-          <span className="ml1">{selectedTable.display_name || t`Fields`}</span>
+          <span className="ml1 text-wrap">
+            {(selectedTable && selectedTable.display_name) || t`Fields`}
+          </span>
         </span>
       </span>
     );
@@ -866,8 +1541,6 @@ export class FieldPicker extends Component {
       return <DataSelectorLoading header={header} />;
     }
 
-    const table = metadata.tables[selectedTable.id];
-    const fields = (table && table.fields) || [];
     const sections = [
       {
         name: header,
@@ -879,20 +1552,23 @@ export class FieldPicker extends Component {
     ];
 
     return (
-      <div style={{ width: 300 }}>
-        <AccordianList
+      <div style={{ width: 300, overflowY: "auto" }}>
+        <AccordionList
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
+          hasInitialFocus={hasInitialFocus}
           sections={sections}
-          searchable
-          onChange={onChangeField}
+          maxHeight={Infinity}
+          width={"100%"}
+          searchable={hasFiltering}
+          onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>
             item.field && selectedField
               ? item.field.id === selectedField.id
               : false
           }
-          itemIsClickable={item => item.field && !item.disabled}
+          itemIsClickable={item => item.field}
           renderItemIcon={item =>
             item.field ? (
               <Icon name={item.field.dimension().icon()} size={18} />
@@ -903,75 +1579,6 @@ export class FieldPicker extends Component {
     );
   }
 }
-
-//TODO: refactor this. lots of shared code with renderTablePicker = () =>
-export const SegmentPicker = ({
-  segments,
-  selectedSegment,
-  disabledSegmentIds,
-  onBack,
-  onChangeSegment,
-}) => {
-  const header = (
-    <span className="flex align-center">
-      <span
-        className="flex align-center text-slate cursor-pointer"
-        onClick={onBack}
-      >
-        <Icon name="chevronleft" size={18} />
-        <span className="ml1">{t`Segments`}</span>
-      </span>
-    </span>
-  );
-
-  if (!segments || segments.length === 0) {
-    return (
-      <section
-        className="List-section List-section--open"
-        style={{ width: "300px" }}
-      >
-        <div className="p1 border-bottom">
-          <div className="px1 py1 flex align-center">
-            <h3 className="text-default">{header}</h3>
-          </div>
-        </div>
-        <div className="p4 text-centered">{t`No segments were found.`}</div>
-      </section>
-    );
-  }
-
-  const sections = [
-    {
-      name: header,
-      items: segments.map(segment => ({
-        name: segment.name,
-        segment: segment,
-        disabled: disabledSegmentIds && disabledSegmentIds.includes(segment.id),
-      })),
-    },
-  ];
-
-  return (
-    <AccordianList
-      id="SegmentPicker"
-      key="segmentPicker"
-      className="text-brand"
-      sections={sections}
-      searchable
-      searchPlaceholder={t`Find a segment`}
-      onChange={onChangeSegment}
-      itemIsSelected={item =>
-        selectedSegment && item.segment
-          ? item.segment.id === selectedSegment.id
-          : false
-      }
-      itemIsClickable={item => item.segment && !item.disabled}
-      renderItemIcon={item =>
-        item.segment ? <Icon name="segment" size={18} /> : null
-      }
-    />
-  );
-};
 
 const DataSelectorLoading = ({ header }) => {
   if (header) {
