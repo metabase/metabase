@@ -86,7 +86,7 @@ jobs:
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2.1.0
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar

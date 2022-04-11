@@ -106,7 +106,7 @@ jobs:
     - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v2.1.0
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
