@@ -15,7 +15,7 @@ describe("DatePicker", () => {
 
     screen.getByText("Previous");
     screen.getByDisplayValue("30");
-    screen.getByText("Days");
+    screen.getByText("days");
   });
 
   it("should render 'Next 1 Month'", () => {
@@ -27,7 +27,7 @@ describe("DatePicker", () => {
     );
     screen.getByText("Next");
     screen.getByDisplayValue("1");
-    screen.getByText("Month");
+    screen.getByText("month");
   });
 
   it("should render 'Current Week'", () => {
@@ -38,7 +38,7 @@ describe("DatePicker", () => {
       />,
     );
     screen.getByText("Current");
-    screen.getByText("Week");
+    screen.getByText("week");
   });
 
   it("should render 'Between'", () => {

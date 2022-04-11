@@ -43,7 +43,7 @@ describe("FilterPopover", () => {
 
         screen.getByText("Past");
         screen.getByDisplayValue("30");
-        screen.getByText("Days");
+        screen.getByText("days");
       });
     });
     describe("filter operator selection", () => {
