@@ -1,21 +1,12 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
 
-import {
-  AfterPicker,
-  BeforePicker,
-  BetweenPicker,
-  SingleDatePicker,
-} from "./SpecificDatePicker";
-import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
-
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import ExcludeDatePicker from "./ExcludeDatePicker";
 import {
   updateRelativeDatetimeFilter,
   isRelativeDatetime,
@@ -25,9 +16,18 @@ import {
   getTimeComponent,
   setTimeComponent,
 } from "metabase/lib/query_time";
+
+import {
+  AfterPicker,
+  BeforePicker,
+  BetweenPicker,
+  SingleDatePicker,
+} from "./SpecificDatePicker";
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
+import ExcludeDatePicker from "./ExcludeDatePicker";
 import DatePickerShortcuts from "./DatePickerShortcuts";
+import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
@@ -251,106 +251,94 @@ type State = {
   showShortcuts: boolean;
 };
 
-export default class DatePicker extends Component<Props, State> {
-  state = {
-    operators: [],
-    showShortcuts: false,
+const DatePicker: React.SFC<Props> = props => {
+  const {
+    className,
+    filter,
+    onFilterChange,
+    isSidebar,
+    minWidth,
+    primaryColor,
+    onCommit,
+    children,
+    hideTimeSelectors,
+    hideExcludeOperators,
+  } = props;
+
+  const [showShortcuts, setShowShortcuts] = React.useState(filter?.isValid?.());
+  const operators = React.useMemo(() => {
+    let ops = props.operators || DATE_OPERATORS;
+    if (props.hideExcludeOperators) {
+      ops = ops.filter(op => op.name !== "exclude");
+    }
+    return ops;
+  }, [props.operators, props.hideExcludeOperators]);
+
+  const operator = getOperator(props.filter, operators);
+  const Widget = operator && operator.widget;
+
+  const onBack = () => {
+    if (showShortcuts) {
+      props.onBack?.();
+    } else {
+      setShowShortcuts(true);
+    }
   };
 
-  static propTypes = {};
-
-  UNSAFE_componentWillMount() {
-    let operators = this.props.operators || DATE_OPERATORS;
-    if (this.props.hideExcludeOperators) {
-      operators = operators.filter(op => op.name !== "exclude");
-    }
-
-    this.setState({
-      operators,
-      showShortcuts: !this.props.filter?.isValid?.(),
-    });
-  }
-
-  render() {
-    const {
-      className,
-      filter,
-      onFilterChange,
-      isSidebar,
-      minWidth,
-      primaryColor,
-      onCommit,
-      children,
-      hideTimeSelectors,
-      hideExcludeOperators,
-    } = this.props;
-
-    const { operators, showShortcuts } = this.state;
-
-    const operator = getOperator(this.props.filter, operators);
-    const Widget = operator && operator.widget;
-
-    const onBack = () => {
-      if (showShortcuts) {
-        this.props.onBack?.();
-      } else {
-        this.setState({ showShortcuts: true });
-      }
-    };
-
-    return (
-      <div className={cx(className)}>
-        {!operator || showShortcuts ? (
-          <DatePickerShortcuts
-            className={"p2"}
-            primaryColor={primaryColor}
-            onFilterChange={filter => {
-              this.setState({ showShortcuts: false });
-              onFilterChange(filter);
-            }}
-            hideExcludeOperators={hideExcludeOperators}
-            onCommit={onCommit}
-            filter={filter}
-            onBack={onBack}
-          />
-        ) : (
-          <>
-            {operator ? (
-              <DatePickerHeader
-                filter={filter}
-                onBack={onBack}
-                operators={operators}
-                onFilterChange={onFilterChange}
-              />
-            ) : null}
-            {Widget && (
-              <Widget
-                {...this.props}
-                className="flex-full p2"
-                filter={filter}
-                onCommit={onCommit}
-                primaryColor={primaryColor}
-                onFilterChange={(filter: Filter) => {
-                  if (!isStartingFrom(filter) && operator && operator.init) {
-                    onFilterChange(operator.init(filter));
-                  } else {
-                    onFilterChange(filter);
-                  }
-                }}
-              />
-            )}
-            <DatePickerFooter
-              isSidebar={isSidebar}
+  return (
+    <div className={cx(className)}>
+      {!operator || showShortcuts ? (
+        <DatePickerShortcuts
+          className={"p2"}
+          primaryColor={primaryColor}
+          onFilterChange={filter => {
+            setShowShortcuts(false);
+            onFilterChange(filter);
+          }}
+          hideExcludeOperators={hideExcludeOperators}
+          onCommit={onCommit}
+          filter={filter}
+          onBack={onBack}
+        />
+      ) : (
+        <>
+          {operator ? (
+            <DatePickerHeader
               filter={filter}
-              primaryColor={primaryColor}
+              onBack={onBack}
+              operators={operators}
               onFilterChange={onFilterChange}
-              hideTimeSelectors={hideTimeSelectors}
-            >
-              {children}
-            </DatePickerFooter>
-          </>
-        )}
-      </div>
-    );
-  }
-}
+            />
+          ) : null}
+          {Widget && (
+            <Widget
+              {...props}
+              className="flex-full p2"
+              filter={filter}
+              onCommit={onCommit}
+              primaryColor={primaryColor}
+              onFilterChange={(filter: Filter) => {
+                if (!isStartingFrom(filter) && operator && operator.init) {
+                  onFilterChange(operator.init(filter));
+                } else {
+                  onFilterChange(filter);
+                }
+              }}
+            />
+          )}
+          <DatePickerFooter
+            isSidebar={isSidebar}
+            filter={filter}
+            primaryColor={primaryColor}
+            onFilterChange={onFilterChange}
+            hideTimeSelectors={hideTimeSelectors}
+          >
+            {children}
+          </DatePickerFooter>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default DatePicker;
