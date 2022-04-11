@@ -29,7 +29,7 @@ function slugifyPersonalCollection(collection: Collection) {
   return slug;
 }
 
-export function collection(collection: Collection) {
+export function collection(collection?: Collection) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
 
