@@ -5,11 +5,11 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
-            [metabase.public-settings :as public-settings]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
+            [metabase.public-settings :as public-settings]
             [metabase.task :as task]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -88,7 +88,10 @@
 (jobs/defjob PersistenceRefresh [job-context]
   (refresh-tables! job-context))
 
-(def persistence-job-key "metabase.task.PersistenceRefresh.job")
+(def persistence-job-key
+  "Job key string for persistence job. Call `(jobs/key persistence-job-key)` if you need the org.quartz.JobKey
+  instance."
+  "metabase.task.PersistenceRefresh.job")
 
 (def ^:private persistence-job
   (jobs/build
@@ -152,6 +155,8 @@
       (task/delete-trigger! (triggers/key tk)))))
 
 (defn reschedule-refresh
+  "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
+  `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-interval-hours]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
         interval-hours       (public-settings/persisted-model-refresh-interval-hours)]
