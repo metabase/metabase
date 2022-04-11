@@ -209,12 +209,17 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
+    isTimeseries,
     onHoverChange,
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
   },
 ) {
+  if (!isTimeseries) {
+    return;
+  }
+
   const axis = getAxis(chart);
   const brush = getBrush(chart);
   const scale = getScale(chart);

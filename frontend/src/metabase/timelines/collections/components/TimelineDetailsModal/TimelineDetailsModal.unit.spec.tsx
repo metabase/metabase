@@ -11,6 +11,38 @@ import TimelineDetailsModal, {
 } from "./TimelineDetailsModal";
 
 describe("TimelineDetailsModal", () => {
+  it("should use the collection's name for default timelines", () => {
+    const props = getProps({
+      timeline: createMockTimeline({
+        name: "Metrics events",
+        default: true,
+        collection: createMockCollection({
+          name: "Analytics",
+        }),
+      }),
+    });
+
+    render(<TimelineDetailsModal {...props} />);
+
+    expect(screen.getByText("Analytics events")).toBeInTheDocument();
+  });
+
+  it("should use the timeline's name for non-default timelines", () => {
+    const props = getProps({
+      timeline: createMockTimeline({
+        name: "Metrics events",
+        default: false,
+        collection: createMockCollection({
+          name: "Analytics",
+        }),
+      }),
+    });
+
+    render(<TimelineDetailsModal {...props} />);
+
+    expect(screen.getByText("Metrics events")).toBeInTheDocument();
+  });
+
   it("should search a list of events", async () => {
     const props = getProps({
       timeline: createMockTimeline({
@@ -43,6 +75,5 @@ const getProps = (
   opts?: Partial<TimelineDetailsModalProps>,
 ): TimelineDetailsModalProps => ({
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   ...opts,
 });

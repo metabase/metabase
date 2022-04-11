@@ -123,7 +123,13 @@
   these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
-    "metabot-enabled"})
+    "metabot-enabled"
+    "ldap-sync-admin-group"})
+
+(def ^:dynamic *allow-retired-setting-names*
+  "A dynamic val that controls whether it's allowed to use retired settings.
+  Primarily used in test to disable retired setting check."
+  false)
 
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
@@ -741,7 +747,7 @@
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
-      (when (retired-setting-names (name setting-name))
+      (when (and (retired-setting-names (name setting-name)) (not *allow-retired-setting-names*))
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))

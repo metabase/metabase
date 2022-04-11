@@ -36,13 +36,7 @@ export default class QuestionAlertWidget extends React.Component {
     const { isOpen, isFrozen } = this.state;
 
     if (!canManageSubscriptions) {
-      return (
-        <Icon
-          name="bell"
-          tooltip={t`You don't have permission to share data from this saved question`}
-          className={cx(className, "text-light")}
-        />
-      );
+      return null;
     }
 
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {

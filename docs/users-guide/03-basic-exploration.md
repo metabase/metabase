@@ -24,7 +24,7 @@ Collections have a list of any other items that are saved within them, and you c
 
 ## Models
 
-You can use Models to create derived tables on the fly. See [Models][models]. 
+You can use Models to create derived tables on the fly. See [Models][models].
 
 ## Exploring dashboards
 
@@ -37,7 +37,7 @@ In this example of orders by product category over time, clicking on a dot on th
 
 - **Zoom in**: See orders for a particular category over a shorter time range.
 - **View these Orders**: See a list of the orders for a particular month
-- **Break out by a category**:  See things like the Gizmo orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`). Different charts will have different breakout options, such as **Location** and **Time**.
+- **Break out by a category**: See things like the Gizmo orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`). Different charts will have different breakout options, such as **Location** and **Time**.
 
 > Note that while charts created with SQL don't currently have the action menu, you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
 
@@ -68,6 +68,25 @@ Use the search bar to find dashboards, questions, collections, and pulses. You c
 Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
 
 ![Search results](./images/basic-exploration/search-results.png)
+
+## Bookmarks
+
+**Bookmarks** are a way to quickly get back to things you visit frequently (or have been working on recently). Bookmarked items show up in the main navigation sidebar above [collections][collections].
+
+To bookmark an item, look for the **ribbon** icon. If you don't immediately see the ribbon, open up the settings for that item. You can bookmark:
+
+- Questions (ribbon's in the editing sidebar)
+- Models (ribbon's in the editing sidebar)
+- Dashboards (ribbon's in the **...** menu)
+- Collections (ribbon's in the upper right of the collection's page)
+
+When viewing a collection, you can also click on the **...** next to an item to add or remove a bookmark from the item.
+
+Some things to remember with bookmarks:
+
+- Bookmarks are personal; other people can't see your bookmarks. If you want to highlight something for everyone, you'll want to put it in an official collection and/or pin the item in the collection (see [collections][collections]).
+- If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
+- Items that you bookmark will get a boost in your search results (but not the search results of other people).
 
 ---
 

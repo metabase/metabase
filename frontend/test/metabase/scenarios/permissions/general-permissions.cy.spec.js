@@ -4,9 +4,14 @@ import {
   describeEE,
   modifyPermission,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const SUBSCRIPTIONS_INDEX = 0;
+const SETTINGS_INDEX = 0;
 const MONITORING_INDEX = 1;
+const SUBSCRIPTIONS_INDEX = 2;
+
+const NORMAL_USER_ID = 2;
 
 describeEE("scenarios > admin > permissions > general", () => {
   beforeEach(() => {
@@ -29,38 +34,22 @@ describeEE("scenarios > admin > permissions > general", () => {
           cy.button("Yes").click();
         });
 
+        createSubscription(NORMAL_USER_ID);
+
         cy.signInAsNormalUser();
       });
 
-      it("revokes ability to create dashboard subscriptions", () => {
+      it("revokes ability to create subscriptions and alerts and manage them", () => {
         cy.visit("/dashboard/1");
-        cy.icon("subscription")
-          .as("subscriptionsButton")
-          .realHover();
+        cy.icon("subscription").should("not.exist");
 
-        cy.findByText(
-          "You don't have permission to create a subscription for this dashboard",
-        );
-
-        cy.get("@subscriptionsButton").click();
-        cy.findByText("Create a dashboard subscription").should("not.exist");
-      });
-
-      it("revokes ability to create question alerts", () => {
         cy.visit("/question/1");
-        cy.icon("bell")
-          .as("subscriptionsButton")
-          .realHover();
-        cy.findByText(
-          "You don't have permission to share data from this saved question",
-        );
+        cy.icon("bell").should("not.exist");
 
-        cy.findByText(
-          "To send alerts, an admin needs to set up email integration.",
-        ).should("not.exist");
-
-        cy.get("@subscriptionsButton").click();
-        cy.findByText("Create a dashboard subscription").should("not.exist");
+        cy.visit("/account/notifications");
+        cy.findByTestId("notifications-list").within(() => {
+          cy.icon("close").should("not.exist");
+        });
       });
     });
 
@@ -153,4 +142,80 @@ describeEE("scenarios > admin > permissions > general", () => {
       });
     });
   });
+
+  describe("settings permission", () => {
+    describe("granted", () => {
+      beforeEach(() => {
+        cy.visit("/admin/permissions/general");
+
+        modifyPermission("All Users", SETTINGS_INDEX, "Yes");
+
+        cy.button("Save changes").click();
+
+        modal().within(() => {
+          cy.findByText("Save permissions?");
+          cy.findByText("Are you sure you want to do this?");
+          cy.button("Yes").click();
+        });
+
+        cy.signInAsNormalUser();
+      });
+
+      it("allows editing settings as a non-admin user", () => {
+        cy.visit("/");
+        cy.icon("gear").click();
+
+        cy.findByText("Admin settings").click();
+
+        cy.url().should("include", "/admin/settings/general");
+
+        cy.findByText("License and Billing").should("not.exist");
+        cy.findByText("Setup").should("not.exist");
+        cy.findByText("Updates").should("not.exist");
+
+        // General smoke test
+        cy.get("#setting-site-name")
+          .clear()
+          .type("new name")
+          .blur();
+
+        cy.findByText("Saved");
+      });
+    });
+  });
 });
+
+function createSubscription(user_id) {
+  cy.createQuestionAndDashboard({
+    questionDetails: {
+      name: "Test Question",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    },
+  }).then(({ body: { card_id, dashboard_id } }) => {
+    cy.createPulse({
+      name: "Subscription",
+      dashboard_id,
+      cards: [
+        {
+          id: card_id,
+          include_csv: false,
+          include_xls: false,
+        },
+      ],
+      channels: [
+        {
+          enabled: true,
+          channel_type: "email",
+          schedule_type: "hourly",
+          recipients: [
+            {
+              id: user_id,
+            },
+          ],
+        },
+      ],
+    });
+  });
+}

@@ -12,33 +12,30 @@ import { FormField } from "./types";
 export interface FormDateWidgetProps {
   field: FormField;
   placeholder?: string;
-  hasTime?: boolean;
+  values: Record<string, unknown>;
   readOnly?: boolean;
   autoFocus?: boolean;
   tabIndex?: number;
+  hasTimeField?: string;
+  onChangeField?: (field: string, value: unknown) => void;
 }
 
 const FormDateWidget = forwardRef(function FormDateWidget(
   {
     field,
     placeholder,
-    hasTime,
+    values,
     readOnly,
     autoFocus,
     tabIndex,
+    hasTimeField = "",
+    onChangeField,
   }: FormDateWidgetProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const value = useMemo(() => {
     return field.value ? parseTimestamp(field.value) : undefined;
   }, [field]);
-
-  const handleChange = useCallback(
-    (newValue?: Moment) => {
-      field.onChange?.(newValue?.format());
-    },
-    [field],
-  );
 
   const handleFocus = useCallback(() => {
     field.onFocus?.(field.value);
@@ -48,12 +45,26 @@ const FormDateWidget = forwardRef(function FormDateWidget(
     field.onBlur?.(field.value);
   }, [field]);
 
+  const handleChange = useCallback(
+    (newValue?: Moment) => {
+      field.onChange?.(newValue?.format());
+    },
+    [field],
+  );
+
+  const handleHasTimeChange = useCallback(
+    (hasTime: boolean) => {
+      onChangeField?.(hasTimeField, hasTime);
+    },
+    [hasTimeField, onChangeField],
+  );
+
   return (
     <DateWidget
       ref={ref}
       value={value}
       placeholder={placeholder}
-      hasTime={hasTime}
+      hasTime={Boolean(values[hasTimeField])}
       dateFormat={getNumericDateStyleFromSettings()}
       timeFormat={getTimeStyleFromSettings()}
       is24HourMode={has24HourModeSetting()}
@@ -63,9 +74,10 @@ const FormDateWidget = forwardRef(function FormDateWidget(
       fullWidth
       tabIndex={tabIndex}
       aria-labelledby={`${field.name}-label`}
-      onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onChange={handleChange}
+      onHasTimeChange={handleHasTimeChange}
     />
   );
 });

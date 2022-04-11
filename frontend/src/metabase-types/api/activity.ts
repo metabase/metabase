@@ -4,12 +4,12 @@ export interface ModelObject {
   name: string;
 }
 
-export interface RecentView {
+export interface RecentItem {
   model: ModelType;
   model_object: ModelObject;
 }
 
-export interface PopularView {
+export interface PopularItem {
   model: ModelType;
   model_object: ModelObject;
 }
