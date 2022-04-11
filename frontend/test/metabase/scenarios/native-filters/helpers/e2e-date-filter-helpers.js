@@ -35,15 +35,11 @@ export function setAdHocFilter({
   timeBucket,
   includeCurrent = false,
 } = {}) {
+  cy.findByText("Relative dates..").click();
   if (condition) {
-    cy.findAllByTestId("select-button")
-      .contains("Previous")
-      .click();
-
-    popover()
-      .last()
-      .contains(condition)
-      .click();
+    cy.findByText(condition).click({ force: true });
+  } else {
+    cy.findByText("Past").click({ force: true });
   }
 
   if (quantity) {
