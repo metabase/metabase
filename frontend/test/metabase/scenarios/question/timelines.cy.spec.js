@@ -234,6 +234,31 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Visualization").should("be.visible");
       cy.findByLabelText("star icon").should("not.exist");
     });
+
+    it("should show events for native queries", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT ID, CREATED_AT FROM ORDERS",
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["ID"],
+        },
+      });
+
+      cy.findByText("Visualization").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
