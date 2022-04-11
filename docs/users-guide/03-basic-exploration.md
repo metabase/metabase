@@ -71,7 +71,7 @@ Searches take into account items’ titles, descriptions, and other metadata —
 
 ## Bookmarks
 
-**Bookmarks** are a way to quickly get back to stuff you visit frequently (or have been working on recently). Bookmarked items show up in the main, left sidebar above [collections][collections].
+**Bookmarks** are a way to quickly get back to things you visit frequently (or have been working on recently). Bookmarked items show up in the main navigation sidebar above [collections][collections].
 
 To bookmark an item, look for the ribbon icon. If you don't immediately see the ribbon, open up the settings for that item. You can bookmark:
 
@@ -86,7 +86,6 @@ Some things to remember with bookmarks:
 
 - Bookmarks are personal; other people can't see your bookmarks. If you want to highlight something for everyone, you'll want to put it in an official collection and/or pin the item in the collection (see [collections][collections]).
 - If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
-- You can drag bookmarks to reorder them in the sidebar.
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 
 ---
