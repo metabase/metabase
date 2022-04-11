@@ -35,7 +35,7 @@ export function setAdHocFilter({
   timeBucket,
   includeCurrent = false,
 } = {}) {
-  cy.findByText("Relative dates..").click();
+  cy.findByText("Relative dates...").click();
   if (condition) {
     cy.findByText(condition).click({ force: true });
   } else {
