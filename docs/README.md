@@ -1,6 +1,6 @@
 ## Getting started
 
-- [Getting started](learn/getting-started/getting-started)
+- [Getting started](/learn/getting-started/getting-started)
 - [A tour of Metabase](/learn/getting-started/tour-of-metabase)
 
 ## Troubleshooting and getting help
@@ -61,7 +61,7 @@
 
 - [Models](./users-guide/models.md)
 
-## Keeping things organized
+## Finding things and keeping organized
 
 - [Basic exploration](./users-guide/03-basic-exploration.md)
 - [Sharing and organizing your saved questions](./users-guide/06-sharing-answers.md)
