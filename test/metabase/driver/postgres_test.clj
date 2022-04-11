@@ -319,30 +319,30 @@
                      :base-type         :type/Text,
                      :database-position 0,
                      :nfc-path          [:incoherent_json_val "b"]
-                     :visibility-type   :details-only}
+                     :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
                      :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "a"]
-                     :visibility-type   :details-only}
+                     :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
                      :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
-                     :visibility-type   :details-only}
+                     :visibility-type   :normal}
                     {:name              "incoherent_json_val → c",
                      :database-type     :type/Number,
                      :base-type         :type/Number,
                      :database-position 0,
-                     :visibility-type   :details-only,
+                     :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "c"]}
                     {:name              "incoherent_json_val → d",
                      :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
-                     :visibility-type   :details-only,
+                     :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "d"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres

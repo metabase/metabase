@@ -268,7 +268,7 @@
                             :base-type         curr-type
                             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                             :database-position 0
-                            :visibility-type   :details-only
+                            :visibility-type   :normal
                             :nfc-path          field-path})))
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
