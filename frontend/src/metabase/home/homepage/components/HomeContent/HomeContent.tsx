@@ -43,8 +43,8 @@ const isPopularSection = ({
   );
 };
 
-const isRecentSection = ({ recentItems }: HomeContentProps): boolean => {
-  return recentItems.length > 0;
+const isRecentSection = ({ user, recentItems }: HomeContentProps): boolean => {
+  return user.has_question_and_dashboard && recentItems.length > 0;
 };
 
 const isXraySection = ({ databases }: HomeContentProps): boolean => {
