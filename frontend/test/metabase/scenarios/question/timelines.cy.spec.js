@@ -1,4 +1,10 @@
-import { restore, visitQuestion, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  sidebar,
+  visitQuestionAdhoc,
+} from "__support__/e2e/cypress";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -168,6 +174,31 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Release notes").should("be.visible");
+    });
+
+    it("should show events for native queries", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT ID, CREATED_AT FROM ORDERS",
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["ID"],
+        },
+      });
+
+      cy.findByText("Visualization").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
     });
   });
 
