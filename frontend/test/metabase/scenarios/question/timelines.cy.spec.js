@@ -5,6 +5,9 @@ import {
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
@@ -174,6 +177,62 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Release notes").should("be.visible");
+    });
+
+    it("should show events for ad-hoc questions", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [["field", ORDERS.CREATED_AT, null]],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["TOTAL"],
+          "graph.metrics": ["count"],
+        },
+      });
+
+      cy.findByText("Visualization").should("be.visible");
+      cy.findByLabelText("star icon").should("be.visible");
+    });
+
+    it("should not show events for non-timeseries questions", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+      });
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["TOTAL"],
+          "graph.metrics": ["count"],
+        },
+      });
+
+      cy.findByText("Visualization").should("be.visible");
+      cy.findByLabelText("star icon").should("not.exist");
     });
 
     it("should show events for native queries", () => {
