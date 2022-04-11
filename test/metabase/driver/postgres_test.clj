@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -355,7 +356,7 @@
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
             spec     (sql-jdbc.conn/connection-details->spec :postgres details)
             big-map  (into {} (for [x (range 300)] [x :dobbs]))
-            big-json (cheshire.core/generate-string big-map)
+            big-json (json/generate-string big-map)
             sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
