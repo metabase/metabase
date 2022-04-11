@@ -2,8 +2,6 @@ import React from "react";
 
 import Radio from "metabase/core/components/Radio";
 
-import { PersistedModelsApi } from "metabase/services";
-
 type Props = {
   setting: {
     key: string;
@@ -12,13 +10,13 @@ type Props = {
     options: Record<string, string>;
   };
   disabled?: boolean;
-  onChangeSetting: (setting: string, value: unknown) => void;
+  onChange: (hours: number) => void;
 };
 
 const PersistedModelRefreshIntervalWidget = ({
   setting,
   disabled,
-  onChangeSetting,
+  onChange,
 }: Props) => {
   return (
     <Radio
@@ -26,10 +24,7 @@ const PersistedModelRefreshIntervalWidget = ({
       variant="bubble"
       disabled={disabled}
       value={setting.value || setting.default}
-      onChange={async hours => {
-        await PersistedModelsApi.setRefreshInterval({ hours });
-        onChangeSetting(setting.key, hours);
-      }}
+      onChange={(hours: number) => onChange(hours)}
       options={Object.entries(setting.options).map(([value, name]) => ({
         name,
         value: Number(value),
