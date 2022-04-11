@@ -232,6 +232,14 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
+(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
+
+(defn- order-items
+  [items]
+  (when (seq items)
+      (let [groups (group-by :model items)]
+        (mapcat #(get groups %) model-precedence))))
+
 (defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
@@ -256,6 +264,7 @@
     (->> scored-views
          (sort-by :score)
          reverse
+         order-items
          (take 5)
          (map #(dissoc % :score)))))
 

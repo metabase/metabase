@@ -160,6 +160,9 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
+                  Dashboard [dash2 {:name        "other-dashboard"
+                                    :description "just another dashboard"
+                                    :creator_id  (mt/user->id :crowberto)}]
                   Table     [table1 {:name "rand-name"}]
                   Table     [hidden-table {:name            "hidden table"
                                            :visibility_type "hidden"}]
@@ -174,8 +177,8 @@
                         [(mt/user->id :crowberto) "dashboard" (:id dash1)]
                         [(mt/user->id :rasta)     "card"      (:id card1)]
                         [(mt/user->id :crowberto) "card"      (:id card1)]])
-        (is (= [["card" (:id card1)]
-                ["dashboard" (:id dash1)]]
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]]
                ;; all views are from :rasta, but :crowberto can still see popular items
                (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
                  ((juxt :model :model_id) popular-item))))))
@@ -185,10 +188,10 @@
                         [(mt/user->id :rasta) "card"      (:id card1)]
                         [(mt/user->id :rasta) "table"     (:id table1)]
                         [(mt/user->id :rasta) "card"      (:id dataset)]])
-        (is (= [["dataset" (:id dataset)]
-                ["table" (:id table1)]
+        (is (= [["dashboard" (:id dash1)]
                 ["card" (:id card1)]
-                ["dashboard" (:id dash1)]]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
                ;; all views are from :rasta, but :crowberto can still see popular items
                (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
                  ((juxt :model :model_id) popular-item))))))
@@ -196,15 +199,16 @@
       (mt/with-model-cleanup [ViewLog QueryExecution]
         (create-views! (concat
                         ;; one item with many views is considered more popular
-                        (repeat 10 [(mt/user->id :rasta) "card" (:id dataset)])
-                        [[(mt/user->id :rasta) "dashboard" (:id dash1)]
-                         [(mt/user->id :rasta) "card"      (:id card1)]
+                        (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
+                        [[(mt/user->id :rasta) "dashboard" (:id dash2)]
+                         [(mt/user->id :rasta) "card"      (:id dataset)]
                          [(mt/user->id :rasta) "table"     (:id table1)]
                          [(mt/user->id :rasta) "card"      (:id card1)]]))
-        (is (= [["dataset" (:id dataset)]
+        (is (= [["dashboard" (:id dash1)]
+                ["dashboard" (:id dash2)]
                 ["card" (:id card1)]
-                ["table" (:id table1)]
-                ["dashboard" (:id dash1)]]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
                ;; all views are from :rasta, but :crowberto can still see popular items
                (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
                  ((juxt :model :model_id) popular-item))))))))
