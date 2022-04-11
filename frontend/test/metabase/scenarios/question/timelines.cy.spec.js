@@ -117,7 +117,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Visualization").should("be.visible");
 
       cy.icon("calendar").click();
-      cy.findByText("Releases").should("be.visible");
+      cy.findByText("Builds").should("be.visible");
       sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Move event").click();
       cy.findByText("Releases").click();
