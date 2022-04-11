@@ -1,9 +1,10 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import ObjectDetail from "./ObjectDetail";
+import { ObjectDetailFn as ObjectDetail } from "./ObjectDetail";
+import testDataset from "./testDataset";
 
 export default {
-  title: "Visualizations/ObjectDetail",
+  title: "Components/ObjectDetail",
   component: ObjectDetail,
   argTypes: { onChange: { action: "onChange" } },
 };
@@ -13,8 +14,24 @@ const Template: ComponentStory<typeof ObjectDetail> = args => {
 };
 
 Template.args = {
-  data: {
-    rows: [],
-    cols: [],
+  data: testDataset,
+  question: {
+    displayName: () => "Product",
   },
+  table: {
+    objectName: () => "Product",
+  },
+  zoomedRow: testDataset.rows[0],
+  zoomedRowID: 0,
+  tableForeignKeys: [],
+  tableForeignKeyReferences: [],
+  settings: {},
+  canZoomPreviousRow: false,
+  canZoomNextRow: false,
+  onVisualizationClick: () => null,
+  visualizationIsClickable: () => false,
+  fetchTableFks: () => null,
+  loadObjectDetailFKReferences: () => null,
+  viewPreviousObjectDetail: () => null,
+  viewNextObjectDetail: () => null,
 };

@@ -170,49 +170,54 @@ export function ObjectDetailFn({
   const objectName = getObjectName({ table, question });
 
   return (
-    <div className="scroll-y pt2 px4">
-      <div className="ObjectDetail bordered rounded">
-        <ObjectDetailHeader
-          canZoom={canZoom}
-          objectName={objectName}
-          data={data}
-          zoomedRowID={zoomedRowID}
-          canZoomPreviousRow={canZoomPreviousRow}
-          canZoomNextRow={canZoomNextRow}
-          viewPreviousObjectDetail={viewPreviousObjectDetail}
-          viewNextObjectDetail={viewNextObjectDetail}
-        />
-        <ObjectDetailBody
-          data={data}
-          zoomedRow={zoomedRow}
-          settings={settings}
-          onVisualizationClick={onVisualizationClick}
-          visualizationIsClickable={visualizationIsClickable}
-          tableForeignKeys={tableForeignKeys}
-          tableForeignKeyReferences={tableForeignKeyReferences}
-          followForeignKey={followForeignKey}
-        />
-      </div>
-    </div>
+    <ObjectDetailWrapper>
+      <ObjectDetailHeader
+        canZoom={canZoom}
+        objectName={objectName}
+        objectId={getIdValue({ data, zoomedRowID })}
+        canZoomPreviousRow={canZoomPreviousRow}
+        canZoomNextRow={canZoomNextRow}
+        viewPreviousObjectDetail={viewPreviousObjectDetail}
+        viewNextObjectDetail={viewNextObjectDetail}
+      />
+      <ObjectDetailBody
+        data={data}
+        zoomedRow={zoomedRow}
+        settings={settings}
+        onVisualizationClick={onVisualizationClick}
+        visualizationIsClickable={visualizationIsClickable}
+        tableForeignKeys={tableForeignKeys}
+        tableForeignKeyReferences={tableForeignKeyReferences}
+        followForeignKey={followForeignKey}
+      />
+    </ObjectDetailWrapper>
   );
 }
+
+export const ObjectDetailWrapper = ({
+  children,
+}: {
+  children: JSX.Element | JSX.Element[];
+}) => (
+  <div className="scroll-y pt2 px4">
+    <div className="ObjectDetail bordered rounded">{children}</div>
+  </div>
+);
 
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
-  data: DatasetData;
-  zoomedRowID: number;
+  objectId: number | null;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
 }
 
-function ObjectDetailHeader({
+export function ObjectDetailHeader({
   canZoom,
   objectName,
-  data,
-  zoomedRowID,
+  objectId,
   canZoomPreviousRow,
   canZoomNextRow,
   viewPreviousObjectDetail,
@@ -223,7 +228,7 @@ function ObjectDetailHeader({
       <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
         <div className="text-brand text-bold">
           <span>{objectName}</span>
-          <h1>{getIdValue({ data, zoomedRowID })}</h1>
+          <h1>{objectId}</h1>
         </div>
       </div>
       <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
@@ -289,7 +294,7 @@ export interface ObjectDetailBodyProps {
   followForeignKey: (fk: ForeignKey) => void;
 }
 
-function ObjectDetailBody({
+export function ObjectDetailBody({
   data,
   zoomedRow,
   settings,
@@ -324,43 +329,20 @@ function ObjectDetailBody({
   );
 }
 
-// TODO: figure out how to make visualizations/register work with functional components
-class ObjectDetail extends React.Component {
-  static uiName = t`Object Detail`;
-  static identifier = "object";
-  static iconName = "document";
-  static noun = t`object`;
-  static hidden = true;
-  static settings: any = {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
+export const ObjectDetailProperties = {
+  uiName: t`Object Detail`,
+  identifier: "object",
+  iconName: "document",
+  noun: t`object`,
+  hidden: true,
+  settings: {
     ...columnSettings({ hidden: true }),
-  };
+  },
+};
 
-  render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    return <ObjectDetailFn {...this.props} />;
-  }
-}
+const ObjectDetail = Object.assign(
+  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailFn),
+  ObjectDetailProperties,
+);
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);
-
-// const visualizationInfo = {
-//   uiName: t`Object Detail`,
-//   identifier: "object",
-//   iconName: "document",
-//   noun: t`object`,
-//   hidden: true,
-//   settings: {
-//     ...columnSettings({ hidden: true }),
-//   },
-// };
-
-// const mappedFn = connect(mapStateToProps, mapDispatchToProps)(ObjectDetailFn);
-// export default {
-//   mappedFn,
-//   ...visualizationInfo,
-// };
+export default ObjectDetail;

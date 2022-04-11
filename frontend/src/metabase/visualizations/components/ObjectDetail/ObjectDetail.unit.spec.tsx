@@ -1,75 +1,41 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
-import { TYPE } from "metabase/lib/types";
+import { ObjectDetailFn as ObjectDetail } from "./ObjectDetail";
+import testDataset from "./testDataset";
 
-const objectDetailCard = {
-  card: {
-    display: "object",
-  },
-  data: {
-    cols: [
-      {
-        name: "details",
-        display_name: "Details",
-        base_type: TYPE.SerializedJSON,
-        semantic_type: TYPE.SerializedJSON,
-        effective_type: TYPE.SerializedJSON,
-      },
-    ],
-    rows: [[JSON.stringify({ hey: "yo" })]],
-  },
-};
+describe("Object Detail", () => {
+  it("renders an object detail component", () => {
+    render(
+      <ObjectDetail
+        data={testDataset}
+        question={{
+          displayName: () => "Product",
+        }}
+        table={{
+          objectName: () => "Product",
+        }}
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+        }}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+      />,
+    );
 
-const invalidObjectDetailCard = {
-  card: {
-    display: "object",
-  },
-  data: {
-    cols: [
-      {
-        name: "details",
-        display_name: "Details",
-        base_type: TYPE.SerializedJSON,
-        semantic_type: TYPE.SerializedJSON,
-        effective_type: TYPE.SerializedJSON,
-      },
-    ],
-    rows: [["i am not json"]],
-  },
-};
-describe("ObjectDetail", () => {
-  describe("ObjectDetailsTable", () => {
-    describe("json field rendering", () => {
-      it("should properly display JSON semantic type data as JSON", () => {
-        render(
-          <DetailsTable
-            data={objectDetailCard.data}
-            zoomedRow={undefined}
-            onVisualizationClick={({ column, value }) => null}
-            visualizationIsClickable={() => false}
-            settings={{ column: () => ({}) }}
-          />,
-        );
-
-        screen.getByText(/"hey"/i);
-        screen.getByText(/"yo"/i);
-      });
-
-      it("should not crash rendering invalid JSON", () => {
-        render(
-          <DetailsTable
-            data={invalidObjectDetailCard.data}
-            zoomedRow={undefined}
-            onVisualizationClick={({ column, value }) => null}
-            visualizationIsClickable={() => false}
-            settings={{ column: () => ({}) }}
-          />,
-        );
-
-        screen.getByText(/i am not json/i);
-      });
-    });
+    screen.getAllByText("Product");
+    screen.getByText(testDataset.rows[0][2].toString());
+    screen.getByText(testDataset.rows[0][3].toString());
+    screen.getByText(testDataset.rows[0][4].toString());
   });
 });
