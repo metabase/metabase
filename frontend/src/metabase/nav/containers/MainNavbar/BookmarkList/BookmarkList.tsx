@@ -21,7 +21,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { SelectedEntityItem } from "../types";
 import { SidebarHeading } from "../MainNavbar.styled";
-import { SidebarBookmarkItem } from "./BookmarkList.styled";
+import { DragIcon, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
   onDeleteBookmark: ({ item_id, type }: Bookmark) =>
@@ -57,10 +57,7 @@ const BookmarkItem = ({
 }: BookmarkItemProps) => {
   const { id, item_id, name, type } = bookmark;
   const isSelected =
-    selectedItem &&
-    selectedItem.type !== "collection" &&
-    selectedItem.type === type &&
-    selectedItem.id === item_id;
+    selectedItem && selectedItem.type === type && selectedItem.id === item_id;
   const url = Urls.bookmark(bookmark);
   const icon = Bookmarks.objectSelectors.getIcon(bookmark);
   const onRemove = () => onDeleteBookmark(bookmark);
@@ -79,6 +76,7 @@ const BookmarkItem = ({
         isSorting={isSorting}
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
+        left={<DragIcon name="grabber2" size={12} />}
         right={
           <button onClick={onRemove}>
             <Tooltip tooltip={t`Remove bookmark`} placement="bottom">

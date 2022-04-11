@@ -17,6 +17,7 @@ interface Props {
   icon: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
+  left?: React.ReactNode;
   right?: React.ReactNode;
   onClick?: () => void;
 }
@@ -33,6 +34,7 @@ function SidebarLink({
   url,
   isSelected = false,
   hasDefaultIconStyle,
+  left = null,
   right = null,
   ...props
 }: Props) {
@@ -55,6 +57,7 @@ function SidebarLink({
       hasDefaultIconStyle={hasDefaultIconStyle}
       {...props}
     >
+      {React.isValidElement(left) && left}
       <FullWidthLink to={url}>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
