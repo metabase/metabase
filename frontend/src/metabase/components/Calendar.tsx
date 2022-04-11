@@ -78,10 +78,22 @@ export default class Calendar extends Component<Props, State> {
 
   onClickDay = (date: Moment) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
-    if (!isRangePicker || !selected || selectedEnd) {
-      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
-    } else if (!selectedEnd) {
-      if (date.isAfter(selected)) {
+    if (isRangePicker) {
+      if (!selected) {
+        this.props.onChange(
+          date.format("YYYY-MM-DD"),
+          selectedEnd?.format("YYYY-MM-DD") || null,
+          date,
+          selectedEnd,
+        );
+      } else if (selectedEnd && date.isAfter(selectedEnd)) {
+        this.props.onChange(
+          selectedEnd.format("YYYY-MM-DD"),
+          date.format("YYYY-MM-DD"),
+          selectedEnd,
+          date,
+        );
+      } else if (date.isAfter(selected)) {
         this.props.onChange(
           selected.format("YYYY-MM-DD"),
           date.format("YYYY-MM-DD"),
@@ -96,6 +108,8 @@ export default class Calendar extends Component<Props, State> {
           selected,
         );
       }
+    } else {
+      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
     }
   };
 
@@ -160,7 +174,7 @@ export default class Calendar extends Component<Props, State> {
           key={date.toString()}
           date={moment(date)}
           month={current}
-          onClickDay={this.onClickDay.bind(this)}
+          onClickDay={this.onClickDay}
           isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
           selectedEnd={this.props.selectedEnd}
