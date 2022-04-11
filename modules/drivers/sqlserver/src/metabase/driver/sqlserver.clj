@@ -154,8 +154,8 @@
     (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :sqlserver (date-part :weekday expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (date-part :weekday expr)))
 
 (defmethod sql.qp/date [:sqlserver :day-of-month]
   [_ _ expr]

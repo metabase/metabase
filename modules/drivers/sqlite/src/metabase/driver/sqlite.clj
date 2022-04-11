@@ -150,8 +150,8 @@
 
 ;; SQLite day of week (%w) is Sunday = 0 <-> Saturday = 6. We want 1 - 7 so add 1
 (defmethod sql.qp/date [:sqlite :day-of-week]
-  [driver _ expr]
-  (sql.qp/adjust-day-of-week :sqlite (hx/->integer (hx/inc (strftime "%w" (sql.qp/->honeysql driver expr))))))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (hx/->integer (hx/inc (strftime "%w" (sql.qp/->honeysql driver expr))))))
 
 (defmethod sql.qp/date [:sqlite :day-of-month]
   [driver _ expr]
@@ -162,13 +162,13 @@
   (hx/->integer (strftime "%j" (sql.qp/->honeysql driver expr))))
 
 (defmethod sql.qp/date [:sqlite :week]
-  [_ _ expr]
+  [driver _unit expr]
   (let [week-extract-fn (fn [expr]
                           ;; Move back 6 days, then forward to the next Sunday
                           (->date (sql.qp/->honeysql :sqlite expr)
                                   (hx/literal "-6 days")
                                   (hx/literal "weekday 0")))]
-    (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
+    (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
 (defmethod sql.qp/date [:sqlite :month]
   [driver _ expr]

@@ -94,12 +94,12 @@
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:vertica :week]
-  [_ _ expr]
-  (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-start-of-week driver (partial date-trunc :week) (cast-timestamp expr)))
 
 (defmethod sql.qp/date [:vertica :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :dayofweek_iso expr)))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

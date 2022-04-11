@@ -182,8 +182,8 @@
 (defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :h2 (hsql/call :iso_day_of_week expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :iso_day_of_week expr)))
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]

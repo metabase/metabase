@@ -238,17 +238,18 @@
 (defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (hx/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :mysql (hsql/call :dayofweek expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :dayofweek expr)))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
-(defmethod sql.qp/date [:mysql :week] [_ _ expr]
+(defmethod sql.qp/date [:mysql :week]
+  [driver _unit expr]
   (let [extract-week-fn (fn [expr]
                           (str-to-date "%X%V %W"
                                        (hx/concat (hsql/call :yearweek expr)
                                                   (hx/literal " Sunday"))))]
-    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
+    (sql.qp/adjust-start-of-week driver extract-week-fn expr)))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"

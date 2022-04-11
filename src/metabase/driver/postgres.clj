@@ -233,12 +233,12 @@
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :postgres (extract-integer :dow expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (extract-integer :dow expr)))
 
 (defmethod sql.qp/date [:postgres :week]
-  [_ _ expr]
-  (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
+  [driver _unit expr]
+  (sql.qp/adjust-start-of-week driver (partial date-trunc :week) expr))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]

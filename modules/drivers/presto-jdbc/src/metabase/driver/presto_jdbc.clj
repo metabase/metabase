@@ -120,8 +120,8 @@
   (hsql/call :date (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :presto-jdbc (hsql/call :day_of_week (in-report-zone expr))))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week (in-report-zone expr))))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-month]
   [_ _ expr]
@@ -132,8 +132,8 @@
   (hsql/call :day_of_year (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :week]
-  [_ _ expr]
-  (sql.qp/adjust-start-of-week :presto-jdbc (partial hsql/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-start-of-week driver (partial hsql/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :month]
   [_ _ expr]

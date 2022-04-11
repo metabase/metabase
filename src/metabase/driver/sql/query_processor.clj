@@ -130,7 +130,7 @@
   "Truncate to the day the week starts on."
   [driver truncate-fn expr]
   (let [offset (driver.common/start-of-week-offset driver)]
-    (if (not= offset 0)
+    (if-not (zero? offset)
       (add-interval-honeysql-form driver
                                   (truncate-fn (add-interval-honeysql-form driver expr offset :day))
                                   (- offset) :day)
