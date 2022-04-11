@@ -15,7 +15,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     cy.findByText(
       "Confirmed Sample Company orders for a product, from a user.",
     );
-    cy.findByText("9 columns");
+    cy.findByText("10 columns");
 
     cy.findByText("QUANTITY").click({ force: true });
     cy.findByText("Number of products bought.");

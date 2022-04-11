@@ -32,7 +32,7 @@ describe("scenarios > models metadata", () => {
 
     sidebar().within(() => {
       cy.findByTestId("tooltip-component-wrapper").realHover();
-      cy.findByText("89%");
+      cy.findByText("87%");
     });
 
     cy.findByText(
