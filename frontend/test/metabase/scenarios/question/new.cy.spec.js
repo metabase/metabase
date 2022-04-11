@@ -239,7 +239,7 @@ describe("scenarios > question > new", () => {
 
       cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
-        .should("contain", 2) // quantity for order ID#1
+        .should("contain", "false") // "canceled" for order ID#1
         .click();
 
       cy.log(
@@ -289,7 +289,7 @@ describe("scenarios > question > new", () => {
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
-      cy.findByText("9 columns");
+      cy.findByText("10 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
