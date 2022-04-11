@@ -349,12 +349,13 @@
                    database
                    {:name "describe_json_table"}))))))))
 
+;; get namespace decls to not spuriously say json isn't necessary
+(json/generate-string {})
+
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
       (drop-if-exists-and-create-db! "big-json-test")
-      ;; get namespace decls to shut it
-      (json/generate-string {})
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
             spec     (sql-jdbc.conn/connection-details->spec :postgres details)
             big-map  (into {} (for [x (range 300)] [x :dobbs]))
