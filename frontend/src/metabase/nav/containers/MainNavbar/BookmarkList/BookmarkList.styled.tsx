@@ -10,7 +10,12 @@ export const SidebarBookmarkItem = styled(SidebarLink)`
 
   &:hover {
     button {
+      color: ${color("brand")};
       opacity: 0.5;
+
+      > svg:focus {
+        outline: none;
+      }
     }
   }
 
