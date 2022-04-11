@@ -45,16 +45,39 @@ const Timelines = createEntity({
   reducer: (state = {}, action) => {
     if (action.type === TimelineEvents.actionTypes.CREATE) {
       const event = TimelineEvents.HACK_getObjectFromAction(action);
-      return updateIn(state, [event.timeline_id, "events"], (events = []) => {
-        return [...events, event.id];
+
+      return updateIn(state, [event.timeline_id, "events"], (eventIds = []) => {
+        return [...eventIds, event.id];
+      });
+    }
+
+    if (action.type === TimelineEvents.actionTypes.UPDATE) {
+      const event = TimelineEvents.HACK_getObjectFromAction(action);
+
+      return _.mapObject(state, timeline => {
+        const hasEvent = timeline.events?.includes(event.id);
+        const hasTimeline = event.timeline_id === timeline.id;
+
+        return updateIn(timeline, ["events"], (eventIds = []) => {
+          if (hasEvent && !hasTimeline) {
+            return _.without(eventIds, event.id);
+          } else if (!hasEvent && hasTimeline) {
+            return [...eventIds, event.id];
+          } else {
+            return eventIds;
+          }
+        });
       });
     }
 
     if (action.type === TimelineEvents.actionTypes.DELETE) {
       const eventId = action.payload.result;
-      return _.mapObject(state, timeline =>
-        updateIn(timeline, ["events"], events => _.without(events, eventId)),
-      );
+
+      return _.mapObject(state, timeline => {
+        return updateIn(timeline, ["events"], (eventIds = []) => {
+          return _.without(eventIds, eventId);
+        });
+      });
     }
 
     return state;

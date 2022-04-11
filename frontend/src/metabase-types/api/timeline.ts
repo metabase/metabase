@@ -26,3 +26,5 @@ export interface TimelineEvent {
   creator: User;
   created_at: string;
 }
+
+export type TimelineEventSource = "question" | "collections" | "api";
