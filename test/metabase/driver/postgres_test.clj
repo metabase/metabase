@@ -1,7 +1,6 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -349,9 +348,6 @@
                    database
                    {:name "describe_json_table"}))))))))
 
-;; get namespace decls to not spuriously say json isn't necessary
-(json/generate-string {})
-
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
@@ -359,7 +355,7 @@
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
             spec     (sql-jdbc.conn/connection-details->spec :postgres details)
             big-map  (into {} (for [x (range 300)] [x :dobbs]))
-            big-json (json/generate-string big-map)
+            big-json (cheshire.core/generate-string big-map)
             sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
