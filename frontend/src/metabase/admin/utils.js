@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
-import { routerActions, push } from "react-router-redux";
+import { routerActions, replace } from "react-router-redux";
 import { canAccessPath } from "metabase/nav/utils";
 import { getUser } from "metabase/selectors/user";
 
@@ -22,18 +22,18 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
-  push,
+  replace,
 };
 
 export const createAdminRedirect = (adminPath, nonAdminPath) => {
   const NonAdminRedirectComponent = connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(({ user, push, location }) => {
+  )(({ user, replace, location }) => {
     const path = `${location.pathname}/${
       user.is_superuser ? adminPath : nonAdminPath
     }`;
-    push(path);
+    replace(path);
     return null;
   });
 
