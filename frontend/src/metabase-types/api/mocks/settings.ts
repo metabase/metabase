@@ -3,6 +3,9 @@ import { Engine, Settings, Version } from "metabase-types/api";
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "superseded-by": undefined,
+  source: {
+    type: "official",
+  },
   ...opts,
 });
 
@@ -10,6 +13,18 @@ export const createMockEngines = (
   opts?: Record<string, Engine>,
 ): Record<string, Engine> => ({
   postgres: createMockEngine(),
+  communityEngine: createMockEngine({
+    "driver-name": "CommunityEngine",
+    source: {
+      type: "community",
+    },
+  }),
+  partnerEngine: createMockEngine({
+    "driver-name": "PartnerEngine",
+    source: {
+      type: "partner",
+    },
+  }),
   ...opts,
 });
 

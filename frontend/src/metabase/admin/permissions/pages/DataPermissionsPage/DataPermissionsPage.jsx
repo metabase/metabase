@@ -15,6 +15,11 @@ import {
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
+import { ToolbarUpsell } from "../../components/ToolbarUpsell";
+
+export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
+  <ToolbarUpsell key="upsell" />,
+];
 
 const mapDispatchToProps = {
   loadPermissions: loadDataPermissions,
@@ -76,6 +81,7 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
+      toolbarRightContent={DATA_PERMISSIONS_TOOLBAR_CONTENT}
       helpContent={<DataPermissionsHelp />}
     >
       {children}

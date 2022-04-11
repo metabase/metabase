@@ -106,7 +106,6 @@ describe("EventCard", () => {
 export const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   onArchive: jest.fn(),
   onUnarchive: jest.fn(),
   ...opts,

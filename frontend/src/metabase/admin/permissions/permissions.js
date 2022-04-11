@@ -18,6 +18,7 @@ import {
   updateNativePermission,
   updateSchemasPermission,
   updateTablesPermission,
+  updatePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
@@ -218,6 +219,15 @@ const dataPermissions = handleActions(
 
         const database = metadata.database(entityId.databaseId);
 
+        if (permissionInfo.type === "details") {
+          return updatePermission(
+            state,
+            groupId,
+            [entityId.databaseId, permissionInfo.type],
+            value,
+          );
+        }
+
         if (permissionInfo.type === "native") {
           return updateNativePermission(
             state,
@@ -229,6 +239,8 @@ const dataPermissions = handleActions(
           );
         }
 
+        const shouldDowngradeNative = permissionInfo.type === "access";
+
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(
             state,
@@ -237,6 +249,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
           return inferAndUpdateEntityPermissions(
             updatedPermissions,
@@ -244,6 +257,7 @@ const dataPermissions = handleActions(
             entityId,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         } else if (entityId.schemaName != null) {
           return updateTablesPermission(
@@ -253,6 +267,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         } else {
           return updateSchemasPermission(
@@ -262,6 +277,7 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
+            shouldDowngradeNative,
           );
         }
       },

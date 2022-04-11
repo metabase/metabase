@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import RecentViews from "metabase/entities/recent-views";
+import RecentItems from "metabase/entities/recent-items";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -138,7 +138,7 @@ const isItemLoading = ({ model, model_object }) => {
 };
 
 export default _.compose(
-  RecentViews.loadList({
+  RecentItems.loadList({
     wrapped: true,
     reload: true,
     loadingAndErrorWrapper: false,

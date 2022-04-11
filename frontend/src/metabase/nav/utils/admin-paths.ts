@@ -33,9 +33,9 @@ const getAllMenuItems: () => {
     key: "settings",
   },
   {
-    name: t`People`,
-    path: "/admin/people",
-    key: "people",
+    name: t`Databases`,
+    path: "/admin/databases",
+    key: "databases",
   },
   {
     name: t`Data Model`,
@@ -43,9 +43,9 @@ const getAllMenuItems: () => {
     key: "data-model",
   },
   {
-    name: t`Databases`,
-    path: "/admin/databases",
-    key: "databases",
+    name: t`People`,
+    path: "/admin/people",
+    key: "people",
   },
   {
     name: t`Permissions`,

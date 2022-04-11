@@ -10,6 +10,7 @@ import {
   visualize,
   summarize,
   filter,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -42,8 +43,7 @@ describe("scenarios > question > notebook", () => {
 
   it("should allow post-aggregation filters", () => {
     // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
+    startNewQuestion();
     cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
@@ -195,8 +195,7 @@ describe("scenarios > question > notebook", () => {
   // flaky test (#19454)
   it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
+    startNewQuestion();
     cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
@@ -220,8 +219,7 @@ describe("scenarios > question > notebook", () => {
       restore();
       cy.signInAsAdmin();
       cy.viewport(1280, 720);
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
     });
@@ -375,8 +373,7 @@ describe("scenarios > question > notebook", () => {
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
+    startNewQuestion();
     cy.contains("Sample Database").click();
     cy.contains("Orders").click();
     cy.findByTestId("fields-picker").click();
@@ -398,8 +395,7 @@ describe("scenarios > question > notebook", () => {
 
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a table", () => {
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
+    startNewQuestion();
     cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
@@ -419,8 +415,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     // start a custom question with question a
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("question a").click();
 

@@ -5,6 +5,7 @@ Cypress.Commands.add(
     description,
     icon = "star",
     collection_id,
+    default: is_default = false,
     archived = false,
   } = {}) => {
     return cy.request("POST", "/api/timeline", {
@@ -12,6 +13,7 @@ Cypress.Commands.add(
       description,
       icon,
       collection_id,
+      default: is_default,
       archived,
     });
   },

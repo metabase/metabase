@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/e2e/cypress";
+import { popover, restore, startNewQuestion } from "__support__/e2e/cypress";
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
@@ -69,8 +69,7 @@ describe("scenarios > reference > databases", () => {
     });
 
     it("should sort databases in new UI based question data selection popover", () => {
-      checkQuestionSourceDatabasesOrder("Simple question");
-      checkQuestionSourceDatabasesOrder("Custom question");
+      checkQuestionSourceDatabasesOrder();
     });
 
     it.skip("should sort databases in new native question data selection popover", () => {
@@ -97,8 +96,7 @@ function checkQuestionSourceDatabasesOrder(question_type) {
       ? ".List-item-title"
       : ".List-section-title";
 
-  cy.visit("/question/new");
-  cy.findByText(question_type).click();
+  startNewQuestion();
   popover().within(() => {
     cy.get(selector)
       .as("databaseName")

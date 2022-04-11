@@ -29,5 +29,5 @@ const mapStateToProps = (state: State, props: XraySectionProps) => ({
 export default _.compose(
   Databases.loadList(),
   connect(mapStateToProps),
-  DatabaseCandidates.loadList({ query: getXrayQuery }),
+  DatabaseCandidates.loadList({ query: getXrayQuery, listName: "candidates" }),
 )(HomeXraySection);

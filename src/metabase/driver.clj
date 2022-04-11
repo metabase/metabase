@@ -233,6 +233,16 @@
 (defmethod display-name :default [driver]
   (str/capitalize (name driver)))
 
+(defmulti contact-info
+  "The contact information for the driver"
+  {:added "0.43.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod contact-info :default
+  [_]
+  nil)
+
 (defmulti can-connect?
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB

@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
@@ -11,7 +10,11 @@ describe("TimelineCard", () => {
   it("should render timeline", () => {
     const props = getProps({
       timeline: createMockTimeline({
-        events: [createMockTimelineEvent(), createMockTimelineEvent()],
+        events: [
+          createMockTimelineEvent(),
+          createMockTimelineEvent(),
+          createMockTimelineEvent({ archived: true }),
+        ],
       }),
     });
 
@@ -23,6 +26,5 @@ describe("TimelineCard", () => {
 
 const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   ...opts,
 });

@@ -4,6 +4,7 @@ import {
   popover,
   visualize,
   summarize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -29,8 +30,7 @@ describe("scenarios > question > joined questions", () => {
       query: { "source-table": ORDERS_ID },
     });
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Products").click();
 

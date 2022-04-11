@@ -11330,7 +11330,6 @@ databaseChangeLog:
                 AND p.object = '/general/subscription/'
               WHERE p.object IS NULL;
 
-
   - changeSet:
       id: v43.00-048
       author: dpsutton
@@ -11440,6 +11439,32 @@ databaseChangeLog:
                     foreignKeyName: fk_persisted_info_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
+
+  - changeSet:
+      id: v43.00-049
+      author: dpsutton
+      comment: Added 0.43.0 - Unify datatype with query_execution.started_at so comparable (see 168).
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: v43.00-051
+      author: adam-james
+      comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Boolean value indicating if the timeline is the default one for the containing Collection
+                name: default
+                type: boolean
+                defaultValue: false
+                constraints:
+                  nullable: false
+            tableName: timeline
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

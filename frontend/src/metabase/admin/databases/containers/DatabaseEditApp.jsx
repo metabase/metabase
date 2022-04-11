@@ -13,6 +13,7 @@ import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -57,6 +58,7 @@ const mapStateToProps = state => {
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
+    isAdmin: getUserIsAdmin(state),
   };
 };
 
@@ -96,6 +98,7 @@ export default class DatabaseEditApp extends Component {
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
+    isAdmin: PropTypes.bool,
   };
 
   async componentDidMount() {
@@ -115,6 +118,7 @@ export default class DatabaseEditApp extends Component {
       syncDatabaseSchema,
       persistDatabase,
       unpersistDatabase,
+      isAdmin,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -198,6 +202,7 @@ export default class DatabaseEditApp extends Component {
           {editingExistingDatabase && (
             <Sidebar
               database={metadata.database(database.id)}
+              isAdmin={isAdmin}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}

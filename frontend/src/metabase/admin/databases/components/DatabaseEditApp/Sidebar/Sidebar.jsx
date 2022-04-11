@@ -18,6 +18,7 @@ const propTypes = {
   discardSavedFieldValues: PropTypes.func.isRequired,
   persistDatabase: PropTypes.func.isRequired,
   unpersistDatabase: PropTypes.func.isRequired,
+  isAdmin: PropTypes.bool,
 };
 
 const DatabaseEditAppSidebar = ({
@@ -28,6 +29,7 @@ const DatabaseEditAppSidebar = ({
   discardSavedFieldValues,
   persistDatabase,
   unpersistDatabase,
+  isAdmin,
 }) => {
   const discardSavedFieldValuesModal = useRef();
   const deleteDatabaseModal = useRef();
@@ -87,7 +89,7 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            {database.supportsPersistence() && (
+            {isAdmin && database.supportsPersistence() && (
               <li className="mt2">
                 {database.isPersisted() ? (
                   <ActionButton
@@ -110,20 +112,21 @@ const DatabaseEditAppSidebar = ({
                 )}
               </li>
             )}
-
-            <li className="mt2">
-              <ModalWithTrigger
-                ref={deleteDatabaseModal}
-                triggerClasses="Button Button--deleteDatabase Button--danger"
-                triggerElement={t`Remove this database`}
-              >
-                <DeleteDatabaseModal
-                  database={database}
-                  onClose={() => deleteDatabaseModal.current.toggle()}
-                  onDelete={() => deleteDatabase(database.id, true)}
-                />
-              </ModalWithTrigger>
-            </li>
+            {isAdmin && (
+              <li className="mt2">
+                <ModalWithTrigger
+                  ref={deleteDatabaseModal}
+                  triggerClasses="Button Button--deleteDatabase Button--danger"
+                  triggerElement={t`Remove this database`}
+                >
+                  <DeleteDatabaseModal
+                    database={database}
+                    onClose={() => deleteDatabaseModal.current.toggle()}
+                    onDelete={() => deleteDatabase(database.id, true)}
+                  />
+                </ModalWithTrigger>
+              </li>
+            )}
           </ol>
         </div>
       </div>
