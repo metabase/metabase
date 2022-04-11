@@ -11432,6 +11432,7 @@ databaseChangeLog:
               - column:
                   name: creator_id
                   type: int
+                  remarks: The person who persisted a model
                   constraints:
                     nullable: false
                     referencedTableName: core_user
