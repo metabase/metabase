@@ -7,6 +7,7 @@
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -128,7 +129,9 @@
   [database]
   {:pre [(or nil? (instance? (type Database) database))]}
   (if (some? database)
-    (hash (:details database))
+    (hash [(:details database)
+           (driver/report-timezone)
+           (public-settings/start-of-week)])
     nil))
 
 (defn- set-pool!

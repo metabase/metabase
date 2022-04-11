@@ -16,10 +16,24 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest db-details-hash-test
+  (testing "report-timezone and start-of-week Settings should be included in the details hash"
+    (mt/with-temporary-setting-values [start-of-week :sunday
+                                       report-timezone "UTC"]
+      (letfn [(details-hash []
+                (#'sql-jdbc.conn/db-details-hash (mt/db)))]
+        (let [original-hash (details-hash)]
+          (mt/with-temporary-setting-values [start-of-week :monday]
+            (is (not= original-hash
+                      (details-hash))))
+          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+            (is (not= original-hash
+                      (details-hash)))))))))
+
 (deftest can-connect-with-details?-test
   (is (= true
          (driver.u/can-connect-with-details? :h2 (:details (data/db)))))
-  (testing "Lie and say Test DB is Postgres. CAN-CONNECT? should fail"
+  (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
     (is (= false
            (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
   (testing "Random made-up DBs should fail"
