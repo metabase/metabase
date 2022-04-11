@@ -32,7 +32,7 @@ const DateSelector = forwardRef(function DateSelector(
   {
     className,
     style,
-    value = moment(),
+    value,
     hasTime,
     is24HourMode,
     onChange,

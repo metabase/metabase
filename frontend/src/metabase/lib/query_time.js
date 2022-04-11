@@ -535,3 +535,43 @@ export function setRelativeDatetimeValue(filter, value) {
   }
   return filter;
 }
+
+const DATE_FORMAT = "YYYY-MM-DD";
+const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
+
+export const getTimeComponent = value => {
+  let hours = null;
+  let minutes = null;
+  let date = null;
+  if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
+    date = moment(value, DATE_TIME_FORMAT, true);
+    hours = date.hours();
+    minutes = date.minutes();
+    date.startOf("day");
+  } else if (moment(value, DATE_FORMAT, true).isValid()) {
+    date = moment(value, DATE_FORMAT, true);
+  } else {
+    date = moment();
+  }
+  return { hours, minutes, date };
+};
+
+export const setTimeComponent = (value, hours, minutes) => {
+  const m = moment(value);
+  if (!m.isValid()) {
+    return null;
+  }
+
+  let hasTime = false;
+  if (typeof hours === "number" && typeof minutes === "number") {
+    m.hours(hours);
+    m.minutes(minutes);
+    hasTime = true;
+  }
+
+  if (hasTime) {
+    return m.format(DATE_TIME_FORMAT);
+  } else {
+    return m.format(DATE_FORMAT);
+  }
+};

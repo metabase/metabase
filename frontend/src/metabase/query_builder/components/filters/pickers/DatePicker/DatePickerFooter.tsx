@@ -8,10 +8,11 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Icon from "metabase/components/Icon";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
-import { getTimeComponent, setTimeComponent } from "./SpecificDatePicker";
 import {
   computeFilterTimeRange,
+  getTimeComponent,
   isStartingFrom,
+  setTimeComponent,
 } from "metabase/lib/query_time";
 
 type Props = {

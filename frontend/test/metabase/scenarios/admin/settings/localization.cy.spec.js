@@ -188,7 +188,7 @@ describe("scenarios > admin > localization", () => {
 
     // ensure the date picker is ready
     cy.findByTextEnsureVisible("Add a time");
-    cy.findByTextEnsureVisible("Update filter");
+    cy.findByTextEnsureVisible("Add filter");
 
     // update the date input in the widget
     const date = new Date();

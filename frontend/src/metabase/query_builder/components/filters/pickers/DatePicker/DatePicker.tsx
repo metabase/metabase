@@ -22,6 +22,8 @@ import {
   isStartingFrom,
   getRelativeDatetimeInterval,
   getRelativeDatetimeField,
+  getTimeComponent,
+  setTimeComponent,
 } from "metabase/lib/query_time";
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
@@ -29,12 +31,9 @@ import DatePickerShortcuts from "./DatePickerShortcuts";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
-const getUnit = (
-  [op, _field, _value, unit]: Filter,
-  ignoreNone: boolean = true,
-) => {
+const getUnit = ([op, _field, _value, unit]: Filter) => {
   const result = op === "time-interval" && unit ? unit : "day";
-  return !ignoreNone && result === "none" ? "day" : result;
+  return result;
 };
 const getOptions = ([op, _field, _value, _unit, options]: Filter) =>
   (op === "time-interval" && options) || {};
@@ -83,11 +82,25 @@ export function getDateTimeFieldTarget(field: any[]) {
 
 // add temporal-unit to fields if any of them have a time component
 function getDateTimeFieldAndValues(filter: Filter, count: number) {
-  const values = filter
-    .slice(2, 2 + count)
-    .map(value => value && getDate(value));
+  let values = filter.slice(2, 2 + count).map(value => getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter, bucketing);
+  const { hours, minutes } = getTimeComponent(values[0]);
+  if (
+    typeof hours === "number" &&
+    typeof minutes === "number" &&
+    values.length === 2
+  ) {
+    const { hours: otherHours, minutes: otherMinutes } = getTimeComponent(
+      values[1],
+    );
+    if (typeof otherHours !== "number" || typeof otherMinutes !== "number") {
+      values = [
+        values[0],
+        setTimeComponent(values[1], hours, minutes) || values[0],
+      ];
+    }
+  }
   return [field, ...values];
 }
 
@@ -112,7 +125,7 @@ export const DATE_OPERATORS: DateOperator[] = [
         "time-interval",
         getDateTimeField(filter),
         -getIntervals(filter),
-        getUnit(filter, false),
+        getUnit(filter),
         getOptions(filter),
       ],
     test: filter => {
@@ -144,7 +157,7 @@ export const DATE_OPERATORS: DateOperator[] = [
         "time-interval",
         getDateTimeField(filter),
         getIntervals(filter),
-        getUnit(filter, false),
+        getUnit(filter),
         getOptions(filter),
       ],
     test: filter => {
@@ -163,8 +176,9 @@ export const DATE_OPERATORS: DateOperator[] = [
     name: "between",
     displayName: t`Between`,
     init: filter => {
-      const values = ["between", ...getDateTimeFieldAndValues(filter, 2)];
-      return values;
+      const [field, ...values] = getDateTimeFieldAndValues(filter, 2);
+      const tail = values.length === 2 ? [] : [values[0]];
+      return ["between", field, ...values, ...tail];
     },
     test: ([op, _field, left, right]) =>
       op === "between" &&

@@ -13,50 +13,7 @@ import HoursMinutesInput from "./HoursMinutesInput";
 import moment from "moment";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { TimeContainer } from "./SpecificDatePicker.styled";
-
-const DATE_FORMAT = "YYYY-MM-DD";
-const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
-
-export const getTimeComponent = (value: string) => {
-  let hours: number | null = null;
-  let minutes: number | null = null;
-  let date: moment.Moment;
-  if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
-    date = moment(value, DATE_TIME_FORMAT, true);
-    hours = date.hours();
-    minutes = date.minutes();
-    date.startOf("day");
-  } else if (moment(value, DATE_FORMAT, true).isValid()) {
-    date = moment(value, DATE_FORMAT, true);
-  } else {
-    date = moment();
-  }
-  return { hours, minutes, date };
-};
-
-export const setTimeComponent = (
-  value?: string | moment.Moment,
-  hours?: number | null,
-  minutes?: number | null,
-) => {
-  const m = moment(value);
-  if (!m.isValid()) {
-    return null;
-  }
-
-  let hasTime = false;
-  if (typeof hours === "number" && typeof minutes === "number") {
-    m.hours(hours);
-    m.minutes(minutes);
-    hasTime = true;
-  }
-
-  if (hasTime) {
-    return m.format(DATE_TIME_FORMAT);
-  } else {
-    return m.format(DATE_FORMAT);
-  }
-};
+import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 
 type BetweenPickerProps = {
   isSidebar?: boolean;

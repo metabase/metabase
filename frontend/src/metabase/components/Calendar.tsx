@@ -14,7 +14,7 @@ export type SelectAll = "after" | "before";
 
 type Props = {
   initial?: Moment;
-  selected: Moment;
+  selected?: Moment;
   selectedEnd?: Moment;
   selectAll?: SelectAll | null;
   onChange: (
@@ -28,7 +28,7 @@ type Props = {
 };
 
 type State = {
-  current: Moment;
+  current?: Moment;
 };
 
 export default class Calendar extends Component<Props, State> {
@@ -107,7 +107,8 @@ export default class Calendar extends Component<Props, State> {
     this.setState({ current: moment(this.state.current).add(1, "M") });
   };
 
-  renderMonthHeader(current: Moment, side?: "left" | "right") {
+  renderMonthHeader(current?: Moment, side?: "left" | "right") {
+    current = current || moment();
     return (
       <div className="Calendar-header flex align-center border-bottom">
         {side !== "right" && (
@@ -143,7 +144,8 @@ export default class Calendar extends Component<Props, State> {
     );
   }
 
-  renderWeeks(current: Moment) {
+  renderWeeks(current?: Moment) {
+    current = current || moment();
     const weeks = [];
     const date = moment(current)
       .startOf("month")
@@ -173,7 +175,7 @@ export default class Calendar extends Component<Props, State> {
     return <div className="Calendar-weeks relative">{weeks}</div>;
   }
 
-  renderCalender(current: Moment, side?: "left" | "right") {
+  renderCalender(current?: Moment, side?: "left" | "right") {
     return (
       <div
         className={cx("Calendar", {
@@ -200,7 +202,7 @@ export default class Calendar extends Component<Props, State> {
 type WeekProps = {
   date: Moment;
   month: Moment;
-  selected: Moment;
+  selected?: Moment;
   selectedEnd?: Moment;
   selectAll?: SelectAll | null;
   isRangePicker?: boolean;
