@@ -219,9 +219,15 @@ export default class View extends React.Component {
       isShowingTemplateTagsEditor,
       isShowingDataReference,
       isShowingSnippetSidebar,
+      isShowingTimelineSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
+      showTimelines,
+      hideTimelines,
+      selectTimelineEvents,
+      deselectTimelineEvents,
+      onCloseTimelines,
     } = this.props;
 
     if (isShowingTemplateTagsEditor) {
@@ -236,6 +242,19 @@ export default class View extends React.Component {
 
     if (isShowingSnippetSidebar) {
       return <SnippetSidebar {...this.props} onClose={toggleSnippetSidebar} />;
+    }
+
+    if (isShowingTimelineSidebar) {
+      return (
+        <TimelineSidebar
+          {...this.props}
+          onShowTimelines={showTimelines}
+          onHideTimelines={hideTimelines}
+          onSelectTimelineEvents={selectTimelineEvents}
+          onDeselectTimelineEvents={deselectTimelineEvents}
+          onClose={onCloseTimelines}
+        />
+      );
     }
 
     return null;

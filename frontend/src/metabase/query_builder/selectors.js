@@ -642,7 +642,7 @@ function isEventWithinDomain(event, xDomain) {
   return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
 }
 
-const getIsTimeseries = createSelector(
+export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   settings => settings && isTimeseries(settings),
 );

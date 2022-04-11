@@ -77,6 +77,7 @@ import {
   getIsAnySidebarOpen,
   getDocumentTitle,
   getPageFavicon,
+  getIsTimeseries,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -151,6 +152,7 @@ const mapStateToProps = (state, props) => {
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
+    isTimeseries: getIsTimeseries(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
