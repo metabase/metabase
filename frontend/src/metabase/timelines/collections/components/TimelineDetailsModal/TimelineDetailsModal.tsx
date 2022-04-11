@@ -151,6 +151,10 @@ const getMenuItems = (
         title: t`Edit timeline details`,
         link: Urls.editTimelineInCollection(timeline),
       },
+      {
+        title: t`Move timeline`,
+        link: Urls.moveTimelineInCollection(timeline),
+      },
     );
   }
 

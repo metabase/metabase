@@ -3,14 +3,14 @@ import { t } from "ttag";
 import { getTimelineName } from "metabase/lib/timelines";
 import Button from "metabase/core/components/Button/Button";
 import CollectionPicker from "metabase/containers/CollectionPicker";
-import { CollectionId, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import ModalHeader from "../ModalHeader";
 import ModalFooter from "../ModalFooter";
 import { ModalBody, ModalRoot } from "./MoveTimelineModal.styled";
 
 export interface MoveTimelineModalProps {
   timeline: Timeline;
-  onSubmit: (timeline: Timeline, collectionId: CollectionId | null) => void;
+  onSubmit: (timeline: Timeline, collectionId: number | null) => void;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
   onClose?: () => void;

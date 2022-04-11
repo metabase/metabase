@@ -317,6 +317,10 @@ export function editTimelineInCollection(timeline) {
   return `${timelineInCollection(timeline)}/edit`;
 }
 
+export function moveTimelineInCollection(timeline) {
+  return `${timelineInCollection(timeline)}/move`;
+}
+
 export function timelineArchiveInCollection(timeline) {
   return `${timelineInCollection(timeline)}/archive`;
 }
