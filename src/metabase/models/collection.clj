@@ -9,6 +9,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms :refer [Permissions]]
@@ -25,6 +26,7 @@
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 (p/import-vars [collection.root root-collection])
 
@@ -994,6 +996,8 @@
   required to caclulate the Current User's permissions set, which is done for every API call; thus it is cached to
   save a DB call for *every* API call."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[user-id]]
+                         [(mdb.connection/unique-identifier) user-id])}
    (s/fn user->personal-collection-id* :- su/IntGreaterThanZero
      [user-id :- su/IntGreaterThanZero]
      (u/the-id (user->personal-collection user-id)))

@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.test :as t]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.http-client :as http]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -89,7 +90,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
