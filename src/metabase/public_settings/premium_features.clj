@@ -240,3 +240,75 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   nil
   :getter #(and config/ee-available? (has-any-features?)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Defenterprise Macro                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- in-ee?
+  "Is the current namespace an Enterprise Edition namespace?"
+  []
+  (str/starts-with? (name (ns-name *ns*)) "metabase-enterprise"))
+
+(def ^:private valid-options #{:feature :fallback})
+
+(defn- parse-defenterprise-options
+  "Parses a list of args to defenterprise for keyword options and their corresponding values. Option keywords can be in
+  any order, but must be members of the `valid-options` set. Returns an [options-map other-args] pair."
+  [args]
+  (let [[option-name more] (u/optional valid-options args)]
+    (if-not option-name
+      [nil more]
+      (let [[option-value & other-options] more
+            [options-map other-args]      (parse-defenterprise-options other-options)]
+        [(merge options-map {option-name option-value})
+         other-args]))))
+
+(defn- parse-defenterprise-args
+  [[fn-name & more]]
+  (let [[docstr more]           (u/optional string? more)
+        [ee-ns more]            (u/optional symbol? more)
+        [options [args & body]] (parse-defenterprise-options more)]
+    {:fn-name fn-name
+     :ee-ns   ee-ns
+     :docstr  docstr
+     :options options
+     :args    args
+     :body    body}))
+
+(defmacro defenterprise
+  "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
+  Edition (EE).
+
+  When used in a CE namespace, defines a function that should have a corresponding implementation in an EE namespace
+  (using the same macro). The EE implementation will be used preferentially to the CE implementation if it is available.
+  The first argument after the function name should be a symbol of the namespace containing the EE implementation. The
+  corresponding EE function must have the same name as the CE function.
+
+  When used in an EE namespace, the namespace of the corresponding OSS implementation does not need to be included --
+  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an OSS namespace.
+
+  Two additional options can be defined, when using this macro in an EE namespace. These options should be defined
+  immediately before the args list of the function:
+
+  ###### `:feature`
+
+  A keyword representing a premium feature which must be present for the EE implementation to be used.
+
+  ###### `:fallback`
+
+  A keyword representing the fallback mechanism which should be used if the instance does not have the premium feature
+  defined by the :feature option. Valid options are `:error`, which causes an exception to be thrown, or `:oss`, which
+  causes the CE implementation of the function to be called. (Default: `:error`)"
+  {:arglists '([fn-name ee-ns? docstr? args body])}
+  [& defenterprise-args]
+  (let [{:keys [fn-name ee-ns docstr args body]} (parse-defenterprise-args defenterprise-args)]))
+
+(comment
+  (defenterprise my-enterprise-function
+    "This is my docstring"
+    metabase-enterprise.advanced-permissions.common
+    :feature  :advanced-permissions
+    :fallback :oss
+    []))
