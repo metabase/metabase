@@ -46,7 +46,6 @@ const BookmarkList = ({
       const { id, item_id, name, type } = bookmark;
       const isSelected =
         selectedItem &&
-        selectedItem.type !== "collection" &&
         selectedItem.type === type &&
         selectedItem.id === item_id;
       const url = Urls.bookmark(bookmark);
