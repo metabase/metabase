@@ -1,5 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -21,6 +27,8 @@ import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -213,6 +221,7 @@ function QueryBuilder(props) {
     deleteBookmark,
     allLoaded,
     showTimelinesForCollection,
+    card,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -356,6 +365,49 @@ function QueryBuilder(props) {
     }
   });
 
+  const { isRunning } = uiControls;
+
+  const [shouldSendNotification, setShouldSendNotification] = useState(false);
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
+
+  const onTimeout = useCallback(() => {
+    setIsShowingToaster(true);
+  }, []);
+
+  useLoadingTimer(isRunning, {
+    timer: 15000,
+    onTimeout,
+  });
+
+  const [requestPermission, showNotification] = useWebNotification();
+
+  useEffect(() => {
+    if (!isRunning) {
+      setIsShowingToaster(false);
+    }
+    if (!isRunning && shouldSendNotification) {
+      if (document.hidden) {
+        showNotification(
+          t`All Set! Your question is ready.`,
+          t`${card.name} is loaded.`,
+        );
+      }
+      setShouldSendNotification(false);
+    }
+  }, [isRunning, shouldSendNotification, showNotification, card?.name]);
+
+  const onConfirmToast = useCallback(async () => {
+    const result = await requestPermission();
+    if (result === "granted") {
+      setIsShowingToaster(false);
+      setShouldSendNotification(true);
+    }
+  }, [requestPermission]);
+
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
+
   return (
     <View
       {...props}
@@ -368,6 +420,9 @@ function QueryBuilder(props) {
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
       toggleBookmark={onClickBookmark}
+      onDismissToast={onDismissToast}
+      onConfirmToast={onConfirmToast}
+      isShowingToaster={isShowingToaster}
     />
   );
 }
