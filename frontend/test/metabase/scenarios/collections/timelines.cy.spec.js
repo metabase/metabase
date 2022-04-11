@@ -92,6 +92,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("Specific dates...").click();
       cy.findByText("15").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
@@ -128,6 +129,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("Specific dates...").click();
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByLabelText("Hours")
@@ -153,6 +155,7 @@ describe("scenarios > collections > timelines", () => {
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByRole("button", { name: "calendar icon" }).click();
+      cy.findByText("Specific dates...").click();
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByText("Done").click();

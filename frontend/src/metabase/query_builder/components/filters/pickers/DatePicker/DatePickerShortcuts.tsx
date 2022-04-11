@@ -157,7 +157,7 @@ export default function DatePickerShortcuts({
     ? MISC_OPTIONS
     : [...MISC_OPTIONS, EXCLUDE_OPTION];
 
-  const dimension = filter.dimension();
+  const dimension = filter.dimension?.();
   let title = "";
   if (dimension) {
     const field = dimension.field();
