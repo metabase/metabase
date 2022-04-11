@@ -45,8 +45,9 @@ export const getSortedTimelines = (
 ) => {
   return _.chain(timelines)
     .sortBy(timeline => getTimelineName(timeline).toLowerCase())
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null)
-    .sortBy(timeline => timeline.collection?.id !== collection?.id)
+    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
+    .sortBy(timeline => !timeline.default) // default timelines first
+    .sortBy(timeline => timeline.collection?.id !== collection?.id) // timelines within the collection first
     .value();
 };
 
