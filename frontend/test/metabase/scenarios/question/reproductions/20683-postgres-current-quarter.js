@@ -21,8 +21,9 @@ export function issue20683() {
 
       cy.findByText("Created At").click();
 
-      cy.findByText("Previous").click();
-      cy.findByText("Current").click();
+      cy.findByText("Relative dates...").click();
+      cy.findByText("Past").click({ force: true });
+      cy.findByText("Current").click({ force: true });
 
       cy.findByText("Day").click();
       cy.findByText("Quarter").click();

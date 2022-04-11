@@ -13,7 +13,7 @@ export function issue16621() {
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Search the list").type("Doo{enter}");
       cy.findByTestId("Doo-filter-value").click();
-      cy.button("Update filter").click();
+      cy.button("Add filter").click();
       cy.findByText("Category is Doo").click();
       cy.findByTestId("Doohickey-filter-value").click();
       cy.button("Update filter").click();

@@ -556,8 +556,8 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Past").click();
     // The popover shows up with the default value selected - previous 30 days.
     // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
-    cy.findByText("Days").click();
-    cy.findByText("Years").click();
+    cy.findByText("days").click();
+    cy.findByText("years").click();
     cy.button("Add filter").click();
 
     visualize(({ body }) => {

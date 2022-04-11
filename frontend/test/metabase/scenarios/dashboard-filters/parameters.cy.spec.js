@@ -294,6 +294,8 @@ describe("scenarios > dashboard > parameters", () => {
     // update the filter with the default option "Previous 30 days"
     // it will automatically be selected - just press "Update filter"
     cy.findByText("No default").click();
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     cy.findByText("Update filter").click();
 
     // connect that filter to the second card/question (dashboard already had one question previously)

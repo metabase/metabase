@@ -91,7 +91,6 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
       break;
 
     case "Relative Date":
-      cy.findByText("Relative dates...").click();
       DateFilter.setRelativeDate(filterValue);
       break;
 
