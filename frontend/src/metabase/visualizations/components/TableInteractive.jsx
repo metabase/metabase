@@ -35,7 +35,6 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import colors from "metabase/lib/colors";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -147,7 +146,6 @@ export default class TableInteractive extends Component {
 
   _findIDColumn(data) {
     const pkIndex = data.cols.findIndex(col => isPK(col));
-    console.log({ pkIndex });
     this.setState({
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,
       IDColumn: data.cols[pkIndex],
@@ -888,12 +886,12 @@ export default class TableInteractive extends Component {
               <Grid
                 ref={ref => (this.header = ref)}
                 style={{
-                  position: "absolute",
                   top: 0,
                   left: 0,
+                  right: 0,
                   height: headerHeight,
+                  position: "absolute",
                   overflow: "hidden",
-                  width: width,
                   paddingRight: getScrollBarSize(),
                 }}
                 className="TableInteractive-header scroll-hide-all"
@@ -919,10 +917,11 @@ export default class TableInteractive extends Component {
               <Grid
                 ref={ref => (this.grid = ref)}
                 style={{
-                  position: "absolute",
                   top: headerHeight,
-                  width: width,
                   left: 0,
+                  right: 0,
+                  bottom: 0,
+                  position: "absolute",
                 }}
                 width={width}
                 height={height - headerHeight}
@@ -961,7 +960,7 @@ export default class TableInteractive extends Component {
                   />
                   <Grid
                     ref={ref => (this.sidebar = ref)}
-                    className="scroll-hide-all"
+                    className="scroll-hide-all TableInteractive-header"
                     style={{
                       position: "absolute",
                       top: headerHeight,
@@ -1034,10 +1033,7 @@ function DetailShortcut({
     <div
       key={key}
       className="TableInteractive-cellWrapper px1 cursor-pointer"
-      style={{
-        ...style,
-        backgroundColor: colors["bg-white"],
-      }}
+      style={style}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
