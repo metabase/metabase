@@ -66,7 +66,9 @@
       :as   details}]
   (merge {:subprotocol "sqlite"
           :subname     db}
-         (dissoc details :db)))
+         (dissoc details :db)
+         ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
+         {:limit_attached 0}))
 
 ;; We'll do regex pattern matching here for determining Field types because SQLite types can have optional lengths,
 ;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
