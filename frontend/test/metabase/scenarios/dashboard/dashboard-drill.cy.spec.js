@@ -17,6 +17,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
+  PEOPLE,
 } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard drill", () => {
@@ -919,7 +920,10 @@ function createDashboard(
                 {
                   parameter_id: "e8f79be9",
                   card_id: questionId,
-                  target: ["dimension", ["field", 22, { "source-field": 11 }]],
+                  target: [
+                    "dimension",
+                    ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
+                  ],
                 },
               ],
               visualization_settings,
