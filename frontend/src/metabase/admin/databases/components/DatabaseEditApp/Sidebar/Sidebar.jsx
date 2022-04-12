@@ -101,8 +101,8 @@ const DatabaseEditAppSidebar = ({
                       className="Button Button--danger"
                       normalText={t`Disable model persistence`}
                       activeText={t`Disabling…`}
-                      failedText={t`Disabling failed`}
-                      successText={t`Disabled`}
+                      failedText={t`Failed`}
+                      successText={t`Done`}
                     />
                   ) : (
                     <ActionButton
@@ -110,8 +110,8 @@ const DatabaseEditAppSidebar = ({
                       className="Button Button--danger"
                       normalText={t`Enable model persistence`}
                       activeText={t`Enabling…`}
-                      failedText={t`Enabling failed`}
-                      successText={t`Enabled`}
+                      failedText={t`Failed`}
+                      successText={t`Done`}
                     />
                   )}
                 </li>
