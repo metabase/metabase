@@ -14,15 +14,12 @@ export function browseDatabase(database: Database) {
   return appendSlug(`/browse/${database.id}`, slugg(name));
 }
 
-type TableWithDatabaseAndSchemaInfo = Table & {
-  db: Database;
-  schema_name: string;
-};
-
-export function browseSchema(table: TableWithDatabaseAndSchemaInfo) {
-  return `/browse/${table.db.id}/schema/${table.schema_name}`;
+export function browseSchema(table: Table) {
+  const databaseId = table.db?.id || table.db_id;
+  return `/browse/${databaseId}/schema/${table.schema_name}`;
 }
 
-export function browseTable(table: TableWithDatabaseAndSchemaInfo) {
-  return `/browse/${table.db.id}/schema/${table.schema_name}`;
+export function browseTable(table: Table) {
+  const databaseId = table.db?.id || table.db_id;
+  return `/browse/${databaseId}/schema/${table.schema_name}`;
 }
