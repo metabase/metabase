@@ -160,12 +160,10 @@
             (u/ignore-exceptions
               (qp/process-query (mt/native-query {:query "DETACH DATABASE fdw_test;"}))))
           (testing "Attempting to attach it should fail"
-            (is (thrown-with-msg?
+            (is (thrown?
                  clojure.lang.ExceptionInfo
-                 #"SQL error or missing database \(too many attached databases - max 0\)"
                  (qp/process-query (mt/native-query {:query (format "ATTACH DATABASE 'file:%s' as fdw_test;" path)}))))))
         (testing "Attempt to query the FDW -- shouldn't work"
-          (is (thrown-with-msg?
+          (is (thrown?
                clojure.lang.ExceptionInfo
-               #"SQL error or missing database \(no such table: fdw_test\.products\)"
                (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
