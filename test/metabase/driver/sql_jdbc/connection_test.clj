@@ -81,8 +81,8 @@
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
     (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
       (let [details (:details (mt/db))
-            spec-1  (sql-jdbc.conn/connection-details->spec mt/*driver* details)
-            spec-2  (sql-jdbc.conn/connection-details->spec mt/*driver* details)]
+            spec-1  (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+            spec-2  (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
         (is (= spec-1 spec-2))))))
 
 (defn- perturb-db-details [db]
