@@ -129,13 +129,13 @@ export const initializeDatabase = function(databaseId) {
 
 export const addSampleDatabase = createThunkAction(
   ADD_SAMPLE_DATABASE,
-  function() {
+  function(query) {
     return async function(dispatch, getState) {
       try {
         dispatch.action(ADDING_SAMPLE_DATABASE);
         const sampleDatabase = await MetabaseApi.db_add_sample_database();
         await dispatch(
-          Databases.actions.fetchList(undefined, {
+          Databases.actions.fetchList(query, {
             reload: true,
           }),
         );

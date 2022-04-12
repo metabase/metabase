@@ -4,6 +4,7 @@ import {
   isEE,
   isOSS,
   visitDashboard,
+  visitIframe,
 } from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
@@ -138,6 +139,8 @@ describe("scenarios > embedding > smoke tests", () => {
           cy.contains("Powered by Metabase").should("not.exist");
         }
 
+        cy.signInAsAdmin();
+
         cy.visit(embeddingPage);
         cy.wait("@currentlyEmbeddedObject");
 
@@ -161,6 +164,8 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitIframe();
         cy.findByText("Embedding is not enabled for this object.");
+
+        cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
         cy.wait("@currentlyEmbeddedObject");
@@ -217,13 +222,6 @@ function ensureEmbeddingIsDisabled() {
   cy.findByText(/Embed this (question|dashboard) in an application/).closest(
     ".disabled",
   );
-}
-
-function visitIframe() {
-  cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-    cy.visit(iframe.src);
-  });
 }
 
 function visitAndEnableSharing(object) {

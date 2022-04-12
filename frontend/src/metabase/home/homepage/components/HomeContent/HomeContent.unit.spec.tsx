@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
   createMockDatabase,
+  createMockPopularItem,
   createMockRecentItem,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -31,10 +32,11 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        first_login: "2020-01-05T00:00:00Z",
+        date_joined: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
+      popularItems: [createMockPopularItem()],
     });
 
     render(<HomeContent {...props} />);
@@ -47,10 +49,11 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        first_login: "2020-01-05T00:00:00Z",
+        date_joined: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [],
+      popularItems: [createMockPopularItem()],
     });
 
     render(<HomeContent {...props} />);
@@ -63,7 +66,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        first_login: "2020-01-01T00:00:00Z",
+        date_joined: "2020-01-01T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
@@ -79,10 +82,26 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        first_login: "2020-01-10T00:00:00Z",
+        date_joined: "2020-01-10T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("XraySection")).toBeInTheDocument();
+  });
+
+  it("should render x-rays for the installer when there is no question and dashboard", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        date_joined: "2020-01-10T00:00:00Z",
+      }),
+      databases: [createMockDatabase()],
+      recentItems: [createMockRecentItem()],
     });
 
     render(<HomeContent {...props} />);
@@ -95,7 +114,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        first_login: "2020-01-10T00:00:00Z",
+        date_joined: "2020-01-10T00:00:00Z",
       }),
       databases: [],
       recentItems: [],
@@ -111,5 +130,6 @@ const getProps = (opts?: Partial<HomeContentProps>): HomeContentProps => ({
   user: createMockUser(),
   databases: [],
   recentItems: [],
+  popularItems: [],
   ...opts,
 });

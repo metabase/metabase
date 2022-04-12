@@ -1172,9 +1172,12 @@
 ;;
 (deftest fetch-public-dashboards-test
   (testing "GET /api/dashboard/public"
-    (testing "Test that we can fetch a list of publicly-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (mt/with-temp Dashboard [dashboard (shared-dashboard)]
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp Dashboard [_dashboard (shared-dashboard)]
+        (testing "Test that it requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "dashboard/public"))))
+        (testing "Test that superusers can fetch a list of publicly-accessible dashboards"
           (is (= [{:name true, :id true, :public_uuid true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/public")]
                    (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))))))

@@ -11,10 +11,7 @@ import { GeneralPermissionsState } from "./types/state";
 import { GeneralPermissionKey, GeneralPermissions } from "./types/permissions";
 
 export const canManageSubscriptions = (state: GeneralPermissionsState) =>
-  state.currentUser.permissions.can_access_subscription;
-
-export const canAccessMonitoring = (state: GeneralPermissionsState) =>
-  state.currentUser.permissions.can_access_monitoring;
+  state.currentUser.permissions?.can_access_subscription ?? false;
 
 const getGeneralPermission = (
   permissions: GeneralPermissions,
@@ -29,6 +26,19 @@ export const getIsDirty = createSelector(
   (permissions, originalPermissions) =>
     !_.isEqual(permissions, originalPermissions),
 );
+
+const getPermission = (
+  permissions: GeneralPermissions,
+  isAdmin: boolean,
+  groupId: number,
+  permissionKey: GeneralPermissionKey,
+) => ({
+  permission: permissionKey,
+  isDisabled: isAdmin,
+  disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+  value: getGeneralPermission(permissions, groupId, permissionKey),
+  options: [GENERAL_PERMISSIONS_OPTIONS.yes, GENERAL_PERMISSIONS_OPTIONS.no],
+});
 
 export const getGeneralPermissionEditor = createSelector(
   (state: GeneralPermissionsState) =>
@@ -46,30 +56,9 @@ export const getGeneralPermissionEditor = createSelector(
         id: group.id,
         name: group.name,
         permissions: [
-          {
-            permission: "subscription",
-            isDisabled: isAdmin,
-            disabledTooltip: isAdmin
-              ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-              : null,
-            value: getGeneralPermission(permissions, group.id, "subscription"),
-            options: [
-              GENERAL_PERMISSIONS_OPTIONS.yes,
-              GENERAL_PERMISSIONS_OPTIONS.no,
-            ],
-          },
-          {
-            permission: "monitoring",
-            isDisabled: isAdmin,
-            disabledTooltip: isAdmin
-              ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-              : null,
-            value: getGeneralPermission(permissions, group.id, "monitoring"),
-            options: [
-              GENERAL_PERMISSIONS_OPTIONS.yes,
-              GENERAL_PERMISSIONS_OPTIONS.no,
-            ],
-          },
+          getPermission(permissions, isAdmin, group.id, "setting"),
+          getPermission(permissions, isAdmin, group.id, "monitoring"),
+          getPermission(permissions, isAdmin, group.id, "subscription"),
         ],
       };
     });
@@ -77,12 +66,13 @@ export const getGeneralPermissionEditor = createSelector(
     return {
       filterPlaceholder: t`Search for a group`,
       columns: [
-        { name: `General settings access` },
-        { name: `Subscriptions and Alerts` },
+        { name: t`Group name` },
+        { name: t`General settings access` },
         {
           name: `Monitoring access`,
           hint: t`This grants access to Tools, Audit, and Troubleshooting`,
         },
+        { name: t`Subscriptions and Alerts` },
       ],
       entities,
     };

@@ -391,49 +391,54 @@
 
 ;; basic sanity check
 (deftest admin-checklist-test
-  (with-redefs [db/exists?              (constantly true)
-                db/count                (constantly 5)
-                email/email-configured? (constantly true)
-                slack/slack-configured? (constantly false)]
-    (is (= [{:name  "Get connected"
-             :tasks [{:title        "Add a database"
-                      :completed    true
-                      :triggered    true
-                      :is_next_step false}
-                     {:title        "Set up email"
-                      :completed    true
-                      :triggered    true
-                      :is_next_step false}
-                     {:title        "Set Slack credentials"
-                      :completed    false
-                      :triggered    true
-                      :is_next_step true}
-                     {:title        "Invite team members"
-                      :completed    true
-                      :triggered    true
-                      :is_next_step false}]}
-            {:name  "Curate your data"
-             :tasks [{:title        "Hide irrelevant tables"
-                      :completed    true
-                      :triggered    false
-                      :is_next_step false}
-                     {:title        "Organize questions"
-                      :completed    true
-                      :triggered    false
-                      :is_next_step false}
-                     {:title        "Create metrics"
-                      :completed    true
-                      :triggered    false
-                      :is_next_step false}
-                     {:title        "Create segments"
-                      :completed    true
-                      :triggered    false
-                      :is_next_step false}]}]
-           (for [{group-name :name, tasks :tasks} (#'setup-api/admin-checklist)]
-             {:name  (str group-name)
-              :tasks (for [task tasks]
-                       (-> (select-keys task [:title :completed :triggered :is_next_step])
-                           (update :title str)))})))))
+  (testing "GET /api/setup/admin_checklist"
+    (with-redefs [db/exists?              (constantly true)
+                  db/count                (constantly 5)
+                  email/email-configured? (constantly true)
+                  slack/slack-configured? (constantly false)]
+      (is (= [{:name  "Get connected"
+               :tasks [{:title        "Add a database"
+                        :completed    true
+                        :triggered    true
+                        :is_next_step false}
+                       {:title        "Set up email"
+                        :completed    true
+                        :triggered    true
+                        :is_next_step false}
+                       {:title        "Set Slack credentials"
+                        :completed    false
+                        :triggered    true
+                        :is_next_step true}
+                       {:title        "Invite team members"
+                        :completed    true
+                        :triggered    true
+                        :is_next_step false}]}
+              {:name  "Curate your data"
+               :tasks [{:title        "Hide irrelevant tables"
+                        :completed    true
+                        :triggered    false
+                        :is_next_step false}
+                       {:title        "Organize questions"
+                        :completed    true
+                        :triggered    false
+                        :is_next_step false}
+                       {:title        "Create metrics"
+                        :completed    true
+                        :triggered    false
+                        :is_next_step false}
+                       {:title        "Create segments"
+                        :completed    true
+                        :triggered    false
+                        :is_next_step false}]}]
+             (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+               {:name  (str group-name)
+                :tasks (for [task tasks]
+                         (-> (select-keys task [:title :completed :triggered :is_next_step])
+                             (update :title str)))}))))
+
+    (testing "require superusers"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"

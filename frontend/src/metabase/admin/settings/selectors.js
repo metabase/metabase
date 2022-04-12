@@ -25,6 +25,7 @@ import { trackTrackingPermissionChanged } from "./analytics";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -54,6 +55,7 @@ const SECTIONS = updateSectionsWithPlugins({
     order: 1,
     settings: [],
     component: SettingsSetupList,
+    adminOnly: true,
   },
   general: {
     name: t`General`,
@@ -131,6 +133,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "boolean",
       },
     ],
+    adminOnly: true,
   },
   email: {
     name: t`Email`,
@@ -418,31 +421,39 @@ export const getNewVersionAvailable = createSelector(getSettings, settings => {
   return MetabaseSettings.newVersionAvailable(settings);
 });
 
-export const getSections = createSelector(getSettings, settings => {
-  if (!settings || _.isEmpty(settings)) {
-    return {};
-  }
+export const getSections = createSelector(
+  getSettings,
+  getUserIsAdmin,
+  (settings, isAdmin) => {
+    if (!settings || _.isEmpty(settings)) {
+      return {};
+    }
 
-  const settingsByKey = _.groupBy(settings, "key");
-  const sectionsWithAPISettings = {};
-  for (const [slug, section] of Object.entries(SECTIONS)) {
-    const settings = section.settings.map(function(setting) {
-      const apiSetting =
-        settingsByKey[setting.key] && settingsByKey[setting.key][0];
-      if (apiSetting) {
-        return {
-          placeholder: apiSetting.default,
-          ...apiSetting,
-          ...setting,
-        };
-      } else {
-        return setting;
+    const settingsByKey = _.groupBy(settings, "key");
+    const sectionsWithAPISettings = {};
+    for (const [slug, section] of Object.entries(SECTIONS)) {
+      if (section.adminOnly && !isAdmin) {
+        continue;
       }
-    });
-    sectionsWithAPISettings[slug] = { ...section, settings };
-  }
-  return sectionsWithAPISettings;
-});
+
+      const settings = section.settings.map(function(setting) {
+        const apiSetting =
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+        if (apiSetting) {
+          return {
+            placeholder: apiSetting.default,
+            ...apiSetting,
+            ...setting,
+          };
+        } else {
+          return setting;
+        }
+      });
+      sectionsWithAPISettings[slug] = { ...section, settings };
+    }
+    return sectionsWithAPISettings;
+  },
+);
 
 export const getActiveSectionName = (state, props) => props.params.splat;
 

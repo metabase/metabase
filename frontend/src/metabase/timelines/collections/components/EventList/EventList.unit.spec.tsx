@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
@@ -26,6 +25,5 @@ describe("EventList", () => {
 const getProps = (opts?: Partial<EventListProps>): EventListProps => ({
   events: [],
   timeline: createMockTimeline(),
-  collection: createMockCollection(),
   ...opts,
 });

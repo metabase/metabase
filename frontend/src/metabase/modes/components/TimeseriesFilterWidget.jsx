@@ -28,8 +28,8 @@ export default class TimeseriesFilterWidget extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
-    const { query } = nextProps;
-    const breakouts = query.breakouts();
+    const { question, query } = nextProps;
+    const breakouts = question.isStructured() && query.breakouts();
     if (breakouts && breakouts.length > 0) {
       const filters = query.filters();
 

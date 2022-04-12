@@ -22,6 +22,7 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 
 import { getMetadata } from "metabase/selectors/metadata";
 
+import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -48,6 +49,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
+  invalidateCollections: Collections.actions.invalidateLists,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -67,11 +69,17 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard } = this.props;
+    const {
+      dashboard,
+      triggerToast,
+      saveDashboard,
+      invalidateCollections,
+    } = this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
     );
+    invalidateCollections();
     triggerToast(
       <div className="flex align-center">
         {t`Your dashboard was saved`}

@@ -16,6 +16,8 @@ export default class ExpressionPopover extends React.Component {
     isBlank: true,
   };
 
+  helpTextTarget = React.createRef();
+
   render() {
     const {
       title,
@@ -41,8 +43,9 @@ export default class ExpressionPopover extends React.Component {
             <h3 className="inline-block pl1">{title}</h3>
           </a>
         </div>
-        <div className="p1">
+        <div className="p1" ref={this.helpTextTarget}>
           <ExpressionEditorTextfield
+            helpTextTarget={this.helpTextTarget.current}
             startRule={startRule}
             expression={expression}
             query={query}

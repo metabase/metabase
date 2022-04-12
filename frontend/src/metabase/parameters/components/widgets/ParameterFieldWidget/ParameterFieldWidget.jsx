@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 
 import { normalizeValue } from "./normalizeValue";
@@ -30,6 +30,7 @@ const propTypes = {
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
   value: PropTypes.string,
+  target: PropTypes.instanceOf(Element).isRequired,
 };
 
 const BORDER_WIDTH = 1;
@@ -118,69 +119,78 @@ export default class ParameterFieldWidget extends Component {
       );
     } else {
       return (
-        <Popover hasArrow={false} onClose={() => focusChanged(false)}>
-          <div
-            className={cx("relative PopoverBody--marginBottom", {
-              p2: !isEqualsOp,
-            })}
-          >
-            {verboseName && !isEqualsOp && (
-              <div className="text-bold mb1">{verboseName}...</div>
-            )}
+        <TippyPopover
+          reference={this.props.target}
+          placement="bottom-start"
+          visible
+          onClose={() => focusChanged(false)}
+          content={
+            <div
+              className={cx("relative PopoverBody--marginBottom", {
+                p2: !isEqualsOp,
+              })}
+            >
+              {verboseName && !isEqualsOp && (
+                <div className="text-bold mb1">{verboseName}...</div>
+              )}
 
-            {_.times(numFields, index => {
-              const value = multi ? unsavedValue : [unsavedValue[index]];
-              const onValueChange = multi
-                ? newValues => this.setState({ value: newValues })
-                : ([value]) => {
-                    const newValues = [...unsavedValue];
-                    newValues[index] = value;
-                    this.setState({ value: newValues });
-                  };
-              return (
-                <FieldValuesWidget
-                  key={index}
-                  className={cx("input", numFields - 1 !== index && "mb1")}
-                  value={value}
-                  parameter={parameter}
-                  parameters={parameters}
-                  dashboard={dashboard}
-                  onChange={onValueChange}
-                  placeholder={placeholder}
-                  fields={fields}
-                  autoFocus={index === 0}
-                  multi={multi}
-                  disableSearch={disableSearch}
-                  formatOptions={
-                    operator && getFilterArgumentFormatOptions(operator, index)
+              {_.times(numFields, index => {
+                const value = multi ? unsavedValue : [unsavedValue[index]];
+                const onValueChange = multi
+                  ? newValues => this.setState({ value: newValues })
+                  : ([value]) => {
+                      const newValues = [...unsavedValue];
+                      newValues[index] = value;
+                      this.setState({ value: newValues });
+                    };
+                return (
+                  <FieldValuesWidget
+                    key={index}
+                    className={cx("input", numFields - 1 !== index && "mb1")}
+                    value={value}
+                    parameter={parameter}
+                    parameters={parameters}
+                    dashboard={dashboard}
+                    onChange={onValueChange}
+                    placeholder={placeholder}
+                    fields={fields}
+                    autoFocus={index === 0}
+                    multi={multi}
+                    disableSearch={disableSearch}
+                    formatOptions={
+                      operator &&
+                      getFilterArgumentFormatOptions(operator, index)
+                    }
+                    color="brand"
+                    style={{
+                      borderWidth: BORDER_WIDTH,
+                      minWidth: widgetWidth
+                        ? widgetWidth + BORDER_WIDTH * 2
+                        : null,
+                    }}
+                    minWidth={300}
+                    maxWidth={400}
+                  />
+                );
+              })}
+              <div className={footerClassName}>
+                <Button
+                  primary
+                  className="ml-auto"
+                  disabled={
+                    savedValue.length === 0 && unsavedValue.length === 0
                   }
-                  color="brand"
-                  style={{
-                    borderWidth: BORDER_WIDTH,
-                    minWidth: widgetWidth
-                      ? widgetWidth + BORDER_WIDTH * 2
-                      : null,
+                  onClick={() => {
+                    setValue(unsavedValue.length > 0 ? unsavedValue : null);
+                    focusChanged(false);
                   }}
-                  minWidth={300}
-                  maxWidth={400}
-                />
-              );
-            })}
-            <div className={footerClassName}>
-              <Button
-                primary
-                className="ml-auto"
-                disabled={savedValue.length === 0 && unsavedValue.length === 0}
-                onClick={() => {
-                  setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                  focusChanged(false);
-                }}
-              >
-                {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
-              </Button>
+                >
+                  {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
+                </Button>
+              </div>
             </div>
-          </div>
-        </Popover>
+          }
+        />
       );
     }
   }

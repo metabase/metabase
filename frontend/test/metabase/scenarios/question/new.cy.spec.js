@@ -7,7 +7,7 @@ import {
   restore,
   visualize,
   summarize,
-  openNotebookEditor,
+  startNewQuestion,
   visitQuestion,
 } from "__support__/e2e/cypress";
 
@@ -39,15 +39,9 @@ describe("scenarios > question > new", () => {
       });
     }
 
-    // First test UI for Simple question
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Pick your data");
-    cy.findByText("Sample3").isVisibleInPopover();
+    startNewQuestion();
 
-    // Then move to the Custom question UI
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    cy.contains("Pick your starting data");
     cy.findByText("Sample3").isVisibleInPopover();
   });
 
@@ -72,37 +66,9 @@ describe("scenarios > question > new", () => {
   });
 
   describe("data picker search", () => {
-    beforeEach(() => {
-      cy.visit("/question/new");
-    });
-
-    describe("on a (simple) question page", () => {
-      beforeEach(() => {
-        cy.findByText("Simple question").click();
-        cy.findByPlaceholderText("Search for a table…").type("Ord");
-      });
-
-      it("should allow to search saved questions", () => {
-        cy.findByText("Orders, Count").click();
-        cy.findByText("18,760");
-      });
-
-      it("should allow to search and select tables", () => {
-        cy.findAllByText("Orders")
-          .closest("li")
-          .findByText("Table in")
-          .parent()
-          .findByTestId("search-result-item-name")
-          .click();
-        cy.url().should("include", "question#");
-        cy.findByText("Sample Database");
-        cy.findByText("Orders");
-      });
-    });
-
     describe("on a (custom) question page", () => {
       beforeEach(() => {
-        cy.findByText("Custom question").click();
+        startNewQuestion();
         cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
@@ -133,43 +99,15 @@ describe("scenarios > question > new", () => {
       cy.intercept("/api/search", req => {
         expect("Unexpected call to /api/search").to.be.false;
       });
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByPlaceholderText("Search for a table…").type("  ");
     });
   });
 
   describe("saved question picker", () => {
-    beforeEach(() => {
-      cy.visit("/question/new");
-    });
-
-    describe("on a (simple) question page", () => {
-      beforeEach(() => {
-        cy.findByText("Simple question").click();
-        cy.findByText("Saved Questions").click();
-      });
-
-      it("should display the collection tree on the left side", () => {
-        popover().findByText("Our analytics");
-      });
-
-      it("should display the saved questions list on the right side", () => {
-        cy.findByText("Orders, Count, Grouped by Created At (year)");
-        cy.findByText("Orders");
-        cy.findByText("Orders, Count").click();
-        cy.findByText("18,760");
-      });
-
-      it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question…").type("Grouped");
-        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-        cy.findByText("1,994");
-      });
-    });
-
     describe("on a (custom) question page", () => {
       beforeEach(() => {
-        cy.findByText("Custom question").click();
+        startNewQuestion();
         cy.findByText("Saved Questions").click();
       });
 
@@ -230,14 +168,6 @@ describe("scenarios > question > new", () => {
   });
 
   describe("ask a (simple) question", () => {
-    it("should load orders table", () => {
-      cy.visit("/question/new");
-      cy.contains("Simple question").click();
-      cy.contains("Sample Database").click();
-      cy.contains("Orders").click();
-      cy.contains("37.65");
-    });
-
     it.skip("should handle (removing) multiple metrics when one is sorted (metabase#13990)", () => {
       cy.intercept("POST", `/api/dataset`).as("dataset");
 
@@ -345,7 +275,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
@@ -419,7 +349,7 @@ describe("scenarios > question > new", () => {
 
     it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
       // Go straight to orders table in custom questions
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
 
       summarize({ mode: "notebook" });
       popover().within(() => {

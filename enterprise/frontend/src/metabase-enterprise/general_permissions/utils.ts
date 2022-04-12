@@ -1,4 +1,7 @@
-import { UserWithPermissions } from "./types/user";
+import { UserWithGeneralPermissions } from "./types/user";
 
-export const canAccessMonitoringItems = (user?: UserWithPermissions) =>
-  user?.permissions.can_access_monitoring ?? false;
+export const canAccessMonitoringItems = (user?: UserWithGeneralPermissions) =>
+  user?.permissions?.can_access_monitoring ?? false;
+
+export const canAccessSettings = (user?: UserWithGeneralPermissions) =>
+  user?.permissions?.can_access_setting ?? false;

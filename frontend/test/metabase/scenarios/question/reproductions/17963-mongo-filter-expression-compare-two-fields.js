@@ -1,4 +1,9 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visualize,
+  startNewQuestion,
+} from "__support__/e2e/cypress";
 
 export function issue17963() {
   describe("issue 17963", () => {
@@ -6,8 +11,7 @@ export function issue17963() {
       restore("mongo-4");
       cy.signInAsAdmin();
 
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("QA Mongo4").click();
       cy.findByText("Orders").click();
     });

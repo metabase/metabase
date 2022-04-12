@@ -48,6 +48,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
+    this.suggestionTarget = React.createRef();
   }
 
   static propTypes = {
@@ -60,6 +61,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
     onBlankChange: PropTypes.func,
+    helpTextTarget: PropTypes.instanceOf(Element).isRequired,
   };
 
   static defaultProps = {
@@ -409,7 +411,11 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     return (
       <React.Fragment>
-        <EditorContainer isFocused={isFocused} hasError={Boolean(errorMessage)}>
+        <EditorContainer
+          isFocused={isFocused}
+          hasError={Boolean(errorMessage)}
+          ref={this.suggestionTarget}
+        >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor
             commands={this.commands}
@@ -439,13 +445,18 @@ export default class ExpressionEditorTextfield extends React.Component {
             width="100%"
           />
           <ExpressionEditorSuggestions
+            target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
         <ErrorMessage error={errorMessage} />
-        <HelpText helpText={this.state.helpText} width={this.props.width} />
+        <HelpText
+          target={this.props.helpTextTarget}
+          helpText={this.state.helpText}
+          width={this.props.width}
+        />
       </React.Fragment>
     );
   }
