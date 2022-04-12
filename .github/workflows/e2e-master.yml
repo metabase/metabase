@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "master"
+      - "cypress-9.5.4"
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -39,7 +39,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 180
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -131,9 +131,8 @@ jobs:
       run: |
         yarn run test-cypress-no-build \
           --folder ${{ matrix.folder }} \
-          --record --key ${{ secrets.CURRENTS_KEY }} \
           --group ${{ matrix.folder }}-${{ matrix.edition }} \
-          --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+          --env burn=10
       env:
         TERM: xterm
 
