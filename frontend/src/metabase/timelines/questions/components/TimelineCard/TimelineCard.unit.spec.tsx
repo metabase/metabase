@@ -39,6 +39,22 @@ describe("TimelineCard", () => {
 
     expect(props.onToggleTimeline).toHaveBeenCalled();
   });
+
+  it("should make a timeline visible when its even is selected", () => {
+    const props = getProps({
+      timeline: createMockTimeline({
+        name: "Releases",
+        events: [createMockTimelineEvent({ name: "RC" })],
+      }),
+      isVisible: false,
+    });
+
+    render(<TimelineCard {...props} />);
+    userEvent.click(screen.getByText("Releases"));
+    userEvent.click(screen.getByText("RC"));
+
+    expect(props.onToggleTimeline).toHaveBeenCalledWith(props.timeline, true);
+  });
 });
 
 const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({

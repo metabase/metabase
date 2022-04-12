@@ -4,6 +4,7 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 const questionDetails = {
@@ -33,11 +34,10 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via simple question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.wait("@dataset");
+      visualize();
       cy.findByTextEnsureVisible("LONGITUDE");
       summarize();
     });
@@ -95,8 +95,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via custom question", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
 
@@ -163,11 +162,10 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
-      cy.wait("@dataset");
+      visualize();
       cy.findByTextEnsureVisible("LONGITUDE");
     });
 

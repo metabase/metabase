@@ -276,21 +276,18 @@
       (create-field-values! field value-pairs)))
   {:status :success})
 
-
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (api/check-superuser)
-  (field-values/create-or-update-field-values! (api/check-404 (Field id)))
+  (field-values/create-or-update-field-values! (api/write-check (Field id)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/check-superuser)
-  (field-values/clear-field-values! (api/check-404 (Field id)))
+  (field-values/clear-field-values! (api/write-check (Field id)))
   {:status :success})
 
 

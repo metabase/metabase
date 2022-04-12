@@ -11,12 +11,21 @@ const TimelineEvents = createEntity({
   forms,
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      TimelineEvents.actions.update(
+    setTimeline: ({ id }, timeline, opts) => {
+      return TimelineEvents.actions.update(
+        { id },
+        { timeline_id: timeline.id },
+        undo(opts, t`event`, t`moved`),
+      );
+    },
+
+    setArchived: ({ id }, archived, opts) => {
+      return TimelineEvents.actions.update(
         { id },
         { archived },
         undo(opts, t`event`, archived ? t`archived` : t`unarchived`),
-      ),
+      );
+    },
   },
 });
 

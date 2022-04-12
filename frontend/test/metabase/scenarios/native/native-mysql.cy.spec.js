@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -9,15 +9,11 @@ describe("scenatios > question > native > mysql", () => {
 
     restore("mysql-8");
     cy.signInAsAdmin();
-
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.contains(MYSQL_DB_NAME).click();
   });
 
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
-    cy.get(".ace_content").type(
+    openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
       `SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];`,
       {
         parseSpecialCharSequences: false,
@@ -48,7 +44,9 @@ describe("scenatios > question > native > mysql", () => {
   });
 
   it("can save a native MySQL query", () => {
-    cy.get(".ace_content").type(`SELECT * FROM ORDERS`);
+    openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+      `SELECT * FROM ORDERS`,
+    );
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset");

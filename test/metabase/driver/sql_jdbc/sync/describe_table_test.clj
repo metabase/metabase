@@ -68,3 +68,15 @@
                   :fields
                   (filter :semantic-type)
                   (map (juxt (comp str/lower-case :name) :semantic-type))))))))
+
+(deftest describe-nested-field-columns-test
+  (testing "flattened-row"
+    (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
+          flattened {[:mob :bob :dobbs] 123
+                     [:mob :bob :cobbs] "boop"}]
+      (is (= flattened (#'describe-table/flattened-row :mob row)))))
+  (testing "row->types"
+    (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
+          types {[:bob :cobbs] clojure.lang.PersistentVector
+                 [:bob :dobbs :robbs] java.lang.Long}]
+      (is (= types (#'describe-table/row->types row))))))

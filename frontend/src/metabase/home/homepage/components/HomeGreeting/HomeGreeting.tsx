@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import Tooltip from "metabase/components/Tooltip";
 import { User } from "metabase-types/api";
 import {
   GreetingLogo,
@@ -21,7 +22,14 @@ const HomeGreeting = ({
 
   return (
     <GreetingRoot>
-      {showLogo && <GreetingLogo />}
+      {showLogo && (
+        <Tooltip
+          tooltip={t`Don't tell anyone, but you're my favorite.`}
+          placement="bottom"
+        >
+          <GreetingLogo />
+        </Tooltip>
+      )}
       <GreetingMessage showLogo={showLogo}>{message}</GreetingMessage>
     </GreetingRoot>
   );

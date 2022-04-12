@@ -10,7 +10,12 @@ export const SidebarBookmarkItem = styled(SidebarLink)`
 
   &:hover {
     button {
+      color: ${color("brand")};
       opacity: 0.5;
+
+      > svg:focus {
+        outline: none;
+      }
     }
   }
 
@@ -19,6 +24,6 @@ export const SidebarBookmarkItem = styled(SidebarLink)`
     color: ${props =>
       props.isSelected ? color("text-white") : color("brand")};
     cursor: pointer;
-    margin-right: ${space(0)};
+    margin-top: 3px;
   }
 `;

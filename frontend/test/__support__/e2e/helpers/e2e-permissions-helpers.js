@@ -56,6 +56,16 @@ export function assertPermissionTable(rows) {
   });
 }
 
+export function assertPermissionForItem(
+  item,
+  permissionColumnIndex,
+  permissionValue,
+) {
+  getPermissionRowPermissions(item)
+    .eq(permissionColumnIndex)
+    .should("have.text", permissionValue);
+}
+
 /**
  * @param {string} index
  * @param {string} permission
@@ -68,14 +78,4 @@ export function isPermissionDisabled(index, permission, isDisabled) {
     .contains(permission)
     .closest("a")
     .should("have.attr", "aria-disabled", isDisabled.toString());
-}
-
-export function assertPermissionForItem(
-  item,
-  permissionColumnIndex,
-  permissionValue,
-) {
-  getPermissionRowPermissions(item)
-    .eq(permissionColumnIndex)
-    .should("have.text", permissionValue);
 }

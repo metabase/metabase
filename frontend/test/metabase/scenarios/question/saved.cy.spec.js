@@ -5,6 +5,8 @@ import {
   openOrdersTable,
   summarize,
   visitQuestion,
+  startNewQuestion,
+  visualize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
@@ -134,15 +136,15 @@ describe("scenarios > question > saved", () => {
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
-  it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
+  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
     cy.createNativeQuestion({
       name: "15808",
       native: { query: "select * from products" },
     });
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
+    visualize();
     cy.findAllByText("Filter")
       .first()
       .click();

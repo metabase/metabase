@@ -108,6 +108,7 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
 };
 
 // various ui state options
@@ -290,6 +291,7 @@ export const uiControls = handleActions(
     [onOpenTimelines]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      ...CLOSED_NATIVE_EDITOR_SIDEBARS,
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: state => ({

@@ -7,6 +7,7 @@ export interface Timeline {
   name: string;
   description: string | null;
   icon: string;
+  default: boolean;
   archived: boolean;
   collection?: Collection;
   events?: TimelineEvent[];
@@ -25,3 +26,5 @@ export interface TimelineEvent {
   creator: User;
   created_at: string;
 }
+
+export type TimelineEventSource = "question" | "collections" | "api";

@@ -23,6 +23,7 @@ export interface EventCardProps {
   timeline: Timeline;
   isSelected?: boolean;
   onEdit?: (event: TimelineEvent) => void;
+  onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
   onToggle?: (event: TimelineEvent, isSelected: boolean) => void;
 }
@@ -32,11 +33,12 @@ const EventCard = ({
   timeline,
   isSelected,
   onEdit,
+  onMove,
   onArchive,
   onToggle,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
-  const menuItems = getMenuItems(event, timeline, onEdit, onArchive);
+  const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
@@ -78,6 +80,7 @@ const getMenuItems = (
   event: TimelineEvent,
   timeline: Timeline,
   onEdit?: (event: TimelineEvent) => void,
+  onMove?: (event: TimelineEvent) => void,
   onArchive?: (event: TimelineEvent) => void,
 ) => {
   if (!timeline.collection?.can_write) {
@@ -88,6 +91,10 @@ const getMenuItems = (
     {
       title: t`Edit event`,
       action: () => onEdit?.(event),
+    },
+    {
+      title: t`Move event`,
+      action: () => onMove?.(event),
     },
     {
       title: t`Archive event`,

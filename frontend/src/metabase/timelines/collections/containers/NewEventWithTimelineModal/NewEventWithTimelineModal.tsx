@@ -4,14 +4,18 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import NewEventModal from "../../components/NewEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface NewEventWithTimelineModalProps {
+  params: ModalParams;
+}
 
 const collectionProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: NewEventWithTimelineModalProps) =>
     Urls.extractCollectionId(props.params.slug),
   LoadingAndErrorWrapper,
 };

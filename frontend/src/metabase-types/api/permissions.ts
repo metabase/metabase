@@ -21,6 +21,12 @@ export type DownloadAccessPermission = {
   schemas: DownloadSchemasPermission;
 };
 
+export type DetailsPermission = "no" | "yes";
+
+export type DetailsPermissions = {
+  [key: DatabaseId]: DetailsPermission;
+};
+
 export type DownloadSchemasPermission =
   | DownloadPermission
   | { [key: SchemaName]: DownloadTablePermission };
@@ -32,6 +38,7 @@ export type DownloadTablePermission =
 export type DatabasePermissions = {
   data: DatabaseAccessPermissions;
   download: DownloadAccessPermission;
+  details: DetailsPermissions;
 };
 
 export type DatabaseAccessPermissions = {

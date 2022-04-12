@@ -15,6 +15,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   has_question_and_dashboard: false,
   personal_collection_id: 1,
   date_joined: new Date().toISOString(),
+  first_login: new Date().toISOString(),
   last_login: new Date().toISOString(),
   ...opts,
 });

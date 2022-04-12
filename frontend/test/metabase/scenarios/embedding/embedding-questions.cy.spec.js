@@ -1,4 +1,9 @@
-import { restore, visitQuestion, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  popover,
+  visitIframe,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 import {
@@ -39,12 +44,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     cy.findByText(title);
 
@@ -80,12 +80,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
@@ -123,12 +118,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // Global (Data model) settings should be preserved
     cy.findByText("Product ID as Title");
@@ -158,12 +148,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // Base question assertions
     cy.findByText("Product ID as Title");
