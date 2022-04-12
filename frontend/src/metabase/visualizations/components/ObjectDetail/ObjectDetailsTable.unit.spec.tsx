@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 import { TYPE } from "metabase/lib/types";
-import testDataset from "./testDataset";
+import testDataset from "__support__/testDataset";
 
 const objectDetailCard = {
   card: {
@@ -44,7 +44,7 @@ describe("ObjectDetailsTable", () => {
   it("renders an object details table", () => {
     render(
       <DetailsTable
-        data={testDataset}
+        data={testDataset as any}
         zoomedRow={testDataset.rows[1]}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}

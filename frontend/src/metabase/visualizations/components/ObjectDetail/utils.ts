@@ -44,5 +44,5 @@ export const getIdValue = ({
 
   const { cols, rows } = data;
   const columnIndex = _.findIndex(cols, col => isPK(col));
-  return rows[0][columnIndex];
+  return rows[0][columnIndex] as number;
 };

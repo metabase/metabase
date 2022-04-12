@@ -39,6 +39,7 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  hidden = false,
   ...def
 } = {}) {
   return nestedSettings("column_settings", {

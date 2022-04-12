@@ -2,8 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { Relationships } from "./ObjectRelationships";
-import testDataset from "./testDataset";
-import testForeignKeys from "./testForeignKeys";
+import testForeignKeys from "__support__/testForeignKeys";
 
 describe("Object Relationships", () => {
   it("renders empty message if no foreign keys are provided", () => {
@@ -21,7 +20,7 @@ describe("Object Relationships", () => {
   it("renders a list of relationships", () => {
     render(
       <Relationships
-        tableForeignKeys={testForeignKeys}
+        tableForeignKeys={testForeignKeys as any[]}
         tableForeignKeyReferences={{
           13: { status: 1, value: 771 },
           33: { status: 1, value: 881 },

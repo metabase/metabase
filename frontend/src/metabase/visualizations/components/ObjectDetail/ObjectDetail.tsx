@@ -236,7 +236,9 @@ export function ObjectDetailHeader({
           <Icon name="connections" size={17} />
           <div className="ml2">
             {jt`This ${(
-              <span className="text-dark">{objectName}</span>
+              <span className="text-dark" key={objectName}>
+                {objectName}
+              </span>
             )} is connected to:`}
           </div>
         </div>

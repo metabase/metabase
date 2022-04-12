@@ -35,7 +35,7 @@ export type Field = {
   max_value?: number;
   min_value?: number;
 
-  caveats?: string;
+  caveats?: string | null;
   points_of_interest?: string;
 
   table: Table;
