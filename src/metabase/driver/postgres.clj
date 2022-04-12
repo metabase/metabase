@@ -287,21 +287,12 @@
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          ;; Array and sub-JSON coerced to text
-          cast-type            (cond
-                                 (isa? field-type :type/Integer)
-                                 :type/Integer
-                                 (isa? field-type :type/Float)
-                                 :type/Float
-                                 (isa? field-type :type/Boolean)
-                                 :type/Boolean
-                                 :else
-                                 :type/Text)
-          names                (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))]
-      (hx/cast cast-type
-               (apply hsql/call [:json_extract_path_text
-                                 (hx/cast :json parent-identifier)
-                                 names])))))
+          names                (format "'{%s}'" (str/join "," (rest nfc-path)))]
+      (reify
+        hformat/ToSql
+        (to-sql [_] (format "%s#>%s" (hformat/to-sql parent-identifier) names))
+        PrettyPrintable
+        (pretty [_] (format "%s#>%s" (pr-str parent-identifier) names))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [member id-or-name _opts :as clause]]
