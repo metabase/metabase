@@ -7,6 +7,7 @@
             [clojure.tools.reader.edn :as edn]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [medley.core :as m]
@@ -57,7 +58,7 @@
     :port     (tx/db-test-env-var :ocient :port "4051")
     :user     (tx/db-test-env-var :ocient :user "admin@system")
     :password (tx/db-test-env-var :ocient :password "admin")
-    :additional-options "loglevel=TRACE;logfile=/tmp/metabase/ocient_jdbc.log"}))
+    :additional-options "loglevel=TRACE;logfile=/ocient/db/metabase/ocient_jdbc.log"}))
 
 (defmethod tx/dbdef->connection-details :ocient
   [driver context {:keys [database-name]}]
@@ -66,9 +67,6 @@
            {:db "system"})
          (when (= context :db)
            {:db (tx/format-name driver database-name)})))
-
-(defn- dbspec []
-  (sql-jdbc.conn/connection-details->spec :ocient @db-connection-details))
 
 ;; (defmethod tx-make-create-table-stmt :ocient 
 ;;   [table-name {:keys [field-name, base-type], :as tabledef}]
@@ -149,7 +147,7 @@
   (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))]
     (str/join "\n"
               (list
-               (format "CREATE TABLE \"%s\".\"%s\"(" session-schema table-name),
+               (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
                (format "  %s TIMESTAMP TIME KEY BUCKET(1, HOUR) NOT NULL DEFAULT '0'," timestamp-column-key),
                (format "  %s INT NOT NULL," id-column-key),
                (str/join
@@ -258,6 +256,10 @@
                     (sql.qp/->honeysql driver (->insertable value))))]
     (first values)))
 
+(defn- add-first-vec
+  [target addition]
+  (apply conj (if (vector? addition) addition [addition]) target))
+
 ;; Ocient has weirdifferent syntax for inserting multiple rows, it looks like
 ;;
 ;; INSERT INTO table
@@ -274,22 +276,35 @@
        "INSERT INTO \"%s\".\"%s\" SELECT %s"
        session-schema
        ((comp last :components) (into {} table-identifier))
-       (for [row  (u/one-or-many row-or-rows)
-             :let [columns (keys row)]]
+       (let [rows    (u/one-or-many row-or-rows)
+             columns (keys (first rows))
+             values  (for [[i row] (m/indexed rows)]
+                       (for [value (map row columns)]
+                         (hformat/to-sql
+                          (sql.qp/->honeysql driver (->insertable value)))))]
+         (str/join
+          " UNION ALL SELECT "
+          (map (fn [row] (str/join ", " (add-first-vec row [(tc/to-long (time/now)) 0]))) values)))))))
 
-         ((println (pr-str (type row)))
-          (println (pr-str row))
-          (println (str/join "," (apply pr-str (insert-row-honeysql-form-impl driver row))))
-          (println (insert-row-honeysql-form-impl driver row))
-          (str/join "," (insert-row-honeysql-form-impl driver row))))))))
-      ;;  (let [rows    (u/one-or-many row-or-rows)
-      ;;        columns (keys (first rows))
-      ;;        values  (for [row rows]
-      ;;                  (for [value (map row columns)]
-      ;;                    (pr-str value)))]
-      ;;    (str/join
-      ;;     " UNION ALL SELECT "
-      ;;     (map (fn [row] (str/join "," row)) values)))))))
+
+      ;;  (for [row  (u/one-or-many row-or-rows)
+      ;;        :let [columns (keys row)]]
+
+      ;;    ((println (pr-str (type row)))
+      ;;     (println (pr-str row))
+      ;;     (println (str/join "," (apply pr-str (insert-row-honeysql-form-impl driver row))))
+      ;;     (println (insert-row-honeysql-form-impl driver row))
+      ;;     (str/join "," (insert-row-honeysql-form-impl driver row))))))))
+
+
+;; Maybe we want to override this only for tests???????
+;;
+;; (defmethod ddl/insert-rows-ddl-statements :ocient
+;;   [driver table-identifier row-or-rows]
+;;   [(binding [hformat/*subquery?* false]
+;;      (hsql/format (insert-rows-honeysql-form driver table-identifier row-or-rows)
+;;                   :quoting             (sql.qp/quote-style driver)
+;;                   :allow-dashed-names? true))])
 
 
 (defmethod load-data/do-insert! :ocient
@@ -300,8 +315,9 @@
     (try
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
       (doseq [sql+args statements]
-        (log/infof "[insert] %s" (pr-str sql+args))
-        (execute-sql-spec! spec (unprepare/unprepare driver sql+args)))
+        (let [sql (unprepare/unprepare driver sql+args)]
+          (log/infof "[insert] %s" (pr-str sql))
+          (execute-sql-spec! spec sql)))
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
         (jdbc/print-sql-exception-chain e)
@@ -312,7 +328,17 @@
 (defn- add-ids-and-timestamps
   [rows]
   (for [[i row] (m/indexed rows)]
-    (into {(keyword timestamp-column-key) (tc/to-long (time/now))} (into {(keyword id-column-key) (inc i)} row))))
+    row))
+    ;; (assoc (assoc row (keyword id-column-key) (inc i)) (keyword timestamp-column-key) (tc/to-long (time/now)))))
+    ;; (into {(keyword timestamp-column-key) (tc/to-long (time/now))} (into {(keyword id-column-key) (inc i)} row))))
+
+(defn- load-data-chunked
+  "Middleware function intended for use with `make-load-data-fn`. Insert rows in chunks, which default to 200 rows
+  each."
+  ([insert!]                   (load-data-chunked map insert!))
+  ([map-fn insert!]            (load-data-chunked map-fn 65 insert!))
+  ([map-fn chunk-size insert!] (fn [rows]
+                                 (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
 (defn- load-data-add-ids-and-timestamps-impl
   [insert!]
@@ -320,11 +346,13 @@
     (insert! (vec (add-ids-and-timestamps rows)))))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-timestamps!
-  (load-data/make-load-data-fn load-data-add-ids-and-timestamps-impl load-data/load-data-chunked))
+  (load-data/make-load-data-fn load-data-add-ids-and-timestamps-impl load-data-chunked))
 
 ;; Ocient requires an id and a timestamp for each row
 (defmethod load-data/load-data! :ocient [driver dbdef tabledef]
   (load-data-add-ids-timestamps! driver dbdef tabledef))
+  ;; (log/infof "Skipping :ocient load")
+  ;; nil)
 
 (defmethod tx/destroy-db! :ocient [driver dbdef]
   (println "Ocient destroy-db! entered")
