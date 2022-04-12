@@ -417,6 +417,24 @@ commands:
             fi
             echo "Created checksums for $(cat << parameters.filename >> | wc -l) files"
 
+  # In case Clojure did something annoying like
+  #
+  # Syntax error (ClassNotFoundException) compiling at (********/driver/sqlite_test.clj:230:16).
+  # sql.qp-test-util
+  #
+  # Full report at:
+  # /tmp/clojure-12125931956503910528.edn
+  upload-clojure-error-report:
+    steps:
+      - run:
+          name: Copy Clojure error reports for uploading
+          command: |
+            mkdir /home/circleci/errors &&
+            cp /tmp/clojure-*.edn /home/circleci/errors
+          when: on_fail
+      - store_artifacts:
+          path: /home/circleci/errors
+
   run-clojure-command:
     parameters:
       before-steps:
@@ -439,6 +457,7 @@ commands:
       - steps: << parameters.after-steps >>
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
+      - upload-clojure-error-report
 
   run-yarn-command:
     parameters:
@@ -752,6 +771,7 @@ jobs:
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
+            - upload-clojure-error-report
             - steps: << parameters.after-steps >>
 
 
