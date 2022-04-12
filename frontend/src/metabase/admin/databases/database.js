@@ -1,5 +1,5 @@
+import _ from "underscore";
 import { createAction } from "redux-actions";
-import { assocIn } from "icepick";
 import {
   combineReducers,
   createThunkAction,
@@ -320,10 +320,24 @@ const editingDatabase = handleActions(
     [UPDATE_DATABASE]: (state, { payload }) => payload.database || state,
     [DELETE_DATABASE]: (state, { payload }) => null,
     [SELECT_ENGINE]: (state, { payload }) => ({ ...state, engine: payload }),
-    [PERSIST_DATABASE]: (state, { error }) =>
-      assocIn(state, ["details", "persist-models"], !error),
-    [UNPERSIST_DATABASE]: (state, { error }) =>
-      assocIn(state, ["details", "persist-models"], !!error),
+    [PERSIST_DATABASE]: (state, { error }) => {
+      if (error) {
+        return state;
+      }
+      return {
+        ...state,
+        features: [...state.features, "persist-models-enabled"],
+      };
+    },
+    [UNPERSIST_DATABASE]: (state, { error }) => {
+      if (error) {
+        return state;
+      }
+      return {
+        ...state,
+        features: _.without(state.features, "persist-models-enabled"),
+      };
+    },
     [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) =>
       database,
   },
