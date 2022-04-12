@@ -10,19 +10,19 @@ During development you will want to run `yarn build-hot` to continuously build t
 
 To run all Cypress tests programmatically in the terminal:
 ```
-yarn run test-cypress-no-build
+yarn run test-cypress-run
 ```
 
 You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
 
 ```
-yarn run test-cypress-no-build --folder sharing
+yarn run test-cypress-run --folder sharing
 ```
 
 You can quickly test a single file only by using the `--spec` flag.
 
 ```
-yarn test-cypress-no-build --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
+yarn test-cypress-run --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
 ```
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
