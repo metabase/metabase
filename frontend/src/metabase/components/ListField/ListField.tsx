@@ -3,8 +3,8 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import _Checkbox from "metabase/core/components/CheckBox";
-import _EmptyState from "metabase/components/EmptyState";
+import Checkbox from "metabase/core/components/CheckBox";
+import EmptyState from "metabase/components/EmptyState";
 
 import {
   OptionContainer,
@@ -14,9 +14,6 @@ import {
   FilterInput,
 } from "./ListField.styled";
 import { ListFieldProps, Option } from "./types";
-
-const Checkbox = _Checkbox as any;
-const EmptyState = _EmptyState as any;
 
 function createOptionsFromValuesWithoutOptions(
   values: string[],
@@ -66,9 +63,14 @@ const ListField = ({
     }
 
     return augmentedOptions.filter(option => {
+      if (!option || option.length === 0) {
+        return false;
+      }
+
       // option is: [id, name]
       if (
         option.length > 1 &&
+        option[1] &&
         String(option[1])
           .toLowerCase()
           .indexOf(trimmedFilter) > -1
