@@ -3,6 +3,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
+  visitIframe,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -82,10 +83,7 @@ describe("issue 20438", () => {
     cy.icon("share").click();
     cy.findByText("Embed this dashboard in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     cy.wait("@getEmbed");
 
