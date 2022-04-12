@@ -283,7 +283,7 @@
 
 (defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type           (:effective_type nfc-field)
+    (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
@@ -292,7 +292,7 @@
         hformat/ToSql
         (to-sql [_]
           (hformat/to-params-default names "nfc_path")
-          (format "%s#> ?::text[] " (hformat/to-sql parent-identifier)))))))
+          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]

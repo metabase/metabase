@@ -273,13 +273,25 @@
    clojure.lang.PersistentVector   :type/Array
    clojure.lang.PersistentArrayMap :type/Structured})
 
+(def ^:const db-type-map
+  "This is the lowest common denominator of types, hopefully,
+  although as of writing this is just geared towards Postgres types"
+  {:type/Text       "text"
+   :type/Integer    "integer"
+   :type/Float      "double precision"
+   :type/Number     "double precision"
+   :type/Boolean    "boolean"
+   :type/DateTime   "timestamp"
+   :type/Array      "text"
+   :type/Structured "text"})
+
 (defn- field-types->fields [field-types]
   (let [valid-fields (for [[field-path field-type] (seq field-types)]
                        (if (nil? field-type)
                          nil
                          (let [curr-type (get field-type-map field-type :type/*)]
                            {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                            :database-type     "json"
+                            :database-type     (db-type-map curr-type)
                             :base-type         curr-type
                             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                             :database-position 0
