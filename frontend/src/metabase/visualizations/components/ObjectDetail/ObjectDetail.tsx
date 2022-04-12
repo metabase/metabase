@@ -12,6 +12,7 @@ import { OnVisualizationClickType } from "./types";
 import DirectionalButton from "metabase/components/DirectionalButton";
 import Icon from "metabase/components/Icon";
 import { NotFound } from "metabase/containers/ErrorPages";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
 import { getObjectName, getIdValue } from "./utils";
@@ -37,7 +38,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: unknown) => ({
   question: getQuestion(state),
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
@@ -103,7 +104,7 @@ export function ObjectDetailFn({
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
 
-  useEffect(() => {
+  useOnMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
       setHasNotFoundError(true);
@@ -122,7 +123,7 @@ export function ObjectDetailFn({
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   useEffect(() => {
     const queryCompleted = !prevData && data;
@@ -282,10 +283,10 @@ export function ObjectDetailHeader({
 
 export interface ObjectDetailBodyProps {
   data: DatasetData;
-  zoomedRow: any[] | undefined;
-  settings: any;
+  zoomedRow: unknown[] | undefined;
+  settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: any) => boolean;
+  visualizationIsClickable: (clicked: unknown) => boolean;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
     [key: number]: { status: number; value: number };

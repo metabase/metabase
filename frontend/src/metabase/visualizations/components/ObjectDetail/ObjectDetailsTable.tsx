@@ -16,7 +16,7 @@ export interface DetailsTableCellProps {
   isColumnName: boolean;
   settings: any;
   onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: any) => boolean;
+  visualizationIsClickable: (clicked: unknown) => boolean;
 }
 
 export function DetailsTableCell({
@@ -89,8 +89,8 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: any[] | undefined;
-  settings: any;
+  zoomedRow: unknown[] | undefined;
+  settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
 }
