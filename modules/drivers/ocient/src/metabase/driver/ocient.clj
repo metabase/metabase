@@ -90,7 +90,6 @@
     :SMALLINT     :type/Integer
     :TIME         :type/Time
     :TIMESTAMP    :type/DateTime
-    :TIMESTAMP    :type/ZonedDateTime
     :VARCHAR      :type/Text} database-type))
 
 ;; try FK support to see if manual support works ok
@@ -132,6 +131,22 @@
     (.setTimestamp ps i t cal)))
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+
+;;  :cause Unsupported temporal bucketing: You can't bucket a :type/Date Field by :hour.                                                                                                                                                                                      │
+;;  :data {:type :invalid-query, :field [:field 11 {:temporal-unit :hour}], :base-type :type/Date, :unit :hour, :valid-units #{:quarter :day :week :default :day-of-week :month :month-of-year :day-of-month :year :day-of-year :week-of-year :quarter-of-year}}              │
+;;  :via                                                                                                                                                                                                                                                                      │
+;;  [{:type clojure.lang.ExceptionInfo                                                                                                                                                                                                                                        │
+;;    :message Error calculating permissions for query                                                                                                                                                                                                                        │
+;;    :data {:query {:database 1, :type :query, :query {:source-table 3, :aggregation [[:count]], :breakout [[:field 11 {:temporal-unit :hour}] [:field 11 {:temporal-unit :minute}]]}}}                                                                                      │
+;;    :at [metabase.models.query.permissions$eval59295$mbql_permissions_path_set__59300$fn__59304 invoke permissions.clj 138]}                                                                                                                                                │
+;;   {:type clojure.lang.ExceptionInfo                                                                                                                                                                                                                                        │
+;;    :message Unsupported temporal bucketing: You can't bucket a :type/Date Field by :hour.                                                                                                                                                                                  │
+;;    :data {:type :invalid-query, :field [:field 11 {:temporal-unit :hour}], :base-type :type/Date, :unit :hour, :valid-units #{:quarter :day :week :default :day-of-week :month :month-of-year :day-of-month :year :day-of-year :week-of-year :quarter-of-year}}            │
+;;    :at [metabase.query_processor.middleware.validate_temporal_bucketing$validate_temporal_bucketing invokeStatic validate_temporal_bucketing.clj 39]}]                                                                                                                     │
+;;  :trace
+;; Cast time columns to timestamps
+(defn- ->timestamp [honeysql-form]
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
 
 (defmethod sql.qp/date [:ocient :date]            [_ _ expr] (hsql/call :date expr))
 (defmethod sql.qp/date [:ocient :minute]          [_ _ expr] (date-trunc :minute expr))
