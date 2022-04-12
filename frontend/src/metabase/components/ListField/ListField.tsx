@@ -14,6 +14,7 @@ import {
   FilterInput,
 } from "./ListField.styled";
 import { ListFieldProps, Option } from "./types";
+import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
   values: string[],
@@ -57,8 +58,8 @@ const ListField = ({
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const filteredOptions = useMemo(() => {
-    const trimmedFilter = debouncedFilter.trim().toLowerCase();
-    if (trimmedFilter.length === 0) {
+    const formattedFilter = debouncedFilter.trim().toLowerCase();
+    if (formattedFilter.length === 0) {
       return sortedOptions;
     }
 
@@ -71,17 +72,13 @@ const ListField = ({
       if (
         option.length > 1 &&
         option[1] &&
-        String(option[1])
-          .toLowerCase()
-          .indexOf(trimmedFilter) > -1
+        isValidOptionItem(option[1], formattedFilter)
       ) {
         return true;
       }
 
       // option is: [id]
-      return String(option[0])
-        .toLowerCase()
-        .includes(trimmedFilter);
+      return isValidOptionItem(option[0], formattedFilter);
     });
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
