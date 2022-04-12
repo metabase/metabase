@@ -69,6 +69,12 @@
                   (filter :semantic-type)
                   (map (juxt (comp str/lower-case :name) :semantic-type))))))))
 
+(deftest type-finder-test
+  (testing "type-finder"
+    (is (= java.lang.String (#'describe-table/type-finder "bleh")))
+    (is (= java.time.LocalDateTime (#'describe-table/type-finder "2017-01-13T17:09:42.411")))
+    (is (= java.lang.Long (#'describe-table/type-finder 11111)))))
+
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}

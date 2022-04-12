@@ -217,7 +217,7 @@
     (cond
       (= member-type java.lang.String)
       (if (mbql-schema/can-parse-datetime? member)
-        'java.time.LocalDateTime
+        java.time.LocalDateTime
         member-type)
       :else
       member-type)))
