@@ -68,7 +68,7 @@ const ListField = ({
         return false;
       }
 
-      // option is: [id, name]
+      // option as: [id, name]
       if (
         option.length > 1 &&
         option[1] &&
@@ -77,7 +77,7 @@ const ListField = ({
         return true;
       }
 
-      // option is: [id]
+      // option as: [id]
       return isValidOptionItem(option[0], formattedFilter);
     });
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
