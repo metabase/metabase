@@ -1,4 +1,4 @@
-import { Field } from "./Field";
+import { Field } from "../types/Field";
 
 export interface ForeignKey {
   destination: Field;

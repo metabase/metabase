@@ -1,12 +1,15 @@
 import React from "react";
-import IconBorder from "metabase/components/IconBorder";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
-import { inflect } from "inflection";
-import Icon from "metabase/components/Icon";
 import { t } from "ttag";
 import cx from "classnames";
-import { ForeignKey } from "metabase-types/types/ForeignKey";
+import { inflect } from "inflection";
+
+import { ForeignKey } from "metabase-types/api/foreignKey";
+
+import IconBorder from "metabase/components/IconBorder";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Icon from "metabase/components/Icon";
+
+import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 
 export interface RelationshipsProps {
   tableForeignKeys: ForeignKey[];

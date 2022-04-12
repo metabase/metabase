@@ -1,14 +1,22 @@
-/* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import cx from "classnames";
 
+import Question from "metabase-lib/lib/Question";
+import { Table } from "metabase-types/types/Table";
+import { ForeignKey } from "metabase-types/api/foreignKey";
+import { DatasetData } from "metabase-types/types/Dataset";
+import { OnVisualizationClickType } from "./types";
+
 import DirectionalButton from "metabase/components/DirectionalButton";
 import Icon from "metabase/components/Icon";
-
-import { usePrevious } from "metabase/hooks/use-previous";
 import { NotFound } from "metabase/containers/ErrorPages";
+import { usePrevious } from "metabase/hooks/use-previous";
+
+import { getObjectName, getIdValue } from "./utils";
+import { DetailsTable } from "./ObjectDetailsTable";
+import { Relationships } from "./ObjectRelationships";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -27,18 +35,7 @@ import {
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import { Table } from "metabase-types/types/Table";
-import { ForeignKey } from "metabase-types/types/ForeignKey";
-import Question from "metabase-lib/lib/Question";
-import { DatasetData } from "metabase-types/types/Dataset";
-import { OnVisualizationClickType } from "./types";
-
-import { getObjectName, getIdValue } from "./utils";
-import { DetailsTable } from "./ObjectDetailsTable";
-import { Relationships } from "./ObjectRelationships";
 
 const mapStateToProps = (state: any) => ({
   question: getQuestion(state),
@@ -65,7 +62,7 @@ export interface ObjectDetailProps {
   data: DatasetData;
   question: Question;
   table: Table | null;
-  zoomedRow: any[] | undefined;
+  zoomedRow: unknown[] | undefined;
   zoomedRowID: number;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {

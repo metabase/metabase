@@ -1,13 +1,14 @@
 import React from "react";
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import { isID } from "metabase/lib/schema_metadata";
-import { TYPE, isa } from "metabase/lib/types";
-import { formatValue, formatColumn } from "metabase/lib/formatting";
 import cx from "classnames";
 import { t } from "ttag";
 
 import { DatasetData } from "metabase-types/types/Dataset";
 import { OnVisualizationClickType } from "./types";
+
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import { isID } from "metabase/lib/schema_metadata";
+import { TYPE, isa } from "metabase/lib/types";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 export interface DetailsTableCellProps {
   column: any;
