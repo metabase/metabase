@@ -8,6 +8,7 @@
             [environ.core :refer [env]]
             [metabase.config :as config]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
@@ -276,9 +277,37 @@
      :args    args
      :body    body}))
 
+(def ^:private ee-registry
+  "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as their OSS
+  equivalents. These fns are called when the EE function must fallback to the OSS behavior due to absence of a feature
+  flag."
+  (atom {}))
+
+(def ^:private oss-registry
+  "A map from OSS functions to their EE equivalents. Keys and values are tuples of [namespace function] in which
+  both components are symbols."
+  (atom {}))
+
+(defn- register-mappings!
+  "Adds mappings from OSS->EE and EE->OSS to the `oss-registry` and `ee-registry`, respectively."
+  [fn-name ee-ns]
+  (let [oss-parts [(ns-name *ns*) fn-name]
+        ee-parts  [ee-ns fn-name]
+        oss-fn    (fn [args] (apply (apply ns-resolve oss-parts) args))]
+    (swap! oss-registry assoc oss-parts ee-parts)
+    (swap! ee-registry assoc ee-parts oss-fn)))
+
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [])
+  [{:keys [fn-name ee-ns docstr args body]}]
+  (register-mappings! fn-name ee-ns)
+  (let [ee-fn (do
+               (u/ignore-exceptions (classloader/require ee-ns))
+               (ns-resolve ee-ns fn-name))]
+    `(defn ~fn-name ~docstr ~args
+       (if ~ee-fn
+         (apply ~ee-fn ~args)
+         ~@body))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
@@ -306,14 +335,17 @@
   causes the CE implementation of the function to be called. (Default: `:error`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [{:keys [ee-ns docstr options args body]} (parse-defenterprise-args defenterprise-args)]
-    (if (ee-ns?)
-      ())))
+  (let [defenterprise-args (parse-defenterprise-args defenterprise-args)]
+    (if (not (in-ee?))
+      `(defenterprise-oss ~(assoc defenterprise-args
+                                  :fn-name fn-name))
+      nil)))
 
 (comment
-  (defenterprise my-enterprise-function
+  (defenterprise my-sum
     "This is my docstring"
-    metabase-enterprise.advanced-permissions.common
-    :feature  :advanced-permissions
-    :fallback :oss
-    []))
+    metabase-enterprise.core
+    [x y]
+    (+ x y))
+
+  (my-sum 3 2))
