@@ -21,7 +21,6 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
 import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
-import PersistingModelsToggleWidget from "./components/widgets/PersistingModelsToggleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -29,7 +28,7 @@ import SettingsSetupList from "./components/SettingsSetupList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import { trackTrackingPermissionChanged } from "./analytics";
 
-import { UtilApi } from "metabase/services";
+import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -413,7 +412,19 @@ const SECTIONS = updateSectionsWithPlugins({
           >{t`Learn more`}</ExternalLink>
         )}.`,
         type: "boolean",
-        widget: PersistingModelsToggleWidget,
+        onChanged: async (
+          wasEnabled,
+          isEnabled,
+          settingsValues,
+          onChangeSetting,
+        ) => {
+          if (isEnabled) {
+            await PersistedModelsApi.enablePersistence();
+          } else {
+            await PersistedModelsApi.disablePersistence();
+          }
+          onChangeSetting("enabled-persisted-models", isEnabled);
+        },
       },
       {
         key: "persisted-model-refresh-interval-hours",
@@ -430,6 +441,15 @@ const SECTIONS = updateSectionsWithPlugins({
         },
         widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["enabled-persisted-models"],
+        onChanged: async (
+          oldValue,
+          newValue,
+          settingsValues,
+          onChangeSetting,
+        ) => {
+          await PersistedModelsApi.setRefreshInterval({ hours: newValue });
+          onChangeSetting("persisted-model-refresh-interval-hours", newValue);
+        },
       },
     ],
   },
