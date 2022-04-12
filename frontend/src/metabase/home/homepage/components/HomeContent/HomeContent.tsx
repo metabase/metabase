@@ -39,7 +39,7 @@ const isPopularSection = ({
     !user.is_installer &&
     user.has_question_and_dashboard &&
     popularItems.length > 0 &&
-    (isWithinWeek(user.first_login) || !recentItems.length)
+    (isWithinWeek(user.date_joined) || !recentItems.length)
   );
 };
 
