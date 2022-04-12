@@ -134,7 +134,7 @@
   color: var(--color-brand);
 }
 
-.TableInteractive-cellWrapper--firstColumn {
+.TableInteractive-cellWrapper--firstColumn.padLeft {
   padding-left: 1.5em;
 }
 

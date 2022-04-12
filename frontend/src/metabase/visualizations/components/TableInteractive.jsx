@@ -498,8 +498,8 @@ export default class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx("TableInteractive-cellWrapper text-dark", {
-          "TableInteractive-cellWrapper--firstColumn":
-            columnIndex === 0 && !this.state.IDColumn,
+          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+          padLeft: columnIndex === 0 && !this.state.IDColumn,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
           "TableInteractive-emptyCell": value == null,
@@ -708,8 +708,8 @@ export default class TableInteractive extends Component {
           className={cx(
             "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
-              "TableInteractive-cellWrapper--firstColumn":
-                columnIndex === 0 && !this.state.IDColumn,
+              "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+              padLeft: columnIndex === 0 && !this.state.IDColumn,
               "TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
