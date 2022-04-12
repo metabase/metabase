@@ -7,7 +7,7 @@ describe("scenarios > admin > databases > list", () => {
   });
 
   describeOSS("OSS", () => {
-    it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+    it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
       const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
       cy.intercept(
@@ -32,7 +32,7 @@ describe("scenarios > admin > databases > list", () => {
   });
 
   describeEE("EE", () => {
-    it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+    it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
       const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
       cy.intercept(
