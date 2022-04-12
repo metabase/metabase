@@ -287,12 +287,12 @@
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          names                (format "'{%s}'" (str/join "," (rest nfc-path)))]
+          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql
-        (to-sql [_] (format "%s#>%s" (hformat/to-sql parent-identifier) names))
-        PrettyPrintable
-        (pretty [_] (format "%s#>%s" (pr-str parent-identifier) names))))))
+        (to-sql [_]
+          (hformat/to-params-default names "nfc_path")
+          (format "%s#> ?::text[] " (hformat/to-sql parent-identifier)))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
