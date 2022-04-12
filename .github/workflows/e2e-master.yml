@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "cypress-9.5.4"
+      - "master"
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -131,7 +131,9 @@ jobs:
       run: |
         yarn run test-cypress-no-build \
           --folder ${{ matrix.folder }} \
-          --env burn=10
+          --record --key ${{ secrets.CURRENTS_KEY }} \
+          --group ${{ matrix.folder }}-${{ matrix.edition }} \
+          --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
 
