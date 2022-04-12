@@ -49,7 +49,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata in a popover when hovering over a table column header", () => {
-    openPeopleTable({ mode: "notebook" });
+    openPeopleTable({ mode: "notebook", limit: 2 });
 
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
