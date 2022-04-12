@@ -51,16 +51,7 @@ describe("scenarios > visualizations > table", () => {
   it("should show field metadata in a popover when hovering over a table column header", () => {
     openPeopleTable({ mode: "notebook", limit: 2 });
 
-    cy.findByTestId("fields-picker").click();
-    popover().within(() => {
-      cy.findByText("Select none").click();
-      cy.findByText("City").click();
-      cy.findByText("State").click();
-      cy.findByText("Birth Date").click();
-      cy.findByText("Latitude").click();
-    });
-
-    cy.findByText("Custom column").click();
+    cy.icon("add_data").click();
 
     popover().within(() => {
       enterCustomColumnDetails({
@@ -68,7 +59,16 @@ describe("scenarios > visualizations > table", () => {
         name: "CustomColumn",
       });
 
-      cy.findByText("Done").click();
+      cy.button("Done").click();
+    });
+
+    cy.findByTestId("fields-picker").click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("City").click();
+      cy.findByText("State").click();
+      cy.findByText("Birth Date").click();
+      cy.findByText("Latitude").click();
     });
 
     visualize();
