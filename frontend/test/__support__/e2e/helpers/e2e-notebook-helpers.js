@@ -18,7 +18,10 @@ export function getNotebookStep(type, { stage = 0, index = 0 } = {}) {
  * @param {function} callback
  */
 export function visualize(callback) {
-  cy.intercept("POST", "/api/dataset").as("dataset");
+  cy.intercept("POST", "/api/dataset", req => {
+    // override the previously-declared stub to just continue the request instead of stubbing
+    req.continue();
+  }).as("dataset");
 
   cy.button("Visualize").click();
 
