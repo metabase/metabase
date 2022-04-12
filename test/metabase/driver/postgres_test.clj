@@ -280,7 +280,7 @@
   (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh]}]
-        (is (= ["CAST(json_extract_path_text(CAST(boop.bleh AS json), (CAST(? AS text))) AS Text)" "meh"]
+        (is (= ["boop.bleh#>'{:meh}'"]
                (hsql/format (#'postgres/json-query boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234]}]
