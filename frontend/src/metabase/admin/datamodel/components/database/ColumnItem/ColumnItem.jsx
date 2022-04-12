@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
@@ -18,6 +17,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { ColumnItemInput } from "./ColumnItem.styled";
+import { getFieldRawName } from "../../../utils";
 
 @withRouter
 export default class Column extends Component {
@@ -47,52 +48,58 @@ export default class Column extends Component {
 
   render() {
     const { field, idfields, dragHandle } = this.props;
-
     return (
-      <div className="p1 mt1 mb3 flex bordered rounded">
+      <div className="py2 pl2 pr1 mt1 mb3 flex bordered rounded">
         <div className="flex flex-column flex-auto">
-          <div>
-            <InputBlurChange
-              style={{ minWidth: 420 }}
-              className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold"
-              type="text"
-              value={this.props.field.display_name || ""}
-              onBlurChange={this.handleChangeName}
-            />
-            <div className="clearfix">
-              <div className="flex flex-auto">
-                <div className="pl1 flex-auto">
-                  <FieldVisibilityPicker
-                    className="block"
-                    field={field}
-                    updateField={this.updateField}
-                  />
+          <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
+            {getFieldRawName(field)}
+          </div>
+          <div className="flex flex-column">
+            <div>
+              <ColumnItemInput
+                variant="primary"
+                style={{ minWidth: 420 }}
+                className="AdminInput TableEditor-field-name float-left inline-block rounded text-bold"
+                type="text"
+                value={this.props.field.display_name || ""}
+                onBlurChange={this.handleChangeName}
+              />
+              <div className="clearfix">
+                <div className="flex flex-auto">
+                  <div className="pl1 flex-auto">
+                    <FieldVisibilityPicker
+                      className="block"
+                      field={field}
+                      updateField={this.updateField}
+                    />
+                  </div>
+                  <div className="flex-auto px1">
+                    <SemanticTypeAndTargetPicker
+                      className="block"
+                      field={field}
+                      updateField={this.updateField}
+                      idfields={idfields}
+                    />
+                  </div>
+                  <Link
+                    to={`${this.props.location.pathname}/${this.props.field.id}`}
+                    className="text-brand-hover mr1"
+                  >
+                    <Button icon="gear" style={{ padding: 10 }} />
+                  </Link>
                 </div>
-                <div className="flex-auto px1">
-                  <SemanticTypeAndTargetPicker
-                    className="block"
-                    field={field}
-                    updateField={this.updateField}
-                    idfields={idfields}
-                  />
-                </div>
-                <Link
-                  to={`${this.props.location.pathname}/${this.props.field.id}`}
-                  className="text-brand-hover mr1"
-                >
-                  <Button icon="gear" style={{ padding: 10 }} />
-                </Link>
               </div>
             </div>
-          </div>
-          <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
-            <InputBlurChange
-              className="AdminInput TableEditor-field-description bordered rounded"
-              type="text"
-              value={this.props.field.description || ""}
-              onBlurChange={this.handleChangeDescription}
-              placeholder={t`No column description yet`}
-            />
+            <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
+              <ColumnItemInput
+                variant="secondary"
+                className="AdminInput TableEditor-field-description rounded"
+                type="text"
+                value={this.props.field.description || ""}
+                onBlurChange={this.handleChangeDescription}
+                placeholder={t`No column description yet`}
+              />
+            </div>
           </div>
         </div>
         {dragHandle}
