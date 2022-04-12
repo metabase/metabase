@@ -16,7 +16,7 @@ Collections can have timelines, and timelines can contain events. When we say, "
 
 ### Adding events when viewing a collection
 
-When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the calendar icon in the upper right.
+When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
 
 ![In a collection, view or add events by clicking on the calendar icon](./images/events-and-timelines/event-calendar.png)
 
