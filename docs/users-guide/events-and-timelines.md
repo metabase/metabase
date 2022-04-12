@@ -4,8 +4,6 @@ A lot of discussions around data have a moment when someone asks a question rela
 
 Events and timelines are a way to capture that chronological knowledge and make it available when you need it, in context (that is, when you're viewing a chart). Events are a great way to store institutional knowledge about what happened and when, so people (including yourself three months from now) won't have to figure out (again) why the line chart spiked back in March.
 
-Anyone with [view or curate access](../administration-guide/06-collections.md) to a collection can add events and timelines to that collection.
-
 ## Events
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
@@ -15,6 +13,12 @@ An event is basically a date + a title + a description + an icon. You can add ev
 You can group events into timelines, and associate those timelines with [collections](collections.md). For example, you may want to have a timeline that contains important email or sales dates, or an outages timeline that tracks downtime. You can move events between timelines, and move timelines from collection to collection.
 
 Collections can have timelines, and timelines can contain events. In practice what this means is that events you've added to a timeline will show up on time series questions stored in the same collection as that timeline. Events are invisible on dashboards
+
+## Event and timeline permissions
+
+Anyone with [view  access](../administration-guide/06-collections.md) to a collection can view the collection's events and timelines.
+
+Anyone with curate access to a collection can add events and timelines to that collection.
 
 ### Adding events when viewing a collection
 
