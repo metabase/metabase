@@ -16,6 +16,7 @@ import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
+import { getSetting } from "metabase/selectors/settings";
 
 import Database from "metabase-lib/lib/metadata/Database";
 
@@ -58,6 +59,7 @@ const mapStateToProps = state => {
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
+    isModelPersistenceEnabled: getSetting(state, "enabled-persisted-models"),
   };
 };
 
@@ -98,6 +100,7 @@ export default class DatabaseEditApp extends Component {
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
+    isModelPersistenceEnabled: PropTypes.bool,
   };
 
   async componentDidMount() {
@@ -117,6 +120,7 @@ export default class DatabaseEditApp extends Component {
       persistDatabase,
       unpersistDatabase,
       isAdmin,
+      isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -201,6 +205,7 @@ export default class DatabaseEditApp extends Component {
             <Sidebar
               database={database}
               isAdmin={isAdmin}
+              isModelPersistenceEnabled={isModelPersistenceEnabled}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
