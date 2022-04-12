@@ -125,7 +125,6 @@
                                                        (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
             has-subscription-perms?               (and current-user-has-general-permissions?
                                                        (current-user-has-general-permissions? :subscription))]
-        ;; only update recipients
         (api/check (or api/*is-superuser?*
                        has-subscription-perms?
                        (empty? to-add-recipients))

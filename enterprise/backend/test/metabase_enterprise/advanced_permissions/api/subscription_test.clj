@@ -101,8 +101,10 @@
                             new-pulse   (assoc channel :recipients [])]
                         (testing "- remove pulse's recipients"
                           (mt/user-http-request user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))]
-            (testing "admin can both remove or add recipients if advanced-permissions is disabled"
+            (testing "anyone could add/remove pulse's recipients if advanced-permissions is disabled"
               (premium-features-test/with-premium-features #{}
+                (add-pulse-recipient user 200)
+                (remove-pulse-recipient user 200)
                 (add-pulse-recipient :crowberto 200)
                 (remove-pulse-recipient :crowberto 200)))
 
