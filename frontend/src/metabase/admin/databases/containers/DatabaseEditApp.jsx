@@ -16,7 +16,8 @@ import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
-import { getMetadata } from "metabase/selectors/metadata";
+
+import Database from "metabase-lib/lib/metadata/Database";
 
 import {
   getEditingDatabase,
@@ -50,11 +51,9 @@ const DATABASE_FORM_NAME = "database";
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
-  const metadata = getMetadata(state);
 
   return {
-    database,
-    metadata,
+    database: database ? new Database(database) : undefined,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
@@ -109,7 +108,6 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
-      metadata,
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
@@ -201,7 +199,7 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              database={metadata.database(database.id)}
+              database={database}
               isAdmin={isAdmin}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
