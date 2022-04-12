@@ -49,6 +49,8 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata in a popover when hovering over a table column header", () => {
+    const ccName = "Foo";
+
     openPeopleTable({ mode: "notebook", limit: 2 });
 
     cy.icon("add_data").click();
@@ -56,7 +58,7 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       enterCustomColumnDetails({
         formula: "concat([Name], [Name])",
-        name: "CustomColumn",
+        name: ccName,
       });
 
       cy.button("Done").click();
@@ -127,7 +129,7 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
       [
-        "CustomColumn",
+        ccName,
         () => {
           // semantic type
           cy.contains("No special type");
@@ -152,7 +154,7 @@ describe("scenarios > visualizations > table", () => {
     summarize();
 
     cy.findAllByTestId("dimension-list-item-name")
-      .contains("CustomColumn")
+      .contains(ccName)
       .click();
 
     cy.wait("@dataset");
