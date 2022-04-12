@@ -132,7 +132,7 @@ describe("scenarios > collection_defaults", () => {
         //
       });
 
-      it("should expand/collapse collection tree by clicking on parent collection name (metabse#17339)", () => {
+      it("should expand/collapse collection tree by clicking on chevron)", () => {
         cy.visit("/collection/root");
 
         navigationSidebar().within(() => {
