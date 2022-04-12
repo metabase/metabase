@@ -156,6 +156,8 @@ describe("scenarios > visualizations > table", () => {
       .first()
       .click();
 
+    cy.wait("@dataset");
+
     cy.icon("table2").click();
 
     cy.get(".cellData")
