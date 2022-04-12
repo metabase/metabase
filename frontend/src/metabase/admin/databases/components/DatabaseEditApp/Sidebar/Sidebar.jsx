@@ -67,6 +67,31 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
+            {isAdmin &&
+              isModelPersistenceEnabled &&
+              database.supportsPersistence() && (
+                <li className="mt2">
+                  {database.isPersisted() ? (
+                    <ActionButton
+                      actionFn={() => unpersistDatabase(database.id)}
+                      className="Button"
+                      normalText={t`Disable model persistence`}
+                      activeText={t`Disabling…`}
+                      failedText={t`Failed`}
+                      successText={t`Done`}
+                    />
+                  ) : (
+                    <ActionButton
+                      actionFn={() => persistDatabase(database.id)}
+                      className="Button"
+                      normalText={t`Enable model persistence`}
+                      activeText={t`Enabling…`}
+                      failedText={t`Failed`}
+                      successText={t`Done`}
+                    />
+                  )}
+                </li>
+              )}
           </ol>
         </div>
 
@@ -91,31 +116,6 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            {isAdmin &&
-              isModelPersistenceEnabled &&
-              database.supportsPersistence() && (
-                <li className="mt2">
-                  {database.isPersisted() ? (
-                    <ActionButton
-                      actionFn={() => unpersistDatabase(database.id)}
-                      className="Button Button--danger"
-                      normalText={t`Disable model persistence`}
-                      activeText={t`Disabling…`}
-                      failedText={t`Failed`}
-                      successText={t`Done`}
-                    />
-                  ) : (
-                    <ActionButton
-                      actionFn={() => persistDatabase(database.id)}
-                      className="Button Button--danger"
-                      normalText={t`Enable model persistence`}
-                      activeText={t`Enabling…`}
-                      failedText={t`Failed`}
-                      successText={t`Done`}
-                    />
-                  )}
-                </li>
-              )}
             {isAdmin && (
               <li className="mt2">
                 <ModalWithTrigger
